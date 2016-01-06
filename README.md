@@ -7,9 +7,10 @@
 You need recompile NS-2, for that execute this lines:
 ```bash
 cd ns-allinone-2.34/
-./configure
-make
-sudo make install
+./install
 ```
 
 
+### Ant-Based Structure
+
+Look in folder: `ns-allinone-2.34/ns-2.34/anthocnet`

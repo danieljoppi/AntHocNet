@@ -1,0 +1,399 @@
+libdei80211mr_la-wireless-phymr.lo: wireless-phymr.cc /usr/include/math.h \
+ /usr/include/features.h /usr/include/bits/predefs.h \
+ /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h \
+ /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+ /usr/include/bits/huge_val.h /usr/include/bits/huge_valf.h \
+ /usr/include/bits/huge_vall.h /usr/include/bits/inf.h \
+ /usr/include/bits/nan.h /usr/include/bits/mathdef.h \
+ /usr/include/bits/mathcalls.h /usr/include/bits/mathinline.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/packet.h \
+ /usr/include/string.h \
+ /usr/lib/gcc/x86_64-linux-gnu/4.4.5/include/stddef.h \
+ /usr/include/xlocale.h /usr/include/assert.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/config.h \
+ /usr/include/sys/types.h /usr/include/bits/types.h \
+ /usr/include/bits/typesizes.h /usr/include/time.h /usr/include/endian.h \
+ /usr/include/bits/endian.h /usr/include/bits/byteswap.h \
+ /usr/include/sys/select.h /usr/include/bits/select.h \
+ /usr/include/bits/sigset.h /usr/include/bits/time.h \
+ /usr/include/sys/sysmacros.h /usr/include/bits/pthreadtypes.h \
+ /usr/include/stdlib.h /usr/include/bits/waitflags.h \
+ /usr/include/bits/waitstatus.h /usr/include/alloca.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/autoconf.h \
+ /home/administrator/ns-allinone-2.34/tclcl-1.19/tclcl.h \
+ /home/administrator/ns-allinone-2.34/include/tcl.h /usr/include/stdio.h \
+ /usr/include/libio.h /usr/include/_G_config.h /usr/include/wchar.h \
+ /usr/lib/gcc/x86_64-linux-gnu/4.4.5/include/stdarg.h \
+ /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h \
+ /usr/include/bits/stdio.h \
+ /home/administrator/ns-allinone-2.34/include/tclDecls.h \
+ /home/administrator/ns-allinone-2.34/include/tclPlatDecls.h \
+ /home/administrator/ns-allinone-2.34/otcl-1.13/otcl.h \
+ /home/administrator/ns-allinone-2.34/tclcl-1.19/tclcl-config.h \
+ /home/administrator/ns-allinone-2.34/tclcl-1.19/tracedvar.h \
+ /home/administrator/ns-allinone-2.34/tclcl-1.19/tclcl-mappings.h \
+ /usr/include/strings.h /usr/include/unistd.h \
+ /usr/include/bits/posix_opt.h /usr/include/bits/environments.h \
+ /usr/include/bits/confname.h /usr/include/getopt.h \
+ /usr/include/arpa/inet.h /usr/include/netinet/in.h /usr/include/stdint.h \
+ /usr/include/bits/wchar.h /usr/include/sys/socket.h \
+ /usr/include/sys/uio.h /usr/include/bits/uio.h \
+ /usr/include/bits/socket.h /usr/include/bits/sockaddr.h \
+ /usr/include/asm/socket.h /usr/include/asm-generic/socket.h \
+ /usr/include/asm/sockios.h /usr/include/asm-generic/sockios.h \
+ /usr/include/bits/in.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/scheduler.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/heap.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/object.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/lib/bsd-list.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/packet-stamp.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mobile/antenna.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/object.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/ns-process.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/mobilenode.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/trace/trace.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/trace/basetrace.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/tcp/tcp.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/agent.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/connector.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/packet.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/timer-handler.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/apps/app.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/ns-process.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mac/phy.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/bi-connector.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mac/channel.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mac/phy.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/node.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/net-interface.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mobile/energy-model.h \
+ /usr/include/c++/4.4/cstdlib \
+ /usr/include/c++/4.4/x86_64-linux-gnu/bits/c++config.h \
+ /usr/include/c++/4.4/x86_64-linux-gnu/bits/os_defines.h \
+ /usr/include/c++/4.4/x86_64-linux-gnu/bits/cpu_defines.h \
+ /usr/include/c++/4.4/cstddef \
+ /home/administrator/ns-allinone-2.34/ns-2.34/tools/rng.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/location.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/routing/rtmodule.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/routing/addr-params.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/classifier/classifier.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/classifier/classifier-hash.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/classifier/classifier.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/ip.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/classifier/classifier-hier.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/routing/addr-params.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/routing/route.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/parentnode.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/routing/address.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/classifier/classifier-addr.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mac/mac.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mac/ll.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/link/delay.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/queue/queue.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/connector.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mac/arp.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/scheduler.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mac/lanRouter.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mac/varp.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mac/marshall.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mobile/topography.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mac/channel.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/node.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mobile/gridkeeper.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mobile/propagation.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mac/wireless-phy.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mobile/modulation.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/mobile/omni-antenna.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/timer-handler.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/common/packet-stamp.h \
+ wireless-phymr.h power_profile.h deipropagation.h \
+ /home/administrator/ns-allinone-2.34/ns-2.34/diffusion/diff_header.h \
+ papropagation.h
+
+/usr/include/math.h:
+
+/usr/include/features.h:
+
+/usr/include/bits/predefs.h:
+
+/usr/include/sys/cdefs.h:
+
+/usr/include/bits/wordsize.h:
+
+/usr/include/gnu/stubs.h:
+
+/usr/include/gnu/stubs-64.h:
+
+/usr/include/bits/huge_val.h:
+
+/usr/include/bits/huge_valf.h:
+
+/usr/include/bits/huge_vall.h:
+
+/usr/include/bits/inf.h:
+
+/usr/include/bits/nan.h:
+
+/usr/include/bits/mathdef.h:
+
+/usr/include/bits/mathcalls.h:
+
+/usr/include/bits/mathinline.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/packet.h:
+
+/usr/include/string.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/4.4.5/include/stddef.h:
+
+/usr/include/xlocale.h:
+
+/usr/include/assert.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/config.h:
+
+/usr/include/sys/types.h:
+
+/usr/include/bits/types.h:
+
+/usr/include/bits/typesizes.h:
+
+/usr/include/time.h:
+
+/usr/include/endian.h:
+
+/usr/include/bits/endian.h:
+
+/usr/include/bits/byteswap.h:
+
+/usr/include/sys/select.h:
+
+/usr/include/bits/select.h:
+
+/usr/include/bits/sigset.h:
+
+/usr/include/bits/time.h:
+
+/usr/include/sys/sysmacros.h:
+
+/usr/include/bits/pthreadtypes.h:
+
+/usr/include/stdlib.h:
+
+/usr/include/bits/waitflags.h:
+
+/usr/include/bits/waitstatus.h:
+
+/usr/include/alloca.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/autoconf.h:
+
+/home/administrator/ns-allinone-2.34/tclcl-1.19/tclcl.h:
+
+/home/administrator/ns-allinone-2.34/include/tcl.h:
+
+/usr/include/stdio.h:
+
+/usr/include/libio.h:
+
+/usr/include/_G_config.h:
+
+/usr/include/wchar.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/4.4.5/include/stdarg.h:
+
+/usr/include/bits/stdio_lim.h:
+
+/usr/include/bits/sys_errlist.h:
+
+/usr/include/bits/stdio.h:
+
+/home/administrator/ns-allinone-2.34/include/tclDecls.h:
+
+/home/administrator/ns-allinone-2.34/include/tclPlatDecls.h:
+
+/home/administrator/ns-allinone-2.34/otcl-1.13/otcl.h:
+
+/home/administrator/ns-allinone-2.34/tclcl-1.19/tclcl-config.h:
+
+/home/administrator/ns-allinone-2.34/tclcl-1.19/tracedvar.h:
+
+/home/administrator/ns-allinone-2.34/tclcl-1.19/tclcl-mappings.h:
+
+/usr/include/strings.h:
+
+/usr/include/unistd.h:
+
+/usr/include/bits/posix_opt.h:
+
+/usr/include/bits/environments.h:
+
+/usr/include/bits/confname.h:
+
+/usr/include/getopt.h:
+
+/usr/include/arpa/inet.h:
+
+/usr/include/netinet/in.h:
+
+/usr/include/stdint.h:
+
+/usr/include/bits/wchar.h:
+
+/usr/include/sys/socket.h:
+
+/usr/include/sys/uio.h:
+
+/usr/include/bits/uio.h:
+
+/usr/include/bits/socket.h:
+
+/usr/include/bits/sockaddr.h:
+
+/usr/include/asm/socket.h:
+
+/usr/include/asm-generic/socket.h:
+
+/usr/include/asm/sockios.h:
+
+/usr/include/asm-generic/sockios.h:
+
+/usr/include/bits/in.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/scheduler.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/heap.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/object.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/lib/bsd-list.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/packet-stamp.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mobile/antenna.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/object.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/ns-process.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/mobilenode.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/trace/trace.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/trace/basetrace.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/tcp/tcp.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/agent.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/connector.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/packet.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/timer-handler.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/apps/app.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/ns-process.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mac/phy.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/bi-connector.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mac/channel.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mac/phy.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/node.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/net-interface.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mobile/energy-model.h:
+
+/usr/include/c++/4.4/cstdlib:
+
+/usr/include/c++/4.4/x86_64-linux-gnu/bits/c++config.h:
+
+/usr/include/c++/4.4/x86_64-linux-gnu/bits/os_defines.h:
+
+/usr/include/c++/4.4/x86_64-linux-gnu/bits/cpu_defines.h:
+
+/usr/include/c++/4.4/cstddef:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/tools/rng.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/location.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/routing/rtmodule.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/routing/addr-params.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/classifier/classifier.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/classifier/classifier-hash.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/classifier/classifier.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/ip.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/classifier/classifier-hier.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/routing/addr-params.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/routing/route.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/parentnode.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/routing/address.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/classifier/classifier-addr.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mac/mac.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mac/ll.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/link/delay.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/queue/queue.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/connector.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mac/arp.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/scheduler.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mac/lanRouter.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mac/varp.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mac/marshall.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mobile/topography.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mac/channel.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/node.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mobile/gridkeeper.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mobile/propagation.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mac/wireless-phy.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mobile/modulation.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/mobile/omni-antenna.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/timer-handler.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/common/packet-stamp.h:
+
+wireless-phymr.h:
+
+power_profile.h:
+
+deipropagation.h:
+
+/home/administrator/ns-allinone-2.34/ns-2.34/diffusion/diff_header.h:
+
+papropagation.h:

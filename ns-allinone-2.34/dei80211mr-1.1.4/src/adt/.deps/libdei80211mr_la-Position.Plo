@@ -1,0 +1,6 @@
+adt/libdei80211mr_la-Position.lo: adt/Position.cc adt/Position.h \
+ adt/Object.h
+
+adt/Position.h:
+
+adt/Object.h:
