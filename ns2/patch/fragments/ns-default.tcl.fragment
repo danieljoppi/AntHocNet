@@ -1,0 +1,5 @@
+Agent/AntHocNet set num_nodes_ 2
+Agent/AntHocNet set num_nodes_x_ 2
+Agent/AntHocNet set num_nodes_y_ 2
+Agent/AntHocNet set r_factor_ 1
+Agent/AntHocNet set timer_ant_ 1

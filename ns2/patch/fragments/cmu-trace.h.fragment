@@ -1,0 +1,1 @@
+	void	format_anthocnet(Packet *p, int offset);

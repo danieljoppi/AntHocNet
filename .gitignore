@@ -26,3 +26,16 @@
 *.exe
 *.out
 *.app
+
+# Build directories
+build/
+core/build/
+ns3/build/
+*.cmake
+CMakeCache.txt
+CMakeFiles/
+
+# Simulator trace output
+*.tr
+*.nam
+rtable.txt
