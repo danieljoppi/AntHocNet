@@ -36,8 +36,6 @@ _Scenario: 16 nodes, 250 m area, max speed 5 m/s, 4 flows, mean of 5 run(s). Gen
 | olsr | 34.3 | 2.0 | 2.32 |
 | dsdv | 6.5 | 824.7 | 1.08 |
 
-_Last updated: 2026-06-25._
-
 <!-- BENCHMARK-TABLE-END -->
 
 ## How to read this

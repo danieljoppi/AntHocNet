@@ -15,7 +15,6 @@ unchanged (so CI does not create empty commits).
 """
 import sys
 import csv
-import datetime
 
 START = "<!-- BENCHMARK-TABLE-START -->"
 END = "<!-- BENCHMARK-TABLE-END -->"
@@ -41,8 +40,9 @@ def build_table(csv_path):
         lines.append(
             f"| {r['protocol']} | {r['pdr_pct']} | {r['delay_ms']} | {r['throughput_kbps']} |"
         )
-    stamp = datetime.date.today().isoformat()
-    return header + "\n".join(lines) + f"\n\n_Last updated: {stamp}._\n"
+    # No timestamp: the seeds are fixed, so the table is deterministic and only
+    # changes when the code's routing behaviour does (no noisy daily commits).
+    return header + "\n".join(lines) + "\n"
 
 
 def main():

@@ -68,6 +68,8 @@ Uninstall: `make uninstall-ns3 NS3DIR=...`. Details in
 The NS-3 module also ships `anthocnet-compare`, which benchmarks AntHocNet
 against AODV / OLSR / DSDV on an identical scenario (delivery ratio, delay,
 throughput via FlowMonitor) — see [ns3/README.md](ns3/README.md#compare-against-aodv--olsr--dsdv).
+Current results, regenerated on every merge to the default branch, are in
+[docs/benchmarks.md](docs/benchmarks.md).
 
 ## What changed from the original
 
