@@ -6,7 +6,7 @@ name: Benchmarks
 # also uploaded as a build artifact. Can also be triggered manually.
 on:
   push:
-    branches: [master]
+    branches: [main, master]   # both, so it survives the default-branch rename
   workflow_dispatch:
 
 # Needed to push the regenerated docs/benchmarks.md back to the branch.

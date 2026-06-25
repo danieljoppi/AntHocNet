@@ -2,9 +2,10 @@ name: CI
 
 on:
   # Limit push to the default branch so PR branches run once (via the
-  # pull_request event) instead of twice (push + pull_request).
+  # pull_request event) instead of twice (push + pull_request). Both main and
+  # master are listed so this works before/after the default-branch rename.
   push:
-    branches: [master]
+    branches: [main, master]
   pull_request:
   workflow_dispatch:
 
