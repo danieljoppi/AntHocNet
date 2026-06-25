@@ -115,7 +115,7 @@ class PheromoneTable
 		// Author Daniel Henrique Joppi 06/01/2009
 		inline bool hasNeighbor()
 		{
-			return (this->neighbor_table.empty() || this->neighbor_table.size()<=0);
+			return !this->neighbor_table.empty();
 		}
 
 		// Author Daniel Henrique Joppi 04/10/2011

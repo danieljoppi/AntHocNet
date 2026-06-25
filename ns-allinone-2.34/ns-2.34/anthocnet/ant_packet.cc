@@ -55,7 +55,8 @@ AntTimeEntry* AntBasicPacket::pop_back() {
 		return NULL;
 	}
 
-	AntTimeEntry* entry = visitedNodes[sizeNodes_--];
+	// valid indices are 0 .. sizeNodes_-1, so decrement first
+	AntTimeEntry* entry = visitedNodes[--sizeNodes_];
 	return entry;
 }
 
@@ -66,7 +67,10 @@ int AntBasicPacket::size()
 	sz += sizeof(u_int8_t);
 	sz += sizeof(u_int8_t);
 
-	sz += sizeof(visitedNodes);
+	// the ant carries its visited-node stack over the air: each entry is a
+	// node address plus a timestamp, so model the size from the entry count
+	// (not sizeof(pointer), which was a fixed 8 bytes regardless of path length)
+	sz += sizeNodes_ * (sizeof(nsaddr_t) + sizeof(double));
 
 	sz += sizeof(nsaddr_t);
 	sz += sizeof(nsaddr_t);
@@ -153,7 +157,8 @@ int AntBackPacket::size()
 {
 	int sz = AntBasicPacket::size();
 	sz += sizeof(nsaddr_t);
-	sz += sizeof(visitedNodesHist);
+	// history stack, same per-entry cost as the visited-node stack above
+	sz += sizeNodesHist_ * (sizeof(nsaddr_t) + sizeof(double));
 	sz += sizeof(int);
 	sz += sizeof(int);
 	sz += sizeof(double);
