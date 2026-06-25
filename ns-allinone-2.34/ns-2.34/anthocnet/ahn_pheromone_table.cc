@@ -9,8 +9,8 @@
 #include <math.h>
 
 #include "anthocnet/ant_types.h"
-#include "anthocnet/ahn_pheromone_table.h";
-#include "anthocnet/ahn_protocol_utils.h";
+#include "anthocnet/ahn_pheromone_table.h"
+#include "anthocnet/ahn_protocol_utils.h"
 
 /**
  * Method to add an entry in neighbor table.
@@ -121,10 +121,10 @@ double PheromoneTable::getPheromoneRegular(nsaddr_t destination, nsaddr_t neighb
  */
 double PheromoneTable::getPheromoneVirtual(nsaddr_t destination, nsaddr_t neighbor)
 {
-	MapNodePheromone_it iter = this->pheromone_regular.find(ANT_ENTRY(neighbor, destination));
+	MapNodePheromone_it iter = this->pheromone_virtual.find(ANT_ENTRY(neighbor, destination));
 
 	// destination entry exist in pheromone_table
-	if (iter != this->pheromone_regular.end()) {
+	if (iter != this->pheromone_virtual.end()) {
 		return (iter->second);
 	} else {
 		return 0;
@@ -282,11 +282,13 @@ nsaddr_t PheromoneTable::randomDestination() {
 	nsaddr_t dest = -1;
 
 	AntDestinations_it it;
-	int count = 1;
+	// uniform draw over the destination set: each entry has weight 1/size.
+	// (the previous code used integer division `count/size`, which is 0 for
+	// every entry except the last, so it never selected at random.)
+	const double step = 1.0 / size;
 
 	for (it = this->dest_table_regular.begin(); it != this->dest_table_regular.end(); it++) {
-		double value = (count++) / size;
-		random -= value;
+		random -= step;
 
 		dest = *it;
 

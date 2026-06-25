@@ -210,6 +210,11 @@ Packet* AntNest::createAntHelloPacket()
 	struct hdr_ip* ih = HDR_IP(p); // ip header
 	AntHelloPacket* ah = HDR_AHN_HELLO(p); // ant header
 
+	// header memory is reused by NS-2 without running constructors: reset the
+	// list pointers before they are used so the NULL guards work correctly
+	ah->resetNodes();
+	ah->resetDestinations();
+
 #ifdef DEBUG
 	//fprintf(stderr, "sending Hello from %d at %.2f\n", index, Scheduler::instance().clock());
 #endif // DEBUG
@@ -227,7 +232,7 @@ Packet* AntNest::createAntHelloPacket()
 	for (; it != dest_table.end(); it++) {
 		double random = rand() / (RAND_MAX * 1.0);
 
-		if (dest_table.size() <= 10 || (random > 0.5 && ah->sizeNodes() < 10)) {
+		if (dest_table.size() <= 10 || (random > 0.5 && ah->sizeDests() < 10)) {
 			nsaddr_t dest = *it;
 			ah->addDestination(ANT_NODE(dest, 1.000));
 		}
@@ -269,6 +274,10 @@ Packet* AntNest::createAntBackPacket(Packet *pfw)
 	struct hdr_ip* ih = HDR_IP(pbk);
 	struct hdr_cmn* ch = HDR_CMN(pbk);
 	AntBackPacket* ah = (AntBackPacket*) AntBackPacket::access(pbk);
+
+	// reset header-resident list pointers before they are populated below
+	ah->resetNodes();
+	ah->resetHist();
 
 	ah->setAntType(ahfw->getAntType()); // set ant type as  Ant
 	ah->setAntDirection(ANT_DOWN); // set ant direction
@@ -320,6 +329,9 @@ Packet* AntNest::createAntForwardPacket(u_int8_t antType, nsaddr_t destination)
 	struct hdr_cmn* ch = HDR_CMN(p); // common header
 	struct hdr_ip* ih = HDR_IP(p); // ip header
 	AntForwardPacket* ah = (AntForwardPacket*) AntForwardPacket::access(p); // ant header
+
+	// reset header-resident list pointer before addToNodes() uses it
+	ah->resetNodes();
 
 	ah->setAntType(antType); // ant type
 	ah->setAntDirection(ANT_UP); // set ant direction

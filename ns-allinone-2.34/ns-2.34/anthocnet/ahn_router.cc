@@ -213,9 +213,10 @@ void AntHocNet::recv(Packet *p, Handler *h)
 	// recieved packet is an Ant packet
 	if (ch->ptype() == PT_ANT)
 	{
-		// call method to handle ant packet
+		// call method to handle ant packet. TTL was already decremented above
+		// for forwarded packets; recvAHN() may forward/free p, so do not touch
+		// the (possibly in-flight) header here again.
 		recvAHN(p);
-		ih->ttl_ -= 1;
 	}
 	// if not Ant packet, forward
 	else
@@ -268,7 +269,7 @@ void AntHocNet::recvAHN(Packet *p)
 		if (nb_timer_list.find(node) != nb_timer_list.end()) {
 			nb_timer_list.erase(node);
 		}
-		nb_timer_list.insert(std::make_pair<nsaddr_t, double>(node, CURRENT_TIME));
+		nb_timer_list.insert(std::make_pair(node, (double) CURRENT_TIME));
 
 
 		// initialize equal pheromone value to all neighbor links
@@ -842,7 +843,7 @@ void AntHocNet::sendPRFA()
 void AntHocNet::sendPRFA(nsaddr_t destination) {
 #ifndef ANT_LINK_LAYER_DETECTION
 	// generate next hop as per AntHocNet algorithm
-	nsaddr_t next = this->ant_nest_->pheromoneTable()->nextNeighborNode(next, true);
+	nsaddr_t next = this->ant_nest_->pheromoneTable()->nextNeighborNode(destination, true);
 #endif
 
 	Packet* p = this->ant_nest_->createAntForwardPacket(ANTTYPEPROACTIVE, destination);
@@ -1211,12 +1212,13 @@ void AntHocNet::printNeighbors()
 	//fprintf(stdout, "node id: %d\tnode address: %d\n", n->nodeid(), n->address());
 	//fprintf(stdout, "Neighbors:\n");
 	neighbor_list_node* nb = n->neighbor_list_;
-	do
+	// guard against an empty neighbor list (do/while dereferenced nb first)
+	while (nb != NULL)
 	{
 		int neigh = nb->nodeid;
 		//printf("%d\n", neigh);
 		nb = nb->next;
-	} while (nb != NULL);
+	}
 }
 
 /*
@@ -1266,7 +1268,7 @@ void AntHocNet::recvAntHello(Packet *p)
 	if (nb_timer_list.find(node) != nb_timer_list.end()) {
 		nb_timer_list.erase(node);
 	}
-	nb_timer_list.insert(std::make_pair<nsaddr_t, double>(node, CURRENT_TIME));
+	nb_timer_list.insert(std::make_pair(node, (double) CURRENT_TIME));
 
 
 	// initialize equal pheromone value to all neighbor links

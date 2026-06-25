@@ -21,7 +21,9 @@ class Packet;
 
 struct ant_node_less_adapter
 {
-	bool operator() (const nsaddr_t lhs, const nsaddr_t rhs)
+	// must be const: std::set comparators are invoked through a const
+	// reference, which modern libstdc++ enforces with a static_assert.
+	bool operator() (const nsaddr_t lhs, const nsaddr_t rhs) const
 	{
 	   return lhs < rhs;
 	}
@@ -29,7 +31,7 @@ struct ant_node_less_adapter
 
 struct ant_dest_less_adapter
 {
-	bool operator() (const nsaddr_t lhs, const nsaddr_t rhs)
+	bool operator() (const nsaddr_t lhs, const nsaddr_t rhs) const
 	{
 	   return lhs < rhs;
 	}

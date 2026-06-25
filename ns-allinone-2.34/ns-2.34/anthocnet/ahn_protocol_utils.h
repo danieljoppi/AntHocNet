@@ -13,17 +13,20 @@
 class AntHocNetUtils
 {
 	public:
-		const static float ALFA = 0.7;
-		const static int BETA = 1;
-		const static float GAMA = 0.7;
+		// constexpr is required for in-class initialization of non-integral
+		// static members; plain `const static float` is ill-formed and is
+		// rejected as a hard error by modern compilers (g++ >= ~6).
+		static constexpr float ALFA = 0.7;
+		static constexpr int BETA = 1;
+		static constexpr float GAMA = 0.7;
 
-		const static int HOP_TIME = 50; //millisecond
+		static constexpr int HOP_TIME = 50; //millisecond
 
-		const static int PROACTIVE = 1;
-		const static int REACTIVE = 2;
-		const static int REPAIR = 3;
+		static constexpr int PROACTIVE = 1;
+		static constexpr int REACTIVE = 2;
+		static constexpr int REPAIR = 3;
 
-		const static double MIN_PHEROMONE = 0.00001;
+		static constexpr double MIN_PHEROMONE = 0.00001;
 };
 
 #endif /* _ahn_protocol_utils_ */

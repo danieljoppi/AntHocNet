@@ -106,6 +106,16 @@ class AntBasicPacket
 			sizeNodes_ = size;
 		}
 
+		// Initialize the (header-resident) visited-node list. NS-2 pools and
+		// reuses packet header memory without running C++ constructors, so the
+		// list pointer holds garbage until it is explicitly reset. Every factory
+		// method must call this before the list is used, otherwise the
+		// "visitedNodes == NULL" guards in ant_packet.cc test stale bytes.
+		void resetNodes() {
+			visitedNodes = NULL;
+			sizeNodes_ = 0;
+		}
+
 		void addToNodes(AntTimeEntry* entry);
 
 		AntTimeEntry* pop_back();
@@ -222,6 +232,13 @@ class AntHelloPacket:
 			sizeDests_ = size;
 		}
 
+		// See AntBasicPacket::resetNodes(): the destinations list pointer is also
+		// header-resident and must be reset before use.
+		void resetDestinations() {
+			destinations = NULL;
+			sizeDests_ = 0;
+		}
+
 		void addDestination(AntNode* destination);
 
 		/**
@@ -311,6 +328,13 @@ class AntBackPacket:
 		// cycleNode Lists
 		int sizeNodesHist() {
 			return sizeNodesHist_;
+		}
+
+		// See AntBasicPacket::resetNodes(): the history list pointer is also
+		// header-resident and must be reset before use.
+		void resetHist() {
+			visitedNodesHist = NULL;
+			sizeNodesHist_ = 0;
 		}
 
 		// Method to find next neighbor visited by ant forward
