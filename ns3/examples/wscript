@@ -1,0 +1,7 @@
+# AntHocNet examples (waf build, ns-3 < 3.36).
+
+def build(bld):
+    obj = bld.create_ns3_program('anthocnet-example',
+                                 ['anthocnet', 'core', 'network', 'internet',
+                                  'wifi', 'mobility', 'applications'])
+    obj.source = 'anthocnet-example.cc'
