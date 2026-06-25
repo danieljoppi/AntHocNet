@@ -27,10 +27,10 @@ strip_markers() {
     mv "$tmp" "$file"
 }
 
-# Translate a POSIX [[:space:]] class to [ \t] for awk (old mawk lacks the
-# POSIX class). See apply-patch.sh:awk_re.
+# Make an ERE safe to pass to awk via -v (old mawk lacks POSIX classes and runs
+# -v values through string-escape processing). See apply-patch.sh:awk_re.
 awk_re() {
-    printf '%s' "${1//\[\[:space:\]\]/[ \\t]}"
+    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/\[\[:space:\]\]/[ \\t]/g'
 }
 
 # Delete a contiguous block: the line matching START_RE through the first

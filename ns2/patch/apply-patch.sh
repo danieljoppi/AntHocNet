@@ -42,13 +42,20 @@ require_anchor() {
     grep -qE "$2" "$1" || die "anchor not found in $1 : /$2/"
 }
 
-# Translate a POSIX [[:space:]] class to [ \t] for awk. GNU grep/sed accept
-# [[:space:]], but the mawk shipped on some systems (e.g. older Ubuntu) does
-# not and silently fails to match -- so every pattern handed to awk goes
-# through this first. awk natively reads \t as a tab; grep -E does not, which
-# is why the call sites keep [[:space:]] for the grep-based anchor checks.
+# Make an ERE safe to pass to awk via -v. Two portability hazards with the
+# mawk found on some systems (e.g. older Ubuntu / GitHub runners):
+#   1. it lacks POSIX classes -> translate [[:space:]] to [ \t] (awk reads \t
+#      as a tab);
+#   2. `awk -v` runs the value through C-string escape processing FIRST, which
+#      strips the backslash from regex escapes like \( \. \{ \$ (mawk warns
+#      "escape sequence treated as plain" and a bare ( is then a fatal
+#      "unmatched (") -> double every backslash so one survives that stage.
+# Order matters: double backslashes first, THEN introduce the single-backslash
+# \t for the space class (which is meant to collapse to a tab).
+# GNU grep/sed accept [[:space:]] directly, so the grep-based anchor checks at
+# the call sites keep using the original [[:space:]] form.
 awk_re() {
-    printf '%s' "${1//\[\[:space:\]\]/[ \\t]}"
+    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/\[\[:space:\]\]/[ \\t]/g'
 }
 
 # Insert FRAGMENT (a file) immediately AFTER the first line matching REGEX,
