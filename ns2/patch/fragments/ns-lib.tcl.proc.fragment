@@ -1,0 +1,6 @@
+Simulator instproc create-ahn-agent { node } {
+	set ragent [new Agent/AntHocNet [$node node-addr]]
+	$self at 0.0 "$ragent start"
+	$node set ragent_ $ragent
+	return $ragent
+}

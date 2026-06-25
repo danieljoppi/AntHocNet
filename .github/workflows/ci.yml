@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  core:
+    name: core library + unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake g++
+      - name: Build and test core
+        run: make test
+
+  ns2-patch:
+    name: NS-2 patch round-trip (synthetic tree)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate apply/revert against a synthetic ns-2 tree
+        run: bash ns2/patch/selftest.sh
+
+  ns3-build:
+    name: NS-3 module build (optional)
+    runs-on: ubuntu-latest
+    # Heavy (fetches + builds ns-3). Run manually via the Actions tab.
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ python3 ninja-build
+      - name: Fetch ns-3
+        run: |
+          git clone --depth 1 https://gitlab.com/nsnam/ns-3-dev.git ns-3-dev
+      - name: Install AntHocNet module
+        run: make install-ns3 NS3DIR="$PWD/ns-3-dev"
+      - name: Configure and build
+        run: |
+          cd ns-3-dev
+          ./ns3 configure --enable-examples --enable-tests
+          ./ns3 build anthocnet
+      - name: Run module tests
+        run: |
+          cd ns-3-dev
+          ./test.py -s anthocnet || true

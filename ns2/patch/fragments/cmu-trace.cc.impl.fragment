@@ -1,0 +1,21 @@
+void
+CMUTrace::format_anthocnet(Packet *p, int offset)
+{
+	struct hdr_cmn *ch = HDR_CMN(p);
+	AntPacketHeader *ah = HDR_AHN(p);
+
+	const char *label = "ANT";
+	switch (ah->antType()) {
+		case ANT_TYPE_HELLO:     label = "HELLO"; break;
+		case ANT_TYPE_REACTIVE:  label = (ah->antDirection() == ANT_UP) ? "REFA" : "REBA"; break;
+		case ANT_TYPE_PROACTIVE: label = (ah->antDirection() == ANT_UP) ? "PRFA" : "PRBA"; break;
+		case ANT_TYPE_REPAIR:    label = (ah->antDirection() == ANT_UP) ? "RRFA" : "RRBA"; break;
+		default: break;
+	}
+
+	sprintf(pt_->buffer() + offset,
+		"<%d:%d> %s [%d : %d : %d - %d] - %f (%f : %f)",
+		ah->src(), ah->seqNum(), label,
+		ch->prev_hop_, ch->next_hop(), ah->dst(), ah->pathLen(),
+		ah->timeStart(), ah->pheromone(), ah->prevSINR());
+}

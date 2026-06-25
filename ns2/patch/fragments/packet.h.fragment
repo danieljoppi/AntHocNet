@@ -1,0 +1,16 @@
+// AntHocNet packet type. The numeric id is assigned dynamically by
+// apply-patch.sh (it takes the current value of PT_NTYPE), so it never
+// collides across ns-2.3x releases. This fragment documents the three edits
+// the installer performs on common/packet.h:
+//
+// 1) A new packet_t constant just before PT_NTYPE:
+//        static const packet_t PT_ANT = <current PT_NTYPE value>;
+//    and PT_NTYPE is bumped by one.
+//
+// 2) PT_ANT added to the ROUTING classification, next to PT_AODV:
+//        type == PT_AODV ||
+//        type == PT_ANT)
+//            return ROUTING;
+//
+// 3) A human-readable name in the p_info constructor, next to the AODV entry:
+//        name_[PT_ANT] = "AntHocNet";

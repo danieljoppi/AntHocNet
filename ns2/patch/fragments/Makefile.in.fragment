@@ -1,0 +1,5 @@
+	anthocnet/ant_packet_ns2.o anthocnet/ahn_adapters.o \
+	anthocnet/ahn_router.o \
+	anthocnet/core/pheromone_table.o anthocnet/core/pheromone_engine.o \
+	anthocnet/core/ant_history.o anthocnet/core/ant_router_logic.o \
+	anthocnet/core/ant_message_codec.o \
