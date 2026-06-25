@@ -147,7 +147,8 @@ int main(int argc, char* argv[]) {
     double area = 300.0;
     double speed = 5.0;
     uint32_t nFlows = 5;
-    uint32_t seed = 1;
+    uint32_t runs = 1;   // average over RNG runs 1..runs
+    bool csv = false;
     std::string protocols = "anthocnet,aodv,olsr,dsdv";
 
     CommandLine cmd(__FILE__);
@@ -156,9 +157,11 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("area", "Square area side (m)", area);
     cmd.AddValue("speed", "Max node speed (m/s)", speed);
     cmd.AddValue("flows", "Number of CBR flows", nFlows);
-    cmd.AddValue("seed", "RNG run", seed);
+    cmd.AddValue("runs", "Number of RNG runs to average (seeds 1..runs)", runs);
+    cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols", "Comma-separated list", protocols);
     cmd.Parse(argc, argv);
+    if (runs < 1) runs = 1;
 
     std::vector<std::string> list;
     std::stringstream ss(protocols);
@@ -167,24 +170,49 @@ int main(int argc, char* argv[]) {
         if (!item.empty()) list.push_back(item);
     }
 
-    std::cout << "AntHocNet protocol comparison\n"
-              << "  nodes=" << nNodes << " time=" << simTime << "s area=" << area
-              << "m maxSpeed=" << speed << "m/s flows=" << nFlows
-              << " seed=" << seed << "\n\n";
-    std::cout << std::left << std::setw(12) << "protocol"
-              << std::right << std::setw(8) << "tx" << std::setw(8) << "rx"
-              << std::setw(9) << "PDR%" << std::setw(12) << "delay(ms)"
-              << std::setw(14) << "thrput(kbps)" << "\n";
-    std::cout << std::string(63, '-') << "\n";
+    // Each protocol: mean over runs (every protocol sees the same seed set).
+    struct Agg { double pdr = 0, delay = 0, thrput = 0; uint64_t tx = 0, rx = 0; };
+    std::vector<Agg> agg(list.size());
+    for (std::size_t i = 0; i < list.size(); ++i) {
+        for (uint32_t s = 1; s <= runs; ++s) {
+            Result r = RunOne(list[i], nNodes, simTime, area, speed, nFlows, s);
+            agg[i].pdr += r.pdr;
+            agg[i].delay += r.meanDelayMs;
+            agg[i].thrput += r.throughputKbps;
+            agg[i].tx += r.txPackets;
+            agg[i].rx += r.rxPackets;
+        }
+        agg[i].pdr /= runs;
+        agg[i].delay /= runs;
+        agg[i].thrput /= runs;
+    }
 
-    for (const std::string& p : list) {
-        Result r = RunOne(p, nNodes, simTime, area, speed, nFlows, seed);
-        std::cout << std::left << std::setw(12) << r.proto
-                  << std::right << std::setw(8) << r.txPackets
-                  << std::setw(8) << r.rxPackets
-                  << std::setw(9) << std::fixed << std::setprecision(1) << r.pdr
-                  << std::setw(12) << std::setprecision(1) << r.meanDelayMs
-                  << std::setw(14) << std::setprecision(2) << r.throughputKbps << "\n";
+    if (csv) {
+        std::cout << "protocol,runs,nNodes,area,speed,flows,pdr_pct,delay_ms,throughput_kbps\n";
+        std::cout << std::fixed;
+        for (std::size_t i = 0; i < list.size(); ++i) {
+            std::cout << list[i] << ',' << runs << ',' << nNodes << ','
+                      << std::setprecision(0) << area << ','
+                      << std::setprecision(0) << speed << ',' << nFlows << ','
+                      << std::setprecision(1) << agg[i].pdr << ','
+                      << std::setprecision(1) << agg[i].delay << ','
+                      << std::setprecision(2) << agg[i].thrput << '\n';
+        }
+        return 0;
+    }
+
+    std::cout << "AntHocNet protocol comparison (mean of " << runs << " run(s))\n"
+              << "  nodes=" << nNodes << " time=" << simTime << "s area=" << area
+              << "m maxSpeed=" << speed << "m/s flows=" << nFlows << "\n\n";
+    std::cout << std::left << std::setw(12) << "protocol"
+              << std::right << std::setw(9) << "PDR%" << std::setw(12) << "delay(ms)"
+              << std::setw(14) << "thrput(kbps)" << "\n";
+    std::cout << std::string(47, '-') << "\n";
+    for (std::size_t i = 0; i < list.size(); ++i) {
+        std::cout << std::left << std::setw(12) << list[i]
+                  << std::right << std::setw(9) << std::fixed << std::setprecision(1) << agg[i].pdr
+                  << std::setw(12) << std::setprecision(1) << agg[i].delay
+                  << std::setw(14) << std::setprecision(2) << agg[i].thrput << "\n";
     }
     return 0;
 }
