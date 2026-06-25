@@ -1,8 +1,10 @@
 #include "anthocnet-helper.h"
 
 #include "ns3/anthocnet-routing-protocol.h"
+#include "ns3/node.h"
 #include "ns3/node-list.h"
 #include "ns3/names.h"
+#include "ns3/ipv4.h"
 #include "ns3/ipv4-list-routing.h"
 
 namespace ns3 {

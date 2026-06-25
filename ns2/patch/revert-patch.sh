@@ -27,13 +27,19 @@ strip_markers() {
     mv "$tmp" "$file"
 }
 
+# Make an ERE safe to pass to awk via -v (old mawk lacks POSIX classes and runs
+# -v values through string-escape processing). See apply-patch.sh:awk_re.
+awk_re() {
+    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/\[\[:space:\]\]/[ \\t]/g'
+}
+
 # Delete a contiguous block: the line matching START_RE through the first
 # following line matching END_RE (inclusive). Only the first such block.
 delete_block() {
     local file="$1" start_re="$2" end_re="$3"
     [[ -f "$file" ]] || return 0
     local tmp; tmp="$(mktemp)"
-    awk -v s="$start_re" -v e="$end_re" '
+    awk -v s="$(awk_re "$start_re")" -v e="$(awk_re "$end_re")" '
         !inblock && $0 ~ s && !done { inblock = 1; next }
         inblock { if ($0 ~ e) { inblock = 0; done = 1 } ; next }
         { print }

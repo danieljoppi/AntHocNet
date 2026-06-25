@@ -91,6 +91,10 @@ void RoutingProtocol::DoDispose() {
         kv.first->Close();
     }
     m_socketAddresses.clear();
+    for (auto& kv : m_socketSubnetBroadcast) {
+        kv.first->Close();
+    }
+    m_socketSubnetBroadcast.clear();
     m_logic.reset();
     Ipv4RoutingProtocol::DoDispose();
 }
@@ -135,6 +139,18 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
     socket->SetIpRecvTtl(true);
     m_socketAddresses[socket] = iface;
 
+    // Second socket bound to the subnet-broadcast address so this interface
+    // actually receives the broadcast hello / forward ants.
+    Ptr<Socket> bcast = Socket::CreateSocket(GetObject<Node>(),
+                                             UdpSocketFactory::GetTypeId());
+    NS_ASSERT(bcast);
+    bcast->SetRecvCallback(MakeCallback(&RoutingProtocol::RecvAnt, this));
+    bcast->BindToNetDevice(l3->GetNetDevice(interface));
+    bcast->Bind(InetSocketAddress(iface.GetBroadcast(), ANT_PORT));
+    bcast->SetAllowBroadcast(true);
+    bcast->SetIpRecvTtl(true);
+    m_socketSubnetBroadcast[bcast] = iface;
+
     Start();
 }
 
@@ -144,6 +160,13 @@ void RoutingProtocol::NotifyInterfaceDown(uint32_t interface) {
     if (socket) {
         socket->Close();
         m_socketAddresses.erase(socket);
+    }
+    for (auto it = m_socketSubnetBroadcast.begin(); it != m_socketSubnetBroadcast.end(); ++it) {
+        if (it->second == iface) {
+            it->first->Close();
+            m_socketSubnetBroadcast.erase(it);
+            break;
+        }
     }
 }
 
@@ -210,7 +233,6 @@ bool RoutingProtocol::RouteInput(Ptr<const Packet> p, const Ipv4Header& header,
     if (!m_logic || m_socketAddresses.empty()) return false;
 
     Ipv4Address dst = header.GetDestination();
-    Ipv4Address origin = header.GetSource();
 
     // Locally destined?
     int32_t iif = m_ipv4->GetInterfaceForDevice(idev);

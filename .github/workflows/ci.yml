@@ -25,25 +25,24 @@ jobs:
         run: bash ns2/patch/selftest.sh
 
   ns3-build:
-    name: NS-3 module build (optional)
+    name: NS-3 module build + test
     runs-on: ubuntu-latest
-    # Heavy (fetches + builds ns-3). Run manually via the Actions tab.
-    if: github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
       - name: Install toolchain
         run: sudo apt-get update && sudo apt-get install -y cmake g++ python3 ninja-build
-      - name: Fetch ns-3
+      - name: Fetch ns-3 (pinned release)
         run: |
-          git clone --depth 1 https://gitlab.com/nsnam/ns-3-dev.git ns-3-dev
+          git clone --depth 1 --branch ns-3.42 https://gitlab.com/nsnam/ns-3-dev.git ns-3
       - name: Install AntHocNet module
-        run: make install-ns3 NS3DIR="$PWD/ns-3-dev"
-      - name: Configure and build
+        run: make install-ns3 NS3DIR="$PWD/ns-3"
+      - name: Configure (minimal module set)
         run: |
-          cd ns-3-dev
-          ./ns3 configure --enable-examples --enable-tests
-          ./ns3 build anthocnet
-      - name: Run module tests
-        run: |
-          cd ns-3-dev
-          ./test.py -s anthocnet || true
+          cd ns-3
+          ./ns3 configure --enable-modules='anthocnet;wifi;mobility;applications' --enable-examples --enable-tests
+      - name: Build
+        run: cd ns-3 && ./ns3 build
+      - name: Run module test suite
+        run: cd ns-3 && ./test.py -s anthocnet
+      - name: Smoke-run the example
+        run: cd ns-3 && ./ns3 run anthocnet-example

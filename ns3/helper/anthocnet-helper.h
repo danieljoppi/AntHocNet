@@ -7,6 +7,7 @@
 
 #include "ns3/ipv4-routing-helper.h"
 #include "ns3/object-factory.h"
+#include "ns3/node-container.h"
 
 namespace ns3 {
 

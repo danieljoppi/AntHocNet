@@ -87,7 +87,12 @@ private:
 
     // state
     Ptr<Ipv4> m_ipv4;
+    // Per-interface sockets: one bound to the unicast address (receives
+    // unicast ants), one bound to the subnet-broadcast address (receives
+    // broadcast hello/forward ants). A socket bound only to the unicast
+    // address does NOT receive broadcasts, so both are required.
     std::map<Ptr<Socket>, Ipv4InterfaceAddress> m_socketAddresses;
+    std::map<Ptr<Socket>, Ipv4InterfaceAddress> m_socketSubnetBroadcast;
 
     ::anthocnet::core::Config m_config;
     Ns3Clock m_clock;

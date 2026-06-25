@@ -23,7 +23,10 @@ NS_LOG_COMPONENT_DEFINE("AntHocNetExample");
 int main(int argc, char* argv[]) {
     uint32_t nNodes = 10;
     double simTime = 20.0;
-    double areaSize = 500.0;
+    // Keep the area small enough that nodes are within the default YansWifi
+    // range (~50 m) and form a connected multi-hop mesh; a larger area simply
+    // partitions the network and nothing (any protocol) is delivered.
+    double areaSize = 100.0;
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("nNodes", "Number of nodes", nNodes);
