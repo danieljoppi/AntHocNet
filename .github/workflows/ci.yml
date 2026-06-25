@@ -36,13 +36,16 @@ jobs:
           git clone --depth 1 --branch ns-3.42 https://gitlab.com/nsnam/ns-3-dev.git ns-3
       - name: Install AntHocNet module
         run: make install-ns3 NS3DIR="$PWD/ns-3"
-      - name: Configure (minimal module set)
+      - name: Configure (with comparison protocols)
         run: |
           cd ns-3
-          ./ns3 configure --enable-modules='anthocnet;wifi;mobility;applications' --enable-examples --enable-tests
+          ./ns3 configure --enable-tests --enable-examples \
+            --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
       - name: Build
         run: cd ns-3 && ./ns3 build
-      - name: Run module test suite
+      - name: Run module test suite (header round-trip + multi-hop delivery)
         run: cd ns-3 && ./test.py -s anthocnet
       - name: Smoke-run the example
         run: cd ns-3 && ./ns3 run anthocnet-example
+      - name: Smoke-run the protocol comparison
+        run: cd ns-3 && ./ns3 run "anthocnet-compare --nNodes=8 --time=12 --area=150 --flows=2"

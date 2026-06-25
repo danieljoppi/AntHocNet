@@ -1,11 +1,28 @@
 /*
- * NS-3 test suite for AntHocNet. Exercises the AntHeader serialize/deserialize
- * round-trip (the riskiest adapter seam) without needing a full simulation.
+ * NS-3 test suite for AntHocNet:
+ *   1. AntHeader serialize/deserialize round-trip (the riskiest adapter seam).
+ *   2. A deterministic multi-hop delivery test over SimpleNetDevices (no wifi
+ *      randomness): a 3-node line 0-1-2 with the 0<->2 link black-listed, so a
+ *      packet from 0 to 2 must be routed through 1. This guards the actual
+ *      routing path (hello, neighbour learning, reactive discovery, forwarding
+ *      and delivery), not just packet encoding.
  */
 #include "ns3/test.h"
 #include "ns3/packet.h"
+#include "ns3/simulator.h"
+#include "ns3/rng-seed-manager.h"
+#include "ns3/node-container.h"
+#include "ns3/simple-net-device.h"
+#include "ns3/simple-channel.h"
+#include "ns3/simple-net-device-helper.h"
+#include "ns3/internet-stack-helper.h"
+#include "ns3/ipv4-address-helper.h"
+#include "ns3/socket.h"
+#include "ns3/udp-socket-factory.h"
+#include "ns3/inet-socket-address.h"
 
 #include "ns3/anthocnet-packet.h"
+#include "ns3/anthocnet-helper.h"
 
 using namespace ns3;
 using ::anthocnet::core::AntMessage;
@@ -61,11 +78,76 @@ public:
     }
 };
 
+// Deterministic multi-hop delivery over SimpleNetDevices.
+class AntHocNetDeliveryTestCase : public TestCase
+{
+public:
+    AntHocNetDeliveryTestCase()
+        : TestCase("Multi-hop delivery over a 3-node line"), m_rxBytes(0) {}
+
+    void DoRun() override {
+        RngSeedManager::SetSeed(1);
+        RngSeedManager::SetRun(1);
+
+        NodeContainer nodes;
+        nodes.Create(3);
+
+        // Shared SimpleChannel; black-list the 0<->2 link so 0 and 2 are not
+        // direct neighbours and traffic must traverse node 1.
+        Ptr<SimpleChannel> channel = CreateObject<SimpleChannel>();
+        SimpleNetDeviceHelper devHelper;
+        NetDeviceContainer devices = devHelper.Install(nodes, channel);
+        Ptr<SimpleNetDevice> d0 = DynamicCast<SimpleNetDevice>(devices.Get(0));
+        Ptr<SimpleNetDevice> d2 = DynamicCast<SimpleNetDevice>(devices.Get(2));
+        channel->BlackList(d0, d2);
+        channel->BlackList(d2, d0);
+
+        AntHocNetHelper anthocnet;
+        InternetStackHelper internet;
+        internet.SetRoutingHelper(anthocnet);
+        internet.Install(nodes);
+
+        Ipv4AddressHelper address;
+        address.SetBase("10.1.0.0", "255.255.255.0");
+        Ipv4InterfaceContainer ifs = address.Assign(devices);
+
+        const uint16_t port = 9;
+
+        // Receiver on node 2 counts bytes.
+        Ptr<Socket> rx = Socket::CreateSocket(nodes.Get(2), UdpSocketFactory::GetTypeId());
+        rx->Bind(InetSocketAddress(Ipv4Address::GetAny(), port));
+        rx->SetRecvCallback(MakeCallback(&AntHocNetDeliveryTestCase::Receive, this));
+
+        // Sender on node 0 -> node 2, after routes have a chance to form.
+        Ptr<Socket> tx = Socket::CreateSocket(nodes.Get(0), UdpSocketFactory::GetTypeId());
+        tx->Connect(InetSocketAddress(ifs.GetAddress(2), port));
+        for (double t = 10.0; t < 18.0; t += 0.5) {
+            Simulator::Schedule(Seconds(t), &AntHocNetDeliveryTestCase::Send, this, tx);
+        }
+
+        Simulator::Stop(Seconds(20.0));
+        Simulator::Run();
+        Simulator::Destroy();
+
+        NS_TEST_ASSERT_MSG_GT(m_rxBytes, 0u,
+                              "node 2 received no data over the 2-hop path");
+    }
+
+private:
+    void Send(Ptr<Socket> s) { s->Send(Create<Packet>(64)); }
+    void Receive(Ptr<Socket> s) {
+        Ptr<Packet> p;
+        while ((p = s->Recv())) m_rxBytes += p->GetSize();
+    }
+    uint32_t m_rxBytes;
+};
+
 class AntHocNetTestSuite : public TestSuite
 {
 public:
     AntHocNetTestSuite() : TestSuite("anthocnet", Type::UNIT) {
         AddTestCase(new AntHeaderRoundTripTestCase(), TestCase::Duration::QUICK);
+        AddTestCase(new AntHocNetDeliveryTestCase(), TestCase::Duration::QUICK);
     }
 };
 

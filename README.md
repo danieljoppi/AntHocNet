@@ -65,6 +65,10 @@ cd /path/to/ns-3-dev && ./ns3 configure --enable-examples --enable-tests && ./ns
 Uninstall: `make uninstall-ns3 NS3DIR=...`. Details in
 [ns3/README.md](ns3/README.md).
 
+The NS-3 module also ships `anthocnet-compare`, which benchmarks AntHocNet
+against AODV / OLSR / DSDV on an identical scenario (delivery ratio, delay,
+throughput via FlowMonitor) — see [ns3/README.md](ns3/README.md#compare-against-aodv--olsr--dsdv).
+
 ## What changed from the original
 
 The original project was a whole vendored `ns-allinone-2.34` snapshot with the

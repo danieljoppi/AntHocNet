@@ -45,3 +45,22 @@ build_lib_example(
     ${libmobility}
     ${libapplications}
 )
+
+# Protocol comparison (AntHocNet vs AODV/OLSR/DSDV). Only built when those
+# modules + flow-monitor are enabled; otherwise ns-3 skips it automatically.
+build_lib_example(
+  NAME anthocnet-compare
+  SOURCE_FILES examples/anthocnet-compare.cc
+  LIBRARIES_TO_LINK
+    ${libanthocnet}
+    ${libcore}
+    ${libnetwork}
+    ${libinternet}
+    ${libwifi}
+    ${libmobility}
+    ${libapplications}
+    ${libflow-monitor}
+    ${libaodv}
+    ${libolsr}
+    ${libdsdv}
+)
