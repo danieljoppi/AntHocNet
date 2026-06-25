@@ -1,7 +1,10 @@
 name: CI
 
 on:
+  # Limit push to the default branch so PR branches run once (via the
+  # pull_request event) instead of twice (push + pull_request).
   push:
+    branches: [master]
   pull_request:
   workflow_dispatch:
 
