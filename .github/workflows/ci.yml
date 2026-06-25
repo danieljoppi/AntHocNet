@@ -1,7 +1,11 @@
 name: CI
 
 on:
+  # Limit push to the default branch so PR branches run once (via the
+  # pull_request event) instead of twice (push + pull_request). Both main and
+  # master are listed so this works before/after the default-branch rename.
   push:
+    branches: [main, master]
   pull_request:
   workflow_dispatch:
 
@@ -16,6 +20,20 @@ jobs:
       - name: Build and test core
         run: make test
 
+  core-sanitizers:
+    name: core under ASan + UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake g++
+      - name: Build core with sanitizers and run tests
+        run: |
+          cmake -S core -B core/build-san -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all -g"
+          cmake --build core/build-san -j
+          cd core/build-san && ctest --output-on-failure
+
   ns2-patch:
     name: NS-2 patch round-trip (synthetic tree)
     runs-on: ubuntu-latest
@@ -27,13 +45,17 @@ jobs:
   ns3-build:
     name: NS-3 module build + test
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ns3: [ns-3.41, ns-3.42]   # catch API drift across releases
     steps:
       - uses: actions/checkout@v4
       - name: Install toolchain
         run: sudo apt-get update && sudo apt-get install -y cmake g++ python3 ninja-build
-      - name: Fetch ns-3 (pinned release)
+      - name: Fetch ns-3 (${{ matrix.ns3 }})
         run: |
-          git clone --depth 1 --branch ns-3.42 https://gitlab.com/nsnam/ns-3-dev.git ns-3
+          git clone --depth 1 --branch ${{ matrix.ns3 }} https://gitlab.com/nsnam/ns-3-dev.git ns-3
       - name: Install AntHocNet module
         run: make install-ns3 NS3DIR="$PWD/ns-3"
       - name: Configure (with comparison protocols)

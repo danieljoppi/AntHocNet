@@ -68,6 +68,8 @@ Uninstall: `make uninstall-ns3 NS3DIR=...`. Details in
 The NS-3 module also ships `anthocnet-compare`, which benchmarks AntHocNet
 against AODV / OLSR / DSDV on an identical scenario (delivery ratio, delay,
 throughput via FlowMonitor) — see [ns3/README.md](ns3/README.md#compare-against-aodv--olsr--dsdv).
+Current results, regenerated on every merge to the default branch, are in
+[docs/benchmarks.md](docs/benchmarks.md).
 
 ## What changed from the original
 
@@ -85,7 +87,12 @@ protocol buried inside it. This refactor:
 - adds a native NS-3 module.
 
 History of the work is in the per-phase commits; design rationale is in
-[docs/](docs).
+[docs/](docs):
+
+- [architecture.md](docs/architecture.md) — core/ports design and decision flow
+- [porting-notes.md](docs/porting-notes.md) — bug fixes, NS-2 anchors, caveats
+- [benchmarks.md](docs/benchmarks.md) — AntHocNet vs AODV/OLSR/DSDV (auto-updated)
+- [cross-validation.md](docs/cross-validation.md) — NS-2 vs NS-3 behaviour check
 
 ## License
 

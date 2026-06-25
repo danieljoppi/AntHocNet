@@ -145,9 +145,12 @@ private:
 class AntHocNetTestSuite : public TestSuite
 {
 public:
-    AntHocNetTestSuite() : TestSuite("anthocnet", Type::UNIT) {
-        AddTestCase(new AntHeaderRoundTripTestCase(), TestCase::Duration::QUICK);
-        AddTestCase(new AntHocNetDeliveryTestCase(), TestCase::Duration::QUICK);
+    // Use the unscoped enumerators (TestSuite::UNIT / TestCase::QUICK): they
+    // are accepted across ns-3.36..3.42+, whereas the scoped Type::UNIT /
+    // Duration::QUICK forms only exist from ns-3.42.
+    AntHocNetTestSuite() : TestSuite("anthocnet", UNIT) {
+        AddTestCase(new AntHeaderRoundTripTestCase(), TestCase::QUICK);
+        AddTestCase(new AntHocNetDeliveryTestCase(), TestCase::QUICK);
     }
 };
 
