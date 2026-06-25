@@ -5,6 +5,7 @@ set(ANTHOCNET_TESTS
   test_ant_history
   test_codec
   test_router_logic
+  test_network_integration
 )
 
 foreach(test ${ANTHOCNET_TESTS})
