@@ -6,6 +6,7 @@ set(ANTHOCNET_TESTS
   test_codec
   test_router_logic
   test_network_integration
+  test_core_paths
 )
 
 foreach(test ${ANTHOCNET_TESTS})
