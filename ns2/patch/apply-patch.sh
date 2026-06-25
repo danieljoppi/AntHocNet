@@ -42,6 +42,15 @@ require_anchor() {
     grep -qE "$2" "$1" || die "anchor not found in $1 : /$2/"
 }
 
+# Translate a POSIX [[:space:]] class to [ \t] for awk. GNU grep/sed accept
+# [[:space:]], but the mawk shipped on some systems (e.g. older Ubuntu) does
+# not and silently fails to match -- so every pattern handed to awk goes
+# through this first. awk natively reads \t as a tab; grep -E does not, which
+# is why the call sites keep [[:space:]] for the grep-based anchor checks.
+awk_re() {
+    printf '%s' "${1//\[\[:space:\]\]/[ \\t]}"
+}
+
 # Insert FRAGMENT (a file) immediately AFTER the first line matching REGEX,
 # wrapped in comment markers. Idempotent: a no-op if the marker is already
 # present. COMMENT is the line-comment token ("//" or "#").
@@ -55,7 +64,7 @@ insert_after_marked() {
     require_anchor "$file" "$regex"
 
     local tmp; tmp="$(mktemp)"
-    awk -v rx="$regex" -v frag="$fragfile" -v c="$comment" \
+    awk -v rx="$(awk_re "$regex")" -v frag="$fragfile" -v c="$comment" \
         -v b="$BEGIN" -v e="$END" -v tag="$tag" '
         { print }
         $0 ~ rx && !done {
@@ -99,7 +108,7 @@ insert_before_unmarked() {
     require_anchor "$file" "$regex"
 
     local tmp; tmp="$(mktemp)"
-    awk -v rx="$regex" -v frag="$fragfile" '
+    awk -v rx="$(awk_re "$regex")" -v frag="$fragfile" '
         $0 ~ rx && !done {
             while ((getline line < frag) > 0) print line
             close(frag)
@@ -123,7 +132,7 @@ insert_after_unmarked() {
     require_anchor "$file" "$regex"
 
     local tmp; tmp="$(mktemp)"
-    awk -v rx="$regex" -v frag="$fragfile" '
+    awk -v rx="$(awk_re "$regex")" -v frag="$fragfile" '
         { print }
         $0 ~ rx && !done {
             while ((getline line < frag) > 0) print line
@@ -154,15 +163,16 @@ else
     tmp="$(mktemp)"
     awk -v n="$N" -v nxt="$NEXT" -v b="$BEGIN" -v e="$END" '
         # Insert PT_ANT just before the PT_NTYPE definition and renumber it.
-        /static[[:space:]]+packet_t[[:space:]]+PT_NTYPE[[:space:]]*=/ && !pdone {
+        # (awk reads \t as a tab; POSIX classes are avoided for old-mawk.)
+        /static[ \t]+packet_t[ \t]+PT_NTYPE[ \t]*=/ && !pdone {
             print "// " b " packet.h"
             print "static const packet_t PT_ANT = " n ";"
             print "// " e " packet.h"
-            sub(/=[[:space:]]*[0-9]+/, "= " nxt)
+            sub(/=[ \t]*[0-9]+/, "= " nxt)
             pdone = 1
         }
         # Early ROUTING classification for PT_ANT, before the DSR/AODV block.
-        /if[[:space:]]*\([[:space:]]*type[[:space:]]*==[[:space:]]*PT_DSR/ && !cdone {
+        /if[ \t]*\([ \t]*type[ \t]*==[ \t]*PT_DSR/ && !cdone {
             print "\t\t// " b " packet.h-class"
             print "\t\tif (type == PT_ANT) return ROUTING;"
             print "\t\t// " e " packet.h-class"
@@ -170,7 +180,7 @@ else
         }
         { print }
         # Printable name, right after the AODV name entry.
-        /name_\[PT_AODV\][[:space:]]*=/ && !ndone {
+        /name_\[PT_AODV\][ \t]*=/ && !ndone {
             print "\t\t// " b " packet.h-name"
             print "\t\tname_[PT_ANT] = \"AntHocNet\";"
             print "\t\t// " e " packet.h-name"
