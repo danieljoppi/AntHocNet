@@ -35,15 +35,17 @@ public:
         m.helloDests = {{8, 1.0}, {9, 0.5}};
 
         Ptr<Packet> packet = Create<Packet>();
-        anthocnet::AntHeader out(m);
+        ns3::anthocnet::AntHeader out(m);
         packet->AddHeader(out);
 
-        anthocnet::AntHeader in;
+        ns3::anthocnet::AntHeader in;
         packet->RemoveHeader(in);
         const AntMessage& r = in.Message();
 
-        NS_TEST_ASSERT_MSG_EQ(r.type == AntType::Proactive, true, "type");
-        NS_TEST_ASSERT_MSG_EQ(r.direction == AntDirection::Down, true, "direction");
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(r.type),
+                              static_cast<int>(AntType::Proactive), "type");
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(r.direction),
+                              static_cast<int>(AntDirection::Down), "direction");
         NS_TEST_ASSERT_MSG_EQ(r.src, 3, "src");
         NS_TEST_ASSERT_MSG_EQ(r.dst, 17, "dst");
         NS_TEST_ASSERT_MSG_EQ(r.seqNum, 70000u, "seqNum");
