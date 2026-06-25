@@ -87,7 +87,12 @@ protocol buried inside it. This refactor:
 - adds a native NS-3 module.
 
 History of the work is in the per-phase commits; design rationale is in
-[docs/](docs).
+[docs/](docs):
+
+- [architecture.md](docs/architecture.md) — core/ports design and decision flow
+- [porting-notes.md](docs/porting-notes.md) — bug fixes, NS-2 anchors, caveats
+- [benchmarks.md](docs/benchmarks.md) — AntHocNet vs AODV/OLSR/DSDV (auto-updated)
+- [cross-validation.md](docs/cross-validation.md) — NS-2 vs NS-3 behaviour check
 
 ## License
 
