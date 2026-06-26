@@ -79,7 +79,7 @@ jobs:
           # ns-3.47+), so building them all would force an ever-growing module
           # list. The --filter-module-examples-and-tests flag scopes that to our
           # module; it was added after ns-3.36, so older trees just build + smoke.
-          mods='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          mods='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
           if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
             ./ns3 configure --enable-tests --enable-examples \
               --filter-module-examples-and-tests=anthocnet \

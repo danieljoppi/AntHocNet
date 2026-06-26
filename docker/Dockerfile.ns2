@@ -46,8 +46,13 @@ ENV NS2DIR=/opt/ns-allinone-${NS2_VERSION}/ns-${NS2_VERSION}
 #    the existing `::hash(...)` calls are ambiguous. Rename the helper (and its
 #    callers) to mdart_hash. Renaming (not dropping the objects) keeps
 #    hdr_mdart::offset_ defined, which stock cmu-trace.cc references.
+#  - CCOPT (all): append -fpermissive -Wno-narrowing so the remaining stock
+#    modern-gcc incompatibilities (e.g. >127 byte values narrowed to char in the
+#    bitmap/*.xbm Tk icons pulled in by common/tkAppInit.cc) build through. The
+#    AntHocNet objects are clean C++14, so these flags are a no-op for them.
 RUN sed -i 's/\berase(baseMap::begin(), baseMap::end())/this->erase(baseMap::begin(), baseMap::end())/' \
         "$NS2DIR/linkstate/ls.h" \
+ && sed -i '/^CCOPT[[:space:]]*=/ s/$/ -fpermissive -Wno-narrowing/' "$NS2DIR/Makefile.in" \
  && if [ -f "$NS2DIR/tools/ranvar.cc" ]; then \
         sed -i 's/return GammaRandomVariable::GammaRandomVariable(/return GammaRandomVariable(/' \
             "$NS2DIR/tools/ranvar.cc"; \
