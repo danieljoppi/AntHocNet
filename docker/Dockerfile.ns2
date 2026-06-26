@@ -32,9 +32,14 @@ RUN curl -fSL -o ns-allinone.tar.gz \
 ENV NS2ALL=/opt/ns-allinone-${NS2_VERSION}
 ENV NS2DIR=/opt/ns-allinone-${NS2_VERSION}/ns-${NS2_VERSION}
 
-# Well-known modern-gcc fix: the templated erase() needs an explicit this->.
+# Well-known modern-gcc fixes for ns-2.35:
+#  - linkstate/ls.h: the templated erase() needs an explicit this->.
+#  - mdart (M-DART, a routing module we don't use): its global hash() clashes
+#    with std::hash under modern libstdc++ ("reference to 'hash' is ambiguous").
+#    Drop it from the object list rather than patch the stock sources.
 RUN sed -i 's/\berase(baseMap::begin(), baseMap::end())/this->erase(baseMap::begin(), baseMap::end())/' \
-      "$NS2DIR/linkstate/ls.h"
+        "$NS2DIR/linkstate/ls.h" \
+ && sed -i 's#\bmdart/[A-Za-z0-9_]*\.o##g' "$NS2DIR/Makefile.in"
 
 # Build the stock ns-allinone tree (tcl/otcl/tclcl/ns) with default flags.
 RUN cd "$NS2ALL" && ./install
