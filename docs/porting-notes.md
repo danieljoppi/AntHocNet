@@ -67,11 +67,17 @@ synthetic tree: apply is idempotent and revert restores byte-for-byte.
 
 ## Wire format
 
-`core/include/anthocnet/core/ant_message_codec.h` defines the canonical
-little-endian layout. The NS-2 header (`ant_packet_ns2`) and the NS-3 header
-(`AntHeader`) follow the same field order. The NS-3 header serializes directly
-against `Buffer::Iterator`; the NS-2 header is a fixed-capacity POD whose
-`wireSize()` reports the same byte count the codec would emit.
+The byte-level layout, the version byte, and the field-by-field diff against the
+original implementation and the protocol papers live in
+[`wire-format.md`](wire-format.md) (the single source of truth).
+
+In short: `core/include/anthocnet/core/ant_message_codec.h` defines the canonical
+little-endian layout, prefixed by a 1-byte `kWireVersion`
+([ADR-0006](adr/0006-on-wire-protocol-version.md)). The NS-2 header
+(`ant_packet_ns2`) and the NS-3 header (`AntHeader`) follow the same field order.
+The NS-3 header serializes directly against `Buffer::Iterator`; the NS-2 header
+is a fixed-capacity POD whose `wireSize()` reports the same byte count the codec
+would emit. **Any field or semantic change bumps `kWireVersion`.**
 
 ## Version caveats
 

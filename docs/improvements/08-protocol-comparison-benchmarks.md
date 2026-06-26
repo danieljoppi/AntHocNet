@@ -100,6 +100,33 @@ Update the default protocol list and the CSV/table grep filter accordingly
 baseline some AntHocNet papers use) is **not** in mainline ns-3 — call it out as
 optional/contrib, don't fake it.
 
+### 1b. AntHocNet ablation variants (ADR-0007)
+
+Per [ADR-0007](../adr/0007-proactive-diffusion-gated.md), the proactive/diffusion
+subsystem is config-gated and the benchmark must **decide the shipped default**.
+Add AntHocNet ablation variants driven by the `enableProactive` / `enableDiffusion`
+attributes (exposed via the NS-3 helper / NS-2 bind):
+
+- `anthocnet-full` — `enableProactive=1, enableDiffusion=1` (the default build).
+- `anthocnet-reactive` — `enableProactive=0` (reactive route setup + maintenance
+  only; the cheap, simple baseline).
+- *(optional)* `anthocnet-blind` — `enableProactive=1, enableDiffusion=0`
+  (proactive ants without virtual-pheromone guidance) to isolate diffusion's
+  contribution from proactive exploration's.
+
+Report these alongside the other protocols so the table shows whether diffusion
+actually buys PDR/delay at its overhead cost **in our scenarios**. If
+`anthocnet-full` does not beat `anthocnet-reactive` on `paper-base`, that is the
+signal to ship `enableProactive=false` by default and record it (ADR-0007
+consequence).
+
+Add one more ablation knob from [ADR-0012](../adr/0012-evaporation-is-a-secondary-safety-net.md):
+`enableEvaporation` (default on). A `*-no-evap` variant of the chosen default
+yields the **paper-faithful** mode (running-average + explicit link-failure removal
+only, no time-proportional decay). Report it so the safety-net's default-ON status
+is justified by measured stability/overhead, not intuition — if it does not help,
+that is the signal to ship `enableEvaporation=false`.
+
 ### 2. Add a routing-overhead / NRL metric (protocol-agnostic)
 
 FlowMonitor classifies only the CBR data flows, so control traffic is invisible
@@ -205,6 +232,10 @@ it exposes AntHocNet's higher overhead the papers acknowledge.)
    deterministically (re-running with the same CSV is a no-op).
 5. Both `dense-small` and `paper-base` tables present in `docs/benchmarks.md`.
 6. NS-3 builds with `aodv;olsr;dsdv;dsr;flow-monitor;anthocnet` enabled.
+7. **Ablation present (ADR-0007/0012):** `anthocnet-full` and `anthocnet-reactive`
+   appear as separate rows, driven by the `enableProactive`/`enableDiffusion`
+   attributes, plus a `*-no-evap` row (`enableEvaporation=0`), so the diffusion and
+   evaporation defaults can be justified from measured numbers.
 
 ## Risks / notes
 

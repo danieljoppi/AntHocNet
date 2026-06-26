@@ -3,8 +3,14 @@
 - **Deviation:** D2
 - **Priority:** P0
 - **Effort:** M
-- **Layer:** `core/`
+- **Layer:** `core/` + codec + **both adapter headers** (this is a wire change)
 - **Depends on:** nothing (but pairs naturally with 01)
+- **Decision:** **slim the wire** per
+  [ADR-0009](../adr/0009-backward-ants-carry-path-not-state.md) — a backward ant
+  carries identity + the path only; `pheromone`/`hops`/`prevSINR`/`prevHop` come
+  **off** the wire, time is a **per-hop delta**, and `kWireVersion` is bumped
+  ([ADR-0006](../adr/0006-on-wire-protocol-version.md)). Coordinate the version
+  number with item 12 (whichever lands first introduces `kWireVersion`).
 
 ## Summary
 
@@ -84,45 +90,45 @@ congestion never influence pheromone.
 
 ## Required change
 
-Make the forward ant carry **per-hop deltas**, accumulate the true path time on
-the way back, and keep everything in consistent units (seconds internally;
-express `T_hop` in seconds too).
+Make the forward ant carry **per-hop deltas** in the existing `AntHop.time` slot,
+accumulate the true path time on the way back, and keep everything in consistent
+units (seconds internally; express `T_hop` in seconds too). No new wire field.
 
-### 1. Store per-hop time, not cumulative
+### 1. Store per-hop time delta, not cumulative
 
-Change `stampForward` to record the delta since the previous hop. Add a small
-field to `AntMessage` to remember the last stamp time, or compute the delta from
-the previous `visited` entry's absolute time. Cleanest: store **absolute arrival
-time** per hop and difference on the backward pass.
-
-Proposed: store absolute time at each hop:
+Change `stampForward` to record the delta since the previous hop. Keep a local
+last-stamp time on the message (a working field, **not** serialized) or derive
+the delta from the elapsed time since the previous stamp:
 
 ```cpp
 void AntRouterLogic::stampForward(AntMessage& ant) const {
     if (ant.visited.size() >= config_.maxPathLength) return;
-    ant.visited.push_back({address_, clock_.now()});  // absolute arrival time
+    const double now   = clock_.now();
+    const double delta = now - ant.lastStamp;   // lastStamp init'd to timeStart at the source
+    ant.lastStamp = now;
+    ant.visited.push_back({address_, delta});    // per-hop delta (seconds)
 }
 ```
 
+`AntHop.time` now means **per-hop delta**, not cumulative-since-source — a
+semantic change to an existing wire field, so `kWireVersion` is bumped (step 5).
+
 ### 2. Accumulate true path time on the backward pass
 
-`T̂_d^i` = (time the ant arrived at `d`) − (time it arrived at `i`). Since the
-back ant pops from `d` toward the source, track the destination's arrival time
-once and subtract the current hop's arrival time:
+`T̂_d^i` is the sum of per-hop deltas from `i` to `d`. The back ant pops from `d`
+toward the source, so accumulate the deltas it walks over (no `timeDest`, no
+absolute times):
 
 ```cpp
 NodeAddress AntRouterLogic::advanceBackAnt(AntMessage& ant) const {
     if (ant.visited.empty()) return kInvalidAddress;
-    const AntHop current = ant.visited.back();  // node i, absolute arrival time
+    const AntHop current = ant.visited.back();   // node i, per-hop delta in .time
 
-    ant.prevHop = current.node;
-    ant.hops   += 1;
-
-    // ant.timeDest is the absolute time the forward ant reached the destination
-    // (set once in createBackAnt). Path time from i to d:
-    const double tHat = ant.timeDest - current.time;          // seconds
-    const double hopCost = ant.hops * config_.hopTimeSec;     // seconds
-    ant.pheromone = std::pow((tHat + hopCost) / 2.0, -1.0);
+    // hops, prevHop, pheromone are LOCAL working fields (not on the wire, ADR-0009):
+    const int    hops    = static_cast<int>(ant.history.size()) + 1;  // derived
+    const double tHat    = (ant.pathTime += current.time);            // running sum of deltas
+    const double hopCost = hops * config_.hopTimeSec;                 // seconds
+    const double pheromone = std::pow((tHat + hopCost) / 2.0, -1.0);  // applied locally via reinforce()
 
     ant.history.push_back(current);
     ant.visited.pop_back();
@@ -131,8 +137,9 @@ NodeAddress AntRouterLogic::advanceBackAnt(AntMessage& ant) const {
 }
 ```
 
-`createBackAnt` sets `b.timeDest = clock_.now()` (the moment the forward ant
-reached the destination), and `visited` is copied from the forward ant.
+`pathTime` is a **local** accumulator (the renamed-and-de-serialized successor to
+`prevSINR`); `hops`/`pheromone`/`prevHop` are likewise local and recomputed each
+hop — none are serialized (step 5).
 
 ### 3. Config: T_hop in seconds
 
@@ -150,26 +157,38 @@ delay signal available in the simulator yet, implement steps 1–3 (correct
 wall-clock path time) and leave a `// TODO(D2): smoothed MAC estimate` note. Step
 1–3 already restore a meaningful, correctly-scaled time term.
 
-### 5. Rename the misnomer
+### 5. Slim the wire (ADR-0009) + bump `kWireVersion`
 
-`AntMessage::prevSINR` is not SINR; it is accumulated time. If you keep an
-accumulator field, rename to `pathTime`. Update the codec
-(`core/src/ant_message_codec.cpp`) and both adapter headers + `test_codec.cpp` if
-the set of serialized fields changes. (Note: `prevSINR`/`pathTime`, `hops`,
-`pheromone`, `prevHop` are transient back-ant working fields — confirm whether
-they actually need to be on the wire at all; if a backward ant is only ever
-processed hop-by-hop locally, these can be recomputed and need **not** be
-serialized, which simplifies the wire format. Verify against both adapters before
-removing.)
+Confirmed: both adapters only *marshal* `prevSINR`/`pheromone`/`hops`/`prevHop`
+(`ns2/src/ant_packet_ns2.cc`, `ns3/model/anthocnet-packet.cc`); nothing reads them
+to decide, and the core recomputes them per hop. So **remove them from the wire**:
+
+- Delete them from `serialize`/`deserialize`, the size constants, the NS-2 POD
+  header (`ant_packet_ns2`), and the NS-3 `AntHeader`
+  (`anthocnet-packet.cc`). In the `AntMessage` struct they become local working
+  fields (or `prevSINR` → a private `pathTime` accumulator); they are no longer
+  part of the serialized image.
+- **Bump `kWireVersion`** for the combined change (slim + `AntHop.time` delta
+  semantics). Don't hard-code the number — use `current + 1`, and coordinate with
+  item 12 (whichever lands first introduces the constant).
+- Update `core/tests/test_codec.cpp`: the round-trip no longer carries those
+  fields, and a decoded backward ant leaves `pheromone`/`hops` at their defaults
+  (the core fills them).
+
+Target layout (with the version byte from item 12) is in
+[`docs/wire-format.md`](../wire-format.md).
 
 ## Files to touch
 
 - `core/include/anthocnet/core/config.h` (`hopTimeSec`)
-- `core/include/anthocnet/core/ant_message.h` (`timeDest`; rename `prevSINR`)
+- `core/include/anthocnet/core/ant_message.h` (`AntHop.time` = per-hop delta;
+  demote `pheromone`/`hops`/`prevHop` to local working fields; `prevSINR` →
+  private `pathTime` accumulator — all four leave the serialized image)
 - `core/src/ant_router_logic.cpp` (`stampForward`, `createBackAnt`, `advanceBackAnt`)
 - `core/src/ant_message_codec.cpp` + `ns2/src/ant_packet_ns2.*` +
-  `ns3/model/anthocnet-packet.cc` + `core/tests/test_codec.cpp` (only if the wire
-  field set changes)
+  `ns3/model/anthocnet-packet.cc` + `core/tests/test_codec.cpp` (**wire change**:
+  drop the four fields, bump `kWireVersion`)
+- `docs/wire-format.md` (keep the byte table in sync)
 
 ## Acceptance criteria
 
@@ -183,13 +202,19 @@ Add `core/tests/test_backant_metric.cpp`:
    `τ` is within a plausible band (e.g. `τ⁻¹` between `0.05` and `0.5` s), proving
    the time term is no longer ~1e-4.
 3. **Hop term still present.** With near-zero measured time, `τ ≈ (h·hopTimeSec/2)⁻¹`.
-4. `make test` green; `test_network_integration.cpp` still discovers the route.
+4. **Wire slimmed (ADR-0009).** `serializedSize` of a backward ant drops by the
+   four removed fields (−24 bytes); a round-trip through the codec carries
+   `visited`/`history` but a freshly decoded message has `pheromone`/`hops` at
+   defaults (the core fills them). `kWireVersion` is the previous value + 1.
+5. `make test` green; `test_network_integration.cpp` still discovers the route.
 
 ## Risks / notes
 
 - `FakeClock` in `core/tests/test_support.h` must allow advancing time between
   hops; check it supports `advance()`/settable now. Extend if needed.
-- If you remove transient fields from the wire format, do it as one atomic change
-  across codec + both adapters + `test_codec.cpp` (see README "Definition of
-  done").
-- Keep the change isolated from 01 so each can be benchmarked independently.
+- The wire slim is **one atomic change** across the struct + codec + both adapter
+  headers + `test_codec.cpp` + `docs/wire-format.md` (golden rule #4 / ADR-0006).
+  Coordinate the `kWireVersion` number with item 12 — don't hard-code it.
+- Verify nothing *else* reads the four removed fields cross-hop before deleting
+  (the adapters were checked; re-confirm if other call sites appeared).
+- Keep the metric change isolated from 01 so each can be benchmarked independently.

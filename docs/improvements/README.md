@@ -80,6 +80,7 @@ For node `i`, destination `d`, neighbour `n`, pheromone `T_nd^i`:
 | Ant state machine, ant construction, back-ant advance | `core/src/ant_router_logic.cpp` |
 | Ant value type + fields | `core/include/anthocnet/core/ant_message.h` |
 | Wire codec (keep adapters in sync if fields change) | `core/src/ant_message_codec.cpp` |
+| Wire byte layout + version byte (ADR-0006) | `docs/wire-format.md` |
 | NS-3 timers / link I/O / sockets | `ns3/model/anthocnet-routing-protocol.cc` |
 | NS-2 timers / link-failure callback / queue | `ns2/src/ahn_router.cc` |
 | Unit tests | `core/tests/*.cpp` |
@@ -97,6 +98,13 @@ For node `i`, destination `d`, neighbour `n`, pheromone `T_nd^i`:
 | [07](07-validation-and-benchmarks.md) | Validation harness + paper-faithful benchmark scenario | — | **P2** | M |
 | [08](08-protocol-comparison-benchmarks.md) | Benchmark vs AODV/OLSR/DSDV/DSR (+ overhead/NRL, fairness) | — | **P2** | M |
 | [09](09-landscape-and-positioning.md) | Public-implementation landscape + project presentation fixes | — | **P2** | S |
+| [10](10-data-loops-multipath-and-mac-metric.md) | Data-loop suppression, multipath safety, reactive broadcast cap, MAC metric | A1/A2/A3 | **P1**/P2 | M |
+| [11](11-adapter-robustness.md) | NS-2 unbounded queue, NS-3 multi-iface, address-mapping bug | B1/B2/B3 | **P1**/P2 | M |
+| [12](12-codec-hardening-and-threat-model.md) | Enforce protocol bounds on untrusted decode + threat model | C1 | **P1** | S |
+| [13](13-ci-e2e-and-fuzzing.md) | CI end-to-end sim smoke + codec fuzzing + property tests | D1/D2 | P2 | M |
+| [14](14-reproducibility-and-release.md) | Docker repro + CITATION/releases/DOI + ns-3 version matrix | E1/E2/E3 | P2 | M |
+| [15](15-observability-and-traces.md) | Trace sources / counters (feeds item 08 NRL) | F1 | P2 | S–M |
+| [16](16-pluggable-link-metric.md) | Pluggable `ILinkMetric` port (fuzzy/energy/QoS extensibility) | G1 | P3 | M |
 
 Recommended sequence: **01 → 02** first (biggest correctness/performance levers
 and they unlock meaningful benchmarking), then **03 → 04 → 05**, then **06**,
@@ -104,6 +112,15 @@ with **07 + 08** run continuously to measure progress. 07 defines the benchmark
 **scenarios**; 08 defines the **protocol set + metrics + fairness** for the
 cross-protocol comparison. **09** is independent (presentation/positioning, not
 code) and high value-for-effort.
+
+Items **10–16** are a second wave found during deeper review. Highest-value among
+them: the **verified near-bugs** — `11` (NS-2 unbounded pending queue; NS-3
+`ToCore(255.255.255.255) == kInvalidAddress`) and `12` (codec doesn't enforce
+`maxPathLength`/`maxHistory` on untrusted input) — plus `10`/A1 (data-loop
+suppression). `13`–`15` harden testing/repro/observability; `16` is a
+forward-looking extensibility seam (do after 01/02). Grouping: **10** fidelity ·
+**11** adapter correctness · **12** security · **13** testing · **14** packaging ·
+**15** observability · **16** extensibility.
 
 ## Definition of done (per item)
 

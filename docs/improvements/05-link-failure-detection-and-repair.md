@@ -103,10 +103,25 @@ neighbour-expiry timer.
 
 ## Required change
 
-This is the largest item; implement in three sub-steps. Sub-step A is the most
+This is the largest item; implement in four sub-steps. Sub-step A is the most
 important (it fixes the NS-3 correctness gap).
 
-### A. Hello-timeout neighbour detection (both adapters, driven by core state)
+### Detection model (ADR-0008)
+
+Per [ADR-0008](../adr/0008-neighbour-liveness-two-detectors.md), neighbour loss is
+found by **two complementary detectors that both call the same `loseNeighbor(n)`**:
+
+- **A — hello-timeout (core timer): the portable coverage path, and primary.**
+  Spec-faithful, simulator-agnostic, the *only* detector NS-3 has, and the one
+  that covers idle neighbours. Mandatory.
+- **D — MAC transmit-failure (adapter signal): a fast-path accelerator.** Reacts
+  immediately on a failed unicast to an active next hop; never the sole detector.
+
+`INeighborProvider` stays **advisory** ("who can I hello / who's a candidate"),
+never authoritative for removal — its doc comment should say so. The pheromone
+table is driven by reception + explicit loss events only.
+
+### A. Hello-timeout detection — the portable coverage path (both adapters, driven by core state)
 
 Track last-seen time per neighbour in the core and expire on a tick.
 
@@ -126,6 +141,11 @@ std::vector<NodeAddress> expiredNeighbors(double now,   // now - lastSeen > t_he
 - **Adapters:** drive `onMaintenanceTick()` from the existing periodic timer
   (NS-3 `HelloTimerExpire`, NS-2 `AhnHelloTimer::handle`). For NS-3 this is the
   *only* way neighbour loss is detected, so it is mandatory.
+- **Hellos run independently of diffusion.** The diffusion gate
+  (`enableDiffusion`, [ADR-0007](../adr/0007-proactive-diffusion-gated.md)) only
+  suppresses the hello *pheromone payload* — hello broadcasts and this
+  liveness/maintenance tick must keep running even when proactive/diffusion is
+  off, because neighbour-loss detection does not depend on them.
 
 ### B. Link-failure notification message
 
@@ -173,16 +193,23 @@ On receiving a `LinkFail` ant in `onReceiveAnt`:
    packets for that destination and emit a `LinkFail` notification. Implement in
    both adapters (they own the pending queue + timers).
 
-### D. Wire NS-3 data-transmit failure (parity with NS-2)
+### D. MAC transmit-failure — the fast-path accelerator (both adapters)
+
+This is the *second* detector from ADR-0008, not a replacement for A. NS-2 already
+has it (the `linkFailed` callback above); wire the NS-3 equivalent for parity.
 
 NS-3 can detect transmit failures via the WiFi MAC `TxErrHeader`/drop traces or
 an `ArpL3Protocol`/`Ipv4L3Protocol` tx-error callback. Hook one and, on failure
-to a next hop, call the same core `loseNeighbor` + repair path used by sub-step
-A/C. If a clean hook isn't readily available, sub-step A (hello timeout) already
-gives NS-3 working detection — document the limitation and leave a TODO.
+to a next hop, call the **same** `loseNeighbor` + repair path used by sub-steps
+A/C (the two detectors converge on one code path). If a clean hook isn't readily
+available, sub-step A (hello timeout) already gives NS-3 working detection —
+document the limitation and leave a TODO. Because A is mandatory and authoritative,
+D is a latency optimisation: it never changes *what* is detected, only *how fast*.
 
 ## Files to touch
 
+- `core/include/anthocnet/core/ports.h` (clarify `INeighborProvider` doc comment:
+  advisory adjacency, never authoritative for removal — ADR-0008)
 - `core/include/anthocnet/core/ant_message.h` (`AntType::LinkFail`, `broadcastBudget`)
 - `core/include/anthocnet/core/config.h` (`allowedHelloLoss`, `repairMaxBroadcasts`,
   `repairWaitFactor`/`repairTimeout`)

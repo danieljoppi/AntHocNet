@@ -6,6 +6,11 @@
 - **Layer:** `core/` (logic + new "active session" state) and adapters (feed data
   events; rate tied to data)
 - **Depends on:** 03 (diffusion guides the exploratory broadcasts)
+- **Decision:** the whole proactive subsystem is **config-gated** behind
+  `Config::enableProactive` (default on), per
+  [ADR-0007](../adr/0007-proactive-diffusion-gated.md). `enableProactive` is the
+  master switch; item 03's `enableDiffusion` is the sub-switch for the virtual
+  pheromone that guides these ants.
 
 ## Summary
 
@@ -108,9 +113,16 @@ Replace `randomDestination()` selection with a sweep over
 `activeDestinations(...)`. Provide a core entry point so both adapters share it:
 
 ```cpp
-// returns one proactive forward ant per active destination (empty if none)
+// returns one proactive forward ant per active destination
+// (empty if none, or if !config_.enableProactive — the master gate, ADR-0007)
 std::vector<AntMessage> AntRouterLogic::createProactiveAnts();
 ```
+
+Gate at the source: when `!config_.enableProactive`, `createProactiveAnts()`
+returns empty and the per-hop exploratory broadcast in step 3 is skipped, so the
+protocol degrades cleanly to reactive-only (the AntHocNet-reactive benchmark
+variant in [item 08](08-protocol-comparison-benchmarks.md)). Adapters may also
+short-circuit their proactive timer on the same flag to save the tick.
 
 Rate: keep a periodic timer **but** gate it so a proactive ant is only emitted
 for a destination if data has flowed recently (the active-session set already
@@ -149,7 +161,7 @@ pheromone from item 03 guides the first hop.
 
 ## Files to touch
 
-- `core/include/anthocnet/core/config.h` (`proactiveBroadcastProb`, `sessionTtl`)
+- `core/include/anthocnet/core/config.h` (`enableProactive`, `proactiveBroadcastProb`, `sessionTtl`)
 - `core/include/anthocnet/core/ant_router_logic.{h}` + `.cpp`
   (`noteDataSession`, `activeDestinations`, `createProactiveAnts`, per-hop
   broadcast in `onReceiveAnt`)
@@ -177,7 +189,10 @@ Add `core/tests/test_proactive.cpp`:
 5. **Broadcast budget enforced.** A proactive ant broadcast more than
    `broadcastBudget` times stops being re-broadcast (verify with item 05's
    counter).
-6. `make test` green.
+6. **Gate off ⇒ reactive-only.** With `enableProactive = false`,
+   `createProactiveAnts()` returns empty and an in-transit proactive ant with a
+   route never broadcasts; data routing is unaffected.
+7. `make test` green.
 
 ## Risks / notes
 

@@ -3,8 +3,13 @@
 - **Deviation:** D3
 - **Priority:** P1
 - **Effort:** M
-- **Layer:** `core/` (+ codec, both adapter headers)
+- **Layer:** `core/` (+ `config.h`; no wire change)
 - **Depends on:** 02 (so the advertised value is a real goodness estimate)
+- **Decision:** keep diffusion but **config-gated**, per
+  [ADR-0007](../adr/0007-proactive-diffusion-gated.md). All work below is behind
+  `Config::enableProactive` / `enableDiffusion` (default on) so the benchmark
+  ablation in [item 08](08-protocol-comparison-benchmarks.md) can justify the
+  shipped default.
 
 ## Summary
 
@@ -12,7 +17,7 @@ AntHocNet's *pheromone diffusion* lets nodes learn about destinations they have
 never reached by gossiping pheromone estimates in hello messages. Each hello
 should carry the sender's **best (bootstrapped) pheromone** per advertised
 destination; the receiver combines it with the cost to the sender to form a
-*virtual / diffused* pheromone used to guide proactive ants. Today every hello
+*virtual* pheromone (the papers call it "diffused") used to guide proactive ants. Today every hello
 advertises a **constant `1.0`**, so virtual pheromone is just a reachability bit
 with no goodness gradient — the diffusion mechanism is effectively absent.
 
@@ -82,6 +87,24 @@ ones — minor, but it inflates hello size.
 
 ## Required change
 
+### 0. Gate the diffusion subsystem (ADR-0007)
+
+Add the flags and short-circuit when off:
+
+```cpp
+// config.h
+bool enableProactive = true;   // master: proactive ants + per-hop broadcast (item 04)
+bool enableDiffusion = true;   // hello pheromone adverts + virtual table; only effective when enableProactive
+```
+
+- `createHelloAnt` adds **no** `helloDests` adverts when
+  `!enableProactive || !enableDiffusion` (hellos still serve neighbour
+  discovery/liveness — [item 05](05-link-failure-detection-and-repair.md)).
+- `updateVirtual` is a no-op when disabled, so the virtual table stays empty and
+  `sumMaxProbability` degenerates to the regular-only sum.
+- No wire-format change either way (the adverts list is simply empty; no
+  `kWireVersion` bump — [ADR-0006](../adr/0006-on-wire-protocol-version.md)).
+
 ### 1. Advertise the sender's best real pheromone
 
 Add a helper to `PheromoneTable`:
@@ -109,7 +132,7 @@ for (NodeAddress dest : dests) {
 }
 ```
 
-### 2. Bootstrap the diffused value on receive
+### 2. Bootstrap the virtual value on receive
 
 In `PheromoneEngine::updateVirtual`, form the virtual pheromone from the
 advertised goodness **discounted by one hop** (the cost to reach the advertising
@@ -128,7 +151,7 @@ double phValue = table.getPheromoneVirtual(advert.node, neighbor);
 table.setPheromoneVirtual(advert.node, neighbor, reinforce(phValue, bootstrapped));
 ```
 
-This keeps diffused pheromone consistent in units with regular pheromone (item
+This keeps virtual pheromone consistent in units with regular pheromone (item
 02) and naturally makes farther/worse advertised paths produce smaller virtual
 pheromone — a real gradient.
 
@@ -144,12 +167,43 @@ pheromone — a real gradient.
 Do **not** change this; add a regression test (below) so a future edit can't leak
 virtual pheromone into data routing.
 
+### 4. Let proactive selection reach virtual-only destinations (reach-guard fix)
+
+Diffusion's whole point is to route toward destinations a node has **not** sampled
+with ants — but `nextNeighborNode` bails before the blend unless the destination
+is already in the **regular** set, so a purely-diffused destination is unroutable
+even for a proactive ant:
+
+```86:89:core/src/pheromone_table.cpp
+    // Unknown destination: no route.
+    if (destRegular_.find(dest) == destRegular_.end()) {
+        return kInvalidAddress;
+    }
+```
+
+Relax this guard **for proactive selection only**: a destination is routable if it
+is in the regular set, **or** (when `isProactiveAnt`) in the virtual set. Data
+(`isProactiveAnt == false`) must still require a regular entry, so step 3's
+invariant is untouched:
+
+```cpp
+const bool known = destRegular_.count(dest) ||
+                   (isProactiveAnt && destVirtual_.count(dest));
+if (!known) return kInvalidAddress;
+```
+
+Without this, diffusion can never extend reach and the rest of this item is inert
+(see [ADR-0007](../adr/0007-proactive-diffusion-gated.md) context).
+
 ## Files to touch
 
-- `core/include/anthocnet/core/pheromone_table.h` / `.cpp` (`bestRegular`)
-- `core/src/ant_router_logic.cpp` (`createHelloAnt`)
-- `core/src/pheromone_engine.cpp` (`updateVirtual` bootstrap)
-- (No wire-format change: `HelloDest{node, pheromone}` already carries a double.)
+- `core/include/anthocnet/core/config.h` (`enableProactive`, `enableDiffusion`)
+- `core/include/anthocnet/core/pheromone_table.h` / `.cpp` (`bestRegular`,
+  reach-guard relaxation in `nextNeighborNode`)
+- `core/src/ant_router_logic.cpp` (`createHelloAnt` gating)
+- `core/src/pheromone_engine.cpp` (`updateVirtual` bootstrap + gating)
+- (No wire-format change: `HelloDest{node, pheromone}` already carries a double;
+  when diffusion is off the adverts list is just empty.)
 
 ## Acceptance criteria
 
@@ -161,17 +215,21 @@ Extend `core/tests/test_pheromone_engine.cpp` / add `test_diffusion.cpp`:
 2. **Diffusion produces a gradient.** Two neighbours advertise the same dest with
    different pheromones; after `updateVirtual`, the virtual pheromone via the
    better neighbour is strictly higher.
-3. **One-hop discount.** A diffused (virtual) pheromone for `d` via `m` is
+3. **One-hop discount.** A virtual pheromone for `d` via `m` is
    strictly less than `m`'s advertised pheromone (cost increased by one hop).
-4. **Data ignores virtual pheromone (regression for the guard).** With *only*
-   virtual pheromone for a dest and no regular, `nextHopForData(dest)` returns
-   `kInvalidAddress`, while a proactive `selectNextHop(dest, true)` returns a hop.
-5. `make test` green.
+4. **Data ignores virtual pheromone; proactive reaches it (guard fix).** With
+   *only* virtual pheromone for a dest and no regular, `nextHopForData(dest)`
+   returns `kInvalidAddress`, while a proactive `selectNextHop(dest, true)`
+   returns a hop (validates step 4's relaxed guard *and* step 3's data invariant).
+5. **Gate off ⇒ no virtual pheromone.** With `enableDiffusion = false`,
+   `createHelloAnt` emits zero `helloDests`, `updateVirtual` is a no-op, and a
+   proactive `selectNextHop` for a virtual-only dest returns `kInvalidAddress`.
+6. `make test` green.
 
 ## Risks / notes
 
 - Depends on item 02's consistent units (`hopTimeSec`); if 02 isn't done yet, use
-  the same constant the back-ant metric uses so diffused and regular pheromone
+  the same constant the back-ant metric uses so virtual and regular pheromone
   remain comparable.
 - Hello size: advertising real values doesn't change the field count, but if you
   later cap to active destinations (item 04) wire size shrinks.
