@@ -24,6 +24,7 @@ enum class AntType : std::uint8_t {
     Reactive  = 0x02,
     Proactive = 0x04,
     Repair    = 0x08,
+    LinkFail  = 0x10,  ///< link-failure notification (payload in helloDests).
 };
 
 /// Travel direction. Up = forward (toward destination), Down = backward
@@ -55,15 +56,22 @@ struct AntMessage {
     double timeStart = 0.0;  ///< Generation time, for trip-time accounting.
     double lifeAnt   = 0.0;  ///< Repair-ant lifetime budget (seconds).
 
+    /// Remaining number of times this ant may be (re)broadcast. -1 == untracked
+    /// (unbounded; relies on (src,seq) dedup). Repair/LinkFail ants set a finite
+    /// budget so exploration/propagation can't storm the network ([1] §3.5).
+    int broadcastBudget = -1;
+
     VisitedPath visited;  ///< Forward stack: nodes seen on the way out.
     VisitedPath history;  ///< Back-ant stack: path being reinforced.
 
     std::vector<HelloDest> helloDests;  ///< Hello-ant adverts.
 
-    // Fields computed while a backward ant retraces its path.
+    // Transient deposit state, recomputed at each node from `history` while a
+    // backward ant retraces (ADR-0009). These are NOT serialized — a freshly
+    // decoded ant leaves them at defaults and the core fills them.
     NodeAddress prevHop   = kInvalidAddress;
     int         hops      = 0;
-    double      prevSINR  = 0.0;
+    double      pathTime  = 0.0;  ///< accumulated time estimate (was prevSINR).
     double      pheromone = 0.0;
 
     bool isForward() const { return direction == AntDirection::Up; }

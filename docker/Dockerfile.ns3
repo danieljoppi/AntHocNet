@@ -1,0 +1,50 @@
+# AntHocNet NS-3 images — two stages so we publish both a plain ns-3 (no
+# AntHocNet) and ns-3 + the AntHocNet module, one of each per supported release.
+#
+#   # plain ns-3 (no AntHocNet):
+#   docker build -f docker/Dockerfile.ns3 --target base \
+#                --build-arg NS3_VERSION=ns-3.42 -t ns3:3.42 .
+#   # ns-3 + AntHocNet:
+#   docker build -f docker/Dockerfile.ns3 \
+#                --build-arg NS3_VERSION=ns-3.42 -t anthocnet-ns3:3.42 .
+#
+ARG UBUNTU=22.04
+
+# --- base: plain ns-3, no AntHocNet ----------------------------------------
+# A clean simulator build with the comparison protocols (AODV/OLSR/DSDV/…) for
+# running baselines without our protocol.
+FROM ubuntu:${UBUNTU} AS base
+
+ARG NS3_VERSION=ns-3.42
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates git make cmake g++ python3 ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth 1 --branch "${NS3_VERSION}" \
+        https://gitlab.com/nsnam/ns-3-dev.git /opt/ns-3 \
+ && cd /opt/ns-3 \
+ && ./ns3 configure --enable-tests --enable-examples \
+        --enable-modules='wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point' \
+ && ./ns3 build
+
+WORKDIR /opt/ns-3
+CMD ["bash"]
+
+# --- anthocnet: base + the AntHocNet module --------------------------------
+# Adds the additive module and reconfigures/rebuilds; mirrors the CI ns3-build.
+FROM base AS anthocnet
+
+WORKDIR /opt/anthocnet
+COPY . .
+
+RUN make install-ns3 NS3DIR=/opt/ns-3 \
+ && cd /opt/ns-3 \
+ && ./ns3 configure --enable-tests --enable-examples \
+        --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point' \
+ && ./ns3 build \
+ && ./test.py -s anthocnet
+
+WORKDIR /opt/ns-3
+CMD ["./ns3", "run", "anthocnet-example"]

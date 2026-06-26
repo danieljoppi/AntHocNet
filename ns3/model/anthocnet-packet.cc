@@ -4,6 +4,8 @@
 
 #include <cstring>
 
+#include "anthocnet/core/ant_message_codec.h"
+
 namespace ns3 {
 namespace anthocnet {
 
@@ -23,7 +25,8 @@ double BitsToDouble(uint64_t bits) {
 
 constexpr uint32_t kHopSize = 4 + 8;     // int32 node + double time
 constexpr uint32_t kHelloSize = 4 + 8;   // int32 node + double pheromone
-constexpr uint32_t kFixedSize = 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4 + 4 + 8 + 8;
+// prevHop/hops/pathTime/pheromone are reconstructed locally (ADR-0009), not sent.
+constexpr uint32_t kFixedSize = 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4;
 constexpr uint32_t kCounts = 2 + 2 + 2;
 
 } // namespace
@@ -43,7 +46,7 @@ TypeId AntHeader::GetInstanceTypeId() const {
 }
 
 uint32_t AntHeader::GetSerializedSize() const {
-    return kFixedSize + kCounts +
+    return 1 /*version*/ + kFixedSize + kCounts +
            static_cast<uint32_t>(m_message.visited.size()) * kHopSize +
            static_cast<uint32_t>(m_message.history.size()) * kHopSize +
            static_cast<uint32_t>(m_message.helloDests.size()) * kHelloSize;
@@ -51,6 +54,7 @@ uint32_t AntHeader::GetSerializedSize() const {
 
 void AntHeader::Serialize(Buffer::Iterator i) const {
     const auto& m = m_message;
+    i.WriteU8(::anthocnet::core::codec::kWireVersion);
     i.WriteU8(static_cast<uint8_t>(m.type));
     i.WriteU8(static_cast<uint8_t>(m.direction));
     i.WriteU32(static_cast<uint32_t>(m.src));
@@ -58,10 +62,7 @@ void AntHeader::Serialize(Buffer::Iterator i) const {
     i.WriteU32(m.seqNum);
     i.WriteU64(DoubleToBits(m.timeStart));
     i.WriteU64(DoubleToBits(m.lifeAnt));
-    i.WriteU32(static_cast<uint32_t>(m.prevHop));
-    i.WriteU32(static_cast<uint32_t>(m.hops));
-    i.WriteU64(DoubleToBits(m.prevSINR));
-    i.WriteU64(DoubleToBits(m.pheromone));
+    i.WriteU32(static_cast<uint32_t>(m.broadcastBudget));
 
     i.WriteU16(static_cast<uint16_t>(m.visited.size()));
     for (const auto& h : m.visited) {
@@ -83,6 +84,7 @@ void AntHeader::Serialize(Buffer::Iterator i) const {
 uint32_t AntHeader::Deserialize(Buffer::Iterator start) {
     Buffer::Iterator i = start;
     auto& m = m_message;
+    i.ReadU8();  // wire-version byte (self-generated packets are trusted)
     m.type      = static_cast<::anthocnet::core::AntType>(i.ReadU8());
     m.direction = static_cast<::anthocnet::core::AntDirection>(i.ReadU8());
     m.src       = static_cast<int32_t>(i.ReadU32());
@@ -90,10 +92,7 @@ uint32_t AntHeader::Deserialize(Buffer::Iterator start) {
     m.seqNum    = i.ReadU32();
     m.timeStart = BitsToDouble(i.ReadU64());
     m.lifeAnt   = BitsToDouble(i.ReadU64());
-    m.prevHop   = static_cast<int32_t>(i.ReadU32());
-    m.hops      = static_cast<int32_t>(i.ReadU32());
-    m.prevSINR  = BitsToDouble(i.ReadU64());
-    m.pheromone = BitsToDouble(i.ReadU64());
+    m.broadcastBudget = static_cast<int>(i.ReadU32());
 
     const uint16_t nv = i.ReadU16();
     m.visited.resize(nv);

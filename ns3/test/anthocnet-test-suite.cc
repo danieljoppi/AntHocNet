@@ -23,6 +23,7 @@
 
 #include "ns3/anthocnet-packet.h"
 #include "ns3/anthocnet-helper.h"
+#include "ns3/anthocnet-routing-protocol.h"
 
 using namespace ns3;
 using ::anthocnet::core::AntMessage;
@@ -43,10 +44,7 @@ public:
         m.seqNum = 70000;       // > 16 bits
         m.timeStart = 1.25;
         m.lifeAnt = 2.0;
-        m.prevHop = 4;
-        m.hops = 5;
-        m.prevSINR = 12.5;
-        m.pheromone = 0.0123;
+        m.broadcastBudget = 2;
         m.visited = {{3, 0.0}, {4, 0.01}, {7, 0.02}};
         m.history = {{17, 0.05}};
         m.helloDests = {{8, 1.0}, {9, 0.5}};
@@ -67,7 +65,7 @@ public:
         NS_TEST_ASSERT_MSG_EQ(r.dst, 17, "dst");
         NS_TEST_ASSERT_MSG_EQ(r.seqNum, 70000u, "seqNum");
         NS_TEST_ASSERT_MSG_EQ_TOL(r.timeStart, 1.25, 1e-9, "timeStart");
-        NS_TEST_ASSERT_MSG_EQ(r.hops, 5, "hops");
+        NS_TEST_ASSERT_MSG_EQ(r.broadcastBudget, 2, "broadcastBudget");
         NS_TEST_ASSERT_MSG_EQ(r.visited.size(), 3u, "visited size");
         NS_TEST_ASSERT_MSG_EQ(r.visited[2].node, 7, "visited node");
         NS_TEST_ASSERT_MSG_EQ_TOL(r.visited[1].time, 0.01, 1e-9, "visited time");
@@ -142,6 +140,31 @@ private:
     uint32_t m_rxBytes;
 };
 
+// B3 — address mapping never aliases the core's kInvalidAddress sentinel.
+class AddressMappingTestCase : public TestCase
+{
+public:
+    AddressMappingTestCase() : TestCase("ToCore/ToIpv4 address mapping (B3)") {}
+
+    void DoRun() override {
+        using ns3::anthocnet::RoutingProtocol;
+        const ::anthocnet::core::NodeAddress invalid = ::anthocnet::core::kInvalidAddress;
+
+        // The limited broadcast must never collide with "no route" (-1).
+        NS_TEST_ASSERT_MSG_NE(RoutingProtocol::ToCore(Ipv4Address("255.255.255.255")),
+                              invalid, "broadcast aliases kInvalidAddress");
+
+        // MSB-set / arbitrary unicast addresses round-trip without aliasing it.
+        const char* addrs[] = {"128.0.0.1", "200.1.2.3", "10.1.0.5", "192.168.1.1"};
+        for (const char* s : addrs) {
+            Ipv4Address a(s);
+            ::anthocnet::core::NodeAddress core = RoutingProtocol::ToCore(a);
+            NS_TEST_ASSERT_MSG_NE(core, invalid, "unicast aliases kInvalidAddress");
+            NS_TEST_ASSERT_MSG_EQ(RoutingProtocol::ToIpv4(core), a, "round-trip");
+        }
+    }
+};
+
 class AntHocNetTestSuite : public TestSuite
 {
 public:
@@ -150,6 +173,7 @@ public:
     // Duration::QUICK forms only exist from ns-3.42.
     AntHocNetTestSuite() : TestSuite("anthocnet", UNIT) {
         AddTestCase(new AntHeaderRoundTripTestCase(), TestCase::QUICK);
+        AddTestCase(new AddressMappingTestCase(), TestCase::QUICK);
         AddTestCase(new AntHocNetDeliveryTestCase(), TestCase::QUICK);
     }
 };

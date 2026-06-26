@@ -13,9 +13,11 @@ CMUTrace::format_anthocnet(Packet *p, int offset)
 		default: break;
 	}
 
+	// Backward-ant pheromone/path-time are reconstructed at the receiver
+	// (ADR-0009) and no longer carried, so the trace drops those columns.
 	sprintf(pt_->buffer() + offset,
-		"<%d:%d> %s [%d : %d : %d - %d] - %f (%f : %f)",
+		"<%d:%d> %s [%d : %d : %d - %d] - %f",
 		ah->src(), ah->seqNum(), label,
 		ch->prev_hop_, ch->next_hop(), ah->dst(), ah->pathLen(),
-		ah->timeStart(), ah->pheromone(), ah->prevSINR());
+		ah->timeStart());
 }

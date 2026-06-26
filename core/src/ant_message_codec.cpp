@@ -70,15 +70,31 @@ struct Reader {
     }
 };
 
+constexpr std::size_t kVersionSize = 1;      // offset-0 wire-version byte
 constexpr std::size_t kHopSize     = 4 + 8;  // int32 node + double time
 constexpr std::size_t kHelloSize   = 4 + 8;  // int32 node + double pheromone
-constexpr std::size_t kFixedSize   = 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4 + 4 + 8 + 8;
+// type,dir,src,dst,seq,timeStart,lifeAnt,broadcastBudget (prevHop/hops/pathTime/
+// pheromone are reconstructed locally — ADR-0009 — and not serialized).
+constexpr std::size_t kFixedSize   = 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4;
 constexpr std::size_t kCountFields = 2 + 2 + 2;  // visited, history, hello counts
+
+bool validType(std::uint8_t v) {
+    return v == static_cast<std::uint8_t>(AntType::Hello) ||
+           v == static_cast<std::uint8_t>(AntType::Reactive) ||
+           v == static_cast<std::uint8_t>(AntType::Proactive) ||
+           v == static_cast<std::uint8_t>(AntType::Repair) ||
+           v == static_cast<std::uint8_t>(AntType::LinkFail);
+}
+
+bool validDirection(std::uint8_t v) {
+    return v == static_cast<std::uint8_t>(AntDirection::Up) ||
+           v == static_cast<std::uint8_t>(AntDirection::Down);
+}
 
 } // namespace
 
 std::size_t serializedSize(const AntMessage& msg) {
-    return kFixedSize + kCountFields +
+    return kVersionSize + kFixedSize + kCountFields +
            msg.visited.size() * kHopSize +
            msg.history.size() * kHopSize +
            msg.helloDests.size() * kHelloSize;
@@ -88,6 +104,7 @@ void serialize(const AntMessage& msg, std::vector<std::uint8_t>& out) {
     out.clear();
     out.reserve(serializedSize(msg));
 
+    putU8(out, kWireVersion);
     putU8(out, static_cast<std::uint8_t>(msg.type));
     putU8(out, static_cast<std::uint8_t>(msg.direction));
     putI32(out, msg.src);
@@ -95,10 +112,7 @@ void serialize(const AntMessage& msg, std::vector<std::uint8_t>& out) {
     putU32(out, msg.seqNum);
     putDouble(out, msg.timeStart);
     putDouble(out, msg.lifeAnt);
-    putI32(out, msg.prevHop);
-    putI32(out, static_cast<std::int32_t>(msg.hops));
-    putDouble(out, msg.prevSINR);
-    putDouble(out, msg.pheromone);
+    putI32(out, msg.broadcastBudget);
 
     putU16(out, static_cast<std::uint16_t>(msg.visited.size()));
     for (const AntHop& h : msg.visited) { putI32(out, h.node); putDouble(out, h.time); }
@@ -119,30 +133,36 @@ bool deserialize(const std::uint8_t* bytes, std::size_t len, AntMessage& msg) {
     r.p = bytes;
     r.remaining = len;
 
-    msg.type      = static_cast<AntType>(r.u8());
-    msg.direction = static_cast<AntDirection>(r.u8());
+    // Trust boundary: reject foreign/stale frames and invalid enums in O(1)
+    // before touching any length-prefixed section.
+    if (r.u8() != kWireVersion) return false;
+    const std::uint8_t typeByte = r.u8();
+    const std::uint8_t dirByte  = r.u8();
+    if (!r.ok || !validType(typeByte) || !validDirection(dirByte)) return false;
+    msg.type      = static_cast<AntType>(typeByte);
+    msg.direction = static_cast<AntDirection>(dirByte);
     msg.src       = r.i32();
     msg.dst       = r.i32();
     msg.seqNum    = r.u32();
     msg.timeStart = r.dbl();
     msg.lifeAnt   = r.dbl();
-    msg.prevHop   = r.i32();
-    msg.hops      = static_cast<int>(r.i32());
-    msg.prevSINR  = r.dbl();
-    msg.pheromone = r.dbl();
+    msg.broadcastBudget = static_cast<int>(r.i32());
 
     const std::uint16_t nVisited = r.u16();
-    if (!r.ok || r.remaining < static_cast<std::size_t>(nVisited) * kHopSize) return false;
+    if (!r.ok || nVisited > kMaxVisitedOnWire ||
+        r.remaining < static_cast<std::size_t>(nVisited) * kHopSize) return false;
     msg.visited.resize(nVisited);
     for (auto& h : msg.visited) { h.node = r.i32(); h.time = r.dbl(); }
 
     const std::uint16_t nHistory = r.u16();
-    if (!r.ok || r.remaining < static_cast<std::size_t>(nHistory) * kHopSize) return false;
+    if (!r.ok || nHistory > kMaxHistoryOnWire ||
+        r.remaining < static_cast<std::size_t>(nHistory) * kHopSize) return false;
     msg.history.resize(nHistory);
     for (auto& h : msg.history) { h.node = r.i32(); h.time = r.dbl(); }
 
     const std::uint16_t nHello = r.u16();
-    if (!r.ok || r.remaining < static_cast<std::size_t>(nHello) * kHelloSize) return false;
+    if (!r.ok || nHello > kMaxHelloOnWire ||
+        r.remaining < static_cast<std::size_t>(nHello) * kHelloSize) return false;
     msg.helloDests.resize(nHello);
     for (auto& d : msg.helloDests) { d.node = r.i32(); d.pheromone = r.dbl(); }
 

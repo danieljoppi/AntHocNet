@@ -13,11 +13,13 @@
 #ifndef ANTHOCNET_CORE_ANT_ROUTER_LOGIC_H
 #define ANTHOCNET_CORE_ANT_ROUTER_LOGIC_H
 
+#include <map>
 #include <vector>
 
 #include "anthocnet/core/ant_history.h"
 #include "anthocnet/core/ant_message.h"
 #include "anthocnet/core/config.h"
+#include "anthocnet/core/link_metric.h"
 #include "anthocnet/core/pheromone_engine.h"
 #include "anthocnet/core/pheromone_table.h"
 #include "anthocnet/core/ports.h"
@@ -29,7 +31,10 @@ namespace core {
 
 class AntRouterLogic {
 public:
-    AntRouterLogic(NodeAddress address, const Config& config, IClock& clock, IRng& rng);
+    /// `metric` selects the pheromone formula (item 16); nullptr uses the
+    /// canonical ClassicMetric, so existing adapter call sites are unchanged.
+    AntRouterLogic(NodeAddress address, const Config& config, IClock& clock, IRng& rng,
+                   const ILinkMetric* metric = nullptr);
 
     NodeAddress address() const { return address_; }
     const Config& config() const { return config_; }
@@ -43,6 +48,29 @@ public:
     void learnNeighbor(NodeAddress neighbor);
     void loseNeighbor(NodeAddress neighbor);
 
+    /// Periodic liveness/maintenance tick (driven by the adapter hello timer):
+    /// expire neighbours not heard from within helloInterval*allowedHelloLoss
+    /// (the portable, NS-3-mandatory detector — ADR-0008) and return any
+    /// link-failure notifications to broadcast.
+    std::vector<RouteDecision> onMaintenanceTick();
+
+    /// Remove neighbour `n` and, for every destination whose best path it
+    /// carried, broadcast a LinkFail notification with the new best (0 if the
+    /// route is gone). Used by both the maintenance tick and an adapter's
+    /// MAC transmit-failure hook (ADR-0008 detectors A and D converge here).
+    std::vector<RouteDecision> reportNeighborLoss(NodeAddress n);
+
+    // --- active sessions (proactive monitoring, item 04) ------------------
+    /// Record that this node just originated data for `dest`, making it an
+    /// active session that proactive ants will monitor (call from the adapter
+    /// data path when the packet is locally originated).
+    void noteDataSession(NodeAddress dest);
+    /// Destinations with data sent within `config_.sessionTtl` (const query).
+    std::vector<NodeAddress> activeDestinations() const;
+    /// One proactive forward ant per active destination (empty if none or if
+    /// `!config_.enableProactive`). Also prunes expired sessions.
+    std::vector<AntMessage> createProactiveAnts();
+
     // --- ant construction -------------------------------------------------
     AntMessage createForwardAnt(AntType type, NodeAddress dest);
     AntMessage createHelloAnt(std::size_t maxAdverts = 10);
@@ -51,8 +79,13 @@ public:
     AntMessage createBackAnt(const AntMessage& forward);
 
     // --- routing primitives ----------------------------------------------
-    /// Stochastic next hop for `dest` (kInvalidAddress if no route).
+    /// Stochastic next hop for `dest` using the ant exponent betaAnts
+    /// (kInvalidAddress if no route). Serves reactive and proactive ants.
     NodeAddress selectNextHop(NodeAddress dest, bool proactive);
+    /// Stochastic next hop for a *data* packet, using the greedier data
+    /// exponent betaData (kInvalidAddress if no route). `prevHop` is excluded
+    /// unless it is the only option, to suppress data loops (A1).
+    NodeAddress nextHopForData(NodeAddress dest, NodeAddress prevHop = kInvalidAddress);
     /// Pick a random known destination for a proactive ant (or kInvalidAddress).
     NodeAddress randomDestination();
 
@@ -60,10 +93,14 @@ public:
     /// ant was generated). Bounded by Config::maxPathLength.
     void stampForward(AntMessage& ant) const;
 
-    /// Advance a backward ant by one hop: pop the visited stack, push to
-    /// history, recompute the pheromone estimate, and return the next hop.
-    /// Mirrors AntBackPacket::findNextHop.
+    /// Advance a backward ant by one hop: move this node from the visited stack
+    /// onto `history` and return the next hop (path management only; the deposit
+    /// state is reconstructed at the receiver from `history`, ADR-0009).
     NodeAddress advanceBackAnt(AntMessage& ant) const;
+
+    /// Pheromone this back ant would deposit at the current node, reconstructed
+    /// from its `history` (hops + summed per-hop times) via the link metric.
+    double backAntPheromone(const AntMessage& ant) const;
 
     /// Update the regular pheromone table from a backward ant that arrived
     /// here (reinforce the link it came from).
@@ -79,10 +116,23 @@ public:
     /// Decide what to do with a locally-originated or in-transit *data* packet
     /// destined for `dest`: route it (Unicast), or (no route) request one and
     /// Queue it. The adapter emits the returned reactive forward ant, if any.
-    std::vector<RouteDecision> onDataPacket(NodeAddress dest);
+    std::vector<RouteDecision> onDataPacket(NodeAddress dest,
+                                            NodeAddress prevHop = kInvalidAddress);
 
 private:
     std::uint32_t nextSeq() { return seqNum_++; }
+
+    /// Turn a forward/notification ant into a Broadcast decision, honouring its
+    /// broadcastBudget: an untracked ant (-1) always broadcasts; a budgeted ant
+    /// decrements and broadcasts while >0, and is Dropped once exhausted.
+    RouteDecision broadcastForward(AntMessage& ant) const;
+    /// Apply a received LinkFail notification and, if it costs this node its own
+    /// best path, return a bounded propagated notification.
+    std::vector<RouteDecision> handleLinkFail(const AntMessage& note, NodeAddress reporter);
+
+    /// Fill the transient deposit state (prevHop/hops/pathTime/pheromone) of a
+    /// received backward ant from its `history`, before reinforcement.
+    void computeBackAntState(AntMessage& ant) const;
 
     NodeAddress     address_;
     Config          config_;
@@ -90,8 +140,14 @@ private:
     IRng&           rng_;
     PheromoneTable  table_;
     PheromoneEngine engine_;
+    ClassicMetric   defaultMetric_;        ///< used when no metric is injected
+    const ILinkMetric* metric_;            ///< pheromone strategy (item 16)
     AntHistoryTracker history_;
     std::uint32_t   seqNum_ = 0;
+    std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
+    std::map<NodeAddress, double> lastSeen_;        ///< neighbor -> last reception time
+    std::map<NodeAddress, double> lastReactive_;    ///< dest -> last reactive-ant time
+    double lastEvaporation_ = 0.0;                  ///< last evaporateAll time
 };
 
 } // namespace core

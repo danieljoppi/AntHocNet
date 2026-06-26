@@ -62,7 +62,9 @@ int main() {
         CHECK(decisions[0].message.direction == AntDirection::Down);
         CHECK_EQ(decisions[0].message.src, 9);
         CHECK_EQ(decisions[0].message.dst, 3);
-        CHECK(decisions[0].message.pheromone > 0.0);
+        // The back ant carries the retraced path in `history` (the deposit
+        // pheromone is reconstructed from it at each receiver, not carried).
+        CHECK(!decisions[0].message.history.empty());
 
         // The previous hop was learned as a neighbour.
         CHECK(router.table().numNeighbors() >= 1u);

@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "anthocnet/core/ant_message_codec.h"
+
 int AntPacketHeader::offset_;
 
 namespace anthocnet {
@@ -20,10 +22,7 @@ core::AntMessage toMessage(const AntPacketHeader& h) {
     m.seqNum    = h.seqNum_;
     m.timeStart = h.timeStart_;
     m.lifeAnt   = h.lifeAnt_;
-    m.prevHop   = h.prevHop_;
-    m.hops      = h.hops_;
-    m.prevSINR  = h.prevSINR_;
-    m.pheromone = h.pheromone_;
+    m.broadcastBudget = h.broadcastBudget_;
 
     m.visited.reserve(h.visitedCount_);
     for (uint16_t i = 0; i < h.visitedCount_; ++i)
@@ -39,6 +38,7 @@ core::AntMessage toMessage(const AntPacketHeader& h) {
 }
 
 void fromMessage(const core::AntMessage& m, AntPacketHeader& h) {
+    h.version_      = core::codec::kWireVersion;
     h.antType_      = static_cast<uint8_t>(m.type);
     h.antDirection_ = static_cast<uint8_t>(m.direction);
     h.src_          = m.src;
@@ -46,10 +46,7 @@ void fromMessage(const core::AntMessage& m, AntPacketHeader& h) {
     h.seqNum_       = m.seqNum;
     h.timeStart_    = m.timeStart;
     h.lifeAnt_      = m.lifeAnt;
-    h.prevHop_      = m.prevHop;
-    h.hops_         = m.hops;
-    h.prevSINR_     = m.prevSINR;
-    h.pheromone_    = m.pheromone;
+    h.broadcastBudget_ = m.broadcastBudget;
 
     const uint16_t nv = static_cast<uint16_t>(
         std::min<size_t>(m.visited.size(), AntPacketHeader::kMaxPath));

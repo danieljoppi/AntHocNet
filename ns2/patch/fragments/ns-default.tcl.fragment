@@ -3,3 +3,9 @@ Agent/AntHocNet set num_nodes_x_ 2
 Agent/AntHocNet set num_nodes_y_ 2
 Agent/AntHocNet set r_factor_ 1
 Agent/AntHocNet set timer_ant_ 1
+Agent/AntHocNet set beta_ants_ 2.0
+Agent/AntHocNet set beta_data_ 20.0
+Agent/AntHocNet set enable_proactive_ 1
+Agent/AntHocNet set enable_diffusion_ 1
+Agent/AntHocNet set proactive_bcast_prob_ 0.1
+Agent/AntHocNet set session_ttl_ 5.0

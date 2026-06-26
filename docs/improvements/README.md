@@ -87,24 +87,24 @@ For node `i`, destination `d`, neighbour `n`, pheromone `T_nd^i`:
 
 ## Work items (priority order)
 
-| # | Item | Deviation | Priority | Est. effort |
-|---|------|-----------|----------|-------------|
-| [01](01-data-vs-ant-beta.md) | Wire `beta`; use β2 > β1 for data vs ants | D1 | **P0** | S |
-| [02](02-backward-ant-delay-metric.md) | Fix back-ant delay metric (units + per-hop) | D2 | **P0** | M |
-| [03](03-pheromone-diffusion.md) | Real diffused/bootstrapped pheromone in hellos | D3 | **P1** | M |
-| [04](04-proactive-ant-sessions.md) | Proactive ants for active sessions + broadcast prob | D4 | **P1** | M |
-| [05](05-link-failure-detection-and-repair.md) | Hello-timeout detection, failure notification, repair bounding | D5/D6 | **P1** | L |
-| [06](06-evaporation-and-minor.md) | Time-based evaporation + minor deviations | D7 | **P2** | S |
+| # | Item | Deviation | Priority | Est. effort | Status |
+|---|------|-----------|----------|-------------|--------|
+| [01](01-data-vs-ant-beta.md) | Wire `beta`; use β2 > β1 for data vs ants | D1 | **P0** | S | ✅ done |
+| [02](02-backward-ant-delay-metric.md) | Fix back-ant delay metric (units + per-hop) | D2 | **P0** | M | ✅ metric + wire-slim (v0x03) |
+| [03](03-pheromone-diffusion.md) | Real diffused/bootstrapped pheromone in hellos | D3 | **P1** | M | ✅ done (core; adapter flags with #04) |
+| [04](04-proactive-ant-sessions.md) | Proactive ants for active sessions + broadcast prob | D4 | **P1** | M | 🟡 core+adapters; broadcast-budget cap with #05 |
+| [05](05-link-failure-detection-and-repair.md) | Hello-timeout detection, failure notification, repair bounding | D5/D6 | **P1** | L | ✅ detection+notify+repair; NS-3 MAC hook TODO |
+| [06](06-evaporation-and-minor.md) | Time-based evaporation + minor deviations | D7 | **P2** | S | 🟡 6.1 evap + 6.3 backoff done; 6.2/6.4/6.5 minor |
 | [07](07-validation-and-benchmarks.md) | Validation harness + paper-faithful benchmark scenario | — | **P2** | M |
 | [08](08-protocol-comparison-benchmarks.md) | Benchmark vs AODV/OLSR/DSDV/DSR (+ overhead/NRL, fairness) | — | **P2** | M |
 | [09](09-landscape-and-positioning.md) | Public-implementation landscape + project presentation fixes | — | **P2** | S |
-| [10](10-data-loops-multipath-and-mac-metric.md) | Data-loop suppression, multipath safety, reactive broadcast cap, MAC metric | A1/A2/A3 | **P1**/P2 | M |
-| [11](11-adapter-robustness.md) | NS-2 unbounded queue, NS-3 multi-iface, address-mapping bug | B1/B2/B3 | **P1**/P2 | M |
-| [12](12-codec-hardening-and-threat-model.md) | Enforce protocol bounds on untrusted decode + threat model | C1 | **P1** | S |
+| [10](10-data-loops-multipath-and-mac-metric.md) | Data-loop suppression, multipath safety, reactive broadcast cap, MAC metric | A1/A2/A3 | **P1**/P2 | M | 🟡 A1 prevhop + A3 cap done; A2 MAC + stickiness deferred |
+| [11](11-adapter-robustness.md) | NS-2 unbounded queue, NS-3 multi-iface, address-mapping bug | B1/B2/B3 | **P1**/P2 | M | 🟡 B1+B3 done (P1); B2 multi-iface deferred |
+| [12](12-codec-hardening-and-threat-model.md) | Enforce protocol bounds on untrusted decode + threat model | C1 | **P1** | S | ✅ done |
 | [13](13-ci-e2e-and-fuzzing.md) | CI end-to-end sim smoke + codec fuzzing + property tests | D1/D2 | P2 | M |
-| [14](14-reproducibility-and-release.md) | Docker repro + CITATION/releases/DOI + ns-3 version matrix | E1/E2/E3 | P2 | M |
+| [14](14-reproducibility-and-release.md) | Docker repro + CITATION/releases/DOI + ns-3 version matrix | E1/E2/E3 | P2 | M | 🟡 E1 Docker images (ns2 2.34/2.35 + ns3 3.41/3.42) + GHCR workflow; E2/E3 pending |
 | [15](15-observability-and-traces.md) | Trace sources / counters (feeds item 08 NRL) | F1 | P2 | S–M |
-| [16](16-pluggable-link-metric.md) | Pluggable `ILinkMetric` port (fuzzy/energy/QoS extensibility) | G1 | P3 | M |
+| [16](16-pluggable-link-metric.md) | Pluggable `ILinkMetric` port (fuzzy/energy/QoS extensibility) | G1 | P3 | M | ✅ port + ClassicMetric (core); adapter selection is an extension point |
 
 Recommended sequence: **01 → 02** first (biggest correctness/performance levers
 and they unlock meaningful benchmarking), then **03 → 04 → 05**, then **06**,

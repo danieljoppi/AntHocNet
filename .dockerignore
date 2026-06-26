@@ -1,0 +1,10 @@
+# Keep the Docker build context small: the images fetch ns-2/ns-3 themselves and
+# only need the repo sources (core/, ns2/, ns3/, Makefile).
+.git
+**/build
+**/build-san
+core/build
+ns-3
+ns-2
+out
+*.tar.gz

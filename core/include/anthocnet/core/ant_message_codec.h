@@ -20,6 +20,22 @@ namespace anthocnet {
 namespace core {
 namespace codec {
 
+/// On-wire format version, written at offset 0 of every frame and checked
+/// before any other field (ADR-0006). Bump on any layout/semantic change.
+/// Both adapter headers must serialize this same value.
+/// 0x01: version byte + bounds/enum enforcement (item 12).
+/// 0x02: + AntMessage::broadcastBudget field, AntType::LinkFail (item 05).
+/// 0x03: backward-ant slim — prevHop/hops/pathTime/pheromone off the wire,
+///       reconstructed locally from `history` (item 02, ADR-0009).
+constexpr std::uint8_t kWireVersion = 0x03;
+
+/// Protocol bounds enforced on *decode* of untrusted input, mirroring the
+/// Config defaults so the codec stays standalone (golden rule #5). A frame
+/// declaring more elements than these is rejected, not just buffer-checked.
+constexpr std::uint16_t kMaxVisitedOnWire = 100;   ///< == Config::maxPathLength
+constexpr std::uint16_t kMaxHistoryOnWire = 100;   ///< retraced path ≤ path length
+constexpr std::uint16_t kMaxHelloOnWire   = 64;    ///< generous bound on adverts
+
 /// Number of bytes serialize() will produce for `msg`.
 std::size_t serializedSize(const AntMessage& msg);
 

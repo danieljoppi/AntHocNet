@@ -1,0 +1,64 @@
+# AntHocNet NS-2 images — two stages so we publish both a plain ns-2 (no
+# AntHocNet) and ns-2 + the AntHocNet patch, one of each per supported release.
+# The anthocnet stage is the only place the ns-2 *adapter* is actually compiled.
+#
+#   # plain ns-2 (no AntHocNet):
+#   docker build -f docker/Dockerfile.ns2 --target base \
+#                --build-arg NS2_VERSION=2.35 -t ns2:2.35 .
+#   # ns-2 + AntHocNet:
+#   docker build -f docker/Dockerfile.ns2 \
+#                --build-arg NS2_VERSION=2.35 -t anthocnet-ns2:2.35 .
+#
+# ns-2 is a legacy tree that does not build on current toolchains, so we pin
+# Ubuntu 18.04 (gcc-7) and apply the well-known modern-gcc fix.
+
+# --- base: plain ns-2, no AntHocNet ----------------------------------------
+FROM ubuntu:18.04 AS base
+
+ARG NS2_VERSION=2.35
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl make gcc g++ autoconf automake \
+        libxmu-dev libxt-dev libx11-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt
+RUN curl -fSL -o ns-allinone.tar.gz \
+      "https://sourceforge.net/projects/nsnam/files/allinone/ns-allinone-${NS2_VERSION}/ns-allinone-${NS2_VERSION}.tar.gz/download" \
+ && tar xf ns-allinone.tar.gz \
+ && rm ns-allinone.tar.gz
+
+ENV NS2ALL=/opt/ns-allinone-${NS2_VERSION}
+ENV NS2DIR=/opt/ns-allinone-${NS2_VERSION}/ns-${NS2_VERSION}
+
+# Well-known modern-gcc fix: the templated erase() needs an explicit this->.
+RUN sed -i 's/\berase(baseMap::begin(), baseMap::end())/this->erase(baseMap::begin(), baseMap::end())/' \
+      "$NS2DIR/linkstate/ls.h"
+
+# Build the stock ns-allinone tree (tcl/otcl/tclcl/ns) with default flags.
+RUN cd "$NS2ALL" && ./install
+
+WORKDIR ${NS2DIR}
+CMD ["bash"]
+
+# --- anthocnet: base + the AntHocNet patch ---------------------------------
+# Gives the ns-2 build C++14 (the shared core needs it — only the new AntHocNet
+# objects are recompiled), via Makefile.in so it survives Makefile regeneration.
+FROM base AS anthocnet
+
+WORKDIR /opt/anthocnet
+COPY . .
+
+# The patch adds the AntHocNet objects to Makefile.in; regenerate the Makefile
+# with config.status (which reuses the tcl/otcl/tclcl paths ns-allinone's
+# install already resolved) — re-running ./configure standalone can't find tcl.
+RUN make install-ns2 NS2DIR="$NS2DIR" \
+ && sed -i 's#^\(CCOPT[[:space:]]*=.*\)#\1 -std=gnu++14#' "$NS2DIR/Makefile.in" \
+ && cd "$NS2DIR" \
+ && ./config.status \
+ && make \
+ && test -x ./ns
+
+WORKDIR ${NS2DIR}
+CMD ["bash"]

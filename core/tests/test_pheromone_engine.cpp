@@ -19,19 +19,34 @@ int main() {
     table.setPheromoneRegular(9, 1, 0.5);
     table.setPheromoneRegular(9, 2, 0.5);
 
+    // updateRegular reinforces ONLY the travelled link now; aging is
+    // single-sourced into evaporateAll (ADR-0012), so the competitor is
+    // untouched here (no reinforce-and-age coupling).
     engine.updateRegular(table, /*dest*/ 9, /*neighbor*/ 1, /*phUpdate*/ 1.0);
+    CHECK_NEAR(table.getPheromoneRegular(9, 1), 0.65, 1e-9);  // 0.7*0.5 + 0.3*1.0
+    CHECK_NEAR(table.getPheromoneRegular(9, 2), 0.5, 1e-9);   // unchanged
 
-    // Travelled link 1 is reinforced: 0.7*0.5 + 0.3*1.0 = 0.65.
-    CHECK_NEAR(table.getPheromoneRegular(9, 1), 0.65, 1e-9);
-    // Competing link 2 must decay (this is the evaporation bug fix): it should
-    // be evaporate(0.5) = 0.35, NOT left at 0.5 and NOT applied to link 1.
-    CHECK_NEAR(table.getPheromoneRegular(9, 2), 0.35, 1e-9);
+    // evaporateAll ages every link by alpha^(dt/interval); dt = interval -> *alpha.
+    engine.evaporateAll(table, cfg.evaporationInterval);
+    CHECK_NEAR(table.getPheromoneRegular(9, 1), 0.65 * 0.7, 1e-9);
+    CHECK_NEAR(table.getPheromoneRegular(9, 2), 0.50 * 0.7, 1e-9);
 
-    // Repeated reinforcement converges toward the update value (1.0).
-    for (int i = 0; i < 40; ++i) engine.updateRegular(table, 9, 1, 1.0);
-    CHECK(table.getPheromoneRegular(9, 1) > 0.95);
-    // ...while the un-travelled link decays below the floor and is removed
-    // (getPheromoneRegular then reads back 0).
+    // dt scales the decay: half an interval ages by alpha^0.5.
+    {
+        PheromoneTable t;
+        t.setPheromoneRegular(9, 1, 1.0);
+        engine.evaporateAll(t, cfg.evaporationInterval * 0.5);
+        CHECK_NEAR(t.getPheromoneRegular(9, 1), std::pow(0.7, 0.5), 1e-9);
+    }
+
+    // Repeated evaporation with no reinforcement decays an entry below the floor,
+    // which prunes it (getPheromoneRegular then reads back 0); reinforcing keeps
+    // the travelled link alive across the same churn.
+    for (int i = 0; i < 60; ++i) {
+        engine.evaporateAll(table, cfg.evaporationInterval);
+        engine.updateRegular(table, 9, 1, 1.0);
+    }
+    CHECK(table.getPheromoneRegular(9, 1) > cfg.minPheromone);
     CHECK(table.getPheromoneRegular(9, 2) < cfg.minPheromone);
 
     // cleanNeighbor wipes a vanished neighbour from the table.

@@ -54,12 +54,25 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
       num_nodes_x_(0),
       num_nodes_y_(0),
       r_factor_(1.0),
-      timer_ant_(1.0) {
+      timer_ant_(1.0),
+      beta_ants_(2.0),
+      beta_data_(20.0),
+      enable_proactive_(1),
+      enable_diffusion_(1),
+      proactive_bcast_prob_(0.1),
+      session_ttl_(5.0),
+      queueCount_(0) {
     bind("num_nodes_", &num_nodes_);
     bind("num_nodes_x_", &num_nodes_x_);
     bind("num_nodes_y_", &num_nodes_y_);
     bind("r_factor_", &r_factor_);
     bind("timer_ant_", &timer_ant_);
+    bind("beta_ants_", &beta_ants_);
+    bind("beta_data_", &beta_data_);
+    bind_bool("enable_proactive_", &enable_proactive_);
+    bind_bool("enable_diffusion_", &enable_diffusion_);
+    bind("proactive_bcast_prob_", &proactive_bcast_prob_);
+    bind("session_ttl_", &session_ttl_);
 }
 
 AntHocNetAgent::~AntHocNetAgent() {
@@ -73,6 +86,12 @@ void AntHocNetAgent::startProtocol() {
     config_.proactiveInterval = AHN_PROACTIVE_INTERVAL;
     config_.networkDiameter   = AHN_NETWORK_DIAMETER;
     config_.lifeAnt           = AHN_LIFE_ANT;
+    config_.betaAnts          = beta_ants_;
+    config_.betaData          = beta_data_;
+    config_.enableProactive   = enable_proactive_ != 0;
+    config_.enableDiffusion   = enable_diffusion_ != 0;
+    config_.proactiveBroadcastProb = proactive_bcast_prob_;
+    config_.sessionTtl        = session_ttl_;
 
     delete logic_;
     logic_ = new anthocnet::core::AntRouterLogic(id_, config_, clock_, rng_);
@@ -175,7 +194,15 @@ void AntHocNetAgent::handleData(Packet* p) {
     struct hdr_ip* ih = HDR_IP(p);
     const nsaddr_t dest = ih->daddr();
 
-    std::vector<RouteDecision> decisions = logic_->onDataPacket(dest);
+    // Locally-originated data marks an active session for proactive probing.
+    if (ih->saddr() == id_) logic_->noteDataSession(dest);
+
+    // Exclude the hop the packet just came from to suppress data loops (A1);
+    // locally-originated packets have no previous hop.
+    const nsaddr_t prevHop =
+        (ih->saddr() == id_) ? anthocnet::core::kInvalidAddress
+                             : static_cast<nsaddr_t>(HDR_CMN(p)->prev_hop_);
+    std::vector<RouteDecision> decisions = logic_->onDataPacket(dest, prevHop);
 
     for (const RouteDecision& d : decisions) {
         switch (d.action) {
@@ -265,19 +292,65 @@ void AntHocNetAgent::forwardData(Packet* p, nsaddr_t nextHop) {
 // --- pending queue ----------------------------------------------------------
 
 void AntHocNetAgent::enqueue(Packet* p, nsaddr_t dest) {
-    queue_[dest].push_back(p);
+    // Bound the total queue (B1, parity with the NS-3 RequestQueue): when full,
+    // drop the globally-oldest pending packet so memory can't grow without limit.
+    if (queueCount_ >= AHN_QUEUE_MAX) {
+        std::map<nsaddr_t, std::list<AhnQueued> >::iterator oldestList = queue_.end();
+        double oldestTime = 0.0;
+        for (std::map<nsaddr_t, std::list<AhnQueued> >::iterator it = queue_.begin();
+             it != queue_.end(); ++it) {
+            if (it->second.empty()) continue;  // front is the oldest in a FIFO list
+            if (oldestList == queue_.end() || it->second.front().enqueued < oldestTime) {
+                oldestList = it;
+                oldestTime = it->second.front().enqueued;
+            }
+        }
+        if (oldestList != queue_.end()) {
+            Packet* old = oldestList->second.front().pkt;
+            oldestList->second.pop_front();
+            --queueCount_;
+            if (oldestList->second.empty()) queue_.erase(oldestList);
+            drop(old, DROP_RTR_QFULL);
+        }
+    }
+
+    AhnQueued q;
+    q.pkt = p;
+    q.enqueued = Scheduler::instance().clock();
+    queue_[dest].push_back(q);
+    ++queueCount_;
 }
 
 void AntHocNetAgent::flushQueue(nsaddr_t dest) {
-    std::map<nsaddr_t, std::list<Packet*> >::iterator it = queue_.find(dest);
+    std::map<nsaddr_t, std::list<AhnQueued> >::iterator it = queue_.find(dest);
     if (it == queue_.end()) return;
 
-    std::list<Packet*> pending;
+    std::list<AhnQueued> pending;
     pending.swap(it->second);
     queue_.erase(it);
+    queueCount_ -= static_cast<int>(pending.size());
 
-    for (std::list<Packet*>::iterator pit = pending.begin(); pit != pending.end(); ++pit) {
-        handleData(*pit);  // route now exists (or re-queues if it vanished)
+    for (std::list<AhnQueued>::iterator pit = pending.begin(); pit != pending.end(); ++pit) {
+        handleData(pit->pkt);  // route now exists (or re-queues if it vanished)
+    }
+}
+
+void AntHocNetAgent::purgeQueue() {
+    const double now = Scheduler::instance().clock();
+    for (std::map<nsaddr_t, std::list<AhnQueued> >::iterator it = queue_.begin();
+         it != queue_.end();) {
+        std::list<AhnQueued>& lst = it->second;
+        for (std::list<AhnQueued>::iterator pit = lst.begin(); pit != lst.end();) {
+            if (now - pit->enqueued >= AHN_QUEUE_TIMEOUT) {
+                drop(pit->pkt, DROP_RTR_QTIMEOUT);
+                pit = lst.erase(pit);
+                --queueCount_;
+            } else {
+                ++pit;
+            }
+        }
+        if (lst.empty()) queue_.erase(it++);
+        else ++it;
     }
 }
 
@@ -288,12 +361,22 @@ void AntHocNetAgent::linkFailed(Packet* p) {
     struct hdr_ip* ih = HDR_IP(p);
     const nsaddr_t broken = ch->next_hop_;
 
-    if (logic_) logic_->loseNeighbor(broken);
+    // MAC transmit-failure detector (ADR-0008 detector D): remove the dead
+    // neighbour and broadcast any link-failure notifications it triggers.
+    if (logic_) {
+        for (const RouteDecision& d : logic_->reportNeighborLoss(broken)) {
+            if (d.action == RouteAction::Broadcast) {
+                sendAnt(d.message, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
+            }
+        }
+    }
 
     if (ch->ptype() != PT_ANT) {
         const nsaddr_t dest = ih->daddr();
         enqueue(p, dest);
         if (logic_) {
+            // Bounded local repair: createForwardAnt sets broadcastBudget for
+            // Repair ants so the core caps re-broadcasts.
             AntMessage rrfa = logic_->createForwardAnt(AntType::Repair, dest);
             rrfa.lifeAnt = AHN_LIFE_ANT;
             sendAnt(rrfa, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
@@ -307,20 +390,27 @@ void AntHocNetAgent::linkFailed(Packet* p) {
 
 void AntHocNetAgent::sendHello() {
     if (!logic_) return;
+    purgeQueue();  // expire pending packets that waited too long for a route (B1)
+    // Liveness/maintenance tick (ADR-0008 detector A) before beaconing a hello.
+    for (const RouteDecision& d : logic_->onMaintenanceTick()) {
+        if (d.action == RouteAction::Broadcast) {
+            sendAnt(d.message, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
+        }
+    }
     AntMessage hello = logic_->createHelloAnt();
     sendAnt(hello, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
 }
 
 void AntHocNetAgent::sendProactive() {
     if (!logic_) return;
-    nsaddr_t dest = logic_->randomDestination();
-    if (dest == anthocnet::core::kInvalidAddress) return;
-    AntMessage prfa = logic_->createForwardAnt(AntType::Proactive, dest);
-    nsaddr_t next = logic_->selectNextHop(dest, /*proactive=*/true);
-    if (next == anthocnet::core::kInvalidAddress) {
-        sendAnt(prfa, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
-    } else {
-        sendAnt(prfa, next, /*broadcast=*/false);
+    // One proactive ant per active session (empty when gated off / idle).
+    for (AntMessage& prfa : logic_->createProactiveAnts()) {
+        nsaddr_t next = logic_->selectNextHop(prfa.dst, /*proactive=*/true);
+        if (next == anthocnet::core::kInvalidAddress) {
+            sendAnt(prfa, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
+        } else {
+            sendAnt(prfa, next, /*broadcast=*/false);
+        }
     }
 }
 
