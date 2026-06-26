@@ -45,14 +45,26 @@ jobs:
   ns3-build:
     name: NS-3 module build + test
     runs-on: ubuntu-latest
+    # Pin gcc-12 across the matrix. The runner's default (gcc-13 on ubuntu-24.04)
+    # cannot compile stock ns-3.36: its libstdc++ no longer pulls <cstdint>
+    # transitively, so ns-3.36 sources that use uint8_t without including it
+    # (e.g. src/network/utils/bit-serializer.h) fail to build. gcc-12's
+    # libstdc++ still provides the transitive include and is new enough for
+    # ns-3.48, so one compiler spans the whole supported range.
+    env:
+      CC: gcc-12
+      CXX: g++-12
     strategy:
       fail-fast: false
       matrix:
-        ns3: [ns-3.41, ns-3.42]   # catch API drift across releases
+        # 3.36 = CMake-build baseline (widely used in published research);
+        # 3.41/3.42 = prior pins; 3.47/3.48 = current releases. Spread catches
+        # API drift across the whole supported range.
+        ns3: [ns-3.36, ns-3.41, ns-3.42, ns-3.47, ns-3.48]
     steps:
       - uses: actions/checkout@v4
       - name: Install toolchain
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ python3 ninja-build
+        run: sudo apt-get update && sudo apt-get install -y cmake g++-12 python3 ninja-build
       - name: Fetch ns-3 (${{ matrix.ns3 }})
         run: |
           git clone --depth 1 --branch ${{ matrix.ns3 }} https://gitlab.com/nsnam/ns-3-dev.git ns-3
@@ -61,11 +73,26 @@ jobs:
       - name: Configure (with comparison protocols)
         run: |
           cd ns-3
-          ./ns3 configure --enable-tests --enable-examples \
-            --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          # Build only AntHocNet's own examples/tests, not the stock modules'.
+          # Stock test suites have cross-module deps that drift by release (aodv's
+          # test needs internet-apps on ns-3.36; internet-apps' test needs csma on
+          # ns-3.47+), so building them all would force an ever-growing module
+          # list. The --filter-module-examples-and-tests flag scopes that to our
+          # module; it was added after ns-3.36, so older trees just build + smoke.
+          mods='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
+            ./ns3 configure --enable-tests --enable-examples \
+              --filter-module-examples-and-tests=anthocnet \
+              --enable-modules="$mods"
+            echo "RUN_TESTS=1" >> "$GITHUB_ENV"
+          else
+            ./ns3 configure --enable-examples --enable-modules="$mods"
+            echo "RUN_TESTS=0" >> "$GITHUB_ENV"
+          fi
       - name: Build
         run: cd ns-3 && ./ns3 build
       - name: Run module test suite (header round-trip + multi-hop delivery)
+        if: env.RUN_TESTS == '1'
         run: cd ns-3 && ./test.py -s anthocnet
       - name: Smoke-run the example
         run: cd ns-3 && ./ns3 run anthocnet-example

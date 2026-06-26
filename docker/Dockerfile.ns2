@@ -32,9 +32,34 @@ RUN curl -fSL -o ns-allinone.tar.gz \
 ENV NS2ALL=/opt/ns-allinone-${NS2_VERSION}
 ENV NS2DIR=/opt/ns-allinone-${NS2_VERSION}/ns-${NS2_VERSION}
 
-# Well-known modern-gcc fix: the templated erase() needs an explicit this->.
+# Well-known modern-gcc fixes for the stock ns-2 tree (gcc-7). These edit
+# stock sources, not AntHocNet; without them ns-allinone's ./install silently
+# leaves a broken `ns` (its exit code doesn't propagate the failed object), and
+# the failure only surfaces when the AntHocNet stage relinks.
+#  - linkstate/ls.h (all): the templated erase() needs an explicit this->.
+#  - tools/ranvar.cc (ns-2.34): a direct constructor call
+#    `GammaRandomVariable::GammaRandomVariable(...)` is ill-formed on modern gcc
+#    (ns-2.35 already writes it as a function-style cast); drop the redundant
+#    `::GammaRandomVariable`.
+#  - mdart (M-DART, ns-2.35): its global hash() clashes with std::hash —
+#    `using namespace std` injects std::hash into the global namespace, so even
+#    the existing `::hash(...)` calls are ambiguous. Rename the helper (and its
+#    callers) to mdart_hash. Renaming (not dropping the objects) keeps
+#    hdr_mdart::offset_ defined, which stock cmu-trace.cc references.
+#  - CCOPT (all): append -fpermissive -Wno-narrowing so the remaining stock
+#    modern-gcc incompatibilities (e.g. >127 byte values narrowed to char in the
+#    bitmap/*.xbm Tk icons pulled in by common/tkAppInit.cc) build through. The
+#    AntHocNet objects are clean C++14, so these flags are a no-op for them.
 RUN sed -i 's/\berase(baseMap::begin(), baseMap::end())/this->erase(baseMap::begin(), baseMap::end())/' \
-      "$NS2DIR/linkstate/ls.h"
+        "$NS2DIR/linkstate/ls.h" \
+ && sed -i '/^CCOPT[[:space:]]*=/ s/$/ -fpermissive -Wno-narrowing/' "$NS2DIR/Makefile.in" \
+ && if [ -f "$NS2DIR/tools/ranvar.cc" ]; then \
+        sed -i 's/return GammaRandomVariable::GammaRandomVariable(/return GammaRandomVariable(/' \
+            "$NS2DIR/tools/ranvar.cc"; \
+    fi \
+ && if [ -d "$NS2DIR/mdart" ]; then \
+        sed -i 's/\bhash(/mdart_hash(/g' "$NS2DIR"/mdart/*.cc "$NS2DIR"/mdart/*.h; \
+    fi
 
 # Build the stock ns-allinone tree (tcl/otcl/tclcl/ns) with default flags.
 RUN cd "$NS2ALL" && ./install
@@ -43,18 +68,19 @@ WORKDIR ${NS2DIR}
 CMD ["bash"]
 
 # --- anthocnet: base + the AntHocNet patch ---------------------------------
-# Gives the ns-2 build C++14 (the shared core needs it — only the new AntHocNet
-# objects are recompiled), via Makefile.in so it survives Makefile regeneration.
+# The patch adds the AntHocNet objects to Makefile.in; regenerate the Makefile
+# with config.status (which reuses the tcl/otcl/tclcl paths ns-allinone resolved
+# — a bare ./configure can't find tcl), then build. No std override is needed:
+# gcc-7's default is already gnu++14, so the C++14 core and the stock ns-2 tree
+# build with the same (working) flags. (An earlier attempt to append
+# -std=gnu++14 to CCOPT corrupted its backslash-continued line and broke stock
+# files like mdart.)
 FROM base AS anthocnet
 
 WORKDIR /opt/anthocnet
 COPY . .
 
-# The patch adds the AntHocNet objects to Makefile.in; regenerate the Makefile
-# with config.status (which reuses the tcl/otcl/tclcl paths ns-allinone's
-# install already resolved) — re-running ./configure standalone can't find tcl.
 RUN make install-ns2 NS2DIR="$NS2DIR" \
- && sed -i 's#^\(CCOPT[[:space:]]*=.*\)#\1 -std=gnu++14#' "$NS2DIR/Makefile.in" \
  && cd "$NS2DIR" \
  && ./config.status \
  && make \

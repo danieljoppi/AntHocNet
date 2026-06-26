@@ -268,10 +268,10 @@ Ptr<Ipv4Route> RoutingProtocol::RouteOutput(Ptr<Packet> p, const Ipv4Header& hea
 
 bool RoutingProtocol::RouteInput(Ptr<const Packet> p, const Ipv4Header& header,
                                  Ptr<const NetDevice> idev,
-                                 const UnicastForwardCallback& ucb,
-                                 const MulticastForwardCallback& mcb,
-                                 const LocalDeliverCallback& lcb,
-                                 const ErrorCallback& ecb) {
+                                 AHN_RI_CB(UnicastForwardCallback) ucb,
+                                 AHN_RI_CB(MulticastForwardCallback) mcb,
+                                 AHN_RI_CB(LocalDeliverCallback) lcb,
+                                 AHN_RI_CB(ErrorCallback) ecb) {
     if (!m_logic || m_socketAddresses.empty()) return false;
 
     Ipv4Address dst = header.GetDestination();

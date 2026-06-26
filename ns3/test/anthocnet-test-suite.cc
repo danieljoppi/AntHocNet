@@ -165,16 +165,26 @@ public:
     }
 };
 
+// ns-3 made the TestSuite/TestCase enums scoped in ns-3.42 (enum class Type /
+// Duration) and removed the deprecated unscoped aliases in ns-3.47. So the
+// scoped form is required from 3.47, the unscoped form is the only one before
+// 3.42, and 3.42–3.46 accept both. ANTHOCNET_NS3_SCOPED_TEST_ENUMS is defined
+// by the module's CMakeLists for ns-3 >= 3.42.
+#ifdef ANTHOCNET_NS3_SCOPED_TEST_ENUMS
+#define AHN_TEST_TYPE_UNIT TestSuite::Type::UNIT
+#define AHN_TEST_QUICK     TestCase::Duration::QUICK
+#else
+#define AHN_TEST_TYPE_UNIT UNIT
+#define AHN_TEST_QUICK     TestCase::QUICK
+#endif
+
 class AntHocNetTestSuite : public TestSuite
 {
 public:
-    // Use the unscoped enumerators (TestSuite::UNIT / TestCase::QUICK): they
-    // are accepted across ns-3.36..3.42+, whereas the scoped Type::UNIT /
-    // Duration::QUICK forms only exist from ns-3.42.
-    AntHocNetTestSuite() : TestSuite("anthocnet", UNIT) {
-        AddTestCase(new AntHeaderRoundTripTestCase(), TestCase::QUICK);
-        AddTestCase(new AddressMappingTestCase(), TestCase::QUICK);
-        AddTestCase(new AntHocNetDeliveryTestCase(), TestCase::QUICK);
+    AntHocNetTestSuite() : TestSuite("anthocnet", AHN_TEST_TYPE_UNIT) {
+        AddTestCase(new AntHeaderRoundTripTestCase(), AHN_TEST_QUICK);
+        AddTestCase(new AddressMappingTestCase(), AHN_TEST_QUICK);
+        AddTestCase(new AntHocNetDeliveryTestCase(), AHN_TEST_QUICK);
     }
 };
 
