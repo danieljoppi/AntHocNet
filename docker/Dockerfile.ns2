@@ -43,20 +43,25 @@ WORKDIR ${NS2DIR}
 CMD ["bash"]
 
 # --- anthocnet: base + the AntHocNet patch ---------------------------------
-# Gives the ns-2 build C++14 (the shared core needs it — only the new AntHocNet
-# objects are recompiled), via Makefile.in so it survives Makefile regeneration.
+# Build only the AntHocNet objects with C++14 (the shared core needs it) and
+# reuse the stock ns-2 objects untouched — forcing -std=gnu++14 across the whole
+# tree breaks legacy ns-2 files (e.g. mdart's std::hash usage). After the patch
+# adds the AntHocNet objects to Makefile.in:
+#   - config.status regenerates the Makefile (reusing the tcl/otcl/tclcl paths
+#     ns-allinone resolved — a bare ./configure can't find tcl);
+#   - touch the existing stock .o so they stay newer than the regenerated
+#     Makefile, so `make` compiles only the missing AntHocNet objects (with the
+#     C++14 CCOPT) and relinks `ns`.
 FROM base AS anthocnet
 
 WORKDIR /opt/anthocnet
 COPY . .
 
-# The patch adds the AntHocNet objects to Makefile.in; regenerate the Makefile
-# with config.status (which reuses the tcl/otcl/tclcl paths ns-allinone's
-# install already resolved) — re-running ./configure standalone can't find tcl.
 RUN make install-ns2 NS2DIR="$NS2DIR" \
  && sed -i 's#^\(CCOPT[[:space:]]*=.*\)#\1 -std=gnu++14#' "$NS2DIR/Makefile.in" \
  && cd "$NS2DIR" \
  && ./config.status \
+ && find . -name '*.o' -exec touch {} + \
  && make \
  && test -x ./ns
 
