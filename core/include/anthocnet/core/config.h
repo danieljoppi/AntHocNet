@@ -24,9 +24,10 @@ struct Config {
     double betaAnts = 2.0;   ///< BETA1: exponent for ant next-hop choice (exploratory).
     double betaData = 20.0;  ///< BETA2: exponent for data next-hop choice (greedy).
 
-    /// Per-hop time estimate (milliseconds) used by the back-ant pheromone
-    /// formula.
-    int hopTimeMs = 50;  ///< HOP_TIME
+    /// Per-hop time estimate used by the back-ant pheromone formula (Eq.2):
+    /// the time to take one hop in unloaded conditions. In seconds, matching
+    /// IClock, so it is comparable in magnitude to the measured path time.
+    double hopTimeSec = 0.05;  ///< HOP_TIME (50 ms)
 
     /// Links whose pheromone drops below this are pruned.
     double minPheromone = 0.00001;  ///< MIN_PHEROMONE

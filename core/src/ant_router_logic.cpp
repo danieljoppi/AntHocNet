@@ -89,8 +89,14 @@ NodeAddress AntRouterLogic::randomDestination() {
 
 void AntRouterLogic::stampForward(AntMessage& ant) const {
     if (ant.visited.size() >= config_.maxPathLength) return;
-    const double trip = clock_.now() - ant.timeStart;
-    ant.visited.push_back({address_, trip});
+    // Record this hop's *delta* (seconds since the previous stamp), not the
+    // cumulative time since the ant was generated: the back-ant metric sums
+    // these to recover the true path time. Derive the delta from the elapsed
+    // time minus the deltas already on the stack (timeStart is on the wire).
+    const double cumulative = clock_.now() - ant.timeStart;
+    double prior = 0.0;
+    for (const AntHop& h : ant.visited) prior += h.time;
+    ant.visited.push_back({address_, cumulative - prior});
 }
 
 NodeAddress AntRouterLogic::advanceBackAnt(AntMessage& ant) const {
@@ -99,10 +105,12 @@ NodeAddress AntRouterLogic::advanceBackAnt(AntMessage& ant) const {
     const AntHop current = ant.visited.back();  // this node
     ant.prevHop = current.node;
     ant.hops += 1;
+    // Sum the per-hop deltas walked so far: this is T̂_d^i, the estimated time
+    // to reach the destination from here, in seconds (same units as hopTimeSec).
     ant.prevSINR += current.time;
 
-    const double simpleSINR = ant.prevSINR / 1000.0;
-    ant.pheromone = std::pow((ant.hops * config_.hopTimeMs + simpleSINR) / 2.0, -1.0);
+    // Eq.2: blend the time estimate with the hop-count estimate h·T_hop.
+    ant.pheromone = std::pow((ant.hops * config_.hopTimeSec + ant.prevSINR) / 2.0, -1.0);
 
     ant.history.push_back(current);
     ant.visited.pop_back();

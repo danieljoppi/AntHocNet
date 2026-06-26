@@ -8,6 +8,7 @@ set(ANTHOCNET_TESTS
   test_network_integration
   test_core_paths
   test_beta_selection
+  test_backant_metric
 )
 
 foreach(test ${ANTHOCNET_TESTS})

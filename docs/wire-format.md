@@ -37,7 +37,7 @@ we do *not* negotiate alternative layouts.
 | 38 | `prevSINR`  | `f64`    | 8 | Accumulated time/cost term (misnamed; **removed**, not renamed, by [item 02](improvements/02-backward-ant-delay-metric.md)). |
 | 46 | `pheromone` | `f64`    | 8 | Running pheromone estimate on the backward ant. *Slated for removal — item 02.* |
 | 54 | `nVisited`  | `u16`    | 2 | Count of `visited` entries. |
-| 56 | `visited[]` | `AntHop` | 12·n | Forward stack: `{ i32 node; f64 time }` per hop (`time` is **cumulative-since-source** today; → per-hop delta in item 02). |
+| 56 | `visited[]` | `AntHop` | 12·n | Forward stack: `{ i32 node; f64 time }` per hop. `time` is a **per-hop delta** (seconds) as of [item 02](improvements/02-backward-ant-delay-metric.md); the *byte-removal slim* of the four transient fields above is still pending (lands with the version pass). |
 | …  | `nHistory`  | `u16`    | 2 | Count of `history` entries. |
 | …  | `history[]` | `AntHop` | 12·n | Back-ant stack being reinforced: `{ i32 node; f64 time }`. |
 | …  | `nHello`    | `u16`    | 2 | Count of `helloDests` entries. |
@@ -60,12 +60,14 @@ number; use `current + 1`.
    [ADR-0006](adr/0006-on-wire-protocol-version.md). Prepend `version : u8` at
    **offset 0** (shifting every field +1). `deserialize` checks it first and
    drops unknown values in O(1).
-2. **Backward-ant slim + per-hop-delta time** —
+2. **Backward-ant slim** —
    [item 02](improvements/02-backward-ant-delay-metric.md),
-   [ADR-0009](adr/0009-backward-ants-carry-path-not-state.md). **Remove**
-   `prevHop`, `hops`, `prevSINR`, `pheromone` from the serialized image (they are
-   recomputed locally; verified that neither adapter consumes them), and redefine
-   `AntHop.time` as a **per-hop delta** (seconds). −24 fixed bytes.
+   [ADR-0009](adr/0009-backward-ants-carry-path-not-state.md). The per-hop-delta
+   `AntHop.time` semantic (Eq.2 metric fix) **has landed** in the core. Still
+   pending: **remove** `prevHop`, `hops`, `prevSINR`, `pheromone` from the
+   serialized image (they are recomputed locally; verified that neither adapter
+   consumes them) — −24 fixed bytes. Bundled with the version byte above since it
+   touches the same wire sites.
 3. **Repair / link-failure** —
    [item 05](improvements/05-link-failure-detection-and-repair.md). Add
    `broadcastBudget` and the `AntType::LinkFail` role (the notification reuses the
