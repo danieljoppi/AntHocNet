@@ -48,7 +48,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ns3: [ns-3.41, ns-3.42]   # catch API drift across releases
+        # 3.36 = CMake-build baseline (widely used in published research);
+        # 3.41/3.42 = prior pins; 3.47/3.48 = current releases. Spread catches
+        # API drift across the whole supported range.
+        ns3: [ns-3.36, ns-3.41, ns-3.42, ns-3.47, ns-3.48]
     steps:
       - uses: actions/checkout@v4
       - name: Install toolchain

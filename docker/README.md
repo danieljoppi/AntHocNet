@@ -8,8 +8,8 @@ vendors ns-2 or ns-3.
 
 | Image | Versions | Contents |
 |-------|----------|----------|
-| `ns3` | `3.41`, `3.42` | Plain ns-3 with the comparison protocols (AODV/OLSR/DSDV/…), **no AntHocNet**. |
-| `anthocnet-ns3` | `3.41`, `3.42` | The same ns-3 **plus** the additive AntHocNet module (configured, built, `test.py -s anthocnet` run). |
+| `ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | Plain ns-3 with the comparison protocols (AODV/OLSR/DSDV/…), **no AntHocNet**. |
+| `anthocnet-ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | The same ns-3 **plus** the additive AntHocNet module (configured, built, `test.py -s anthocnet` run). |
 | `ns2` | `2.34`, `2.35` | Plain ns-allinone-2.3x built from source, **no AntHocNet**. |
 | `anthocnet-ns2` | `2.34`, `2.35` | The same ns-2 **plus** the AntHocNet patch applied and **compiled** (the only place the ns-2 adapter is actually built). |
 

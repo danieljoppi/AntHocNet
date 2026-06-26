@@ -84,7 +84,7 @@ docker run --rm -it ghcr.io/danieljoppi/anthocnet-ns2:2.35   # `ns` with the age
 
 | Image | Versions | Contents |
 |-------|----------|----------|
-| `ghcr.io/danieljoppi/ns3` · `anthocnet-ns3` | `3.41`, `3.42` | plain ns-3 · ns-3 + the AntHocNet module |
+| `ghcr.io/danieljoppi/ns3` · `anthocnet-ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | plain ns-3 · ns-3 + the AntHocNet module |
 | `ghcr.io/danieljoppi/ns2` · `anthocnet-ns2` | `2.34`, `2.35` | plain ns-2 · ns-2 + the AntHocNet patch (compiled) |
 
 Build them yourself or see the full matrix in [docker/README.md](docker/README.md).

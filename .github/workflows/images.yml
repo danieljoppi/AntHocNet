@@ -30,7 +30,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['3.41', '3.42']   # supported ns-3 releases
+        # 3.36 = CMake baseline (common in published research), 3.41/3.42 =
+        # prior pins, 3.47/3.48 = current releases.
+        version: ['3.36', '3.41', '3.42', '3.47', '3.48']
     steps:
       - uses: actions/checkout@v4
       - name: Log in to GHCR
