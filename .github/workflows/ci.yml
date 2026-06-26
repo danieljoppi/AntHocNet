@@ -73,11 +73,26 @@ jobs:
       - name: Configure (with comparison protocols)
         run: |
           cd ns-3
-          ./ns3 configure --enable-tests --enable-examples \
-            --enable-modules='anthocnet;wifi;mobility;applications;internet-apps;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          # Build only AntHocNet's own examples/tests, not the stock modules'.
+          # Stock test suites have cross-module deps that drift by release (aodv's
+          # test needs internet-apps on ns-3.36; internet-apps' test needs csma on
+          # ns-3.47+), so building them all would force an ever-growing module
+          # list. The --filter-module-examples-and-tests flag scopes that to our
+          # module; it was added after ns-3.36, so older trees just build + smoke.
+          mods='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
+            ./ns3 configure --enable-tests --enable-examples \
+              --filter-module-examples-and-tests=anthocnet \
+              --enable-modules="$mods"
+            echo "RUN_TESTS=1" >> "$GITHUB_ENV"
+          else
+            ./ns3 configure --enable-examples --enable-modules="$mods"
+            echo "RUN_TESTS=0" >> "$GITHUB_ENV"
+          fi
       - name: Build
         run: cd ns-3 && ./ns3 build
       - name: Run module test suite (header round-trip + multi-hop delivery)
+        if: env.RUN_TESTS == '1'
         run: cd ns-3 && ./test.py -s anthocnet
       - name: Smoke-run the example
         run: cd ns-3 && ./ns3 run anthocnet-example

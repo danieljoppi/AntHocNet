@@ -27,11 +27,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && pip3 install --no-cache-dir 'cmake>=3.25' \
     && rm -rf /var/lib/apt/lists/*
 
+# Examples only, no --enable-tests: the image just needs the libraries and a
+# runnable example. Building the stock modules' test suites drags in cross-module
+# dependencies that vary by release (e.g. aodv's test needs v4ping/internet-apps
+# on ns-3.36; internet-apps' test needs csma on ns-3.47+), which would otherwise
+# force an ever-growing module list. CI exercises the test suites separately.
 RUN git clone --depth 1 --branch "${NS3_VERSION}" \
         https://gitlab.com/nsnam/ns-3-dev.git /opt/ns-3 \
  && cd /opt/ns-3 \
- && ./ns3 configure --enable-tests --enable-examples \
-        --enable-modules='wifi;mobility;applications;internet-apps;aodv;olsr;dsdv;flow-monitor;point-to-point' \
+ && ./ns3 configure --enable-examples \
+        --enable-modules='wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point' \
  && ./ns3 build
 
 WORKDIR /opt/ns-3
@@ -46,10 +51,10 @@ COPY . .
 
 RUN make install-ns3 NS3DIR=/opt/ns-3 \
  && cd /opt/ns-3 \
- && ./ns3 configure --enable-tests --enable-examples \
-        --enable-modules='anthocnet;wifi;mobility;applications;internet-apps;aodv;olsr;dsdv;flow-monitor;point-to-point' \
+ && ./ns3 configure --enable-examples \
+        --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point' \
  && ./ns3 build \
- && ./test.py -s anthocnet
+ && ./ns3 run anthocnet-example
 
 WORKDIR /opt/ns-3
 CMD ["./ns3", "run", "anthocnet-example"]

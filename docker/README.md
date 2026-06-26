@@ -9,7 +9,7 @@ vendors ns-2 or ns-3.
 | Image | Versions | Contents |
 |-------|----------|----------|
 | `ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | Plain ns-3 with the comparison protocols (AODV/OLSR/DSDV/…), **no AntHocNet**. |
-| `anthocnet-ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | The same ns-3 **plus** the additive AntHocNet module (configured, built, `test.py -s anthocnet` run). |
+| `anthocnet-ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | The same ns-3 **plus** the additive AntHocNet module (configured, built, `anthocnet-example` smoke-run). |
 | `ns2` | `2.34`, `2.35` | Plain ns-allinone-2.3x built from source, **no AntHocNet**. |
 | `anthocnet-ns2` | `2.34`, `2.35` | The same ns-2 **plus** the AntHocNet patch applied and **compiled** (the only place the ns-2 adapter is actually built). |
 
@@ -42,12 +42,14 @@ ns-3 integrates as an additive module and builds cleanly from a pinned git tag,
 so its image is a thin wrapper over the same steps CI runs. ns-2 is a legacy
 tree that does not build on current toolchains and is installed as an
 anchor-based **source patch**, so its image pins Ubuntu 18.04 (gcc-7), applies
-the known modern-gcc fix, builds the stock ns-allinone tree, then patches and
-recompiles — giving the project a real ns-2 **compile** check (CI alone only
-validates that the patch applies and reverts; see `ns2/patch/selftest.sh`).
+the known modern-gcc fixes to the stock sources, builds the stock ns-allinone
+tree, then patches and recompiles — giving the project a real ns-2 **compile**
+check (CI alone only validates that the patch applies and reverts; see
+`ns2/patch/selftest.sh`).
 
-The shared `core/` is C++14, so the ns-2 build compiles the AntHocNet objects
-with `-std=gnu++14` while leaving the stock ns-2 objects on their default flags.
+gcc-7 defaults to `-std=gnu++14`, so the C++14 shared `core/` and the stock ns-2
+sources build under the same working flags — no per-object `-std` override (an
+earlier attempt to append one corrupted ns-2's continued `CCOPT` line).
 
 ## Notes
 
