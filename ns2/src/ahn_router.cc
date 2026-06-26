@@ -56,7 +56,11 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
       r_factor_(1.0),
       timer_ant_(1.0),
       beta_ants_(2.0),
-      beta_data_(20.0) {
+      beta_data_(20.0),
+      enable_proactive_(1),
+      enable_diffusion_(1),
+      proactive_bcast_prob_(0.1),
+      session_ttl_(5.0) {
     bind("num_nodes_", &num_nodes_);
     bind("num_nodes_x_", &num_nodes_x_);
     bind("num_nodes_y_", &num_nodes_y_);
@@ -64,6 +68,10 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
     bind("timer_ant_", &timer_ant_);
     bind("beta_ants_", &beta_ants_);
     bind("beta_data_", &beta_data_);
+    bind_bool("enable_proactive_", &enable_proactive_);
+    bind_bool("enable_diffusion_", &enable_diffusion_);
+    bind("proactive_bcast_prob_", &proactive_bcast_prob_);
+    bind("session_ttl_", &session_ttl_);
 }
 
 AntHocNetAgent::~AntHocNetAgent() {
@@ -79,6 +87,10 @@ void AntHocNetAgent::startProtocol() {
     config_.lifeAnt           = AHN_LIFE_ANT;
     config_.betaAnts          = beta_ants_;
     config_.betaData          = beta_data_;
+    config_.enableProactive   = enable_proactive_ != 0;
+    config_.enableDiffusion   = enable_diffusion_ != 0;
+    config_.proactiveBroadcastProb = proactive_bcast_prob_;
+    config_.sessionTtl        = session_ttl_;
 
     delete logic_;
     logic_ = new anthocnet::core::AntRouterLogic(id_, config_, clock_, rng_);
@@ -180,6 +192,9 @@ void AntHocNetAgent::handleData(Packet* p) {
 
     struct hdr_ip* ih = HDR_IP(p);
     const nsaddr_t dest = ih->daddr();
+
+    // Locally-originated data marks an active session for proactive probing.
+    if (ih->saddr() == id_) logic_->noteDataSession(dest);
 
     std::vector<RouteDecision> decisions = logic_->onDataPacket(dest);
 
@@ -319,14 +334,14 @@ void AntHocNetAgent::sendHello() {
 
 void AntHocNetAgent::sendProactive() {
     if (!logic_) return;
-    nsaddr_t dest = logic_->randomDestination();
-    if (dest == anthocnet::core::kInvalidAddress) return;
-    AntMessage prfa = logic_->createForwardAnt(AntType::Proactive, dest);
-    nsaddr_t next = logic_->selectNextHop(dest, /*proactive=*/true);
-    if (next == anthocnet::core::kInvalidAddress) {
-        sendAnt(prfa, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
-    } else {
-        sendAnt(prfa, next, /*broadcast=*/false);
+    // One proactive ant per active session (empty when gated off / idle).
+    for (AntMessage& prfa : logic_->createProactiveAnts()) {
+        nsaddr_t next = logic_->selectNextHop(prfa.dst, /*proactive=*/true);
+        if (next == anthocnet::core::kInvalidAddress) {
+            sendAnt(prfa, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
+        } else {
+            sendAnt(prfa, next, /*broadcast=*/false);
+        }
     }
 }
 

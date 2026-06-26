@@ -13,6 +13,7 @@
 #ifndef ANTHOCNET_CORE_ANT_ROUTER_LOGIC_H
 #define ANTHOCNET_CORE_ANT_ROUTER_LOGIC_H
 
+#include <map>
 #include <vector>
 
 #include "anthocnet/core/ant_history.h"
@@ -42,6 +43,17 @@ public:
     /// seeding an equal-weight regular pheromone entry as the legacy code did.
     void learnNeighbor(NodeAddress neighbor);
     void loseNeighbor(NodeAddress neighbor);
+
+    // --- active sessions (proactive monitoring, item 04) ------------------
+    /// Record that this node just originated data for `dest`, making it an
+    /// active session that proactive ants will monitor (call from the adapter
+    /// data path when the packet is locally originated).
+    void noteDataSession(NodeAddress dest);
+    /// Destinations with data sent within `config_.sessionTtl` (const query).
+    std::vector<NodeAddress> activeDestinations() const;
+    /// One proactive forward ant per active destination (empty if none or if
+    /// `!config_.enableProactive`). Also prunes expired sessions.
+    std::vector<AntMessage> createProactiveAnts();
 
     // --- ant construction -------------------------------------------------
     AntMessage createForwardAnt(AntType type, NodeAddress dest);
@@ -96,6 +108,7 @@ private:
     PheromoneEngine engine_;
     AntHistoryTracker history_;
     std::uint32_t   seqNum_ = 0;
+    std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
 };
 
 } // namespace core

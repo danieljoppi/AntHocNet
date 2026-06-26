@@ -26,6 +26,37 @@ void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
     engine_.cleanNeighbor(table_, neighbor);
 }
 
+// --- active sessions (item 04) ----------------------------------------------
+
+void AntRouterLogic::noteDataSession(NodeAddress dest) {
+    if (dest == kInvalidAddress || dest == address_) return;
+    activeSessions_[dest] = clock_.now();
+}
+
+std::vector<NodeAddress> AntRouterLogic::activeDestinations() const {
+    std::vector<NodeAddress> dests;
+    const double now = clock_.now();
+    for (const auto& kv : activeSessions_) {
+        if (now - kv.second <= config_.sessionTtl) dests.push_back(kv.first);
+    }
+    return dests;
+}
+
+std::vector<AntMessage> AntRouterLogic::createProactiveAnts() {
+    std::vector<AntMessage> ants;
+    if (!config_.enableProactive) return ants;
+    const double now = clock_.now();
+    for (auto it = activeSessions_.begin(); it != activeSessions_.end();) {
+        if (now - it->second > config_.sessionTtl) {
+            it = activeSessions_.erase(it);  // expired session
+            continue;
+        }
+        ants.push_back(createForwardAnt(AntType::Proactive, it->first));
+        ++it;
+    }
+    return ants;
+}
+
 // --- ant construction -------------------------------------------------------
 
 AntMessage AntRouterLogic::createForwardAnt(AntType type, NodeAddress dest) {
@@ -167,6 +198,13 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
 
         NodeAddress next = selectNextHop(ant.dst, proactive);
         if (next == kInvalidAddress) {
+            return {{RouteAction::Broadcast, kInvalidAddress, true, ant}};
+        }
+        // A proactive ant with a route is normally unicast, but with a small
+        // per-hop probability it is broadcast instead to explore new paths
+        // ([1] §3.3). Gated by the proactive master switch (ADR-0007).
+        if (proactive && config_.enableProactive &&
+            rng_.uniform() < config_.proactiveBroadcastProb) {
             return {{RouteAction::Broadcast, kInvalidAddress, true, ant}};
         }
         return {{RouteAction::Unicast, next, true, ant}};

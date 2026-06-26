@@ -106,6 +106,10 @@ private:
     double timer_ant_;
     double beta_ants_;
     double beta_data_;
+    int    enable_proactive_;
+    int    enable_diffusion_;
+    double proactive_bcast_prob_;
+    double session_ttl_;
 
     std::map<nsaddr_t, std::list<Packet*> > queue_;
 };

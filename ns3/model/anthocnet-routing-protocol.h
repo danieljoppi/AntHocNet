@@ -112,6 +112,10 @@ private:
     double m_betaAnts;
     double m_betaData;
     double m_gamma;
+    bool m_enableProactive;
+    bool m_enableDiffusion;
+    double m_proactiveBroadcastProb;
+    double m_sessionTtl;
 };
 
 } // namespace anthocnet

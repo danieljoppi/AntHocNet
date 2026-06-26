@@ -92,7 +92,7 @@ For node `i`, destination `d`, neighbour `n`, pheromone `T_nd^i`:
 | [01](01-data-vs-ant-beta.md) | Wire `beta`; use β2 > β1 for data vs ants | D1 | **P0** | S | ✅ done |
 | [02](02-backward-ant-delay-metric.md) | Fix back-ant delay metric (units + per-hop) | D2 | **P0** | M | 🟡 metric done; wire-slim with #12 |
 | [03](03-pheromone-diffusion.md) | Real diffused/bootstrapped pheromone in hellos | D3 | **P1** | M | ✅ done (core; adapter flags with #04) |
-| [04](04-proactive-ant-sessions.md) | Proactive ants for active sessions + broadcast prob | D4 | **P1** | M |
+| [04](04-proactive-ant-sessions.md) | Proactive ants for active sessions + broadcast prob | D4 | **P1** | M | 🟡 core+adapters; broadcast-budget cap with #05 |
 | [05](05-link-failure-detection-and-repair.md) | Hello-timeout detection, failure notification, repair bounding | D5/D6 | **P1** | L |
 | [06](06-evaporation-and-minor.md) | Time-based evaporation + minor deviations | D7 | **P2** | S |
 | [07](07-validation-and-benchmarks.md) | Validation harness + paper-faithful benchmark scenario | — | **P2** | M |

@@ -37,6 +37,13 @@ struct Config {
     bool enableProactive = true;   ///< master: proactive ants + diffusion.
     bool enableDiffusion = true;   ///< hello pheromone adverts + virtual table.
 
+    /// Per-hop probability that an in-transit proactive forward ant is broadcast
+    /// to explore for new paths rather than unicast along pheromone ([1] §3.3).
+    double proactiveBroadcastProb = 0.1;
+    /// A destination stays an "active session" (and is probed by proactive ants)
+    /// for this many seconds after the last locally-originated data packet to it.
+    double sessionTtl = 5.0;
+
     /// Timer intervals (seconds).
     double helloInterval     = 1.0;
     double proactiveInterval = 10.0;

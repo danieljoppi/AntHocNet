@@ -37,7 +37,11 @@ RoutingProtocol::RoutingProtocol()
       m_alpha(0.7),
       m_betaAnts(2.0),
       m_betaData(20.0),
-      m_gamma(0.7) {}
+      m_gamma(0.7),
+      m_enableProactive(true),
+      m_enableDiffusion(true),
+      m_proactiveBroadcastProb(0.1),
+      m_sessionTtl(5.0) {}
 
 RoutingProtocol::~RoutingProtocol() = default;
 
@@ -70,6 +74,26 @@ TypeId RoutingProtocol::GetTypeId() {
             .AddAttribute("Gamma", "Reinforcement weight (GAMA).",
                           DoubleValue(0.7),
                           MakeDoubleAccessor(&RoutingProtocol::m_gamma),
+                          MakeDoubleChecker<double>())
+            .AddAttribute("EnableProactive",
+                          "Master switch for proactive ants + diffusion.",
+                          BooleanValue(true),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableProactive),
+                          MakeBooleanChecker())
+            .AddAttribute("EnableDiffusion",
+                          "Hello pheromone adverts + virtual table.",
+                          BooleanValue(true),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableDiffusion),
+                          MakeBooleanChecker())
+            .AddAttribute("ProactiveBroadcastProb",
+                          "Per-hop explore-broadcast probability for proactive ants.",
+                          DoubleValue(0.1),
+                          MakeDoubleAccessor(&RoutingProtocol::m_proactiveBroadcastProb),
+                          MakeDoubleChecker<double>())
+            .AddAttribute("SessionTtl",
+                          "Seconds a data session stays active for proactive probing.",
+                          DoubleValue(5.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_sessionTtl),
                           MakeDoubleChecker<double>());
     return tid;
 }
@@ -86,6 +110,10 @@ void RoutingProtocol::DoInitialize() {
     m_config.betaAnts = m_betaAnts;
     m_config.betaData = m_betaData;
     m_config.gamma = m_gamma;
+    m_config.enableProactive = m_enableProactive;
+    m_config.enableDiffusion = m_enableDiffusion;
+    m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
+    m_config.sessionTtl = m_sessionTtl;
     m_config.helloInterval = m_helloInterval.GetSeconds();
     m_config.proactiveInterval = m_proactiveInterval.GetSeconds();
     Ipv4RoutingProtocol::DoInitialize();
@@ -129,6 +157,10 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.betaAnts = m_betaAnts;
         m_config.betaData = m_betaData;
         m_config.gamma = m_gamma;
+        m_config.enableProactive = m_enableProactive;
+        m_config.enableDiffusion = m_enableDiffusion;
+        m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
+        m_config.sessionTtl = m_sessionTtl;
         m_config.helloInterval = m_helloInterval.GetSeconds();
         m_config.proactiveInterval = m_proactiveInterval.GetSeconds();
         m_logic.reset(new ::anthocnet::core::AntRouterLogic(
@@ -213,6 +245,9 @@ Ptr<Ipv4Route> RoutingProtocol::RouteOutput(Ptr<Packet> p, const Ipv4Header& hea
     }
 
     Ipv4Address dst = header.GetDestination();
+    // Locally-originated data: mark this destination as an active session so
+    // proactive ants monitor its path (item 04).
+    m_logic->noteDataSession(ToCore(dst));
     NodeAddress next = m_logic->nextHopForData(ToCore(dst));
     if (next != kInvalidAddress) {
         Ptr<Ipv4Route> route = Create<Ipv4Route>();
@@ -385,10 +420,10 @@ void RoutingProtocol::HelloTimerExpire() {
 
 void RoutingProtocol::ProactiveTimerExpire() {
     if (m_logic) {
-        NodeAddress dest = m_logic->randomDestination();
-        if (dest != kInvalidAddress) {
-            AntMessage prfa = m_logic->createForwardAnt(AntType::Proactive, dest);
-            NodeAddress next = m_logic->selectNextHop(dest, /*proactive=*/true);
+        // One proactive ant per active data session (empty when proactive is
+        // gated off or no session is active), each routed by combined pheromone.
+        for (AntMessage& prfa : m_logic->createProactiveAnts()) {
+            NodeAddress next = m_logic->selectNextHop(prfa.dst, /*proactive=*/true);
             if (next == kInvalidAddress) {
                 SendAnt(prfa, Ipv4Address("255.255.255.255"));
             } else {
