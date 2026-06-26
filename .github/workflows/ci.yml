@@ -45,6 +45,15 @@ jobs:
   ns3-build:
     name: NS-3 module build + test
     runs-on: ubuntu-latest
+    # Pin gcc-12 across the matrix. The runner's default (gcc-13 on ubuntu-24.04)
+    # cannot compile stock ns-3.36: its libstdc++ no longer pulls <cstdint>
+    # transitively, so ns-3.36 sources that use uint8_t without including it
+    # (e.g. src/network/utils/bit-serializer.h) fail to build. gcc-12's
+    # libstdc++ still provides the transitive include and is new enough for
+    # ns-3.48, so one compiler spans the whole supported range.
+    env:
+      CC: gcc-12
+      CXX: g++-12
     strategy:
       fail-fast: false
       matrix:
@@ -55,7 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install toolchain
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ python3 ninja-build
+        run: sudo apt-get update && sudo apt-get install -y cmake g++-12 python3 ninja-build
       - name: Fetch ns-3 (${{ matrix.ns3 }})
         run: |
           git clone --depth 1 --branch ${{ matrix.ns3 }} https://gitlab.com/nsnam/ns-3-dev.git ns-3
