@@ -31,7 +31,7 @@ _Scenario: 16 nodes, 250 m area, max speed 5 m/s, 4 flows, mean of 5 run(s). Gen
 
 | protocol | PDR % | mean delay (ms) | throughput (kbps) |
 |----------|------:|----------------:|------------------:|
-| anthocnet | 10.2 | 129.6 | 2.78 |
+| anthocnet | 4.8 | 96.9 | 0.92 |
 | aodv | 14.5 | 298.2 | 2.02 |
 | olsr | 34.3 | 2.0 | 2.32 |
 | dsdv | 6.5 | 824.7 | 1.08 |
