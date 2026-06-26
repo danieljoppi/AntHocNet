@@ -41,6 +41,29 @@ sources.
 make check-ns2 NS2DIR=/path/to/ns-allinone-2.3x/ns-2.3x
 ```
 
+## Troubleshooting
+
+**Tcl/Tk fails to build (e.g. "TK missing unix", tk8.4 / tcl8.4 errors).**
+This project no longer bundles `ns-allinone`. Build (or install) NS-2 on your
+own machine first and get a working `ns` binary, *then* point `make install-ns2`
+at that tree (`NS2DIR=`). Tcl/Tk build failures are an NS-2/OS packaging
+problem, not an AntHocNet one — fix them at the NS-2 level (distro `tcl`/`tk`
+dev packages, or a maintained ns-2 build) before installing the protocol.
+
+**C++ compile errors when rebuilding NS-2** (e.g. `no matching function for
+make_pair(...)`, or other C++11/14 diagnostics). The algorithm core uses
+C++14. Modern g++ defaults to C++14 or later, but if your NS-2 toolchain
+defaults to an older standard, add `-std=c++14` to `CCOPT` in
+`$(NS2DIR)/Makefile` and rebuild. (The legacy, NS-2-coupled module that
+triggered these on old compilers has been removed; the current adapter is
+plain modern C++.)
+
+**An anchor isn't found / the patch aborts.** `apply-patch.sh` fails loudly
+rather than corrupting a file if an expected anchor is missing — it targets
+ns-2.34 and ns-2.35. Re-run `make uninstall-ns2` to revert, confirm your tree
+is a clean ns-2.3x, and retry. See [../docs/porting-notes.md](../docs/porting-notes.md)
+for the anchor list.
+
 ## What the installer does
 
 `make install-ns2`:

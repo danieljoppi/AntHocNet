@@ -33,8 +33,43 @@ cd /path/to/ns-3-dev
 ./test.py -s anthocnet
 ```
 
-The test suite round-trips the `AntHeader` serializer (the riskiest adapter
-seam) without needing a full simulation.
+The test suite has two cases: an `AntHeader` serialize/deserialize round-trip,
+and a deterministic **multi-hop delivery** test over `SimpleNetDevice`s (a
+3-node line with the end-to-end link black-listed, so traffic must be routed
+through the middle node). The latter guards the real routing path — hello,
+neighbour learning, reactive discovery, forwarding and delivery.
+
+## Compare against AODV / OLSR / DSDV
+
+`anthocnet-compare` runs the *same* mobile-ad-hoc scenario (identical layout,
+mobility and traffic, same RNG run) under each routing protocol and prints
+packet-delivery ratio, mean delay and throughput from a FlowMonitor:
+
+```bash
+# requires aodv, olsr, dsdv and flow-monitor enabled
+./ns3 configure --enable-examples \
+  --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+./ns3 build
+./ns3 run "anthocnet-compare --nNodes=20 --time=40 --area=300 --flows=5"
+```
+
+Example output:
+
+```
+protocol          tx      rx     PDR%   delay(ms)  thrput(kbps)
+---------------------------------------------------------------
+anthocnet        604     125     20.7        28.6          3.21
+aodv             805     327     40.6        80.8          6.53
+olsr             446     110     24.7         4.9          2.70
+dsdv             556      93     16.7       384.9          2.28
+```
+
+Single-seed runs are noisy; average over seeds with `--seed=1,2,3,...` for a
+stable comparison. Results vary by node density, mobility and traffic — this
+is a re-validation harness, not a claim that any one protocol always wins.
+
+Options: `--nNodes --time --area --speed --flows --seed --protocols`
+(e.g. `--protocols=anthocnet,aodv`).
 
 ## Uninstall
 
@@ -68,8 +103,9 @@ ns3/
     anthocnet-rqueue.{h,cc}            pending-packet queue (GC + cap)
     anthocnet-adapters.{h,cc}          IClock/IRng ports over Simulator/RNG
   helper/anthocnet-helper.{h,cc}       Ipv4RoutingHelper
-  examples/anthocnet-example.cc
-  test/anthocnet-test-suite.cc
+  examples/anthocnet-example.cc        minimal wifi adhoc demo
+  examples/anthocnet-compare.cc        vs AODV/OLSR/DSDV (FlowMonitor metrics)
+  test/anthocnet-test-suite.cc         header round-trip + multi-hop delivery
   CMakeLists.txt                       ns-3.36+ build
   wscript                              ns-3 < 3.36 build
 ```

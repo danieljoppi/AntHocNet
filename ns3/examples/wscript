@@ -5,3 +5,13 @@ def build(bld):
                                  ['anthocnet', 'core', 'network', 'internet',
                                   'wifi', 'mobility', 'applications'])
     obj.source = 'anthocnet-example.cc'
+
+    # Comparison example, only if the extra protocol modules are present.
+    needed = ['aodv', 'olsr', 'dsdv', 'flow-monitor']
+    if all(m in bld.env['NS3_ENABLED_MODULES'] or
+           ('ns3-' + m) in bld.env['NS3_ENABLED_MODULES'] for m in needed):
+        cmp = bld.create_ns3_program('anthocnet-compare',
+                                     ['anthocnet', 'core', 'network', 'internet',
+                                      'wifi', 'mobility', 'applications',
+                                      'aodv', 'olsr', 'dsdv', 'flow-monitor'])
+        cmp.source = 'anthocnet-compare.cc'

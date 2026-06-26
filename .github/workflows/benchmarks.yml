@@ -1,0 +1,59 @@
+name: Benchmarks
+
+# Re-run the AntHocNet vs AODV/OLSR/DSDV comparison whenever the default branch
+# changes (i.e. after a PR is merged) and commit the refreshed results table
+# back into docs/benchmarks.md, so it always tracks the current code. The CSV is
+# also uploaded as a build artifact. Can also be triggered manually.
+on:
+  push:
+    branches: [main, master]   # both, so it survives the default-branch rename
+  workflow_dispatch:
+
+# Needed to push the regenerated docs/benchmarks.md back to the branch.
+permissions:
+  contents: write
+
+# One benchmark at a time; newer pushes supersede older queued runs.
+concurrency:
+  group: benchmarks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ python3 ninja-build
+      - name: Fetch ns-3 (pinned release)
+        run: git clone --depth 1 --branch ns-3.42 https://gitlab.com/nsnam/ns-3-dev.git ns-3
+      - name: Install AntHocNet module
+        run: make install-ns3 NS3DIR="$PWD/ns-3"
+      - name: Configure
+        run: |
+          cd ns-3
+          ./ns3 configure --enable-examples \
+            --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+      - name: Build
+        run: cd ns-3 && ./ns3 build
+      - name: Run benchmark (mean of 5 runs)
+        run: |
+          bash ns3/tools/run-comparison.sh "$PWD/ns-3" 5 16 25 250 4 | tee benchmarks.csv
+      - name: Upload CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmarks.csv
+      - name: Update docs/benchmarks.md
+        run: python3 ns3/tools/update-benchmarks.py benchmarks.csv docs/benchmarks.md
+      - name: Commit refreshed results (if changed)
+        run: |
+          if git diff --quiet -- docs/benchmarks.md; then
+            echo "Benchmark results unchanged; nothing to commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/benchmarks.md
+          git commit -m "docs: refresh benchmark results [skip ci]"
+          git push
