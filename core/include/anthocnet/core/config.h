@@ -68,6 +68,9 @@ struct Config {
     /// Max times a repair / link-failure ant may be (re)broadcast before being
     /// dropped, so local repair and failure notifications can't storm ([1] §3.5).
     int repairMaxBroadcasts = 2;
+    /// Max times a reactive forward ant may be (re)broadcast in a region with no
+    /// pheromone, so route setup doesn't flood ([1] §3.2).
+    int reactiveMaxBroadcasts = 2;
 
     /// Conservative upper bound on path length for the expanding-ring search.
     int networkDiameter = 30;

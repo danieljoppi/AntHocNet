@@ -290,6 +290,9 @@ bool RoutingProtocol::RouteInput(Ptr<const Packet> p, const Ipv4Header& header,
     }
 
     // In-transit forwarding.
+    // TODO(A1): pass the L2 previous hop to exclude it (loop suppression). NS-3
+    // RouteInput does not expose it cleanly (the IP source is the origin, not the
+    // prev hop), so exclusion is NS-2-only for now; NS-3 still relies on TTL.
     NodeAddress next = m_logic->nextHopForData(ToCore(dst));
     if (next != kInvalidAddress) {
         Ptr<Ipv4Route> route = Create<Ipv4Route>();

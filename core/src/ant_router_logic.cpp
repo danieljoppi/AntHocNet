@@ -160,8 +160,11 @@ AntMessage AntRouterLogic::createForwardAnt(AntType type, NodeAddress dest) {
     m.dst       = dest;
     m.seqNum    = nextSeq();
     m.timeStart = clock_.now();
-    // Repair ants are bounded; reactive/proactive ants rely on (src,seq) dedup.
-    m.broadcastBudget = (type == AntType::Repair) ? config_.repairMaxBroadcasts : -1;
+    // Reactive and repair ants cap their broadcasts ([1] §3.2/§3.5); proactive
+    // ants are untracked (their per-hop explore prob + dedup bound them).
+    if (type == AntType::Repair)        m.broadcastBudget = config_.repairMaxBroadcasts;
+    else if (type == AntType::Reactive) m.broadcastBudget = config_.reactiveMaxBroadcasts;
+    else                                m.broadcastBudget = -1;
     m.visited.push_back({address_, 0.0});  // source node enters the stack
     return m;
 }
@@ -210,8 +213,8 @@ NodeAddress AntRouterLogic::selectNextHop(NodeAddress dest, bool proactive) {
     return table_.nextNeighborNode(dest, proactive, config_.betaAnts, rng_);
 }
 
-NodeAddress AntRouterLogic::nextHopForData(NodeAddress dest) {
-    return table_.lookup(dest, config_.betaData, rng_);
+NodeAddress AntRouterLogic::nextHopForData(NodeAddress dest, NodeAddress prevHop) {
+    return table_.lookup(dest, config_.betaData, rng_, prevHop);
 }
 
 NodeAddress AntRouterLogic::randomDestination() {
@@ -326,8 +329,9 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
     return {{RouteAction::Unicast, next, true, ant}};
 }
 
-std::vector<RouteDecision> AntRouterLogic::onDataPacket(NodeAddress dest) {
-    NodeAddress next = nextHopForData(dest);
+std::vector<RouteDecision> AntRouterLogic::onDataPacket(NodeAddress dest,
+                                                        NodeAddress prevHop) {
+    NodeAddress next = nextHopForData(dest, prevHop);
     if (next == kInvalidAddress) {
         // No route: always hold the data, but launch at most one reactive ant
         // per destination per reactiveRetryInterval so a stream of packets to an

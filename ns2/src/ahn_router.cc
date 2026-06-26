@@ -197,7 +197,12 @@ void AntHocNetAgent::handleData(Packet* p) {
     // Locally-originated data marks an active session for proactive probing.
     if (ih->saddr() == id_) logic_->noteDataSession(dest);
 
-    std::vector<RouteDecision> decisions = logic_->onDataPacket(dest);
+    // Exclude the hop the packet just came from to suppress data loops (A1);
+    // locally-originated packets have no previous hop.
+    const nsaddr_t prevHop =
+        (ih->saddr() == id_) ? anthocnet::core::kInvalidAddress
+                             : static_cast<nsaddr_t>(HDR_CMN(p)->prev_hop_);
+    std::vector<RouteDecision> decisions = logic_->onDataPacket(dest, prevHop);
 
     for (const RouteDecision& d : decisions) {
         switch (d.action) {

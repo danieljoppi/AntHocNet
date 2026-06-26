@@ -98,7 +98,7 @@ For node `i`, destination `d`, neighbour `n`, pheromone `T_nd^i`:
 | [07](07-validation-and-benchmarks.md) | Validation harness + paper-faithful benchmark scenario | — | **P2** | M |
 | [08](08-protocol-comparison-benchmarks.md) | Benchmark vs AODV/OLSR/DSDV/DSR (+ overhead/NRL, fairness) | — | **P2** | M |
 | [09](09-landscape-and-positioning.md) | Public-implementation landscape + project presentation fixes | — | **P2** | S |
-| [10](10-data-loops-multipath-and-mac-metric.md) | Data-loop suppression, multipath safety, reactive broadcast cap, MAC metric | A1/A2/A3 | **P1**/P2 | M |
+| [10](10-data-loops-multipath-and-mac-metric.md) | Data-loop suppression, multipath safety, reactive broadcast cap, MAC metric | A1/A2/A3 | **P1**/P2 | M | 🟡 A1 prevhop + A3 cap done; A2 MAC + stickiness deferred |
 | [11](11-adapter-robustness.md) | NS-2 unbounded queue, NS-3 multi-iface, address-mapping bug | B1/B2/B3 | **P1**/P2 | M | 🟡 B1+B3 done (P1); B2 multi-iface deferred |
 | [12](12-codec-hardening-and-threat-model.md) | Enforce protocol bounds on untrusted decode + threat model | C1 | **P1** | S | ✅ done |
 | [13](13-ci-e2e-and-fuzzing.md) | CI end-to-end sim smoke + codec fuzzing + property tests | D1/D2 | P2 | M |

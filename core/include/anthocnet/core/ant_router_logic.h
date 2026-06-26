@@ -79,8 +79,9 @@ public:
     /// (kInvalidAddress if no route). Serves reactive and proactive ants.
     NodeAddress selectNextHop(NodeAddress dest, bool proactive);
     /// Stochastic next hop for a *data* packet, using the greedier data
-    /// exponent betaData (kInvalidAddress if no route).
-    NodeAddress nextHopForData(NodeAddress dest);
+    /// exponent betaData (kInvalidAddress if no route). `prevHop` is excluded
+    /// unless it is the only option, to suppress data loops (A1).
+    NodeAddress nextHopForData(NodeAddress dest, NodeAddress prevHop = kInvalidAddress);
     /// Pick a random known destination for a proactive ant (or kInvalidAddress).
     NodeAddress randomDestination();
 
@@ -107,7 +108,8 @@ public:
     /// Decide what to do with a locally-originated or in-transit *data* packet
     /// destined for `dest`: route it (Unicast), or (no route) request one and
     /// Queue it. The adapter emits the returned reactive forward ant, if any.
-    std::vector<RouteDecision> onDataPacket(NodeAddress dest);
+    std::vector<RouteDecision> onDataPacket(NodeAddress dest,
+                                            NodeAddress prevHop = kInvalidAddress);
 
 private:
     std::uint32_t nextSeq() { return seqNum_++; }

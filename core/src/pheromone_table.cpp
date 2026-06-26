@@ -66,9 +66,10 @@ void PheromoneTable::setPheromoneVirtual(NodeAddress dest, NodeAddress neighbor,
 }
 
 double PheromoneTable::sumProbability(const PheromoneMap& table, NodeAddress dest,
-                                      double beta) const {
+                                      double beta, NodeAddress exclude) const {
     double sum = 0.0;
     for (NodeAddress neighbor : neighborTable_) {
+        if (neighbor == exclude) continue;
         auto it = table.find({neighbor, dest});
         if (it == table.end()) continue;
         sum += std::pow(it->second, beta);
@@ -76,9 +77,11 @@ double PheromoneTable::sumProbability(const PheromoneMap& table, NodeAddress des
     return sum;
 }
 
-double PheromoneTable::sumMaxProbability(NodeAddress dest, double beta) const {
+double PheromoneTable::sumMaxProbability(NodeAddress dest, double beta,
+                                         NodeAddress exclude) const {
     double sum = 0.0;
     for (NodeAddress neighbor : neighborTable_) {
+        if (neighbor == exclude) continue;
         auto itR = pheromoneRegular_.find({neighbor, dest});
         auto itV = pheromoneVirtual_.find({neighbor, dest});
         double phR = itR != pheromoneRegular_.end() ? itR->second : 0.0;
@@ -89,7 +92,8 @@ double PheromoneTable::sumMaxProbability(NodeAddress dest, double beta) const {
 }
 
 NodeAddress PheromoneTable::nextNeighborNode(NodeAddress dest, bool isProactiveAnt,
-                                             double beta, IRng& rng) const {
+                                             double beta, IRng& rng,
+                                             NodeAddress exclude) const {
     // Unknown destination: no route. Data requires a regular entry; a proactive
     // ant may also route toward a purely-diffused (virtual-only) destination so
     // diffusion can extend reach (ADR-0007).
@@ -99,15 +103,21 @@ NodeAddress PheromoneTable::nextNeighborNode(NodeAddress dest, bool isProactiveA
         return kInvalidAddress;
     }
 
-    const double phSum = isProactiveAnt ? sumMaxProbability(dest, beta)
-                                        : sumProbability(pheromoneRegular_, dest, beta);
+    const double phSum = isProactiveAnt ? sumMaxProbability(dest, beta, exclude)
+                                        : sumProbability(pheromoneRegular_, dest, beta, exclude);
     if (phSum == 0.0) {
+        // Excluding the previous hop left no route: rather than black-hole, fall
+        // back to considering it (A1 "only option" rule).
+        if (exclude != kInvalidAddress) {
+            return nextNeighborNode(dest, isProactiveAnt, beta, rng, kInvalidAddress);
+        }
         return kInvalidAddress;
     }
 
     double r = rng.uniform();
     NodeAddress chosen = kInvalidAddress;
     for (NodeAddress neighbor : neighborTable_) {
+        if (neighbor == exclude) continue;
         auto itR = pheromoneRegular_.find({neighbor, dest});
         auto itV = pheromoneVirtual_.find({neighbor, dest});
         bool useR = itR != pheromoneRegular_.end();
@@ -123,8 +133,9 @@ NodeAddress PheromoneTable::nextNeighborNode(NodeAddress dest, bool isProactiveA
     return chosen;
 }
 
-NodeAddress PheromoneTable::lookup(NodeAddress dest, double beta, IRng& rng) const {
-    return nextNeighborNode(dest, false, beta, rng);
+NodeAddress PheromoneTable::lookup(NodeAddress dest, double beta, IRng& rng,
+                                   NodeAddress exclude) const {
+    return nextNeighborNode(dest, false, beta, rng, exclude);
 }
 
 NodeAddress PheromoneTable::randomDestination(IRng& rng) const {
