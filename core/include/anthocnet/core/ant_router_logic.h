@@ -44,6 +44,12 @@ public:
     void learnNeighbor(NodeAddress neighbor);
     void loseNeighbor(NodeAddress neighbor);
 
+    /// Periodic liveness/maintenance tick (driven by the adapter hello timer):
+    /// expire neighbours not heard from within helloInterval*allowedHelloLoss
+    /// (the portable, NS-3-mandatory detector — ADR-0008) and return any
+    /// link-failure notifications to broadcast.
+    std::vector<RouteDecision> onMaintenanceTick();
+
     // --- active sessions (proactive monitoring, item 04) ------------------
     /// Record that this node just originated data for `dest`, making it an
     /// active session that proactive ants will monitor (call from the adapter
@@ -109,6 +115,7 @@ private:
     AntHistoryTracker history_;
     std::uint32_t   seqNum_ = 0;
     std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
+    std::map<NodeAddress, double> lastSeen_;        ///< neighbor -> last reception time
 };
 
 } // namespace core

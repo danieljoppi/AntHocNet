@@ -328,6 +328,12 @@ void AntHocNetAgent::linkFailed(Packet* p) {
 
 void AntHocNetAgent::sendHello() {
     if (!logic_) return;
+    // Liveness/maintenance tick (ADR-0008 detector A) before beaconing a hello.
+    for (const RouteDecision& d : logic_->onMaintenanceTick()) {
+        if (d.action == RouteAction::Broadcast) {
+            sendAnt(d.message, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
+        }
+    }
     AntMessage hello = logic_->createHelloAnt();
     sendAnt(hello, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
 }

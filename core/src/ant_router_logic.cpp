@@ -20,10 +20,27 @@ void AntRouterLogic::learnNeighbor(NodeAddress neighbor) {
     table_.addNeighbor(neighbor);
     // Seed an equal-weight regular entry, as the legacy recvAHN did.
     engine_.updateRegular(table_, neighbor, neighbor, 1.0);
+    lastSeen_[neighbor] = clock_.now();  // liveness: any reception refreshes it
 }
 
 void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
     engine_.cleanNeighbor(table_, neighbor);
+    lastSeen_.erase(neighbor);
+}
+
+std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
+    std::vector<RouteDecision> out;
+    const double now = clock_.now();
+    const double maxIdle = config_.helloInterval * config_.allowedHelloLoss;
+
+    std::vector<NodeAddress> expired;
+    for (const auto& kv : lastSeen_) {
+        if (now - kv.second > maxIdle) expired.push_back(kv.first);
+    }
+    for (NodeAddress n : expired) {
+        loseNeighbor(n);  // erases lastSeen_[n] and prunes the pheromone table
+    }
+    return out;  // link-failure notifications added by item 05b
 }
 
 // --- active sessions (item 04) ----------------------------------------------

@@ -49,6 +49,10 @@ struct Config {
     double proactiveInterval = 10.0;
     double lifeAnt           = 2.0;
 
+    /// A neighbour is presumed gone after this many missed hellos
+    /// (maxIdle = helloInterval * allowedHelloLoss), per [1] §3.5.
+    int allowedHelloLoss = 2;
+
     /// Conservative upper bound on path length for the expanding-ring search.
     int networkDiameter = 30;
 

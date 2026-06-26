@@ -412,6 +412,13 @@ void RoutingProtocol::FlushQueue(NodeAddress coreDest) {
 
 void RoutingProtocol::HelloTimerExpire() {
     if (m_logic) {
+        // Liveness/maintenance tick first (ADR-0008 detector A) — the only way
+        // NS-3 detects neighbour loss — then beacon a hello.
+        for (RouteDecision& d : m_logic->onMaintenanceTick()) {
+            if (d.action == RouteAction::Broadcast) {
+                SendAnt(d.message, Ipv4Address("255.255.255.255"));
+            }
+        }
         AntMessage hello = m_logic->createHelloAnt();
         SendAnt(hello, Ipv4Address("255.255.255.255"));
     }
