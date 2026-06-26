@@ -8,10 +8,6 @@ name: Images
 # only (no push) for validation.
 on:
   workflow_dispatch:
-  # Temporary: validate the image builds as a PR check while the ns-2 recipe is
-  # stabilised. Rolled back to main-only once green (build-only on PRs — no push).
-  pull_request:
-    paths: ['docker/**', '.github/workflows/images.yml', 'core/**', 'ns2/**', 'ns3/**']
   push:
     branches: [main, master]
     paths: ['docker/**', '.github/workflows/images.yml', 'core/**', 'ns2/**', 'ns3/**']
