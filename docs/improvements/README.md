@@ -104,7 +104,7 @@ For node `i`, destination `d`, neighbour `n`, pheromone `T_nd^i`:
 | [13](13-ci-e2e-and-fuzzing.md) | CI end-to-end sim smoke + codec fuzzing + property tests | D1/D2 | P2 | M |
 | [14](14-reproducibility-and-release.md) | Docker repro + CITATION/releases/DOI + ns-3 version matrix | E1/E2/E3 | P2 | M |
 | [15](15-observability-and-traces.md) | Trace sources / counters (feeds item 08 NRL) | F1 | P2 | S–M |
-| [16](16-pluggable-link-metric.md) | Pluggable `ILinkMetric` port (fuzzy/energy/QoS extensibility) | G1 | P3 | M |
+| [16](16-pluggable-link-metric.md) | Pluggable `ILinkMetric` port (fuzzy/energy/QoS extensibility) | G1 | P3 | M | ✅ port + ClassicMetric (core); adapter selection is an extension point |
 
 Recommended sequence: **01 → 02** first (biggest correctness/performance levers
 and they unlock meaningful benchmarking), then **03 → 04 → 05**, then **06**,

@@ -14,6 +14,7 @@ set(ANTHOCNET_TESTS
   test_link_failure
   test_evaporation_backoff
   test_data_routing
+  test_link_metric
 )
 
 foreach(test ${ANTHOCNET_TESTS})

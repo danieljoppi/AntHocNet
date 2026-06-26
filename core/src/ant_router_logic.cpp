@@ -5,12 +5,14 @@
 namespace anthocnet {
 namespace core {
 
-AntRouterLogic::AntRouterLogic(NodeAddress address, const Config& config, IClock& clock, IRng& rng)
+AntRouterLogic::AntRouterLogic(NodeAddress address, const Config& config, IClock& clock,
+                               IRng& rng, const ILinkMetric* metric)
     : address_(address),
       config_(config),
       clock_(clock),
       rng_(rng),
       engine_(config_),
+      metric_(metric ? metric : &defaultMetric_),
       history_(config_.maxHistory) {}
 
 // --- neighbour learning -----------------------------------------------------
@@ -243,8 +245,12 @@ NodeAddress AntRouterLogic::advanceBackAnt(AntMessage& ant) const {
     // to reach the destination from here, in seconds (same units as hopTimeSec).
     ant.prevSINR += current.time;
 
-    // Eq.2: blend the time estimate with the hop-count estimate h·T_hop.
-    ant.pheromone = std::pow((ant.hops * config_.hopTimeSec + ant.prevSINR) / 2.0, -1.0);
+    // Pheromone via the pluggable metric (default ClassicMetric == Eq.2, item 16).
+    LinkObservation obs;
+    obs.hops     = ant.hops;
+    obs.pathTime = ant.prevSINR;
+    obs.hopTime  = config_.hopTimeSec;
+    ant.pheromone = metric_->pheromone(obs);
 
     ant.history.push_back(current);
     ant.visited.pop_back();

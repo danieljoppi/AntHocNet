@@ -19,6 +19,7 @@
 #include "anthocnet/core/ant_history.h"
 #include "anthocnet/core/ant_message.h"
 #include "anthocnet/core/config.h"
+#include "anthocnet/core/link_metric.h"
 #include "anthocnet/core/pheromone_engine.h"
 #include "anthocnet/core/pheromone_table.h"
 #include "anthocnet/core/ports.h"
@@ -30,7 +31,10 @@ namespace core {
 
 class AntRouterLogic {
 public:
-    AntRouterLogic(NodeAddress address, const Config& config, IClock& clock, IRng& rng);
+    /// `metric` selects the pheromone formula (item 16); nullptr uses the
+    /// canonical ClassicMetric, so existing adapter call sites are unchanged.
+    AntRouterLogic(NodeAddress address, const Config& config, IClock& clock, IRng& rng,
+                   const ILinkMetric* metric = nullptr);
 
     NodeAddress address() const { return address_; }
     const Config& config() const { return config_; }
@@ -128,6 +132,8 @@ private:
     IRng&           rng_;
     PheromoneTable  table_;
     PheromoneEngine engine_;
+    ClassicMetric   defaultMetric_;        ///< used when no metric is injected
+    const ILinkMetric* metric_;            ///< pheromone strategy (item 16)
     AntHistoryTracker history_;
     std::uint32_t   seqNum_ = 0;
     std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
