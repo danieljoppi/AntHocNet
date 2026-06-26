@@ -4,6 +4,7 @@
 #include "anthocnet/ahn_router.h"
 
 #include <address.h>
+#include <cmu-trace.h>  // DROP_RTR_* drop-reason strings (NO_ROUTE/TTL/QFULL/...)
 #include <random.h>
 
 #include "anthocnet/core/route_decision.h"
