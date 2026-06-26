@@ -17,18 +17,18 @@ int main() {
     // r small -> first neighbour in set order (1) is chosen.
     {
         ScriptedRng rng({0.01});
-        CHECK_EQ(table.lookup(9, rng), 1);
+        CHECK_EQ(table.lookup(9, /*beta=*/1.0, rng), 1);
     }
     // r near 1 -> probability mass walks past neighbour 1 to neighbour 2.
     {
         ScriptedRng rng({0.99});
-        CHECK_EQ(table.lookup(9, rng), 2);
+        CHECK_EQ(table.lookup(9, /*beta=*/1.0, rng), 2);
     }
 
     // Unknown destination yields no route.
     {
         ScriptedRng rng({0.5});
-        CHECK_EQ(table.lookup(42, rng), kInvalidAddress);
+        CHECK_EQ(table.lookup(42, /*beta=*/1.0, rng), kInvalidAddress);
     }
 
     // randomDestination returns a known regular destination.
@@ -43,7 +43,7 @@ int main() {
     table.removePheromoneRegular(9, 2);
     {
         ScriptedRng rng({0.5});
-        CHECK_EQ(table.lookup(9, rng), kInvalidAddress);
+        CHECK_EQ(table.lookup(9, /*beta=*/1.0, rng), kInvalidAddress);
     }
 
     return RUN_TESTS();

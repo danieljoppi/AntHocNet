@@ -36,8 +36,9 @@ decisions the core returns.
 - **ACO routing**: "forward ants" explore toward a destination recording their
   path; "backward ants" retrace it depositing **pheromone** — a numeric
   goodness value per `(neighbor, destination)` next-hop choice. Data packets are
-  then forwarded **stochastically** in proportion to `pheromone^beta`, spreading
-  traffic over multiple good paths. Unused paths **evaporate**.
+  then forwarded **stochastically** in proportion to `pheromone^beta` — data uses
+  a greedier `betaData` than ants' `betaAnts`, concentrating traffic on the best
+  paths while ants still explore. Unused paths **evaporate**.
 - **AntHocNet** is *hybrid*: routes are set up **reactively** on demand (a data
   packet with no route triggers a flooded reactive forward ant; the returning
   backward ant lays the route), **maintained proactively** while in use, and
@@ -160,6 +161,6 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   "working", and on which simulator are they the reference?
 - Should there be an automated end-to-end smoke test against a pinned NS-3
   checkout in CI (beyond the current build job)?
-- Are the `Config` defaults (`alpha`/`beta`/`gamma`, intervals, `maxPathLength`,
+- Are the `Config` defaults (`alpha`/`betaAnts`/`betaData`/`gamma`, intervals, `maxPathLength`,
   `maxHistory`) the right operating point, or should they be tuned per
   simulator?

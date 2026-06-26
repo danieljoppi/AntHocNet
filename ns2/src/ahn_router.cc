@@ -54,12 +54,16 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
       num_nodes_x_(0),
       num_nodes_y_(0),
       r_factor_(1.0),
-      timer_ant_(1.0) {
+      timer_ant_(1.0),
+      beta_ants_(2.0),
+      beta_data_(20.0) {
     bind("num_nodes_", &num_nodes_);
     bind("num_nodes_x_", &num_nodes_x_);
     bind("num_nodes_y_", &num_nodes_y_);
     bind("r_factor_", &r_factor_);
     bind("timer_ant_", &timer_ant_);
+    bind("beta_ants_", &beta_ants_);
+    bind("beta_data_", &beta_data_);
 }
 
 AntHocNetAgent::~AntHocNetAgent() {
@@ -73,6 +77,8 @@ void AntHocNetAgent::startProtocol() {
     config_.proactiveInterval = AHN_PROACTIVE_INTERVAL;
     config_.networkDiameter   = AHN_NETWORK_DIAMETER;
     config_.lifeAnt           = AHN_LIFE_ANT;
+    config_.betaAnts          = beta_ants_;
+    config_.betaData          = beta_data_;
 
     delete logic_;
     logic_ = new anthocnet::core::AntRouterLogic(id_, config_, clock_, rng_);

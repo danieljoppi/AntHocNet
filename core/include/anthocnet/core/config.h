@@ -17,8 +17,12 @@ namespace core {
 struct Config {
     /// Pheromone reinforcement / evaporation weights.
     double alpha = 0.7;  ///< ALFA: evaporation retains alpha of the value.
-    int    beta  = 1;    ///< BETA: exponent applied when summing probabilities.
     double gamma = 0.7;  ///< GAMA: weight of the old value when reinforcing.
+
+    /// Eq.1 exponents for the stochastic next-hop choice. Ants explore with a
+    /// small exponent; data is greedy with a larger one (betaData >= betaAnts).
+    double betaAnts = 2.0;   ///< BETA1: exponent for ant next-hop choice (exploratory).
+    double betaData = 20.0;  ///< BETA2: exponent for data next-hop choice (greedy).
 
     /// Per-hop time estimate (milliseconds) used by the back-ant pheromone
     /// formula.

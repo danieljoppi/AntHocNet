@@ -104,6 +104,8 @@ private:
     int num_nodes_y_;
     double r_factor_;
     double timer_ant_;
+    double beta_ants_;
+    double beta_data_;
 
     std::map<nsaddr_t, std::list<Packet*> > queue_;
 };

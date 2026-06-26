@@ -55,18 +55,20 @@ public:
     // --- routing ----------------------------------------------------------
     /// Stochastic next-hop choice. With isProactiveAnt the virtual table is
     /// blended in (max of regular/virtual); otherwise only regular is used.
+    /// `beta` is the Eq.1 exponent (caller passes betaAnts or betaData).
     /// Returns kInvalidAddress when no route exists.
-    NodeAddress nextNeighborNode(NodeAddress dest, bool isProactiveAnt, IRng& rng) const;
+    NodeAddress nextNeighborNode(NodeAddress dest, bool isProactiveAnt, double beta,
+                                 IRng& rng) const;
 
-    /// Reactive lookup == nextNeighborNode(dest, false).
-    NodeAddress lookup(NodeAddress dest, IRng& rng) const;
+    /// Reactive lookup == nextNeighborNode(dest, false, beta).
+    NodeAddress lookup(NodeAddress dest, double beta, IRng& rng) const;
 
     /// Uniformly pick a known regular destination, or kInvalidAddress if none.
     NodeAddress randomDestination(IRng& rng) const;
 
 private:
-    double sumProbability(const PheromoneMap& table, NodeAddress dest) const;
-    double sumMaxProbability(NodeAddress dest) const;
+    double sumProbability(const PheromoneMap& table, NodeAddress dest, double beta) const;
+    double sumMaxProbability(NodeAddress dest, double beta) const;
 
     PheromoneMap   pheromoneRegular_;
     PheromoneMap   pheromoneVirtual_;

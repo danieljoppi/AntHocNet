@@ -76,7 +76,11 @@ AntMessage AntRouterLogic::createBackAnt(const AntMessage& forward) {
 // --- routing primitives -----------------------------------------------------
 
 NodeAddress AntRouterLogic::selectNextHop(NodeAddress dest, bool proactive) {
-    return table_.nextNeighborNode(dest, proactive, rng_);
+    return table_.nextNeighborNode(dest, proactive, config_.betaAnts, rng_);
+}
+
+NodeAddress AntRouterLogic::nextHopForData(NodeAddress dest) {
+    return table_.lookup(dest, config_.betaData, rng_);
 }
 
 NodeAddress AntRouterLogic::randomDestination() {
@@ -173,7 +177,7 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
 }
 
 std::vector<RouteDecision> AntRouterLogic::onDataPacket(NodeAddress dest) {
-    NodeAddress next = table_.lookup(dest, rng_);
+    NodeAddress next = nextHopForData(dest);
     if (next == kInvalidAddress) {
         // No route: hold the data and launch a reactive forward ant.
         AntMessage refa = createForwardAnt(AntType::Reactive, dest);

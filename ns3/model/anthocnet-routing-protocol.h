@@ -109,7 +109,8 @@ private:
     Time m_helloInterval;
     Time m_proactiveInterval;
     double m_alpha;
-    int m_beta;
+    double m_betaAnts;
+    double m_betaData;
     double m_gamma;
 };
 

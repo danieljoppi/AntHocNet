@@ -35,7 +35,8 @@ RoutingProtocol::RoutingProtocol()
       m_helloInterval(Seconds(1.0)),
       m_proactiveInterval(Seconds(10.0)),
       m_alpha(0.7),
-      m_beta(1),
+      m_betaAnts(2.0),
+      m_betaData(20.0),
       m_gamma(0.7) {}
 
 RoutingProtocol::~RoutingProtocol() = default;
@@ -58,10 +59,14 @@ TypeId RoutingProtocol::GetTypeId() {
                           DoubleValue(0.7),
                           MakeDoubleAccessor(&RoutingProtocol::m_alpha),
                           MakeDoubleChecker<double>())
-            .AddAttribute("Beta", "Probability exponent (BETA).",
-                          UintegerValue(1),
-                          MakeUintegerAccessor(&RoutingProtocol::m_beta),
-                          MakeUintegerChecker<uint32_t>())
+            .AddAttribute("BetaAnts", "Eq.1 exponent for ant next-hop choice (BETA1).",
+                          DoubleValue(2.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_betaAnts),
+                          MakeDoubleChecker<double>())
+            .AddAttribute("BetaData", "Eq.1 exponent for greedy data routing (BETA2).",
+                          DoubleValue(20.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_betaData),
+                          MakeDoubleChecker<double>())
             .AddAttribute("Gamma", "Reinforcement weight (GAMA).",
                           DoubleValue(0.7),
                           MakeDoubleAccessor(&RoutingProtocol::m_gamma),
@@ -78,7 +83,8 @@ void RoutingProtocol::SetIpv4(Ptr<Ipv4> ipv4) {
 
 void RoutingProtocol::DoInitialize() {
     m_config.alpha = m_alpha;
-    m_config.beta = m_beta;
+    m_config.betaAnts = m_betaAnts;
+    m_config.betaData = m_betaData;
     m_config.gamma = m_gamma;
     m_config.helloInterval = m_helloInterval.GetSeconds();
     m_config.proactiveInterval = m_proactiveInterval.GetSeconds();
@@ -120,7 +126,8 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
     // Create the core logic on the first real interface, keyed by its address.
     if (!m_logic) {
         m_config.alpha = m_alpha;
-        m_config.beta = m_beta;
+        m_config.betaAnts = m_betaAnts;
+        m_config.betaData = m_betaData;
         m_config.gamma = m_gamma;
         m_config.helloInterval = m_helloInterval.GetSeconds();
         m_config.proactiveInterval = m_proactiveInterval.GetSeconds();
@@ -206,7 +213,7 @@ Ptr<Ipv4Route> RoutingProtocol::RouteOutput(Ptr<Packet> p, const Ipv4Header& hea
     }
 
     Ipv4Address dst = header.GetDestination();
-    NodeAddress next = m_logic->selectNextHop(ToCore(dst), /*proactive=*/false);
+    NodeAddress next = m_logic->nextHopForData(ToCore(dst));
     if (next != kInvalidAddress) {
         Ptr<Ipv4Route> route = Create<Ipv4Route>();
         route->SetDestination(dst);
@@ -248,7 +255,7 @@ bool RoutingProtocol::RouteInput(Ptr<const Packet> p, const Ipv4Header& header,
     }
 
     // In-transit forwarding.
-    NodeAddress next = m_logic->selectNextHop(ToCore(dst), /*proactive=*/false);
+    NodeAddress next = m_logic->nextHopForData(ToCore(dst));
     if (next != kInvalidAddress) {
         Ptr<Ipv4Route> route = Create<Ipv4Route>();
         route->SetDestination(dst);
@@ -350,7 +357,7 @@ void RoutingProtocol::FlushQueue(NodeAddress coreDest) {
     m_queue.DequeueAll(dst, pending);
 
     for (QueueEntry& e : pending) {
-        NodeAddress next = m_logic->selectNextHop(coreDest, /*proactive=*/false);
+        NodeAddress next = m_logic->nextHopForData(coreDest);
         if (next == kInvalidAddress) {
             // Route vanished again; re-queue.
             m_queue.Enqueue(e);

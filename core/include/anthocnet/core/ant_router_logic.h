@@ -51,8 +51,12 @@ public:
     AntMessage createBackAnt(const AntMessage& forward);
 
     // --- routing primitives ----------------------------------------------
-    /// Stochastic next hop for `dest` (kInvalidAddress if no route).
+    /// Stochastic next hop for `dest` using the ant exponent betaAnts
+    /// (kInvalidAddress if no route). Serves reactive and proactive ants.
     NodeAddress selectNextHop(NodeAddress dest, bool proactive);
+    /// Stochastic next hop for a *data* packet, using the greedier data
+    /// exponent betaData (kInvalidAddress if no route).
+    NodeAddress nextHopForData(NodeAddress dest);
     /// Pick a random known destination for a proactive ant (or kInvalidAddress).
     NodeAddress randomDestination();
 
