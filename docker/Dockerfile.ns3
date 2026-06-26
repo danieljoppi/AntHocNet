@@ -31,7 +31,7 @@ RUN git clone --depth 1 --branch "${NS3_VERSION}" \
         https://gitlab.com/nsnam/ns-3-dev.git /opt/ns-3 \
  && cd /opt/ns-3 \
  && ./ns3 configure --enable-tests --enable-examples \
-        --enable-modules='wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point' \
+        --enable-modules='wifi;mobility;applications;internet-apps;aodv;olsr;dsdv;flow-monitor;point-to-point' \
  && ./ns3 build
 
 WORKDIR /opt/ns-3
@@ -47,7 +47,7 @@ COPY . .
 RUN make install-ns3 NS3DIR=/opt/ns-3 \
  && cd /opt/ns-3 \
  && ./ns3 configure --enable-tests --enable-examples \
-        --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point' \
+        --enable-modules='anthocnet;wifi;mobility;applications;internet-apps;aodv;olsr;dsdv;flow-monitor;point-to-point' \
  && ./ns3 build \
  && ./test.py -s anthocnet
 

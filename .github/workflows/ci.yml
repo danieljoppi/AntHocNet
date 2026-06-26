@@ -74,7 +74,7 @@ jobs:
         run: |
           cd ns-3
           ./ns3 configure --enable-tests --enable-examples \
-            --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+            --enable-modules='anthocnet;wifi;mobility;applications;internet-apps;aodv;olsr;dsdv;flow-monitor;point-to-point'
       - name: Build
         run: cd ns-3 && ./ns3 build
       - name: Run module test suite (header round-trip + multi-hop delivery)
