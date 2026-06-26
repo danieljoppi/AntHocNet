@@ -13,6 +13,7 @@ int main() {
     m.seqNum    = 70000;          // > 16 bits, exercises the widened field
     m.timeStart = 1.25;
     m.lifeAnt   = 2.0;
+    m.broadcastBudget = 2;
     m.prevHop   = 4;
     m.hops      = 5;
     m.prevSINR  = 12.5;
@@ -35,6 +36,7 @@ int main() {
     CHECK_EQ(out.seqNum, m.seqNum);
     CHECK_NEAR(out.timeStart, m.timeStart, 1e-12);
     CHECK_NEAR(out.lifeAnt, m.lifeAnt, 1e-12);
+    CHECK_EQ(out.broadcastBudget, m.broadcastBudget);
     CHECK_EQ(out.prevHop, m.prevHop);
     CHECK_EQ(out.hops, m.hops);
     CHECK_NEAR(out.prevSINR, m.prevSINR, 1e-12);

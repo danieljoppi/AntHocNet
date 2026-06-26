@@ -53,6 +53,10 @@ struct Config {
     /// (maxIdle = helloInterval * allowedHelloLoss), per [1] §3.5.
     int allowedHelloLoss = 2;
 
+    /// Max times a repair / link-failure ant may be (re)broadcast before being
+    /// dropped, so local repair and failure notifications can't storm ([1] §3.5).
+    int repairMaxBroadcasts = 2;
+
     /// Conservative upper bound on path length for the expanding-ring search.
     int networkDiameter = 30;
 

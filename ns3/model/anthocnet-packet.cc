@@ -25,7 +25,7 @@ double BitsToDouble(uint64_t bits) {
 
 constexpr uint32_t kHopSize = 4 + 8;     // int32 node + double time
 constexpr uint32_t kHelloSize = 4 + 8;   // int32 node + double pheromone
-constexpr uint32_t kFixedSize = 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4 + 4 + 8 + 8;
+constexpr uint32_t kFixedSize = 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4 + 4 + 4 + 8 + 8;
 constexpr uint32_t kCounts = 2 + 2 + 2;
 
 } // namespace
@@ -61,6 +61,7 @@ void AntHeader::Serialize(Buffer::Iterator i) const {
     i.WriteU32(m.seqNum);
     i.WriteU64(DoubleToBits(m.timeStart));
     i.WriteU64(DoubleToBits(m.lifeAnt));
+    i.WriteU32(static_cast<uint32_t>(m.broadcastBudget));
     i.WriteU32(static_cast<uint32_t>(m.prevHop));
     i.WriteU32(static_cast<uint32_t>(m.hops));
     i.WriteU64(DoubleToBits(m.prevSINR));
@@ -94,6 +95,7 @@ uint32_t AntHeader::Deserialize(Buffer::Iterator start) {
     m.seqNum    = i.ReadU32();
     m.timeStart = BitsToDouble(i.ReadU64());
     m.lifeAnt   = BitsToDouble(i.ReadU64());
+    m.broadcastBudget = static_cast<int>(i.ReadU32());
     m.prevHop   = static_cast<int32_t>(i.ReadU32());
     m.hops      = static_cast<int32_t>(i.ReadU32());
     m.prevSINR  = BitsToDouble(i.ReadU64());

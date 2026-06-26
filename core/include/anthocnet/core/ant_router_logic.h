@@ -50,6 +50,12 @@ public:
     /// link-failure notifications to broadcast.
     std::vector<RouteDecision> onMaintenanceTick();
 
+    /// Remove neighbour `n` and, for every destination whose best path it
+    /// carried, broadcast a LinkFail notification with the new best (0 if the
+    /// route is gone). Used by both the maintenance tick and an adapter's
+    /// MAC transmit-failure hook (ADR-0008 detectors A and D converge here).
+    std::vector<RouteDecision> reportNeighborLoss(NodeAddress n);
+
     // --- active sessions (proactive monitoring, item 04) ------------------
     /// Record that this node just originated data for `dest`, making it an
     /// active session that proactive ants will monitor (call from the adapter
@@ -105,6 +111,14 @@ public:
 
 private:
     std::uint32_t nextSeq() { return seqNum_++; }
+
+    /// Turn a forward/notification ant into a Broadcast decision, honouring its
+    /// broadcastBudget: an untracked ant (-1) always broadcasts; a budgeted ant
+    /// decrements and broadcasts while >0, and is Dropped once exhausted.
+    RouteDecision broadcastForward(AntMessage& ant) const;
+    /// Apply a received LinkFail notification and, if it costs this node its own
+    /// best path, return a bounded propagated notification.
+    std::vector<RouteDecision> handleLinkFail(const AntMessage& note, NodeAddress reporter);
 
     NodeAddress     address_;
     Config          config_;

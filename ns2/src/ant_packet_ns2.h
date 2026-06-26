@@ -55,6 +55,7 @@ struct AntPacketHeader {
     uint32_t seqNum_;
     double   timeStart_;
     double   lifeAnt_;
+    int32_t  broadcastBudget_;
     int32_t  prevHop_;
     int32_t  hops_;
     double   prevSINR_;
@@ -87,9 +88,9 @@ struct AntPacketHeader {
 
     /// Simulated over-the-air size: the bytes core::codec would emit.
     int wireSize() const {
-        return 1                                           // wire-version byte
-             + 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4 + 4 + 8 + 8   // fixed fields
-             + 2 + 2 + 2                                    // three counts
+        return 1                                              // wire-version byte
+             + 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4 + 4 + 4 + 8 + 8  // fixed fields
+             + 2 + 2 + 2                                       // three counts
              + visitedCount_ * (4 + 8)
              + historyCount_ * (4 + 8)
              + helloCount_   * (4 + 8);

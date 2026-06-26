@@ -73,14 +73,16 @@ struct Reader {
 constexpr std::size_t kVersionSize = 1;      // offset-0 wire-version byte
 constexpr std::size_t kHopSize     = 4 + 8;  // int32 node + double time
 constexpr std::size_t kHelloSize   = 4 + 8;  // int32 node + double pheromone
-constexpr std::size_t kFixedSize   = 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4 + 4 + 8 + 8;
+// type,dir,src,dst,seq,timeStart,lifeAnt,broadcastBudget,prevHop,hops,prevSINR,pheromone
+constexpr std::size_t kFixedSize   = 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4 + 4 + 4 + 8 + 8;
 constexpr std::size_t kCountFields = 2 + 2 + 2;  // visited, history, hello counts
 
 bool validType(std::uint8_t v) {
     return v == static_cast<std::uint8_t>(AntType::Hello) ||
            v == static_cast<std::uint8_t>(AntType::Reactive) ||
            v == static_cast<std::uint8_t>(AntType::Proactive) ||
-           v == static_cast<std::uint8_t>(AntType::Repair);
+           v == static_cast<std::uint8_t>(AntType::Repair) ||
+           v == static_cast<std::uint8_t>(AntType::LinkFail);
 }
 
 bool validDirection(std::uint8_t v) {
@@ -109,6 +111,7 @@ void serialize(const AntMessage& msg, std::vector<std::uint8_t>& out) {
     putU32(out, msg.seqNum);
     putDouble(out, msg.timeStart);
     putDouble(out, msg.lifeAnt);
+    putI32(out, msg.broadcastBudget);
     putI32(out, msg.prevHop);
     putI32(out, static_cast<std::int32_t>(msg.hops));
     putDouble(out, msg.prevSINR);
@@ -146,6 +149,7 @@ bool deserialize(const std::uint8_t* bytes, std::size_t len, AntMessage& msg) {
     msg.seqNum    = r.u32();
     msg.timeStart = r.dbl();
     msg.lifeAnt   = r.dbl();
+    msg.broadcastBudget = static_cast<int>(r.i32());
     msg.prevHop   = r.i32();
     msg.hops      = static_cast<int>(r.i32());
     msg.prevSINR  = r.dbl();

@@ -22,6 +22,7 @@ core::AntMessage toMessage(const AntPacketHeader& h) {
     m.seqNum    = h.seqNum_;
     m.timeStart = h.timeStart_;
     m.lifeAnt   = h.lifeAnt_;
+    m.broadcastBudget = h.broadcastBudget_;
     m.prevHop   = h.prevHop_;
     m.hops      = h.hops_;
     m.prevSINR  = h.prevSINR_;
@@ -49,6 +50,7 @@ void fromMessage(const core::AntMessage& m, AntPacketHeader& h) {
     h.seqNum_       = m.seqNum;
     h.timeStart_    = m.timeStart;
     h.lifeAnt_      = m.lifeAnt;
+    h.broadcastBudget_ = m.broadcastBudget;
     h.prevHop_      = m.prevHop;
     h.hops_         = m.hops;
     h.prevSINR_     = m.prevSINR;

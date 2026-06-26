@@ -27,27 +27,28 @@ we do *not* negotiate alternative layouts.
 
 | Offset | Field | Type | Bytes | Meaning |
 |-------:|-------|------|------:|---------|
-| 0  | `version`   | `u8`     | 1 | Wire-format version (`kWireVersion`, currently `0x01`). Checked first; a mismatch is rejected in O(1). |
-| 1  | `type`      | `u8`     | 1 | Ant role (`AntType`): `0x01` Hello, `0x02` Reactive, `0x04` Proactive, `0x08` Repair. Validated on decode. |
+| 0  | `version`   | `u8`     | 1 | Wire-format version (`kWireVersion`, currently `0x02`). Checked first; a mismatch is rejected in O(1). |
+| 1  | `type`      | `u8`     | 1 | Ant role (`AntType`): `0x01` Hello, `0x02` Reactive, `0x04` Proactive, `0x08` Repair, `0x10` LinkFail. Validated on decode. |
 | 2  | `direction` | `u8`     | 1 | `AntDirection`: `0x11` Up (forward), `0x12` Down (backward). Validated on decode. |
 | 3  | `src`       | `i32`    | 4 | Originating node. |
 | 7  | `dst`       | `i32`    | 4 | Final destination. |
 | 11 | `seqNum`    | `u32`    | 4 | Per-source ant sequence number (32-bit; see [vs. original](#vs-the-original-implementation)). |
 | 15 | `timeStart` | `f64`    | 8 | Generation time, for trip-time accounting. |
 | 23 | `lifeAnt`   | `f64`    | 8 | Repair-ant lifetime budget (seconds). |
-| 31 | `prevHop`   | `i32`    | 4 | Previous hop (set while a backward ant retraces). *Slated for byte-removal — item 02.* |
-| 35 | `hops`      | `i32`    | 4 | Hop count accumulated so far. *Slated for byte-removal — item 02.* |
-| 39 | `prevSINR`  | `f64`    | 8 | Accumulated path-time term (misnamed; **removed**, not renamed, by [item 02](improvements/02-backward-ant-delay-metric.md)). |
-| 47 | `pheromone` | `f64`    | 8 | Running pheromone estimate on the backward ant. *Slated for byte-removal — item 02.* |
-| 55 | `nVisited`  | `u16`    | 2 | Count of `visited` entries (rejected if `> kMaxVisitedOnWire`). |
-| 57 | `visited[]` | `AntHop` | 12·n | Forward stack: `{ i32 node; f64 time }` per hop. `time` is a **per-hop delta** (seconds) as of [item 02](improvements/02-backward-ant-delay-metric.md); the *byte-removal slim* of the four transient fields above is still pending. |
+| 31 | `broadcastBudget` | `i32` | 4 | Remaining (re)broadcasts allowed (`-1` = untracked); bounds repair/LinkFail propagation ([item 05](improvements/05-link-failure-detection-and-repair.md)). |
+| 35 | `prevHop`   | `i32`    | 4 | Previous hop (set while a backward ant retraces). *Slated for byte-removal — item 02.* |
+| 39 | `hops`      | `i32`    | 4 | Hop count accumulated so far. *Slated for byte-removal — item 02.* |
+| 43 | `prevSINR`  | `f64`    | 8 | Accumulated path-time term (misnamed; **removed**, not renamed, by [item 02](improvements/02-backward-ant-delay-metric.md)). |
+| 51 | `pheromone` | `f64`    | 8 | Running pheromone estimate on the backward ant. *Slated for byte-removal — item 02.* |
+| 59 | `nVisited`  | `u16`    | 2 | Count of `visited` entries (rejected if `> kMaxVisitedOnWire`). |
+| 61 | `visited[]` | `AntHop` | 12·n | Forward stack: `{ i32 node; f64 time }` per hop. `time` is a **per-hop delta** (seconds) as of [item 02](improvements/02-backward-ant-delay-metric.md); the *byte-removal slim* of the four transient fields above is still pending. |
 | …  | `nHistory`  | `u16`    | 2 | Count of `history` entries (rejected if `> kMaxHistoryOnWire`). |
 | …  | `history[]` | `AntHop` | 12·n | Back-ant stack being reinforced: `{ i32 node; f64 time }`. |
-| …  | `nHello`    | `u16`    | 2 | Count of `helloDests` entries (rejected if `> kMaxHelloOnWire`). |
-| …  | `helloDests[]` | `HelloDest` | 12·n | Hello adverts: `{ i32 node; f64 pheromone }` (virtual-pheromone gossip). |
+| …  | `nHello`    | `u16`    | 2 | Count of `helloDests` entries (rejected if `> kMaxHelloOnWire`). Also carries the `LinkFail` payload of `(dest, newBestPheromone)`. |
+| …  | `helloDests[]` | `HelloDest` | 12·n | Hello adverts / LinkFail payload: `{ i32 node; f64 pheromone }`. |
 
-Fixed prefix (`version` through `pheromone`) is **55 bytes**; the three empty
-arrays add 6 bytes of counts, so the minimum frame is **61 bytes**. Worst-case
+Fixed prefix (`version` through `pheromone`) is **59 bytes**; the three empty
+arrays add 6 bytes of counts, so the minimum frame is **65 bytes**. Worst-case
 size is bounded because `nVisited`/`nHistory`/`nHello` are capped on decode
 (`kMaxVisitedOnWire`/`kMaxHistoryOnWire`/`kMaxHelloOnWire`, enforcement added by
 [item 12](improvements/12-codec-hardening-and-threat-model.md)).
@@ -55,25 +56,24 @@ size is bounded because `nVisited`/`nHistory`/`nHello` are capped on decode
 ## Planned wire evolution
 
 `kWireVersion` is a **monotonic counter**, not a fixed value — it was introduced
-at `0x01` by the version-byte change below; each subsequent layout/semantic
-change increments it. Do not hard-code a number; use `current + 1`.
+at `0x01` (item 12) and bumped to `0x02` (item 05); each subsequent
+layout/semantic change increments it. Do not hard-code a number; use `current + 1`.
 
-1. ✅ **Version byte (landed)** — [item 12](improvements/12-codec-hardening-and-threat-model.md),
-   [ADR-0006](adr/0006-on-wire-protocol-version.md). `version : u8` at **offset 0**
-   (`kWireVersion = 0x01`); `deserialize` checks it first and drops unknown
-   values in O(1), then validates the `type`/`direction` enums and clamps the
-   element counts to their protocol caps.
-2. **Backward-ant slim** (pending) —
+1. ✅ **Version byte (landed, 0x01)** — [item 12](improvements/12-codec-hardening-and-threat-model.md),
+   [ADR-0006](adr/0006-on-wire-protocol-version.md). `version : u8` at **offset 0**;
+   `deserialize` checks it first and drops unknown values in O(1), then validates
+   the `type`/`direction` enums and clamps the element counts to their caps.
+2. ✅ **Repair / link-failure (landed, 0x02)** —
+   [item 05](improvements/05-link-failure-detection-and-repair.md). Added
+   `broadcastBudget : i32` and the `AntType::LinkFail` role (the notification
+   reuses the `helloDests` `{node, pheromone}` shape).
+3. **Backward-ant slim** (pending) —
    [item 02](improvements/02-backward-ant-delay-metric.md),
    [ADR-0009](adr/0009-backward-ants-carry-path-not-state.md). The per-hop-delta
    `AntHop.time` semantic (Eq.2 metric fix) **has landed** in the core. Still
    pending: **remove** `prevHop`, `hops`, `prevSINR`, `pheromone` from the
    serialized image (they are recomputed locally; verified that neither adapter
-   consumes them) — −24 fixed bytes — and **bump `kWireVersion` to `0x02`**.
-3. **Repair / link-failure** —
-   [item 05](improvements/05-link-failure-detection-and-repair.md). Add
-   `broadcastBudget` and the `AntType::LinkFail` role (the notification reuses the
-   `helloDests` `{node, pheromone}` shape).
+   consumes them) — −24 fixed bytes — and **bump `kWireVersion` to `0x03`**.
 
 ### Target layout after items 12 + 02
 

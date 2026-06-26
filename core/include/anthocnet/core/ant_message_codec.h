@@ -23,7 +23,9 @@ namespace codec {
 /// On-wire format version, written at offset 0 of every frame and checked
 /// before any other field (ADR-0006). Bump on any layout/semantic change.
 /// Both adapter headers must serialize this same value.
-constexpr std::uint8_t kWireVersion = 0x01;
+/// 0x01: version byte + bounds/enum enforcement (item 12).
+/// 0x02: + AntMessage::broadcastBudget field, AntType::LinkFail (item 05).
+constexpr std::uint8_t kWireVersion = 0x02;
 
 /// Protocol bounds enforced on *decode* of untrusted input, mirroring the
 /// Config defaults so the codec stays standalone (golden rule #5). A frame

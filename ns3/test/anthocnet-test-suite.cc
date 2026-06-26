@@ -43,6 +43,7 @@ public:
         m.seqNum = 70000;       // > 16 bits
         m.timeStart = 1.25;
         m.lifeAnt = 2.0;
+        m.broadcastBudget = 2;
         m.prevHop = 4;
         m.hops = 5;
         m.prevSINR = 12.5;
@@ -68,6 +69,7 @@ public:
         NS_TEST_ASSERT_MSG_EQ(r.seqNum, 70000u, "seqNum");
         NS_TEST_ASSERT_MSG_EQ_TOL(r.timeStart, 1.25, 1e-9, "timeStart");
         NS_TEST_ASSERT_MSG_EQ(r.hops, 5, "hops");
+        NS_TEST_ASSERT_MSG_EQ(r.broadcastBudget, 2, "broadcastBudget");
         NS_TEST_ASSERT_MSG_EQ(r.visited.size(), 3u, "visited size");
         NS_TEST_ASSERT_MSG_EQ(r.visited[2].node, 7, "visited node");
         NS_TEST_ASSERT_MSG_EQ_TOL(r.visited[1].time, 0.01, 1e-9, "visited time");

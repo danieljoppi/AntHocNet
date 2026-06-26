@@ -309,12 +309,22 @@ void AntHocNetAgent::linkFailed(Packet* p) {
     struct hdr_ip* ih = HDR_IP(p);
     const nsaddr_t broken = ch->next_hop_;
 
-    if (logic_) logic_->loseNeighbor(broken);
+    // MAC transmit-failure detector (ADR-0008 detector D): remove the dead
+    // neighbour and broadcast any link-failure notifications it triggers.
+    if (logic_) {
+        for (const RouteDecision& d : logic_->reportNeighborLoss(broken)) {
+            if (d.action == RouteAction::Broadcast) {
+                sendAnt(d.message, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
+            }
+        }
+    }
 
     if (ch->ptype() != PT_ANT) {
         const nsaddr_t dest = ih->daddr();
         enqueue(p, dest);
         if (logic_) {
+            // Bounded local repair: createForwardAnt sets broadcastBudget for
+            // Repair ants so the core caps re-broadcasts.
             AntMessage rrfa = logic_->createForwardAnt(AntType::Repair, dest);
             rrfa.lifeAnt = AHN_LIFE_ANT;
             sendAnt(rrfa, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
