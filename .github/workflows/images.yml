@@ -1,12 +1,13 @@
 name: Images
 
-# Build one container image per supported simulator version. On a manual run or
-# a PR they are built only (validation — this is what actually compiles the NS-2
-# adapter); on the default branch they are also pushed to GHCR.
+# Build and publish the container images — a plain simulator (no AntHocNet) and
+# the same simulator + AntHocNet, one of each per supported version. These run
+# on merges to the default branch (and on manual dispatch), NOT on PRs: the
+# image builds (especially the legacy ns-2 tree) are slow and are refined
+# post-merge, so they never gate a PR. A manual dispatch on a branch builds
+# only (no push) for validation.
 on:
   workflow_dispatch:
-  pull_request:
-    paths: ['docker/**', '.github/workflows/images.yml', 'core/**', 'ns2/**', 'ns3/**']
   push:
     branches: [main, master]
     paths: ['docker/**', '.github/workflows/images.yml', 'core/**', 'ns2/**', 'ns3/**']
@@ -15,34 +16,47 @@ permissions:
   contents: read
   packages: write
 
+env:
+  PUSH: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
+
 jobs:
   ns3:
-    name: ns-3 image (${{ matrix.version }})
+    name: ns-3 images (${{ matrix.version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version: ['3.41', '3.42']   # supported ns-3 releases (CI matrix)
+        version: ['3.41', '3.42']   # supported ns-3 releases
     steps:
       - uses: actions/checkout@v4
       - name: Log in to GHCR
-        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+        if: ${{ env.PUSH == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build (and push on default branch)
+      - name: Plain ns-3 (no AntHocNet)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile.ns3
+          target: base
+          build-args: NS3_VERSION=ns-${{ matrix.version }}
+          tags: ghcr.io/${{ github.repository_owner }}/ns3:${{ matrix.version }}
+          push: ${{ env.PUSH == 'true' }}
+      - name: ns-3 + AntHocNet
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ns3
+          target: anthocnet
           build-args: NS3_VERSION=ns-${{ matrix.version }}
           tags: ghcr.io/${{ github.repository_owner }}/anthocnet-ns3:${{ matrix.version }}
-          push: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+          push: ${{ env.PUSH == 'true' }}
 
   ns2:
-    name: ns-2 image (${{ matrix.version }})
+    name: ns-2 images (${{ matrix.version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -51,17 +65,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Log in to GHCR
-        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+        if: ${{ env.PUSH == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build (and push on default branch)
+      - name: Plain ns-2 (no AntHocNet)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile.ns2
+          target: base
+          build-args: NS2_VERSION=${{ matrix.version }}
+          tags: ghcr.io/${{ github.repository_owner }}/ns2:${{ matrix.version }}
+          push: ${{ env.PUSH == 'true' }}
+      - name: ns-2 + AntHocNet
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ns2
+          target: anthocnet
           build-args: NS2_VERSION=${{ matrix.version }}
           tags: ghcr.io/${{ github.repository_owner }}/anthocnet-ns2:${{ matrix.version }}
-          push: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+          push: ${{ env.PUSH == 'true' }}

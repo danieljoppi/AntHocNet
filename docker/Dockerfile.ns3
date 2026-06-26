@@ -1,32 +1,45 @@
-# Reproducible build environment for the AntHocNet NS-3 module — one image per
-# supported ns-3 release. Mirrors the CI `ns3-build` job: it fetches a pinned
-# ns-3, installs the additive module, configures with the benchmark module set,
-# builds, and runs the module test suite, so the published image is known-good.
+# AntHocNet NS-3 images — two stages so we publish both a plain ns-3 (no
+# AntHocNet) and ns-3 + the AntHocNet module, one of each per supported release.
 #
-#   docker build -f docker/Dockerfile.ns3 --build-arg NS3_VERSION=ns-3.42 \
-#                -t anthocnet-ns3:3.42 .
-#   docker run --rm anthocnet-ns3:3.42                 # runs anthocnet-example
-#   docker run --rm anthocnet-ns3:3.42 ./test.py -s anthocnet
+#   # plain ns-3 (no AntHocNet):
+#   docker build -f docker/Dockerfile.ns3 --target base \
+#                --build-arg NS3_VERSION=ns-3.42 -t ns3:3.42 .
+#   # ns-3 + AntHocNet:
+#   docker build -f docker/Dockerfile.ns3 \
+#                --build-arg NS3_VERSION=ns-3.42 -t anthocnet-ns3:3.42 .
 #
 ARG UBUNTU=22.04
-FROM ubuntu:${UBUNTU}
 
-# Default to the newest supported release; override per build.
+# --- base: plain ns-3, no AntHocNet ----------------------------------------
+# A clean simulator build with the comparison protocols (AODV/OLSR/DSDV/…) for
+# running baselines without our protocol.
+FROM ubuntu:${UBUNTU} AS base
+
 ARG NS3_VERSION=ns-3.42
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates git cmake g++ python3 ninja-build \
+        ca-certificates git make cmake g++ python3 ninja-build \
     && rm -rf /var/lib/apt/lists/*
 
-# AntHocNet sources (build context is the repo root).
+RUN git clone --depth 1 --branch "${NS3_VERSION}" \
+        https://gitlab.com/nsnam/ns-3-dev.git /opt/ns-3 \
+ && cd /opt/ns-3 \
+ && ./ns3 configure --enable-tests --enable-examples \
+        --enable-modules='wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point' \
+ && ./ns3 build
+
+WORKDIR /opt/ns-3
+CMD ["bash"]
+
+# --- anthocnet: base + the AntHocNet module --------------------------------
+# Adds the additive module and reconfigures/rebuilds; mirrors the CI ns3-build.
+FROM base AS anthocnet
+
 WORKDIR /opt/anthocnet
 COPY . .
 
-# Pinned ns-3 + module install + configure + build + module test suite.
-RUN git clone --depth 1 --branch "${NS3_VERSION}" \
-        https://gitlab.com/nsnam/ns-3-dev.git /opt/ns-3 \
- && make install-ns3 NS3DIR=/opt/ns-3 \
+RUN make install-ns3 NS3DIR=/opt/ns-3 \
  && cd /opt/ns-3 \
  && ./ns3 configure --enable-tests --enable-examples \
         --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point' \
