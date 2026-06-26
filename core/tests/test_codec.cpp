@@ -55,5 +55,43 @@ int main() {
     CHECK(!codec::deserialize(bytes.data(), bytes.size() - 1, bad));
     CHECK(!codec::deserialize(bytes.data(), 3, bad));
 
+    // Item 12 — trust-boundary hardening on the untrusted decode path.
+
+    // A frame whose offset-0 version byte is wrong is rejected up front.
+    {
+        std::vector<std::uint8_t> v = bytes;
+        v[0] = static_cast<std::uint8_t>(codec::kWireVersion + 1);
+        AntMessage out2;
+        CHECK(!codec::deserialize(v, out2));
+    }
+
+    // An out-of-range type / direction byte is rejected.
+    {
+        std::vector<std::uint8_t> v = bytes;
+        v[1] = 0x7F;  // not a valid AntType
+        AntMessage out2;
+        CHECK(!codec::deserialize(v, out2));
+    }
+    {
+        std::vector<std::uint8_t> v = bytes;
+        v[2] = 0x00;  // not a valid AntDirection
+        AntMessage out2;
+        CHECK(!codec::deserialize(v, out2));
+    }
+
+    // A count above the protocol cap is rejected even when the buffer backs it
+    // (regression for golden rule #5 at the wire boundary).
+    {
+        AntMessage big;
+        big.type      = AntType::Reactive;
+        big.direction = AntDirection::Up;
+        for (std::size_t i = 0; i <= codec::kMaxVisitedOnWire; ++i) {
+            big.visited.push_back({static_cast<NodeAddress>(i), 0.0});
+        }
+        std::vector<std::uint8_t> v = codec::serialize(big);
+        AntMessage out2;
+        CHECK(!codec::deserialize(v, out2));
+    }
+
     return RUN_TESTS();
 }

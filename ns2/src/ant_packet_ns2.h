@@ -47,6 +47,7 @@ struct AntPacketHeader {
     static const int kMaxPath  = 100;
     static const int kMaxHello = 10;
 
+    uint8_t  version_;       ///< on-wire format version (core::codec::kWireVersion)
     uint8_t  antType_;
     uint8_t  antDirection_;
     int32_t  src_;
@@ -86,7 +87,8 @@ struct AntPacketHeader {
 
     /// Simulated over-the-air size: the bytes core::codec would emit.
     int wireSize() const {
-        return 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4 + 4 + 8 + 8   // fixed fields
+        return 1                                           // wire-version byte
+             + 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4 + 4 + 8 + 8   // fixed fields
              + 2 + 2 + 2                                    // three counts
              + visitedCount_ * (4 + 8)
              + historyCount_ * (4 + 8)

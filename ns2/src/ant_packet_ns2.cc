@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "anthocnet/core/ant_message_codec.h"
+
 int AntPacketHeader::offset_;
 
 namespace anthocnet {
@@ -39,6 +41,7 @@ core::AntMessage toMessage(const AntPacketHeader& h) {
 }
 
 void fromMessage(const core::AntMessage& m, AntPacketHeader& h) {
+    h.version_      = core::codec::kWireVersion;
     h.antType_      = static_cast<uint8_t>(m.type);
     h.antDirection_ = static_cast<uint8_t>(m.direction);
     h.src_          = m.src;

@@ -12,12 +12,14 @@ All multi-byte integers and `double`s are **little-endian**. Variable arrays are
 [ADR-0006](adr/0006-on-wire-protocol-version.md) for why we version it and why
 we do *not* negotiate alternative layouts.
 
-> **Status.** The table below is the layout **the codec emits today**. Three
-> decided changes are not yet implemented and are listed under
-> [planned evolution](#planned-wire-evolution): the offset-0 version byte
-> ([item 12](improvements/12-codec-hardening-and-threat-model.md), ADR-0006), the
-> backward-ant slim + per-hop-delta time
-> ([item 02](improvements/02-backward-ant-delay-metric.md), ADR-0009), and the
+> **Status.** The table below is the layout **the codec emits today**. The
+> offset-0 version byte + bounds/enum enforcement
+> ([item 12](improvements/12-codec-hardening-and-threat-model.md), ADR-0006) and
+> the per-hop-delta `AntHop.time` semantic
+> ([item 02](improvements/02-backward-ant-delay-metric.md)) have **landed**. Two
+> decided changes remain under [planned evolution](#planned-wire-evolution): the
+> backward-ant *byte slim* (removing the four transient fields,
+> [item 02](improvements/02-backward-ant-delay-metric.md)/ADR-0009) and the
 > repair/link-failure additions ([item 05](improvements/05-link-failure-detection-and-repair.md)).
 > Keep this section in sync with the code as each lands.
 
@@ -25,49 +27,49 @@ we do *not* negotiate alternative layouts.
 
 | Offset | Field | Type | Bytes | Meaning |
 |-------:|-------|------|------:|---------|
-| 0  | `type`      | `u8`     | 1 | Ant role (`AntType`): `0x01` Hello, `0x02` Reactive, `0x04` Proactive, `0x08` Repair. |
-| 1  | `direction` | `u8`     | 1 | `AntDirection`: `0x11` Up (forward), `0x12` Down (backward). |
-| 2  | `src`       | `i32`    | 4 | Originating node. |
-| 6  | `dst`       | `i32`    | 4 | Final destination. |
-| 10 | `seqNum`    | `u32`    | 4 | Per-source ant sequence number (32-bit; see [vs. original](#vs-the-original-implementation)). |
-| 14 | `timeStart` | `f64`    | 8 | Generation time, for trip-time accounting. |
-| 22 | `lifeAnt`   | `f64`    | 8 | Repair-ant lifetime budget (seconds). |
-| 30 | `prevHop`   | `i32`    | 4 | Previous hop (set while a backward ant retraces). *Slated for removal — item 02.* |
-| 34 | `hops`      | `i32`    | 4 | Hop count accumulated so far. *Slated for removal — item 02.* |
-| 38 | `prevSINR`  | `f64`    | 8 | Accumulated time/cost term (misnamed; **removed**, not renamed, by [item 02](improvements/02-backward-ant-delay-metric.md)). |
-| 46 | `pheromone` | `f64`    | 8 | Running pheromone estimate on the backward ant. *Slated for removal — item 02.* |
-| 54 | `nVisited`  | `u16`    | 2 | Count of `visited` entries. |
-| 56 | `visited[]` | `AntHop` | 12·n | Forward stack: `{ i32 node; f64 time }` per hop. `time` is a **per-hop delta** (seconds) as of [item 02](improvements/02-backward-ant-delay-metric.md); the *byte-removal slim* of the four transient fields above is still pending (lands with the version pass). |
-| …  | `nHistory`  | `u16`    | 2 | Count of `history` entries. |
+| 0  | `version`   | `u8`     | 1 | Wire-format version (`kWireVersion`, currently `0x01`). Checked first; a mismatch is rejected in O(1). |
+| 1  | `type`      | `u8`     | 1 | Ant role (`AntType`): `0x01` Hello, `0x02` Reactive, `0x04` Proactive, `0x08` Repair. Validated on decode. |
+| 2  | `direction` | `u8`     | 1 | `AntDirection`: `0x11` Up (forward), `0x12` Down (backward). Validated on decode. |
+| 3  | `src`       | `i32`    | 4 | Originating node. |
+| 7  | `dst`       | `i32`    | 4 | Final destination. |
+| 11 | `seqNum`    | `u32`    | 4 | Per-source ant sequence number (32-bit; see [vs. original](#vs-the-original-implementation)). |
+| 15 | `timeStart` | `f64`    | 8 | Generation time, for trip-time accounting. |
+| 23 | `lifeAnt`   | `f64`    | 8 | Repair-ant lifetime budget (seconds). |
+| 31 | `prevHop`   | `i32`    | 4 | Previous hop (set while a backward ant retraces). *Slated for byte-removal — item 02.* |
+| 35 | `hops`      | `i32`    | 4 | Hop count accumulated so far. *Slated for byte-removal — item 02.* |
+| 39 | `prevSINR`  | `f64`    | 8 | Accumulated path-time term (misnamed; **removed**, not renamed, by [item 02](improvements/02-backward-ant-delay-metric.md)). |
+| 47 | `pheromone` | `f64`    | 8 | Running pheromone estimate on the backward ant. *Slated for byte-removal — item 02.* |
+| 55 | `nVisited`  | `u16`    | 2 | Count of `visited` entries (rejected if `> kMaxVisitedOnWire`). |
+| 57 | `visited[]` | `AntHop` | 12·n | Forward stack: `{ i32 node; f64 time }` per hop. `time` is a **per-hop delta** (seconds) as of [item 02](improvements/02-backward-ant-delay-metric.md); the *byte-removal slim* of the four transient fields above is still pending. |
+| …  | `nHistory`  | `u16`    | 2 | Count of `history` entries (rejected if `> kMaxHistoryOnWire`). |
 | …  | `history[]` | `AntHop` | 12·n | Back-ant stack being reinforced: `{ i32 node; f64 time }`. |
-| …  | `nHello`    | `u16`    | 2 | Count of `helloDests` entries. |
+| …  | `nHello`    | `u16`    | 2 | Count of `helloDests` entries (rejected if `> kMaxHelloOnWire`). |
 | …  | `helloDests[]` | `HelloDest` | 12·n | Hello adverts: `{ i32 node; f64 pheromone }` (virtual-pheromone gossip). |
 
-Fixed prefix (`type` through `pheromone`) is **54 bytes**; the three empty arrays
-add 6 bytes of counts, so the minimum frame is **60 bytes**. Worst-case size is
-bounded because `nVisited`/`nHistory` are capped at `Config::maxPathLength` /
-`maxHistory` on decode (enforcement added by
+Fixed prefix (`version` through `pheromone`) is **55 bytes**; the three empty
+arrays add 6 bytes of counts, so the minimum frame is **61 bytes**. Worst-case
+size is bounded because `nVisited`/`nHistory`/`nHello` are capped on decode
+(`kMaxVisitedOnWire`/`kMaxHistoryOnWire`/`kMaxHelloOnWire`, enforcement added by
 [item 12](improvements/12-codec-hardening-and-threat-model.md)).
 
 ## Planned wire evolution
 
-These are **decided** (ADR-backed) but not yet in the codec. `kWireVersion` is a
-**monotonic counter**, not a fixed value — whichever wire change lands first
-introduces the constant; each subsequent change increments it. Do not hard-code a
-number; use `current + 1`.
+`kWireVersion` is a **monotonic counter**, not a fixed value — it was introduced
+at `0x01` by the version-byte change below; each subsequent layout/semantic
+change increments it. Do not hard-code a number; use `current + 1`.
 
-1. **Version byte** — [item 12](improvements/12-codec-hardening-and-threat-model.md),
-   [ADR-0006](adr/0006-on-wire-protocol-version.md). Prepend `version : u8` at
-   **offset 0** (shifting every field +1). `deserialize` checks it first and
-   drops unknown values in O(1).
-2. **Backward-ant slim** —
+1. ✅ **Version byte (landed)** — [item 12](improvements/12-codec-hardening-and-threat-model.md),
+   [ADR-0006](adr/0006-on-wire-protocol-version.md). `version : u8` at **offset 0**
+   (`kWireVersion = 0x01`); `deserialize` checks it first and drops unknown
+   values in O(1), then validates the `type`/`direction` enums and clamps the
+   element counts to their protocol caps.
+2. **Backward-ant slim** (pending) —
    [item 02](improvements/02-backward-ant-delay-metric.md),
    [ADR-0009](adr/0009-backward-ants-carry-path-not-state.md). The per-hop-delta
    `AntHop.time` semantic (Eq.2 metric fix) **has landed** in the core. Still
    pending: **remove** `prevHop`, `hops`, `prevSINR`, `pheromone` from the
    serialized image (they are recomputed locally; verified that neither adapter
-   consumes them) — −24 fixed bytes. Bundled with the version byte above since it
-   touches the same wire sites.
+   consumes them) — −24 fixed bytes — and **bump `kWireVersion` to `0x02`**.
 3. **Repair / link-failure** —
    [item 05](improvements/05-link-failure-detection-and-repair.md). Add
    `broadcastBudget` and the `AntType::LinkFail` role (the notification reuses the
