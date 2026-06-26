@@ -12,15 +12,22 @@
 # that pull in the module's public headers still resolve anthocnet/core/*.
 include_directories($<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/core/include>)
 
-# ns-3 changed Ipv4RoutingProtocol::RouteInput's callbacks from by-value to
-# const-reference in ns-3.37. NS3_VER is set by ns-3 (e.g. "3.41"); on releases
-# <= 3.36 define a macro so the override is declared with by-value callbacks.
-# Inherited by the examples/ subdirectory and the test target, so every TU that
-# includes the routing-protocol header sees the same signature.
+# Adapt to ns-3 API drift by release. NS3_VER is set by ns-3 (e.g. "3.41");
+# anything non-numeric (e.g. "3-dev") falls through to the modern defaults.
+# These definitions are directory-scoped, so the library, the examples/
+# subdirectory and the test target all see a consistent API.
+#  - RouteInput callbacks went from by-value to const-reference in ns-3.37.
+#  - TestSuite/TestCase enums became scoped (enum class) in ns-3.42, and the
+#    deprecated unscoped aliases were removed in ns-3.47.
 if(NS3_VER MATCHES "^3\\.([0-9]+)")
   if(CMAKE_MATCH_1 LESS 37)
     add_compile_definitions(ANTHOCNET_NS3_ROUTEINPUT_BYVALUE)
   endif()
+  if(CMAKE_MATCH_1 GREATER_EQUAL 42)
+    add_compile_definitions(ANTHOCNET_NS3_SCOPED_TEST_ENUMS)
+  endif()
+else()
+  add_compile_definitions(ANTHOCNET_NS3_SCOPED_TEST_ENUMS)
 endif()
 
 # Examples are defined in examples/CMakeLists.txt, which build_lib descends into
