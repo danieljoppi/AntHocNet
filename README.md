@@ -94,6 +94,17 @@ History of the work is in the per-phase commits; design rationale is in
 - [benchmarks.md](docs/benchmarks.md) — AntHocNet vs AODV/OLSR/DSDV (auto-updated)
 - [cross-validation.md](docs/cross-validation.md) — NS-2 vs NS-3 behaviour check
 
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [docs/architecture.md](docs/architecture.md) | Design, the core/adapter split, and the decision flow. |
+| [docs/porting-notes.md](docs/porting-notes.md) | Bugs fixed in extraction, NS-2 patch anchors, wire format, version caveats. |
+| [docs/adr/](docs/adr) | Architecture Decision Records — the "why" behind the structure. |
+| [CONTEXT.md](CONTEXT.md) | Project orientation: domain background, repo map, current state, glossary, open questions. |
+| [AGENTS.md](AGENTS.md) | Build/verify/conventions and invariants for contributors and AI agents. |
+| [ns2/README.md](ns2/README.md) · [ns3/README.md](ns3/README.md) | Per-adapter install/run details. |
+
 ## License
 
 See [LICENSE](LICENSE). Original implementation by Daniel Henrique Joppi.
