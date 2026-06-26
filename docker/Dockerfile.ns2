@@ -1,0 +1,54 @@
+# Reproducible build of ns-2.3x + the AntHocNet source patch — one image per
+# supported ns-2 release. This is the ONLY place the NS-2 *adapter* is actually
+# compiled (CI otherwise validates just the patch apply/revert), so it closes the
+# ns-2 compile-coverage gap and doubles as a citeable reproduction environment.
+#
+#   docker build -f docker/Dockerfile.ns2 --build-arg NS2_VERSION=2.35 \
+#                -t anthocnet-ns2:2.35 .
+#   docker run --rm -it anthocnet-ns2:2.35     # `ns` with the AntHocNet agent
+#
+# ns-2 is a legacy tree that does not build on current toolchains, so we pin
+# Ubuntu 18.04 (gcc-7) and apply the well-known modern-gcc fix. The shared core/
+# is C++14, so the AntHocNet objects are compiled with -std=gnu++14 (injected
+# into Makefile.in so it survives configure regeneration), while the stock ns-2
+# objects keep their default flags.
+FROM ubuntu:18.04
+
+# Default to the newest supported release; override per build (2.34 / 2.35).
+ARG NS2_VERSION=2.35
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl make gcc g++ autoconf automake \
+        libxmu-dev libxt-dev libx11-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt
+RUN curl -fSL -o ns-allinone.tar.gz \
+      "https://sourceforge.net/projects/nsnam/files/allinone/ns-allinone-${NS2_VERSION}/ns-allinone-${NS2_VERSION}.tar.gz/download" \
+ && tar xf ns-allinone.tar.gz \
+ && rm ns-allinone.tar.gz
+
+ENV NS2ALL=/opt/ns-allinone-${NS2_VERSION}
+ENV NS2DIR=/opt/ns-allinone-${NS2_VERSION}/ns-${NS2_VERSION}
+
+# Well-known modern-gcc fix: the templated erase() needs an explicit this->.
+RUN sed -i 's/\berase(baseMap::begin(), baseMap::end())/this->erase(baseMap::begin(), baseMap::end())/' \
+      "$NS2DIR/linkstate/ls.h"
+
+# Build the stock ns-allinone tree (tcl/otcl/tclcl/ns) with default flags.
+RUN cd "$NS2ALL" && ./install
+
+# Apply the AntHocNet patch + sources, give the ns-2 build C++14 (the shared
+# core needs it — only the new AntHocNet objects are recompiled), then rebuild.
+WORKDIR /opt/anthocnet
+COPY . .
+RUN make install-ns2 NS2DIR="$NS2DIR" \
+ && sed -i 's#^\(CCOPT[[:space:]]*=.*\)#\1 -std=gnu++14#' "$NS2DIR/Makefile.in" \
+ && cd "$NS2DIR" \
+ && ./configure \
+ && make \
+ && test -x ./ns
+
+WORKDIR /opt/ns-allinone-${NS2_VERSION}/ns-${NS2_VERSION}
+CMD ["bash"]

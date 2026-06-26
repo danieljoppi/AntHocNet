@@ -1,0 +1,37 @@
+# Reproducible build environment for the AntHocNet NS-3 module — one image per
+# supported ns-3 release. Mirrors the CI `ns3-build` job: it fetches a pinned
+# ns-3, installs the additive module, configures with the benchmark module set,
+# builds, and runs the module test suite, so the published image is known-good.
+#
+#   docker build -f docker/Dockerfile.ns3 --build-arg NS3_VERSION=ns-3.42 \
+#                -t anthocnet-ns3:3.42 .
+#   docker run --rm anthocnet-ns3:3.42                 # runs anthocnet-example
+#   docker run --rm anthocnet-ns3:3.42 ./test.py -s anthocnet
+#
+ARG UBUNTU=22.04
+FROM ubuntu:${UBUNTU}
+
+# Default to the newest supported release; override per build.
+ARG NS3_VERSION=ns-3.42
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates git cmake g++ python3 ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+# AntHocNet sources (build context is the repo root).
+WORKDIR /opt/anthocnet
+COPY . .
+
+# Pinned ns-3 + module install + configure + build + module test suite.
+RUN git clone --depth 1 --branch "${NS3_VERSION}" \
+        https://gitlab.com/nsnam/ns-3-dev.git /opt/ns-3 \
+ && make install-ns3 NS3DIR=/opt/ns-3 \
+ && cd /opt/ns-3 \
+ && ./ns3 configure --enable-tests --enable-examples \
+        --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point' \
+ && ./ns3 build \
+ && ./test.py -s anthocnet
+
+WORKDIR /opt/ns-3
+CMD ["./ns3", "run", "anthocnet-example"]

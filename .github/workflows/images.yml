@@ -1,0 +1,67 @@
+name: Images
+
+# Build one container image per supported simulator version. On a manual run or
+# a PR they are built only (validation — this is what actually compiles the NS-2
+# adapter); on the default branch they are also pushed to GHCR.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['docker/**', '.github/workflows/images.yml', 'core/**', 'ns2/**', 'ns3/**']
+  push:
+    branches: [main, master]
+    paths: ['docker/**', '.github/workflows/images.yml', 'core/**', 'ns2/**', 'ns3/**']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  ns3:
+    name: ns-3 image (${{ matrix.version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['3.41', '3.42']   # supported ns-3 releases (CI matrix)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build (and push on default branch)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ns3
+          build-args: NS3_VERSION=ns-${{ matrix.version }}
+          tags: ghcr.io/${{ github.repository_owner }}/anthocnet-ns3:${{ matrix.version }}
+          push: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+
+  ns2:
+    name: ns-2 image (${{ matrix.version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['2.34', '2.35']   # supported ns-2 releases
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build (and push on default branch)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ns2
+          build-args: NS2_VERSION=${{ matrix.version }}
+          tags: ghcr.io/${{ github.repository_owner }}/anthocnet-ns2:${{ matrix.version }}
+          push: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
