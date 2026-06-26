@@ -29,8 +29,16 @@
 #define AHN_PROACTIVE_INTERVAL  10.0
 #define AHN_NETWORK_DIAMETER    30
 #define AHN_LIFE_ANT            2.0
+#define AHN_QUEUE_MAX           64      // total pending packets cap (B1)
+#define AHN_QUEUE_TIMEOUT       30.0    // seconds a packet may wait for a route
 
 class AntHocNetAgent;
+
+/// One pending data packet awaiting a route, with its enqueue time.
+struct AhnQueued {
+    Packet* pkt;
+    double  enqueued;
+};
 
 /// Periodic hello-ant beacon.
 class AhnHelloTimer : public Handler {
@@ -78,6 +86,7 @@ protected:
     // pending queue
     void enqueue(Packet* p, nsaddr_t dest);
     void flushQueue(nsaddr_t dest);
+    void purgeQueue();  // drop entries older than AHN_QUEUE_TIMEOUT
 
     // timer actions
     void sendHello();
@@ -111,7 +120,8 @@ private:
     double proactive_bcast_prob_;
     double session_ttl_;
 
-    std::map<nsaddr_t, std::list<Packet*> > queue_;
+    std::map<nsaddr_t, std::list<AhnQueued> > queue_;
+    int queueCount_;  // total pending packets across all destinations
 };
 
 #endif // ANTHOCNET_NS2_AHN_ROUTER_H

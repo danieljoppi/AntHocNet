@@ -23,6 +23,7 @@
 
 #include "ns3/anthocnet-packet.h"
 #include "ns3/anthocnet-helper.h"
+#include "ns3/anthocnet-routing-protocol.h"
 
 using namespace ns3;
 using ::anthocnet::core::AntMessage;
@@ -144,6 +145,31 @@ private:
     uint32_t m_rxBytes;
 };
 
+// B3 — address mapping never aliases the core's kInvalidAddress sentinel.
+class AddressMappingTestCase : public TestCase
+{
+public:
+    AddressMappingTestCase() : TestCase("ToCore/ToIpv4 address mapping (B3)") {}
+
+    void DoRun() override {
+        using ns3::anthocnet::RoutingProtocol;
+        const ::anthocnet::core::NodeAddress invalid = ::anthocnet::core::kInvalidAddress;
+
+        // The limited broadcast must never collide with "no route" (-1).
+        NS_TEST_ASSERT_MSG_NE(RoutingProtocol::ToCore(Ipv4Address("255.255.255.255")),
+                              invalid, "broadcast aliases kInvalidAddress");
+
+        // MSB-set / arbitrary unicast addresses round-trip without aliasing it.
+        const char* addrs[] = {"128.0.0.1", "200.1.2.3", "10.1.0.5", "192.168.1.1"};
+        for (const char* s : addrs) {
+            Ipv4Address a(s);
+            ::anthocnet::core::NodeAddress core = RoutingProtocol::ToCore(a);
+            NS_TEST_ASSERT_MSG_NE(core, invalid, "unicast aliases kInvalidAddress");
+            NS_TEST_ASSERT_MSG_EQ(RoutingProtocol::ToIpv4(core), a, "round-trip");
+        }
+    }
+};
+
 class AntHocNetTestSuite : public TestSuite
 {
 public:
@@ -152,6 +178,7 @@ public:
     // Duration::QUICK forms only exist from ns-3.42.
     AntHocNetTestSuite() : TestSuite("anthocnet", UNIT) {
         AddTestCase(new AntHeaderRoundTripTestCase(), TestCase::QUICK);
+        AddTestCase(new AddressMappingTestCase(), TestCase::QUICK);
         AddTestCase(new AntHocNetDeliveryTestCase(), TestCase::QUICK);
     }
 };

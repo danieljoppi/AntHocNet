@@ -56,15 +56,23 @@ protected:
     void DoInitialize() override;
     void DoDispose() override;
 
-private:
-    // address mapping between core (int32) and ns-3
+public:
+    // Address mapping between core (int32 NodeAddress == the IP, opaque) and
+    // ns-3 (ADR-0011). Broadcast is a RouteAction, never an identity, so the
+    // all-ones address must never reach the core as a peer; guard it so it
+    // cannot alias kInvalidAddress (-1 == 0xFFFFFFFF). MSB-set unicast IPs map
+    // to negative ints and round-trip fine — only the all-ones value collides.
+    // Public so the test suite can assert the round-trip / sentinel guard.
     static ::anthocnet::core::NodeAddress ToCore(Ipv4Address a) {
-        return static_cast<::anthocnet::core::NodeAddress>(a.Get());
+        const uint32_t raw = a.Get();
+        if (raw == 0xFFFFFFFFu) return 0;  // limited broadcast: not an identity
+        return static_cast<::anthocnet::core::NodeAddress>(raw);
     }
     static Ipv4Address ToIpv4(::anthocnet::core::NodeAddress a) {
         return Ipv4Address(static_cast<uint32_t>(a));
     }
 
+private:
     void Start();
     Ptr<Ipv4Route> LoopbackRoute(const Ipv4Header& header, Ptr<NetDevice> oif) const;
     bool IsMyOwnAddress(Ipv4Address src) const;

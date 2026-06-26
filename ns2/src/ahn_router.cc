@@ -60,7 +60,8 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
       enable_proactive_(1),
       enable_diffusion_(1),
       proactive_bcast_prob_(0.1),
-      session_ttl_(5.0) {
+      session_ttl_(5.0),
+      queueCount_(0) {
     bind("num_nodes_", &num_nodes_);
     bind("num_nodes_x_", &num_nodes_x_);
     bind("num_nodes_y_", &num_nodes_y_);
@@ -286,19 +287,65 @@ void AntHocNetAgent::forwardData(Packet* p, nsaddr_t nextHop) {
 // --- pending queue ----------------------------------------------------------
 
 void AntHocNetAgent::enqueue(Packet* p, nsaddr_t dest) {
-    queue_[dest].push_back(p);
+    // Bound the total queue (B1, parity with the NS-3 RequestQueue): when full,
+    // drop the globally-oldest pending packet so memory can't grow without limit.
+    if (queueCount_ >= AHN_QUEUE_MAX) {
+        std::map<nsaddr_t, std::list<AhnQueued> >::iterator oldestList = queue_.end();
+        double oldestTime = 0.0;
+        for (std::map<nsaddr_t, std::list<AhnQueued> >::iterator it = queue_.begin();
+             it != queue_.end(); ++it) {
+            if (it->second.empty()) continue;  // front is the oldest in a FIFO list
+            if (oldestList == queue_.end() || it->second.front().enqueued < oldestTime) {
+                oldestList = it;
+                oldestTime = it->second.front().enqueued;
+            }
+        }
+        if (oldestList != queue_.end()) {
+            Packet* old = oldestList->second.front().pkt;
+            oldestList->second.pop_front();
+            --queueCount_;
+            if (oldestList->second.empty()) queue_.erase(oldestList);
+            drop(old, DROP_RTR_QFULL);
+        }
+    }
+
+    AhnQueued q;
+    q.pkt = p;
+    q.enqueued = Scheduler::instance().clock();
+    queue_[dest].push_back(q);
+    ++queueCount_;
 }
 
 void AntHocNetAgent::flushQueue(nsaddr_t dest) {
-    std::map<nsaddr_t, std::list<Packet*> >::iterator it = queue_.find(dest);
+    std::map<nsaddr_t, std::list<AhnQueued> >::iterator it = queue_.find(dest);
     if (it == queue_.end()) return;
 
-    std::list<Packet*> pending;
+    std::list<AhnQueued> pending;
     pending.swap(it->second);
     queue_.erase(it);
+    queueCount_ -= static_cast<int>(pending.size());
 
-    for (std::list<Packet*>::iterator pit = pending.begin(); pit != pending.end(); ++pit) {
-        handleData(*pit);  // route now exists (or re-queues if it vanished)
+    for (std::list<AhnQueued>::iterator pit = pending.begin(); pit != pending.end(); ++pit) {
+        handleData(pit->pkt);  // route now exists (or re-queues if it vanished)
+    }
+}
+
+void AntHocNetAgent::purgeQueue() {
+    const double now = Scheduler::instance().clock();
+    for (std::map<nsaddr_t, std::list<AhnQueued> >::iterator it = queue_.begin();
+         it != queue_.end();) {
+        std::list<AhnQueued>& lst = it->second;
+        for (std::list<AhnQueued>::iterator pit = lst.begin(); pit != lst.end();) {
+            if (now - pit->enqueued >= AHN_QUEUE_TIMEOUT) {
+                drop(pit->pkt, DROP_RTR_QTIMEOUT);
+                pit = lst.erase(pit);
+                --queueCount_;
+            } else {
+                ++pit;
+            }
+        }
+        if (lst.empty()) queue_.erase(it++);
+        else ++it;
     }
 }
 
@@ -338,6 +385,7 @@ void AntHocNetAgent::linkFailed(Packet* p) {
 
 void AntHocNetAgent::sendHello() {
     if (!logic_) return;
+    purgeQueue();  // expire pending packets that waited too long for a route (B1)
     // Liveness/maintenance tick (ADR-0008 detector A) before beaconing a hello.
     for (const RouteDecision& d : logic_->onMaintenanceTick()) {
         if (d.action == RouteAction::Broadcast) {
