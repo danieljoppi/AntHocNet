@@ -49,11 +49,14 @@ this repo alone. **Always run `make test` before committing a core change**, and
 3. **All randomness via `IRng`, all time via `IClock`.** Never call libc
    `rand()` or read the simulator clock directly from shared logic —
    reproducibility depends on this.
-4. **One canonical wire format.** `core/ant_message_codec` defines the
-   little-endian layout. If you change `AntMessage` fields you must update, in
-   the same field order: the codec, the NS-2 header (`ns2/src/ant_packet_ns2`),
-   the NS-3 header (`ns3/model/anthocnet-packet` `AntHeader`), and the
-   round-trip tests (`core/tests/test_codec.cpp`, NS-3 test suite).
+4. **One canonical wire format, versioned.** `core/ant_message_codec` defines the
+ little-endian layout, prefixed by a 1-byte `kWireVersion` (see
+ `docs/wire-format.md` and ADR-0006). If you change `AntMessage` fields — or the
+ units/semantics of an existing field — you must **bump `kWireVersion`** and
+ update, in the same field order: the codec, the NS-2 header
+ (`ns2/src/ant_packet_ns2`), the NS-3 header (`ns3/model/anthocnet-packet`
+ `AntHeader`), the round-trip tests (`core/tests/test_codec.cpp`, NS-3 test
+ suite), and the layout table in `docs/wire-format.md`.
 5. **Keep bounded structures bounded.** The visited path and the `(src,seq)`
    dedup history are capped by `Config::maxPathLength` / `maxHistory`; do not
    reintroduce unbounded growth.
@@ -88,7 +91,7 @@ this repo alone. **Always run `make test` before committing a core change**, and
 | Change the algorithm | `core/src/`, `core/include/anthocnet/core/` |
 | Change routing policy / decision flow | `core/src/ant_router_logic.cpp` |
 | Change pheromone math | `core/src/pheromone_engine.cpp`, `pheromone_table.cpp` |
-| Change the wire format | `core/include/.../ant_message_codec.h` (+ both adapters) |
+| Change the wire format | `docs/wire-format.md` → `core/include/.../ant_message_codec.h` (+ both adapters; bump `kWireVersion`) |
 | Work on the NS-2 adapter | `ns2/src/`, `ns2/tcl/` |
 | Work on the NS-3 adapter | `ns3/model/`, `ns3/helper/`, `ns3/examples/` |
 | Tune defaults | `core/include/anthocnet/core/config.h` |

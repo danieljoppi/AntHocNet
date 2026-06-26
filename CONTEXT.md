@@ -82,6 +82,7 @@ Makefile                  ← make test | install-ns2 | install-ns3 | clean
 docs/
   architecture.md         ← design + decision flow
   porting-notes.md        ← bugs fixed, NS-2 patch anchors, wire format, caveats
+  wire-format.md          ← canonical ant byte layout, version byte, diffs vs original/spec
   adr/*.md                ← architecture decision records
 core/
   include/anthocnet/core/ ← public headers (types, ports, config, messages, logic)
@@ -142,10 +143,16 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 | `AntMessage` | the POD value type describing an ant (replaces header-resident pointers). |
 | `RouteDecision` | the verb the core returns for the adapter to execute. |
 | `AntRouterLogic` | the pure per-node state machine. |
-| Pheromone (regular / virtual) | next-hop goodness learned from real ant traversals / gossiped via hello ants. |
-| Evaporation / reinforcement | multiplicative decay (`alpha`) / smoothed increase (`gamma`) of pheromone. |
+| Regular pheromone | next-hop goodness for a destination learned from real ant traversals (backward ants). Used by data. |
+| Virtual pheromone | next-hop goodness gossiped via hello ants for destinations not reached directly. Used only to guide proactive ants, never data. Config-gated (`enableDiffusion`, ADR-0007). _Avoid_: "diffused pheromone" (the papers' synonym). |
+| Pheromone diffusion | the mechanism: spreading virtual pheromone hop-by-hop through hello ants. The *process*, not the value. Gated with proactive exploration (ADR-0007). |
+| Bootstrapping | the method of deriving a virtual-pheromone value from a neighbour's advertised estimate plus the local one-hop cost (vs. Monte-Carlo sampling by ants). |
+| Reinforcement | the spec's adaptation engine: a running weighted average on backward-ant arrival, `T ← gamma·T + (1−gamma)·estimate`. The `(1−gamma)` term is the "forgetting". |
+| Evaporation | time-proportional decay (`alpha^(Δt/evaporationInterval)`) applied on the maintenance tick. A **secondary safety net** for entries the running average + link-failure removal miss — the original AntHocNet has *no* evaporation term. Config-gated (`enableEvaporation`, default on; ADR-0012). |
 | Forward / backward / hello / repair ant | path collector / pheromone depositor / neighbour-discovery + gossip / link-failure local search. |
-| `NodeAddress` | core address type (`int32_t`); `kInvalidAddress` = -1 = "no route". |
+| Neighbour liveness | a neighbour is "gone" via either missed hellos (core timer, primary) or a failed unicast (MAC signal, fast-path); both call `loseNeighbor`. `INeighborProvider` is advisory, never authoritative for removal (ADR-0008). |
+| Stochastic data routing | data is forwarded by a per-packet pheromone-weighted draw, **excluding the prev hop** (loop safety; only-option fallback). Per-flow stickiness (a bounded `(src,dst)→hop` cache) is config-gated, default off (ADR-0010). |
+| `NodeAddress` | core address type (`int32_t`), = a node's primary interface IP, treated opaquely; `kInvalidAddress` = -1 = "no route / no specific next hop". Broadcast is a `RouteAction`, **never** a `NodeAddress` (ADR-0011). |
 
 ## 10. Open questions for future work
 

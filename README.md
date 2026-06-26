@@ -100,6 +100,7 @@ History of the work is in the per-phase commits; design rationale is in
 |----------|---------|
 | [docs/architecture.md](docs/architecture.md) | Design, the core/adapter split, and the decision flow. |
 | [docs/porting-notes.md](docs/porting-notes.md) | Bugs fixed in extraction, NS-2 patch anchors, wire format, version caveats. |
+| [docs/wire-format.md](docs/wire-format.md) | Canonical on-wire ant layout, version byte, and diff vs. the original and the papers. |
 | [docs/adr/](docs/adr) | Architecture Decision Records — the "why" behind the structure. |
 | [CONTEXT.md](CONTEXT.md) | Project orientation: domain background, repo map, current state, glossary, open questions. |
 | [AGENTS.md](AGENTS.md) | Build/verify/conventions and invariants for contributors and AI agents. |
