@@ -36,6 +36,10 @@ public:
     void removePheromoneVirtual(NodeAddress dest, NodeAddress neighbor);
     double getPheromoneRegular(NodeAddress dest, NodeAddress neighbor) const;
     double getPheromoneVirtual(NodeAddress dest, NodeAddress neighbor) const;
+
+    /// Best (largest) regular pheromone any neighbour holds for `dest`, or 0 if
+    /// none. Used to advertise this node's path goodness in hello adverts.
+    double bestRegular(NodeAddress dest) const;
     void setPheromoneRegular(NodeAddress dest, NodeAddress neighbor, double value);
     void setPheromoneVirtual(NodeAddress dest, NodeAddress neighbor, double value);
 

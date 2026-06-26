@@ -32,6 +32,11 @@ struct Config {
     /// Links whose pheromone drops below this are pruned.
     double minPheromone = 0.00001;  ///< MIN_PHEROMONE
 
+    /// Proactive / diffusion subsystem (ADR-0007), config-gated so the
+    /// benchmark ablation (item 08) can justify the shipped default.
+    bool enableProactive = true;   ///< master: proactive ants + diffusion.
+    bool enableDiffusion = true;   ///< hello pheromone adverts + virtual table.
+
     /// Timer intervals (seconds).
     double helloInterval     = 1.0;
     double proactiveInterval = 10.0;

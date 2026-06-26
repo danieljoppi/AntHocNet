@@ -65,6 +65,10 @@ void PheromoneEngine::updateRegular(PheromoneTable& table, NodeAddress dest,
 }
 
 void PheromoneEngine::updateVirtual(PheromoneTable& table, const AntMessage& hello) const {
+    // Diffusion gated off (ADR-0007): keep the virtual table empty so proactive
+    // selection degenerates to the regular-only sum.
+    if (!config_.enableProactive || !config_.enableDiffusion) return;
+
     std::set<NodeAddress> destsRem;
 
     // Evaporate every virtual link; prune those that fall below the floor.
@@ -92,11 +96,18 @@ void PheromoneEngine::updateVirtual(PheromoneTable& table, const AntMessage& hel
         }
     }
 
-    // Reinforce the destinations this hello advertised, via its sender.
+    // Reinforce the destinations this hello advertised, via its sender. The
+    // advert is the neighbour's best pheromone (an inverse cost) to advert.node;
+    // bootstrap it for *this* node by adding one hop of cost, then re-inverting,
+    // so a farther/worse advertised path yields a smaller virtual pheromone — a
+    // real gradient, in the same units as regular pheromone (item 02/03).
     const NodeAddress neighbor = hello.src;
     for (const HelloDest& advert : hello.helloDests) {
+        const double bootstrapped = (advert.pheromone > 0.0)
+            ? 1.0 / (1.0 / advert.pheromone + config_.hopTimeSec)
+            : 0.0;
         double phValue = table.getPheromoneVirtual(advert.node, neighbor);
-        table.setPheromoneVirtual(advert.node, neighbor, reinforce(phValue, advert.pheromone));
+        table.setPheromoneVirtual(advert.node, neighbor, reinforce(phValue, bootstrapped));
     }
 }
 

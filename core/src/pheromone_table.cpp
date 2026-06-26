@@ -45,6 +45,15 @@ double PheromoneTable::getPheromoneVirtual(NodeAddress dest, NodeAddress neighbo
     return it != pheromoneVirtual_.end() ? it->second : 0.0;
 }
 
+double PheromoneTable::bestRegular(NodeAddress dest) const {
+    double best = 0.0;
+    for (NodeAddress neighbor : neighborTable_) {
+        double ph = getPheromoneRegular(dest, neighbor);
+        if (ph > best) best = ph;
+    }
+    return best;
+}
+
 void PheromoneTable::setPheromoneRegular(NodeAddress dest, NodeAddress neighbor, double value) {
     destRegular_.insert(dest);
     addNeighbor(neighbor);
@@ -81,8 +90,12 @@ double PheromoneTable::sumMaxProbability(NodeAddress dest, double beta) const {
 
 NodeAddress PheromoneTable::nextNeighborNode(NodeAddress dest, bool isProactiveAnt,
                                              double beta, IRng& rng) const {
-    // Unknown destination: no route.
-    if (destRegular_.find(dest) == destRegular_.end()) {
+    // Unknown destination: no route. Data requires a regular entry; a proactive
+    // ant may also route toward a purely-diffused (virtual-only) destination so
+    // diffusion can extend reach (ADR-0007).
+    const bool known = destRegular_.find(dest) != destRegular_.end() ||
+                       (isProactiveAnt && destVirtual_.find(dest) != destVirtual_.end());
+    if (!known) {
         return kInvalidAddress;
     }
 

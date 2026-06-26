@@ -49,12 +49,17 @@ AntMessage AntRouterLogic::createHelloAnt(std::size_t maxAdverts) {
     m.seqNum    = nextSeq();
     m.timeStart = clock_.now();
 
-    const auto& dests = table_.regularDestinations();
-    for (NodeAddress dest : dests) {
-        if (dests.size() <= maxAdverts ||
-            (rng_.uniform() > 0.5 && m.helloDests.size() < maxAdverts)) {
-            m.helloDests.push_back({dest, 1.0});
-        }
+    // Diffusion adverts are gated (ADR-0007); a hello with no adverts still
+    // serves neighbour discovery / liveness.
+    if (!config_.enableProactive || !config_.enableDiffusion) return m;
+
+    // Advertise this node's *best real pheromone* per destination so the
+    // receiver can bootstrap a goodness-ordered virtual table (D3), skipping
+    // destinations we have no usable path to.
+    for (NodeAddress dest : table_.regularDestinations()) {
+        const double best = table_.bestRegular(dest);
+        if (best <= config_.minPheromone) continue;
+        m.helloDests.push_back({dest, best});
         if (m.helloDests.size() >= maxAdverts) break;
     }
     return m;
