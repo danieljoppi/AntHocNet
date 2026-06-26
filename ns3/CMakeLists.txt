@@ -3,9 +3,20 @@
 # Installed into $(NS3DIR)/contrib/anthocnet by `make install-ns3`. The shared
 # algorithm core/ is copied alongside and compiled into the module; its headers
 # live under core/include and are added to the include path here.
+#
+# Wrap the source-tree include in $<BUILD_INTERFACE:> so it is used only while
+# building (not exported for install). ns-3 folds directory include dirs into
+# the module target's INTERFACE_INCLUDE_DIRECTORIES, and a raw source path there
+# is rejected outright by ns-3.36's CMake ("prefixed in the source directory").
+# The genex is inherited by the examples/ subdirectory, so examples and tests
+# that pull in the module's public headers still resolve anthocnet/core/*.
+include_directories($<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/core/include>)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/core/include)
-
+# Examples are defined in examples/CMakeLists.txt, which build_lib descends into
+# automatically. They MUST live there, not here: build_lib_example reads
+# BLIB_LIBNAME, which ns-3 only sets inside build_lib's own scope (it descends
+# into examples/ from there). Calling build_lib_example in this top-level scope
+# leaves BLIB_LIBNAME empty and breaks configure on ns-3.47/3.48.
 build_lib(
   LIBNAME anthocnet
   SOURCE_FILES
@@ -31,36 +42,4 @@ build_lib(
     ${libinternet}
   TEST_SOURCES
     test/anthocnet-test-suite.cc
-)
-
-build_lib_example(
-  NAME anthocnet-example
-  SOURCE_FILES examples/anthocnet-example.cc
-  LIBRARIES_TO_LINK
-    ${libanthocnet}
-    ${libcore}
-    ${libnetwork}
-    ${libinternet}
-    ${libwifi}
-    ${libmobility}
-    ${libapplications}
-)
-
-# Protocol comparison (AntHocNet vs AODV/OLSR/DSDV). Only built when those
-# modules + flow-monitor are enabled; otherwise ns-3 skips it automatically.
-build_lib_example(
-  NAME anthocnet-compare
-  SOURCE_FILES examples/anthocnet-compare.cc
-  LIBRARIES_TO_LINK
-    ${libanthocnet}
-    ${libcore}
-    ${libnetwork}
-    ${libinternet}
-    ${libwifi}
-    ${libmobility}
-    ${libapplications}
-    ${libflow-monitor}
-    ${libaodv}
-    ${libolsr}
-    ${libdsdv}
 )

@@ -28,6 +28,7 @@ install: require-ns3dir
 	cp $(HERE)/model/*.h   $(HERE)/model/*.cc   "$(DEST)/model/"
 	cp $(HERE)/helper/*.h  $(HERE)/helper/*.cc  "$(DEST)/helper/"
 	cp $(HERE)/examples/*.cc "$(DEST)/examples/"
+	cp $(HERE)/examples/CMakeLists.txt "$(DEST)/examples/"
 	cp $(HERE)/examples/wscript "$(DEST)/examples/" 2>/dev/null || true
 	cp $(HERE)/test/*.cc   "$(DEST)/test/"
 	cp $(HERE)/CMakeLists.txt "$(DEST)/"
