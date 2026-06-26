@@ -12,6 +12,17 @@
 # that pull in the module's public headers still resolve anthocnet/core/*.
 include_directories($<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/core/include>)
 
+# ns-3 changed Ipv4RoutingProtocol::RouteInput's callbacks from by-value to
+# const-reference in ns-3.37. NS3_VER is set by ns-3 (e.g. "3.41"); on releases
+# <= 3.36 define a macro so the override is declared with by-value callbacks.
+# Inherited by the examples/ subdirectory and the test target, so every TU that
+# includes the routing-protocol header sees the same signature.
+if(NS3_VER MATCHES "^3\\.([0-9]+)")
+  if(CMAKE_MATCH_1 LESS 37)
+    add_compile_definitions(ANTHOCNET_NS3_ROUTEINPUT_BYVALUE)
+  endif()
+endif()
+
 # Examples are defined in examples/CMakeLists.txt, which build_lib descends into
 # automatically. They MUST live there, not here: build_lib_example reads
 # BLIB_LIBNAME, which ns-3 only sets inside build_lib's own scope (it descends

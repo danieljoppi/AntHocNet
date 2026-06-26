@@ -23,6 +23,16 @@
 #include "anthocnet-adapters.h"
 #include "anthocnet-rqueue.h"
 
+// ns-3 changed Ipv4RoutingProtocol::RouteInput's forwarding-callback parameters
+// from by-value (<= ns-3.36) to const-reference (ns-3.37+). The override must
+// match exactly or the class stays abstract. ANTHOCNET_NS3_ROUTEINPUT_BYVALUE is
+// defined by the module's CMakeLists for ns-3 <= 3.36; default to const-ref.
+#ifdef ANTHOCNET_NS3_ROUTEINPUT_BYVALUE
+#define AHN_RI_CB(T) T
+#else
+#define AHN_RI_CB(T) const T&
+#endif
+
 namespace ns3 {
 namespace anthocnet {
 
@@ -39,8 +49,8 @@ public:
     Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p, const Ipv4Header& header,
                                Ptr<NetDevice> oif, Socket::SocketErrno& sockerr) override;
     bool RouteInput(Ptr<const Packet> p, const Ipv4Header& header, Ptr<const NetDevice> idev,
-                    const UnicastForwardCallback& ucb, const MulticastForwardCallback& mcb,
-                    const LocalDeliverCallback& lcb, const ErrorCallback& ecb) override;
+                    AHN_RI_CB(UnicastForwardCallback) ucb, AHN_RI_CB(MulticastForwardCallback) mcb,
+                    AHN_RI_CB(LocalDeliverCallback) lcb, AHN_RI_CB(ErrorCallback) ecb) override;
     void NotifyInterfaceUp(uint32_t interface) override;
     void NotifyInterfaceDown(uint32_t interface) override;
     void NotifyAddAddress(uint32_t interface, Ipv4InterfaceAddress address) override;
