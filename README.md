@@ -82,10 +82,19 @@ docker run --rm ghcr.io/danieljoppi/anthocnet-ns3:3.42 ./ns3 run anthocnet-examp
 docker run --rm -it ghcr.io/danieljoppi/anthocnet-ns2:2.35   # `ns` with the agent
 ```
 
+**AntHocNet images** — the simulator with our protocol built in:
+
 | Image | Versions | Contents |
 |-------|----------|----------|
-| `ghcr.io/danieljoppi/ns3` · `anthocnet-ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | plain ns-3 · ns-3 + the AntHocNet module |
-| `ghcr.io/danieljoppi/ns2` · `anthocnet-ns2` | `2.34`, `2.35` | plain ns-2 · ns-2 + the AntHocNet patch (compiled) |
+| `ghcr.io/danieljoppi/anthocnet-ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | ns-3 + the AntHocNet module |
+| `ghcr.io/danieljoppi/anthocnet-ns2` | `2.34`, `2.35` | ns-2 + the AntHocNet patch (compiled) |
+
+**Plain images** — a clean simulator (no AntHocNet) for baseline comparisons:
+
+| Image | Versions | Contents |
+|-------|----------|----------|
+| `ghcr.io/danieljoppi/ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | plain ns-3 with the comparison protocols (AODV/OLSR/DSDV/…) |
+| `ghcr.io/danieljoppi/ns2` | `2.34`, `2.35` | plain ns-allinone-2.3x built from source |
 
 Build them yourself or see the full matrix in [docker/README.md](docker/README.md).
 
