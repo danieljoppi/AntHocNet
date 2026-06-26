@@ -14,10 +14,6 @@ int main() {
     m.timeStart = 1.25;
     m.lifeAnt   = 2.0;
     m.broadcastBudget = 2;
-    m.prevHop   = 4;
-    m.hops      = 5;
-    m.prevSINR  = 12.5;
-    m.pheromone = 0.0123;
     m.visited   = {{3, 0.0}, {4, 0.01}, {7, 0.02}};
     m.history   = {{17, 0.05}};
     m.helloDests = {{8, 1.0}, {9, 0.5}};
@@ -37,10 +33,11 @@ int main() {
     CHECK_NEAR(out.timeStart, m.timeStart, 1e-12);
     CHECK_NEAR(out.lifeAnt, m.lifeAnt, 1e-12);
     CHECK_EQ(out.broadcastBudget, m.broadcastBudget);
-    CHECK_EQ(out.prevHop, m.prevHop);
-    CHECK_EQ(out.hops, m.hops);
-    CHECK_NEAR(out.prevSINR, m.prevSINR, 1e-12);
-    CHECK_NEAR(out.pheromone, m.pheromone, 1e-12);
+    // prevHop/hops/pathTime/pheromone are no longer serialized (ADR-0009): a
+    // freshly decoded ant leaves them at defaults for the core to fill.
+    CHECK_EQ(out.prevHop, kInvalidAddress);
+    CHECK_EQ(out.hops, 0);
+    CHECK_NEAR(out.pheromone, 0.0, 1e-12);
 
     CHECK_EQ(out.visited.size(), m.visited.size());
     for (std::size_t i = 0; i < m.visited.size(); ++i) {
@@ -51,6 +48,17 @@ int main() {
     CHECK_EQ(out.helloDests.size(), m.helloDests.size());
     CHECK_EQ(out.helloDests[1].node, 9);
     CHECK_NEAR(out.helloDests[1].pheromone, 0.5, 1e-12);
+
+    // Item 02 wire slim (ADR-0009): the four transient fields left the fixed
+    // prefix (-24 bytes). An empty-array ant is version(1) + fixed(34) +
+    // counts(6) = 41 bytes, and the version byte is 0x03.
+    {
+        AntMessage empty;
+        empty.type = AntType::Reactive;
+        empty.direction = AntDirection::Up;
+        CHECK_EQ(codec::serializedSize(empty), static_cast<std::size_t>(41));
+        CHECK_EQ(codec::kWireVersion, static_cast<std::uint8_t>(0x03));
+    }
 
     // Truncated buffers must be rejected, not read out of bounds.
     AntMessage bad;

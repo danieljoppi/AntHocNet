@@ -13,21 +13,17 @@ using anthocnet::test::ScriptedRng;
 
 namespace {
 
-// Walk a backward ant over a path of per-hop deltas (seconds) and return the
-// pheromone computed for the full path (last advanceBackAnt before it empties).
+// Pheromone a back ant deposits for a retraced path of per-hop deltas (seconds).
+// The deposit state is reconstructed from `history` (ADR-0009).
 double fullPathPheromone(AntRouterLogic& router, const std::vector<double>& deltas) {
     AntMessage back;
     back.direction = AntDirection::Down;
     back.src = 5;  // the destination that originated the back ant
     back.dst = 0;
     for (std::size_t i = 0; i < deltas.size(); ++i) {
-        back.visited.push_back({static_cast<NodeAddress>(i + 1), deltas[i]});
+        back.history.push_back({static_cast<NodeAddress>(i + 1), deltas[i]});
     }
-    NodeAddress next;
-    do {
-        next = router.advanceBackAnt(back);
-    } while (next != kInvalidAddress);
-    return back.pheromone;
+    return router.backAntPheromone(back);
 }
 
 }  // namespace

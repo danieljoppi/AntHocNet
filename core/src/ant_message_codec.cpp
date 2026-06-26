@@ -73,8 +73,9 @@ struct Reader {
 constexpr std::size_t kVersionSize = 1;      // offset-0 wire-version byte
 constexpr std::size_t kHopSize     = 4 + 8;  // int32 node + double time
 constexpr std::size_t kHelloSize   = 4 + 8;  // int32 node + double pheromone
-// type,dir,src,dst,seq,timeStart,lifeAnt,broadcastBudget,prevHop,hops,prevSINR,pheromone
-constexpr std::size_t kFixedSize   = 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4 + 4 + 4 + 8 + 8;
+// type,dir,src,dst,seq,timeStart,lifeAnt,broadcastBudget (prevHop/hops/pathTime/
+// pheromone are reconstructed locally — ADR-0009 — and not serialized).
+constexpr std::size_t kFixedSize   = 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4;
 constexpr std::size_t kCountFields = 2 + 2 + 2;  // visited, history, hello counts
 
 bool validType(std::uint8_t v) {
@@ -112,10 +113,6 @@ void serialize(const AntMessage& msg, std::vector<std::uint8_t>& out) {
     putDouble(out, msg.timeStart);
     putDouble(out, msg.lifeAnt);
     putI32(out, msg.broadcastBudget);
-    putI32(out, msg.prevHop);
-    putI32(out, static_cast<std::int32_t>(msg.hops));
-    putDouble(out, msg.prevSINR);
-    putDouble(out, msg.pheromone);
 
     putU16(out, static_cast<std::uint16_t>(msg.visited.size()));
     for (const AntHop& h : msg.visited) { putI32(out, h.node); putDouble(out, h.time); }
@@ -150,10 +147,6 @@ bool deserialize(const std::uint8_t* bytes, std::size_t len, AntMessage& msg) {
     msg.timeStart = r.dbl();
     msg.lifeAnt   = r.dbl();
     msg.broadcastBudget = static_cast<int>(r.i32());
-    msg.prevHop   = r.i32();
-    msg.hops      = static_cast<int>(r.i32());
-    msg.prevSINR  = r.dbl();
-    msg.pheromone = r.dbl();
 
     const std::uint16_t nVisited = r.u16();
     if (!r.ok || nVisited > kMaxVisitedOnWire ||

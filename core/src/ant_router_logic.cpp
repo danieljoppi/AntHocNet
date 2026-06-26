@@ -238,25 +238,38 @@ void AntRouterLogic::stampForward(AntMessage& ant) const {
 NodeAddress AntRouterLogic::advanceBackAnt(AntMessage& ant) const {
     if (ant.visited.empty()) return kInvalidAddress;
 
-    const AntHop current = ant.visited.back();  // this node
-    ant.prevHop = current.node;
-    ant.hops += 1;
-    // Sum the per-hop deltas walked so far: this is T̂_d^i, the estimated time
-    // to reach the destination from here, in seconds (same units as hopTimeSec).
-    ant.prevSINR += current.time;
-
-    // Pheromone via the pluggable metric (default ClassicMetric == Eq.2, item 16).
-    LinkObservation obs;
-    obs.hops     = ant.hops;
-    obs.pathTime = ant.prevSINR;
-    obs.hopTime  = config_.hopTimeSec;
-    ant.pheromone = metric_->pheromone(obs);
-
+    // Pure path management (ADR-0009): move this node from the still-to-retrace
+    // `visited` stack onto `history`, and peek the next hop. The deposit state
+    // (prevHop/hops/pathTime/pheromone) is recomputed at the receiver from
+    // `history`, not carried on the wire.
+    const AntHop current = ant.visited.back();
     ant.history.push_back(current);
     ant.visited.pop_back();
 
     if (ant.visited.empty()) return kInvalidAddress;
-    return ant.visited.back().node;  // peek next hop (left for it to pop)
+    return ant.visited.back().node;  // next hop (left for it to pop)
+}
+
+double AntRouterLogic::backAntPheromone(const AntMessage& ant) const {
+    // Reconstruct T̂_d^i and the hop count from the retraced path carried in
+    // `history` (the per-hop deltas summed = path time to the destination).
+    LinkObservation obs;
+    obs.hops = static_cast<int>(ant.history.size());
+    double t = 0.0;
+    for (const AntHop& h : ant.history) t += h.time;
+    obs.pathTime = t;
+    obs.hopTime = config_.hopTimeSec;
+    return metric_->pheromone(obs);
+}
+
+void AntRouterLogic::computeBackAntState(AntMessage& ant) const {
+    // The neighbour that forwarded this back ant is the last node it retraced.
+    ant.prevHop  = ant.history.empty() ? kInvalidAddress : ant.history.back().node;
+    ant.hops     = static_cast<int>(ant.history.size());
+    double t = 0.0;
+    for (const AntHop& h : ant.history) t += h.time;
+    ant.pathTime = t;
+    ant.pheromone = backAntPheromone(ant);
 }
 
 void AntRouterLogic::reinforceFromBackAnt(const AntMessage& ant) {
@@ -318,7 +331,9 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
         return {{RouteAction::Unicast, next, true, ant}};
     }
 
-    // Backward ant: reinforce the route it travelled, then keep retracing.
+    // Backward ant: rebuild the deposit state from the carried path (the four
+    // transient fields are off the wire now, ADR-0009), reinforce, then retrace.
+    computeBackAntState(ant);
     reinforceFromBackAnt(ant);
 
     if (ant.dst == address_) {

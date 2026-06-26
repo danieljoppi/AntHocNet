@@ -23,10 +23,6 @@ core::AntMessage toMessage(const AntPacketHeader& h) {
     m.timeStart = h.timeStart_;
     m.lifeAnt   = h.lifeAnt_;
     m.broadcastBudget = h.broadcastBudget_;
-    m.prevHop   = h.prevHop_;
-    m.hops      = h.hops_;
-    m.prevSINR  = h.prevSINR_;
-    m.pheromone = h.pheromone_;
 
     m.visited.reserve(h.visitedCount_);
     for (uint16_t i = 0; i < h.visitedCount_; ++i)
@@ -51,10 +47,6 @@ void fromMessage(const core::AntMessage& m, AntPacketHeader& h) {
     h.timeStart_    = m.timeStart;
     h.lifeAnt_      = m.lifeAnt;
     h.broadcastBudget_ = m.broadcastBudget;
-    h.prevHop_      = m.prevHop;
-    h.hops_         = m.hops;
-    h.prevSINR_     = m.prevSINR;
-    h.pheromone_    = m.pheromone;
 
     const uint16_t nv = static_cast<uint16_t>(
         std::min<size_t>(m.visited.size(), AntPacketHeader::kMaxPath));

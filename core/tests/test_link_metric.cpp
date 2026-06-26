@@ -21,19 +21,15 @@ struct ConstMetric : ILinkMetric {
     double pheromone(const LinkObservation&) const override { return v; }
 };
 
-// Walk a backward ant over per-hop deltas and return the full-path pheromone.
+// Pheromone a back ant deposits for a retraced path, via the router's metric.
 double walk(AntRouterLogic& r, const std::vector<double>& deltas) {
     AntMessage b;
     b.direction = AntDirection::Down;
     b.src = 5;
     for (std::size_t i = 0; i < deltas.size(); ++i) {
-        b.visited.push_back({static_cast<NodeAddress>(i + 1), deltas[i]});
+        b.history.push_back({static_cast<NodeAddress>(i + 1), deltas[i]});
     }
-    NodeAddress n;
-    do {
-        n = r.advanceBackAnt(b);
-    } while (n != kInvalidAddress);
-    return b.pheromone;
+    return r.backAntPheromone(b);
 }
 
 }  // namespace

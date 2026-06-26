@@ -93,10 +93,14 @@ public:
     /// ant was generated). Bounded by Config::maxPathLength.
     void stampForward(AntMessage& ant) const;
 
-    /// Advance a backward ant by one hop: pop the visited stack, push to
-    /// history, recompute the pheromone estimate, and return the next hop.
-    /// Mirrors AntBackPacket::findNextHop.
+    /// Advance a backward ant by one hop: move this node from the visited stack
+    /// onto `history` and return the next hop (path management only; the deposit
+    /// state is reconstructed at the receiver from `history`, ADR-0009).
     NodeAddress advanceBackAnt(AntMessage& ant) const;
+
+    /// Pheromone this back ant would deposit at the current node, reconstructed
+    /// from its `history` (hops + summed per-hop times) via the link metric.
+    double backAntPheromone(const AntMessage& ant) const;
 
     /// Update the regular pheromone table from a backward ant that arrived
     /// here (reinforce the link it came from).
@@ -125,6 +129,10 @@ private:
     /// Apply a received LinkFail notification and, if it costs this node its own
     /// best path, return a bounded propagated notification.
     std::vector<RouteDecision> handleLinkFail(const AntMessage& note, NodeAddress reporter);
+
+    /// Fill the transient deposit state (prevHop/hops/pathTime/pheromone) of a
+    /// received backward ant from its `history`, before reinforcement.
+    void computeBackAntState(AntMessage& ant) const;
 
     NodeAddress     address_;
     Config          config_;

@@ -56,10 +56,8 @@ struct AntPacketHeader {
     double   timeStart_;
     double   lifeAnt_;
     int32_t  broadcastBudget_;
-    int32_t  prevHop_;
-    int32_t  hops_;
-    double   prevSINR_;
-    double   pheromone_;
+    // prevHop/hops/pathTime/pheromone are reconstructed locally (ADR-0009), not
+    // carried on the wire.
 
     uint16_t visitedCount_;
     AntHopPod visited_[kMaxPath];
@@ -83,14 +81,12 @@ struct AntPacketHeader {
     uint32_t seqNum()       const { return seqNum_; }
     double   timeStart()    const { return timeStart_; }
     int      pathLen()      const { return visitedCount_; }
-    double   pheromone()    const { return pheromone_; }
-    double   prevSINR()     const { return prevSINR_; }
 
     /// Simulated over-the-air size: the bytes core::codec would emit.
     int wireSize() const {
-        return 1                                              // wire-version byte
-             + 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4 + 4 + 4 + 8 + 8  // fixed fields
-             + 2 + 2 + 2                                       // three counts
+        return 1                                    // wire-version byte
+             + 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4        // fixed fields
+             + 2 + 2 + 2                            // three counts
              + visitedCount_ * (4 + 8)
              + historyCount_ * (4 + 8)
              + helloCount_   * (4 + 8);

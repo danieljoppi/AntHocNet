@@ -25,7 +25,9 @@ namespace codec {
 /// Both adapter headers must serialize this same value.
 /// 0x01: version byte + bounds/enum enforcement (item 12).
 /// 0x02: + AntMessage::broadcastBudget field, AntType::LinkFail (item 05).
-constexpr std::uint8_t kWireVersion = 0x02;
+/// 0x03: backward-ant slim — prevHop/hops/pathTime/pheromone off the wire,
+///       reconstructed locally from `history` (item 02, ADR-0009).
+constexpr std::uint8_t kWireVersion = 0x03;
 
 /// Protocol bounds enforced on *decode* of untrusted input, mirroring the
 /// Config defaults so the codec stays standalone (golden rule #5). A frame

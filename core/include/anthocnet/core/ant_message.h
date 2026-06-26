@@ -66,10 +66,12 @@ struct AntMessage {
 
     std::vector<HelloDest> helloDests;  ///< Hello-ant adverts.
 
-    // Fields computed while a backward ant retraces its path.
+    // Transient deposit state, recomputed at each node from `history` while a
+    // backward ant retraces (ADR-0009). These are NOT serialized — a freshly
+    // decoded ant leaves them at defaults and the core fills them.
     NodeAddress prevHop   = kInvalidAddress;
     int         hops      = 0;
-    double      prevSINR  = 0.0;
+    double      pathTime  = 0.0;  ///< accumulated time estimate (was prevSINR).
     double      pheromone = 0.0;
 
     bool isForward() const { return direction == AntDirection::Up; }
