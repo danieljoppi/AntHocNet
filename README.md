@@ -71,6 +71,24 @@ throughput via FlowMonitor) — see [ns3/README.md](ns3/README.md#compare-agains
 Current results, regenerated on every merge to the default branch, are in
 [docs/benchmarks.md](docs/benchmarks.md).
 
+### Container images
+
+Prefer not to install a simulator yourself? Pre-built images are published to
+GHCR — for **each supported version**, a plain simulator and the same simulator
+with AntHocNet built in (so you can compare against a clean baseline):
+
+```bash
+docker run --rm ghcr.io/danieljoppi/anthocnet-ns3:3.42 ./ns3 run anthocnet-example
+docker run --rm -it ghcr.io/danieljoppi/anthocnet-ns2:2.35   # `ns` with the agent
+```
+
+| Image | Versions | Contents |
+|-------|----------|----------|
+| `ghcr.io/danieljoppi/ns3` · `anthocnet-ns3` | `3.41`, `3.42` | plain ns-3 · ns-3 + the AntHocNet module |
+| `ghcr.io/danieljoppi/ns2` · `anthocnet-ns2` | `2.34`, `2.35` | plain ns-2 · ns-2 + the AntHocNet patch (compiled) |
+
+Build them yourself or see the full matrix in [docker/README.md](docker/README.md).
+
 ## What changed from the original
 
 The original project was a whole vendored `ns-allinone-2.34` snapshot with the
@@ -105,6 +123,7 @@ History of the work is in the per-phase commits; design rationale is in
 | [CONTEXT.md](CONTEXT.md) | Project orientation: domain background, repo map, current state, glossary, open questions. |
 | [AGENTS.md](AGENTS.md) | Build/verify/conventions and invariants for contributors and AI agents. |
 | [ns2/README.md](ns2/README.md) · [ns3/README.md](ns3/README.md) | Per-adapter install/run details. |
+| [docker/README.md](docker/README.md) | Pre-built container images (plain vs. AntHocNet, per simulator version). |
 
 ## License
 
