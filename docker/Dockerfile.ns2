@@ -32,14 +32,29 @@ RUN curl -fSL -o ns-allinone.tar.gz \
 ENV NS2ALL=/opt/ns-allinone-${NS2_VERSION}
 ENV NS2DIR=/opt/ns-allinone-${NS2_VERSION}/ns-${NS2_VERSION}
 
-# Well-known modern-gcc fixes for ns-2.35:
-#  - linkstate/ls.h: the templated erase() needs an explicit this->.
-#  - mdart (M-DART, a routing module we don't use): its global hash() clashes
-#    with std::hash under modern libstdc++ ("reference to 'hash' is ambiguous").
-#    Drop it from the object list rather than patch the stock sources.
+# Well-known modern-gcc fixes for the stock ns-2 tree (gcc-7). These edit
+# stock sources, not AntHocNet; without them ns-allinone's ./install silently
+# leaves a broken `ns` (its exit code doesn't propagate the failed object), and
+# the failure only surfaces when the AntHocNet stage relinks.
+#  - linkstate/ls.h (all): the templated erase() needs an explicit this->.
+#  - tools/ranvar.cc (ns-2.34): a direct constructor call
+#    `GammaRandomVariable::GammaRandomVariable(...)` is ill-formed on modern gcc
+#    (ns-2.35 already writes it as a function-style cast); drop the redundant
+#    `::GammaRandomVariable`.
+#  - mdart (M-DART, ns-2.35): its global hash() clashes with std::hash —
+#    `using namespace std` injects std::hash into the global namespace, so even
+#    the existing `::hash(...)` calls are ambiguous. Rename the helper (and its
+#    callers) to mdart_hash. Renaming (not dropping the objects) keeps
+#    hdr_mdart::offset_ defined, which stock cmu-trace.cc references.
 RUN sed -i 's/\berase(baseMap::begin(), baseMap::end())/this->erase(baseMap::begin(), baseMap::end())/' \
         "$NS2DIR/linkstate/ls.h" \
- && sed -i 's#\bmdart/[A-Za-z0-9_]*\.o##g' "$NS2DIR/Makefile.in"
+ && if [ -f "$NS2DIR/tools/ranvar.cc" ]; then \
+        sed -i 's/return GammaRandomVariable::GammaRandomVariable(/return GammaRandomVariable(/' \
+            "$NS2DIR/tools/ranvar.cc"; \
+    fi \
+ && if [ -d "$NS2DIR/mdart" ]; then \
+        sed -i 's/\bhash(/mdart_hash(/g' "$NS2DIR"/mdart/*.cc "$NS2DIR"/mdart/*.h; \
+    fi
 
 # Build the stock ns-allinone tree (tcl/otcl/tclcl/ns) with default flags.
 RUN cd "$NS2ALL" && ./install
