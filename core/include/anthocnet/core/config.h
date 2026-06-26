@@ -32,6 +32,18 @@ struct Config {
     /// Links whose pheromone drops below this are pruned.
     double minPheromone = 0.00001;  ///< MIN_PHEROMONE
 
+    /// Time-proportional evaporation (ADR-0012): a secondary safety net, the
+    /// only source of aging (reinforcement no longer ages competitors). Each
+    /// tick ages every regular link by alpha^(dt/evaporationInterval). Gated so
+    /// item 08 can run the paper-faithful "running-average only" ablation.
+    bool   enableEvaporation   = true;
+    double evaporationInterval = 1.0;  ///< reference interval (s) for the decay.
+
+    /// At most one reactive forward ant per destination per this window, so a
+    /// stream of packets to an unreachable destination doesn't flood ants
+    /// ([1] §4.2).
+    double reactiveRetryInterval = 1.0;
+
     /// Proactive / diffusion subsystem (ADR-0007), config-gated so the
     /// benchmark ablation (item 08) can justify the shipped default.
     bool enableProactive = true;   ///< master: proactive ants + diffusion.

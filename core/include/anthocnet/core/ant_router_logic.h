@@ -130,6 +130,8 @@ private:
     std::uint32_t   seqNum_ = 0;
     std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
     std::map<NodeAddress, double> lastSeen_;        ///< neighbor -> last reception time
+    std::map<NodeAddress, double> lastReactive_;    ///< dest -> last reactive-ant time
+    double lastEvaporation_ = 0.0;                  ///< last evaporateAll time
 };
 
 } // namespace core

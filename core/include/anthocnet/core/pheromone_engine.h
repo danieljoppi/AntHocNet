@@ -24,10 +24,14 @@ public:
     /// gamma * phValue + (1 - gamma) * phUpdate
     double reinforce(double phValue, double phUpdate) const;
 
-    /// Increment the (dest, neighbor) regular link travelled by an ant while
-    /// evaporating that destination's other links.
+    /// Reinforce the (dest, neighbor) regular link travelled by an ant. Aging
+    /// of other links is handled separately by evaporateAll (ADR-0012).
     void updateRegular(PheromoneTable& table, NodeAddress dest,
                        NodeAddress neighbor, double phUpdate) const;
+
+    /// Time-proportional aging of every regular link by alpha^(dt/interval),
+    /// pruning links below minPheromone. Driven by the maintenance tick.
+    void evaporateAll(PheromoneTable& table, double dtSeconds) const;
 
     /// Evaporate all virtual links then reinforce those advertised by a hello.
     void updateVirtual(PheromoneTable& table, const AntMessage& hello) const;

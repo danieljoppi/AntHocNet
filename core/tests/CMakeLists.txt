@@ -12,6 +12,7 @@ set(ANTHOCNET_TESTS
   test_diffusion
   test_proactive
   test_link_failure
+  test_evaporation_backoff
 )
 
 foreach(test ${ANTHOCNET_TESTS})

@@ -31,6 +31,14 @@ void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
 std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
     std::vector<RouteDecision> out;
     const double now = clock_.now();
+
+    // Single-sourced, time-proportional aging (ADR-0012), gated for the
+    // paper-faithful ablation. dt is taken from the clock, never wall time.
+    if (config_.enableEvaporation) {
+        engine_.evaporateAll(table_, now - lastEvaporation_);
+        lastEvaporation_ = now;
+    }
+
     const double maxIdle = config_.helloInterval * config_.allowedHelloLoss;
 
     std::vector<NodeAddress> expired;
@@ -321,10 +329,18 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
 std::vector<RouteDecision> AntRouterLogic::onDataPacket(NodeAddress dest) {
     NodeAddress next = nextHopForData(dest);
     if (next == kInvalidAddress) {
-        // No route: hold the data and launch a reactive forward ant.
-        AntMessage refa = createForwardAnt(AntType::Reactive, dest);
-        return {{RouteAction::Queue, dest, false, {}},
-                {RouteAction::Broadcast, kInvalidAddress, true, refa}};
+        // No route: always hold the data, but launch at most one reactive ant
+        // per destination per reactiveRetryInterval so a stream of packets to an
+        // unreachable destination doesn't flood ants ([1] §4.2).
+        std::vector<RouteDecision> out{{RouteAction::Queue, dest, false, {}}};
+        const double now = clock_.now();
+        auto it = lastReactive_.find(dest);
+        if (it == lastReactive_.end() || now - it->second >= config_.reactiveRetryInterval) {
+            lastReactive_[dest] = now;
+            AntMessage refa = createForwardAnt(AntType::Reactive, dest);
+            out.push_back({RouteAction::Broadcast, kInvalidAddress, true, refa});
+        }
+        return out;
     }
     return {{RouteAction::Unicast, next, false, {}}};
 }

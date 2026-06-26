@@ -1,5 +1,6 @@
 #include "anthocnet/core/pheromone_engine.h"
 
+#include <cmath>
 #include <set>
 #include <vector>
 
@@ -30,36 +31,33 @@ bool PheromoneEngine::hasVirtualDestination(const PheromoneTable& table, NodeAdd
 
 void PheromoneEngine::updateRegular(PheromoneTable& table, NodeAddress dest,
                                     NodeAddress neighbor, double phUpdate) const {
-    bool destVanished = false;
+    // Reinforce only the travelled link. All aging is single-sourced into the
+    // periodic, time-proportional evaporateAll (ADR-0012) — reinforcing no
+    // longer ages competitors, which removes the reinforce-and-age coupling.
+    const double phValue = table.getPheromoneRegular(dest, neighbor);
+    table.setPheromoneRegular(dest, neighbor, reinforce(phValue, phUpdate));
+}
 
-    // Snapshot neighbours: setPheromoneRegular can mutate the neighbour set.
-    const std::vector<NodeAddress> neighbors(table.neighbors().begin(), table.neighbors().end());
+void PheromoneEngine::evaporateAll(PheromoneTable& table, double dtSeconds) const {
+    if (dtSeconds <= 0.0 || config_.evaporationInterval <= 0.0) return;
+    // Time-proportional retention: alpha per evaporationInterval, scaled by the
+    // actual elapsed time so the same tick that expires neighbours can age.
+    const double factor = std::pow(config_.alpha, dtSeconds / config_.evaporationInterval);
 
-    for (NodeAddress n : neighbors) {
-        double phValue = table.getPheromoneRegular(dest, n);
-
-        if (n == neighbor) {
-            // Reinforce the link the ant travelled.
-            table.setPheromoneRegular(dest, neighbor, reinforce(phValue, phUpdate));
-        } else if (phValue > 0.0) {
-            if (phValue < config_.minPheromone) {
-                // BUGFIX: the original evaporated/removed `neighbor` (the
-                // travelled link) here instead of `n` (the link actually being
-                // aged), so competing links never decayed. Operate on `n`.
-                table.removePheromoneRegular(dest, n);
-                if (!hasRegularDestination(table, dest)) destVanished = true;
-            } else {
-                table.setPheromoneRegular(dest, n, evaporate(phValue));
-            }
-        }
-    }
-
-    if (destVanished) {
+    const std::vector<NodeAddress> dests(table.regularDestinations().begin(),
+                                         table.regularDestinations().end());
+    for (NodeAddress dest : dests) {
+        const std::vector<NodeAddress> neighbors(table.neighbors().begin(),
+                                                 table.neighbors().end());
         for (NodeAddress n : neighbors) {
-            table.removePheromoneRegular(dest, n);
-        }
-        if (table.neighbors().find(dest) != table.neighbors().end()) {
-            table.removeNeighbor(dest);
+            const double ph = table.getPheromoneRegular(dest, n);
+            if (ph <= 0.0) continue;
+            const double aged = ph * factor;
+            if (aged < config_.minPheromone) {
+                table.removePheromoneRegular(dest, n);
+            } else {
+                table.setPheromoneRegular(dest, n, aged);
+            }
         }
     }
 }
