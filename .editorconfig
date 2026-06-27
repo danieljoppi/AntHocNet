@@ -1,0 +1,29 @@
+# EditorConfig — https://editorconfig.org
+# Codifies the existing style so editors stay consistent across contributors.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# C++ (core/ + adapters): 4-space indent, matching the existing source.
+[*.{c,cc,cpp,h,hpp}]
+indent_style = space
+indent_size = 4
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[Makefile]
+indent_style = tab
+
+# Markdown: keep trailing whitespace (it is a hard line break).
+[*.md]
+trim_trailing_whitespace = false
