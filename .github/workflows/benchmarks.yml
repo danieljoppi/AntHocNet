@@ -1,17 +1,23 @@
 name: Benchmarks
 
-# Re-run the AntHocNet vs AODV/OLSR/DSDV comparison whenever the default branch
-# changes (i.e. after a PR is merged) and commit the refreshed results table
-# back into docs/benchmarks.md, so it always tracks the current code. The CSV is
-# also uploaded as a build artifact. Can also be triggered manually.
+# After every merge to the default branch, re-run the scenario taxonomy across
+# all baselines (AODV/OLSR/DSDV) and publish the refreshed results back into the
+# repo: the per-scenario table in docs/benchmarks.md AND the taxonomy chart in
+# docs/benchmarks/. So the published numbers + figures always track the code.
+#
+# Scope: this runs the *discrete* named scenarios (quick preset). The heavier
+# parameter sweeps (area/pause/scale) stay in the manual "Scenario matrix +
+# charts" workflow -- too expensive for a per-merge job.
 on:
   push:
     branches: [main, master]   # both, so it survives the default-branch rename
   workflow_dispatch:
 
-# Needed to push the regenerated docs/benchmarks.md back to the branch.
+# Needed to push the regenerated table + charts back to the branch; packages to
+# pull the pre-built ns-3 image.
 permissions:
   contents: write
+  packages: read
 
 # One benchmark at a time; newer pushes supersede older queued runs.
 concurrency:
@@ -21,39 +27,50 @@ concurrency:
 jobs:
   benchmark:
     runs-on: ubuntu-latest
+    # Build against the pre-built plain ns-3 image (same as ci.yml) instead of
+    # compiling ns-3 from source, so the job has budget to run the whole
+    # taxonomy instead of a single scenario.
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ns3:3.42
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install toolchain
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ python3 ninja-build
-      - name: Fetch ns-3 (pinned release)
-        run: git clone --depth 1 --branch ns-3.42 https://gitlab.com/nsnam/ns-3-dev.git ns-3
       - name: Install AntHocNet module
-        run: make install-ns3 NS3DIR="$PWD/ns-3"
-      - name: Configure
+        run: make install-ns3 NS3DIR=/opt/ns-3
+      - name: Configure + build
         run: |
-          cd ns-3
+          cd /opt/ns-3
           ./ns3 configure --enable-examples \
-            --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
-      - name: Build
-        run: cd ns-3 && ./ns3 build
-      - name: Run benchmark (mean of 5 runs)
+            --enable-modules='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          ./ns3 build
+      - name: Install matplotlib
+        run: apt-get update && apt-get install -y python3-matplotlib
+      - name: Run scenario taxonomy (quick)
         run: |
-          bash ns3/tools/run-comparison.sh "$PWD/ns-3" 5 16 25 250 4 | tee benchmarks.csv
-      - name: Upload CSV artifact
+          python3 ns3/tools/run-scenarios.py /opt/ns-3 \
+            --out "$GITHUB_WORKSPACE/scenarios.csv" --only discrete --quick
+      - name: Render charts
+        run: python3 ns3/tools/make-charts.py "$GITHUB_WORKSPACE/scenarios.csv" --outdir docs/benchmarks
+      - name: Update results table
+        run: python3 ns3/tools/update-benchmarks.py "$GITHUB_WORKSPACE/scenarios.csv" docs/benchmarks.md
+      - name: Upload CSV + charts artifact
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
-          path: benchmarks.csv
-      - name: Update docs/benchmarks.md
-        run: python3 ns3/tools/update-benchmarks.py benchmarks.csv docs/benchmarks.md
+          path: |
+            scenarios.csv
+            docs/benchmarks/*.png
       - name: Commit refreshed results (if changed)
         run: |
-          if git diff --quiet -- docs/benchmarks.md; then
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/benchmarks.md docs/benchmarks
+          if git diff --cached --quiet; then
             echo "Benchmark results unchanged; nothing to commit."
             exit 0
           fi
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/benchmarks.md
-          git commit -m "docs: refresh benchmark results [skip ci]"
+          git commit -m "docs: refresh benchmark results + charts [skip ci]"
           git push
