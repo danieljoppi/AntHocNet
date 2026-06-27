@@ -125,6 +125,7 @@ History of the work is in the per-phase commits; design rationale is in
 
 | Document | Purpose |
 |----------|---------|
+| [docs/ant-colony-routing.md](docs/ant-colony-routing.md) | Concepts primer: ant foraging → ACO → AntNet → AntHocNet, and how they map to the code. Start here for the *idea*. |
 | [docs/architecture.md](docs/architecture.md) | Design, the core/adapter split, and the decision flow. |
 | [docs/porting-notes.md](docs/porting-notes.md) | Bugs fixed in extraction, NS-2 patch anchors, wire format, version caveats. |
 | [docs/wire-format.md](docs/wire-format.md) | Canonical on-wire ant layout, version byte, and diff vs. the original and the papers. |

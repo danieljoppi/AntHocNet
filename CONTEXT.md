@@ -31,6 +31,11 @@ decisions the core returns.
 
 ## 3. Domain background (enough to follow the code)
 
+> For the full conceptual lineage — ant foraging/stigmergy → ACO → AntNet →
+> AntHocNet, with the canonical references — see
+> [`docs/ant-colony-routing.md`](docs/ant-colony-routing.md). The summary below
+> is the minimum needed to read the code.
+
 - **MANET**: mobile nodes, no fixed infrastructure; links come and go as nodes
   move, so routing must adapt continuously.
 - **ACO routing**: "forward ants" explore toward a destination recording their
