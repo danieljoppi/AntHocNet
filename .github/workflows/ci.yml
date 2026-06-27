@@ -9,6 +9,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# packages:read lets the container jobs pull the pre-built simulator images
+# from GHCR; contents:read is for checkout.
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   core:
     name: core library + unit tests
@@ -42,43 +48,70 @@ jobs:
       - name: Validate apply/revert against a synthetic ns-2 tree
         run: bash ns2/patch/selftest.sh
 
+  ns2-compile:
+    name: NS-2 adapter compile (real ns-2 tree)
+    runs-on: ubuntu-latest
+    # Compile the ns-2 adapter against a *real* ns-2 tree inside the pre-built
+    # plain ns-2 image (published to GHCR on merge to the default branch). This
+    # is the only place the ns-2 agent is actually compiled — the ns2-patch job
+    # above only checks that the patch applies/reverts on a synthetic tree.
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ns2:${{ matrix.version }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['2.34', '2.35']
+    steps:
+      # ns-2's image is Ubuntu 18.04 without git; actions/checkout needs it.
+      - name: Install git for checkout
+        run: apt-get update && apt-get install -y --no-install-recommends git
+      - uses: actions/checkout@v4
+      - name: Install AntHocNet patch and recompile ns
+        run: |
+          NS2DIR="/opt/ns-allinone-${{ matrix.version }}/ns-${{ matrix.version }}"
+          make install-ns2 NS2DIR="$NS2DIR"
+          cd "$NS2DIR"
+          ./config.status
+          make
+          test -x ./ns
+
   ns3-build:
     name: NS-3 module build + test
     runs-on: ubuntu-latest
-    # Pin gcc-12 across the matrix. The runner's default (gcc-13 on ubuntu-24.04)
-    # cannot compile stock ns-3.36: its libstdc++ no longer pulls <cstdint>
-    # transitively, so ns-3.36 sources that use uint8_t without including it
-    # (e.g. src/network/utils/bit-serializer.h) fail to build. gcc-12's
-    # libstdc++ still provides the transitive include and is new enough for
-    # ns-3.48, so one compiler spans the whole supported range.
-    env:
-      CC: gcc-12
-      CXX: g++-12
+    # Build against the pre-built plain ns-3 image (published to GHCR on merge
+    # to the default branch) rather than compiling ns-3 from scratch: the stock
+    # tree is already built, so CI only compiles the AntHocNet module delta
+    # (minutes instead of ~13 min/version). The image's gcc spans the whole
+    # matrix (it builds 3.36..3.48 cleanly), so no per-version toolchain pin.
+    #
+    # Note: the images only (re)publish on merge to the default branch, so a
+    # newly added ns-3 version must be added to images.yml and merged first.
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ns3:${{ matrix.version }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     strategy:
       fail-fast: false
       matrix:
         # 3.36 = CMake-build baseline (widely used in published research);
         # 3.41/3.42 = prior pins; 3.47/3.48 = current releases. Spread catches
         # API drift across the whole supported range.
-        ns3: [ns-3.36, ns-3.41, ns-3.42, ns-3.47, ns-3.48]
+        version: ['3.36', '3.41', '3.42', '3.47', '3.48']
     steps:
       - uses: actions/checkout@v4
-      - name: Install toolchain
-        run: sudo apt-get update && sudo apt-get install -y cmake g++-12 python3 ninja-build
-      - name: Fetch ns-3 (${{ matrix.ns3 }})
-        run: |
-          git clone --depth 1 --branch ${{ matrix.ns3 }} https://gitlab.com/nsnam/ns-3-dev.git ns-3
       - name: Install AntHocNet module
-        run: make install-ns3 NS3DIR="$PWD/ns-3"
-      - name: Configure (with comparison protocols)
+        run: make install-ns3 NS3DIR=/opt/ns-3
+      - name: Configure (scope examples/tests to AntHocNet)
         run: |
-          cd ns-3
-          # Build only AntHocNet's own examples/tests, not the stock modules'.
-          # Stock test suites have cross-module deps that drift by release (aodv's
-          # test needs internet-apps on ns-3.36; internet-apps' test needs csma on
-          # ns-3.47+), so building them all would force an ever-growing module
-          # list. The --filter-module-examples-and-tests flag scopes that to our
-          # module; it was added after ns-3.36, so older trees just build + smoke.
+          cd /opt/ns-3
+          # Build only AntHocNet's own examples/tests, not the stock modules'
+          # (their cross-module deps drift by release). The filter flag scopes
+          # that to our module; it was added after ns-3.36, so older trees just
+          # build + smoke.
           mods='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
           if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
             ./ns3 configure --enable-tests --enable-examples \
@@ -90,11 +123,11 @@ jobs:
             echo "RUN_TESTS=0" >> "$GITHUB_ENV"
           fi
       - name: Build
-        run: cd ns-3 && ./ns3 build
+        run: cd /opt/ns-3 && ./ns3 build
       - name: Run module test suite (header round-trip + multi-hop delivery)
         if: env.RUN_TESTS == '1'
-        run: cd ns-3 && ./test.py -s anthocnet
+        run: cd /opt/ns-3 && ./test.py -s anthocnet
       - name: Smoke-run the example
-        run: cd ns-3 && ./ns3 run anthocnet-example
+        run: cd /opt/ns-3 && ./ns3 run anthocnet-example
       - name: Smoke-run the protocol comparison
-        run: cd ns-3 && ./ns3 run "anthocnet-compare --nNodes=8 --time=12 --area=150 --flows=2"
+        run: cd /opt/ns-3 && ./ns3 run "anthocnet-compare --nNodes=8 --time=12 --area=150 --flows=2"
