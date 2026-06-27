@@ -1,0 +1,64 @@
+name: Release
+
+# On a vX.Y.Z tag: sanity-build, assemble a lean install bundle (the source you
+# need to install onto your own ns-2 / ns-3 tree, minus the ~160k lines of
+# generated scenario files), and publish a GitHub Release. Once the repo is
+# linked to Zenodo, each published release is archived and gets a DOI
+# automatically — no workflow change needed; just add the DOI to CITATION.cff.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # create the release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches VERSION
+        run: |
+          tag="${GITHUB_REF_NAME}"          # e.g. v0.1.0
+          ver="${tag#v}"
+          file_ver="$(tr -d '[:space:]' < VERSION)"
+          if [ "$ver" != "$file_ver" ]; then
+            echo "::error::tag $tag (=$ver) does not match VERSION file ($file_ver)"
+            exit 1
+          fi
+          echo "VER=$ver" >> "$GITHUB_ENV"
+
+      - name: Sanity build + test (core)
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ && make test
+
+      - name: Assemble install bundle
+        run: |
+          name="anthocnet-${VER}"
+          dest="dist/${name}"
+          mkdir -p "$dest"
+          # Top-level files (only those that exist).
+          for f in Makefile README.md LICENSE CHANGELOG.md CITATION.cff \
+                   CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md CONTEXT.md AGENTS.md; do
+            [ -e "$f" ] && cp "$f" "$dest/"
+          done
+          cp -r core ns3 docs ns2 "$dest/"
+          # Drop the generated ns-2 scenario data (~160k lines) and any build
+          # output from the bundle.
+          rm -rf "$dest"/ns2/tcl/scenario*
+          find "$dest" -type d -name build -prune -exec rm -rf {} +
+          ( cd dist && zip -qr "${name}.zip" "${name}" )
+          ls -lh "dist/${name}.zip"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/anthocnet-${{ env.VER }}.zip
+          generate_release_notes: true
+          body: |
+            AntHocNet ${{ github.ref_name }}. See [CHANGELOG.md](CHANGELOG.md).
+
+            **Install bundle** (`anthocnet-${{ env.VER }}.zip`) — the source to
+            drop onto your own simulator tree:
+            `make install-ns3 NS3DIR=…` or `make install-ns2 NS2DIR=…`.
+            Pre-built simulator images are on GHCR (see `docker/README.md`).

@@ -1,5 +1,9 @@
 # AntHocNet
 
+[![Release](https://img.shields.io/github/v/release/danieljoppi/AntHocNet?sort=semver)](https://github.com/danieljoppi/AntHocNet/releases)
+[![Cite](https://img.shields.io/badge/cite-CITATION.cff-blue)](CITATION.cff)
+[![License: GPL v2](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
+
 An ant-colony-optimization routing protocol for mobile ad-hoc networks,
 implemented once as a **simulator-agnostic algorithm core** with thin adapters
 for **NS-2** and **NS-3**.
@@ -134,6 +138,22 @@ History of the work is in the per-phase commits; design rationale is in
 | [AGENTS.md](AGENTS.md) | Build/verify/conventions and invariants for contributors and AI agents. |
 | [ns2/README.md](ns2/README.md) · [ns3/README.md](ns3/README.md) | Per-adapter install/run details. |
 | [docker/README.md](docker/README.md) | Pre-built container images (plain vs. AntHocNet, per simulator version). |
+
+## Releases & citing
+
+Versioning follows [SemVer](https://semver.org); see [CHANGELOG.md](CHANGELOG.md).
+Tagging `vX.Y.Z` builds a lean **install bundle** zip and publishes a GitHub
+[Release](https://github.com/danieljoppi/AntHocNet/releases) (via
+`.github/workflows/release.yml`). There is no prebuilt simulator `.so`/installer
+by design — an ns-2/ns-3 module is ABI/version-locked to the user's tree, so it
+is distributed as **source** (`make install-ns3` / `make install-ns2`) plus the
+pre-built **Docker images** on GHCR (see [docker/README.md](docker/README.md)).
+
+To cite this implementation, use the “Cite this repository” button (from
+[CITATION.cff](CITATION.cff)). Once the repo is linked to
+[Zenodo](https://zenodo.org), each release is archived with a DOI, which is then
+added to `CITATION.cff`. Please also cite the original AntHocNet paper
+(Di Caro, Ducatelle & Gambardella, PPSN VIII, 2004) referenced there.
 
 ## License
 

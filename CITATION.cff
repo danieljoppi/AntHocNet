@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "AntHocNet for NS-2 and NS-3"
+abstract: >-
+  A simulator-agnostic C++ implementation of the AntHocNet ant-colony-optimization
+  routing protocol for mobile ad hoc networks, with thin adapters for the NS-2 and
+  NS-3 network simulators and a shared, testable algorithm core.
+type: software
+authors:
+  - family-names: Joppi
+    given-names: Daniel Henrique
+    # orcid: "https://orcid.org/0000-0000-0000-0000"  # add if available
+version: 0.1.0
+date-released: "2026-06-27"
+license: GPL-2.0-only
+repository-code: "https://github.com/danieljoppi/AntHocNet"
+url: "https://github.com/danieljoppi/AntHocNet"
+# doi: "10.5281/zenodo.XXXXXXX"   # added after the first Zenodo-archived release
+keywords:
+  - MANET
+  - ad hoc networks
+  - ant colony optimization
+  - swarm intelligence
+  - routing protocol
+  - ns-3
+  - ns-2
+references:
+  - type: conference-paper
+    title: "AntHocNet: an ant-based hybrid routing algorithm for mobile ad hoc networks"
+    authors:
+      - family-names: "Di Caro"
+        given-names: Gianni
+      - family-names: Ducatelle
+        given-names: Frederick
+      - family-names: Gambardella
+        given-names: "Luca Maria"
+    collection-title: "Parallel Problem Solving from Nature - PPSN VIII"
+    collection-type: proceedings
+    volume: 3242
+    year: 2004
+    publisher:
+      name: "Springer Berlin Heidelberg"
+    notes: "The algorithm this software implements."
