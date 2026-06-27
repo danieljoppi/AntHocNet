@@ -5,11 +5,18 @@ AntHocNet measured against the standard NS-3 MANET routing protocols
 mobility and traffic, driven from the same RNG runs so every protocol sees the
 same realisations. Metrics come from an NS-3 `FlowMonitor`:
 
-- **PDR** — packet-delivery ratio (received / sent), %.
+- **PDR** — packet-delivery ratio (received / sent), %, over the CBR data flows.
 - **mean delay** — average end-to-end delay of delivered packets, ms.
+- **99th-percentile delay** — the paper's QoS/jitter metric; a small tail of
+  very-high-delay packets is how AODV loses out in the original results.
 - **throughput** — application bytes delivered per second, kbps.
+- **NRL** — normalized routing load: routing-control packets transmitted (each
+  hop) per data packet delivered, counted uniformly at the IP layer.
 
-Reproduce locally:
+The table below is a small, fast scenario used for a quick regression signal.
+To reproduce the **paper's base scenario** (50 nodes, 1500×300 m, random-waypoint
+at 20 m/s with 30 s pause, 20 CBR sources, 300 m range, 900 s) and its sweeps,
+use the `paper` preset — it is heavy, so it is a manual run, not part of CI:
 
 ```bash
 make install-ns3 NS3DIR=/path/to/ns-3-dev
@@ -17,7 +24,11 @@ cd /path/to/ns-3-dev
 ./ns3 configure --enable-examples \
   --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
 ./ns3 build
-# averaged CSV:
+./ns3 run "anthocnet-compare --scenario=paper --runs=5"               # base scenario
+./ns3 run "anthocnet-compare --scenario=paper --areaX=2500 --runs=5"  # area sweep
+./ns3 run "anthocnet-compare --scenario=paper --pause=0 --runs=5"     # mobility sweep
+
+# the quick scenario the table below uses (averaged CSV):
 bash /path/to/AntHocNet/ns3/tools/run-comparison.sh "$PWD" 10 20 40 300 5
 ```
 
