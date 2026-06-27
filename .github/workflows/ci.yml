@@ -40,6 +40,23 @@ jobs:
           cmake --build core/build-san -j
           cd core/build-san && ctest --output-on-failure
 
+  codec-fuzz:
+    name: codec fuzz (libFuzzer, 60s)
+    runs-on: ubuntu-latest
+    # The codec is the only parser of untrusted network bytes (item 12), so fuzz
+    # its decode path against a small seed corpus. ubuntu-latest's clang ships
+    # the libFuzzer/ASan runtimes; a crash/UB/over-read fails the job.
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the codec fuzz target (clang + libFuzzer/ASan)
+        run: |
+          cmake -S core -B core/build-fuzz -DANTHOCNET_FUZZ=ON -DCMAKE_CXX_COMPILER=clang++
+          cmake --build core/build-fuzz --target fuzz_codec
+      - name: Fuzz the decode path for 60s
+        run: |
+          core/build-fuzz/tests/fuzz_codec -max_total_time=60 -print_final_stats=1 \
+            core/tests/fuzz_corpus
+
   ns2-patch:
     name: NS-2 patch round-trip (synthetic tree)
     runs-on: ubuntu-latest
@@ -135,5 +152,16 @@ jobs:
         run: cd /opt/ns-3 && ./test.py -s anthocnet
       - name: Smoke-run the example
         run: cd /opt/ns-3 && ./ns3 run anthocnet-example
-      - name: Smoke-run the protocol comparison
-        run: cd /opt/ns-3 && ./ns3 run "anthocnet-compare --nNodes=8 --time=12 --area=150 --flows=2"
+      - name: E2E delivery smoke (AntHocNet must deliver in a connected scenario)
+        # Loose behavioural gate: in a small, dense, connected scenario AntHocNet
+        # must deliver *something* (catches "routes nothing" regressions, not
+        # performance noise — that lives in the manual benchmarks). Parse the
+        # AntHocNet PDR from the --csv output and require it to be > 0.
+        run: |
+          cd /opt/ns-3
+          out=$(./ns3 run "anthocnet-compare --csv --protocols=anthocnet --nNodes=8 --time=20 --area=150 --flows=2" 2>/dev/null)
+          echo "$out"
+          pdr=$(printf '%s\n' "$out" | awk -F, '$1=="anthocnet"{print $7}')
+          echo "AntHocNet PDR% = ${pdr:-<none>}"
+          awk -v p="${pdr:-0}" 'BEGIN { exit (p+0 > 0) ? 0 : 1 }' \
+            || { echo "FAIL: AntHocNet delivered no packets (PDR=${pdr:-<none>})"; exit 1; }

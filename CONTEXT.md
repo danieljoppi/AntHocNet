@@ -114,22 +114,29 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 
 ## 7. Current state
 
-- **`core/` builds and all unit tests pass** (`make test`, 5/5 — verified).
+- **`core/` builds and all unit tests pass** (`make test`), including
+  randomized property/invariant tests (`test_properties`).
 - **NS-2 patch apply/revert round-trips** on a synthetic tree
-  (`bash ns2/patch/selftest.sh`, in CI).
-- **NS-3 module** builds against ns-3.36+; CI builds it only on manual dispatch
-  (heavy). No end-to-end NS-2/NS-3 simulation is run from this repo — that needs
-  an external simulator tree.
+  (`bash ns2/patch/selftest.sh`, in CI), and the **NS-2 adapter is compiled
+  against real ns-2.34 / ns-2.35 trees in CI** (the `ns2-compile` job, run
+  inside the published plain ns-2 image).
+- **NS-3 module** builds and tests across **ns-3.36 / 3.41 / 3.42 / 3.47 / 3.48**
+  on every push/PR (the `ns3-build` matrix runs inside the prebuilt plain ns-3
+  images), running the module test suite and an **asserted end-to-end delivery
+  smoke** — AntHocNet must deliver a non-zero PDR in a small connected scenario.
+- The **codec decode path is fuzzed** (libFuzzer, 60 s, `codec-fuzz` job).
+- Container images for every supported simulator version are published to GHCR
+  on merge to the default branch (`.github/workflows/images.yml`).
 
 ## 8. What is missing / caveats
 
 - **Cross-simulator metric parity is not guaranteed.** NS-2 and NS-3 have
   different MAC/PHY models; treat a cross-sim comparison as behaviour
   re-validation, not a bit-for-bit port.
-- **No full simulation runs in CI** — only the core tests and the NS-2 patch
-  round-trip. Behavioural validation on real NS-2/NS-3 trees is manual.
-- **Old NS-2 toolchains** may default to < C++14 and need `-std=c++14` added to
-  `CCOPT` (documented in `docs/porting-notes.md`).
+- **The e2e delivery smoke is NS-3 only.** No NS-2 end-to-end simulation runs in
+  CI yet (a purpose-built minimal static scenario is a tracked follow-up). The
+  smoke is a loose "delivers something" gate; performance comparison is manual
+  (items 07/08, multi-seed).
 - The NS-2 patch depends on **stable text anchors** in upstream files; a future
   NS-2 release that moves an anchor makes the installer fail loudly (by design)
   and the fragment must be updated.
