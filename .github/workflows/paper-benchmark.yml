@@ -1,0 +1,73 @@
+name: Paper benchmark (manual)
+
+# Heavy, manually-dispatched benchmark in AntHocNet's *intended* regime (the
+# paper's large/sparse/mobile scenario, 300 m range), with --diag so we can see
+# whether routes actually form. Not part of per-merge CI: the paper scenario is
+# expensive, and the dense-small smoke in ci.yml is the fast regression gate.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'ns-3 image tag'
+        default: '3.42'
+      nNodes:
+        description: 'Number of nodes'
+        default: '50'
+      time:
+        description: 'Sim time (s) — 900 is the full paper run; lower for speed'
+        default: '300'
+      runs:
+        description: 'RNG runs to average'
+        default: '3'
+      areaX:
+        description: 'Area long edge (m) — paper sweeps 1500..2500'
+        default: '1500'
+      pause:
+        description: 'Random-waypoint pause time (s) — paper sweeps 0..900'
+        default: '30'
+      protocols:
+        description: 'Comma-separated protocol list'
+        default: 'anthocnet,aodv,olsr,dsdv'
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  paper:
+    name: paper scenario + diagnostics
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install AntHocNet module
+        run: make install-ns3 NS3DIR=/opt/ns-3
+      - name: Configure
+        run: |
+          cd /opt/ns-3
+          ./ns3 configure --enable-examples \
+            --enable-modules='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+      - name: Build
+        run: cd /opt/ns-3 && ./ns3 build
+      - name: Run paper scenario (with diagnostics)
+        run: |
+          cd /opt/ns-3
+          args="--scenario=paper --diag \
+            --protocols=${{ github.event.inputs.protocols }} \
+            --runs=${{ github.event.inputs.runs }} \
+            --nNodes=${{ github.event.inputs.nNodes }} \
+            --time=${{ github.event.inputs.time }} \
+            --areaX=${{ github.event.inputs.areaX }} \
+            --pause=${{ github.event.inputs.pause }}"
+          echo "anthocnet-compare $args"
+          ./ns3 run "anthocnet-compare $args" 2>/dev/null \
+            | tee "$GITHUB_WORKSPACE/paper-results.txt"
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-benchmark
+          path: paper-results.txt

@@ -14,6 +14,7 @@
 #include "ns3/ipv4-l3-protocol.h"
 #include "ns3/socket.h"
 #include "ns3/timer.h"
+#include "ns3/traced-callback.h"
 
 #include <map>
 #include <memory>
@@ -36,7 +37,12 @@
 namespace ns3 {
 namespace anthocnet {
 
-class RoutingProtocol : public Ipv4RoutingProtocol
+// The protocol is also a core IRouterObserver (item 15): it forwards the core's
+// ant/route events to ns-3 trace sources so users can Config::Connect and so the
+// comparison harness can read ant-level diagnostics. The interface is all
+// no-op-default virtuals, so this adds no state to the core.
+class RoutingProtocol : public Ipv4RoutingProtocol,
+                        public ::anthocnet::core::IRouterObserver
 {
 public:
     static TypeId GetTypeId();
@@ -44,6 +50,19 @@ public:
 
     RoutingProtocol();
     ~RoutingProtocol() override;
+
+    // Trace-source callback signatures (introspection names used in GetTypeId).
+    typedef void (*AntTxCallback)(uint8_t type, uint8_t direction, bool broadcast);
+    typedef void (*AntRxCallback)(uint8_t type, uint8_t direction);
+    typedef void (*RouteChangedCallback)(uint32_t dest, uint32_t neighbor, bool added);
+
+    // core::IRouterObserver
+    void onAntSent(::anthocnet::core::AntType type,
+                   ::anthocnet::core::AntDirection dir, bool broadcast) override;
+    void onAntReceived(::anthocnet::core::AntType type,
+                       ::anthocnet::core::AntDirection dir) override;
+    void onRouteChanged(::anthocnet::core::NodeAddress dest,
+                        ::anthocnet::core::NodeAddress nb, bool added) override;
 
     // Ipv4RoutingProtocol
     Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p, const Ipv4Header& header,
@@ -134,6 +153,11 @@ private:
     bool m_enableDiffusion;
     double m_proactiveBroadcastProb;
     double m_sessionTtl;
+
+    // trace sources (item 15): ant sent/received and route add/remove.
+    TracedCallback<uint8_t, uint8_t, bool> m_txAntTrace;
+    TracedCallback<uint8_t, uint8_t> m_rxAntTrace;
+    TracedCallback<uint32_t, uint32_t, bool> m_routeChangedTrace;
 };
 
 } // namespace anthocnet

@@ -42,6 +42,17 @@ public:
     const PheromoneTable& table() const { return table_; }
     PheromoneEngine& engine() { return engine_; }
 
+    // --- observability (item 15) -----------------------------------------
+    /// Attach an optional observer for ant/route events (nullptr to detach).
+    /// Zero-overhead when unset; the observer only reports, never decides.
+    void setObserver(IRouterObserver* observer) { observer_ = observer; }
+    /// Ants of `type` this node has put on the medium (origination + forward).
+    std::uint64_t antsSent(AntType type) const;
+    /// Non-duplicate ants of `type` this node has received and processed.
+    std::uint64_t antsReceived(AntType type) const;
+    /// Total ant control packets sent across all types (routing overhead).
+    std::uint64_t controlPacketsSent() const;
+
     // --- neighbour learning ----------------------------------------------
     /// Record that `neighbor` is reachable (link-layer detection / hello),
     /// seeding an equal-weight regular pheromone entry as the legacy code did.
@@ -125,7 +136,10 @@ private:
     /// Turn a forward/notification ant into a Broadcast decision, honouring its
     /// broadcastBudget: an untracked ant (-1) always broadcasts; a budgeted ant
     /// decrements and broadcasts while >0, and is Dropped once exhausted.
-    RouteDecision broadcastForward(AntMessage& ant) const;
+    RouteDecision broadcastForward(AntMessage& ant);
+    /// Build a Unicast/Broadcast decision carrying `ant`, counting it as sent
+    /// and notifying the observer (the single choke point for ant emission).
+    RouteDecision sendAnt(RouteAction action, NodeAddress nextHop, const AntMessage& ant);
     /// Apply a received LinkFail notification and, if it costs this node its own
     /// best path, return a bounded propagated notification.
     std::vector<RouteDecision> handleLinkFail(const AntMessage& note, NodeAddress reporter);
@@ -148,6 +162,10 @@ private:
     std::map<NodeAddress, double> lastSeen_;        ///< neighbor -> last reception time
     std::map<NodeAddress, double> lastReactive_;    ///< dest -> last reactive-ant time
     double lastEvaporation_ = 0.0;                  ///< last evaporateAll time
+
+    IRouterObserver* observer_ = nullptr;           ///< optional, item 15
+    std::map<AntType, std::uint64_t> antsSent_;     ///< sent counters by type
+    std::map<AntType, std::uint64_t> antsReceived_; ///< received counters by type
 };
 
 } // namespace core

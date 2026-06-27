@@ -67,6 +67,25 @@ void CountControlTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t) {
     if (udp.GetDestinationPort() != kDataPort) ++g_controlPkts;
 }
 
+// --- diagnostics (--diag): ant-level introspection for AntHocNet -----------
+// Answers "are routes forming and when?": per-type ant send/receive tallies
+// (from the protocol's own item-15 Tx/Rx trace sources) and the time of the
+// first delivered data packet (works for every protocol, from the sink's Rx).
+bool g_diag = false;
+std::map<uint8_t, uint64_t> g_antTx;   // by AntType byte
+std::map<uint8_t, uint64_t> g_antRx;
+double g_firstDeliveryS = -1.0;
+
+void DiagAntTx(uint8_t type, uint8_t /*dir*/, bool /*broadcast*/) {
+    if (g_diag) g_antTx[type] += 1;
+}
+void DiagAntRx(uint8_t type, uint8_t /*dir*/) {
+    if (g_diag) g_antRx[type] += 1;
+}
+void DiagSinkRx(Ptr<const Packet>, const Address&) {
+    if (g_firstDeliveryS < 0.0) g_firstDeliveryS = Simulator::Now().GetSeconds();
+}
+
 struct Params {
     uint32_t nNodes;
     double   simTime;
@@ -95,6 +114,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     RngSeedManager::SetSeed(1);
     RngSeedManager::SetRun(seed);
     g_controlPkts = 0;
+    g_antTx.clear();
+    g_antRx.clear();
+    g_firstDeliveryS = -1.0;
 
     NodeContainer nodes;
     nodes.Create(P.nNodes);
@@ -192,6 +214,25 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     }
     sinks.Start(Seconds(0.0));
 
+    if (g_diag) {
+        // First-delivery timestamp from every data sink (all protocols).
+        for (uint32_t i = 0; i < sinks.GetN(); ++i) {
+            sinks.Get(i)->TraceConnectWithoutContext("Rx", MakeCallback(&DiagSinkRx));
+        }
+        // Per-type ant tallies from AntHocNet's own trace sources (item 15).
+        // Guarded to anthocnet: other protocols have no "Tx"/"Rx" ant traces.
+        if (proto == "anthocnet") {
+            for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+                Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
+                if (!ip) continue;
+                Ptr<Ipv4RoutingProtocol> rp = ip->GetRoutingProtocol();
+                if (!rp) continue;
+                rp->TraceConnectWithoutContext("Tx", MakeCallback(&DiagAntTx));
+                rp->TraceConnectWithoutContext("Rx", MakeCallback(&DiagAntRx));
+            }
+        }
+    }
+
     FlowMonitorHelper fmHelper;
     Ptr<FlowMonitor> monitor = fmHelper.InstallAll();
 
@@ -244,6 +285,34 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         }
     }
 
+    // Diagnostics line (prefixed "# " so CSV consumers ignore it). Shows whether
+    // routes form (reactive ants sent vs received elsewhere; back-ant arrivals)
+    // and when the first packet is delivered.
+    if (g_diag) {
+        std::cout << std::fixed << std::setprecision(2)
+                  << "# diag " << proto << " seed=" << seed
+                  << " pdr=" << r.pdr
+                  << " firstDeliveryS=" << g_firstDeliveryS
+                  << " ctrlTx=" << g_controlPkts;
+        if (proto == "anthocnet") {
+            auto n = [](std::map<uint8_t, uint64_t>& m, uint8_t k) {
+                auto it = m.find(k);
+                return it == m.end() ? static_cast<uint64_t>(0) : it->second;
+            };
+            std::cout << " antTx[hello=" << n(g_antTx, 0x01)
+                      << ",reactive=" << n(g_antTx, 0x02)
+                      << ",proactive=" << n(g_antTx, 0x04)
+                      << ",repair=" << n(g_antTx, 0x08)
+                      << ",linkfail=" << n(g_antTx, 0x10) << "]"
+                      << " antRx[hello=" << n(g_antRx, 0x01)
+                      << ",reactive=" << n(g_antRx, 0x02)
+                      << ",proactive=" << n(g_antRx, 0x04)
+                      << ",repair=" << n(g_antRx, 0x08)
+                      << ",linkfail=" << n(g_antRx, 0x10) << "]";
+        }
+        std::cout << "\n";
+    }
+
     Simulator::Destroy();
     return r;
 }
@@ -276,6 +345,7 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("runs", "Number of RNG runs to average (seeds 1..runs)", runs);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols", "Comma-separated list", protocols);
+    cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies, first delivery)", g_diag);
     cmd.Parse(argc, argv);
     if (runs < 1) runs = 1;
 

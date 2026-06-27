@@ -78,10 +78,27 @@ comparison. Results vary by node density, mobility and traffic — this is a
 re-validation harness, not a claim that any one protocol always wins.
 
 Options: `--scenario=paper --nNodes --time --area --areaX --areaY --speed
---pause --range --flows --cbrBps --runs --protocols --csv`. (`--scenario=paper`
-sets the paper defaults; any explicit flag overrides them, which is how the
-area/pause sweeps above work. The numbers above are illustrative.)
-(e.g. `--protocols=anthocnet,aodv`).
+--pause --range --flows --cbrBps --runs --protocols --csv --diag`.
+(`--scenario=paper` sets the paper defaults; any explicit flag overrides them,
+which is how the area/pause sweeps above work. The numbers above are
+illustrative.) (e.g. `--protocols=anthocnet,aodv`).
+
+### Diagnostics (`--diag`)
+
+`--diag` emits a `# diag` line per run with the first-delivery time and, for
+AntHocNet, per-type ant send/receive tallies — so you can see whether routes
+actually form (reactive ants sent vs. received elsewhere; back-ant arrivals)
+rather than just the aggregate PDR:
+
+```
+# diag anthocnet seed=1 pdr=92.40 firstDeliveryS=6.21 ctrlTx=18342 \
+    antTx[hello=...,reactive=...,proactive=...,repair=...,linkfail=...] antRx[...]
+```
+
+These come from the protocol's item-15 trace sources (`Tx`, `Rx`,
+`RouteChanged` on `ns3::anthocnet::RoutingProtocol`), which any script can
+`Config::Connect` to. The heavy paper-regime run is wired up as the
+manually-dispatched **Paper benchmark** GitHub Actions workflow.
 
 ## Uninstall
 
