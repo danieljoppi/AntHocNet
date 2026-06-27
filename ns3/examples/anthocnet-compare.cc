@@ -219,7 +219,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         totalDelay += kv.second.delaySum.GetSeconds();
         rxForDelay += kv.second.rxPackets;
         totalRxBytes += kv.second.rxBytes;
-        const Histogram& h = kv.second.delayHistogram;
+        // Copy: Histogram's accessors are non-const in older ns-3 (<=3.36).
+        Histogram h = kv.second.delayHistogram;
         for (uint32_t b = 0; b < h.GetNBins(); ++b) {
             if (binWidth == 0.0) binWidth = h.GetBinWidth(b);
             delayBins[b] += h.GetBinCount(b);
