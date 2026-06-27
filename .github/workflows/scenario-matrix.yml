@@ -1,0 +1,90 @@
+name: Scenario matrix + charts (manual)
+
+# Manually-dispatched: runs the scenario taxonomy + the paper's parameter sweeps
+# (area/pause/scale) across all baselines, writes a classified CSV, and renders
+# paper-style figures (line charts for sweeps, grouped bars for the named
+# scenarios). Heavy, so it is not part of per-merge CI. Always uploads the CSV +
+# PNGs as artifacts; optionally commits the regenerated charts into docs/.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'ns-3 image tag'
+        default: '3.42'
+      quick:
+        description: 'Cheap preset (time=120, runs=2, 3 points/sweep)'
+        type: boolean
+        default: true
+      runs:
+        description: 'RNG runs to average (ignored if quick)'
+        default: '5'
+      time:
+        description: 'Sim time per point (s) (ignored if quick)'
+        default: '300'
+      only:
+        description: 'all | discrete | sweeps | <scenario/sweep name>'
+        default: 'all'
+      commit:
+        description: 'Commit regenerated charts + CSV into docs/ on this ref'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write          # needed only when commit=true
+  packages: read
+
+jobs:
+  matrix:
+    name: scenario matrix + charts
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install AntHocNet module
+        run: make install-ns3 NS3DIR=/opt/ns-3
+      - name: Configure + build
+        run: |
+          cd /opt/ns-3
+          ./ns3 configure --enable-examples \
+            --enable-modules='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          ./ns3 build
+      - name: Install matplotlib
+        run: pip3 install --quiet matplotlib
+      - name: Run scenario matrix
+        run: |
+          quick=""
+          [ "${{ github.event.inputs.quick }}" = "true" ] && quick="--quick"
+          python3 ns3/tools/run-scenarios.py /opt/ns-3 \
+            --out "$GITHUB_WORKSPACE/scenarios.csv" \
+            --runs "${{ github.event.inputs.runs }}" \
+            --time "${{ github.event.inputs.time }}" \
+            --only "${{ github.event.inputs.only }}" \
+            $quick
+      - name: Render charts
+        run: |
+          python3 ns3/tools/make-charts.py "$GITHUB_WORKSPACE/scenarios.csv" \
+            --outdir "$GITHUB_WORKSPACE/docs/benchmarks"
+      - name: Upload CSV + charts
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenario-matrix
+          path: |
+            scenarios.csv
+            docs/benchmarks/*.png
+      - name: Commit charts into docs (optional)
+        if: ${{ github.event.inputs.commit == 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp "$GITHUB_WORKSPACE/scenarios.csv" docs/benchmarks/scenarios.csv
+          git add docs/benchmarks
+          if git diff --cached --quiet; then
+            echo "no chart changes to commit"
+          else
+            git commit -m "benchmarks: regenerate scenario matrix charts [skip ci]"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
