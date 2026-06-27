@@ -19,15 +19,19 @@ AntRouterLogic::AntRouterLogic(NodeAddress address, const Config& config, IClock
 
 void AntRouterLogic::learnNeighbor(NodeAddress neighbor) {
     if (neighbor == address_ || neighbor == kInvalidAddress) return;
+    const bool isNew = lastSeen_.find(neighbor) == lastSeen_.end();
     table_.addNeighbor(neighbor);
     // Seed an equal-weight regular entry, as the legacy recvAHN did.
     engine_.updateRegular(table_, neighbor, neighbor, 1.0);
     lastSeen_[neighbor] = clock_.now();  // liveness: any reception refreshes it
+    if (isNew && observer_) observer_->onRouteChanged(neighbor, neighbor, true);
 }
 
 void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
+    const bool had = lastSeen_.find(neighbor) != lastSeen_.end();
     engine_.cleanNeighbor(table_, neighbor);
     lastSeen_.erase(neighbor);
+    if (had && observer_) observer_->onRouteChanged(neighbor, neighbor, false);
 }
 
 std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
@@ -54,10 +58,35 @@ std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
     return out;
 }
 
-RouteDecision AntRouterLogic::broadcastForward(AntMessage& ant) const {
+RouteDecision AntRouterLogic::broadcastForward(AntMessage& ant) {
     if (ant.broadcastBudget == 0) return RouteDecision::drop();  // budget exhausted
     if (ant.broadcastBudget > 0) ant.broadcastBudget -= 1;       // -1 == untracked
-    return {RouteAction::Broadcast, kInvalidAddress, true, ant};
+    return sendAnt(RouteAction::Broadcast, kInvalidAddress, ant);
+}
+
+RouteDecision AntRouterLogic::sendAnt(RouteAction action, NodeAddress nextHop,
+                                      const AntMessage& ant) {
+    antsSent_[ant.type] += 1;
+    if (observer_) {
+        observer_->onAntSent(ant.type, ant.direction, action == RouteAction::Broadcast);
+    }
+    return {action, nextHop, true, ant};
+}
+
+std::uint64_t AntRouterLogic::antsSent(AntType type) const {
+    auto it = antsSent_.find(type);
+    return it == antsSent_.end() ? 0 : it->second;
+}
+
+std::uint64_t AntRouterLogic::antsReceived(AntType type) const {
+    auto it = antsReceived_.find(type);
+    return it == antsReceived_.end() ? 0 : it->second;
+}
+
+std::uint64_t AntRouterLogic::controlPacketsSent() const {
+    std::uint64_t total = 0;
+    for (const auto& kv : antsSent_) total += kv.second;
+    return total;
 }
 
 std::vector<RouteDecision> AntRouterLogic::reportNeighborLoss(NodeAddress n) {
@@ -147,6 +176,10 @@ std::vector<AntMessage> AntRouterLogic::createProactiveAnts() {
             continue;
         }
         ants.push_back(createForwardAnt(AntType::Proactive, it->first));
+        // Origination: the adapter sends these directly (they don't pass
+        // through a RouteDecision here), so count them at the source.
+        antsSent_[AntType::Proactive] += 1;
+        if (observer_) observer_->onAntSent(AntType::Proactive, AntDirection::Up, false);
         ++it;
     }
     return ants;
@@ -179,6 +212,11 @@ AntMessage AntRouterLogic::createHelloAnt(std::size_t maxAdverts) {
     m.dst       = kInvalidAddress;  // adapter maps to its broadcast address
     m.seqNum    = nextSeq();
     m.timeStart = clock_.now();
+
+    // Origination: the adapter broadcasts every hello on its timer, so count it
+    // here (hellos are consumed locally at the receiver, never re-forwarded).
+    antsSent_[AntType::Hello] += 1;
+    if (observer_) observer_->onAntSent(AntType::Hello, AntDirection::Up, true);
 
     // Diffusion adverts are gated (ADR-0007); a hello with no adverts still
     // serves neighbour discovery / liveness.
@@ -285,6 +323,10 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
         return {RouteDecision::drop()};
     }
 
+    // Count the non-duplicate reception (observability, item 15).
+    antsReceived_[incoming.type] += 1;
+    if (observer_) observer_->onAntReceived(incoming.type, incoming.direction);
+
     // Link-layer neighbour detection from the previous hop.
     if (prevHop != kInvalidAddress) {
         learnNeighbor(prevHop);
@@ -311,7 +353,7 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
             AntMessage back = createBackAnt(ant);
             NodeAddress next = advanceBackAnt(back);
             if (next == kInvalidAddress) return {RouteDecision::drop()};
-            return {{RouteAction::Unicast, next, true, back}};
+            return {sendAnt(RouteAction::Unicast, next, back)};
         }
         if (ant.src == address_) {
             return {RouteDecision::drop()};  // our own forward ant looped back
@@ -328,7 +370,7 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
             rng_.uniform() < config_.proactiveBroadcastProb) {
             return {broadcastForward(ant)};
         }
-        return {{RouteAction::Unicast, next, true, ant}};
+        return {sendAnt(RouteAction::Unicast, next, ant)};
     }
 
     // Backward ant: rebuild the deposit state from the carried path (the four
@@ -347,7 +389,7 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
 
     NodeAddress next = advanceBackAnt(ant);
     if (next == kInvalidAddress) return {RouteDecision::drop()};
-    return {{RouteAction::Unicast, next, true, ant}};
+    return {sendAnt(RouteAction::Unicast, next, ant)};
 }
 
 std::vector<RouteDecision> AntRouterLogic::onDataPacket(NodeAddress dest,
@@ -363,7 +405,7 @@ std::vector<RouteDecision> AntRouterLogic::onDataPacket(NodeAddress dest,
         if (it == lastReactive_.end() || now - it->second >= config_.reactiveRetryInterval) {
             lastReactive_[dest] = now;
             AntMessage refa = createForwardAnt(AntType::Reactive, dest);
-            out.push_back({RouteAction::Broadcast, kInvalidAddress, true, refa});
+            out.push_back(sendAnt(RouteAction::Broadcast, kInvalidAddress, refa));
         }
         return out;
     }

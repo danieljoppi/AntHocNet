@@ -11,6 +11,7 @@
 #include <functional>
 #include <vector>
 
+#include "anthocnet/core/ant_message.h"
 #include "anthocnet/core/types.h"
 
 namespace anthocnet {
@@ -47,6 +48,22 @@ class ITimerScheduler {
 public:
     virtual ~ITimerScheduler() = default;
     virtual void schedule(Time delay, std::function<void()> callback) = 0;
+};
+
+/// Optional observer the core notifies of routing events (item 15). It only
+/// *reports* — it never makes routing decisions or does I/O, so the core stays
+/// pure. Adapters implement it to fan events out to their native trace
+/// machinery (ns-3 TracedCallback, ns-2 trace lines). All methods default to
+/// no-ops; when no observer is set the core pays only a null-pointer check.
+class IRouterObserver {
+public:
+    virtual ~IRouterObserver() = default;
+    /// This node put an ant on the medium (origination or forwarding).
+    virtual void onAntSent(AntType /*type*/, AntDirection /*dir*/, bool /*broadcast*/) {}
+    /// This node processed a (non-duplicate) received ant.
+    virtual void onAntReceived(AntType /*type*/, AntDirection /*dir*/) {}
+    /// A neighbour/route entry was added (true) or removed (false).
+    virtual void onRouteChanged(NodeAddress /*dest*/, NodeAddress /*nb*/, bool /*added*/) {}
 };
 
 } // namespace core

@@ -94,8 +94,40 @@ TypeId RoutingProtocol::GetTypeId() {
                           "Seconds a data session stays active for proactive probing.",
                           DoubleValue(5.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_sessionTtl),
-                          MakeDoubleChecker<double>());
+                          MakeDoubleChecker<double>())
+            .AddTraceSource("Tx",
+                            "An ant control packet was put on the medium by this "
+                            "node (type, direction, broadcast).",
+                            MakeTraceSourceAccessor(&RoutingProtocol::m_txAntTrace),
+                            "ns3::anthocnet::RoutingProtocol::AntTxCallback")
+            .AddTraceSource("Rx",
+                            "A non-duplicate ant control packet was received and "
+                            "processed (type, direction).",
+                            MakeTraceSourceAccessor(&RoutingProtocol::m_rxAntTrace),
+                            "ns3::anthocnet::RoutingProtocol::AntRxCallback")
+            .AddTraceSource("RouteChanged",
+                            "A neighbour/route entry was added or removed "
+                            "(dest, neighbour, added).",
+                            MakeTraceSourceAccessor(&RoutingProtocol::m_routeChangedTrace),
+                            "ns3::anthocnet::RoutingProtocol::RouteChangedCallback");
     return tid;
+}
+
+// --- observability: forward core events to ns-3 trace sources (item 15) ------
+
+void RoutingProtocol::onAntSent(::anthocnet::core::AntType type,
+                                ::anthocnet::core::AntDirection dir, bool broadcast) {
+    m_txAntTrace(static_cast<uint8_t>(type), static_cast<uint8_t>(dir), broadcast);
+}
+
+void RoutingProtocol::onAntReceived(::anthocnet::core::AntType type,
+                                    ::anthocnet::core::AntDirection dir) {
+    m_rxAntTrace(static_cast<uint8_t>(type), static_cast<uint8_t>(dir));
+}
+
+void RoutingProtocol::onRouteChanged(::anthocnet::core::NodeAddress dest,
+                                     ::anthocnet::core::NodeAddress nb, bool added) {
+    m_routeChangedTrace(static_cast<uint32_t>(dest), static_cast<uint32_t>(nb), added);
 }
 
 // --- lifecycle --------------------------------------------------------------
@@ -165,6 +197,7 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.proactiveInterval = m_proactiveInterval.GetSeconds();
         m_logic.reset(new ::anthocnet::core::AntRouterLogic(
             ToCore(iface.GetLocal()), m_config, m_clock, m_rng));
+        m_logic->setObserver(this);  // fan core events to the trace sources
     }
 
     // One UDP socket per interface for ant control traffic.
