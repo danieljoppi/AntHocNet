@@ -36,6 +36,27 @@ NS-2/NS-3 build needs an external simulator tree and is **not** possible from
 this repo alone. **Always run `make test` before committing a core change**, and
 `bash ns2/patch/selftest.sh` before touching `ns2/patch/`.
 
+### Validating adapter (NS-2 / NS-3) changes — use CI
+
+Because you cannot build a simulator here, the **CI matrix is how you validate
+an adapter change**: develop, push a branch, open a PR, and read the job
+results.
+
+- `ci.yml` builds the **NS-3 module against the prebuilt GHCR images across
+  ns-3.36–3.48** (e2e delivery smoke) and **compiles + runs the NS-2 adapter on
+  real ns-2.34 / 2.35 trees**. Iterate on failures from the job logs —
+  cross-version API drift is the usual cause (e.g. ns-3.36's non-`const`
+  `Histogram` accessors, `RouteInput` by-value vs const-ref, scoped TestSuite
+  enums). The `AHN_*`/`ANTHOCNET_NS3_*` macros in the NS-3 headers + CMake
+  already gate several of these by version — extend that pattern, don't fork.
+- Validate the **core** half locally first (`make test`); only the adapter/build
+  half needs CI.
+- Heavier, manual workflows: `paper-benchmark` and `scenario-matrix` (taxonomy +
+  charts), `release.yml` (Commitizen bump + install-bundle), `images.yml`
+  (republish simulator images). Releases are version-bumped by Commitizen from
+  Conventional-Commit history; **PR titles must be Conventional Commits** (CI
+  enforces it — see `CONTRIBUTING.md`).
+
 ## Golden rules (invariants — do not break)
 
 1. **`core/` must never include an NS-2 or NS-3 header.** Time comes through
@@ -78,8 +99,11 @@ this repo alone. **Always run `make test` before committing a core change**, and
 
 ## Git workflow
 
-- Active development branch: `claude/anthocnet-protocol-review-wu1huq`.
-- Commit with a descriptive message; push with `git push -u origin <branch>`.
+- Branch from `main` (`claude/<short-topic>`), one focused change per PR.
+- **PR titles are Conventional Commits** (`feat:`/`fix:`/`docs:`/…) — CI enforces
+  it, and since PRs are squash-merged the title is the commit on `main` and
+  drives the next version bump. See `CONTRIBUTING.md`.
+- Push with `git push -u origin <branch>`; open a PR; merge when CI is green.
 
 ## Where to look
 
@@ -87,6 +111,7 @@ this repo alone. **Always run `make test` before committing a core change**, and
 |--------------|-------|
 | Understand the design & decision flow | `docs/architecture.md` |
 | Understand a structural decision / its "why" | `docs/adr/` |
+| **Pick up open work** | GitHub issues (epics #26–#31; defects #19–#25) + `docs/improvements/` |
 | Maintain the NS-2 patch / wire format | `docs/porting-notes.md`, `ns2/patch/` |
 | Change the algorithm | `core/src/`, `core/include/anthocnet/core/` |
 | Change routing policy / decision flow | `core/src/ant_router_logic.cpp` |
@@ -94,4 +119,7 @@ this repo alone. **Always run `make test` before committing a core change**, and
 | Change the wire format | `docs/wire-format.md` → `core/include/.../ant_message_codec.h` (+ both adapters; bump `kWireVersion`) |
 | Work on the NS-2 adapter | `ns2/src/`, `ns2/tcl/` |
 | Work on the NS-3 adapter | `ns3/model/`, `ns3/helper/`, `ns3/examples/` |
+| Run / read benchmarks | `docs/benchmarks.md`, `ns3/tools/run-scenarios.py` + `make-charts.py`, `anthocnet-compare --diag` |
+| Inspect protocol internals | NS-3 `Tx`/`Rx`/`RouteChanged` trace sources; core counters via `IRouterObserver` |
+| Cut a release | run the `Release` workflow (Commitizen); see `CONTRIBUTING.md` |
 | Tune defaults | `core/include/anthocnet/core/config.h` |

@@ -134,6 +134,19 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 - The **codec decode path is fuzzed** (libFuzzer, 60 s, `codec-fuzz` job).
 - Container images for every supported simulator version are published to GHCR
   on merge to the default branch (`.github/workflows/images.yml`).
+- **Observability**: the core exposes ant/route counters + an optional
+  `IRouterObserver`; the NS-3 module surfaces `Tx`/`Rx`/`RouteChanged` trace
+  sources, read by `anthocnet-compare --diag` (item 15).
+- **Benchmarks run on every merge**: a classified scenario taxonomy across all
+  baselines (AODV/OLSR/DSDV) with the table + a chart auto-committed to
+  `docs/benchmarks*`; the paper's area/pause/scale sweeps + charts are the
+  manual `scenario-matrix` workflow (items 07/08).
+- **Versioned, citable, releasable**: SemVer tags, `VERSION` + `CITATION.cff` +
+  `CHANGELOG.md`, a Commitizen-driven `Release` workflow that builds an
+  install-bundle zip (Zenodo-ready); Conventional-Commit PR titles are
+  CI-enforced (item 14).
+- **Open work is tracked in GitHub issues** — per-area epics #26–#31 and the
+  benchmark-found defects #19–#25 (see §10).
 
 ## 8. What is missing / caveats
 
@@ -171,10 +184,24 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 
 ## 10. Open questions for future work
 
-- What scenario + metrics (delivery ratio, delay, overhead vs. AODV) define
-  "working", and on which simulator are they the reference?
-- Should there be an automated end-to-end smoke test against a pinned NS-3
-  checkout in CI (beyond the current build job)?
+> **Start here:** live work is tracked in GitHub issues, grouped into per-area
+> epics — #26 fidelity · #27 adapter · #28 benchmark · #29 observability · #30
+> packaging · #31 positioning — plus the benchmark-found defects #19–#25 and the
+> OMNeT++/INET adapter proposal #32. Each ticket has evidence, a fix sketch, and
+> acceptance criteria, and links the relevant `docs/improvements/` spec.
+
+- **Highest-leverage next item — #19 (NS-3 MAC repair hook).** The NS-3 adapter
+  has no MAC transmit-failure callback, so broken links are only caught by
+  hello-timeout and route-repair ants never fire (`repair=0`). The benchmark
+  taxonomy shows this as a 99th-delay-tail (#21) + high-mobility (#22)
+  regression vs AODV. **NS-2 already implements it** — port
+  `ns2/src/ahn_router.cc::linkFailed` (the MAC `xmit_failure_` callback +
+  bounded repair ant).
+- **What defines "working"** is now partly answered: the scenario taxonomy +
+  paper sweeps (`docs/benchmarks.md`, `ns3/tools/run-scenarios.py`) define the
+  metrics. Caveat: absolute PDR is low across *all* protocols pending PHY/channel
+  fidelity work (#24) — relative comparisons are valid, absolute numbers aren't
+  yet paper-like.
 - Are the `Config` defaults (`alpha`/`betaAnts`/`betaData`/`gamma`, intervals, `maxPathLength`,
   `maxHistory`) the right operating point, or should they be tuned per
-  simulator?
+  simulator? (See #23 convergence, #26 fidelity.)
