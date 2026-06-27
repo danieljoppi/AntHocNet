@@ -19,7 +19,7 @@ ARG NS2_VERSION=2.35
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates curl git make gcc g++ autoconf automake \
+        ca-certificates curl make gcc g++ autoconf automake \
         libxmu-dev libxt-dev libx11-dev \
     && rm -rf /var/lib/apt/lists/*
 

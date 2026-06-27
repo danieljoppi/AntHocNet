@@ -51,32 +51,38 @@ jobs:
   ns2-compile:
     name: NS-2 adapter compile (real ns-2 tree)
     runs-on: ubuntu-latest
-    # Compile the ns-2 adapter against a *real* ns-2 tree inside the pre-built
+    # Compile the ns-2 adapter against a *real* ns-2 tree using the pre-built
     # plain ns-2 image (published to GHCR on merge to the default branch). This
     # is the only place the ns-2 agent is actually compiled — the ns2-patch job
     # above only checks that the patch applies/reverts on a synthetic tree.
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/ns2:${{ matrix.version }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+    #
+    # We can't run this as a `container:` job: the ns-2 image is Ubuntu 18.04
+    # (glibc 2.27) and the runner injects Node 24 (needs glibc 2.28+) to run
+    # actions/checkout, which then fails. So check out on the host and run the
+    # build via `docker run` inside the image (native bash, no Node needed).
     strategy:
       fail-fast: false
       matrix:
         version: ['2.34', '2.35']
     steps:
-      # ns-2's image is Ubuntu 18.04 without git; actions/checkout needs it.
-      - name: Install git for checkout
-        run: apt-get update && apt-get install -y --no-install-recommends git
       - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Install AntHocNet patch and recompile ns
         run: |
-          NS2DIR="/opt/ns-allinone-${{ matrix.version }}/ns-${{ matrix.version }}"
-          make install-ns2 NS2DIR="$NS2DIR"
-          cd "$NS2DIR"
-          ./config.status
-          make
-          test -x ./ns
+          docker run --rm -v "$PWD:/src" -w /src \
+            ghcr.io/${{ github.repository_owner }}/ns2:${{ matrix.version }} \
+            bash -euxc '
+              make install-ns2 NS2DIR="$NS2DIR"
+              cd "$NS2DIR"
+              ./config.status
+              make
+              test -x ./ns
+            '
 
   ns3-build:
     name: NS-3 module build + test
