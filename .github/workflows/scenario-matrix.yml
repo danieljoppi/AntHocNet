@@ -53,7 +53,7 @@ jobs:
             --enable-modules='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
           ./ns3 build
       - name: Install matplotlib
-        run: pip3 install --quiet matplotlib
+        run: apt-get update && apt-get install -y python3-matplotlib
       - name: Run scenario matrix
         run: |
           quick=""
@@ -78,6 +78,7 @@ jobs:
       - name: Commit charts into docs (optional)
         if: ${{ github.event.inputs.commit == 'true' }}
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           cp "$GITHUB_WORKSPACE/scenarios.csv" docs/benchmarks/scenarios.csv
