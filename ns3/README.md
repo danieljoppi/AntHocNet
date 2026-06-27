@@ -42,33 +42,45 @@ neighbour learning, reactive discovery, forwarding and delivery.
 ## Compare against AODV / OLSR / DSDV
 
 `anthocnet-compare` runs the *same* mobile-ad-hoc scenario (identical layout,
-mobility and traffic, same RNG run) under each routing protocol and prints
-packet-delivery ratio, mean delay and throughput from a FlowMonitor:
+mobility and traffic, same RNG run) under each routing protocol and reports the
+metrics from the AntHocNet paper — packet-delivery ratio, **mean and
+99th-percentile** end-to-end delay (the paper's QoS/jitter metric), throughput,
+and **normalized routing load** (NRL = routing-control packets transmitted /
+data packets delivered, counted uniformly at the IP layer):
 
 ```bash
 # requires aodv, olsr, dsdv and flow-monitor enabled
 ./ns3 configure --enable-examples \
   --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
 ./ns3 build
-./ns3 run "anthocnet-compare --nNodes=20 --time=40 --area=300 --flows=5"
+
+# the paper's base scenario (50 nodes, 1500x300 m, RWP 20 m/s / 30 s pause,
+# 20 CBR sources, 300 m range, 900 s), averaged over 5 RNG runs:
+./ns3 run "anthocnet-compare --scenario=paper --runs=5"
+# sweeps (paper Fig. 1/2): vary the area long edge, or the mobility pause time:
+./ns3 run "anthocnet-compare --scenario=paper --areaX=2500 --runs=5"
+./ns3 run "anthocnet-compare --scenario=paper --pause=0 --runs=5"
 ```
 
 Example output:
 
 ```
-protocol          tx      rx     PDR%   delay(ms)  thrput(kbps)
----------------------------------------------------------------
-anthocnet        604     125     20.7        28.6          3.21
-aodv             805     327     40.6        80.8          6.53
-olsr             446     110     24.7         4.9          2.70
-dsdv             556      93     16.7       384.9          2.28
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)   NRL
+-----------------------------------------------------------------
+anthocnet       92.4       41.2        180.0          0.49  1.85
+aodv            88.1       55.7        430.0          0.47  2.40
+olsr            74.6        3.1         22.0          0.40  3.10
+dsdv            61.2      120.4        980.0          0.33  1.20
 ```
 
-Single-seed runs are noisy; average over seeds with `--seed=1,2,3,...` for a
-stable comparison. Results vary by node density, mobility and traffic — this
-is a re-validation harness, not a claim that any one protocol always wins.
+Single-seed runs are noisy; average over runs with `--runs=N` for a stable
+comparison. Results vary by node density, mobility and traffic — this is a
+re-validation harness, not a claim that any one protocol always wins.
 
-Options: `--nNodes --time --area --speed --flows --seed --protocols`
+Options: `--scenario=paper --nNodes --time --area --areaX --areaY --speed
+--pause --range --flows --cbrBps --runs --protocols --csv`. (`--scenario=paper`
+sets the paper defaults; any explicit flag overrides them, which is how the
+area/pause sweeps above work. The numbers above are illustrative.)
 (e.g. `--protocols=anthocnet,aodv`).
 
 ## Uninstall

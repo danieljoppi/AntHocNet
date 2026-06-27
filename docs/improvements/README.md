@@ -95,15 +95,15 @@ For node `i`, destination `d`, neighbour `n`, pheromone `T_nd^i`:
 | [04](04-proactive-ant-sessions.md) | Proactive ants for active sessions + broadcast prob | D4 | **P1** | M | 🟡 core+adapters; broadcast-budget cap with #05 |
 | [05](05-link-failure-detection-and-repair.md) | Hello-timeout detection, failure notification, repair bounding | D5/D6 | **P1** | L | ✅ detection+notify+repair; NS-3 MAC hook TODO |
 | [06](06-evaporation-and-minor.md) | Time-based evaporation + minor deviations | D7 | **P2** | S | 🟡 6.1 evap + 6.3 backoff done; 6.2/6.4/6.5 minor |
-| [07](07-validation-and-benchmarks.md) | Validation harness + paper-faithful benchmark scenario | — | **P2** | M |
-| [08](08-protocol-comparison-benchmarks.md) | Benchmark vs AODV/OLSR/DSDV/DSR (+ overhead/NRL, fairness) | — | **P2** | M |
+| [07](07-validation-and-benchmarks.md) | Validation harness + paper-faithful benchmark scenario | — | **P2** | M | 🟡 paper base scenario + area/pause sweeps via `--scenario=paper` |
+| [08](08-protocol-comparison-benchmarks.md) | Benchmark vs AODV/OLSR/DSDV/DSR (+ overhead/NRL, fairness) | — | **P2** | M | 🟡 PDR + mean/99th delay + throughput + uniform NRL in anthocnet-compare; DSR + full multi-seed write-up pending |
 | [09](09-landscape-and-positioning.md) | Public-implementation landscape + project presentation fixes | — | **P2** | S |
 | [10](10-data-loops-multipath-and-mac-metric.md) | Data-loop suppression, multipath safety, reactive broadcast cap, MAC metric | A1/A2/A3 | **P1**/P2 | M | 🟡 A1 prevhop + A3 cap done; A2 MAC + stickiness deferred |
 | [11](11-adapter-robustness.md) | NS-2 unbounded queue, NS-3 multi-iface, address-mapping bug | B1/B2/B3 | **P1**/P2 | M | 🟡 B1+B3 done (P1); B2 multi-iface deferred |
 | [12](12-codec-hardening-and-threat-model.md) | Enforce protocol bounds on untrusted decode + threat model | C1 | **P1** | S | ✅ done |
 | [13](13-ci-e2e-and-fuzzing.md) | CI end-to-end sim smoke + codec fuzzing + property tests | D1/D2 | P2 | M | ✅ property tests + codec fuzz + NS-3 & NS-2 asserted-delivery smokes |
 | [14](14-reproducibility-and-release.md) | Docker repro + CITATION/releases/DOI + ns-3 version matrix | E1/E2/E3 | P2 | M | 🟡 E1 Docker images (ns2 2.34/2.35 + ns3 3.41/3.42) + GHCR workflow; E2/E3 pending |
-| [15](15-observability-and-traces.md) | Trace sources / counters (feeds item 08 NRL) | F1 | P2 | S–M |
+| [15](15-observability-and-traces.md) | Trace sources / counters (feeds item 08 NRL) | F1 | P2 | S–M | 🟡 uniform IP-layer routing-overhead counting (NRL) in the harness; module-level trace sources/counters pending |
 | [16](16-pluggable-link-metric.md) | Pluggable `ILinkMetric` port (fuzzy/energy/QoS extensibility) | G1 | P3 | M | ✅ port + ClassicMetric (core); adapter selection is an extension point |
 
 Recommended sequence: **01 → 02** first (biggest correctness/performance levers
