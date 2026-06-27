@@ -119,7 +119,9 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 - **NS-2 patch apply/revert round-trips** on a synthetic tree
   (`bash ns2/patch/selftest.sh`, in CI), and the **NS-2 adapter is compiled
   against real ns-2.34 / ns-2.35 trees in CI** (the `ns2-compile` job, run
-  inside the published plain ns-2 image).
+  inside the published plain ns-2 image), which then **runs a small static
+  AntHocNet simulation and asserts non-zero CBR delivery** over a forced 2-hop
+  route (`ns2/tcl/ci-smoke.tcl`).
 - **NS-3 module** builds and tests across **ns-3.36 / 3.41 / 3.42 / 3.47 / 3.48**
   on every push/PR (the `ns3-build` matrix runs inside the prebuilt plain ns-3
   images), running the module test suite and an **asserted end-to-end delivery
@@ -133,10 +135,10 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 - **Cross-simulator metric parity is not guaranteed.** NS-2 and NS-3 have
   different MAC/PHY models; treat a cross-sim comparison as behaviour
   re-validation, not a bit-for-bit port.
-- **The e2e delivery smoke is NS-3 only.** No NS-2 end-to-end simulation runs in
-  CI yet (a purpose-built minimal static scenario is a tracked follow-up). The
-  smoke is a loose "delivers something" gate; performance comparison is manual
-  (items 07/08, multi-seed).
+- **The e2e smokes are loose "delivers something" gates**, not performance
+  gates — both the NS-2 and NS-3 smoke just assert non-zero delivery in a small
+  connected scenario. Performance comparison (multi-seed PDR/delay/overhead) is
+  manual, in items 07/08.
 - The NS-2 patch depends on **stable text anchors** in upstream files; a future
   NS-2 release that moves an anchor makes the installer fail loudly (by design)
   and the fragment must be updated.

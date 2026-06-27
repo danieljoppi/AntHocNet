@@ -101,7 +101,7 @@ For node `i`, destination `d`, neighbour `n`, pheromone `T_nd^i`:
 | [10](10-data-loops-multipath-and-mac-metric.md) | Data-loop suppression, multipath safety, reactive broadcast cap, MAC metric | A1/A2/A3 | **P1**/P2 | M | 🟡 A1 prevhop + A3 cap done; A2 MAC + stickiness deferred |
 | [11](11-adapter-robustness.md) | NS-2 unbounded queue, NS-3 multi-iface, address-mapping bug | B1/B2/B3 | **P1**/P2 | M | 🟡 B1+B3 done (P1); B2 multi-iface deferred |
 | [12](12-codec-hardening-and-threat-model.md) | Enforce protocol bounds on untrusted decode + threat model | C1 | **P1** | S | ✅ done |
-| [13](13-ci-e2e-and-fuzzing.md) | CI end-to-end sim smoke + codec fuzzing + property tests | D1/D2 | P2 | M | 🟡 property tests + codec fuzz + NS-3 asserted-delivery smoke done; NS-2 e2e scenario pending |
+| [13](13-ci-e2e-and-fuzzing.md) | CI end-to-end sim smoke + codec fuzzing + property tests | D1/D2 | P2 | M | ✅ property tests + codec fuzz + NS-3 & NS-2 asserted-delivery smokes |
 | [14](14-reproducibility-and-release.md) | Docker repro + CITATION/releases/DOI + ns-3 version matrix | E1/E2/E3 | P2 | M | 🟡 E1 Docker images (ns2 2.34/2.35 + ns3 3.41/3.42) + GHCR workflow; E2/E3 pending |
 | [15](15-observability-and-traces.md) | Trace sources / counters (feeds item 08 NRL) | F1 | P2 | S–M |
 | [16](16-pluggable-link-metric.md) | Pluggable `ILinkMetric` port (fuzzy/energy/QoS extensibility) | G1 | P3 | M | ✅ port + ClassicMetric (core); adapter selection is an extension point |
