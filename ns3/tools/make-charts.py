@@ -16,7 +16,6 @@ Re-plotting reads only the CSV, so it never re-runs ns-3. Deterministic output.
 import argparse
 import csv
 import os
-import sys
 from collections import defaultdict
 
 import matplotlib

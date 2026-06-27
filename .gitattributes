@@ -1,0 +1,8 @@
+# Generated ns-2 mobility + CBR traffic scenario files are machine-produced
+# (setdest / cbrgen output), not authored source. Exclude them from GitHub's
+# language statistics and collapse them in diffs/reviews. Without this, ~160k
+# lines of generated Tcl dominate the repo and mislabel this C++ project as Tcl.
+ns2/tcl/scenario*/sim-*.tcl linguist-generated=true
+
+# Auto-generated benchmark charts (produced by the benchmarks workflow).
+docs/benchmarks/*.png linguist-generated=true

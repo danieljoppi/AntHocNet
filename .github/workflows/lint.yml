@@ -1,0 +1,26 @@
+name: Lint
+
+# Style/quality gate for the repository's tooling. Fast and dependency-light.
+# (C++ formatting via clang-format is tracked separately — adopting it needs a
+# one-time reformat — so it is not enforced here yet.)
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python tools (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install ruff
+        run: pip install ruff
+      - name: Lint
+        run: ruff check ns3/tools

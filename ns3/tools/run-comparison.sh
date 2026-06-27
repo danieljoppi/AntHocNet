@@ -4,8 +4,13 @@
 #
 # Runs the anthocnet-compare benchmark inside an ns-3 tree that already has the
 # AntHocNet module installed and the comparison modules enabled, and writes the
-# averaged results to stdout as CSV. Used locally and by the benchmark CI
-# pipeline.
+# averaged results to stdout as CSV.
+#
+# Scope: this is the lightweight *single-scenario* CSV helper. The per-merge
+# benchmark pipeline and the full scenario taxonomy/sweeps + charts are driven
+# by ns3/tools/run-scenarios.py (which emits a classified CSV that
+# make-charts.py plots); use that for the matrix. This script remains handy for
+# a quick one-off comparison.
 #
 # The ns-3 tree must have been configured with:
 #   ./ns3 configure --enable-examples \
