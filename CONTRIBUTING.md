@@ -57,6 +57,28 @@ Any new `AntMessage` field must be added to **all** of: the struct
 `core/tests/test_codec.cpp` — and the round-trip test must still pass. Bump the
 wire-version byte per [`docs/wire-format.md`](docs/wire-format.md) (ADR-0006).
 
+## Commit / PR titles (Conventional Commits)
+
+PRs are **squash-merged**, so the **PR title becomes the commit on `main`** and
+drives release versioning. Titles must follow
+[Conventional Commits](https://www.conventionalcommits.org) — CI enforces this:
+
+```
+<type>: <lowercase summary>      e.g.  feat: add the DSR baseline
+                                       fix: stop the linkfail broadcast storm
+```
+
+Types: `feat` `fix` `docs` `style` `refactor` `perf` `test` `build` `ci`
+`chore` `revert`. A `feat:` bumps the minor, `fix:` the patch; a
+`BREAKING CHANGE:` footer (or a `!` after the type) bumps the minor while
+pre-1.0.
+
+Releases are cut by running the **Release** workflow (manual dispatch):
+[Commitizen](https://commitizen-tools.github.io/commitizen/) computes the next
+version from the commit history, updates `VERSION` / `CITATION.cff` / the CMake
+version + `CHANGELOG.md`, tags it, and publishes the install bundle. Don't bump
+the version by hand.
+
 ## Pull requests
 
 - Branch from `main`; keep PRs focused.

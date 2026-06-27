@@ -1,50 +1,77 @@
 name: Release
 
-# On a vX.Y.Z tag: sanity-build, assemble a lean install bundle (the source you
-# need to install onto your own ns-2 / ns-3 tree, minus the ~160k lines of
-# generated scenario files), and publish a GitHub Release. Once the repo is
-# linked to Zenodo, each published release is archived and gets a DOI
-# automatically — no workflow change needed; just add the DOI to CITATION.cff.
+# Manual, Commitizen-driven release. You trigger it; Commitizen computes the
+# next SemVer from the Conventional-Commit history since the last tag (feat ->
+# minor, fix -> patch, breaking -> minor while 0.x), rewrites the version in
+# VERSION / CITATION.cff / core CMake, regenerates CHANGELOG.md, commits + tags,
+# then this same job builds the lean install bundle and publishes the GitHub
+# Release. Bump + release live in one job on purpose: a tag pushed with the
+# default GITHUB_TOKEN does NOT trigger other workflows, so we don't rely on the
+# tag event (and need no PAT). Once the repo is linked to Zenodo, each published
+# release is archived + gets a DOI; add it to CITATION.cff afterwards.
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "bump = cz computes next version from commits; baseline = release the current VERSION as-is (use once, for v0.1.0)"
+        type: choice
+        options: [bump, baseline]
+        default: bump
 
 permissions:
-  contents: write   # create the release
+  contents: write   # push the bump commit/tag and create the release
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history + tags for cz to compute the bump
 
-      - name: Check tag matches VERSION
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install tools
         run: |
-          tag="${GITHUB_REF_NAME}"          # e.g. v0.1.0
-          ver="${tag#v}"
-          file_ver="$(tr -d '[:space:]' < VERSION)"
-          if [ "$ver" != "$file_ver" ]; then
-            echo "::error::tag $tag (=$ver) does not match VERSION file ($file_ver)"
-            exit 1
+          pip install commitizen
+          sudo apt-get update && sudo apt-get install -y cmake g++
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Compute version (bump or baseline)
+        run: |
+          if [ "${{ inputs.mode }}" = "baseline" ]; then
+            ver="$(tr -d '[:space:]' < VERSION)"
+            git tag -a "v${ver}" -m "v${ver}"
+          else
+            cz bump --yes --changelog
+            ver="$(tr -d '[:space:]' < VERSION)"
           fi
-          echo "VER=$ver" >> "$GITHUB_ENV"
+          echo "VER=${ver}" >> "$GITHUB_ENV"
+          echo "TAG=v${ver}" >> "$GITHUB_ENV"
 
       - name: Sanity build + test (core)
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ && make test
+        run: make test
+
+      - name: Push commit + tag
+        run: |
+          git push origin HEAD:main
+          git push origin "${TAG}"
 
       - name: Assemble install bundle
         run: |
           name="anthocnet-${VER}"
           dest="dist/${name}"
           mkdir -p "$dest"
-          # Top-level files (only those that exist).
           for f in Makefile README.md LICENSE CHANGELOG.md CITATION.cff \
                    CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md CONTEXT.md AGENTS.md; do
             [ -e "$f" ] && cp "$f" "$dest/"
           done
           cp -r core ns3 docs ns2 "$dest/"
-          # Drop the generated ns-2 scenario data (~160k lines) and any build
-          # output from the bundle.
           rm -rf "$dest"/ns2/tcl/scenario*
           find "$dest" -type d -name build -prune -exec rm -rf {} +
           ( cd dist && zip -qr "${name}.zip" "${name}" )
@@ -53,10 +80,11 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG }}
           files: dist/anthocnet-${{ env.VER }}.zip
           generate_release_notes: true
           body: |
-            AntHocNet ${{ github.ref_name }}. See [CHANGELOG.md](CHANGELOG.md).
+            AntHocNet ${{ env.TAG }}. See [CHANGELOG.md](CHANGELOG.md).
 
             **Install bundle** (`anthocnet-${{ env.VER }}.zip`) — the source to
             drop onto your own simulator tree:

@@ -1,0 +1,18 @@
+[tool.commitizen]
+name = "cz_conventional_commits"
+# Current version. Commitizen bumps this and the files below from the
+# Conventional-Commit history; keep it in sync with the VERSION file.
+version = "0.1.0"
+version_scheme = "semver"
+tag_format = "v$version"
+# Pre-1.0: a breaking change bumps the MINOR, not the MAJOR.
+major_version_zero = true
+update_changelog_on_bump = true
+changelog_incremental = true
+# Files whose version string cz rewrites on bump. Patterns are matched per line
+# so we do NOT clobber `cff-version:` or `cmake_minimum_required(VERSION ...)`.
+version_files = [
+    "VERSION",
+    "CITATION.cff:^version:",
+    "core/CMakeLists.txt:project",
+]
