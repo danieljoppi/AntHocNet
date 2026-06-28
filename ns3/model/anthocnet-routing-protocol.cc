@@ -12,7 +12,7 @@
 #include "ns3/simulator.h"
 #include "ns3/trace-source-accessor.h"
 #include "ns3/wifi-net-device.h"
-#include "ns3/arp-l3-protocol.h"
+#include "ns3/ipv4-interface.h"
 #include "ns3/arp-cache.h"
 #include "ns3/llc-snap-header.h"
 #include "ns3/udp-header.h"
@@ -500,7 +500,7 @@ void RoutingProtocol::ProactiveTimerExpire() {
 
 // --- MAC transmit-failure hook (ADR-0008 detector D) ------------------------
 
-void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const WifiMpdu> mpdu) {
+void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu) {
     if (!m_logic || m_socketAddresses.empty() || !mpdu) return;
     // Only a retry-limit drop is a real broken link; other drop reasons
     // (queue full, lifetime expiry) are congestion, not topology.
@@ -544,21 +544,25 @@ void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const WifiMpdu
 }
 
 bool RoutingProtocol::MapMacToCore(const Mac48Address& mac, NodeAddress& out) const {
-    if (!m_ipv4) return false;
-    Ptr<Node> node = m_ipv4->GetObject<Node>();
-    Ptr<ArpL3Protocol> arp = node ? node->GetObject<ArpL3Protocol>() : nullptr;
-    if (!arp) return false;
-    for (const auto& kv : m_socketAddresses) {
-        int32_t iface = m_ipv4->GetInterfaceForAddress(kv.second.GetLocal());
-        if (iface < 0) continue;
-        Ptr<ArpCache> cache = arp->FindCache(m_ipv4->GetNetDevice(iface));
+    if (!m_ipv4 || !m_logic) return false;
+    Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol>();
+    if (!l3) return false;
+
+    // Resolve the failed next-hop MAC to a core address by forward-looking each
+    // known neighbour's IP in the per-interface ARP cache and matching its MAC.
+    // We use the public Ipv4Interface::GetArpCache() + the stable 1:1 forward
+    // Lookup(Ipv4Address) — ArpL3Protocol::FindCache is private and
+    // ArpCache::LookupInverse's return type drifts across ns-3 versions.
+    const auto& neighbors = m_logic->table().neighbors();
+    for (uint32_t i = 0; i < l3->GetNInterfaces(); ++i) {
+        Ptr<ArpCache> cache = l3->GetInterface(i)->GetArpCache();
         if (!cache) continue;
-        // A MAC->IP entry is valid regardless of ARP liveness state (a broken
-        // link may have aged the entry to STALE, but the inverse mapping holds).
-        ArpCache::Entry* entry = cache->LookupInverse(mac);
-        if (entry) {
-            out = ToCore(entry->GetIpv4Address());
-            return true;
+        for (NodeAddress nb : neighbors) {
+            ArpCache::Entry* entry = cache->Lookup(ToIpv4(nb));
+            if (entry && Mac48Address::ConvertFrom(entry->GetMacAddress()) == mac) {
+                out = nb;
+                return true;
+            }
         }
     }
     return false;
