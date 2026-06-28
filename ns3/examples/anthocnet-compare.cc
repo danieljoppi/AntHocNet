@@ -41,6 +41,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iomanip>
+#include <limits>
 #include <map>
 #include <vector>
 
@@ -96,6 +97,7 @@ struct Params {
     uint32_t nFlows;
     double   cbrBps;
     double   startWindow;
+    bool     rtsCts;    // enable RTS/CTS handshake (hidden-terminal mitigation, #24)
 };
 
 struct Result {
@@ -120,6 +122,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
     NodeContainer nodes;
     nodes.Create(P.nNodes);
+
+    // #24 experiment: force the RTS/CTS handshake on unicast data so multi-hop
+    // paths in a dense layout don't bleed PDR to hidden-terminal collisions.
+    // Threshold 0 = RTS/CTS for every unicast frame; the ns-3 default is
+    // effectively off (huge threshold). Applied uniformly to every protocol.
+    Config::SetDefault("ns3::WifiRemoteStationManager::RtsCtsThreshold",
+                       UintegerValue(P.rtsCts ? 0 : std::numeric_limits<uint32_t>::max()));
 
     WifiHelper wifi;
     wifi.SetStandard(WIFI_STANDARD_80211b);
@@ -346,6 +355,8 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols", "Comma-separated list", protocols);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies, first delivery)", g_diag);
+    bool rtsCts = false;
+    cmd.AddValue("rtsCts", "Enable the RTS/CTS handshake (hidden-terminal mitigation)", rtsCts);
     cmd.Parse(argc, argv);
     if (runs < 1) runs = 1;
 
@@ -361,6 +372,7 @@ int main(int argc, char* argv[]) {
     P.nFlows  = nFlows > 0 ? static_cast<uint32_t>(nFlows) : (paper ? 20 : 5);
     P.cbrBps  = cbrBps >= 0 ? cbrBps : (paper ? 512.0 : 8000.0);
     P.startWindow = paper ? 180.0 : 5.0;
+    P.rtsCts  = rtsCts;
 
     // 1 ms delay bins for the 99th-percentile computation.
     Config::SetDefault("ns3::FlowMonitor::DelayBinWidth", DoubleValue(0.001));
