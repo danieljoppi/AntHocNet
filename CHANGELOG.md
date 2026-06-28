@@ -8,9 +8,6 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
-## [Unreleased]
-
-## [0.1.0] - 2026-06-27
 
 First tagged release. Establishes the simulator-agnostic architecture, both
 adapters, the benchmark harness, and reproducible CI/packaging.
@@ -35,3 +32,11 @@ adapters, the benchmark harness, and reproducible CI/packaging.
 
 [Unreleased]: https://github.com/danieljoppi/AntHocNet/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/danieljoppi/AntHocNet/releases/tag/v0.1.0
+
+## v0.1.1 (2026-06-28)
+
+### Fix
+
+- correct and expand README badges (#41)
+
+## v0.1.0 (2026-06-28)
