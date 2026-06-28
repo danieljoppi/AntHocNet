@@ -96,7 +96,6 @@ struct Params {
     uint32_t nFlows;
     double   cbrBps;
     double   startWindow;
-    bool     rtsCts;          // enable RTS/CTS handshake (hidden-terminal mitigation, #24)
     std::string propagation;  // "range" (disk, default) | "tworay" (two-ray ground, #24)
 };
 
@@ -122,16 +121,6 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
     NodeContainer nodes;
     nodes.Create(P.nNodes);
-
-    // #24 experiment: optionally force the RTS/CTS handshake on unicast data
-    // (threshold 0 = every unicast frame). Only touch the default when enabled —
-    // the ns-3 default already leaves RTS/CTS effectively off, and newer ns-3
-    // rejects an out-of-range threshold, so we must not write a sentinel here.
-    // Applied uniformly to every protocol.
-    if (P.rtsCts) {
-        Config::SetDefault("ns3::WifiRemoteStationManager::RtsCtsThreshold",
-                           UintegerValue(0));
-    }
 
     WifiHelper wifi;
     wifi.SetStandard(WIFI_STANDARD_80211b);
@@ -372,8 +361,6 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols", "Comma-separated list", protocols);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies, first delivery)", g_diag);
-    bool rtsCts = false;
-    cmd.AddValue("rtsCts", "Enable the RTS/CTS handshake (hidden-terminal mitigation)", rtsCts);
     std::string propagation = "range";
     cmd.AddValue("propagation", "Propagation loss model: 'range' (disk) or 'tworay'", propagation);
     cmd.Parse(argc, argv);
@@ -391,7 +378,6 @@ int main(int argc, char* argv[]) {
     P.nFlows  = nFlows > 0 ? static_cast<uint32_t>(nFlows) : (paper ? 20 : 5);
     P.cbrBps  = cbrBps >= 0 ? cbrBps : (paper ? 512.0 : 8000.0);
     P.startWindow = paper ? 180.0 : 5.0;
-    P.rtsCts  = rtsCts;
     P.propagation = propagation;
 
     // 1 ms delay bins for the 99th-percentile computation.

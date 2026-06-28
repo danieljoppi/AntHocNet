@@ -28,9 +28,6 @@ on:
       protocols:
         description: 'Comma-separated protocol list'
         default: 'anthocnet,aodv,olsr,dsdv'
-      rtsCts:
-        description: 'Enable RTS/CTS handshake (#24 hidden-terminal experiment)'
-        default: 'false'
       propagation:
         description: 'Propagation model: range (disk) | tworay (#24)'
         default: 'range'
@@ -69,7 +66,6 @@ jobs:
             --time=${{ github.event.inputs.time }} \
             --areaX=${{ github.event.inputs.areaX }} \
             --pause=${{ github.event.inputs.pause }} \
-            --rtsCts=${{ github.event.inputs.rtsCts }} \
             --propagation=${{ github.event.inputs.propagation }}"
           echo "anthocnet-compare $args"
           ./ns3 run "anthocnet-compare $args" 2>/dev/null \
