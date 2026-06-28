@@ -112,6 +112,7 @@ results.
 | Understand the design & decision flow | `docs/architecture.md` |
 | Understand a structural decision / its "why" | `docs/adr/` |
 | **Pick up open work** | GitHub issues (epics #26–#31; defects #19–#25) + `docs/improvements/` |
+| Record a bug / finding, or hand off across sessions | [ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md) (always open/update an issue) + [`docs/handoffs/`](docs/handoffs/) |
 | Maintain the NS-2 patch / wire format | `docs/porting-notes.md`, `ns2/patch/` |
 | Change the algorithm | `core/src/`, `core/include/anthocnet/core/` |
 | Change routing policy / decision flow | `core/src/ant_router_logic.cpp` |
