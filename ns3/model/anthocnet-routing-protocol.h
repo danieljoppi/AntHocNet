@@ -15,6 +15,20 @@
 #include "ns3/socket.h"
 #include "ns3/timer.h"
 #include "ns3/traced-callback.h"
+#include "ns3/mac48-address.h"
+#include "ns3/wifi-mac.h"
+
+// ns-3 renamed WifiMacQueueItem -> WifiMpdu (and wifi-mac-queue-item.h ->
+// wifi-mpdu.h) in ns-3.37; the WifiMac "DroppedMpdu" trace carries this type.
+// ANTHOCNET_NS3_WIFI_QUEUE_ITEM is defined by the module's CMakeLists for
+// ns-3 <= 3.36; default to the modern name.
+#ifdef ANTHOCNET_NS3_WIFI_QUEUE_ITEM
+#include "ns3/wifi-mac-queue-item.h"
+#define AHN_WIFI_MPDU ns3::WifiMacQueueItem
+#else
+#include "ns3/wifi-mpdu.h"
+#define AHN_WIFI_MPDU ns3::WifiMpdu
+#endif
 
 #include <map>
 #include <memory>
@@ -121,6 +135,15 @@ private:
     // timers
     void HelloTimerExpire();
     void ProactiveTimerExpire();
+
+    // ADR-0008 detector D: MAC transmit-failure hook. The WifiMac "DroppedMpdu"
+    // trace fires when a unicast frame is dropped after exhausting retries; we
+    // treat a retry-limit drop as a broken link to that next hop and drive the
+    // shared core reportTxFailure path (prune + bounded repair ant).
+    void NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu);
+    // Resolve a failed next-hop MAC to a core address via the ARP caches.
+    bool MapMacToCore(const Mac48Address& mac,
+                      ::anthocnet::core::NodeAddress& out) const;
 
     // state
     Ptr<Ipv4> m_ipv4;

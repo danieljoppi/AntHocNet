@@ -71,6 +71,15 @@ public:
     /// MAC transmit-failure hook (ADR-0008 detectors A and D converge here).
     std::vector<RouteDecision> reportNeighborLoss(NodeAddress n);
 
+    /// Adapter MAC transmit-failure hook (ADR-0008 detector D): a failed unicast
+    /// to `next` means the link is down. Prune the neighbour (emitting any
+    /// LinkFail notifications, exactly as detector A does) and, when the failed
+    /// packet was *data* (`dataDest` set), broadcast a bounded, counted local
+    /// repair ant toward it so the route is rebuilt immediately ([1] §3.5).
+    /// Mirrors the NS-2 `ahn_router` linkFailed path; both adapters call this.
+    std::vector<RouteDecision> reportTxFailure(NodeAddress next,
+                                               NodeAddress dataDest = kInvalidAddress);
+
     // --- active sessions (proactive monitoring, item 04) ------------------
     /// Record that this node just originated data for `dest`, making it an
     /// active session that proactive ants will monitor (call from the adapter

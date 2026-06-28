@@ -85,11 +85,12 @@ void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
 }
 ```
 
-In the **core**, a `Repair` ant is treated exactly like a reactive forward ant
-(`proactive = (ant.type == AntType::Proactive)` is false for `Repair`), and
-`lifeAnt` is never read anywhere. **NS-3 has no link-failure path** — search
-`anthocnet-routing-protocol.cc`: `loseNeighbor` is never called, and there is no
-neighbour-expiry timer.
+In the **core**, a `Repair` ant is bounded by `broadcastBudget`, and the repair
+path is now shared by both adapters via `reportTxFailure` (see sub-step D below).
+NS-3 has both detectors: the hello-timeout maintenance tick (A, in
+`HelloTimerExpire`) and the WifiMac transmit-failure hook (D, `NotifyTxError`).
+*(Historical note: this doc originally flagged NS-3 as having no link-failure
+path at all — detection has since been added.)*
 
 ## Impact
 
@@ -193,18 +194,34 @@ On receiving a `LinkFail` ant in `onReceiveAnt`:
    packets for that destination and emit a `LinkFail` notification. Implement in
    both adapters (they own the pending queue + timers).
 
-### D. MAC transmit-failure — the fast-path accelerator (both adapters)
+### D. MAC transmit-failure — the fast-path accelerator (both adapters) — DONE
 
-This is the *second* detector from ADR-0008, not a replacement for A. NS-2 already
-has it (the `linkFailed` callback above); wire the NS-3 equivalent for parity.
+This is the *second* detector from ADR-0008, not a replacement for A. NS-2 has it
+(the `linkFailed` callback above) and **NS-3 now has it too** (issue #19).
 
-NS-3 can detect transmit failures via the WiFi MAC `TxErrHeader`/drop traces or
-an `ArpL3Protocol`/`Ipv4L3Protocol` tx-error callback. Hook one and, on failure
-to a next hop, call the **same** `loseNeighbor` + repair path used by sub-steps
-A/C (the two detectors converge on one code path). If a clean hook isn't readily
-available, sub-step A (hello timeout) already gives NS-3 working detection —
-document the limitation and leave a TODO. Because A is mandatory and authoritative,
-D is a latency optimisation: it never changes *what* is detected, only *how fast*.
+Both adapters converge on one core entry point,
+`AntRouterLogic::reportTxFailure(next, dataDest)`, which prunes the neighbour
+(emitting LinkFail notifications, sub-step B) and, for a failed *data* packet,
+broadcasts a bounded **counted** repair ant toward the lost destination
+(sub-steps A/C). Counting it in the core means `--diag` now shows `repair > 0` at
+the origin, not only on re-broadcasts.
+
+- **NS-3:** `RoutingProtocol::NotifyInterfaceUp` subscribes to the WifiMac
+  `DroppedMpdu` trace; on a `WIFI_MAC_DROP_REACHED_RETRY_LIMIT` drop,
+  `NotifyTxError` maps the failed next-hop MAC → core address via the ARP cache,
+  peeks the carried packet to tell data from ant control traffic, and calls
+  `reportTxFailure`. Non-wifi devices (e.g. `SimpleNetDevice`) simply have no
+  such trace, so detector A remains their sole, mandatory path. The newer
+  `DroppedMpdu`/`WifiMpdu` trace is used (not the pre-3.36 `TxErrHeader`), so the
+  hook works across the CI matrix (ns-3.36–3.48).
+- **NS-3 limitation vs NS-2:** NS-2 re-enqueues the failed data packet for
+  retransmission; the NS-3 trace fires post-drop without the routing callbacks,
+  so that specific packet is not re-injected — the repair ant plus the session's
+  subsequent packets recover the route. (Follow-up: re-injection via the pending
+  queue.)
+
+Because A is mandatory and authoritative, D is a latency optimisation: it never
+changes *what* is detected, only *how fast*.
 
 ## Files to touch
 

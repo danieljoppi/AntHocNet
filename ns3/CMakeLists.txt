@@ -19,9 +19,12 @@ include_directories($<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/core/include>)
 #  - RouteInput callbacks went from by-value to const-reference in ns-3.37.
 #  - TestSuite/TestCase enums became scoped (enum class) in ns-3.42, and the
 #    deprecated unscoped aliases were removed in ns-3.47.
+#  - WifiMacQueueItem was renamed to WifiMpdu (header wifi-mac-queue-item.h ->
+#    wifi-mpdu.h) in ns-3.37; the WifiMac "DroppedMpdu" trace carries this type.
 if(NS3_VER MATCHES "^3\\.([0-9]+)")
   if(CMAKE_MATCH_1 LESS 37)
     add_compile_definitions(ANTHOCNET_NS3_ROUTEINPUT_BYVALUE)
+    add_compile_definitions(ANTHOCNET_NS3_WIFI_QUEUE_ITEM)
   endif()
   if(CMAKE_MATCH_1 GREATER_EQUAL 42)
     add_compile_definitions(ANTHOCNET_NS3_SCOPED_TEST_ENUMS)
@@ -58,6 +61,11 @@ build_lib(
     ${libcore}
     ${libnetwork}
     ${libinternet}
+    # wifi: the model subscribes to the WifiMac "DroppedMpdu" trace for the MAC
+    # transmit-failure detector (ADR-0008 detector D). mobility: used by the
+    # link-break test below to move a node out of range.
+    ${libwifi}
+    ${libmobility}
   TEST_SOURCES
     test/anthocnet-test-suite.cc
 )

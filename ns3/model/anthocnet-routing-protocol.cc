@@ -11,6 +11,11 @@
 #include "ns3/ipv4-route.h"
 #include "ns3/simulator.h"
 #include "ns3/trace-source-accessor.h"
+#include "ns3/wifi-net-device.h"
+#include "ns3/ipv4-interface.h"
+#include "ns3/arp-cache.h"
+#include "ns3/llc-snap-header.h"
+#include "ns3/udp-header.h"
 
 namespace ns3 {
 
@@ -222,6 +227,22 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
     bcast->SetAllowBroadcast(true);
     bcast->SetIpRecvTtl(true);
     m_socketSubnetBroadcast[bcast] = iface;
+
+    // ADR-0008 detector D: subscribe to the WifiMac transmit-failure trace so a
+    // failed unicast to a next hop is reported immediately (NS-2 parity). Only
+    // wifi devices expose this; for others (e.g. SimpleNetDevice) detector A
+    // (the hello-timeout maintenance tick) remains the sole, mandatory detector.
+    // TraceConnect returns false if the source is absent on this ns-3 version,
+    // which we tolerate — detection then falls back to detector A.
+    Ptr<NetDevice> dev = l3->GetNetDevice(interface);
+    Ptr<WifiNetDevice> wifi = dev ? dev->GetObject<WifiNetDevice>() : nullptr;
+    if (wifi) {
+        Ptr<WifiMac> wmac = wifi->GetMac();
+        if (wmac) {
+            wmac->TraceConnectWithoutContext(
+                "DroppedMpdu", MakeCallback(&RoutingProtocol::NotifyTxError, this));
+        }
+    }
 
     Start();
 }
@@ -475,6 +496,81 @@ void RoutingProtocol::ProactiveTimerExpire() {
         }
     }
     m_proactiveTimer.Schedule(m_proactiveInterval);
+}
+
+// --- MAC transmit-failure hook (ADR-0008 detector D) ------------------------
+
+void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu) {
+    if (!m_logic || m_socketAddresses.empty() || !mpdu) return;
+    // Only a retry-limit drop is a real broken link; other drop reasons
+    // (queue full, lifetime expiry) are congestion, not topology.
+    if (reason != WIFI_MAC_DROP_REACHED_RETRY_LIMIT) return;
+
+    const Mac48Address dstMac = mpdu->GetHeader().GetAddr1();
+    if (dstMac.IsBroadcast() || dstMac.IsGroup()) return;  // no single next hop
+
+    NodeAddress next;
+    if (!MapMacToCore(dstMac, next)) return;  // unknown peer — nothing to prune
+
+    // Peek the carried L3 packet: only a failed *data* packet triggers a repair
+    // ant (ant control traffic is UDP to ANT_PORT — mirror NS-2, which repairs
+    // only non-ant packets). dataDest stays kInvalidAddress if we can't parse it,
+    // so we still prune the dead neighbour even when the payload is opaque.
+    NodeAddress dataDest = kInvalidAddress;
+    Ptr<Packet> pkt = mpdu->GetPacket()->Copy();
+    LlcSnapHeader llc;
+    if (pkt->GetSize() >= llc.GetSerializedSize()) {
+        pkt->RemoveHeader(llc);
+        if (llc.GetType() == 0x0800) {  // IPv4 EtherType
+            Ipv4Header ip;
+            if (pkt->GetSize() >= ip.GetSerializedSize()) {
+                pkt->RemoveHeader(ip);
+                bool isAnt = false;
+                if (ip.GetProtocol() == 17) {  // UDP
+                    UdpHeader udp;
+                    if (pkt->GetSize() >= udp.GetSerializedSize()) {
+                        pkt->PeekHeader(udp);
+                        isAnt = (udp.GetDestinationPort() == ANT_PORT);
+                    }
+                }
+                if (!isAnt) dataDest = ToCore(ip.GetDestination());
+            }
+        }
+    }
+
+    // Converge on the shared core path: prune + LinkFail notifications + (for
+    // data) a bounded, counted repair ant. ExecuteDecisions broadcasts them.
+    ExecuteDecisions(m_logic->reportTxFailure(next, dataDest), kInvalidAddress);
+}
+
+bool RoutingProtocol::MapMacToCore(const Mac48Address& mac, NodeAddress& out) const {
+    if (!m_ipv4 || !m_logic) return false;
+    Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol>();
+    if (!l3) return false;
+
+    // Resolve the failed next-hop MAC to a core address by forward-looking each
+    // known neighbour's IP in the per-interface ARP cache and matching its MAC.
+    // We use the public Ipv4Interface::GetArpCache() + the stable 1:1 forward
+    // Lookup(Ipv4Address) — ArpL3Protocol::FindCache is private and
+    // ArpCache::LookupInverse's return type drifts across ns-3 versions.
+    const auto& neighbors = m_logic->table().neighbors();
+    for (uint32_t i = 0; i < l3->GetNInterfaces(); ++i) {
+        Ptr<ArpCache> cache = l3->GetInterface(i)->GetArpCache();
+        if (!cache) continue;
+        for (NodeAddress nb : neighbors) {
+            ArpCache::Entry* entry = cache->Lookup(ToIpv4(nb));
+            if (!entry) continue;
+            // An entry still resolving (WAIT_REPLY) carries no MAC yet; guard
+            // ConvertFrom, which asserts on a non-48-bit address.
+            const Address resolved = entry->GetMacAddress();
+            if (Mac48Address::IsMatchingType(resolved) &&
+                Mac48Address::ConvertFrom(resolved) == mac) {
+                out = nb;
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 // --- helpers ----------------------------------------------------------------
