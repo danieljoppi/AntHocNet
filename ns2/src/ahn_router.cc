@@ -361,27 +361,25 @@ void AntHocNetAgent::linkFailed(Packet* p) {
     struct hdr_cmn* ch = HDR_CMN(p);
     struct hdr_ip* ih = HDR_IP(p);
     const nsaddr_t broken = ch->next_hop_;
+    const bool isData = (ch->ptype() != PT_ANT);
+    const nsaddr_t dest = ih->daddr();
 
-    // MAC transmit-failure detector (ADR-0008 detector D): remove the dead
-    // neighbour and broadcast any link-failure notifications it triggers.
+    // MAC transmit-failure detector (ADR-0008 detector D): drop the dead
+    // neighbour (emitting any LinkFail notifications) and, for a failed data
+    // packet, broadcast a bounded local-repair ant toward the lost destination.
+    // The core counts/bounds the repair ant; both adapters share this path.
     if (logic_) {
-        for (const RouteDecision& d : logic_->reportNeighborLoss(broken)) {
+        for (const RouteDecision& d :
+             logic_->reportTxFailure(broken,
+                                     isData ? dest : anthocnet::core::kInvalidAddress)) {
             if (d.action == RouteAction::Broadcast) {
                 sendAnt(d.message, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
             }
         }
     }
 
-    if (ch->ptype() != PT_ANT) {
-        const nsaddr_t dest = ih->daddr();
-        enqueue(p, dest);
-        if (logic_) {
-            // Bounded local repair: createForwardAnt sets broadcastBudget for
-            // Repair ants so the core caps re-broadcasts.
-            AntMessage rrfa = logic_->createForwardAnt(AntType::Repair, dest);
-            rrfa.lifeAnt = AHN_LIFE_ANT;
-            sendAnt(rrfa, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
-        }
+    if (isData) {
+        enqueue(p, dest);  // hold for retransmission once repair installs a route
     } else {
         Packet::free(p);
     }

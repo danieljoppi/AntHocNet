@@ -118,6 +118,25 @@ std::vector<RouteDecision> AntRouterLogic::reportNeighborLoss(NodeAddress n) {
     return {broadcastForward(note)};
 }
 
+std::vector<RouteDecision> AntRouterLogic::reportTxFailure(NodeAddress next,
+                                                          NodeAddress dataDest) {
+    // Detector D and detector A converge here: prune `next` and emit any
+    // LinkFail notifications its loss triggers.
+    std::vector<RouteDecision> out = reportNeighborLoss(next);
+
+    // Bounded local repair ([1] §3.5): for a failed *data* packet, broadcast a
+    // repair ant toward the lost destination instead of waiting for the next
+    // reactive/proactive ant. broadcastForward counts it (so --diag shows
+    // repair>0) and honours broadcastBudget (= repairMaxBroadcasts), capping
+    // re-broadcasts network-wide.
+    if (dataDest != kInvalidAddress && dataDest != address_) {
+        AntMessage rrfa = createForwardAnt(AntType::Repair, dataDest);
+        rrfa.lifeAnt = config_.lifeAnt;
+        out.push_back(broadcastForward(rrfa));
+    }
+    return out;
+}
+
 std::vector<RouteDecision> AntRouterLogic::handleLinkFail(const AntMessage& note,
                                                           NodeAddress reporter) {
     AntMessage prop;

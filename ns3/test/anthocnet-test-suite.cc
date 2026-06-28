@@ -21,6 +21,16 @@
 #include "ns3/udp-socket-factory.h"
 #include "ns3/inet-socket-address.h"
 
+#include "ns3/wifi-helper.h"
+#include "ns3/yans-wifi-helper.h"
+#include "ns3/wifi-mac-helper.h"
+#include "ns3/mobility-helper.h"
+#include "ns3/mobility-model.h"
+#include "ns3/constant-position-mobility-model.h"
+#include "ns3/list-position-allocator.h"
+#include "ns3/double.h"
+#include "ns3/ipv4.h"
+
 #include "ns3/anthocnet-packet.h"
 #include "ns3/anthocnet-helper.h"
 #include "ns3/anthocnet-routing-protocol.h"
@@ -165,6 +175,101 @@ public:
     }
 };
 
+// Repair ant fires on a MAC transmit-failure (ADR-0008 detector D, issue #19).
+// Two adhoc-wifi nodes within range establish a data session; the receiver is
+// then moved out of range so the sender's unicasts fail after the retry limit.
+// The WifiMac "DroppedMpdu" trace must drive a bounded repair ant, observed via
+// the protocol's "Tx" trace (type == Repair). SimpleNetDevice has no such
+// failure model, so this case requires real wifi.
+class RepairAntOnLinkBreakTestCase : public TestCase
+{
+public:
+    RepairAntOnLinkBreakTestCase()
+        : TestCase("Repair ant fires on MAC tx-failure (detector D)"), m_repairAnts(0) {}
+
+    void DoRun() override {
+        RngSeedManager::SetSeed(1);
+        RngSeedManager::SetRun(1);
+
+        NodeContainer nodes;
+        nodes.Create(2);
+
+        // Disk connectivity model so the link is purely a function of distance.
+        WifiHelper wifi;
+        wifi.SetStandard(WIFI_STANDARD_80211b);
+        YansWifiChannelHelper channel;
+        channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
+        channel.AddPropagationLoss("ns3::RangePropagationLossModel",
+                                   "MaxRange", DoubleValue(120.0));
+        YansWifiPhyHelper phy;
+        phy.SetChannel(channel.Create());
+        WifiMacHelper mac;
+        mac.SetType("ns3::AdhocWifiMac");
+        NetDeviceContainer devices = wifi.Install(phy, mac, nodes);
+
+        // Node 0 at the origin, node 1 in range (60 m < 120 m).
+        MobilityHelper mobility;
+        Ptr<ListPositionAllocator> pos = CreateObject<ListPositionAllocator>();
+        pos->Add(Vector(0.0, 0.0, 0.0));
+        pos->Add(Vector(60.0, 0.0, 0.0));
+        mobility.SetPositionAllocator(pos);
+        mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
+        mobility.Install(nodes);
+
+        AntHocNetHelper anthocnet;
+        InternetStackHelper internet;
+        internet.SetRoutingHelper(anthocnet);
+        internet.Install(nodes);
+
+        Ipv4AddressHelper address;
+        address.SetBase("10.1.0.0", "255.255.255.0");
+        Ipv4InterfaceContainer ifs = address.Assign(devices);
+
+        // Count repair ants put on the medium across both nodes (item-15 Tx trace).
+        for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+            Ptr<Ipv4> ipv4 = nodes.Get(i)->GetObject<Ipv4>();
+            Ptr<ns3::anthocnet::RoutingProtocol> rp =
+                DynamicCast<ns3::anthocnet::RoutingProtocol>(ipv4->GetRoutingProtocol());
+            if (rp) {
+                rp->TraceConnectWithoutContext(
+                    "Tx", MakeCallback(&RepairAntOnLinkBreakTestCase::CountTx, this));
+            }
+        }
+
+        const uint16_t port = 9;
+        Ptr<Socket> rx = Socket::CreateSocket(nodes.Get(1), UdpSocketFactory::GetTypeId());
+        rx->Bind(InetSocketAddress(Ipv4Address::GetAny(), port));
+
+        Ptr<Socket> tx = Socket::CreateSocket(nodes.Get(0), UdpSocketFactory::GetTypeId());
+        tx->Connect(InetSocketAddress(ifs.GetAddress(1), port));
+        // Send across the whole run so a live session exists before and after the break.
+        for (double t = 5.0; t < 28.0; t += 0.5) {
+            Simulator::Schedule(Seconds(t), &RepairAntOnLinkBreakTestCase::Send, this, tx);
+        }
+
+        // Break the link at t=15 s: move node 1 far out of range.
+        Simulator::Schedule(Seconds(15.0), &RepairAntOnLinkBreakTestCase::MoveAway, this,
+                            nodes.Get(1));
+
+        Simulator::Stop(Seconds(30.0));
+        Simulator::Run();
+        Simulator::Destroy();
+
+        NS_TEST_ASSERT_MSG_GT(m_repairAnts, 0u,
+                              "no repair ant was sent after the induced link break");
+    }
+
+private:
+    void Send(Ptr<Socket> s) { s->Send(Create<Packet>(64)); }
+    void MoveAway(Ptr<Node> n) {
+        n->GetObject<MobilityModel>()->SetPosition(Vector(5000.0, 0.0, 0.0));
+    }
+    void CountTx(uint8_t type, uint8_t /*dir*/, bool /*broadcast*/) {
+        if (type == static_cast<uint8_t>(AntType::Repair)) ++m_repairAnts;
+    }
+    uint32_t m_repairAnts;
+};
+
 // ns-3 made the TestSuite/TestCase enums scoped in ns-3.42 (enum class Type /
 // Duration) and removed the deprecated unscoped aliases in ns-3.47. So the
 // scoped form is required from 3.47, the unscoped form is the only one before
@@ -185,6 +290,7 @@ public:
         AddTestCase(new AntHeaderRoundTripTestCase(), AHN_TEST_QUICK);
         AddTestCase(new AddressMappingTestCase(), AHN_TEST_QUICK);
         AddTestCase(new AntHocNetDeliveryTestCase(), AHN_TEST_QUICK);
+        AddTestCase(new RepairAntOnLinkBreakTestCase(), AHN_TEST_QUICK);
     }
 };
 

@@ -58,6 +58,11 @@ build_lib(
     ${libcore}
     ${libnetwork}
     ${libinternet}
+    # wifi: the model subscribes to the WifiMac "DroppedMpdu" trace for the MAC
+    # transmit-failure detector (ADR-0008 detector D). mobility: used by the
+    # link-break test below to move a node out of range.
+    ${libwifi}
+    ${libmobility}
   TEST_SOURCES
     test/anthocnet-test-suite.cc
 )
