@@ -27,7 +27,8 @@
 #include "ns3/mobility-helper.h"
 #include "ns3/mobility-model.h"
 #include "ns3/constant-position-mobility-model.h"
-#include "ns3/list-position-allocator.h"
+#include "ns3/position-allocator.h"
+#include "ns3/vector.h"
 #include "ns3/double.h"
 #include "ns3/ipv4.h"
 
