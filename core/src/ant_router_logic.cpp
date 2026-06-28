@@ -24,6 +24,7 @@ void AntRouterLogic::learnNeighbor(NodeAddress neighbor) {
     // Seed an equal-weight regular entry, as the legacy recvAHN did.
     engine_.updateRegular(table_, neighbor, neighbor, 1.0);
     lastSeen_[neighbor] = clock_.now();  // liveness: any reception refreshes it
+    txFailures_.erase(neighbor);         // a reception clears the tx-failure streak (#19)
     if (isNew && observer_) observer_->onRouteChanged(neighbor, neighbor, true);
 }
 
@@ -31,6 +32,7 @@ void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
     const bool had = lastSeen_.find(neighbor) != lastSeen_.end();
     engine_.cleanNeighbor(table_, neighbor);
     lastSeen_.erase(neighbor);
+    txFailures_.erase(neighbor);
     if (had && observer_) observer_->onRouteChanged(neighbor, neighbor, false);
 }
 
@@ -120,19 +122,37 @@ std::vector<RouteDecision> AntRouterLogic::reportNeighborLoss(NodeAddress n) {
 
 std::vector<RouteDecision> AntRouterLogic::reportTxFailure(NodeAddress next,
                                                           NodeAddress dataDest) {
-    // Detector D and detector A converge here: prune `next` and emit any
-    // LinkFail notifications its loss triggers.
+    if (next == kInvalidAddress) return {};
+
+    // Debounce (issue #19): a single retry-limit drop in a dense/contended
+    // network is usually a collision, not a topology change. Evicting the
+    // neighbour on it destroys valid routes and triggers rediscovery floods
+    // (proactive ants re-broadcast unbounded when no route survives), which add
+    // contention and cause more drops — a positive-feedback storm. So only treat
+    // the link as broken after txFailureThreshold consecutive failures with no
+    // intervening reception (any reception resets the counter via learnNeighbor).
+    if (++txFailures_[next] < config_.txFailureThreshold) return {};
+    txFailures_.erase(next);
+
+    // Real break: prune `next` and emit any LinkFail notifications (detector A
+    // and D converge on this path).
     std::vector<RouteDecision> out = reportNeighborLoss(next);
 
-    // Bounded local repair ([1] §3.5): for a failed *data* packet, broadcast a
-    // repair ant toward the lost destination instead of waiting for the next
-    // reactive/proactive ant. broadcastForward counts it (so --diag shows
-    // repair>0) and honours broadcastBudget (= repairMaxBroadcasts), capping
-    // re-broadcasts network-wide.
-    if (dataDest != kInvalidAddress && dataDest != address_) {
-        AntMessage rrfa = createForwardAnt(AntType::Repair, dataDest);
-        rrfa.lifeAnt = config_.lifeAnt;
-        out.push_back(broadcastForward(rrfa));
+    // Bounded local repair ([1] §3.5): only "if there is no other path
+    // available" — after the loss, if a route to dataDest survives via another
+    // neighbour, skip the repair ant. Rate-limit per destination so a burst of
+    // failures to one dest can't spawn a stream of repair ants. broadcastForward
+    // counts the ant (--diag repair>0) and caps re-broadcasts (repairMaxBroadcasts).
+    if (dataDest != kInvalidAddress && dataDest != address_ &&
+        table_.bestRegular(dataDest) <= config_.minPheromone) {
+        const double now = clock_.now();
+        auto it = lastRepair_.find(dataDest);
+        if (it == lastRepair_.end() || now - it->second >= config_.reactiveRetryInterval) {
+            lastRepair_[dataDest] = now;
+            AntMessage rrfa = createForwardAnt(AntType::Repair, dataDest);
+            rrfa.lifeAnt = config_.lifeAnt;
+            out.push_back(broadcastForward(rrfa));
+        }
     }
     return out;
 }
