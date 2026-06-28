@@ -31,6 +31,9 @@ on:
       propagation:
         description: 'Propagation model: range (disk) | tworay (#24)'
         default: 'range'
+      range:
+        description: 'Transmission range (m) for the disk model (#24 disentangler)'
+        default: '300'
 
 permissions:
   contents: read
@@ -66,7 +69,8 @@ jobs:
             --time=${{ github.event.inputs.time }} \
             --areaX=${{ github.event.inputs.areaX }} \
             --pause=${{ github.event.inputs.pause }} \
-            --propagation=${{ github.event.inputs.propagation }}"
+            --propagation=${{ github.event.inputs.propagation }} \
+            --range=${{ github.event.inputs.range }}"
           echo "anthocnet-compare $args"
           ./ns3 run "anthocnet-compare $args" 2>/dev/null \
             | tee "$GITHUB_WORKSPACE/paper-results.txt"
