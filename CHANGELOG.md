@@ -33,6 +33,16 @@ adapters, the benchmark harness, and reproducible CI/packaging.
 [Unreleased]: https://github.com/danieljoppi/AntHocNet/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/danieljoppi/AntHocNet/releases/tag/v0.1.0
 
+## v0.2.0 (2026-06-28)
+
+### Feat
+
+- **ns3**: wire MAC transmit-failure repair hook (detector D) (#43)
+
+### Fix
+
+- **core**: debounce detector D to stop the link-failure storm (#19)
+
 ## v0.1.1 (2026-06-28)
 
 ### Fix
