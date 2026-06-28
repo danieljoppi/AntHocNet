@@ -41,7 +41,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <iomanip>
-#include <limits>
 #include <map>
 #include <vector>
 
@@ -123,12 +122,15 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     NodeContainer nodes;
     nodes.Create(P.nNodes);
 
-    // #24 experiment: force the RTS/CTS handshake on unicast data so multi-hop
-    // paths in a dense layout don't bleed PDR to hidden-terminal collisions.
-    // Threshold 0 = RTS/CTS for every unicast frame; the ns-3 default is
-    // effectively off (huge threshold). Applied uniformly to every protocol.
-    Config::SetDefault("ns3::WifiRemoteStationManager::RtsCtsThreshold",
-                       UintegerValue(P.rtsCts ? 0 : std::numeric_limits<uint32_t>::max()));
+    // #24 experiment: optionally force the RTS/CTS handshake on unicast data
+    // (threshold 0 = every unicast frame). Only touch the default when enabled —
+    // the ns-3 default already leaves RTS/CTS effectively off, and newer ns-3
+    // rejects an out-of-range threshold, so we must not write a sentinel here.
+    // Applied uniformly to every protocol.
+    if (P.rtsCts) {
+        Config::SetDefault("ns3::WifiRemoteStationManager::RtsCtsThreshold",
+                           UintegerValue(0));
+    }
 
     WifiHelper wifi;
     wifi.SetStandard(WIFI_STANDARD_80211b);
