@@ -34,6 +34,9 @@ on:
       range:
         description: 'Transmission range (m) for the disk model (#24 disentangler)'
         default: '300'
+      harness:
+        description: 'Binary: compare (AntHocNet vs baselines) | baselines (stock ns-3 only, #24 control)'
+        default: 'compare'
 
 permissions:
   contents: read
@@ -59,11 +62,10 @@ jobs:
             --enable-modules='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
       - name: Build
         run: cd /opt/ns-3 && ./ns3 build
-      - name: Run paper scenario (with diagnostics)
+      - name: Run paper scenario
         run: |
           cd /opt/ns-3
-          args="--scenario=paper --diag \
-            --protocols=${{ github.event.inputs.protocols }} \
+          common="--scenario=paper \
             --runs=${{ github.event.inputs.runs }} \
             --nNodes=${{ github.event.inputs.nNodes }} \
             --time=${{ github.event.inputs.time }} \
@@ -71,9 +73,14 @@ jobs:
             --pause=${{ github.event.inputs.pause }} \
             --propagation=${{ github.event.inputs.propagation }} \
             --range=${{ github.event.inputs.range }}"
-          echo "anthocnet-compare $args"
-          ./ns3 run "anthocnet-compare $args" 2>/dev/null \
-            | tee "$GITHUB_WORKSPACE/paper-results.txt"
+          if [ "${{ github.event.inputs.harness }}" = "baselines" ]; then
+            # #24 control: stock ns-3 baselines only, no AntHocNet in the binary.
+            cmd="manet-baselines $common --protocols=aodv,olsr,dsdv"
+          else
+            cmd="anthocnet-compare $common --diag --protocols=${{ github.event.inputs.protocols }}"
+          fi
+          echo "$cmd"
+          ./ns3 run "$cmd" 2>/dev/null | tee "$GITHUB_WORKSPACE/paper-results.txt"
       - name: Upload results
         uses: actions/upload-artifact@v4
         with:
