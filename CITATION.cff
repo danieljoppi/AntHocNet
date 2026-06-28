@@ -11,11 +11,11 @@ authors:
     given-names: Daniel Henrique
     # orcid: "https://orcid.org/0000-0000-0000-0000"  # add if available
 version: 0.1.1
-date-released: "2026-06-27"
+date-released: "2026-06-28"
 license: GPL-2.0-only
 repository-code: "https://github.com/danieljoppi/AntHocNet"
 url: "https://github.com/danieljoppi/AntHocNet"
-# doi: "10.5281/zenodo.XXXXXXX"   # added after the first Zenodo-archived release
+doi: "10.5281/zenodo.20981980"
 keywords:
   - MANET
   - ad hoc networks
