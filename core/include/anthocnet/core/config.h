@@ -68,6 +68,13 @@ struct Config {
     /// Max times a repair / link-failure ant may be (re)broadcast before being
     /// dropped, so local repair and failure notifications can't storm ([1] §3.5).
     int repairMaxBroadcasts = 2;
+    /// Consecutive MAC transmit-failures to the same next hop (with no reception
+    /// from it in between) before the adapter's fast-path detector (ADR-0008
+    /// detector D) treats the link as broken. Debounces transient congestion
+    /// drops: a single retry-limit drop in a dense/contended network is usually a
+    /// collision, not a topology change, and evicting the neighbour on it
+    /// destroys valid routes and triggers rediscovery floods (issue #19).
+    int txFailureThreshold = 3;
     /// Max times a reactive forward ant may be (re)broadcast in a region with no
     /// pheromone, so route setup doesn't flood ([1] §3.2).
     int reactiveMaxBroadcasts = 2;

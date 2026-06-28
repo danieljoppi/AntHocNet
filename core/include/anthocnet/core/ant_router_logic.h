@@ -170,6 +170,8 @@ private:
     std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
     std::map<NodeAddress, double> lastSeen_;        ///< neighbor -> last reception time
     std::map<NodeAddress, double> lastReactive_;    ///< dest -> last reactive-ant time
+    std::map<NodeAddress, double> lastRepair_;      ///< dest -> last repair-ant time
+    std::map<NodeAddress, int>    txFailures_;      ///< next hop -> consecutive MAC tx-failures (detector D debounce)
     double lastEvaporation_ = 0.0;                  ///< last evaporateAll time
 
     IRouterObserver* observer_ = nullptr;           ///< optional, item 15

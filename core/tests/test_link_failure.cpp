@@ -154,13 +154,15 @@ int main() {
         CHECK(d3[0].action == RouteAction::Drop);
     }
 
-    // 7. reportTxFailure (detector D): losing the data next hop prunes it, emits
-    //    a LinkFail notification, and broadcasts a counted bounded Repair ant
-    //    toward the failed data destination.
+    // 7. reportTxFailure (detector D): once the consecutive-failure threshold is
+    //    reached, losing the data next hop prunes it, emits a LinkFail
+    //    notification, and broadcasts a counted bounded Repair ant toward the
+    //    failed data destination (no alternate path survives).
     {
+        Config cfg1 = cfg; cfg1.txFailureThreshold = 1;  // act on the first failure
         FakeClock clock;
         ScriptedRng rng({0.5});
-        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+        AntRouterLogic router(/*addr*/ 0, cfg1, clock, rng);
         router.learnNeighbor(5);
         router.table().setPheromoneRegular(/*dest*/ 9, /*neighbor*/ 5, 0.8);
 
@@ -173,7 +175,7 @@ int main() {
             if (d.message.type == AntType::Repair) {
                 repair = true;
                 CHECK_EQ(d.message.dst, static_cast<NodeAddress>(9));
-                CHECK_EQ(d.message.broadcastBudget, cfg.repairMaxBroadcasts - 1);
+                CHECK_EQ(d.message.broadcastBudget, cfg1.repairMaxBroadcasts - 1);
             }
         }
         CHECK(linkFail);
@@ -185,9 +187,10 @@ int main() {
     // 8. reportTxFailure for a failed *ant* (no dataDest) cleans up but sends no
     //    repair ant.
     {
+        Config cfg1 = cfg; cfg1.txFailureThreshold = 1;
         FakeClock clock;
         ScriptedRng rng({0.5});
-        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+        AntRouterLogic router(/*addr*/ 0, cfg1, clock, rng);
         router.learnNeighbor(5);
 
         auto decs = router.reportTxFailure(/*next*/ 5);
@@ -196,6 +199,45 @@ int main() {
         }
         CHECK_EQ(router.antsSent(AntType::Repair), static_cast<std::uint64_t>(0));
         CHECK_EQ(router.table().numNeighbors(), static_cast<std::size_t>(0));
+    }
+
+    // 9. Debounce (issue #19): failures below the threshold do NOT evict, and a
+    //    reception in between resets the streak so transient drops are absorbed.
+    {
+        Config cfg3 = cfg; cfg3.txFailureThreshold = 3;
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        AntRouterLogic router(/*addr*/ 0, cfg3, clock, rng);
+        router.learnNeighbor(5);
+
+        CHECK(router.reportTxFailure(5, 9).empty());   // 1
+        CHECK(router.reportTxFailure(5, 9).empty());   // 2 (still < 3)
+        CHECK_EQ(router.table().numNeighbors(), static_cast<std::size_t>(1));
+
+        router.learnNeighbor(5);                       // reception resets the streak
+        CHECK(router.reportTxFailure(5, 9).empty());   // 1 again
+        CHECK(router.reportTxFailure(5, 9).empty());   // 2
+        CHECK_EQ(router.table().numNeighbors(), static_cast<std::size_t>(1));
+
+        router.reportTxFailure(5, 9);                  // 3 -> evict
+        CHECK_EQ(router.table().numNeighbors(), static_cast<std::size_t>(0));
+    }
+
+    // 10. Repair guard ([1] §3.5 "no other path available"): if a route to the
+    //     destination survives via another neighbour, no repair ant is sent.
+    {
+        Config cfg1 = cfg; cfg1.txFailureThreshold = 1;
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        AntRouterLogic router(/*addr*/ 0, cfg1, clock, rng);
+        router.learnNeighbor(5);
+        router.learnNeighbor(6);
+        router.table().setPheromoneRegular(/*dest*/ 9, /*neighbor*/ 5, 0.8);
+        router.table().setPheromoneRegular(/*dest*/ 9, /*neighbor*/ 6, 0.5);  // alternate
+
+        router.reportTxFailure(/*next*/ 5, /*dataDest*/ 9);  // lose 5, but 6 remains
+        CHECK_EQ(router.antsSent(AntType::Repair), static_cast<std::uint64_t>(0));
+        CHECK(router.table().getPheromoneRegular(9, 6) > 0.0);  // alternate intact
     }
 
     return RUN_TESTS();

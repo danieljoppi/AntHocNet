@@ -243,8 +243,13 @@ public:
 
         Ptr<Socket> tx = Socket::CreateSocket(nodes.Get(0), UdpSocketFactory::GetTypeId());
         tx->Connect(InetSocketAddress(ifs.GetAddress(1), port));
-        // Send across the whole run so a live session exists before and after the break.
-        for (double t = 5.0; t < 28.0; t += 0.5) {
+        // Send densely so a live session exists before the break and, after it,
+        // detector D reaches Config::txFailureThreshold consecutive MAC drops
+        // (the #19 debounce) well before detector A's hello-timeout (~2 s) would
+        // evict the moved node — otherwise A removes it first and D never fires
+        // the repair. The simulation is deterministic (fixed seed/run), so this
+        // ordering is stable across ns-3 versions.
+        for (double t = 5.0; t < 28.0; t += 0.1) {
             Simulator::Schedule(Seconds(t), &RepairAntOnLinkBreakTestCase::Send, this, tx);
         }
 
