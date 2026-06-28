@@ -559,7 +559,12 @@ bool RoutingProtocol::MapMacToCore(const Mac48Address& mac, NodeAddress& out) co
         if (!cache) continue;
         for (NodeAddress nb : neighbors) {
             ArpCache::Entry* entry = cache->Lookup(ToIpv4(nb));
-            if (entry && Mac48Address::ConvertFrom(entry->GetMacAddress()) == mac) {
+            if (!entry) continue;
+            // An entry still resolving (WAIT_REPLY) carries no MAC yet; guard
+            // ConvertFrom, which asserts on a non-48-bit address.
+            const Address resolved = entry->GetMacAddress();
+            if (Mac48Address::IsMatchingType(resolved) &&
+                Mac48Address::ConvertFrom(resolved) == mac) {
                 out = nb;
                 return true;
             }
