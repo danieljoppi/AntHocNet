@@ -96,6 +96,7 @@ struct Params {
     uint32_t nFlows;
     double   cbrBps;
     double   startWindow;
+    std::string propagation;  // "range" (disk, default) | "tworay" (two-ray ground, #24)
 };
 
 struct Result {
@@ -125,7 +126,21 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     wifi.SetStandard(WIFI_STANDARD_80211b);
     YansWifiPhyHelper phy;
     YansWifiChannelHelper channel;
-    if (P.range > 0.0) {
+    if (P.propagation == "tworay") {
+        // Two-ray ground reflection (the paper's propagation model, #24): free
+        // space (Friis) below the crossover distance, 1/d^4 beyond, so received
+        // power — and thus capture and edge losses — vary realistically with
+        // distance instead of the all-or-nothing disk. Two parameters are
+        // mandatory or it misbehaves: the 802.11b Frequency (the model defaults
+        // to 5.15 GHz) and a non-zero antenna height (nodes sit at z=0, and the
+        // two-ray term scales with ht^2*hr^2 -> height 0 gives infinite loss and
+        // no links, the classic ns-3 footgun). Effective range is then governed
+        // by tx power vs receiver sensitivity, not a hard cap.
+        channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
+        channel.AddPropagationLoss("ns3::TwoRayGroundPropagationLossModel",
+                                   "Frequency", DoubleValue(2.4e9),
+                                   "HeightAboveZ", DoubleValue(1.5));
+    } else if (P.range > 0.0) {
         // A clean disk model at the paper's transmission range (reproducible
         // connectivity, independent of tx-power/sensitivity defaults).
         channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
@@ -346,6 +361,8 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols", "Comma-separated list", protocols);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies, first delivery)", g_diag);
+    std::string propagation = "range";
+    cmd.AddValue("propagation", "Propagation loss model: 'range' (disk) or 'tworay'", propagation);
     cmd.Parse(argc, argv);
     if (runs < 1) runs = 1;
 
@@ -361,6 +378,7 @@ int main(int argc, char* argv[]) {
     P.nFlows  = nFlows > 0 ? static_cast<uint32_t>(nFlows) : (paper ? 20 : 5);
     P.cbrBps  = cbrBps >= 0 ? cbrBps : (paper ? 512.0 : 8000.0);
     P.startWindow = paper ? 180.0 : 5.0;
+    P.propagation = propagation;
 
     // 1 ms delay bins for the 99th-percentile computation.
     Config::SetDefault("ns3::FlowMonitor::DelayBinWidth", DoubleValue(0.001));

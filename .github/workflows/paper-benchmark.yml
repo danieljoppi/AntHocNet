@@ -22,12 +22,27 @@ on:
       areaX:
         description: 'Area long edge (m) — paper sweeps 1500..2500'
         default: '1500'
+      areaY:
+        description: 'Area short edge (m) — leave blank for the preset (300). Set small (e.g. 50) with a small areaX for a guaranteed in-range sanity anchor (#24).'
+        default: ''
       pause:
         description: 'Random-waypoint pause time (s) — paper sweeps 0..900'
         default: '30'
+      speed:
+        description: 'Max node speed (m/s); set low (e.g. 1) with pause=900 for a near-static anchor'
+        default: '20'
       protocols:
         description: 'Comma-separated protocol list'
         default: 'anthocnet,aodv,olsr,dsdv'
+      propagation:
+        description: 'Propagation model: range (disk) | tworay (#24)'
+        default: 'range'
+      range:
+        description: 'Transmission range (m) for the disk model (#24 disentangler)'
+        default: '300'
+      harness:
+        description: 'Binary: compare (AntHocNet vs baselines) | baselines (stock ns-3 only, #24 control)'
+        default: 'compare'
 
 permissions:
   contents: read
@@ -53,19 +68,29 @@ jobs:
             --enable-modules='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
       - name: Build
         run: cd /opt/ns-3 && ./ns3 build
-      - name: Run paper scenario (with diagnostics)
+      - name: Run paper scenario
         run: |
           cd /opt/ns-3
-          args="--scenario=paper --diag \
-            --protocols=${{ github.event.inputs.protocols }} \
+          common="--scenario=paper \
             --runs=${{ github.event.inputs.runs }} \
             --nNodes=${{ github.event.inputs.nNodes }} \
             --time=${{ github.event.inputs.time }} \
             --areaX=${{ github.event.inputs.areaX }} \
-            --pause=${{ github.event.inputs.pause }}"
-          echo "anthocnet-compare $args"
-          ./ns3 run "anthocnet-compare $args" 2>/dev/null \
-            | tee "$GITHUB_WORKSPACE/paper-results.txt"
+            --pause=${{ github.event.inputs.pause }} \
+            --speed=${{ github.event.inputs.speed }} \
+            --propagation=${{ github.event.inputs.propagation }} \
+            --range=${{ github.event.inputs.range }}"
+          if [ -n "${{ github.event.inputs.areaY }}" ]; then
+            common="$common --areaY=${{ github.event.inputs.areaY }}"
+          fi
+          if [ "${{ github.event.inputs.harness }}" = "baselines" ]; then
+            # #24 control: stock ns-3 baselines only, no AntHocNet in the binary.
+            cmd="manet-baselines $common --protocols=aodv,olsr,dsdv"
+          else
+            cmd="anthocnet-compare $common --diag --protocols=${{ github.event.inputs.protocols }}"
+          fi
+          echo "$cmd"
+          ./ns3 run "$cmd" 2>/dev/null | tee "$GITHUB_WORKSPACE/paper-results.txt"
       - name: Upload results
         uses: actions/upload-artifact@v4
         with:

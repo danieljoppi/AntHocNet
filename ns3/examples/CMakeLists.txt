@@ -37,3 +37,22 @@ build_lib_example(
     ${libolsr}
     ${libdsdv}
 )
+
+# #24 control: STOCK baselines only (AODV/OLSR/DSDV) on the identical scenario,
+# deliberately NOT linking ${libanthocnet}/${libcore} so no AntHocNet code is in
+# the binary — isolates "is the scenario hard" from "does our module break the
+# stock protocols".
+build_lib_example(
+  NAME manet-baselines
+  SOURCE_FILES manet-baselines.cc
+  LIBRARIES_TO_LINK
+    ${libnetwork}
+    ${libinternet}
+    ${libwifi}
+    ${libmobility}
+    ${libapplications}
+    ${libflow-monitor}
+    ${libaodv}
+    ${libolsr}
+    ${libdsdv}
+)
