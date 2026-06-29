@@ -170,6 +170,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     for (auto& kv : monitor->GetFlowStats()) {
         Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(kv.first);
         if (t.destinationPort != kDataPort) continue;  // data flows only
+        // #24 diag: per-flow raw counts so we can see whether the ~50% is a
+        // halved metric vs. a real loss (printed to stdout; stderr is dropped).
+        std::cout << "  [diag " << proto << " seed=" << seed << "] flow "
+                  << t.sourceAddress << ":" << t.sourcePort << " -> "
+                  << t.destinationAddress << ":" << t.destinationPort
+                  << " tx=" << kv.second.txPackets << " rx=" << kv.second.rxPackets
+                  << " lost=" << kv.second.lostPackets << "\n";
         tx += kv.second.txPackets;
         rx += kv.second.rxPackets;
         totalDelay += kv.second.delaySum.GetSeconds();
