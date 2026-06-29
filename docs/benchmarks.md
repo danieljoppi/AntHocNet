@@ -79,17 +79,29 @@ rather than mistaken for a protocol property (see [#24](https://github.com/danie
 
 **Why this matters here.** The `paper-base` preset *is* the Broch/Perkins
 1500×300 m / 50-node field, where AODV is known to deliver ~90–100% at low
-mobility. The harness currently reports **AODV ≈ 22%** there — far below the known
-value — so [#24](https://github.com/danieljoppi/AntHocNet/issues/24) treats the
-low absolute PDR as a **channel/MAC calibration bug, not a hard scenario**. The
-stock-baseline control (`manet-baselines`, which links no AntHocNet code) and the
-single-hop sanity confirm this is the *scenario config*, not our module.
+mobility. The harness reports **AODV ≈ 22%** there — far below the known value. The
+stock-baseline control (`manet-baselines`, which links no AntHocNet code) confirms
+this is the *scenario/harness config*, not our module (stock-only ≈ harness
+baselines).
 
-**Concrete acceptance (calibration target):** stock **AODV must reach ≈90% PDR on
-the low-mobility anchor** — run `paper-benchmark` with `harness=baselines pause=900`
-— before the AntHocNet comparison's *absolute* numbers are trusted or the taxonomy
-is re-baselined. The *relative* comparison (identical per-protocol realisations) is
-valid throughout.
+**Root cause (found, tracked in [#51](https://github.com/danieljoppi/AntHocNet/issues/51)).**
+The single-hop sanity anchor does **not** read ~100%: a **2-node, 1-flow, in-range,
+static** link delivers only ~50% (`tx=121 rx=61`), confirmed real by independent
+app/sink counters (`appTx==fmTx`, `appRx==fmRx`). So the depression is a **stock
+single-hop 802.11 unicast loss of ~50% per frame**, which every protocol inherits
+before any multi-hop effect — not (primarily) a propagation/range issue. Notably,
+making the field denser does **not** fix it: static `range=600 m` still gives stock
+AODV only ~36%, and TwoRayGround is *worse* (~24%), not better. The earlier
+"300 m partitions the field / adopt ~600 m" reading is superseded — see the
+[#24 correction](https://github.com/danieljoppi/AntHocNet/issues/24#issuecomment-4828992577).
+
+**Acceptance / do-not-do-yet.** The single-hop anchor must deliver ≈100% (and stock
+**AODV ≈ 90%** on the low-mobility Broch field — `paper-benchmark` with
+`harness=baselines pause=900 speed=1`) **before** absolute numbers are trusted or the
+taxonomy is re-baselined. **Re-baselining and any "adopt a larger range as default"
+change are blocked on the [#51](https://github.com/danieljoppi/AntHocNet/issues/51)
+fix** — doing it sooner would bake the single-hop penalty into the baseline. The
+*relative* comparison (identical per-protocol realisations) is valid throughout.
 
 ## Results
 
