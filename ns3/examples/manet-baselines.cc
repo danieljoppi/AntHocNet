@@ -159,7 +159,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
     Result r;
     r.proto = proto;
-    uint64_t tx = 0, rx = 0;
+    // tx/rx as doubles: the ratio below already does float division (100.0 *
+    // promotes first), this just keeps the accumulators explicit.
+    double tx = 0, rx = 0;
     double totalDelay = 0.0;
     std::map<uint32_t, uint64_t> delayBins;
     double binWidth = 0.0;

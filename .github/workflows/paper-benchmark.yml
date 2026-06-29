@@ -22,6 +22,9 @@ on:
       areaX:
         description: 'Area long edge (m) — paper sweeps 1500..2500'
         default: '1500'
+      areaY:
+        description: 'Area short edge (m) — leave blank for the preset (300). Set small (e.g. 50) with a small areaX for a guaranteed in-range sanity anchor (#24).'
+        default: ''
       pause:
         description: 'Random-waypoint pause time (s) — paper sweeps 0..900'
         default: '30'
@@ -77,6 +80,9 @@ jobs:
             --speed=${{ github.event.inputs.speed }} \
             --propagation=${{ github.event.inputs.propagation }} \
             --range=${{ github.event.inputs.range }}"
+          if [ -n "${{ github.event.inputs.areaY }}" ]; then
+            common="$common --areaY=${{ github.event.inputs.areaY }}"
+          fi
           if [ "${{ github.event.inputs.harness }}" = "baselines" ]; then
             # #24 control: stock ns-3 baselines only, no AntHocNet in the binary.
             cmd="manet-baselines $common --protocols=aodv,olsr,dsdv"
