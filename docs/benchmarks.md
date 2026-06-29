@@ -63,6 +63,34 @@ PDR / mean+99th-percentile delay / NRL vs. the swept parameter:
 Unlike the paper (AODV only), every baseline (AODV/OLSR/DSDV) is run on identical
 realisations, so the classification covers all of them.
 
+## Validation anchors (known-expected results)
+
+A benchmark is only trustworthy if it reproduces a *known* result on a reference
+scenario. We anchor against scenarios whose expected behaviour is documented in
+the literature, so an off absolute number is caught as a **harness/config bug**
+rather than mistaken for a protocol property (see [#24](https://github.com/danieljoppi/AntHocNet/issues/24)).
+
+| anchor | configuration | expected (literature) | what it checks |
+|---|---|---|---|
+| single-hop sanity | ~10 nodes, 300×300 m, 300 m range, light load | PDR ≈ **100%** (all in range, ~1 hop) | the wifi/IP/app stack delivers at all |
+| **Broch/Perkins field, low mobility** | 50 nodes, 1500×300 m, RWP, **pause = 900 s** (≈ static) | **AODV ≈ 90–100% PDR** (Broch et al., *MobiCom* 1998; Perkins, AODV) | the channel/PHY calibration target |
+| Broch pause-sweep | as above, pause 0 → 900 s | AODV PDR **rises** with pause; DSDV worst under high mobility | the trend/shape, not one point |
+| ns-3 `manet-routing-compare` | upstream example | community-calibrated AODV/OLSR/DSDV numbers | an in-simulator witness independent of this repo |
+
+**Why this matters here.** The `paper-base` preset *is* the Broch/Perkins
+1500×300 m / 50-node field, where AODV is known to deliver ~90–100% at low
+mobility. The harness currently reports **AODV ≈ 22%** there — far below the known
+value — so [#24](https://github.com/danieljoppi/AntHocNet/issues/24) treats the
+low absolute PDR as a **channel/MAC calibration bug, not a hard scenario**. The
+stock-baseline control (`manet-baselines`, which links no AntHocNet code) and the
+single-hop sanity confirm this is the *scenario config*, not our module.
+
+**Concrete acceptance (calibration target):** stock **AODV must reach ≈90% PDR on
+the low-mobility anchor** — run `paper-benchmark` with `harness=baselines pause=900`
+— before the AntHocNet comparison's *absolute* numbers are trusted or the taxonomy
+is re-baselined. The *relative* comparison (identical per-protocol realisations) is
+valid throughout.
+
 ## Results
 
 The per-scenario tables and the taxonomy chart below are regenerated and
