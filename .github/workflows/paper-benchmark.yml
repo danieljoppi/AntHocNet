@@ -25,6 +25,9 @@ on:
       pause:
         description: 'Random-waypoint pause time (s) — paper sweeps 0..900'
         default: '30'
+      speed:
+        description: 'Max node speed (m/s); set low (e.g. 1) with pause=900 for a near-static anchor'
+        default: '20'
       protocols:
         description: 'Comma-separated protocol list'
         default: 'anthocnet,aodv,olsr,dsdv'
@@ -71,6 +74,7 @@ jobs:
             --time=${{ github.event.inputs.time }} \
             --areaX=${{ github.event.inputs.areaX }} \
             --pause=${{ github.event.inputs.pause }} \
+            --speed=${{ github.event.inputs.speed }} \
             --propagation=${{ github.event.inputs.propagation }} \
             --range=${{ github.event.inputs.range }}"
           if [ "${{ github.event.inputs.harness }}" = "baselines" ]; then
