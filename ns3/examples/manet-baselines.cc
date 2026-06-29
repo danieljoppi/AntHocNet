@@ -43,6 +43,12 @@ constexpr uint16_t kDataPort = 9;
 uint64_t g_controlPkts = 0;
 void CountTx(Ptr<const Packet>, Ptr<Ipv4>, uint32_t) { ++g_controlPkts; }
 
+// #24 ground truth, independent of FlowMonitor: count what the OnOff apps
+// actually send and what the PacketSinks actually receive.
+uint64_t g_appTx = 0, g_appRx = 0;
+void AppTx(Ptr<const Packet>) { ++g_appTx; }
+void AppRx(Ptr<const Packet>, const Address&) { ++g_appRx; }
+
 struct Params {
     uint32_t nNodes;
     double   simTime;
@@ -62,6 +68,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     RngSeedManager::SetSeed(1);
     RngSeedManager::SetRun(seed);
     g_controlPkts = 0;
+    g_appTx = 0;
+    g_appRx = 0;
 
     NodeContainer nodes;
     nodes.Create(P.nNodes);
@@ -144,10 +152,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         onoff.SetAttribute("PacketSize", UintegerValue(64));
         onoff.SetAttribute("StartTime", TimeValue(Seconds(startVar->GetValue())));
         onoff.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
-        onoff.Install(nodes.Get(src));
+        ApplicationContainer srcApp = onoff.Install(nodes.Get(src));
+        srcApp.Get(0)->TraceConnectWithoutContext("Tx", MakeCallback(&AppTx));
         PacketSinkHelper sink("ns3::UdpSocketFactory",
                               InetSocketAddress(Ipv4Address::GetAny(), kDataPort));
-        sinks.Add(sink.Install(nodes.Get(dst)));
+        ApplicationContainer sinkApp = sink.Install(nodes.Get(dst));
+        sinkApp.Get(0)->TraceConnectWithoutContext("Rx", MakeCallback(&AppRx));
+        sinks.Add(sinkApp);
     }
     sinks.Start(Seconds(0.0));
 
@@ -186,6 +197,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             delayBins[b] += h.GetBinCount(b);
         }
     }
+    // #24 ground truth: app-level sent vs sink-level received, independent of
+    // FlowMonitor. If appTx≈appRx but FlowMonitor tx≈2*rx, FlowMonitor tx is
+    // double-counted; if appRx≈appTx/2, the loss is real.
+    std::cout << "  [diag " << proto << " seed=" << seed << "] TOTALS"
+              << " fmTx=" << tx << " fmRx=" << rx
+              << " appTx=" << g_appTx << " appRx=" << g_appRx << "\n";
     r.pdr = tx ? 100.0 * rx / tx : 0.0;
     r.meanDelayMs = rx ? 1000.0 * totalDelay / rx : 0.0;
     r.nrl = rx ? static_cast<double>(g_controlPkts) / rx : 0.0;
