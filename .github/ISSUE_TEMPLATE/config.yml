@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Issue-tracking policy (ADR-0013)
+    url: https://github.com/danieljoppi/AntHocNet/blob/main/docs/adr/0013-track-bugs-and-findings-as-issues.md
+    about: How findings, evidence, and labels are recorded in this repo.

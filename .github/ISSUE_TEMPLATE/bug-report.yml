@@ -1,0 +1,54 @@
+name: Bug report
+description: A defect, regression, or wrong result (protocol behaviour, adapter, harness).
+title: "[area] "
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: >
+        Apply the matching area label(s) to the issue as well (dropdown choices
+        are not auto-applied as labels).
+      options:
+        - protocol (core algorithm)
+        - adapter (NS-2/NS-3 translation layer)
+        - ns3
+        - ns2
+        - benchmark / harness
+        - observability
+        - packaging / CI
+    validations:
+      required: true
+  - type: dropdown
+    id: model
+    attributes:
+      label: Recommended model
+      description: >
+        Which Claude model class should implement this (see the labelling
+        convention in ADR-0013). Apply the matching `model:*` label too.
+      options:
+        - "model:haiku-4.5 — mechanical / chore"
+        - "model:sonnet-5 — well-specified plumbing, tooling, docs"
+        - "model:opus-4.8 — protocol semantics, root-cause work, CI-validated adapter changes"
+        - "model:fable-5 — architectural / greenfield"
+    validations:
+      required: false
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Symptom + evidence
+      description: >
+        Benchmark numbers, `--diag` lines, CI/job links — enough to act on
+        without the chat (ADR-0013 §3).
+    validations:
+      required: true
+  - type: textarea
+    id: rootcause
+    attributes:
+      label: Root cause (if known)
+      description: Code references as `file:line`.
+  - type: textarea
+    id: refs
+    attributes:
+      label: Related issues / PRs / ADRs / runs
