@@ -62,7 +62,10 @@ public:
     /// Periodic liveness/maintenance tick (driven by the adapter hello timer):
     /// expire neighbours not heard from within helloInterval*allowedHelloLoss
     /// (the portable, NS-3-mandatory detector — ADR-0008) and return any
-    /// link-failure notifications to broadcast.
+    /// link-failure notifications to broadcast. Also expires timed-out local
+    /// repairs ([1] §3.5, D6): a repair with no backward ant within its wait
+    /// window yields a DiscardPending for the destination's buffered packets
+    /// plus a LinkFail notification.
     std::vector<RouteDecision> onMaintenanceTick();
 
     /// Remove neighbour `n` and, for every destination whose best path it
@@ -171,6 +174,7 @@ private:
     std::map<NodeAddress, double> lastSeen_;        ///< neighbor -> last reception time
     std::map<NodeAddress, double> lastReactive_;    ///< dest -> last reactive-ant time
     std::map<NodeAddress, double> lastRepair_;      ///< dest -> last repair-ant time
+    std::map<NodeAddress, double> repairDeadline_;  ///< dest -> repair wait expiry (D6)
     std::map<NodeAddress, int>    txFailures_;      ///< next hop -> consecutive MAC tx-failures (detector D debounce)
     double lastEvaporation_ = 0.0;                  ///< last evaporateAll time
 

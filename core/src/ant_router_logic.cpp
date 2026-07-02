@@ -57,6 +57,32 @@ std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
         std::vector<RouteDecision> notes = reportNeighborLoss(n);
         out.insert(out.end(), notes.begin(), notes.end());
     }
+
+    // Local-repair wait/discard ([1] §3.5, D6): a repair that got no backward
+    // ant within its window has failed — tell the adapter to discard the
+    // packets buffered for that destination (the paper trades PDR for a bounded
+    // delay tail here) and send the deferred link-failure notification. If a
+    // route reappeared some other way (reactive ant, diffusion), just forget
+    // the deadline; the normal flush path handles the queue.
+    for (auto it = repairDeadline_.begin(); it != repairDeadline_.end();) {
+        if (now < it->second) { ++it; continue; }
+        const NodeAddress dest = it->first;
+        it = repairDeadline_.erase(it);
+        if (table_.bestRegular(dest) > config_.minPheromone) continue;
+
+        out.push_back({RouteAction::DiscardPending, dest, false, {}});
+
+        AntMessage note;
+        note.type            = AntType::LinkFail;
+        note.direction       = AntDirection::Up;
+        note.src             = address_;
+        note.dst             = kInvalidAddress;
+        note.seqNum          = nextSeq();
+        note.timeStart       = now;
+        note.broadcastBudget = config_.repairMaxBroadcasts;
+        note.helloDests.push_back({dest, 0.0});  // repair failed: no path left
+        out.push_back(broadcastForward(note));
+    }
     return out;
 }
 
@@ -134,6 +160,16 @@ std::vector<RouteDecision> AntRouterLogic::reportTxFailure(NodeAddress next,
     if (++txFailures_[next] < config_.txFailureThreshold) return {};
     txFailures_.erase(next);
 
+    // Estimated end-to-end delay of the path we are about to lose, for the
+    // repair wait window ([1] §3.5: wait ~5× that delay). Pheromone is inverse
+    // goodness in time units (item 03), so delay ≈ 1/pheromone; captured before
+    // the prune below removes the entry.
+    double lostPathDelay = 0.0;
+    if (dataDest != kInvalidAddress) {
+        const double best = table_.bestRegular(dataDest);
+        if (best > config_.minPheromone) lostPathDelay = 1.0 / best;
+    }
+
     // Real break: prune `next` and emit any LinkFail notifications (detector A
     // and D converge on this path).
     std::vector<RouteDecision> out = reportNeighborLoss(next);
@@ -152,6 +188,12 @@ std::vector<RouteDecision> AntRouterLogic::reportTxFailure(NodeAddress next,
             AntMessage rrfa = createForwardAnt(AntType::Repair, dataDest);
             rrfa.lifeAnt = config_.lifeAnt;
             out.push_back(broadcastForward(rrfa));
+            // Arm the wait/discard window (D6): a backward ant from dataDest
+            // cancels it; onMaintenanceTick fires it.
+            const double wait = lostPathDelay > 0.0
+                                    ? config_.repairWaitFactor * lostPathDelay
+                                    : config_.repairTimeout;
+            repairDeadline_[dataDest] = now + wait;
         }
     }
     return out;
@@ -234,11 +276,12 @@ AntMessage AntRouterLogic::createForwardAnt(AntType type, NodeAddress dest) {
     m.dst       = dest;
     m.seqNum    = nextSeq();
     m.timeStart = clock_.now();
-    // Reactive and repair ants cap their broadcasts ([1] §3.2/§3.5); proactive
-    // ants are untracked (their per-hop explore prob + dedup bound them).
+    // Every forward-ant type caps its broadcasts: reactive/repair per
+    // [1] §3.2/§3.5, and proactive too (issue #45) — an unbounded proactive
+    // budget let route gaps turn the path monitor into a network-wide flood.
     if (type == AntType::Repair)        m.broadcastBudget = config_.repairMaxBroadcasts;
     else if (type == AntType::Reactive) m.broadcastBudget = config_.reactiveMaxBroadcasts;
-    else                                m.broadcastBudget = -1;
+    else                                m.broadcastBudget = config_.proactiveMaxBroadcasts;
     m.visited.push_back({address_, 0.0});  // source node enters the stack
     return m;
 }
@@ -400,12 +443,14 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
 
         NodeAddress next = selectNextHop(ant.dst, proactive);
         if (next == kInvalidAddress) {
-            return {broadcastForward(ant)};  // bounded for repair ants
+            return {broadcastForward(ant)};  // bounded per type (drop at budget 0)
         }
         // A proactive ant with a route is normally unicast, but with a small
         // per-hop probability it is broadcast instead to explore new paths
-        // ([1] §3.3). Gated by the proactive master switch (ADR-0007).
-        if (proactive && config_.enableProactive &&
+        // ([1] §3.3). Gated by the proactive master switch (ADR-0007). With the
+        // broadcast budget spent, keep following pheromone rather than dropping
+        // a routable ant.
+        if (proactive && config_.enableProactive && ant.broadcastBudget != 0 &&
             rng_.uniform() < config_.proactiveBroadcastProb) {
             return {broadcastForward(ant)};
         }
@@ -416,6 +461,9 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
     // transient fields are off the wire now, ADR-0009), reinforce, then retrace.
     computeBackAntState(ant);
     reinforceFromBackAnt(ant);
+    // A backward ant from `src` just restored a route to it, so any local
+    // repair waiting on that destination has succeeded ([1] §3.5, D6).
+    repairDeadline_.erase(ant.src);
 
     if (ant.dst == address_) {
         // Back at the origin: the adapter should flush any pending data for

@@ -152,6 +152,9 @@ Add `double proactiveBroadcastProb = 0.1;` to `Config`. To bound exploration cos
 (the spec limits proliferation), also cap the number of broadcasts a single
 proactive ant may undergo — reuse the bounded-broadcast counter introduced in
 item 05 (`AntMessage::broadcastBudget`), defaulting e.g. to 2 for proactive ants.
+*(Done — issue #45: `Config::proactiveMaxBroadcasts = 2` initialises the budget
+in `createForwardAnt`; a budget-exhausted proactive ant is dropped on a route
+gap, and with a route it keeps following pheromone instead of exploring.)*
 
 ### 4. Source-originated proactive ants follow combined pheromone
 

@@ -22,6 +22,8 @@ enum class RouteAction {
     Queue,      ///< Hold the data packet pending a route to `nextHop`/dst.
     Deliver,    ///< Destination reached: hand to the local transport.
     Drop,       ///< Discard (loop, TTL, no route).
+    DiscardPending,  ///< Local repair timed out ([1] §3.5, D6): discard the
+                     ///< data packets queued for destination `nextHop`.
 };
 
 struct RouteDecision {

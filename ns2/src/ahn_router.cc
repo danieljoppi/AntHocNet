@@ -182,6 +182,7 @@ void AntHocNetAgent::handleAnt(Packet* p) {
                 break;
             case RouteAction::None:
             case RouteAction::Queue:
+            case RouteAction::DiscardPending:  // maintenance-tick only
                 break;
         }
     }
@@ -336,6 +337,23 @@ void AntHocNetAgent::flushQueue(nsaddr_t dest) {
     }
 }
 
+void AntHocNetAgent::discardQueue(nsaddr_t dest) {
+    // Local repair timed out ([1] §3.5, D6): the paper discards the packets
+    // buffered for the unreachable destination instead of delivering them at
+    // huge delay once some route eventually reappears.
+    std::map<nsaddr_t, std::list<AhnQueued> >::iterator it = queue_.find(dest);
+    if (it == queue_.end()) return;
+
+    std::list<AhnQueued> pending;
+    pending.swap(it->second);
+    queue_.erase(it);
+    queueCount_ -= static_cast<int>(pending.size());
+
+    for (std::list<AhnQueued>::iterator pit = pending.begin(); pit != pending.end(); ++pit) {
+        drop(pit->pkt, DROP_RTR_NO_ROUTE);
+    }
+}
+
 void AntHocNetAgent::purgeQueue() {
     const double now = Scheduler::instance().clock();
     for (std::map<nsaddr_t, std::list<AhnQueued> >::iterator it = queue_.begin();
@@ -391,9 +409,13 @@ void AntHocNetAgent::sendHello() {
     if (!logic_) return;
     purgeQueue();  // expire pending packets that waited too long for a route (B1)
     // Liveness/maintenance tick (ADR-0008 detector A) before beaconing a hello.
+    // The tick returns LinkFail broadcasts and, when a local repair waited past
+    // its window with no backward ant, DiscardPending for that destination (D6).
     for (const RouteDecision& d : logic_->onMaintenanceTick()) {
         if (d.action == RouteAction::Broadcast) {
             sendAnt(d.message, anthocnet::core::kInvalidAddress, /*broadcast=*/true);
+        } else if (d.action == RouteAction::DiscardPending) {
+            discardQueue(d.nextHop);
         }
     }
     AntMessage hello = logic_->createHelloAnt();

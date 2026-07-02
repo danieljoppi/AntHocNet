@@ -131,6 +131,9 @@ private:
     void DeferredRouteOutput(Ptr<const Packet> p, const Ipv4Header& header,
                              UnicastForwardCallback ucb, ErrorCallback ecb);
     void FlushQueue(::anthocnet::core::NodeAddress coreDest);
+    /// Repair wait expired ([1] §3.5, D6): drop the packets queued for
+    /// `coreDest`, firing their error callbacks.
+    void DiscardQueue(::anthocnet::core::NodeAddress coreDest);
 
     // timers
     void HelloTimerExpire();

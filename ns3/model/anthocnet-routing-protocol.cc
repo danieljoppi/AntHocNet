@@ -413,6 +413,10 @@ void RoutingProtocol::ExecuteDecisions(const std::vector<RouteDecision>& decisio
             case RouteAction::Deliver:
                 // handled by caller (FlushQueue), nothing to send
                 break;
+            case RouteAction::DiscardPending:
+                // Local repair timed out (D6): release the buffered packets.
+                DiscardQueue(d.nextHop);
+                break;
             case RouteAction::Queue:
             case RouteAction::Drop:
             case RouteAction::None:
@@ -465,17 +469,22 @@ void RoutingProtocol::FlushQueue(NodeAddress coreDest) {
     }
 }
 
+void RoutingProtocol::DiscardQueue(NodeAddress coreDest) {
+    std::vector<QueueEntry> pending;
+    m_queue.DequeueAll(ToIpv4(coreDest), pending);
+    for (QueueEntry& e : pending) {
+        if (!e.ecb.IsNull()) e.ecb(e.packet, e.header, Socket::ERROR_NOROUTETOHOST);
+    }
+}
+
 // --- timers -----------------------------------------------------------------
 
 void RoutingProtocol::HelloTimerExpire() {
     if (m_logic) {
         // Liveness/maintenance tick first (ADR-0008 detector A) — the only way
-        // NS-3 detects neighbour loss — then beacon a hello.
-        for (RouteDecision& d : m_logic->onMaintenanceTick()) {
-            if (d.action == RouteAction::Broadcast) {
-                SendAnt(d.message, Ipv4Address("255.255.255.255"));
-            }
-        }
+        // NS-3 detects neighbour loss — then beacon a hello. The tick returns
+        // LinkFail broadcasts and repair-timeout DiscardPending actions (D6).
+        ExecuteDecisions(m_logic->onMaintenanceTick(), kInvalidAddress);
         AntMessage hello = m_logic->createHelloAnt();
         SendAnt(hello, Ipv4Address("255.255.255.255"));
     }

@@ -1,10 +1,8 @@
 // Item 04 — proactive ants target active sessions and explore via a per-hop
 // broadcast probability. Regression for deviation D4 (random-destination /
-// fixed-timer proactive ants with no exploratory broadcast).
-//
-// Note: the broadcast-budget cap (acceptance criterion 5) needs an on-wire
-// AntMessage::broadcastBudget field, which is added with item 05's wire pass;
-// it is not exercised here.
+// fixed-timer proactive ants with no exploratory broadcast), plus the
+// broadcast-budget cap (issue #45): a proactive ant that exhausts
+// proactiveMaxBroadcasts is dropped on a route gap instead of flooding.
 #include "anthocnet/core/ant_router_logic.h"
 #include "anthocnet/core/config.h"
 #include "test_support.h"
@@ -108,6 +106,55 @@ int main() {
         auto d = router.onReceiveAnt(inTransit(AntType::Proactive, 3, 9), 3);
         CHECK_EQ(d.size(), static_cast<std::size_t>(1));
         CHECK(d[0].action == RouteAction::Unicast);
+    }
+
+    // 7. Proactive ants originate with a bounded broadcast budget (issue #45).
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        Config cfg;
+        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+        router.noteDataSession(5);
+        std::vector<AntMessage> ants = router.createProactiveAnts();
+        CHECK_EQ(ants.size(), static_cast<std::size_t>(1));
+        CHECK_EQ(ants[0].broadcastBudget, cfg.proactiveMaxBroadcasts);
+    }
+
+    // 8. Budget accounting on a route gap: each hop with no route decrements;
+    //    a budget-exhausted proactive ant is dropped, not re-broadcast.
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        Config cfg;
+        AntMessage ant = inTransit(AntType::Proactive, 3, 9);
+        ant.broadcastBudget = 1;
+
+        AntRouterLogic hop1(/*addr*/ 4, cfg, clock, rng);  // no route to 9
+        auto d1 = hop1.onReceiveAnt(ant, /*prevHop*/ 3);
+        CHECK_EQ(d1.size(), static_cast<std::size_t>(1));
+        CHECK(d1[0].action == RouteAction::Broadcast);
+        CHECK_EQ(d1[0].message.broadcastBudget, 0);
+
+        AntRouterLogic hop2(/*addr*/ 5, cfg, clock, rng);  // no route either
+        auto d2 = hop2.onReceiveAnt(d1[0].message, /*prevHop*/ 4);
+        CHECK_EQ(d2.size(), static_cast<std::size_t>(1));
+        CHECK(d2[0].action == RouteAction::Drop);
+    }
+
+    // 9. A budget-exhausted proactive ant that still HAS a route keeps
+    //    following pheromone (the explore branch is skipped, never a drop).
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.05});  // < proactiveBroadcastProb: would explore
+        Config cfg;
+        AntRouterLogic router(/*addr*/ 4, cfg, clock, rng);
+        router.table().setPheromoneRegular(9, 5, 0.8);
+        AntMessage ant = inTransit(AntType::Proactive, 3, 9);
+        ant.broadcastBudget = 0;
+        auto d = router.onReceiveAnt(ant, /*prevHop*/ 3);
+        CHECK_EQ(d.size(), static_cast<std::size_t>(1));
+        CHECK(d[0].action == RouteAction::Unicast);
+        CHECK_EQ(d[0].nextHop, 5);
     }
 
     return RUN_TESTS();

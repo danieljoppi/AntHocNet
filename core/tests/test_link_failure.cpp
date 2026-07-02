@@ -240,5 +240,95 @@ int main() {
         CHECK(router.table().getPheromoneRegular(9, 6) > 0.0);  // alternate intact
     }
 
+    // 11. Repair wait/discard ([1] §3.5, D6): a repair that gets no backward
+    //     ant within repairWaitFactor × the lost path's delay estimate makes
+    //     the maintenance tick emit DiscardPending for the destination plus a
+    //     LinkFail notification.
+    {
+        Config cfg1 = cfg; cfg1.txFailureThreshold = 1;
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        AntRouterLogic router(/*addr*/ 0, cfg1, clock, rng);
+        router.learnNeighbor(5);
+        router.table().setPheromoneRegular(/*dest*/ 9, /*neighbor*/ 5, 0.8);
+
+        router.reportTxFailure(/*next*/ 5, /*dataDest*/ 9);  // launches the repair
+        CHECK_EQ(router.antsSent(AntType::Repair), static_cast<std::uint64_t>(1));
+
+        // Before the deadline (5 × 1/0.8 = 6.25 s) nothing fires.
+        clock.advance(1.0);
+        for (const RouteDecision& d : router.onMaintenanceTick()) {
+            CHECK(d.action != RouteAction::DiscardPending);
+        }
+
+        // Past the deadline, still no route: discard + notify.
+        clock.advance(cfg1.repairWaitFactor / 0.8);
+        bool discard = false, notified = false;
+        for (const RouteDecision& d : router.onMaintenanceTick()) {
+            if (d.action == RouteAction::DiscardPending) {
+                discard = true;
+                CHECK_EQ(d.nextHop, static_cast<NodeAddress>(9));
+            }
+            if (d.action == RouteAction::Broadcast && d.message.type == AntType::LinkFail) {
+                for (const HelloDest& a : d.message.helloDests) {
+                    if (a.node == 9) { notified = true; CHECK_NEAR(a.pheromone, 0.0, 1e-12); }
+                }
+            }
+        }
+        CHECK(discard);
+        CHECK(notified);
+
+        // The deadline is one-shot: a later tick does not re-fire it.
+        clock.advance(1.0);
+        for (const RouteDecision& d : router.onMaintenanceTick()) {
+            CHECK(d.action != RouteAction::DiscardPending);
+        }
+    }
+
+    // 12. A backward ant from the destination within the window cancels the
+    //     pending discard (the repair succeeded).
+    {
+        Config cfg1 = cfg; cfg1.txFailureThreshold = 1;
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        AntRouterLogic router(/*addr*/ 0, cfg1, clock, rng);
+        router.learnNeighbor(5);
+        router.table().setPheromoneRegular(/*dest*/ 9, /*neighbor*/ 5, 0.8);
+        router.reportTxFailure(/*next*/ 5, /*dataDest*/ 9);
+
+        AntMessage back;  // backward repair ant retracing 9 -> 0
+        back.type = AntType::Repair;
+        back.direction = AntDirection::Down;
+        back.src = 9;
+        back.dst = 0;
+        back.seqNum = 7;
+        back.visited = {{0, 0.0}};
+        back.history = {{9, 0.05}};
+        auto decs = router.onReceiveAnt(back, /*prevHop*/ 9);
+        CHECK_EQ(decs.size(), static_cast<std::size_t>(1));
+        CHECK(decs[0].action == RouteAction::Deliver);  // route to 9 restored
+
+        clock.advance(cfg1.repairWaitFactor / 0.8 + 1.0);  // well past the deadline
+        for (const RouteDecision& d : router.onMaintenanceTick()) {
+            CHECK(d.action != RouteAction::DiscardPending);
+        }
+    }
+
+    // 13. A route restored by other means (reactive ant, diffusion) also
+    //     defuses the deadline: it lapses without a discard or notification.
+    {
+        Config cfg1 = cfg; cfg1.txFailureThreshold = 1;
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        AntRouterLogic router(/*addr*/ 0, cfg1, clock, rng);
+        router.learnNeighbor(5);
+        router.table().setPheromoneRegular(/*dest*/ 9, /*neighbor*/ 5, 0.8);
+        router.reportTxFailure(/*next*/ 5, /*dataDest*/ 9);
+
+        router.table().setPheromoneRegular(9, 6, 0.5);  // route reappeared via 6
+        clock.advance(cfg1.repairWaitFactor / 0.8 + 1.0);
+        CHECK(router.onMaintenanceTick().empty());
+    }
+
     return RUN_TESTS();
 }
