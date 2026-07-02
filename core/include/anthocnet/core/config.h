@@ -78,6 +78,21 @@ struct Config {
     /// Max times a reactive forward ant may be (re)broadcast in a region with no
     /// pheromone, so route setup doesn't flood ([1] §3.2).
     int reactiveMaxBroadcasts = 2;
+    /// Max times a proactive forward ant may be (re)broadcast — covering both the
+    /// per-hop exploratory broadcast ([1] §3.3) and a route gap en route. Proactive
+    /// ants monitor known paths; an unbounded budget let them flood any region of
+    /// missing routes, amplifying route churn into control storms (issue #45).
+    int proactiveMaxBroadcasts = 2;
+
+    /// Local repair wait ([1] §3.5): after launching a repair ant, wait
+    /// repairWaitFactor × the estimated end-to-end delay of the lost path for a
+    /// backward repair ant; if none arrives, discard the buffered packets for
+    /// that destination and send a link-failure notification (spec D6). The
+    /// paper sets the factor empirically to 5.
+    double repairWaitFactor = 5.0;
+    /// Flat repair wait (seconds) used when the lost path has no usable delay
+    /// estimate (e.g. its pheromone was already gone).
+    double repairTimeout = 1.0;
 
     /// Conservative upper bound on path length for the expanding-ring search.
     int networkDiameter = 30;

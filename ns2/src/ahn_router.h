@@ -87,6 +87,7 @@ protected:
     void enqueue(Packet* p, nsaddr_t dest);
     void flushQueue(nsaddr_t dest);
     void purgeQueue();  // drop entries older than AHN_QUEUE_TIMEOUT
+    void discardQueue(nsaddr_t dest);  // repair wait expired ([1] §3.5, D6)
 
     // timer actions
     void sendHello();

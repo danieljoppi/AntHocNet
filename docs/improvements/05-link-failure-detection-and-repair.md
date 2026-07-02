@@ -193,6 +193,14 @@ On receiving a `LinkFail` ant in `onReceiveAnt`:
    yet). If no backward repair ant arrives by then, **discard** the buffered
    packets for that destination and emit a `LinkFail` notification. Implement in
    both adapters (they own the pending queue + timers).
+   *(Done — issue #49: the deadline lives in the core (`repairDeadline_`,
+   armed by `reportTxFailure` at `repairWaitFactor × 1/bestPheromone` — item-03
+   units make pheromone ≈ inverse delay — or the flat `repairTimeout`), a
+   backward ant from the destination cancels it, and `onMaintenanceTick`
+   fires it as a `RouteAction::DiscardPending` plus a deferred `LinkFail`
+   notification. Both adapters execute the discard against their pending
+   queue, so the logic stays in `core/` per the invariant. The wait is
+   quantised to the hello-tick cadence rather than a dedicated timer.)*
 
 ### D. MAC transmit-failure — the fast-path accelerator (both adapters) — DONE
 
