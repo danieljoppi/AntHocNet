@@ -1,0 +1,29 @@
+name: Chore / verification
+description: Mechanical maintenance (formatting, CI, packaging) or a benchmark verification task.
+title: "[chore] "
+labels: ["chore"]
+body:
+  - type: dropdown
+    id: model
+    attributes:
+      label: Recommended model
+      description: >
+        Which Claude model class should implement this (see the labelling
+        convention in ADR-0013). Apply the matching `model:*` label too. Use
+        `verification` instead of `chore` for benchmark re-run tasks.
+      options:
+        - "model:haiku-4.5 — mechanical / chore"
+        - "model:sonnet-5 — well-specified plumbing, tooling, docs"
+        - "model:opus-4.8 — protocol semantics, root-cause work, CI-validated adapter changes"
+    validations:
+      required: false
+  - type: textarea
+    id: task
+    attributes:
+      label: Task
+    validations:
+      required: true
+  - type: textarea
+    id: refs
+    attributes:
+      label: Related issues / PRs

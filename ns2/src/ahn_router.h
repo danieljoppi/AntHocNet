@@ -120,6 +120,10 @@ private:
     int    enable_diffusion_;
     double proactive_bcast_prob_;
     double session_ttl_;
+    int    tx_failure_threshold_;
+    int    enable_mac_failure_detector_;  // detector D gate (issue #46)
+    double repair_wait_factor_;
+    double repair_timeout_;
 
     std::map<nsaddr_t, std::list<AhnQueued> > queue_;
     int queueCount_;  // total pending packets across all destinations

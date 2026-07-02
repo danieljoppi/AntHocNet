@@ -179,6 +179,16 @@ private:
     bool m_enableDiffusion;
     double m_proactiveBroadcastProb;
     double m_sessionTtl;
+    uint32_t m_txFailureThreshold;
+    bool m_enableMacFailureDetector;
+    double m_repairWaitFactor;
+    double m_repairTimeout;
+
+    // L3 forwarding callbacks cached from RouteInput (Ipv4L3Protocol passes the
+    // same bound callbacks on every call). NotifyTxError needs them to re-inject
+    // a MAC-dropped data packet it only sees as a raw MPDU (issue #46).
+    UnicastForwardCallback m_cachedUcb;
+    ErrorCallback m_cachedEcb;
 
     // trace sources (item 15): ant sent/received and route add/remove.
     TracedCallback<uint8_t, uint8_t, bool> m_txAntTrace;

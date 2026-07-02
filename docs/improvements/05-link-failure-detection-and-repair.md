@@ -222,11 +222,16 @@ the origin, not only on re-broadcasts.
   such trace, so detector A remains their sole, mandatory path. The newer
   `DroppedMpdu`/`WifiMpdu` trace is used (not the pre-3.36 `TxErrHeader`), so the
   hook works across the CI matrix (ns-3.36–3.48).
-- **NS-3 limitation vs NS-2:** NS-2 re-enqueues the failed data packet for
-  retransmission; the NS-3 trace fires post-drop without the routing callbacks,
-  so that specific packet is not re-injected — the repair ant plus the session's
-  subsequent packets recover the route. (Follow-up: re-injection via the pending
-  queue.)
+- **NS-3 limitation vs NS-2 — resolved (issue #46):** NS-2 re-enqueues the failed
+  data packet for retransmission; the NS-3 trace fires post-drop without the
+  routing callbacks. NS-3 now re-injects too: `RouteInput` caches the L3
+  forwarding callbacks (`Ipv4L3Protocol` passes the same bound callbacks on
+  every call), and `NotifyTxError` rebuilds a pending-queue entry from the
+  dropped MPDU (packet minus its IP header, per the queue convention) and
+  flushes immediately so an alternate surviving route retries at once. Detector
+  D and its aggressiveness are runtime-tunable (`EnableMacFailureDetector`,
+  `TxFailureThreshold`, `RepairWaitFactor`, `RepairTimeout` attributes; matching
+  NS-2 TCL binds).
 
 Because A is mandatory and authoritative, D is a latency optimisation: it never
 changes *what* is detected, only *how fast*.

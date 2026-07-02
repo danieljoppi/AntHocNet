@@ -53,6 +53,30 @@ the session ends** — as a new issue, or as a comment on the relevant existing 
 This formalises, rather than replaces, the existing "pick up open work from
 issues" guidance in `AGENTS.md`.
 
+### Labelling convention
+
+Every issue carries three kinds of labels so the backlog can be scanned and
+delegated without opening each ticket (`.github/ISSUE_TEMPLATE/` presets the
+type; the creator applies the rest — template dropdowns are informational, they
+do not auto-apply labels):
+
+1. **Type** (exactly one): `bug` (defect/regression/wrong result),
+   `enhancement` (new mechanism/capability), `chore` (mechanical maintenance),
+   `documentation`, `verification` (benchmark re-run / noise confirmation).
+   Umbrella issues add `epic` alongside their type.
+2. **Area** (one or more): `protocol` (core algorithm, `core/`), `adapter`
+   (translation layer), `ns2`, `ns3`, `benchmark` (harness/workflows),
+   `observability`, `packaging`.
+3. **Recommended model** (`model:*`, one): which Claude model class should
+   implement it, chosen by what failure costs, not code volume:
+   - `model:haiku-4.5` — mechanical chores (reformat, packaging, config).
+   - `model:sonnet-5` — well-specified plumbing, harness/tooling, docs.
+   - `model:opus-4.8` — protocol semantics, root-cause investigation, and
+     adapter work validated only by slow CI loops (a wrong first pass costs a
+     full matrix run).
+   - `model:fable-5` — architectural / greenfield work (e.g. a new simulator
+     adapter).
+
 ## Alternatives considered
 
 - **Rely on chat history / commit messages only.** Chats are stateless across

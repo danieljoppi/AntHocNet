@@ -95,6 +95,13 @@ results.
 - Namespace `anthocnet::core` for shared code.
 - Make minimal, reviewable changes; update the relevant doc/ADR when you change
   a documented decision.
+- When you open or update an issue, apply the label taxonomy from
+  [ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md#labelling-convention):
+  one type label (`bug`/`enhancement`/`chore`/`documentation`/`verification`,
+  plus `epic` for umbrellas), area label(s) (`protocol`/`adapter`/`ns2`/`ns3`/
+  `benchmark`/`observability`/`packaging`), and one `model:*` recommendation.
+  The `.github/ISSUE_TEMPLATE/` forms preset the type label for issues filed
+  from the GitHub UI.
 - Do not open a pull request unless explicitly asked.
 
 ## Git workflow

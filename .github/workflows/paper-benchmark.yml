@@ -43,6 +43,9 @@ on:
       harness:
         description: 'Binary: compare (AntHocNet vs baselines) | baselines (stock ns-3 only, #24 control)'
         default: 'compare'
+      extraArgs:
+        description: 'Extra args appended verbatim (e.g. --ns3::anthocnet::RoutingProtocol::EnableMacFailureDetector=false for the #46 detector sweep)'
+        default: ''
 
 permissions:
   contents: read
@@ -82,6 +85,10 @@ jobs:
             --range=${{ github.event.inputs.range }}"
           if [ -n "${{ github.event.inputs.areaY }}" ]; then
             common="$common --areaY=${{ github.event.inputs.areaY }}"
+          fi
+          if [ -n "${{ github.event.inputs.extraArgs }}" ]; then
+            # e.g. ns-3 attribute overrides for the #46 detector-D sweep.
+            common="$common ${{ github.event.inputs.extraArgs }}"
           fi
           if [ "${{ github.event.inputs.harness }}" = "baselines" ]; then
             # #24 control: stock ns-3 baselines only, no AntHocNet in the binary.

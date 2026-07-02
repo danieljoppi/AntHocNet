@@ -1,0 +1,64 @@
+name: Enhancement
+description: A new mechanism, spec-fidelity item, adapter capability, or harness feature.
+title: "[area] "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: >
+        Apply the matching area label(s) to the issue as well (dropdown choices
+        are not auto-applied as labels). Add `epic` for umbrella issues.
+      options:
+        - protocol (core algorithm)
+        - adapter (NS-2/NS-3 translation layer)
+        - ns3
+        - ns2
+        - benchmark / harness
+        - observability
+        - packaging / CI
+        - documentation
+    validations:
+      required: true
+  - type: dropdown
+    id: model
+    attributes:
+      label: Recommended model
+      description: >
+        Which Claude model class should implement this (see the labelling
+        convention in ADR-0013). Apply the matching `model:*` label too.
+      options:
+        - "model:haiku-4.5 — mechanical / chore"
+        - "model:sonnet-5 — well-specified plumbing, tooling, docs"
+        - "model:opus-4.8 — protocol semantics, root-cause work, CI-validated adapter changes"
+        - "model:fable-5 — architectural / greenfield"
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / spec reference
+      description: >
+        Why this matters; paper/spec section or `docs/improvements/` item if
+        applicable.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Code references as `file:line`; which layer (`core/` vs adapters).
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria / how to test
+      description: >
+        Core unit test expectations, CI validation, and (for behaviour changes)
+        the benchmark comparison that decides success.
+  - type: textarea
+    id: refs
+    attributes:
+      label: Related issues / PRs / ADRs
