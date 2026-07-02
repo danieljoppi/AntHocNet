@@ -62,6 +62,10 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
       enable_diffusion_(1),
       proactive_bcast_prob_(0.1),
       session_ttl_(5.0),
+      tx_failure_threshold_(3),
+      enable_mac_failure_detector_(1),
+      repair_wait_factor_(5.0),
+      repair_timeout_(1.0),
       queueCount_(0) {
     bind("num_nodes_", &num_nodes_);
     bind("num_nodes_x_", &num_nodes_x_);
@@ -74,6 +78,10 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
     bind_bool("enable_diffusion_", &enable_diffusion_);
     bind("proactive_bcast_prob_", &proactive_bcast_prob_);
     bind("session_ttl_", &session_ttl_);
+    bind("tx_failure_threshold_", &tx_failure_threshold_);
+    bind_bool("enable_mac_failure_detector_", &enable_mac_failure_detector_);
+    bind("repair_wait_factor_", &repair_wait_factor_);
+    bind("repair_timeout_", &repair_timeout_);
 }
 
 AntHocNetAgent::~AntHocNetAgent() {
@@ -93,6 +101,9 @@ void AntHocNetAgent::startProtocol() {
     config_.enableDiffusion   = enable_diffusion_ != 0;
     config_.proactiveBroadcastProb = proactive_bcast_prob_;
     config_.sessionTtl        = session_ttl_;
+    config_.txFailureThreshold = tx_failure_threshold_;
+    config_.repairWaitFactor  = repair_wait_factor_;
+    config_.repairTimeout     = repair_timeout_;
 
     delete logic_;
     logic_ = new anthocnet::core::AntRouterLogic(id_, config_, clock_, rng_);
@@ -386,7 +397,9 @@ void AntHocNetAgent::linkFailed(Packet* p) {
     // neighbour (emitting any LinkFail notifications) and, for a failed data
     // packet, broadcast a bounded local-repair ant toward the lost destination.
     // The core counts/bounds the repair ant; both adapters share this path.
-    if (logic_) {
+    // Gated for the detector-D ablation (issue #46); the data re-enqueue below
+    // stays either way — losing the detector must not also lose the packet.
+    if (logic_ && enable_mac_failure_detector_) {
         for (const RouteDecision& d :
              logic_->reportTxFailure(broken,
                                      isData ? dest : anthocnet::core::kInvalidAddress)) {

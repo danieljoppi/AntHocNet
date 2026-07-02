@@ -46,7 +46,11 @@ RoutingProtocol::RoutingProtocol()
       m_enableProactive(true),
       m_enableDiffusion(true),
       m_proactiveBroadcastProb(0.1),
-      m_sessionTtl(5.0) {}
+      m_sessionTtl(5.0),
+      m_txFailureThreshold(3),
+      m_enableMacFailureDetector(true),
+      m_repairWaitFactor(5.0),
+      m_repairTimeout(1.0) {}
 
 RoutingProtocol::~RoutingProtocol() = default;
 
@@ -99,6 +103,31 @@ TypeId RoutingProtocol::GetTypeId() {
                           "Seconds a data session stays active for proactive probing.",
                           DoubleValue(5.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_sessionTtl),
+                          MakeDoubleChecker<double>())
+            .AddAttribute("TxFailureThreshold",
+                          "Consecutive MAC transmit-failures to the same next hop "
+                          "before detector D treats the link as broken (issue #19 "
+                          "debounce).",
+                          UintegerValue(3),
+                          MakeUintegerAccessor(&RoutingProtocol::m_txFailureThreshold),
+                          MakeUintegerChecker<uint32_t>(1))
+            .AddAttribute("EnableMacFailureDetector",
+                          "Enable the WifiMac transmit-failure detector (ADR-0008 "
+                          "detector D). The hello-timeout detector (A) always runs.",
+                          BooleanValue(true),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableMacFailureDetector),
+                          MakeBooleanChecker())
+            .AddAttribute("RepairWaitFactor",
+                          "Local-repair wait as a multiple of the lost path's "
+                          "estimated end-to-end delay ([1] section 3.5, D6).",
+                          DoubleValue(5.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_repairWaitFactor),
+                          MakeDoubleChecker<double>())
+            .AddAttribute("RepairTimeout",
+                          "Flat local-repair wait (s) when the lost path has no "
+                          "usable delay estimate.",
+                          DoubleValue(1.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_repairTimeout),
                           MakeDoubleChecker<double>())
             .AddTraceSource("Tx",
                             "An ant control packet was put on the medium by this "
@@ -153,6 +182,9 @@ void RoutingProtocol::DoInitialize() {
     m_config.sessionTtl = m_sessionTtl;
     m_config.helloInterval = m_helloInterval.GetSeconds();
     m_config.proactiveInterval = m_proactiveInterval.GetSeconds();
+    m_config.txFailureThreshold = static_cast<int>(m_txFailureThreshold);
+    m_config.repairWaitFactor = m_repairWaitFactor;
+    m_config.repairTimeout = m_repairTimeout;
     Ipv4RoutingProtocol::DoInitialize();
 }
 
@@ -200,6 +232,9 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.sessionTtl = m_sessionTtl;
         m_config.helloInterval = m_helloInterval.GetSeconds();
         m_config.proactiveInterval = m_proactiveInterval.GetSeconds();
+        m_config.txFailureThreshold = static_cast<int>(m_txFailureThreshold);
+        m_config.repairWaitFactor = m_repairWaitFactor;
+        m_config.repairTimeout = m_repairTimeout;
         m_logic.reset(new ::anthocnet::core::AntRouterLogic(
             ToCore(iface.GetLocal()), m_config, m_clock, m_rng));
         m_logic->setObserver(this);  // fan core events to the trace sources
@@ -327,6 +362,11 @@ bool RoutingProtocol::RouteInput(Ptr<const Packet> p, const Ipv4Header& header,
                                  AHN_RI_CB(LocalDeliverCallback) lcb,
                                  AHN_RI_CB(ErrorCallback) ecb) {
     if (!m_logic || m_socketAddresses.empty()) return false;
+
+    // Ipv4L3Protocol passes the same bound callbacks on every call; cache them
+    // so NotifyTxError can re-inject a MAC-dropped data packet (issue #46).
+    m_cachedUcb = ucb;
+    m_cachedEcb = ecb;
 
     Ipv4Address dst = header.GetDestination();
 
@@ -510,6 +550,9 @@ void RoutingProtocol::ProactiveTimerExpire() {
 // --- MAC transmit-failure hook (ADR-0008 detector D) ------------------------
 
 void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu) {
+    // Detector D is a latency optimisation over the mandatory hello-timeout
+    // detector A (ADR-0008); it can be gated off for ablation (issue #46).
+    if (!m_enableMacFailureDetector) return;
     if (!m_logic || m_socketAddresses.empty() || !mpdu) return;
     // Only a retry-limit drop is a real broken link; other drop reasons
     // (queue full, lifetime expiry) are congestion, not topology.
@@ -527,6 +570,8 @@ void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI
     // so we still prune the dead neighbour even when the payload is opaque.
     NodeAddress dataDest = kInvalidAddress;
     Ptr<Packet> pkt = mpdu->GetPacket()->Copy();
+    Ipv4Header ipHeader;   // kept for re-injection (#46)
+    bool haveData = false;
     LlcSnapHeader llc;
     if (pkt->GetSize() >= llc.GetSerializedSize()) {
         pkt->RemoveHeader(llc);
@@ -542,7 +587,11 @@ void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI
                         isAnt = (udp.GetDestinationPort() == ANT_PORT);
                     }
                 }
-                if (!isAnt) dataDest = ToCore(ip.GetDestination());
+                if (!isAnt) {
+                    dataDest = ToCore(ip.GetDestination());
+                    ipHeader = ip;
+                    haveData = true;
+                }
             }
         }
     }
@@ -550,6 +599,24 @@ void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI
     // Converge on the shared core path: prune + LinkFail notifications + (for
     // data) a bounded, counted repair ant. ExecuteDecisions broadcasts them.
     ExecuteDecisions(m_logic->reportTxFailure(next, dataDest), kInvalidAddress);
+
+    // NS-2 parity (issue #46): re-inject the failed data packet through the
+    // pending queue so it is retransmitted once a route exists, instead of
+    // being lost with only the *route* recovering. The MAC trace fires without
+    // the routing callbacks, so resume it with the ones cached from RouteInput;
+    // queue entries hold the packet without its IP header, matching RouteInput's
+    // convention. The immediate flush retries right away when an alternate
+    // route survived the prune (FlushQueue re-queues if none did). The retry
+    // costs one extra TTL decrement, like any real retransmission path.
+    if (haveData && ipHeader.GetTtl() > 1 && !m_cachedUcb.IsNull()) {
+        QueueEntry entry;
+        entry.packet = pkt;
+        entry.header = ipHeader;
+        entry.ucb = m_cachedUcb;
+        entry.ecb = m_cachedEcb;
+        m_queue.Enqueue(entry);
+        FlushQueue(dataDest);
+    }
 }
 
 bool RoutingProtocol::MapMacToCore(const Mac48Address& mac, NodeAddress& out) const {
