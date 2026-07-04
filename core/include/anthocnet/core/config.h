@@ -29,6 +29,14 @@ struct Config {
     /// IClock, so it is comparable in magnitude to the measured path time.
     double hopTimeSec = 0.05;  ///< HOP_TIME (50 ms)
 
+    /// Congestion-aware per-hop cost (item 10/A2, [1] §3.2): when on and an
+    /// ILinkState is injected, a forward ant records each node's expected
+    /// send time (Q_mac+1)*T̂_mac instead of its own wall-clock transit delta,
+    /// so the path-time term T̂_d reflects sustained MAC load. Gated + default
+    /// off so the simpler item-02 metric stays the shipped default until a
+    /// benchmark justifies the switch.
+    bool enableMacMetric = false;
+
     /// Links whose pheromone drops below this are pruned.
     double minPheromone = 0.00001;  ///< MIN_PHEROMONE
 

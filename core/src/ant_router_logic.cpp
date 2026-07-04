@@ -6,13 +6,15 @@ namespace anthocnet {
 namespace core {
 
 AntRouterLogic::AntRouterLogic(NodeAddress address, const Config& config, IClock& clock,
-                               IRng& rng, const ILinkMetric* metric)
+                               IRng& rng, const ILinkMetric* metric,
+                               const ILinkState* linkState)
     : address_(address),
       config_(config),
       clock_(clock),
       rng_(rng),
       engine_(config_),
       metric_(metric ? metric : &defaultMetric_),
+      linkState_(linkState),
       history_(config_.maxHistory) {}
 
 // --- neighbour learning -----------------------------------------------------
@@ -345,14 +347,39 @@ NodeAddress AntRouterLogic::randomDestination() {
 
 void AntRouterLogic::stampForward(AntMessage& ant) const {
     if (ant.visited.size() >= config_.maxPathLength) return;
-    // Record this hop's *delta* (seconds since the previous stamp), not the
-    // cumulative time since the ant was generated: the back-ant metric sums
-    // these to recover the true path time. Derive the delta from the elapsed
-    // time minus the deltas already on the stack (timeStart is on the wire).
+    ant.visited.push_back({address_, localHopCost(ant)});
+}
+
+double AntRouterLogic::localHopCost(const AntMessage& ant) const {
+    // Congestion-aware per-hop cost (item 10/A2, [1] §3.2): when the MAC metric
+    // is enabled and a link-state signal is available, this node contributes its
+    // *expected time to send one packet given its current queue* — (Q_mac+1) *
+    // T̂_mac — so the summed path time T̂_d reflects sustained MAC load and data
+    // shifts off congested nodes. The h*T_hop term in ClassicMetric stays the
+    // unloaded-reference regulariser, so this only changes the T̂_d term.
+    //
+    // NOTE(#55): the exact (Q+1)*T̂_mac expression follows the repo's §3.2
+    // interpretation in docs/improvements/10 plus a queue-occupancy refinement;
+    // the primary source (Ducatelle thesis / ETT 2005) was network-blocked at
+    // implementation time, so it is isolated here and flagged for a maintainer
+    // cross-check. Any correction is a one-line change in this function.
+    if (config_.enableMacMetric && linkState_) {
+        const double tmac = linkState_->macServiceTime();
+        if (tmac > 0.0) {
+            const int q = linkState_->macQueueLength();
+            return (static_cast<double>(q > 0 ? q : 0) + 1.0) * tmac;
+        }
+        return config_.hopTimeSec;  // no MAC sample yet: unloaded reference hop
+    }
+
+    // Fallback (unchanged, item 02): the ant's own wall-clock transit — this
+    // hop's *delta* (seconds since the previous stamp), derived from the elapsed
+    // time since generation minus the deltas already on the stack. The back-ant
+    // metric sums these to recover the path time.
     const double cumulative = clock_.now() - ant.timeStart;
     double prior = 0.0;
     for (const AntHop& h : ant.visited) prior += h.time;
-    ant.visited.push_back({address_, cumulative - prior});
+    return cumulative - prior;
 }
 
 NodeAddress AntRouterLogic::advanceBackAnt(AntMessage& ant) const {

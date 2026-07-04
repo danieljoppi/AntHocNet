@@ -56,7 +56,8 @@ namespace anthocnet {
 // comparison harness can read ant-level diagnostics. The interface is all
 // no-op-default virtuals, so this adds no state to the core.
 class RoutingProtocol : public Ipv4RoutingProtocol,
-                        public ::anthocnet::core::IRouterObserver
+                        public ::anthocnet::core::IRouterObserver,
+                        public ::anthocnet::core::ILinkState
 {
 public:
     static TypeId GetTypeId();
@@ -77,6 +78,12 @@ public:
                        ::anthocnet::core::AntDirection dir) override;
     void onRouteChanged(::anthocnet::core::NodeAddress dest,
                         ::anthocnet::core::NodeAddress nb, bool added) override;
+
+    // core::ILinkState (item 10/A2): supply MAC congestion signals for the
+    // congestion-aware per-hop metric. Only meaningful when EnableMacMetric is
+    // set; the core queries these while stamping a forward ant.
+    int macQueueLength() const override;
+    ::anthocnet::core::Time macServiceTime() const override;
 
     // Ipv4RoutingProtocol
     Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p, const Ipv4Header& header,
@@ -183,6 +190,11 @@ private:
     bool m_enableMacFailureDetector;
     double m_repairWaitFactor;
     double m_repairTimeout;
+    bool m_enableMacMetric;  ///< item 10/A2 congestion-aware per-hop metric
+
+    // WifiMac handle for the item-10/A2 queue-occupancy signal (null on non-wifi
+    // devices, where the metric falls back to the unloaded reference hop time).
+    Ptr<WifiMac> m_wifiMac;
 
     // L3 forwarding callbacks cached from RouteInput (Ipv4L3Protocol passes the
     // same bound callbacks on every call). NotifyTxError needs them to re-inject

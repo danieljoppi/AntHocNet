@@ -12,6 +12,8 @@
 #include "ns3/simulator.h"
 #include "ns3/trace-source-accessor.h"
 #include "ns3/wifi-net-device.h"
+#include "ns3/wifi-mac-queue.h"
+#include "ns3/qos-utils.h"
 #include "ns3/ipv4-interface.h"
 #include "ns3/arp-cache.h"
 #include "ns3/llc-snap-header.h"
@@ -50,7 +52,8 @@ RoutingProtocol::RoutingProtocol()
       m_txFailureThreshold(3),
       m_enableMacFailureDetector(true),
       m_repairWaitFactor(5.0),
-      m_repairTimeout(1.0) {}
+      m_repairTimeout(1.0),
+      m_enableMacMetric(false) {}
 
 RoutingProtocol::~RoutingProtocol() = default;
 
@@ -129,6 +132,13 @@ TypeId RoutingProtocol::GetTypeId() {
                           DoubleValue(1.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_repairTimeout),
                           MakeDoubleChecker<double>())
+            .AddAttribute("EnableMacMetric",
+                          "Congestion-aware per-hop cost (item 10/A2): forward ants "
+                          "record (MAC-queue+1)*hop-time instead of wall-clock "
+                          "transit, so paths shift off loaded nodes.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableMacMetric),
+                          MakeBooleanChecker())
             .AddTraceSource("Tx",
                             "An ant control packet was put on the medium by this "
                             "node (type, direction, broadcast).",
@@ -164,6 +174,30 @@ void RoutingProtocol::onRouteChanged(::anthocnet::core::NodeAddress dest,
     m_routeChangedTrace(static_cast<uint32_t>(dest), static_cast<uint32_t>(nb), added);
 }
 
+// --- item 10/A2: MAC congestion signals (core::ILinkState) ------------------
+
+int RoutingProtocol::macQueueLength() const {
+    // Packets currently backlogged at the wifi MAC across all access categories
+    // — the queue a newly-forwarded packet would wait behind. Summed over the
+    // per-AC txop queues (unified since ns-3.36, the CI-matrix floor). Returns 0
+    // on non-wifi devices, so the metric degrades to the unloaded hop time.
+    if (!m_wifiMac) return 0;
+    uint32_t total = 0;
+    for (AcIndex ac : {AC_BE, AC_BK, AC_VI, AC_VO}) {
+        Ptr<WifiMacQueue> q = m_wifiMac->GetTxopQueue(ac);
+        if (q) total += q->GetNPackets();
+    }
+    return static_cast<int>(total);
+}
+
+::anthocnet::core::Time RoutingProtocol::macServiceTime() const {
+    // Nominal per-packet MAC service time. The congestion signal in this pass is
+    // the *measured queue occupancy* (macQueueLength); the service-time unit is
+    // the unloaded reference hop time, so per-hop cost = (Q+1)*hopTime. Upgrading
+    // this to a measured tx-time EWMA is a follow-up (see #55 / item 10/A2).
+    return m_config.hopTimeSec;
+}
+
 // --- lifecycle --------------------------------------------------------------
 
 void RoutingProtocol::SetIpv4(Ptr<Ipv4> ipv4) {
@@ -185,6 +219,7 @@ void RoutingProtocol::DoInitialize() {
     m_config.txFailureThreshold = static_cast<int>(m_txFailureThreshold);
     m_config.repairWaitFactor = m_repairWaitFactor;
     m_config.repairTimeout = m_repairTimeout;
+    m_config.enableMacMetric = m_enableMacMetric;
     Ipv4RoutingProtocol::DoInitialize();
 }
 
@@ -235,8 +270,10 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.txFailureThreshold = static_cast<int>(m_txFailureThreshold);
         m_config.repairWaitFactor = m_repairWaitFactor;
         m_config.repairTimeout = m_repairTimeout;
+        m_config.enableMacMetric = m_enableMacMetric;
         m_logic.reset(new ::anthocnet::core::AntRouterLogic(
-            ToCore(iface.GetLocal()), m_config, m_clock, m_rng));
+            ToCore(iface.GetLocal()), m_config, m_clock, m_rng,
+            /*metric*/ nullptr, /*linkState*/ this));
         m_logic->setObserver(this);  // fan core events to the trace sources
     }
 
@@ -276,6 +313,8 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         if (wmac) {
             wmac->TraceConnectWithoutContext(
                 "DroppedMpdu", MakeCallback(&RoutingProtocol::NotifyTxError, this));
+            // Keep the first wifi MAC for the item-10/A2 queue-occupancy signal.
+            if (!m_wifiMac) m_wifiMac = wmac;
         }
     }
 
