@@ -132,9 +132,17 @@ The cause is topological, not signal quality: the uniform random-waypoint /
 `i→(n-1-i)`-flow taxonomy produces congestion that is either *absent* (low load,
 `Q≈0`) or *uniform* (saturation — every node's queue is full, so `(Q+1)` is high
 everywhere and no less-congested path exists to shift onto). A2 can only pay with
-**localized hotspots + detours**, which no current scenario creates. **#71** adds
-a gateway-convergence scenario (harness `--sink`) to give A2 a verdict — justify
-or retire.
+**localized hotspots + detours**.
+
+A gateway-convergence hotspot (harness `--sink`, 30 flows onto one node, #71) was
+then tested on/off at two loads: the result was **mixed and within noise** — at
+`cbrBps=3000` the metric was slightly worse (PDR −2 pp), at `8000` slightly
+better (PDR +0.9 pp, delay −10%), i.e. opposite directions at 3 runs. Gateway
+convergence isn't an ideal test (the congestion sits *at the destination*, so
+detours are limited), but combined with the neutral paper and load-sweep results
+this is **four benchmark rounds with no consistent A2 benefit**. The one untested
+case is a relay bottleneck with a genuine parallel detour; absent that showing a
+win, A2 stays shipped-but-off and is a candidate to retire rather than extend.
 
 Open follow-ups: (a) `T̂_mac` is the nominal `hopTimeSec`, not a measured tx-time
 EWMA — but measuring it better won't help while the bottleneck is topological, so
