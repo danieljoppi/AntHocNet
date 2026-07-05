@@ -97,6 +97,8 @@ struct Params {
     double   cbrBps;
     double   startWindow;
     std::string propagation;  // "range" (disk, default) | "tworay" (two-ray ground, #24)
+    int32_t  sink;            // >=0: all flows converge on this node (gateway
+                              // hotspot, #71); <0: default i->(n-1-i) pairing.
 };
 
 struct Result {
@@ -212,9 +214,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     rate << static_cast<uint64_t>(P.cbrBps) << "bps";
     uint16_t port = kDataPort;
     ApplicationContainer apps, sinks;
-    for (uint32_t i = 0; i < P.nFlows && i < P.nNodes / 2; ++i) {
+    // Gateway hotspot (#71): all flows converge on one sink so nodes near it are
+    // congested while peripheral approach paths stay idle — the localized
+    // congestion + detour regime where load-aware routing can pay. Sources can
+    // then span up to n-1 nodes; the default 1:1 pairing caps them at n/2.
+    const bool converge = (P.sink >= 0);
+    const uint32_t maxFlows = converge ? (P.nNodes - 1) : (P.nNodes / 2);
+    for (uint32_t i = 0; i < P.nFlows && i < maxFlows; ++i) {
         uint32_t src = i;
-        uint32_t dst = P.nNodes - 1 - i;
+        uint32_t dst = converge ? static_cast<uint32_t>(P.sink) : (P.nNodes - 1 - i);
+        if (src == dst) continue;  // source coincides with the gateway: skip
         OnOffHelper onoff("ns3::UdpSocketFactory",
                           InetSocketAddress(ifs.GetAddress(dst), port));
         onoff.SetAttribute("DataRate", StringValue(rate.str()));
@@ -223,9 +232,18 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         onoff.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
         apps.Add(onoff.Install(nodes.Get(src)));
 
+        // In converge mode every flow shares one sink node/port, so install its
+        // PacketSink exactly once (a second bind on the same port would fail).
+        if (!converge) {
+            PacketSinkHelper sink("ns3::UdpSocketFactory",
+                                  InetSocketAddress(Ipv4Address::GetAny(), port));
+            sinks.Add(sink.Install(nodes.Get(dst)));
+        }
+    }
+    if (converge && P.sink >= 0 && static_cast<uint32_t>(P.sink) < P.nNodes) {
         PacketSinkHelper sink("ns3::UdpSocketFactory",
                               InetSocketAddress(Ipv4Address::GetAny(), port));
-        sinks.Add(sink.Install(nodes.Get(dst)));
+        sinks.Add(sink.Install(nodes.Get(P.sink)));
     }
     sinks.Start(Seconds(0.0));
 
@@ -341,6 +359,7 @@ int main(int argc, char* argv[]) {
     double   simTime = -1, area = -1, areaX = -1, areaY = -1;
     double   speed = -1, pause = -1, range = -1, cbrBps = -1;
     int32_t  nFlows = 0;
+    int32_t  sink = -1;
     uint32_t runs = 1;
     bool csv = false;
     std::string protocols = "anthocnet,aodv,olsr,dsdv";
@@ -357,6 +376,8 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("range", "Transmission range (m); 0 = ns-3 default channel", range);
     cmd.AddValue("flows", "Number of CBR flows", nFlows);
     cmd.AddValue("cbrBps", "Per-flow CBR rate (bits/s)", cbrBps);
+    cmd.AddValue("sink", "If >=0, all flows converge on this node (gateway "
+                         "hotspot, #71) instead of i->(n-1-i) pairing", sink);
     cmd.AddValue("runs", "Number of RNG runs to average (seeds 1..runs)", runs);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols", "Comma-separated list", protocols);
@@ -379,6 +400,7 @@ int main(int argc, char* argv[]) {
     P.cbrBps  = cbrBps >= 0 ? cbrBps : (paper ? 512.0 : 8000.0);
     P.startWindow = paper ? 180.0 : 5.0;
     P.propagation = propagation;
+    P.sink = sink;
 
     // 1 ms delay bins for the 99th-percentile computation.
     Config::SetDefault("ns3::FlowMonitor::DelayBinWidth", DoubleValue(0.001));
@@ -431,7 +453,8 @@ int main(int argc, char* argv[]) {
     std::cout << "AntHocNet protocol comparison (mean of " << runs << " run(s))\n"
               << "  nodes=" << P.nNodes << " time=" << P.simTime << "s area="
               << P.areaX << "x" << P.areaY << "m maxSpeed=" << P.speed
-              << "m/s pause=" << P.pause << "s flows=" << P.nFlows << "\n\n";
+              << "m/s pause=" << P.pause << "s flows=" << P.nFlows
+              << (P.sink >= 0 ? " sink=" + std::to_string(P.sink) : "") << "\n\n";
     std::cout << std::left << std::setw(12) << "protocol"
               << std::right << std::setw(8) << "PDR%" << std::setw(11) << "delay(ms)"
               << std::setw(13) << "delay99(ms)" << std::setw(13) << "thrput(kbps)"
