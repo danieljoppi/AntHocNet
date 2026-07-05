@@ -50,6 +50,26 @@ public:
     virtual void schedule(Time delay, std::function<void()> callback) = 0;
 };
 
+/// Node-local MAC-layer signals for the congestion-aware per-hop metric
+/// (item 10/A2, [1] §3.2). Advisory *measurement* only: the adapter owns the
+/// MAC, so it measures; the core turns these into a per-hop cost. Optional —
+/// when no ILinkState is injected (or the feature is gated off) the core falls
+/// back to the forward ant's wall-clock transit time, i.e. unchanged behaviour.
+class ILinkState {
+public:
+    virtual ~ILinkState() = default;
+    /// Packets currently queued for transmission at this node's interface (those
+    /// a newly-enqueued packet would wait behind). Returns >= 0; negative is
+    /// treated as 0.
+    virtual int macQueueLength() const = 0;
+    /// Smoothed per-packet MAC service time (seconds): a running average of the
+    /// time from a packet reaching the head of the interface queue to a
+    /// successful transmission, including contention/retransmission. Returns
+    /// <= 0 when no sample has been observed yet (the core then uses the
+    /// unloaded reference hop time for that hop).
+    virtual Time macServiceTime() const = 0;
+};
+
 /// Optional observer the core notifies of routing events (item 15). It only
 /// *reports* — it never makes routing decisions or does I/O, so the core stays
 /// pure. Adapters implement it to fan events out to their native trace

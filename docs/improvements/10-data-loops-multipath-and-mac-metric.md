@@ -118,6 +118,21 @@ flood independently of TTL/dedup.
 
 ## A2 — MAC-aware per-hop cost (deepens item 02)
 
+**Status (#55): core mechanism + NS-3 signal shipped, gated off by default.** The
+core records a congestion-aware per-hop cost `(Q_mac + 1) · T̂_mac` when
+`Config::enableMacMetric` is set and an `ILinkState` is injected, via the single
+`localHopCost` choke point (`core/src/ant_router_logic.cpp`); NS-3 supplies the
+measured MAC queue length through `ILinkState` (`EnableMacMetric` attribute).
+Two documented simplifications remain as follow-ups: (a) `T̂_mac` is the nominal
+`hopTimeSec` reference, not yet a measured tx-time EWMA — congestion currently
+enters only through the measured queue occupancy `Q_mac`; (b) NS-2 does not yet
+source an `ILinkState` (its ifq-backed signal is pending), so A2 is NS-3-only for
+now (anticipated by the "ship A1+A3, gate A2" note below). **The exact
+`(Q+1)·T̂_mac` expression follows the §3.2 interpretation here plus a
+queue-occupancy refinement; the primary source (Ducatelle thesis / ETT 2005) was
+network-blocked at implementation time and the expression is flagged for a
+maintainer cross-check — it is isolated in `localHopCost` for a one-line fix.**
+
 ### Spec basis
 
 > Per-hop estimate is a running average of the measured MAC queue+transmit delay:

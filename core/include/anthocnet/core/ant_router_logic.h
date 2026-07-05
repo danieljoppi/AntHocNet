@@ -32,9 +32,12 @@ namespace core {
 class AntRouterLogic {
 public:
     /// `metric` selects the pheromone formula (item 16); nullptr uses the
-    /// canonical ClassicMetric, so existing adapter call sites are unchanged.
+    /// canonical ClassicMetric. `linkState` supplies MAC-layer congestion
+    /// signals for the item-10/A2 metric (nullptr => wall-clock per-hop time).
+    /// Both default to null, so existing adapter call sites are unchanged.
     AntRouterLogic(NodeAddress address, const Config& config, IClock& clock, IRng& rng,
-                   const ILinkMetric* metric = nullptr);
+                   const ILinkMetric* metric = nullptr,
+                   const ILinkState* linkState = nullptr);
 
     NodeAddress address() const { return address_; }
     const Config& config() const { return config_; }
@@ -112,8 +115,9 @@ public:
     /// Pick a random known destination for a proactive ant (or kInvalidAddress).
     NodeAddress randomDestination();
 
-    /// Append this node to a forward ant's visited stack (trip time since the
-    /// ant was generated). Bounded by Config::maxPathLength.
+    /// Append this node to a forward ant's visited stack, recording this hop's
+    /// cost (congestion-aware MAC estimate when enabled, else wall-clock delta).
+    /// Bounded by Config::maxPathLength.
     void stampForward(AntMessage& ant) const;
 
     /// Advance a backward ant by one hop: move this node from the visited stack
@@ -160,6 +164,11 @@ private:
     /// received backward ant from its `history`, before reinforcement.
     void computeBackAntState(AntMessage& ant) const;
 
+    /// This node's contribution to a forward ant's path-time estimate: the
+    /// congestion-aware MAC cost (Q_mac+1)*T̂_mac when enabled and available,
+    /// else the ant's wall-clock transit delta since the previous stamp.
+    double localHopCost(const AntMessage& ant) const;
+
     NodeAddress     address_;
     Config          config_;
     IClock&         clock_;
@@ -168,6 +177,7 @@ private:
     PheromoneEngine engine_;
     ClassicMetric   defaultMetric_;        ///< used when no metric is injected
     const ILinkMetric* metric_;            ///< pheromone strategy (item 16)
+    const ILinkState* linkState_;          ///< MAC congestion signals (item 10/A2), optional
     AntHistoryTracker history_;
     std::uint32_t   seqNum_ = 0;
     std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
