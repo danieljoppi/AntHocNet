@@ -118,20 +118,33 @@ flood independently of TTL/dedup.
 
 ## A2 — MAC-aware per-hop cost (deepens item 02)
 
-**Status (#55): core mechanism + NS-3 signal shipped, gated off by default.** The
-core records a congestion-aware per-hop cost `(Q_mac + 1) · T̂_mac` when
-`Config::enableMacMetric` is set and an `ILinkState` is injected, via the single
-`localHopCost` choke point (`core/src/ant_router_logic.cpp`); NS-3 supplies the
-measured MAC queue length through `ILinkState` (`EnableMacMetric` attribute).
-Two documented simplifications remain as follow-ups: (a) `T̂_mac` is the nominal
-`hopTimeSec` reference, not yet a measured tx-time EWMA — congestion currently
-enters only through the measured queue occupancy `Q_mac`; (b) NS-2 does not yet
-source an `ILinkState` (its ifq-backed signal is pending), so A2 is NS-3-only for
-now (anticipated by the "ship A1+A3, gate A2" note below). **The exact
-`(Q+1)·T̂_mac` expression follows the §3.2 interpretation here plus a
-queue-occupancy refinement; the primary source (Ducatelle thesis / ETT 2005) was
-network-blocked at implementation time and the expression is flagged for a
-maintainer cross-check — it is isolated in `localHopCost` for a one-line fix.**
+**Status: core mechanism + NS-3 signal shipped (#55/#67), gated off by default,
+and empirically NEUTRAL so far.** The core records a congestion-aware per-hop
+cost `(Q_mac + 1) · T̂_mac` when `Config::enableMacMetric` is set and an
+`ILinkState` is injected, via the single `localHopCost` choke point
+(`core/src/ant_router_logic.cpp`); NS-3 supplies the measured MAC queue length
+through `ILinkState` (`EnableMacMetric` attribute).
+
+**Benchmark finding (why it's still off): a load sweep found no effect across the
+whole offered-load spectrum** (512 → 8000 → 32000 bps; on/off deltas within noise
+— [#68](https://github.com/danieljoppi/AntHocNet/issues/68#issuecomment-4886573017)).
+The cause is topological, not signal quality: the uniform random-waypoint /
+`i→(n-1-i)`-flow taxonomy produces congestion that is either *absent* (low load,
+`Q≈0`) or *uniform* (saturation — every node's queue is full, so `(Q+1)` is high
+everywhere and no less-congested path exists to shift onto). A2 can only pay with
+**localized hotspots + detours**, which no current scenario creates. **#71** adds
+a gateway-convergence scenario (harness `--sink`) to give A2 a verdict — justify
+or retire.
+
+Open follow-ups: (a) `T̂_mac` is the nominal `hopTimeSec`, not a measured tx-time
+EWMA — but measuring it better won't help while the bottleneck is topological, so
+**#68 is blocked on #71**; if resumed, the scale-correct quantity is the full MAC
+sojourn (tens of ms), not per-frame airtime (~0.1–1.5 ms, which is ≪ `T_hop` and
+would only weaken the signal); (b) NS-2 does not yet source an `ILinkState` (#69),
+so A2 is NS-3-only. **The exact `(Q+1)·T̂_mac` form follows the §3.2 interpretation
+here plus a queue-occupancy refinement; the primary source (Ducatelle thesis /
+ETT 2005) was network-blocked at implementation time and is flagged for a
+maintainer cross-check (#70) — isolated in `localHopCost` for a one-line fix.**
 
 ### Spec basis
 
