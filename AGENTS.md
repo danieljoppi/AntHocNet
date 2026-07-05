@@ -129,5 +129,7 @@ results.
 | Work on the NS-3 adapter | `ns3/model/`, `ns3/helper/`, `ns3/examples/` |
 | Run / read benchmarks | `docs/benchmarks.md`, `ns3/tools/run-scenarios.py` + `make-charts.py`, `anthocnet-compare --diag` |
 | Inspect protocol internals | NS-3 `Tx`/`Rx`/`RouteChanged` trace sources; core counters via `IRouterObserver` |
+| Compare benchmark A/B runs (deltas + noise verdict) | `benchmark-results` skill (`.claude/skills/benchmark-results/bench_parse.py`) |
+| Pre-push invariant check on a diff | `protocol-review` skill (`.claude/skills/protocol-review/check_invariants.sh`) |
 | Cut a release | run the `Release` workflow (Commitizen); see `CONTRIBUTING.md` |
 | Tune defaults | `core/include/anthocnet/core/config.h` |
