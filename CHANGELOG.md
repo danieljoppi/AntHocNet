@@ -33,6 +33,20 @@ adapters, the benchmark harness, and reproducible CI/packaging.
 [Unreleased]: https://github.com/danieljoppi/AntHocNet/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/danieljoppi/AntHocNet/releases/tag/v0.1.0
 
+## v0.3.0 (2026-07-06)
+
+### Feat
+
+- **bench**: gateway-hotspot scenario (--sink) to give the A2 metric a verdict (#72)
+- **core**: congestion-aware per-hop metric from MAC queue occupancy (#55) (#67)
+- **ns3**: re-inject MAC-failed data packets and expose detector-D tuning (#54)
+- **core**: bound proactive broadcasts (#45) and add repair wait/discard timer (#49) (#53)
+- **bench**: #24 propagation/range/area knobs, stock-baseline control, and PDR diagnostics (#50)
+
+### Fix
+
+- **ns3**: read AC_BE_NQOS so A2 has a queue signal — re-land --qdiag + CLAUDE.md (#75)
+
 ## v0.2.0 (2026-06-28)
 
 ### Feat

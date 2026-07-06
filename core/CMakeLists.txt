@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 # Keep VERSION in sync with the top-level VERSION file (the release workflow
 # checks the git tag against it).
-project(anthocnet_core VERSION 0.2.0 LANGUAGES CXX)
+project(anthocnet_core VERSION 0.3.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
