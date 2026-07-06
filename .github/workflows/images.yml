@@ -7,14 +7,20 @@ name: Images
 # post-merge, so they never gate a PR. A manual dispatch on a branch builds
 # only (no push) for validation.
 #
-# `workflow_call` lets the Release workflow reuse this to publish immutable,
+# Three tag tiers per image (e.g. anthocnet-ns3):
+#   :<sim-version>            e.g. :3.42        — latest build for that ns version (rolling)
+#   :<sim-version>-<release>  e.g. :3.42-v0.3.0 — immutable, pinned to a release
+#   :latest                                     — newest ns version + latest AntHocNet
+# The rolling and :latest tags move on every default-branch push; the
+# release-pinned tag is only written when `release` is set and never overwritten.
+#
+# `workflow_call` lets the Release workflow reuse this to publish the immutable
 # release-pinned tags. When `release` is set (e.g. `v0.3.0`) we check out that
-# tag and additionally push `<image>:<sim-version>-<release>` (e.g.
-# `anthocnet-ns3:3.42-v0.3.0`) alongside the rolling `<image>:<sim-version>`
-# tag. Reusing this via `workflow_call` (not a tag `push` event) is deliberate:
-# a tag pushed with the release job's default GITHUB_TOKEN does NOT trigger
-# other workflows, so a `push: tags` job would never fire — a direct job
-# dependency in the same run does, and needs no PAT.
+# tag and additionally push `<image>:<sim-version>-<release>`. Reusing this via
+# `workflow_call` (not a tag `push` event) is deliberate: a tag pushed with the
+# release job's default GITHUB_TOKEN does NOT trigger other workflows, so a
+# `push: tags` job would never fire — a direct job dependency in the same run
+# does, and needs no PAT.
 on:
   workflow_dispatch:
   workflow_call:
@@ -39,6 +45,10 @@ jobs:
   ns3:
     name: ns-3 images (${{ matrix.version }})
     runs-on: ubuntu-latest
+    # Newest ns-3 in the matrix — its build also gets the moving `:latest` tag
+    # (latest ns-3 version + latest AntHocNet). Bump when adding a newer version.
+    env:
+      NS_LATEST: '3.48'
     strategy:
       fail-fast: false
       matrix:
@@ -77,11 +87,15 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/anthocnet-ns3:${{ matrix.version }}
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/anthocnet-ns3:{1}-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
+            ${{ matrix.version == env.NS_LATEST && format('ghcr.io/{0}/anthocnet-ns3:latest', github.repository_owner) || '' }}
           push: ${{ env.PUSH == 'true' }}
 
   ns2:
     name: ns-2 images (${{ matrix.version }})
     runs-on: ubuntu-latest
+    # Newest ns-2 in the matrix — its build also gets the moving `:latest` tag.
+    env:
+      NS_LATEST: '2.35'
     strategy:
       fail-fast: false
       matrix:
@@ -118,4 +132,5 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/anthocnet-ns2:${{ matrix.version }}
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/anthocnet-ns2:{1}-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
+            ${{ matrix.version == env.NS_LATEST && format('ghcr.io/{0}/anthocnet-ns2:latest', github.repository_owner) || '' }}
           push: ${{ env.PUSH == 'true' }}
