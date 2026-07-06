@@ -92,6 +92,12 @@ docker run --rm ghcr.io/danieljoppi/anthocnet-ns3:3.42 ./ns3 run anthocnet-examp
 docker run --rm -it ghcr.io/danieljoppi/anthocnet-ns2:2.35   # `ns` with the agent
 ```
 
+Each image has three tag tiers: `:<sim-version>` (e.g. `:3.42`, latest build for
+that simulator version), `:<sim-version>-<release>` (e.g. `:3.42-v0.3.0`,
+**immutable** — pin this for reproducible / citable runs), and `:latest` (newest
+simulator version + latest AntHocNet). The `:<sim-version>` and `:latest` tiers
+track the default branch; the `-<release>` tier is fixed to a release.
+
 **AntHocNet images** — the simulator with our protocol built in:
 
 | Image | Versions | Contents |
