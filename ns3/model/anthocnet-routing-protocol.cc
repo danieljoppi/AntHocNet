@@ -183,7 +183,11 @@ int RoutingProtocol::macQueueLength() const {
     // on non-wifi devices, so the metric degrades to the unloaded hop time.
     if (!m_wifiMac) return 0;
     uint32_t total = 0;
-    for (AcIndex ac : {AC_BE, AC_BK, AC_VI, AC_VO}) {
+    // AC_BE_NQOS is essential: a non-QoS mac (AdhocWifiMac, the MANET default)
+    // keeps its single DCF queue under AC_BE_NQOS, not AC_BE — without it
+    // GetTxopQueue returns nullptr and the backlog always reads 0, so the whole
+    // A2 signal was silently absent (issue #73).
+    for (AcIndex ac : {AC_BE_NQOS, AC_BE, AC_BK, AC_VI, AC_VO}) {
         Ptr<WifiMacQueue> q = m_wifiMac->GetTxopQueue(ac);
         if (q) total += q->GetNPackets();
     }

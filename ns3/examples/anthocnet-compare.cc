@@ -86,6 +86,47 @@ void DiagSinkRx(Ptr<const Packet>, const Address&) {
     if (g_firstDeliveryS < 0.0) g_firstDeliveryS = Simulator::Now().GetSeconds();
 }
 
+// --- queue diagnostics (--qdiag): does the A2 congestion signal exist? --------
+// A2 (item 10) keys off the WiFi MAC queue depth Q_mac. If 802.11 loss under
+// load is collision-dominated (frames lost on-air, shallow queues) rather than
+// queue-dominated, Q_mac stays ~0 even at low PDR and A2 has nothing to act on.
+// Sample every node's MAC backlog periodically and report the distribution to
+// settle that empirically before pursuing A2 further (issue #73).
+bool g_qdiag = false;
+uint64_t g_qCount = 0, g_qNonzero = 0, g_qMax = 0;
+double   g_qSum = 0.0;
+
+static uint32_t NodeMacBacklog(Ptr<Node> node) {
+    uint32_t total = 0;
+    for (uint32_t d = 0; d < node->GetNDevices(); ++d) {
+        Ptr<WifiNetDevice> w = node->GetDevice(d)->GetObject<WifiNetDevice>();
+        if (!w) continue;
+        Ptr<WifiMac> mac = w->GetMac();
+        if (!mac) continue;
+        // AC_BE_NQOS first: the non-QoS AdhocWifiMac keeps its single DCF queue
+        // there, not under AC_BE — omitting it makes the backlog always read 0
+        // (issue #73, the reason the first qdiag pass saw maxQ=0 everywhere).
+        for (AcIndex ac : {AC_BE_NQOS, AC_BE, AC_BK, AC_VI, AC_VO}) {
+            Ptr<WifiMacQueue> q = mac->GetTxopQueue(ac);
+            if (q) total += q->GetNPackets();
+        }
+    }
+    return total;
+}
+
+void SampleQueues(NodeContainer nodes, double period, double until) {
+    for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+        const uint32_t q = NodeMacBacklog(nodes.Get(i));
+        g_qCount += 1;
+        g_qSum += q;
+        if (q > 0) g_qNonzero += 1;
+        if (q > g_qMax) g_qMax = q;
+    }
+    if (Simulator::Now().GetSeconds() + period < until) {
+        Simulator::Schedule(Seconds(period), &SampleQueues, nodes, period, until);
+    }
+}
+
 struct Params {
     uint32_t nNodes;
     double   simTime;
@@ -120,6 +161,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_antTx.clear();
     g_antRx.clear();
     g_firstDeliveryS = -1.0;
+    g_qCount = g_qNonzero = g_qMax = 0;
+    g_qSum = 0.0;
 
     NodeContainer nodes;
     nodes.Create(P.nNodes);
@@ -266,6 +309,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         }
     }
 
+    // Queue-depth sampler (#73): start after a 10% warm-up so convergence
+    // transients don't dominate, sample every 0.5 s until the run ends.
+    if (g_qdiag) {
+        Simulator::Schedule(Seconds(P.simTime * 0.1), &SampleQueues, nodes, 0.5,
+                            P.simTime);
+    }
+
     FlowMonitorHelper fmHelper;
     Ptr<FlowMonitor> monitor = fmHelper.InstallAll();
 
@@ -346,6 +396,18 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         std::cout << "\n";
     }
 
+    // Queue-depth summary (#73): the distribution of per-node MAC backlog seen
+    // over the run. High maxQ / pctNonzero => the A2 signal is present; ~0 even
+    // at low PDR => loss is collision-dominated and A2 is structurally inert.
+    if (g_qdiag) {
+        const double mean = g_qCount ? g_qSum / g_qCount : 0.0;
+        const double pct = g_qCount ? 100.0 * g_qNonzero / g_qCount : 0.0;
+        std::cout << std::fixed << std::setprecision(2)
+                  << "# qdiag " << proto << " seed=" << seed
+                  << " pdr=" << r.pdr << " meanQ=" << mean << " maxQ=" << g_qMax
+                  << " pctNonzero=" << pct << " samples=" << g_qCount << "\n";
+    }
+
     Simulator::Destroy();
     return r;
 }
@@ -382,6 +444,9 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols", "Comma-separated list", protocols);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies, first delivery)", g_diag);
+    cmd.AddValue("qdiag", "Emit per-run '# qdiag' lines: per-node MAC queue depth "
+                          "distribution (meanQ/maxQ/pctNonzero) — does A2 have a "
+                          "signal? (#73)", g_qdiag);
     std::string propagation = "range";
     cmd.AddValue("propagation", "Propagation loss model: 'range' (disk) or 'tworay'", propagation);
     cmd.Parse(argc, argv);
