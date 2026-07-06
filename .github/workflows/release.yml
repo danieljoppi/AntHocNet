@@ -48,6 +48,10 @@ jobs:
             ver="$(tr -d '[:space:]' < VERSION)"
             git tag -a "v${ver}" -m "v${ver}"
           else
+            # cz rewrites `version:` in CITATION.cff but not the release date, so
+            # stamp today's date first: cz then `git add`s the whole file and the
+            # bump commit (and its tag) carry the correct date-released.
+            sed -i -E "s/^date-released:.*/date-released: \"$(date -u +%Y-%m-%d)\"/" CITATION.cff
             cz bump --yes --changelog
             ver="$(tr -d '[:space:]' < VERSION)"
           fi
