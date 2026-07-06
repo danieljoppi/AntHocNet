@@ -46,6 +46,26 @@ docker run --rm -v "$PWD/out:/out" anthocnet-bench run-benchmarks.sh
 - `docker build` + `docker run` reproduces a `docs/benchmarks.md`-style CSV on a
   clean machine with no host ns-3.
 
+### Image tag tiers (shipped, #77)
+
+Each image (e.g. `anthocnet-ns3`) carries three tag tiers:
+
+| tag | example | meaning | mutability |
+|---|---|---|---|
+| `:<sim-version>` | `:3.42` | latest build for that ns version | rolling (per `main` push) |
+| `:<sim-version>-<release>` | `:3.42-v0.3.0` | pinned to a release | **immutable** |
+| `:latest` | `:latest` | newest ns version + latest AntHocNet | rolling (per `main` push) |
+
+The rolling `:<sim-version>` tags track `main`, so they are **not** reproducible
+for a citation — that is what the immutable release-pinned tier is for. The
+`Release` workflow reuses `images.yml` via `workflow_call` to publish the pinned
+tier: it checks out the release tag and writes `<image>:<sim-version>-<release>`.
+Reuse (not a tag `push` event) is deliberate: the release job pushes its tag with
+the default `GITHUB_TOKEN`, which does not trigger other workflows, whereas a
+`workflow_call` job dependency runs in the same release and needs no PAT. The
+`:latest` tier is emitted only by the newest version in each simulator matrix
+(`NS_LATEST` in `images.yml`).
+
 ## E2 — Citeability: CITATION.cff, tagged releases, DOI
 
 ### Problem

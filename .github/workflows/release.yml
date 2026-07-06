@@ -24,6 +24,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.compute.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,6 +45,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Compute version (bump or baseline)
+        id: compute
         run: |
           if [ "${{ inputs.mode }}" = "baseline" ]; then
             ver="$(tr -d '[:space:]' < VERSION)"
@@ -57,6 +60,7 @@ jobs:
           fi
           echo "VER=${ver}" >> "$GITHUB_ENV"
           echo "TAG=v${ver}" >> "$GITHUB_ENV"
+          echo "tag=v${ver}" >> "$GITHUB_OUTPUT"   # for the images job
 
       - name: Sanity build + test (core)
         run: make test
@@ -93,4 +97,18 @@ jobs:
             **Install bundle** (`anthocnet-${{ env.VER }}.zip`) — the source to
             drop onto your own simulator tree:
             `make install-ns3 NS3DIR=…` or `make install-ns2 NS2DIR=…`.
-            Pre-built simulator images are on GHCR (see `docker/README.md`).
+            Pre-built simulator images are on GHCR (see `docker/README.md`),
+            including release-pinned tags `anthocnet-ns{2,3}:<sim-version>-${{ env.TAG }}`.
+
+  # Publish immutable, release-pinned container images (e.g.
+  # anthocnet-ns3:3.42-v0.3.0) once the tag exists. Reuses the Images workflow
+  # via workflow_call — a direct job dependency, so the tag the release job just
+  # pushed with GITHUB_TOKEN is picked up without a PAT.
+  images:
+    needs: release
+    uses: ./.github/workflows/images.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      release: ${{ needs.release.outputs.tag }}
