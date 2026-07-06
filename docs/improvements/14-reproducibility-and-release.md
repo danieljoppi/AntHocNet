@@ -46,6 +46,19 @@ docker run --rm -v "$PWD/out:/out" anthocnet-bench run-benchmarks.sh
 - `docker build` + `docker run` reproduces a `docs/benchmarks.md`-style CSV on a
   clean machine with no host ns-3.
 
+### Release-pinned images (shipped, #77)
+
+The `Images` workflow publishes the rolling `anthocnet-ns{2,3}:<sim-version>`
+tags on every `main` push, so they track `main` and are **not** reproducible for
+a citation. The `Release` workflow therefore reuses `images.yml` via
+`workflow_call` to additionally publish immutable **release-pinned** tags that
+keep the simulator version and pin the release —
+`anthocnet-ns3:3.42-v0.3.0`, `anthocnet-ns2:2.35-v0.3.0`, and the plain
+`ns{2,3}:<sim-version>-<release>` baselines. Reuse (not a tag `push` event) is
+deliberate: the release job pushes its tag with the default `GITHUB_TOKEN`,
+which does not trigger other workflows, whereas a `workflow_call` job dependency
+runs in the same release and needs no PAT.
+
 ## E2 — Citeability: CITATION.cff, tagged releases, DOI
 
 ### Problem
