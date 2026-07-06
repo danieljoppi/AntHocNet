@@ -188,7 +188,7 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 > epics — #26 fidelity · #27 adapter · #28 benchmark · #29 observability · #30
 > packaging · #31 positioning — plus the benchmark-found defects #19–#25 and the
 > OMNeT++/INET adapter proposal #32. Each ticket has evidence, a fix sketch, and
-> acceptance criteria, and links the relevant `docs/improvements/` spec.
+> acceptance criteria.
 
 - **Highest-leverage next item — #19 (NS-3 MAC repair hook).** The NS-3 adapter
   has no MAC transmit-failure callback, so broken links are only caught by

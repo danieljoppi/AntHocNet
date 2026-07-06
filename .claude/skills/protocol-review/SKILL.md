@@ -22,7 +22,7 @@ It reports PASS/WARN/FAIL for:
   headers, `test_codec.cpp`, and `docs/wire-format.md`.
 - **Rule 7 (WARN):** `core/` logic changed but no `core/tests/` file changed.
 - **Docs (WARN):** a core/adapter change with no `docs/` touch — confirm no
-  ADR / `docs/improvements` item needs updating.
+  ADR needs updating.
 
 Exit code is non-zero only on a FAIL. WARN means "look and confirm", not "blocked".
 

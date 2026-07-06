@@ -246,7 +246,7 @@ Spreading data this way gives **automatic load balancing**: a congested path's
 delay rises, its pheromone falls, and traffic shifts off it. (See
 [ADR-0010](adr/0010-data-forwarding-prevhop-excluded-stochastic.md)
 for the data rule — the previous hop is excluded for loop safety — and
-[improvement 01](improvements/01-data-vs-ant-beta.md)
+improvement 01
 for the two-beta split.)
 
 ### Proactive maintenance and exploration (while a flow is active)

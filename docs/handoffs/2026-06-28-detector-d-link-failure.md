@@ -81,7 +81,7 @@ Core, shared by both adapters:
   — `NotifyTxError` (WifiMac `DroppedMpdu` hook), `MapMacToCore` (ARP), `NotifyInterfaceUp`.
 - NS-3 test: `ns3/test/anthocnet-test-suite.cc` (`RepairAntOnLinkBreakTestCase`).
 - NS-2 reference: `ns2/src/ahn_router.cc` (`linkFailed`).
-- Design: ADR-0008 (two detectors), `docs/improvements/05-link-failure-detection-and-repair.md` (sub-step D).
+- Design: ADR-0008 (two detectors), improvement item 05 (sub-step D).
 
 ## Open follow-ups
 

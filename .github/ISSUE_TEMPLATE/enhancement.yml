@@ -40,7 +40,7 @@ body:
     attributes:
       label: Context / spec reference
       description: >
-        Why this matters; paper/spec section or `docs/improvements/` item if
+        Why this matters; paper/spec section if
         applicable.
     validations:
       required: true
