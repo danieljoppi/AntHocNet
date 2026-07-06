@@ -7,7 +7,11 @@ name: Images
 # post-merge, so they never gate a PR. A manual dispatch on a branch builds
 # only (no push) for validation.
 #
-# Three tag tiers per image (e.g. anthocnet-ns3):
+# Published to two registries — GHCR (always) and Docker Hub (when the
+# DOCKERHUB_USERNAME / DOCKERHUB_TOKEN secrets are set). docker/build-push-action
+# builds each image once and pushes it to every tag in the list regardless of
+# registry, so the mirror costs no extra build. Three tag tiers per image (e.g.
+# anthocnet-ns3):
 #   :<sim-version>            e.g. :3.42        — latest build for that ns version (rolling)
 #   :<sim-version>-<release>  e.g. :3.42-v0.3.0 — immutable, pinned to a release
 #   :latest                                     — newest ns version + latest AntHocNet
@@ -40,6 +44,8 @@ permissions:
 env:
   # Push on default-branch pushes, or whenever a release pin is requested.
   PUSH: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || (inputs.release || '') != '' }}
+  # Docker Hub namespace; empty (secret unset) disables the Docker Hub mirror.
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
 jobs:
   ns3:
@@ -66,6 +72,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Docker Hub
+        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Plain ns-3 (no AntHocNet)
         uses: docker/build-push-action@v6
         with:
@@ -76,6 +88,8 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/ns3:${{ matrix.version }}
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/ns3:{1}-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
+            ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/ns3:{1}', env.DOCKERHUB_USERNAME, matrix.version) || '' }}
+            ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/ns3:{1}-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
           push: ${{ env.PUSH == 'true' }}
       - name: ns-3 + AntHocNet
         uses: docker/build-push-action@v6
@@ -88,6 +102,9 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/anthocnet-ns3:${{ matrix.version }}
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/anthocnet-ns3:{1}-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
             ${{ matrix.version == env.NS_LATEST && format('ghcr.io/{0}/anthocnet-ns3:latest', github.repository_owner) || '' }}
+            ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/anthocnet-ns3:{1}', env.DOCKERHUB_USERNAME, matrix.version) || '' }}
+            ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/anthocnet-ns3:{1}-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
+            ${{ env.DOCKERHUB_USERNAME != '' && matrix.version == env.NS_LATEST && format('docker.io/{0}/anthocnet-ns3:latest', env.DOCKERHUB_USERNAME) || '' }}
           push: ${{ env.PUSH == 'true' }}
 
   ns2:
@@ -111,6 +128,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Docker Hub
+        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Plain ns-2 (no AntHocNet)
         uses: docker/build-push-action@v6
         with:
@@ -121,6 +144,8 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/ns2:${{ matrix.version }}
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/ns2:{1}-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
+            ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/ns2:{1}', env.DOCKERHUB_USERNAME, matrix.version) || '' }}
+            ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/ns2:{1}-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
           push: ${{ env.PUSH == 'true' }}
       - name: ns-2 + AntHocNet
         uses: docker/build-push-action@v6
@@ -133,4 +158,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/anthocnet-ns2:${{ matrix.version }}
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/anthocnet-ns2:{1}-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
             ${{ matrix.version == env.NS_LATEST && format('ghcr.io/{0}/anthocnet-ns2:latest', github.repository_owner) || '' }}
+            ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/anthocnet-ns2:{1}', env.DOCKERHUB_USERNAME, matrix.version) || '' }}
+            ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/anthocnet-ns2:{1}-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
+            ${{ env.DOCKERHUB_USERNAME != '' && matrix.version == env.NS_LATEST && format('docker.io/{0}/anthocnet-ns2:latest', env.DOCKERHUB_USERNAME) || '' }}
           push: ${{ env.PUSH == 'true' }}
