@@ -103,7 +103,10 @@ static uint32_t NodeMacBacklog(Ptr<Node> node) {
         if (!w) continue;
         Ptr<WifiMac> mac = w->GetMac();
         if (!mac) continue;
-        for (AcIndex ac : {AC_BE, AC_BK, AC_VI, AC_VO}) {
+        // AC_BE_NQOS first: the non-QoS AdhocWifiMac keeps its single DCF queue
+        // there, not under AC_BE — omitting it makes the backlog always read 0
+        // (issue #73, the reason the first qdiag pass saw maxQ=0 everywhere).
+        for (AcIndex ac : {AC_BE_NQOS, AC_BE, AC_BK, AC_VI, AC_VO}) {
             Ptr<WifiMacQueue> q = mac->GetTxopQueue(ac);
             if (q) total += q->GetNPackets();
         }
