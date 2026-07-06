@@ -41,9 +41,13 @@ within each load pair and, if the PDR deltas disagree in sign across pairs,
 prints the **NOISE** call (the exact trap hit in #47/#68/#71 — opposite
 directions at low run counts mean noise, bump `--runs`).
 
-Verdict per pair: `NOISE` (|dPDR|<1pp and |d_delay|<10% and |d_NRL|<10%),
-else `IMPROVED` / `WORSE` by PDR direction. Treat a single pair's IMPROVED/WORSE
-at <5 runs with suspicion — confirm with more runs before concluding.
+Each delta line shows `dPDR / d_delay / d_d99 / d_NRL` (d_d99 = 99th-pct delay,
+often the real signal — e.g. A2's win was flat PDR but −20% d99). Verdict is
+multi-signal over the material deltas (PDR up good; d99 and NRL down good):
+`NOISE` if none are material, `IMPROVED`/`WORSE` if they agree, `MIXED` if they
+conflict. So a flat-PDR run whose tail and overhead both drop reads IMPROVED, not
+MIXED. Treat a single pair's verdict at <5 runs with suspicion — confirm with
+more runs before concluding.
 
 ## Dispatching runs (not scriptable here)
 

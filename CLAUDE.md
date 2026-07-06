@@ -70,3 +70,21 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
+
+## Response style — caveman (token economy)
+
+<!-- Vendored from https://github.com/JuliusBrussee/caveman — adapted for this repo.
+     "why use many token when few do trick." -->
+
+Answer in tight, low-filler prose: drop hedging, pleasantries, and preamble; keep
+the substance. Fewer output tokens on every reply, same information.
+
+**Carve-out (this repo's record stays full).** Keep byte-for-byte exact — code,
+commands, file paths, error text, benchmark numbers. And keep the *durable
+record* detailed, never terse: commit messages, PR bodies, ADRs, `docs/`, and
+issue / finding threads. This project's cross-session traceability
+([ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md)) depends on those
+being complete — the AC_BE_NQOS / A2 investigation was only recoverable because
+the issue threads were thorough. Caveman the chat, not the record.
