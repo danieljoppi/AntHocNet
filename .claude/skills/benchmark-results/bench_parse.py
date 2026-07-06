@@ -71,13 +71,29 @@ def fmt(v):
 
 def verdict(base, cur):
     dp = cur["pdr"] - base["pdr"]
-    dd = (cur["delay"] - base["delay"]) / base["delay"] * 100 if base["delay"] else 0
-    dn = (cur["nrl"] - base["nrl"]) / base["nrl"] * 100 if base["nrl"] else 0
-    if abs(dp) < 1.0 and abs(dd) < 10 and abs(dn) < 10:
-        return "NOISE", dp, dd, dn
-    # PDR up and delay/NRL not materially worse -> improvement (and vice versa).
-    good = (dp > 0) - (dp < 0)
-    return ("IMPROVED" if good > 0 else "WORSE" if good < 0 else "MIXED"), dp, dd, dn
+
+    def pct(k):
+        return (cur[k] - base[k]) / base[k] * 100 if base.get(k) else 0.0
+
+    dd = pct("delay")
+    dd99 = pct("delay99")   # the paper's QoS/jitter metric — often the real signal
+    dn = pct("nrl")
+    # Per-metric "good" direction, only counted past a materiality threshold:
+    # PDR up is good; delay99 and NRL down are good. A flat-PDR run whose tail and
+    # overhead both drop is an IMPROVEMENT, not "MIXED" (the A2 hotspot case).
+    sig = []
+    if abs(dp) >= 1.0:  sig.append(1 if dp > 0 else -1)
+    if abs(dd99) >= 10: sig.append(1 if dd99 < 0 else -1)
+    if abs(dn) >= 10:   sig.append(1 if dn < 0 else -1)
+    if not sig:
+        v = "NOISE"
+    elif all(s > 0 for s in sig):
+        v = "IMPROVED"
+    elif all(s < 0 for s in sig):
+        v = "WORSE"
+    else:
+        v = "MIXED"
+    return v, dp, dd, dd99, dn
 
 
 def main():
@@ -119,10 +135,10 @@ def main():
             on_lbl, on = cells[i + 1][0], cells[i + 1][1].get(p)
             if not off or not on:
                 continue
-            v, dp, dd, dn = verdict(off, on)
+            v, dp, dd, dd99, dn = verdict(off, on)
             signs.append((dp > 0) - (dp < 0))
             print(f"  {off_lbl} -> {on_lbl:<20} dPDR={dp:+5.1f}pp  "
-                  f"d_delay={dd:+6.1f}%  d_NRL={dn:+6.1f}%   {v}")
+                  f"d_delay={dd:+6.1f}%  d_d99={dd99:+6.1f}%  d_NRL={dn:+6.1f}%   {v}")
         if len({s for s in signs if s}) > 1:
             print("\n  ! cross-pair PDR deltas disagree in sign -> run-to-run "
                   "NOISE, not a real effect (cf. issue #47). Bump --runs.")
@@ -135,9 +151,9 @@ def main():
             cur = rows.get(p)
             if not cur:
                 continue
-            v, dp, dd, dn = verdict(base, cur)
+            v, dp, dd, dd99, dn = verdict(base, cur)
             print(f"  {lbl:<26} dPDR={dp:+5.1f}pp  d_delay={dd:+6.1f}%  "
-                  f"d_NRL={dn:+6.1f}%   {v}")
+                  f"d_d99={dd99:+6.1f}%  d_NRL={dn:+6.1f}%   {v}")
 
 
 if __name__ == "__main__":
