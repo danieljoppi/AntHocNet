@@ -1,10 +1,10 @@
 # ADR-0007: Keep virtual pheromone / proactive diffusion, but gate it
 
 - **Status:** Accepted — implementation tracked in
-  [`improvements/03`](../improvements/03-pheromone-diffusion.md),
-  [`improvements/04`](../improvements/04-proactive-ant-sessions.md), measured by
-  [`improvements/07`](../improvements/07-validation-and-benchmarks.md) /
-  [`improvements/08`](../improvements/08-protocol-comparison-benchmarks.md)
+  item 03,
+  item 04, measured by
+  item 07 /
+  item 08
 - **Date:** 2026-06-25
 
 ## Context
@@ -19,7 +19,7 @@ Reviewing the current core, virtual pheromone is **half-wired and partly
 self-defeating**:
 
 - Hellos advertise a **constant `1.0`**, so virtual pheromone is a reachability
-  bit, not a goodness gradient ([item 03](../improvements/03-pheromone-diffusion.md)).
+  bit, not a goodness gradient (item 03).
 - It is read by **one consumer** — proactive-ant next-hop selection
   (`sumMaxProbability`, `isProactiveAnt == true`); data/reactive paths never read
   it.
@@ -28,7 +28,7 @@ self-defeating**:
   for a proactive ant — defeating diffusion's stated purpose (reach destinations
   not yet sampled by ants).
 - Proactive ants themselves target a **random** destination on a fixed timer
-  rather than active sessions ([item 04](../improvements/04-proactive-ant-sessions.md)).
+  rather than active sessions (item 04).
 
 So "do we need virtual pheromone?" reduces to "do we want informed proactive
 exploration?" — the two stand or fall together, and neither is load-bearing for
@@ -39,7 +39,7 @@ basic correctness (data routes on regular pheromone alone).
 **Keep** virtual pheromone, pheromone diffusion, and proactive exploration — they
 are the mechanisms that distinguish AntHocNet from a reactive ant/AODV hybrid and
 underpin the "canonical AntHocNet" positioning
-([item 09](../improvements/09-landscape-and-positioning.md)) — **but make the
+(item 09) — **but make the
 whole proactive subsystem config-gated and let benchmarks justify the default:**
 
 - Add `Config::enableProactive` (default `true`), the master switch for proactive
@@ -49,7 +49,7 @@ whole proactive subsystem config-gated and let benchmarks justify the default:**
   enabling a finer ablation.
 - When disabled: the proactive timer emits nothing, hellos carry **no** pheromone
   adverts (neighbour-discovery/liveness still runs — see
-  [item 05](../improvements/05-link-failure-detection-and-repair.md)), the virtual
+  item 05), the virtual
   table stays empty, and selection never blends virtual pheromone.
 - Make diffusion actually work when enabled: real bootstrapped advert values
   (item 03), proactive ants for **active sessions** (item 04), and **relax the

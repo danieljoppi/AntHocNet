@@ -14,11 +14,11 @@ we do *not* negotiate alternative layouts.
 
 > **Status.** The table below is the layout **the codec emits today** —
 > `kWireVersion = 0x03`. All decided wire changes have **landed**: the version
-> byte + bounds/enum enforcement ([item 12](improvements/12-codec-hardening-and-threat-model.md),
+> byte + bounds/enum enforcement (item 12,
 > 0x01), `broadcastBudget` + `AntType::LinkFail`
-> ([item 05](improvements/05-link-failure-detection-and-repair.md), 0x02), and
+> (item 05, 0x02), and
 > the per-hop-delta `AntHop.time` semantic + the backward-ant byte slim
-> ([item 02](improvements/02-backward-ant-delay-metric.md)/ADR-0009, 0x03). Keep
+> (item 02/ADR-0009, 0x03). Keep
 > this section in sync with the code as the format evolves.
 
 ## Frame layout (current code)
@@ -33,7 +33,7 @@ we do *not* negotiate alternative layouts.
 | 11 | `seqNum`    | `u32`    | 4 | Per-source ant sequence number (32-bit; see [vs. original](#vs-the-original-implementation)). |
 | 15 | `timeStart` | `f64`    | 8 | Generation time, for trip-time accounting. |
 | 23 | `lifeAnt`   | `f64`    | 8 | Repair-ant lifetime budget (seconds). |
-| 31 | `broadcastBudget` | `i32` | 4 | Remaining (re)broadcasts allowed (`-1` = untracked); bounds repair/LinkFail propagation ([item 05](improvements/05-link-failure-detection-and-repair.md)). |
+| 31 | `broadcastBudget` | `i32` | 4 | Remaining (re)broadcasts allowed (`-1` = untracked); bounds repair/LinkFail propagation (item 05). |
 | 35 | `nVisited`  | `u16`    | 2 | Count of `visited` entries (rejected if `> kMaxVisitedOnWire`). |
 | 37 | `visited[]` | `AntHop` | 12·n | Forward stack: `{ i32 node; f64 time }` per hop. `time` is a **per-hop delta** (seconds, item 02). |
 | …  | `nHistory`  | `u16`    | 2 | Count of `history` entries (rejected if `> kMaxHistoryOnWire`). |
@@ -47,7 +47,7 @@ from `history`. Fixed prefix (`version` through `broadcastBudget`) is **35 bytes
 the three empty arrays add 6 bytes of counts, so the minimum frame is **41 bytes**.
 Worst-case size is bounded because `nVisited`/`nHistory`/`nHello` are capped on
 decode (`kMaxVisitedOnWire`/`kMaxHistoryOnWire`/`kMaxHelloOnWire`, enforcement
-added by [item 12](improvements/12-codec-hardening-and-threat-model.md)).
+added by item 12).
 
 ## Planned wire evolution
 
@@ -55,16 +55,16 @@ added by [item 12](improvements/12-codec-hardening-and-threat-model.md)).
 `0x02` (item 05), `0x03` (item 02 slim); each subsequent layout/semantic change
 increments it. Do not hard-code a number; use `current + 1`.
 
-1. ✅ **Version byte (landed, 0x01)** — [item 12](improvements/12-codec-hardening-and-threat-model.md),
+1. ✅ **Version byte (landed, 0x01)** — item 12,
    [ADR-0006](adr/0006-on-wire-protocol-version.md). `version : u8` at **offset 0**;
    `deserialize` checks it first and drops unknown values in O(1), then validates
    the `type`/`direction` enums and clamps the element counts to their caps.
 2. ✅ **Repair / link-failure (landed, 0x02)** —
-   [item 05](improvements/05-link-failure-detection-and-repair.md). Added
+   item 05. Added
    `broadcastBudget : i32` and the `AntType::LinkFail` role (the notification
    reuses the `helloDests` `{node, pheromone}` shape).
 3. ✅ **Backward-ant slim (landed, 0x03)** —
-   [item 02](improvements/02-backward-ant-delay-metric.md),
+   item 02,
    [ADR-0009](adr/0009-backward-ants-carry-path-not-state.md). Removed `prevHop`,
    `hops`, `prevSINR`→`pathTime`, `pheromone` from the serialized image (−24
    bytes); they are recomputed at each receiver from `history`.
@@ -115,8 +115,7 @@ change is detectable in a way the original never was.
 
 ## vs. the protocol specification
 
-AntHocNet is defined by its papers ([1], [2], [3] in
-[improvements/README](improvements/README.md)), **not** by any byte-level wire
+AntHocNet is defined by its papers ([1], [2], [3]), **not** by any byte-level wire
 standard. The papers specify the *contents and semantics* of ants, never an
 octet layout, so this format is one faithful encoding of the paper's fields —
 plus a few implementation-only fields. There is no newer or competing wire
@@ -127,9 +126,9 @@ specification to track.
 | `type`, `direction` | **Spec concept** | Reactive/proactive forward ants, backward ants, hello messages, repair ants ([1] §3). |
 | `src`, `dst` | **Spec concept** | Session endpoints an ant is routing between. |
 | `visited`, `history` (node + time) | **Spec concept** | Forward ant records the path and per-hop timing; backward ant retraces it to deposit pheromone ([1] §3.1–3.2). |
-| `helloDests` (node + pheromone) | **Spec concept** | Pheromone diffusion: hellos advertise virtual-pheromone goodness for active destinations ([2], diffusion section). The value is real, not constant — see [item 03](improvements/03-pheromone-diffusion.md). |
+| `helloDests` (node + pheromone) | **Spec concept** | Pheromone diffusion: hellos advertise virtual-pheromone goodness for active destinations ([2], diffusion section). The value is real, not constant — see item 03. |
 | `hops` | **Spec-aligned** | Hop count in the path metric. *Computed locally, removed from the wire by item 02 (ADR-0009).* |
-| `pathTime` (was `prevSINR`) | **Implementation** | Accumulated time/cost term; the old `prevSINR` name was a misnomer (the metric is delay/quality, not SINR). *Renamed and removed from the wire by [item 02](improvements/02-backward-ant-delay-metric.md); recomputed locally from `history`.* |
+| `pathTime` (was `prevSINR`) | **Implementation** | Accumulated time/cost term; the old `prevSINR` name was a misnomer (the metric is delay/quality, not SINR). *Renamed and removed from the wire by item 02; recomputed locally from `history`.* |
 | `pheromone` | **Implementation** | Running estimate on the backward ant; the spec computes pheromone per node. *Removed from the wire by item 02 — each node recomputes.* |
 | `lifeAnt` | **Implementation** | Repair-ant TTL budget — a concrete realisation of the spec's bounded local repair. |
 | `timeStart`, `seqNum` | **Implementation** | Trip-time accounting and `(src,seq)` duplicate suppression. The spec assumes ant identification; these are the mechanisms. |
@@ -137,7 +136,7 @@ specification to track.
 | `version` | **Implementation** | Frame envelope; no spec analogue. *Planned, item 12.* |
 
 Where a field's behaviour deviates from the paper, the deviation is tracked in
-`docs/improvements/` (items 02, 03 in particular), not here — this document
+the design ADRs and GitHub issues (items 02, 03 in particular), not here — this document
 describes only the *bytes*.
 
 ## Maintenance checklist

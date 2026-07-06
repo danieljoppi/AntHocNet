@@ -1,7 +1,7 @@
 # ADR-0010: Data forwarding — prev-hop-excluded stochastic, flow-stickiness gated
 
 - **Status:** Accepted — implementation tracked in
-  [`improvements/10`](../improvements/10-data-loops-multipath-and-mac-metric.md) (A1)
+  item 10 (A1)
 - **Date:** 2026-06-25
 
 ## Context
@@ -20,7 +20,7 @@ Two consequences:
 The spec spreads data stochastically over a mesh but assumes the pheromone
 gradient is effectively loop-free, and real implementations additionally avoid
 sending a packet back the way it came and damp per-packet flapping. Note the
-overlap with `β_data` ([item 01](../improvements/01-data-vs-ant-beta.md)): a high
+overlap with `β_data` (item 01): a high
 greedy `β_data` already concentrates data on the best path and only spreads when
 pheromones are comparable, so per-packet reordering is naturally limited in the
 paper's regime.

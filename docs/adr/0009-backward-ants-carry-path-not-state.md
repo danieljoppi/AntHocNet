@@ -1,12 +1,12 @@
 # ADR-0009: The wire carries path observations, not computed state
 
 - **Status:** Accepted — implementation tracked in
-  [`improvements/02`](../improvements/02-backward-ant-delay-metric.md)
+  item 02
 - **Date:** 2026-06-25
 
 ## Context
 
-Fixing the backward-ant delay metric ([item 02](../improvements/02-backward-ant-delay-metric.md))
+Fixing the backward-ant delay metric (item 02)
 already changes the meaning of `AntHop.time` (cumulative-since-source → per-hop
 delta), which is a semantic change to an existing wire field and therefore bumps
 `kWireVersion` ([ADR-0006](0006-on-wire-protocol-version.md)) regardless.
@@ -22,7 +22,7 @@ While scoping that change we found that a backward ant serializes four fields �
   a hop on the wire.
 
 Carrying them is wasted airtime (relevant to the overhead AntHocNet is
-benchmarked on, [item 08](../improvements/08-protocol-comparison-benchmarks.md))
+benchmarked on, item 08)
 and a trust hazard: a node *could* believe an upstream-supplied `pheromone`
 instead of computing its own.
 

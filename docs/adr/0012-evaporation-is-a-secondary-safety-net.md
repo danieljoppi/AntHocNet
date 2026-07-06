@@ -1,7 +1,7 @@
 # ADR-0012: Evaporation is a secondary, time-proportional safety net
 
 - **Status:** Accepted — implementation tracked in
-  [`improvements/06`](../improvements/06-evaporation-and-minor.md)
+  item 06
 - **Date:** 2026-06-25
 
 ## Context
@@ -26,7 +26,7 @@ deliberately *replaces* classic ACO evaporation with two other mechanisms:
 2. **Explicit obsolete-route removal** on neighbour loss (hello-timeout
    `t_hello × allowed-hello-loss`, or failed unicast), which *deletes* entries
    outright rather than decaying them — this is [ADR-0008](0008-neighbour-liveness-two-detectors.md)
-   / [item 05](../improvements/05-link-failure-detection-and-repair.md).
+   / item 05.
 
 So the real question is not "event-driven vs time-based evaporation" but **what
 role evaporation plays at all**, given the spec assigns adaptation elsewhere.
@@ -56,7 +56,7 @@ the form correct:
    evaporation regardless of cadence — no separate evaporation timer.
 5. **Config-gated, default ON.** `Config::enableEvaporation = true`. Turning it
    off yields the paper-faithful "running-average + explicit-removal only" mode,
-   which [item 08](../improvements/08-protocol-comparison-benchmarks.md) runs as
+   which item 08 runs as
    an ablation variant so the benchmark — not intuition — justifies keeping it on.
 
 Virtual pheromone already evaporates on **hello reception** (in `updateVirtual`),

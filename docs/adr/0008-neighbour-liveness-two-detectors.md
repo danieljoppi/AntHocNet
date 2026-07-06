@@ -1,7 +1,7 @@
 # ADR-0008: Neighbour-liveness via two detectors; the provider is advisory
 
 - **Status:** Accepted — implementation tracked in
-  [`improvements/05`](../improvements/05-link-failure-detection-and-repair.md)
+  item 05
 - **Date:** 2026-06-25
 
 ## Context
@@ -14,7 +14,7 @@ two ways ([1] §3.5):
 > expected periodic [hello] messages were not received."
 
 The codebase already has an `INeighborProvider` port whose `neighbors()` returns
-the link layer's current one-hop set, and [item 05](../improvements/05-link-failure-detection-and-repair.md)
+the link layer's current one-hop set, and item 05
 additionally proposes a core-side last-seen map expiring neighbours on
 `t_hello × allowed_hello_loss`. That leaves **two notions of "neighbour"** that
 can disagree (a node still in `neighbors()` but silent for 3 hellos; or expired

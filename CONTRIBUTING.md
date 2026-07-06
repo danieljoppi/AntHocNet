@@ -17,8 +17,7 @@ ns3/    native Ipv4RoutingProtocol module. Same responsibilities as ns2.
 
 **If a change affects routing decisions, it belongs in `core/`** and must be
 covered by a `core/tests/` unit test. Adapters change only to feed the core new
-inputs or carry out a new `RouteAction`. See `CONTEXT.md` and
-[`docs/improvements/README.md`](docs/improvements/README.md) for the deeper map.
+inputs or carry out a new `RouteAction`. See `CONTEXT.md` for the deeper map.
 
 ## Building & testing
 
@@ -85,9 +84,8 @@ the version by hand.
 - Make sure CI is green. New tunables get NS-2 TCL binds and NS-3 `TypeId`
   attributes; update `CONTEXT.md` / `docs/porting-notes.md` if behaviour or the
   wire format changed.
-- Picking up work? The backlog lives in GitHub issues and
-  [`docs/improvements/`](docs/improvements/) (each numbered spec is a
-  self-contained, implementable item with acceptance criteria).
+- Picking up work? The backlog lives in GitHub issues (each ticket carries
+  evidence, a fix sketch, and acceptance criteria).
 
 ## Reporting issues
 

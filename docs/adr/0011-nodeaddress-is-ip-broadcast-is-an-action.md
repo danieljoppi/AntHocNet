@@ -1,7 +1,7 @@
 # ADR-0011: `NodeAddress` is the node's IP; broadcast is a RouteAction, never an address
 
 - **Status:** Accepted — implementation tracked in
-  [`improvements/11`](../improvements/11-adapter-robustness.md) (B2, B3)
+  item 11 (B2, B3)
 - **Date:** 2026-06-25
 
 ## Context

@@ -1,7 +1,7 @@
 # ADR-0006: A 1-byte on-wire protocol version, no negotiation
 
 - **Status:** Accepted — implementation tracked in
-  [`docs/improvements/12-codec-hardening-and-threat-model.md`](../improvements/12-codec-hardening-and-threat-model.md)
+  item 12
 - **Date:** 2026-06-25
 
 ## Context
@@ -16,11 +16,11 @@ That rule keeps the **layout** in sync, but the frame has **no version marker**,
 so two classes of change are undetectable on the wire:
 
 - **Silent layout change** — adding/removing a field (e.g. the MAC-cost field in
-  [item 10](../improvements/10-data-loops-multipath-and-mac-metric.md)).
+  item 10).
 - **Silent semantic change** — same bytes, new meaning: the back-ant time
-  term's units in [item 02](../improvements/02-backward-ant-delay-metric.md), or
+  term's units in item 02, or
   `helloDests[].pheromone` going from a constant `1.0` to a real bootstrapped
-  value in [item 03](../improvements/03-pheromone-diffusion.md).
+  value in item 03.
 
 A node on an old build and one on a new build would parse each other's frames as
 garbage with **no error**. Within a single simulation run this cannot happen
@@ -46,7 +46,7 @@ the cost of introducing a version marker is at its lowest now.
   artifacts to fail loudly rather than misparse.
 
 The implementation rides along with the codec-hardening work in
-[item 12](../improvements/12-codec-hardening-and-threat-model.md); the layout is
+item 12; the layout is
 documented in [`docs/wire-format.md`](../wire-format.md).
 
 ## Alternatives considered
@@ -59,7 +59,7 @@ documented in [`docs/wire-format.md`](../wire-format.md).
   plausible the first time someone compares two builds.
 - **A multi-byte magic + version envelope (e.g. 4 bytes).** More robust framing,
   but costs airtime on every ant in a protocol whose overhead we benchmark
-  ([item 08](../improvements/08-protocol-comparison-benchmarks.md)). One byte is
+  (item 08). One byte is
   enough to catch the realistic cases and keeps the metric honest.
 - **Full version negotiation / per-version decoders.** Solves a heterogeneity
   problem this project does not have (one build per run). Pure over-engineering.
@@ -68,7 +68,7 @@ documented in [`docs/wire-format.md`](../wire-format.md).
 
 - A one-time wire break (taken now, alongside items 02/03/10) buys an O(1),
   pre-length-check rejection of foreign/garbage/stale frames — strengthening the
-  untrusted-decode story in [item 12](../improvements/12-codec-hardening-and-threat-model.md).
+  untrusted-decode story in item 12.
 - The "single canonical wire format" invariant becomes **machine-checkable**:
   the layout and its version move in lockstep across codec + both adapters +
   tests, so a forgotten adapter update surfaces as a version/round-trip test
