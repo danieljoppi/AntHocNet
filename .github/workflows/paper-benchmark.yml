@@ -103,6 +103,7 @@ jobs:
         with:
           name: paper-benchmark
           path: paper-results.txt
+          retention-days: 7
       - name: Compact result block (cheap to fetch via get_job_logs tail)
         # Re-emit each protocol row as a single greppable line as the LAST log
         # output, so the benchmark-results skill can read just the numbers with a

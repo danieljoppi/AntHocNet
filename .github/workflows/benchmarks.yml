@@ -62,6 +62,7 @@ jobs:
           path: |
             scenarios.csv
             docs/benchmarks/*.png
+          retention-days: 7
       - name: Commit refreshed results (if changed)
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
