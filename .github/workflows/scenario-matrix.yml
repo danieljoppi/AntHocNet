@@ -75,6 +75,7 @@ jobs:
           path: |
             scenarios.csv
             docs/benchmarks/*.png
+          retention-days: 7
       - name: Commit charts into docs (optional)
         if: ${{ github.event.inputs.commit == 'true' }}
         run: |
