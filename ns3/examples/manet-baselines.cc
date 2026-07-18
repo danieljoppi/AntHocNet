@@ -159,6 +159,7 @@ struct Params {
     uint32_t nFlows;
     double   cbrBps, startWindow;
     std::string propagation;
+    std::string rateManager;
 };
 
 struct Result {
@@ -180,6 +181,19 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
     WifiHelper wifi;
     wifi.SetStandard(WIFI_STANDARD_80211b);
+    // #51 A/B: the ns-3 default (IdealWifiManager) oscillates 1<->11 Mbps on
+    // this link and loses every second data frame to retry exhaustion.
+    if (P.rateManager == "arf") {
+        wifi.SetRemoteStationManager("ns3::ArfWifiManager");
+    } else if (P.rateManager.rfind("constant", 0) == 0) {
+        std::string rate = P.rateManager == "constant1"  ? "DsssRate1Mbps"
+                         : P.rateManager == "constant2"  ? "DsssRate2Mbps"
+                         : P.rateManager == "constant5"  ? "DsssRate5_5Mbps"
+                                                         : "DsssRate11Mbps";
+        wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
+                                     "DataMode", StringValue(rate),
+                                     "ControlMode", StringValue("DsssRate1Mbps"));
+    }  // "ideal": keep the WifiHelper default
     YansWifiPhyHelper phy;
     YansWifiChannelHelper channel;
     if (P.propagation == "tworay") {
@@ -336,6 +350,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
 int main(int argc, char* argv[]) {
     std::string scenario, protocols = "aodv,olsr,dsdv", propagation = "range";
+    std::string rateManager = "ideal";
     int32_t nNodes = 0;
     double simTime = -1, area = -1, areaX = -1, areaY = -1;
     double speed = -1, pause = -1, range = -1, cbrBps = -1;
@@ -358,6 +373,9 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("protocols", "Comma-separated list (aodv,olsr,dsdv)", protocols);
     cmd.AddValue("propagation", "Propagation loss model: 'range' (disk) or 'tworay'", propagation);
     cmd.AddValue("dropdiag", "Trace PHY/MAC/ARP/IP drop points per node (#51)", g_dropDiag);
+    cmd.AddValue("rateManager",
+                 "Rate control: ideal (ns-3 default) | arf | constant1|constant2|"
+                 "constant5|constant11 (fixed DSSS rate; #51 A/B)", rateManager);
     cmd.Parse(argc, argv);
     if (runs < 1) runs = 1;
 
@@ -374,6 +392,7 @@ int main(int argc, char* argv[]) {
     P.cbrBps  = cbrBps >= 0 ? cbrBps : (paper ? 512.0 : 8000.0);
     P.startWindow = paper ? 180.0 : 5.0;
     P.propagation = propagation;
+    P.rateManager = rateManager;
 
     std::vector<std::string> list;
     std::stringstream ss(protocols);
@@ -384,7 +403,8 @@ int main(int argc, char* argv[]) {
               << " run(s)\n  nodes=" << P.nNodes << " time=" << P.simTime
               << "s area=" << P.areaX << "x" << P.areaY << "m speed=" << P.speed
               << "m/s pause=" << P.pause << "s range=" << P.range
-              << "m flows=" << P.nFlows << " propagation=" << P.propagation << "\n\n"
+              << "m flows=" << P.nFlows << " propagation=" << P.propagation
+              << " rateManager=" << P.rateManager << "\n\n"
               << "protocol        PDR%  delay(ms)  delay99(ms)     NRL\n"
               << "--------------------------------------------------------\n";
     for (const std::string& proto : list) {
