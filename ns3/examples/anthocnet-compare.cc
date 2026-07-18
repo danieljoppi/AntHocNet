@@ -412,7 +412,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             // Issue #20: origin vs propagation split of the linkfail volume
             // (origins = antTx[linkfail] - linkfailProp; budgetDrop counts
             // propagations suppressed by the inherited broadcastBudget).
-            uint64_t lfProp = 0, lfBudget = 0;
+            uint64_t lfProp = 0, lfBudget = 0, lfSuppressed = 0;
             for (uint32_t i = 0; i < nodes.GetN(); ++i) {
                 Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
                 if (!ip) continue;
@@ -421,9 +421,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 if (!ahn) continue;
                 lfProp += ahn->LinkfailPropagations();
                 lfBudget += ahn->LinkfailBudgetDrops();
+                lfSuppressed += ahn->LinkfailOriginsSuppressed();
             }
             std::cout << " linkfailProp=" << lfProp
-                      << " linkfailBudgetDrop=" << lfBudget;
+                      << " linkfailBudgetDrop=" << lfBudget
+                      << " linkfailOrigSuppressed=" << lfSuppressed;
         }
         std::cout << "\n";
     }

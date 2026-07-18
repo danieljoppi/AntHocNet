@@ -110,6 +110,9 @@ public:
     uint64_t LinkfailBudgetDrops() const {
         return m_logic ? m_logic->linkfailBudgetDrops() : 0;
     }
+    uint64_t LinkfailOriginsSuppressed() const {
+        return m_logic ? m_logic->linkfailOriginsSuppressed() : 0;
+    }
 
 protected:
     void DoInitialize() override;

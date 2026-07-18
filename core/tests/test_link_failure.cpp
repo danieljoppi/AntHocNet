@@ -348,5 +348,45 @@ int main() {
         CHECK(router.onMaintenanceTick().empty());
     }
 
+    // 14. Issue #20: per-destination origin cooldown — a flapping link does not
+    //     re-originate a LinkFail for the same destination within
+    //     linkfailNotifyInterval; it resumes once the window elapses.
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);  // interval = 1.0 default
+        auto hasLinkFail = [](const std::vector<RouteDecision>& decs) {
+            for (const RouteDecision& d : decs) {
+                if (d.action == RouteAction::Broadcast &&
+                    d.message.type == AntType::LinkFail) return true;
+            }
+            return false;
+        };
+
+        router.table().setPheromoneRegular(9, 5, 0.8);
+        CHECK(hasLinkFail(router.reportNeighborLoss(5)));  // first loss notifies
+
+        router.table().setPheromoneRegular(9, 5, 0.8);     // flap: route re-forms
+        clock.advance(0.4);                                // inside the window
+        CHECK(!hasLinkFail(router.reportNeighborLoss(5)));
+        CHECK_EQ(router.linkfailOriginsSuppressed(), static_cast<std::uint64_t>(1));
+
+        router.table().setPheromoneRegular(9, 5, 0.8);     // flap again
+        clock.advance(cfg.linkfailNotifyInterval + 0.1);   // window elapsed
+        CHECK(hasLinkFail(router.reportNeighborLoss(5)));
+
+        // interval = 0 disables the cooldown entirely.
+        Config cfg0 = cfg;
+        cfg0.linkfailNotifyInterval = 0.0;
+        FakeClock clock0;
+        ScriptedRng rng0({0.5});
+        AntRouterLogic router0(/*addr*/ 0, cfg0, clock0, rng0);
+        router0.table().setPheromoneRegular(9, 5, 0.8);
+        CHECK(hasLinkFail(router0.reportNeighborLoss(5)));
+        router0.table().setPheromoneRegular(9, 5, 0.8);
+        CHECK(hasLinkFail(router0.reportNeighborLoss(5)));  // immediate repeat allowed
+        CHECK_EQ(router0.linkfailOriginsSuppressed(), static_cast<std::uint64_t>(0));
+    }
+
     return RUN_TESTS();
 }

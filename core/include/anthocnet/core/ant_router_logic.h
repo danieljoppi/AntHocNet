@@ -61,6 +61,9 @@ public:
     /// LinkFail propagations suppressed by an exhausted inherited
     /// broadcastBudget — how often the depth bound actually bites (issue #20).
     std::uint64_t linkfailBudgetDrops() const { return linkfailBudgetDrops_; }
+    /// Per-destination advertisements dropped by the origin cooldown
+    /// (config.linkfailNotifyInterval, issue #20).
+    std::uint64_t linkfailOriginsSuppressed() const { return linkfailOriginsSuppressed_; }
 
     // --- neighbour learning ----------------------------------------------
     /// Record that `neighbor` is reachable (link-layer detection / hello),
@@ -199,6 +202,8 @@ private:
     std::map<AntType, std::uint64_t> antsReceived_; ///< received counters by type
     std::uint64_t linkfailPropagations_ = 0;        ///< re-broadcast LinkFails (issue #20)
     std::uint64_t linkfailBudgetDrops_  = 0;        ///< budget-suppressed propagations (issue #20)
+    std::uint64_t linkfailOriginsSuppressed_ = 0;   ///< cooldown-suppressed advertisements (issue #20)
+    std::map<NodeAddress, double> lastLinkfailNotify_;  ///< dest -> last originated LinkFail time
 };
 
 } // namespace core
