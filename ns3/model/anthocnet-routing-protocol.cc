@@ -38,7 +38,7 @@ const uint16_t RoutingProtocol::ANT_PORT = 6900;
 
 RoutingProtocol::RoutingProtocol()
     : m_started(false),
-      m_queue(64, Seconds(30)),
+      m_queue(64, Seconds(3)),
       m_helloInterval(Seconds(1.0)),
       m_proactiveInterval(Seconds(10.0)),
       m_alpha(0.7),
@@ -54,6 +54,7 @@ RoutingProtocol::RoutingProtocol()
       m_repairWaitFactor(5.0),
       m_repairTimeout(1.0),
       m_linkfailNotifyInterval(5.0),
+      m_queueTimeout(Seconds(3)),
       m_enableMacMetric(false) {}
 
 RoutingProtocol::~RoutingProtocol() = default;
@@ -140,6 +141,15 @@ TypeId RoutingProtocol::GetTypeId() {
                           DoubleValue(5.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_linkfailNotifyInterval),
                           MakeDoubleChecker<double>(0.0))
+            .AddAttribute("QueueTimeout",
+                          "How long a data packet may wait in the pending queue "
+                          "for a route before being dropped (issue #21: the "
+                          "paper's deliver-late vs discard trade; the #21 "
+                          "frontier picked 3 s: delay99 7.6->2.1 s for "
+                          "-2.4 pp PDR, still above AODV).",
+                          TimeValue(Seconds(3)),
+                          MakeTimeAccessor(&RoutingProtocol::m_queueTimeout),
+                          MakeTimeChecker())
             .AddAttribute("EnableMacMetric",
                           "Congestion-aware per-hop cost (item 10/A2): forward ants "
                           "record (MAC-queue+1)*hop-time instead of wall-clock "
@@ -233,6 +243,7 @@ void RoutingProtocol::DoInitialize() {
     m_config.repairTimeout = m_repairTimeout;
     m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
     m_config.enableMacMetric = m_enableMacMetric;
+    m_queue.SetTimeout(m_queueTimeout);  // attribute lands after construction (#21)
     Ipv4RoutingProtocol::DoInitialize();
 }
 
