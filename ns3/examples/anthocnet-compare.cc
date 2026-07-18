@@ -138,6 +138,7 @@ struct Params {
     double   cbrBps;
     double   startWindow;
     std::string propagation;  // "range" (disk, default) | "tworay" (two-ray ground, #24)
+    std::string rateManager;  // "constant2" (paper's 2 Mbit/s radio, default) | ... (#51)
     int32_t  sink;            // >=0: all flows converge on this node (gateway
                               // hotspot, #71); <0: default i->(n-1-i) pairing.
 };
@@ -169,6 +170,21 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
     WifiHelper wifi;
     wifi.SetStandard(WIFI_STANDARD_80211b);
+    // #51: the ns-3 default (IdealWifiManager) oscillates 1<->11 Mbps and loses
+    // every second unicast to retry exhaustion (DSSS 11 Mbps never delivers in
+    // this setup), halving PDR for every protocol. Default is the paper's fixed
+    // 2 Mbit/s radio; --rateManager reaches the alternatives for A/B.
+    if (P.rateManager == "arf") {
+        wifi.SetRemoteStationManager("ns3::ArfWifiManager");
+    } else if (P.rateManager.rfind("constant", 0) == 0) {
+        std::string rate = P.rateManager == "constant1"  ? "DsssRate1Mbps"
+                         : P.rateManager == "constant2"  ? "DsssRate2Mbps"
+                         : P.rateManager == "constant5"  ? "DsssRate5_5Mbps"
+                                                         : "DsssRate11Mbps";
+        wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
+                                     "DataMode", StringValue(rate),
+                                     "ControlMode", StringValue("DsssRate1Mbps"));
+    }  // "ideal": keep the WifiHelper default
     YansWifiPhyHelper phy;
     YansWifiChannelHelper channel;
     if (P.propagation == "tworay") {
@@ -449,6 +465,11 @@ int main(int argc, char* argv[]) {
                           "signal? (#73)", g_qdiag);
     std::string propagation = "range";
     cmd.AddValue("propagation", "Propagation loss model: 'range' (disk) or 'tworay'", propagation);
+    std::string rateManager = "constant2";
+    cmd.AddValue("rateManager",
+                 "Rate control: constant1|constant2|constant5|constant11 (fixed "
+                 "DSSS rate; default constant2, the paper's radio) | arf | ideal "
+                 "(ns-3 default; loses ~50% single-hop, #51)", rateManager);
     cmd.Parse(argc, argv);
     if (runs < 1) runs = 1;
 
@@ -465,6 +486,7 @@ int main(int argc, char* argv[]) {
     P.cbrBps  = cbrBps >= 0 ? cbrBps : (paper ? 512.0 : 8000.0);
     P.startWindow = paper ? 180.0 : 5.0;
     P.propagation = propagation;
+    P.rateManager = rateManager;
     P.sink = sink;
 
     // 1 ms delay bins for the 99th-percentile computation.

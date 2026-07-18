@@ -181,8 +181,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
     WifiHelper wifi;
     wifi.SetStandard(WIFI_STANDARD_80211b);
-    // #51 A/B: the ns-3 default (IdealWifiManager) oscillates 1<->11 Mbps on
-    // this link and loses every second data frame to retry exhaustion.
+    // #51: the ns-3 default (IdealWifiManager) oscillates 1<->11 Mbps and loses
+    // every second unicast to retry exhaustion (DSSS 11 Mbps never delivers in
+    // this setup). Default is the paper's fixed 2 Mbit/s radio; --rateManager
+    // reaches the alternatives (including the old behaviour, 'ideal') for A/B.
     if (P.rateManager == "arf") {
         wifi.SetRemoteStationManager("ns3::ArfWifiManager");
     } else if (P.rateManager.rfind("constant", 0) == 0) {
@@ -350,7 +352,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
 int main(int argc, char* argv[]) {
     std::string scenario, protocols = "aodv,olsr,dsdv", propagation = "range";
-    std::string rateManager = "ideal";
+    std::string rateManager = "constant2";
     int32_t nNodes = 0;
     double simTime = -1, area = -1, areaX = -1, areaY = -1;
     double speed = -1, pause = -1, range = -1, cbrBps = -1;
@@ -374,8 +376,9 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("propagation", "Propagation loss model: 'range' (disk) or 'tworay'", propagation);
     cmd.AddValue("dropdiag", "Trace PHY/MAC/ARP/IP drop points per node (#51)", g_dropDiag);
     cmd.AddValue("rateManager",
-                 "Rate control: ideal (ns-3 default) | arf | constant1|constant2|"
-                 "constant5|constant11 (fixed DSSS rate; #51 A/B)", rateManager);
+                 "Rate control: constant1|constant2|constant5|constant11 (fixed "
+                 "DSSS rate; default constant2, the paper's radio) | arf | ideal "
+                 "(ns-3 default; loses ~50% single-hop, #51)", rateManager);
     cmd.Parse(argc, argv);
     if (runs < 1) runs = 1;
 
