@@ -55,6 +55,8 @@ RoutingProtocol::RoutingProtocol()
       m_repairTimeout(1.0),
       m_linkfailNotifyInterval(5.0),
       m_queueTimeout(Seconds(3)),
+      m_macServiceAlpha(0.7),
+      m_lastAckTime(Seconds(0)),
       m_enableMacMetric(false) {}
 
 RoutingProtocol::~RoutingProtocol() = default;
@@ -150,6 +152,13 @@ TypeId RoutingProtocol::GetTypeId() {
                           TimeValue(Seconds(3)),
                           MakeTimeAccessor(&RoutingProtocol::m_queueTimeout),
                           MakeTimeChecker())
+            .AddAttribute("MacServiceAlpha",
+                          "EWMA weight of the previous estimate when smoothing "
+                          "the measured per-packet MAC service time (issue #68; "
+                          "the paper-family smoothing coefficient, cf. #70).",
+                          DoubleValue(0.7),
+                          MakeDoubleAccessor(&RoutingProtocol::m_macServiceAlpha),
+                          MakeDoubleChecker<double>(0.0, 1.0))
             .AddAttribute("EnableMacMetric",
                           "Congestion-aware per-hop cost (item 10/A2): forward ants "
                           "record (MAC-queue+1)*hop-time instead of wall-clock "
@@ -213,11 +222,31 @@ int RoutingProtocol::macQueueLength() const {
 }
 
 ::anthocnet::core::Time RoutingProtocol::macServiceTime() const {
-    // Nominal per-packet MAC service time. The congestion signal in this pass is
-    // the *measured queue occupancy* (macQueueLength); the service-time unit is
-    // the unloaded reference hop time, so per-hop cost = (Q+1)*hopTime. Upgrading
-    // this to a measured tx-time EWMA is a follow-up (see #55 / item 10/A2).
-    return m_config.hopTimeSec;
+    // Measured per-packet MAC service time (issue #68): EWMA of inter-ack
+    // spacing sampled while the MAC queue stayed backlogged, so contention and
+    // retransmissions are included but queue wait is not — (Q+1)*T̂_mac must
+    // not double-count the queue. 0 until the first sample; the core then
+    // falls back to the unloaded reference hop time (ILinkState contract).
+    return m_macServiceEwmaSec;
+}
+
+void RoutingProtocol::NotifyAckedMpdu(Ptr<const AHN_WIFI_MPDU>) {
+    // A valid pure-service sample is the spacing between two consecutive
+    // successful transmissions during which the MAC never idled — i.e. the
+    // queue was still non-empty at the previous ack.
+    const Time now = Simulator::Now();
+    if (m_backlogAtLastAck && m_lastAckTime.IsStrictlyPositive()) {
+        const double sample = (now - m_lastAckTime).GetSeconds();
+        if (sample > 0.0) {
+            m_macServiceEwmaSec =
+                m_macServiceEwmaSec > 0.0
+                    ? m_macServiceAlpha * m_macServiceEwmaSec +
+                          (1.0 - m_macServiceAlpha) * sample
+                    : sample;
+        }
+    }
+    m_lastAckTime = now;
+    m_backlogAtLastAck = macQueueLength() > 0;
 }
 
 // --- lifecycle --------------------------------------------------------------
@@ -338,6 +367,9 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         if (wmac) {
             wmac->TraceConnectWithoutContext(
                 "DroppedMpdu", MakeCallback(&RoutingProtocol::NotifyTxError, this));
+            // Issue #68: sample measured MAC service time on each success.
+            wmac->TraceConnectWithoutContext(
+                "AckedMpdu", MakeCallback(&RoutingProtocol::NotifyAckedMpdu, this));
             // Keep the first wifi MAC for the item-10/A2 queue-occupancy signal.
             if (!m_wifiMac) m_wifiMac = wmac;
         }

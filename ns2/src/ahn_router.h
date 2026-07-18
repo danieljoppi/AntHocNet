@@ -16,6 +16,7 @@
 #include <trace.h>
 #include <timer-handler.h>
 #include <classifier-port.h>
+#include <queue.h>
 
 #include <list>
 #include <map>
@@ -60,7 +61,10 @@ private:
     Event intr_;
 };
 
-class AntHocNetAgent : public Agent {
+// The agent is also a core ILinkState (item 10/A2): it supplies MAC congestion
+// signals for the congestion-aware per-hop metric. Only meaningful when
+// enable_mac_metric_ is set; the core queries these while stamping a forward ant.
+class AntHocNetAgent : public Agent, public anthocnet::core::ILinkState {
     friend class AhnHelloTimer;
     friend class AhnProactiveTimer;
 
@@ -72,6 +76,10 @@ public:
     void recv(Packet* p, Handler* h) override;
 
     void linkFailed(Packet* p);
+
+    // core::ILinkState (item 10/A2)
+    int macQueueLength() const override;
+    anthocnet::core::Time macServiceTime() const override;
 
 protected:
     // packet paths
@@ -104,6 +112,7 @@ private:
 
     PortClassifier* dmux_;
     Trace* logtarget_;
+    Queue* ifqueue_;  // interface queue between LL and MAC ("if-queue" TCL command)
 
     AhnHelloTimer hello_timer_;
     AhnProactiveTimer proactive_timer_;
@@ -124,6 +133,7 @@ private:
     int    enable_mac_failure_detector_;  // detector D gate (issue #46)
     double repair_wait_factor_;
     double repair_timeout_;
+    int    enable_mac_metric_;  // item 10/A2 congestion-aware metric gate (issue #69)
 
     std::map<nsaddr_t, std::list<AhnQueued> > queue_;
     int queueCount_;  // total pending packets across all destinations

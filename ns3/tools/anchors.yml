@@ -1,0 +1,16 @@
+# Validation-anchor thresholds (#59) — the single place to recalibrate.
+# Consumed by ns3/tools/check-anchors.sh, which parses "key: number" lines
+# (a trailing "# comment" is fine as long as it contains no colon). Scenario
+# definitions live in the script; expected values and their rationale in
+# docs/benchmarks.md "Validation anchors".
+
+# 2-node, in-range, static, fixed 2 Mbit/s radio: measured 100.0% post-#51.
+# A #51-style rate-manager regression reads ~50%, so 99.0 has wide margin
+# while still catching partial regressions.
+single_hop_pdr_min: 99.0
+
+# Broch/Perkins field at low mobility (pause=900 speed=1), stock AODV.
+# Literature floor ~90% (Broch et al. 1998); measured 92.5% on current main
+# (time=300, runs=3). 85.0 leaves margin for the gate's 2-run average and
+# random node placement — tighten once more gate runs accumulate.
+broch_low_mobility_aodv_pdr_min: 85.0

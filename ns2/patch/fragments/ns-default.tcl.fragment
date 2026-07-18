@@ -9,3 +9,4 @@ Agent/AntHocNet set enable_proactive_ 1
 Agent/AntHocNet set enable_diffusion_ 1
 Agent/AntHocNet set proactive_bcast_prob_ 0.1
 Agent/AntHocNet set session_ttl_ 5.0
+Agent/AntHocNet set enable_mac_metric_ 0

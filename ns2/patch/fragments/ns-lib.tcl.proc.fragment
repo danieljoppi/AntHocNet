@@ -1,5 +1,9 @@
 Simulator instproc create-ahn-agent { node } {
 	set ragent [new Agent/AntHocNet [$node node-addr]]
+	# Hand the agent its interface queue for the A2 MAC metric (issue #69).
+	# The ifq does not exist yet here (add-interface runs later in
+	# create-wireless-node), so defer the lookup to simulation start.
+	$self at 0.0 "$ragent if-queue \[$node set ifq_(0)\]"
 	$self at 0.0 "$ragent start"
 	$node set ragent_ $ragent
 	return $ragent

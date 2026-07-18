@@ -49,6 +49,7 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
       logic_(nullptr),
       dmux_(nullptr),
       logtarget_(nullptr),
+      ifqueue_(nullptr),
       hello_timer_(this),
       proactive_timer_(this),
       num_nodes_(0),
@@ -66,6 +67,7 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
       enable_mac_failure_detector_(1),
       repair_wait_factor_(5.0),
       repair_timeout_(1.0),
+      enable_mac_metric_(0),
       queueCount_(0) {
     bind("num_nodes_", &num_nodes_);
     bind("num_nodes_x_", &num_nodes_x_);
@@ -82,6 +84,7 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
     bind_bool("enable_mac_failure_detector_", &enable_mac_failure_detector_);
     bind("repair_wait_factor_", &repair_wait_factor_);
     bind("repair_timeout_", &repair_timeout_);
+    bind_bool("enable_mac_metric_", &enable_mac_metric_);
 }
 
 AntHocNetAgent::~AntHocNetAgent() {
@@ -104,9 +107,12 @@ void AntHocNetAgent::startProtocol() {
     config_.txFailureThreshold = tx_failure_threshold_;
     config_.repairWaitFactor  = repair_wait_factor_;
     config_.repairTimeout     = repair_timeout_;
+    config_.enableMacMetric   = enable_mac_metric_ != 0;
 
     delete logic_;
-    logic_ = new anthocnet::core::AntRouterLogic(id_, config_, clock_, rng_);
+    logic_ = new anthocnet::core::AntRouterLogic(id_, config_, clock_, rng_,
+                                                 /*metric=*/nullptr,
+                                                 /*linkState=*/this);
 
     hello_timer_.handle((Event*) 0);
     proactive_timer_.handle((Event*) 0);
@@ -132,8 +138,33 @@ int AntHocNetAgent::command(int argc, const char* const* argv) {
             logtarget_ = (Trace*) TclObject::lookup(argv[2]);
             return logtarget_ ? TCL_OK : TCL_ERROR;
         }
+        if (strcmp(argv[1], "if-queue") == 0) {
+            // Interface queue between LL and MAC (the AODV wiring pattern),
+            // handed over by create-ahn-agent for the A2 MAC metric.
+            ifqueue_ = (Queue*) TclObject::lookup(argv[2]);
+            return ifqueue_ ? TCL_OK : TCL_ERROR;
+        }
     }
     return Agent::command(argc, argv);
+}
+
+// --- item 10/A2: MAC congestion signals (core::ILinkState) ------------------
+
+int AntHocNetAgent::macQueueLength() const {
+    // Packets backlogged in the interface queue between LL and MAC — those a
+    // newly-forwarded packet would wait behind. Without the "if-queue" handle
+    // the backlog reads 0, so the metric degrades to the unloaded hop time.
+    return ifqueue_ ? ifqueue_->length() : 0;
+}
+
+anthocnet::core::Time AntHocNetAgent::macServiceTime() const {
+    // Nominal per-packet MAC service time, matching the NS-3 adapter's current
+    // pass: the congestion signal is the *measured queue occupancy*
+    // (macQueueLength), so per-hop cost = (Q+1)*hopTime. A measured tx-time
+    // EWMA (issue #68) has no clean hook in NS-2 — the MAC reports transmit
+    // *failures* to the agent (xmit_failure_) but no per-packet success/timing
+    // callback — so the nominal reference stays until one is plumbed (#69).
+    return config_.hopTimeSec;
 }
 
 // --- receive ----------------------------------------------------------------

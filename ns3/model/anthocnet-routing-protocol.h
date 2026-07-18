@@ -163,6 +163,9 @@ private:
     // treat a retry-limit drop as a broken link to that next hop and drive the
     // shared core reportTxFailure path (prune + bounded repair ant).
     void NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu);
+    /// Issue #68: successful-transmission hook — samples the measured
+    /// per-packet MAC service time for the A2 congestion metric.
+    void NotifyAckedMpdu(Ptr<const AHN_WIFI_MPDU> mpdu);
     // Resolve a failed next-hop MAC to a core address via the ARP caches.
     bool MapMacToCore(const Mac48Address& mac,
                       ::anthocnet::core::NodeAddress& out) const;
@@ -204,6 +207,13 @@ private:
     double m_repairTimeout;
     double m_linkfailNotifyInterval;  ///< issue #20 origin cooldown (s), 0 = off
     Time m_queueTimeout;              ///< issue #21 pending-queue hold before drop
+    // Issue #68: measured per-packet MAC service time (EWMA of inter-ack
+    // spacing while the MAC queue stays backlogged — pure service time, no
+    // queue wait, so (Q+1)*T̂_mac does not double-count congestion).
+    double m_macServiceAlpha;         ///< EWMA smoothing (old-value weight)
+    double m_macServiceEwmaSec = 0.0; ///< 0 = no sample yet (core falls back)
+    Time m_lastAckTime;               ///< previous AckedMpdu timestamp
+    bool m_backlogAtLastAck = false;  ///< queue was non-empty at previous ack
     bool m_enableMacMetric;  ///< item 10/A2 congestion-aware per-hop metric
 
     // WifiMac handle for the item-10/A2 queue-occupancy signal (null on non-wifi

@@ -47,6 +47,17 @@ jobs:
           ./ns3 build
       - name: Install matplotlib
         run: apt-get update && apt-get install -y python3-matplotlib
+      - name: Validation-anchor gate (blocks publish; #59)
+        # Run the known-expected anchors on the *stock* baselines harness
+        # before producing or publishing any numbers: if an anchor regresses
+        # (cf. the #51 ~50% single-hop loss that silently depressed every
+        # published PDR ~2x) this step fails and the table/charts below are
+        # never refreshed from a mis-calibrated channel. Thresholds live in
+        # ns3/tools/anchors.yml; rationale in docs/benchmarks.md "Validation
+        # anchors".
+        run: |
+          bash ns3/tools/check-anchors.sh /opt/ns-3 single-hop
+          bash ns3/tools/check-anchors.sh /opt/ns-3 broch-low-mobility
       - name: Run scenario taxonomy (quick)
         run: |
           python3 ns3/tools/run-scenarios.py /opt/ns-3 \
