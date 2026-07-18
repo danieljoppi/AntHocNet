@@ -72,6 +72,10 @@ jobs:
       - name: Build
         run: cd /opt/ns-3 && ./ns3 build
       - name: Run paper scenario
+        # Container jobs default to plain `sh`, where `set -o pipefail` is an
+        # illegal option (run 29664072922 died instantly on it). The image is
+        # Ubuntu, so bash is present — declare it explicitly.
+        shell: bash
         run: |
           cd /opt/ns-3
           common="--scenario=paper \
