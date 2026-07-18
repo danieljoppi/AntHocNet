@@ -74,6 +74,18 @@ std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
 
         out.push_back({RouteAction::DiscardPending, dest, false, {}});
 
+        // Same origin cooldown as reportNeighborLoss (issue #20): the break
+        // that armed this repair usually already advertised dest's loss.
+        if (config_.linkfailNotifyInterval > 0.0) {
+            auto itN = lastLinkfailNotify_.find(dest);
+            if (itN != lastLinkfailNotify_.end() &&
+                now - itN->second < config_.linkfailNotifyInterval) {
+                ++linkfailOriginsSuppressed_;
+                continue;
+            }
+            lastLinkfailNotify_[dest] = now;
+        }
+
         AntMessage note;
         note.type            = AntType::LinkFail;
         note.direction       = AntDirection::Up;
@@ -132,9 +144,23 @@ std::vector<RouteDecision> AntRouterLogic::reportNeighborLoss(NodeAddress n) {
     loseNeighbor(n);  // prune n from the table + last-seen
 
     AntMessage note;
+    const double now = clock_.now();
     for (const auto& pr : affected) {
         const double after = table_.bestRegular(pr.first);
-        if (after < pr.second) note.helloDests.push_back({pr.first, after});  // we lost ground
+        if (after >= pr.second) continue;  // no ground lost
+        // Origin cooldown (issue #20): under link flapping, re-advertising the
+        // same destination every evict/re-learn cycle is what turns breaks into
+        // a notification storm; neighbours already applied the first note.
+        if (config_.linkfailNotifyInterval > 0.0) {
+            auto it = lastLinkfailNotify_.find(pr.first);
+            if (it != lastLinkfailNotify_.end() &&
+                now - it->second < config_.linkfailNotifyInterval) {
+                ++linkfailOriginsSuppressed_;
+                continue;
+            }
+            lastLinkfailNotify_[pr.first] = now;
+        }
+        note.helloDests.push_back({pr.first, after});
     }
     if (note.helloDests.empty()) return {};
 
@@ -230,7 +256,10 @@ std::vector<RouteDecision> AntRouterLogic::handleLinkFail(const AntMessage& note
     prop.dst       = kInvalidAddress;
     prop.seqNum    = nextSeq();
     prop.timeStart = clock_.now();
-    return {broadcastForward(prop)};
+    RouteDecision d = broadcastForward(prop);
+    if (d.action == RouteAction::Broadcast) ++linkfailPropagations_;
+    else ++linkfailBudgetDrops_;
+    return {d};
 }
 
 // --- active sessions (item 04) ----------------------------------------------

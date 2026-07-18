@@ -102,6 +102,18 @@ public:
     /// Seed the protocol's RNG; returns the number of streams used.
     int64_t AssignStreams(int64_t stream);
 
+    /// Issue #20 diagnostics: LinkFail origin/propagation split from the core
+    /// (origins = antTx[linkfail] − propagations; budget drops = suppressed).
+    uint64_t LinkfailPropagations() const {
+        return m_logic ? m_logic->linkfailPropagations() : 0;
+    }
+    uint64_t LinkfailBudgetDrops() const {
+        return m_logic ? m_logic->linkfailBudgetDrops() : 0;
+    }
+    uint64_t LinkfailOriginsSuppressed() const {
+        return m_logic ? m_logic->linkfailOriginsSuppressed() : 0;
+    }
+
 protected:
     void DoInitialize() override;
     void DoDispose() override;
@@ -190,6 +202,7 @@ private:
     bool m_enableMacFailureDetector;
     double m_repairWaitFactor;
     double m_repairTimeout;
+    double m_linkfailNotifyInterval;  ///< issue #20 origin cooldown (s), 0 = off
     bool m_enableMacMetric;  ///< item 10/A2 congestion-aware per-hop metric
 
     // WifiMac handle for the item-10/A2 queue-occupancy signal (null on non-wifi

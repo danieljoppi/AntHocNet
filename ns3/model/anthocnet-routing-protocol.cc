@@ -53,6 +53,7 @@ RoutingProtocol::RoutingProtocol()
       m_enableMacFailureDetector(true),
       m_repairWaitFactor(5.0),
       m_repairTimeout(1.0),
+      m_linkfailNotifyInterval(5.0),
       m_enableMacMetric(false) {}
 
 RoutingProtocol::~RoutingProtocol() = default;
@@ -132,6 +133,13 @@ TypeId RoutingProtocol::GetTypeId() {
                           DoubleValue(1.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_repairTimeout),
                           MakeDoubleChecker<double>())
+            .AddAttribute("LinkfailNotifyInterval",
+                          "Minimum spacing (s) between LinkFail notifications "
+                          "originated about the same destination (issue #20); "
+                          "0 disables the cooldown.",
+                          DoubleValue(5.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_linkfailNotifyInterval),
+                          MakeDoubleChecker<double>(0.0))
             .AddAttribute("EnableMacMetric",
                           "Congestion-aware per-hop cost (item 10/A2): forward ants "
                           "record (MAC-queue+1)*hop-time instead of wall-clock "
@@ -223,6 +231,7 @@ void RoutingProtocol::DoInitialize() {
     m_config.txFailureThreshold = static_cast<int>(m_txFailureThreshold);
     m_config.repairWaitFactor = m_repairWaitFactor;
     m_config.repairTimeout = m_repairTimeout;
+    m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
     m_config.enableMacMetric = m_enableMacMetric;
     Ipv4RoutingProtocol::DoInitialize();
 }
@@ -274,6 +283,7 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.txFailureThreshold = static_cast<int>(m_txFailureThreshold);
         m_config.repairWaitFactor = m_repairWaitFactor;
         m_config.repairTimeout = m_repairTimeout;
+        m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
         m_config.enableMacMetric = m_enableMacMetric;
         m_logic.reset(new ::anthocnet::core::AntRouterLogic(
             ToCore(iface.GetLocal()), m_config, m_clock, m_rng,
