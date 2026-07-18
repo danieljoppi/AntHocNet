@@ -97,7 +97,21 @@ jobs:
             cmd="anthocnet-compare $common --diag --protocols=${{ github.event.inputs.protocols }}"
           fi
           echo "$cmd"
-          ./ns3 run "$cmd" 2>/dev/null | tee "$GITHUB_WORKSPACE/paper-results.txt"
+          # #28 hardening: stderr used to be discarded wholesale and the
+          # pipeline's exit status was tee's, so a bad extraArgs attribute made
+          # ns-3 exit instantly and the job still passed with an EMPTY results
+          # table (run 29656957470). pipefail propagates the ns-3 exit status;
+          # stderr goes to a file (kept out of the results) and its tail is
+          # printed so the fatal-error text is visible in the log.
+          set -o pipefail
+          ./ns3 run "$cmd" 2>"$GITHUB_WORKSPACE/ns3-stderr.log" \
+            | tee "$GITHUB_WORKSPACE/paper-results.txt" \
+            || { echo "--- ns-3 run FAILED; stderr tail ---"; \
+                 tail -n 60 "$GITHUB_WORKSPACE/ns3-stderr.log"; exit 1; }
+          if [ -s "$GITHUB_WORKSPACE/ns3-stderr.log" ]; then
+            echo "--- ns-3 stderr tail (non-fatal) ---"
+            tail -n 20 "$GITHUB_WORKSPACE/ns3-stderr.log"
+          fi
       - name: Upload results
         uses: actions/upload-artifact@v4
         with:
@@ -108,7 +122,14 @@ jobs:
         # Re-emit each protocol row as a single greppable line as the LAST log
         # output, so the benchmark-results skill can read just the numbers with a
         # small tail_lines instead of scraping the whole table+cleanup noise.
+        # Empty-table gate (#28): zero rows means the run produced no results
+        # (e.g. an instant ns-3 exit) — fail hard instead of passing silently.
         run: |
           awk '$1 ~ /^(anthocnet|aodv|olsr|dsdv)$/ && $2 ~ /^[0-9.]+$/ \
                {print "##BENCH##", $1, $2, $3, $4, $5, $6}' \
-            "$GITHUB_WORKSPACE/paper-results.txt" || true
+            "$GITHUB_WORKSPACE/paper-results.txt" > "$GITHUB_WORKSPACE/bench-rows.txt"
+          if ! [ -s "$GITHUB_WORKSPACE/bench-rows.txt" ]; then
+            echo "FAIL: no protocol result rows in paper-results.txt — empty results table (#28)."
+            exit 1
+          fi
+          cat "$GITHUB_WORKSPACE/bench-rows.txt"

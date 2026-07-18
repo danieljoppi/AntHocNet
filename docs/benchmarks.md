@@ -108,6 +108,19 @@ change are blocked on the [#51](https://github.com/danieljoppi/AntHocNet/issues/
 fix** — doing it sooner would bake the single-hop penalty into the baseline. The
 *relative* comparison (identical per-protocol realisations) is valid throughout.
 
+**Enforcement ([#59](https://github.com/danieljoppi/AntHocNet/issues/59)).** With
+#51 fixed, the first two anchors are **blocking CI gates**, run on the stock
+`manet-baselines` harness by
+[`ns3/tools/check-anchors.sh`](../ns3/tools/check-anchors.sh) with floors kept in
+one file, [`ns3/tools/anchors.yml`](../ns3/tools/anchors.yml): the single-hop
+anchor (AODV + DSDV, PDR ≥ 99, measured 100.0) runs on every push/PR in `ci.yml`
+(inside the ns-3.42 `ns3-build` job), and both it and the Broch low-mobility AODV
+floor (PDR ≥ 85, vs. ≈ 92.5 measured, ~90 literature) run in `benchmarks.yml`
+*before* the results table/charts are regenerated — a regressed anchor fails the
+workflow and blocks the publish step, so a #51-style channel/config regression can
+no longer silently corrupt the published numbers. Recalibration is a one-line
+edit to `anchors.yml`.
+
 ## Results
 
 The per-scenario tables and the taxonomy chart below are regenerated and

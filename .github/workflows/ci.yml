@@ -174,3 +174,13 @@ jobs:
           echo "AntHocNet PDR% = ${pdr:-<none>}"
           awk -v p="${pdr:-0}" 'BEGIN { exit (p+0 > 0) ? 0 : 1 }' \
             || { echo "FAIL: AntHocNet delivered no packets (PDR=${pdr:-<none>})"; exit 1; }
+      - name: Validation-anchor gate (single-hop PDR floor, #59)
+        # Blocking anchor from docs/benchmarks.md "Validation anchors": on a
+        # static, in-range 2-node link the *stock* stack (manet-baselines, no
+        # AntHocNet code) must deliver ~100% — a #51-style channel/rate-manager
+        # regression reads ~50% and used to go completely undetected. Runs on
+        # one matrix version to keep CI cheap (this reuses the job's build);
+        # the heavier Broch-field anchor runs per-merge in benchmarks.yml.
+        # Thresholds: ns3/tools/anchors.yml.
+        if: matrix.version == '3.42'
+        run: bash ns3/tools/check-anchors.sh /opt/ns-3 single-hop
