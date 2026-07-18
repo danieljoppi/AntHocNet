@@ -49,6 +49,80 @@ uint64_t g_appTx = 0, g_appRx = 0;
 void AppTx(Ptr<const Packet>) { ++g_appTx; }
 void AppRx(Ptr<const Packet>, const Address&) { ++g_appRx; }
 
+// #51 drop localization (gated by --dropdiag): per-node counters for every
+// drop point between the sender's L3 and the receiver's L3 — PHY rx (with
+// reason), PHY tx, MAC tx/rx, retry exhaustion, ARP pending-queue, IP L3 —
+// plus PhyTxBegin/MacRx activity counts, to find where the #51 ~50% dies.
+bool g_dropDiag = false;
+std::map<std::string, uint64_t> g_drops;
+uint32_t g_dropLines = 0;
+constexpr uint32_t kMaxDropLines = 40;
+
+void NoteDrop(const std::string& what, uint32_t size) {
+    ++g_drops[what];
+    if (g_dropLines < kMaxDropLines) {
+        std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds()
+                  << " " << what << " size=" << size << "\n";
+        ++g_dropLines;
+    }
+}
+void PacketDropCb(std::string ctx, Ptr<const Packet> p) { NoteDrop(ctx, p->GetSize()); }
+void PacketCountCb(std::string ctx, Ptr<const Packet>) { ++g_drops[ctx]; }
+void PhyTxBeginCb(std::string ctx, Ptr<const Packet>, double) { ++g_drops[ctx]; }
+void PhyRxDropCb(std::string ctx, Ptr<const Packet> p, WifiPhyRxfailureReason reason) {
+    std::ostringstream what;
+    what << ctx << ":" << reason;
+    NoteDrop(what.str(), p->GetSize());
+}
+void StaFailCb(std::string ctx, Mac48Address) { NoteDrop(ctx, 0); }
+void Ipv4DropCb(std::string ctx, const Ipv4Header&, Ptr<const Packet> p,
+                Ipv4L3Protocol::DropReason reason, Ptr<Ipv4>, uint32_t) {
+    const char* name = nullptr;
+    switch (reason) {
+        case Ipv4L3Protocol::DROP_TTL_EXPIRED:      name = "TTL_EXPIRED"; break;
+        case Ipv4L3Protocol::DROP_NO_ROUTE:         name = "NO_ROUTE"; break;
+        case Ipv4L3Protocol::DROP_BAD_CHECKSUM:     name = "BAD_CHECKSUM"; break;
+        case Ipv4L3Protocol::DROP_INTERFACE_DOWN:   name = "INTERFACE_DOWN"; break;
+        case Ipv4L3Protocol::DROP_ROUTE_ERROR:      name = "ROUTE_ERROR"; break;
+        case Ipv4L3Protocol::DROP_FRAGMENT_TIMEOUT: name = "FRAGMENT_TIMEOUT"; break;
+        default: break;
+    }
+    std::ostringstream what;
+    what << ctx << ":";
+    if (name) what << name; else what << static_cast<int>(reason);
+    NoteDrop(what.str(), p->GetSize());
+}
+
+void ConnectDropDiag(const NodeContainer& nodes, const NetDeviceContainer& devices) {
+    for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+        std::string n = "n" + std::to_string(i);
+        Ptr<WifiNetDevice> wd = DynamicCast<WifiNetDevice>(devices.Get(i));
+        if (wd) {
+            wd->GetPhy()->TraceConnect("PhyRxDrop", n + "/phyRxDrop",
+                                       MakeCallback(&PhyRxDropCb));
+            wd->GetPhy()->TraceConnect("PhyTxDrop", n + "/phyTxDrop",
+                                       MakeCallback(&PacketDropCb));
+            wd->GetPhy()->TraceConnect("PhyTxBegin", n + "/phyTxBegin",
+                                       MakeCallback(&PhyTxBeginCb));
+            wd->GetMac()->TraceConnect("MacTxDrop", n + "/macTxDrop",
+                                       MakeCallback(&PacketDropCb));
+            wd->GetMac()->TraceConnect("MacRxDrop", n + "/macRxDrop",
+                                       MakeCallback(&PacketDropCb));
+            wd->GetMac()->TraceConnect("MacRx", n + "/macRx",
+                                       MakeCallback(&PacketCountCb));
+            wd->GetRemoteStationManager()->TraceConnect(
+                "MacTxDataFailed", n + "/staTxDataFailed", MakeCallback(&StaFailCb));
+            wd->GetRemoteStationManager()->TraceConnect(
+                "MacTxFinalDataFailed", n + "/staTxFinalDataFailed",
+                MakeCallback(&StaFailCb));
+        }
+        Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
+        if (l3) l3->TraceConnect("Drop", n + "/ipDrop", MakeCallback(&Ipv4DropCb));
+        Ptr<ArpL3Protocol> arp = nodes.Get(i)->GetObject<ArpL3Protocol>();
+        if (arp) arp->TraceConnect("Drop", n + "/arpDrop", MakeCallback(&PacketDropCb));
+    }
+}
+
 struct Params {
     uint32_t nNodes;
     double   simTime;
@@ -70,6 +144,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_controlPkts = 0;
     g_appTx = 0;
     g_appRx = 0;
+    g_drops.clear();
+    g_dropLines = 0;
 
     NodeContainer nodes;
     nodes.Create(P.nNodes);
@@ -138,6 +214,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     address.SetBase("10.1.0.0", "255.255.0.0");
     Ipv4InterfaceContainer ifs = address.Assign(devices);
 
+    if (g_dropDiag) ConnectDropDiag(nodes, devices);
+
     Ptr<UniformRandomVariable> startVar = CreateObject<UniformRandomVariable>();
     startVar->SetAttribute("Min", DoubleValue(0.0));
     startVar->SetAttribute("Max", DoubleValue(std::min(P.startWindow, P.simTime * 0.5)));
@@ -203,6 +281,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     std::cout << "  [diag " << proto << " seed=" << seed << "] TOTALS"
               << " fmTx=" << tx << " fmRx=" << rx
               << " appTx=" << g_appTx << " appRx=" << g_appRx << "\n";
+    if (g_dropDiag) {
+        std::cout << "  [dropdiag " << proto << " seed=" << seed << "] TOTALS";
+        for (const auto& kv : g_drops) std::cout << " " << kv.first << "=" << kv.second;
+        std::cout << "\n";
+    }
     r.pdr = tx ? 100.0 * rx / tx : 0.0;
     r.meanDelayMs = rx ? 1000.0 * totalDelay / rx : 0.0;
     r.nrl = rx ? static_cast<double>(g_controlPkts) / rx : 0.0;
@@ -242,6 +325,7 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("runs", "Number of RNG runs to average (seeds 1..runs)", runs);
     cmd.AddValue("protocols", "Comma-separated list (aodv,olsr,dsdv)", protocols);
     cmd.AddValue("propagation", "Propagation loss model: 'range' (disk) or 'tworay'", propagation);
+    cmd.AddValue("dropdiag", "Trace PHY/MAC/ARP/IP drop points per node (#51)", g_dropDiag);
     cmd.Parse(argc, argv);
     if (runs < 1) runs = 1;
 
