@@ -46,7 +46,7 @@ void CountTx(Ptr<const Packet>, Ptr<Ipv4>, uint32_t) { ++g_controlPkts; }
 // #24 ground truth, independent of FlowMonitor: count what the OnOff apps
 // actually send and what the PacketSinks actually receive.
 uint64_t g_appTx = 0, g_appRx = 0;
-void AppTx(Ptr<const Packet>) { ++g_appTx; }
+void AppTx(Ptr<const Packet>);
 void AppRx(Ptr<const Packet>, const Address&) { ++g_appRx; }
 
 // #51 drop localization (gated by --dropdiag): per-node counters for every
@@ -56,13 +56,26 @@ void AppRx(Ptr<const Packet>, const Address&) { ++g_appRx; }
 bool g_dropDiag = false;
 std::map<std::string, uint64_t> g_drops;
 uint32_t g_dropLines = 0;
-constexpr uint32_t kMaxDropLines = 40;
+constexpr uint32_t kMaxDropLines = 60;
+// First two nodes' mobility, so drop events can report the live distance
+// (discriminates "receiver out of range per the loss model" from everything
+// else — YansWifiChannel silently skips receivers below sensitivity).
+Ptr<MobilityModel> g_mobA, g_mobB;
 
-void NoteDrop(const std::string& what, uint32_t size) {
+std::string PosStr() {
+    if (!g_mobA || !g_mobB) return "";
+    Vector a = g_mobA->GetPosition(), b = g_mobB->GetPosition();
+    std::ostringstream os;
+    os << " d=" << g_mobA->GetDistanceFrom(g_mobB)
+       << " a=(" << a.x << "," << a.y << ") b=(" << b.x << "," << b.y << ")";
+    return os.str();
+}
+
+void NoteDrop(const std::string& what, uint32_t size, const std::string& extra = "") {
     ++g_drops[what];
     if (g_dropLines < kMaxDropLines) {
         std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds()
-                  << " " << what << " size=" << size << "\n";
+                  << " " << what << " size=" << size << extra << "\n";
         ++g_dropLines;
     }
 }
@@ -74,7 +87,11 @@ void PhyRxDropCb(std::string ctx, Ptr<const Packet> p, WifiPhyRxfailureReason re
     what << ctx << ":" << reason;
     NoteDrop(what.str(), p->GetSize());
 }
-void StaFailCb(std::string ctx, Mac48Address) { NoteDrop(ctx, 0); }
+void StaFailCb(std::string ctx, Mac48Address) { NoteDrop(ctx, 0, PosStr()); }
+void DistanceProbe() {
+    std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds()
+              << " probe" << PosStr() << "\n";
+}
 void Ipv4DropCb(std::string ctx, const Ipv4Header&, Ptr<const Packet> p,
                 Ipv4L3Protocol::DropReason reason, Ptr<Ipv4>, uint32_t) {
     const char* name = nullptr;
@@ -93,7 +110,18 @@ void Ipv4DropCb(std::string ctx, const Ipv4Header&, Ptr<const Packet> p,
     NoteDrop(what.str(), p->GetSize());
 }
 
+// Defined after the dropdiag helpers so it can report the send-time distance.
+void AppTx(Ptr<const Packet>) {
+    ++g_appTx;
+    if (g_dropDiag && g_appTx <= 16) {
+        std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds()
+                  << " appTx#" << g_appTx << PosStr() << "\n";
+    }
+}
+
 void ConnectDropDiag(const NodeContainer& nodes, const NetDeviceContainer& devices) {
+    g_mobA = nodes.GetN() > 0 ? nodes.Get(0)->GetObject<MobilityModel>() : nullptr;
+    g_mobB = nodes.GetN() > 1 ? nodes.Get(1)->GetObject<MobilityModel>() : nullptr;
     for (uint32_t i = 0; i < nodes.GetN(); ++i) {
         std::string n = "n" + std::to_string(i);
         Ptr<WifiNetDevice> wd = DynamicCast<WifiNetDevice>(devices.Get(i));
@@ -214,7 +242,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     address.SetBase("10.1.0.0", "255.255.0.0");
     Ipv4InterfaceContainer ifs = address.Assign(devices);
 
-    if (g_dropDiag) ConnectDropDiag(nodes, devices);
+    if (g_dropDiag) {
+        ConnectDropDiag(nodes, devices);
+        for (double t = 0.0; t < P.simTime; t += 20.0)
+            Simulator::Schedule(Seconds(t), &DistanceProbe);
+    }
 
     Ptr<UniformRandomVariable> startVar = CreateObject<UniformRandomVariable>();
     startVar->SetAttribute("Min", DoubleValue(0.0));
