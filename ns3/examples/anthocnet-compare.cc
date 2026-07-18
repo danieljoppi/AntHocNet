@@ -76,6 +76,13 @@ bool g_diag = false;
 std::map<uint8_t, uint64_t> g_antTx;   // by AntType byte
 std::map<uint8_t, uint64_t> g_antRx;
 double g_firstDeliveryS = -1.0;
+// #23: per-flow route-setup latency. g_firstDeliveryS alone is the sim time of
+// the FIRST packet any sink receives — a min over all flows' random starts —
+// so it measures the luckiest flow, not convergence. Track per-flow app start
+// and first sink Rx instead (index-aligned with `sinks`; default pairing only,
+// converge/--sink mode shares one sink and is skipped).
+std::vector<double> g_flowStart;
+std::vector<double> g_flowFirstRx;  // -1 = flow never delivered
 
 void DiagAntTx(uint8_t type, uint8_t /*dir*/, bool /*broadcast*/) {
     if (g_diag) g_antTx[type] += 1;
@@ -85,6 +92,12 @@ void DiagAntRx(uint8_t type, uint8_t /*dir*/) {
 }
 void DiagSinkRx(Ptr<const Packet>, const Address&) {
     if (g_firstDeliveryS < 0.0) g_firstDeliveryS = Simulator::Now().GetSeconds();
+}
+void DiagSinkRxFlow(uint32_t idx, Ptr<const Packet> p, const Address& a) {
+    DiagSinkRx(p, a);
+    if (idx < g_flowFirstRx.size() && g_flowFirstRx[idx] < 0.0) {
+        g_flowFirstRx[idx] = Simulator::Now().GetSeconds();
+    }
 }
 
 // --- queue diagnostics (--qdiag): does the A2 congestion signal exist? --------
@@ -163,6 +176,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_antTx.clear();
     g_antRx.clear();
     g_firstDeliveryS = -1.0;
+    g_flowStart.clear();
+    g_flowFirstRx.clear();
     g_qCount = g_qNonzero = g_qMax = 0;
     g_qSum = 0.0;
 
@@ -288,13 +303,15 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                           InetSocketAddress(ifs.GetAddress(dst), port));
         onoff.SetAttribute("DataRate", StringValue(rate.str()));
         onoff.SetAttribute("PacketSize", UintegerValue(64));
-        onoff.SetAttribute("StartTime", TimeValue(Seconds(startVar->GetValue())));
+        const double startS = startVar->GetValue();
+        onoff.SetAttribute("StartTime", TimeValue(Seconds(startS)));
         onoff.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
         apps.Add(onoff.Install(nodes.Get(src)));
 
         // In converge mode every flow shares one sink node/port, so install its
         // PacketSink exactly once (a second bind on the same port would fail).
         if (!converge) {
+            g_flowStart.push_back(startS);  // #23: index-aligned with `sinks`
             PacketSinkHelper sink("ns3::UdpSocketFactory",
                                   InetSocketAddress(Ipv4Address::GetAny(), port));
             sinks.Add(sink.Install(nodes.Get(dst)));
@@ -308,9 +325,17 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     sinks.Start(Seconds(0.0));
 
     if (g_diag) {
-        // First-delivery timestamp from every data sink (all protocols).
+        // First-delivery timestamp from every data sink (all protocols), plus
+        // per-flow first-Rx for the #23 setup-latency metric (default pairing
+        // only; converge mode has one shared sink and no per-flow mapping).
+        g_flowFirstRx.assign(g_flowStart.size(), -1.0);
         for (uint32_t i = 0; i < sinks.GetN(); ++i) {
-            sinks.Get(i)->TraceConnectWithoutContext("Rx", MakeCallback(&DiagSinkRx));
+            if (!converge && sinks.GetN() == g_flowStart.size()) {
+                sinks.Get(i)->TraceConnectWithoutContext(
+                    "Rx", MakeBoundCallback(&DiagSinkRxFlow, i));
+            } else {
+                sinks.Get(i)->TraceConnectWithoutContext("Rx", MakeCallback(&DiagSinkRx));
+            }
         }
         // Per-type ant tallies from AntHocNet's own trace sources (item 15).
         // Guarded to anthocnet: other protocols have no "Tx"/"Rx" ant traces.
@@ -394,6 +419,22 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                   << " pdr=" << r.pdr
                   << " firstDeliveryS=" << g_firstDeliveryS
                   << " ctrlTx=" << g_controlPkts;
+        // #23: route-setup latency per flow (first delivery − flow start).
+        {
+            std::vector<double> setup;
+            uint32_t never = 0;
+            for (std::size_t i = 0; i < g_flowFirstRx.size(); ++i) {
+                if (g_flowFirstRx[i] < 0.0) { ++never; continue; }
+                setup.push_back(g_flowFirstRx[i] - g_flowStart[i]);
+            }
+            if (!setup.empty() || never > 0) {
+                std::sort(setup.begin(), setup.end());
+                std::cout << " setupMedS="
+                          << (setup.empty() ? -1.0 : setup[setup.size() / 2])
+                          << " setupMaxS=" << (setup.empty() ? -1.0 : setup.back())
+                          << " flowsNoDelivery=" << never;
+            }
+        }
         if (proto == "anthocnet") {
             auto n = [](std::map<uint8_t, uint64_t>& m, uint8_t k) {
                 auto it = m.find(k);
