@@ -127,7 +127,7 @@ _Scenario taxonomy — mean of 2 run(s) per scenario, every baseline on identica
 
 | protocol | PDR % | mean delay (ms) | 99th delay (ms) | throughput (kbps) | NRL |
 |----------|------:|----------------:|----------------:|------------------:|----:|
-| anthocnet | 39.2 | 501.4 | 8045.0 | 8.68 | 2.354 |
+| anthocnet | 36.5 | 79.4 | 1968.5 | 8.10 | 2.466 |
 | aodv | 32.8 | 62.8 | 2138.0 | 7.30 | 2.288 |
 | olsr | 59.4 | 3.3 | 14.0 | 7.54 | 1.274 |
 | dsdv | 24.2 | 12.4 | 6.0 | 5.38 | 1.482 |
@@ -137,7 +137,7 @@ _Scenario taxonomy — mean of 2 run(s) per scenario, every baseline on identica
 
 | protocol | PDR % | mean delay (ms) | 99th delay (ms) | throughput (kbps) | NRL |
 |----------|------:|----------------:|----------------:|------------------:|----:|
-| anthocnet | 75.3 | 403.1 | 8036.5 | 3.74 | 40.890 |
+| anthocnet | 74.5 | 148.4 | 2049.5 | 3.70 | 41.179 |
 | aodv | 80.5 | 49.2 | 1018.5 | 4.47 | 56.618 |
 | olsr | 78.5 | 15.5 | 43.0 | 4.02 | 5.968 |
 | dsdv | 64.8 | 15.4 | 572.5 | 3.46 | 38.349 |
@@ -147,7 +147,7 @@ _Scenario taxonomy — mean of 2 run(s) per scenario, every baseline on identica
 
 | protocol | PDR % | mean delay (ms) | 99th delay (ms) | throughput (kbps) | NRL |
 |----------|------:|----------------:|----------------:|------------------:|----:|
-| anthocnet | 78.2 | 74.4 | 1925.5 | 3.88 | 34.896 |
+| anthocnet | 76.4 | 41.5 | 1041.5 | 3.79 | 35.545 |
 | aodv | 81.9 | 33.7 | 786.0 | 4.55 | 42.929 |
 | olsr | 100.0 | 3.0 | 15.0 | 5.21 | 4.217 |
 | dsdv | 99.9 | 12.2 | 134.5 | 5.27 | 22.569 |
@@ -157,7 +157,7 @@ _Scenario taxonomy — mean of 2 run(s) per scenario, every baseline on identica
 
 | protocol | PDR % | mean delay (ms) | 99th delay (ms) | throughput (kbps) | NRL |
 |----------|------:|----------------:|----------------:|------------------:|----:|
-| anthocnet | 86.9 | 564.5 | 8316.0 | 4.31 | 39.175 |
+| anthocnet | 81.1 | 159.6 | 2056.0 | 4.03 | 41.632 |
 | aodv | 85.1 | 56.1 | 1154.0 | 4.73 | 56.000 |
 | olsr | 79.7 | 23.7 | 1009.0 | 4.03 | 6.233 |
 | dsdv | 58.7 | 20.2 | 965.5 | 3.11 | 43.127 |
@@ -167,7 +167,7 @@ _Scenario taxonomy — mean of 2 run(s) per scenario, every baseline on identica
 
 | protocol | PDR % | mean delay (ms) | 99th delay (ms) | throughput (kbps) | NRL |
 |----------|------:|----------------:|----------------:|------------------:|----:|
-| anthocnet | 76.9 | 173.6 | 3901.0 | 54.35 | 4.229 |
+| anthocnet | 77.5 | 102.7 | 2019.5 | 54.83 | 4.115 |
 | aodv | 86.6 | 35.6 | 702.0 | 61.40 | 5.535 |
 | olsr | 81.0 | 12.9 | 359.0 | 54.24 | 0.439 |
 | dsdv | 70.6 | 26.2 | 830.5 | 50.04 | 2.562 |
@@ -177,7 +177,7 @@ _Scenario taxonomy — mean of 2 run(s) per scenario, every baseline on identica
 
 | protocol | PDR % | mean delay (ms) | 99th delay (ms) | throughput (kbps) | NRL |
 |----------|------:|----------------:|----------------:|------------------:|----:|
-| anthocnet | 70.6 | 478.0 | 8956.0 | 4.01 | 71.492 |
+| anthocnet | 69.2 | 187.7 | 2063.0 | 3.93 | 72.065 |
 | aodv | 67.4 | 148.7 | 1935.0 | 3.62 | 163.429 |
 | olsr | 58.7 | 40.5 | 1019.0 | 3.03 | 20.660 |
 | dsdv | 56.4 | 70.3 | 1050.0 | 2.97 | 177.841 |
