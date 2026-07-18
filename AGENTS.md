@@ -99,7 +99,8 @@ results.
   [ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md#labelling-convention):
   one type label (`bug`/`enhancement`/`chore`/`documentation`/`verification`,
   plus `epic` for umbrellas), area label(s) (`protocol`/`adapter`/`ns2`/`ns3`/
-  `benchmark`/`observability`/`packaging`), and one `model:*` recommendation.
+  `benchmark`/`observability`/`packaging`), one `model:*` recommendation, and
+  one `priority:P1|P2|P3` label on non-epic issues.
   The `.github/ISSUE_TEMPLATE/` forms preset the type label for issues filed
   from the GitHub UI.
 - Do not open a pull request unless explicitly asked.
@@ -118,7 +119,7 @@ results.
 |--------------|-------|
 | Understand the design & decision flow | `docs/architecture.md` |
 | Understand a structural decision / its "why" | `docs/adr/` |
-| **Pick up open work** | GitHub issues (epics #26–#31; defects #19–#25) |
+| **Pick up open work** | GitHub issues (epics #26–#31; start with `priority:P1`) |
 | Record a bug / finding, or hand off across sessions | [ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md) (always open/update an issue) + [`docs/handoffs/`](docs/handoffs/) |
 | Maintain the NS-2 patch / wire format | `docs/porting-notes.md`, `ns2/patch/` |
 | Change the algorithm | `core/src/`, `core/include/anthocnet/core/` |
