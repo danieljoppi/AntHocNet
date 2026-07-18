@@ -46,8 +46,110 @@ void CountTx(Ptr<const Packet>, Ptr<Ipv4>, uint32_t) { ++g_controlPkts; }
 // #24 ground truth, independent of FlowMonitor: count what the OnOff apps
 // actually send and what the PacketSinks actually receive.
 uint64_t g_appTx = 0, g_appRx = 0;
-void AppTx(Ptr<const Packet>) { ++g_appTx; }
+void AppTx(Ptr<const Packet>);
 void AppRx(Ptr<const Packet>, const Address&) { ++g_appRx; }
+
+// #51 drop localization (gated by --dropdiag): per-node counters for every
+// drop point between the sender's L3 and the receiver's L3 — PHY rx (with
+// reason), PHY tx, MAC tx/rx, retry exhaustion, ARP pending-queue, IP L3 —
+// plus PhyTxBegin/MacRx activity counts, to find where the #51 ~50% dies.
+bool g_dropDiag = false;
+std::map<std::string, uint64_t> g_drops;
+uint32_t g_dropLines = 0;
+constexpr uint32_t kMaxDropLines = 60;
+// First two nodes' mobility, so drop events can report the live distance
+// (discriminates "receiver out of range per the loss model" from everything
+// else — YansWifiChannel silently skips receivers below sensitivity).
+Ptr<MobilityModel> g_mobA, g_mobB;
+
+std::string PosStr() {
+    if (!g_mobA || !g_mobB) return "";
+    Vector a = g_mobA->GetPosition(), b = g_mobB->GetPosition();
+    std::ostringstream os;
+    os << " d=" << g_mobA->GetDistanceFrom(g_mobB)
+       << " a=(" << a.x << "," << a.y << ") b=(" << b.x << "," << b.y << ")";
+    return os.str();
+}
+
+void NoteDrop(const std::string& what, uint32_t size, const std::string& extra = "") {
+    ++g_drops[what];
+    if (g_dropLines < kMaxDropLines) {
+        std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds()
+                  << " " << what << " size=" << size << extra << "\n";
+        ++g_dropLines;
+    }
+}
+void PacketDropCb(std::string ctx, Ptr<const Packet> p) { NoteDrop(ctx, p->GetSize()); }
+void PacketCountCb(std::string ctx, Ptr<const Packet>) { ++g_drops[ctx]; }
+void PhyTxBeginCb(std::string ctx, Ptr<const Packet>, double) { ++g_drops[ctx]; }
+void PhyRxDropCb(std::string ctx, Ptr<const Packet> p, WifiPhyRxfailureReason reason) {
+    std::ostringstream what;
+    what << ctx << ":" << reason;
+    NoteDrop(what.str(), p->GetSize());
+}
+void StaFailCb(std::string ctx, Mac48Address) { NoteDrop(ctx, 0, PosStr()); }
+void DistanceProbe() {
+    std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds()
+              << " probe" << PosStr() << "\n";
+}
+void Ipv4DropCb(std::string ctx, const Ipv4Header&, Ptr<const Packet> p,
+                Ipv4L3Protocol::DropReason reason, Ptr<Ipv4>, uint32_t) {
+    const char* name = nullptr;
+    switch (reason) {
+        case Ipv4L3Protocol::DROP_TTL_EXPIRED:      name = "TTL_EXPIRED"; break;
+        case Ipv4L3Protocol::DROP_NO_ROUTE:         name = "NO_ROUTE"; break;
+        case Ipv4L3Protocol::DROP_BAD_CHECKSUM:     name = "BAD_CHECKSUM"; break;
+        case Ipv4L3Protocol::DROP_INTERFACE_DOWN:   name = "INTERFACE_DOWN"; break;
+        case Ipv4L3Protocol::DROP_ROUTE_ERROR:      name = "ROUTE_ERROR"; break;
+        case Ipv4L3Protocol::DROP_FRAGMENT_TIMEOUT: name = "FRAGMENT_TIMEOUT"; break;
+        default: break;
+    }
+    std::ostringstream what;
+    what << ctx << ":";
+    if (name) what << name; else what << static_cast<int>(reason);
+    NoteDrop(what.str(), p->GetSize());
+}
+
+// Defined after the dropdiag helpers so it can report the send-time distance.
+void AppTx(Ptr<const Packet>) {
+    ++g_appTx;
+    if (g_dropDiag && g_appTx <= 16) {
+        std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds()
+                  << " appTx#" << g_appTx << PosStr() << "\n";
+    }
+}
+
+void ConnectDropDiag(const NodeContainer& nodes, const NetDeviceContainer& devices) {
+    g_mobA = nodes.GetN() > 0 ? nodes.Get(0)->GetObject<MobilityModel>() : nullptr;
+    g_mobB = nodes.GetN() > 1 ? nodes.Get(1)->GetObject<MobilityModel>() : nullptr;
+    for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+        std::string n = "n" + std::to_string(i);
+        Ptr<WifiNetDevice> wd = DynamicCast<WifiNetDevice>(devices.Get(i));
+        if (wd) {
+            wd->GetPhy()->TraceConnect("PhyRxDrop", n + "/phyRxDrop",
+                                       MakeCallback(&PhyRxDropCb));
+            wd->GetPhy()->TraceConnect("PhyTxDrop", n + "/phyTxDrop",
+                                       MakeCallback(&PacketDropCb));
+            wd->GetPhy()->TraceConnect("PhyTxBegin", n + "/phyTxBegin",
+                                       MakeCallback(&PhyTxBeginCb));
+            wd->GetMac()->TraceConnect("MacTxDrop", n + "/macTxDrop",
+                                       MakeCallback(&PacketDropCb));
+            wd->GetMac()->TraceConnect("MacRxDrop", n + "/macRxDrop",
+                                       MakeCallback(&PacketDropCb));
+            wd->GetMac()->TraceConnect("MacRx", n + "/macRx",
+                                       MakeCallback(&PacketCountCb));
+            wd->GetRemoteStationManager()->TraceConnect(
+                "MacTxDataFailed", n + "/staTxDataFailed", MakeCallback(&StaFailCb));
+            wd->GetRemoteStationManager()->TraceConnect(
+                "MacTxFinalDataFailed", n + "/staTxFinalDataFailed",
+                MakeCallback(&StaFailCb));
+        }
+        Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
+        if (l3) l3->TraceConnect("Drop", n + "/ipDrop", MakeCallback(&Ipv4DropCb));
+        Ptr<ArpL3Protocol> arp = nodes.Get(i)->GetObject<ArpL3Protocol>();
+        if (arp) arp->TraceConnect("Drop", n + "/arpDrop", MakeCallback(&PacketDropCb));
+    }
+}
 
 struct Params {
     uint32_t nNodes;
@@ -57,6 +159,7 @@ struct Params {
     uint32_t nFlows;
     double   cbrBps, startWindow;
     std::string propagation;
+    std::string rateManager;
 };
 
 struct Result {
@@ -70,12 +173,29 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_controlPkts = 0;
     g_appTx = 0;
     g_appRx = 0;
+    g_drops.clear();
+    g_dropLines = 0;
 
     NodeContainer nodes;
     nodes.Create(P.nNodes);
 
     WifiHelper wifi;
     wifi.SetStandard(WIFI_STANDARD_80211b);
+    // #51: the ns-3 default (IdealWifiManager) oscillates 1<->11 Mbps and loses
+    // every second unicast to retry exhaustion (DSSS 11 Mbps never delivers in
+    // this setup). Default is the paper's fixed 2 Mbit/s radio; --rateManager
+    // reaches the alternatives (including the old behaviour, 'ideal') for A/B.
+    if (P.rateManager == "arf") {
+        wifi.SetRemoteStationManager("ns3::ArfWifiManager");
+    } else if (P.rateManager.rfind("constant", 0) == 0) {
+        std::string rate = P.rateManager == "constant1"  ? "DsssRate1Mbps"
+                         : P.rateManager == "constant2"  ? "DsssRate2Mbps"
+                         : P.rateManager == "constant5"  ? "DsssRate5_5Mbps"
+                                                         : "DsssRate11Mbps";
+        wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
+                                     "DataMode", StringValue(rate),
+                                     "ControlMode", StringValue("DsssRate1Mbps"));
+    }  // "ideal": keep the WifiHelper default
     YansWifiPhyHelper phy;
     YansWifiChannelHelper channel;
     if (P.propagation == "tworay") {
@@ -137,6 +257,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     Ipv4AddressHelper address;
     address.SetBase("10.1.0.0", "255.255.0.0");
     Ipv4InterfaceContainer ifs = address.Assign(devices);
+
+    if (g_dropDiag) {
+        ConnectDropDiag(nodes, devices);
+        for (double t = 0.0; t < P.simTime; t += 20.0)
+            Simulator::Schedule(Seconds(t), &DistanceProbe);
+    }
 
     Ptr<UniformRandomVariable> startVar = CreateObject<UniformRandomVariable>();
     startVar->SetAttribute("Min", DoubleValue(0.0));
@@ -203,6 +329,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     std::cout << "  [diag " << proto << " seed=" << seed << "] TOTALS"
               << " fmTx=" << tx << " fmRx=" << rx
               << " appTx=" << g_appTx << " appRx=" << g_appRx << "\n";
+    if (g_dropDiag) {
+        std::cout << "  [dropdiag " << proto << " seed=" << seed << "] TOTALS";
+        for (const auto& kv : g_drops) std::cout << " " << kv.first << "=" << kv.second;
+        std::cout << "\n";
+    }
     r.pdr = tx ? 100.0 * rx / tx : 0.0;
     r.meanDelayMs = rx ? 1000.0 * totalDelay / rx : 0.0;
     r.nrl = rx ? static_cast<double>(g_controlPkts) / rx : 0.0;
@@ -221,6 +352,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
 int main(int argc, char* argv[]) {
     std::string scenario, protocols = "aodv,olsr,dsdv", propagation = "range";
+    std::string rateManager = "constant2";
     int32_t nNodes = 0;
     double simTime = -1, area = -1, areaX = -1, areaY = -1;
     double speed = -1, pause = -1, range = -1, cbrBps = -1;
@@ -242,6 +374,11 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("runs", "Number of RNG runs to average (seeds 1..runs)", runs);
     cmd.AddValue("protocols", "Comma-separated list (aodv,olsr,dsdv)", protocols);
     cmd.AddValue("propagation", "Propagation loss model: 'range' (disk) or 'tworay'", propagation);
+    cmd.AddValue("dropdiag", "Trace PHY/MAC/ARP/IP drop points per node (#51)", g_dropDiag);
+    cmd.AddValue("rateManager",
+                 "Rate control: constant1|constant2|constant5|constant11 (fixed "
+                 "DSSS rate; default constant2, the paper's radio) | arf | ideal "
+                 "(ns-3 default; loses ~50% single-hop, #51)", rateManager);
     cmd.Parse(argc, argv);
     if (runs < 1) runs = 1;
 
@@ -258,6 +395,7 @@ int main(int argc, char* argv[]) {
     P.cbrBps  = cbrBps >= 0 ? cbrBps : (paper ? 512.0 : 8000.0);
     P.startWindow = paper ? 180.0 : 5.0;
     P.propagation = propagation;
+    P.rateManager = rateManager;
 
     std::vector<std::string> list;
     std::stringstream ss(protocols);
@@ -268,7 +406,8 @@ int main(int argc, char* argv[]) {
               << " run(s)\n  nodes=" << P.nNodes << " time=" << P.simTime
               << "s area=" << P.areaX << "x" << P.areaY << "m speed=" << P.speed
               << "m/s pause=" << P.pause << "s range=" << P.range
-              << "m flows=" << P.nFlows << " propagation=" << P.propagation << "\n\n"
+              << "m flows=" << P.nFlows << " propagation=" << P.propagation
+              << " rateManager=" << P.rateManager << "\n\n"
               << "protocol        PDR%  delay(ms)  delay99(ms)     NRL\n"
               << "--------------------------------------------------------\n";
     for (const std::string& proto : list) {

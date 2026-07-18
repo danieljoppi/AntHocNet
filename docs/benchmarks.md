@@ -84,16 +84,21 @@ stock-baseline control (`manet-baselines`, which links no AntHocNet code) confir
 this is the *scenario/harness config*, not our module (stock-only ≈ harness
 baselines).
 
-**Root cause (found, tracked in [#51](https://github.com/danieljoppi/AntHocNet/issues/51)).**
-The single-hop sanity anchor does **not** read ~100%: a **2-node, 1-flow, in-range,
-static** link delivers only ~50% (`tx=121 rx=61`), confirmed real by independent
-app/sink counters (`appTx==fmTx`, `appRx==fmRx`). So the depression is a **stock
-single-hop 802.11 unicast loss of ~50% per frame**, which every protocol inherits
-before any multi-hop effect — not (primarily) a propagation/range issue. Notably,
-making the field denser does **not** fix it: static `range=600 m` still gives stock
-AODV only ~36%, and TwoRayGround is *worse* (~24%), not better. The earlier
-"300 m partitions the field / adopt ~600 m" reading is superseded — see the
-[#24 correction](https://github.com/danieljoppi/AntHocNet/issues/24#issuecomment-4828992577).
+**Root cause (resolved — [#51](https://github.com/danieljoppi/AntHocNet/issues/51)).**
+The single-hop sanity anchor did **not** read ~100%: a **2-node, 1-flow, in-range,
+static** link delivered only ~50% (`tx=121 rx=61`), confirmed real by independent
+app/sink counters (`appTx==fmTx`, `appRx==fmRx`) — a **stock single-hop 802.11
+unicast loss of ~50% per frame**, inherited by every protocol before any multi-hop
+effect. Drop-point tracing localized it: with no `RemoteStationManager` set,
+`WifiHelper` installs ns-3's default `IdealWifiManager`, whose SNR feedback under
+the 0-loss disk model alternates unicasts between 1 Mbit/s (delivers) and DSSS
+11 Mbit/s (**never** delivers in this stack — a pinned `constant11` radio scores
+0% PDR and even loses ARP replies) — exactly one packet in two. All harnesses now
+pin the paper's fixed 2 Mbit/s radio (`ConstantRateWifiManager`,
+`DsssRate2Mbps` data / `DsssRate1Mbps` control), restoring the 2-node anchor to
+**100.0%**; `--rateManager` still reaches `ideal`/`arf`/other fixed rates for A/B.
+The earlier "300 m partitions the field / adopt ~600 m" reading is superseded —
+see the [#24 correction](https://github.com/danieljoppi/AntHocNet/issues/24#issuecomment-4828992577).
 
 **Acceptance / do-not-do-yet.** The single-hop anchor must deliver ≈100% (and stock
 **AODV ≈ 90%** on the low-mobility Broch field — `paper-benchmark` with
