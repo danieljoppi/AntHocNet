@@ -21,16 +21,26 @@ END = "<!-- BENCHMARK-TABLE-END -->"
 
 
 _TABLE_HEAD = [
-    "| protocol | PDR % | mean delay (ms) | 99th delay (ms) | throughput (kbps) | NRL |",
-    "|----------|------:|----------------:|----------------:|------------------:|----:|",
+    "| protocol | PDR % | mean delay (ms) | 99th delay (ms) | throughput (kbps) | NRL "
+    "| jitter (ms) | dOff90 (ms) |",
+    "|----------|------:|----------------:|----------------:|------------------:|----:"
+    "|------------:|------------:|",
 ]
 
 
+def _off(v):
+    # #57 offered-load percentile: -1 encodes infinity (less than the offered
+    # fraction ever delivered).
+    return "inf" if v not in (None, "", "-") and float(v) < 0 else (v or "-")
+
+
 def _row(r):
-    # delay99_ms / nrl are newer columns; tolerate older CSVs without them.
+    # Columns after delay_ms are newer; tolerate older CSVs without them.
+    # jitter_ms / delay_off90_ms are the #57 paper-parity QoS metrics.
     return (f"| {r['protocol']} | {r['pdr_pct']} | {r['delay_ms']} | "
             f"{r.get('delay99_ms', '-')} | {r['throughput_kbps']} | "
-            f"{r.get('nrl', '-')} |")
+            f"{r.get('nrl', '-')} | {r.get('jitter_ms', '-')} | "
+            f"{_off(r.get('delay_off90_ms'))} |")
 
 
 def build_single(rows):
