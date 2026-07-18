@@ -416,8 +416,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             for (uint32_t i = 0; i < nodes.GetN(); ++i) {
                 Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
                 if (!ip) continue;
-                Ptr<anthocnet::RoutingProtocol> ahn =
-                    DynamicCast<anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
+                Ptr<ns3::anthocnet::RoutingProtocol> ahn =
+                    DynamicCast<ns3::anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
                 if (!ahn) continue;
                 lfProp += ahn->LinkfailPropagations();
                 lfBudget += ahn->LinkfailBudgetDrops();
