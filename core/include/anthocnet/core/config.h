@@ -81,8 +81,10 @@ struct Config {
     /// about the same destination. Under link flapping (evict -> hello
     /// re-learn -> evict) every cycle re-broadcast a fresh note about the same
     /// destinations, making origins ~98% of linkfail volume (issue #20).
-    /// 0 disables the cooldown (the original spec has no rate limit).
-    double linkfailNotifyInterval = 1.0;
+    /// The #20 sweep picked 5.0: 1 s misses the ~3+ s flap cycle (no effect),
+    /// 10 s starts costing PDR/delay. 0 disables the cooldown (the original
+    /// spec has no rate limit).
+    double linkfailNotifyInterval = 5.0;
     /// Consecutive MAC transmit-failures to the same next hop (with no reception
     /// from it in between) before the adapter's fast-path detector (ADR-0008
     /// detector D) treats the link as broken. Debounces transient congestion

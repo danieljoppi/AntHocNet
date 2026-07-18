@@ -53,7 +53,7 @@ RoutingProtocol::RoutingProtocol()
       m_enableMacFailureDetector(true),
       m_repairWaitFactor(5.0),
       m_repairTimeout(1.0),
-      m_linkfailNotifyInterval(1.0),
+      m_linkfailNotifyInterval(5.0),
       m_enableMacMetric(false) {}
 
 RoutingProtocol::~RoutingProtocol() = default;
@@ -137,7 +137,7 @@ TypeId RoutingProtocol::GetTypeId() {
                           "Minimum spacing (s) between LinkFail notifications "
                           "originated about the same destination (issue #20); "
                           "0 disables the cooldown.",
-                          DoubleValue(1.0),
+                          DoubleValue(5.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_linkfailNotifyInterval),
                           MakeDoubleChecker<double>(0.0))
             .AddAttribute("EnableMacMetric",
