@@ -37,6 +37,7 @@
 #include "ns3/olsr-module.h"
 #include "ns3/dsdv-module.h"
 #include "ns3/anthocnet-helper.h"
+#include "ns3/anthocnet-routing-protocol.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -408,6 +409,21 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                       << ",proactive=" << n(g_antRx, 0x04)
                       << ",repair=" << n(g_antRx, 0x08)
                       << ",linkfail=" << n(g_antRx, 0x10) << "]";
+            // Issue #20: origin vs propagation split of the linkfail volume
+            // (origins = antTx[linkfail] - linkfailProp; budgetDrop counts
+            // propagations suppressed by the inherited broadcastBudget).
+            uint64_t lfProp = 0, lfBudget = 0;
+            for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+                Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
+                if (!ip) continue;
+                Ptr<anthocnet::RoutingProtocol> ahn =
+                    DynamicCast<anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
+                if (!ahn) continue;
+                lfProp += ahn->LinkfailPropagations();
+                lfBudget += ahn->LinkfailBudgetDrops();
+            }
+            std::cout << " linkfailProp=" << lfProp
+                      << " linkfailBudgetDrop=" << lfBudget;
         }
         std::cout << "\n";
     }

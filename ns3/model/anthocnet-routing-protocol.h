@@ -102,6 +102,15 @@ public:
     /// Seed the protocol's RNG; returns the number of streams used.
     int64_t AssignStreams(int64_t stream);
 
+    /// Issue #20 diagnostics: LinkFail origin/propagation split from the core
+    /// (origins = antTx[linkfail] − propagations; budget drops = suppressed).
+    uint64_t LinkfailPropagations() const {
+        return m_logic ? m_logic->linkfailPropagations() : 0;
+    }
+    uint64_t LinkfailBudgetDrops() const {
+        return m_logic ? m_logic->linkfailBudgetDrops() : 0;
+    }
+
 protected:
     void DoInitialize() override;
     void DoDispose() override;

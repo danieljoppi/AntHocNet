@@ -230,7 +230,10 @@ std::vector<RouteDecision> AntRouterLogic::handleLinkFail(const AntMessage& note
     prop.dst       = kInvalidAddress;
     prop.seqNum    = nextSeq();
     prop.timeStart = clock_.now();
-    return {broadcastForward(prop)};
+    RouteDecision d = broadcastForward(prop);
+    if (d.action == RouteAction::Broadcast) ++linkfailPropagations_;
+    else ++linkfailBudgetDrops_;
+    return {d};
 }
 
 // --- active sessions (item 04) ----------------------------------------------

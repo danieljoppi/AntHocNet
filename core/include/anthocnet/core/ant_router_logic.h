@@ -55,6 +55,12 @@ public:
     std::uint64_t antsReceived(AntType type) const;
     /// Total ant control packets sent across all types (routing overhead).
     std::uint64_t controlPacketsSent() const;
+    /// LinkFail notes this node re-broadcast on another reporter's behalf
+    /// (issue #20: origins = antsSent(LinkFail) − propagations).
+    std::uint64_t linkfailPropagations() const { return linkfailPropagations_; }
+    /// LinkFail propagations suppressed by an exhausted inherited
+    /// broadcastBudget — how often the depth bound actually bites (issue #20).
+    std::uint64_t linkfailBudgetDrops() const { return linkfailBudgetDrops_; }
 
     // --- neighbour learning ----------------------------------------------
     /// Record that `neighbor` is reachable (link-layer detection / hello),
@@ -191,6 +197,8 @@ private:
     IRouterObserver* observer_ = nullptr;           ///< optional, item 15
     std::map<AntType, std::uint64_t> antsSent_;     ///< sent counters by type
     std::map<AntType, std::uint64_t> antsReceived_; ///< received counters by type
+    std::uint64_t linkfailPropagations_ = 0;        ///< re-broadcast LinkFails (issue #20)
+    std::uint64_t linkfailBudgetDrops_  = 0;        ///< budget-suppressed propagations (issue #20)
 };
 
 } // namespace core

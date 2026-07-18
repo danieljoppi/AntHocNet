@@ -102,6 +102,24 @@ int main() {
         CHECK(decs[0].action == RouteAction::Broadcast);
         CHECK(decs[0].message.type == AntType::LinkFail);
         CHECK_NEAR(router.table().getPheromoneRegular(9, 5), 0.0, 1e-12);
+        // Issue #20: the re-broadcast is counted as a propagation, not an origin.
+        CHECK_EQ(router.linkfailPropagations(), static_cast<std::uint64_t>(1));
+        CHECK_EQ(router.linkfailBudgetDrops(), static_cast<std::uint64_t>(0));
+
+        // Same situation but the inherited budget is exhausted: the propagation
+        // is suppressed and counted as a budget drop.
+        router.table().setPheromoneRegular(9, 5, 0.8);
+        AntMessage spent = note;
+        spent.seqNum = 2;
+        spent.broadcastBudget = 0;
+        auto decs2 = router.onReceiveAnt(spent, /*prevHop*/ 5);
+        bool rebroadcast = false;
+        for (const auto& d : decs2) {
+            if (d.action == RouteAction::Broadcast) rebroadcast = true;
+        }
+        CHECK(!rebroadcast);
+        CHECK_EQ(router.linkfailPropagations(), static_cast<std::uint64_t>(1));
+        CHECK_EQ(router.linkfailBudgetDrops(), static_cast<std::uint64_t>(1));
     }
     {
         FakeClock clock;
