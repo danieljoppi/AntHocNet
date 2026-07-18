@@ -32,6 +32,10 @@ class RequestQueue
 public:
     RequestQueue(uint32_t maxLen, Time timeout) : m_maxLen(maxLen), m_timeout(timeout) {}
 
+    /// Change the hold timeout (issue #21: the QueueTimeout attribute is
+    /// applied after construction, in RoutingProtocol::DoInitialize).
+    void SetTimeout(Time timeout) { m_timeout = timeout; }
+
     /// Enqueue, dropping the oldest entry if at capacity. Returns false if the
     /// packet could not be queued.
     bool Enqueue(QueueEntry& entry);

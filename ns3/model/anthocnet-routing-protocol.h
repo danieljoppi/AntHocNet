@@ -203,6 +203,7 @@ private:
     double m_repairWaitFactor;
     double m_repairTimeout;
     double m_linkfailNotifyInterval;  ///< issue #20 origin cooldown (s), 0 = off
+    Time m_queueTimeout;              ///< issue #21 pending-queue hold before drop
     bool m_enableMacMetric;  ///< item 10/A2 congestion-aware per-hop metric
 
     // WifiMac handle for the item-10/A2 queue-occupancy signal (null on non-wifi

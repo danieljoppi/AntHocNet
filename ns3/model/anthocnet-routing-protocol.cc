@@ -54,6 +54,7 @@ RoutingProtocol::RoutingProtocol()
       m_repairWaitFactor(5.0),
       m_repairTimeout(1.0),
       m_linkfailNotifyInterval(5.0),
+      m_queueTimeout(Seconds(30)),
       m_enableMacMetric(false) {}
 
 RoutingProtocol::~RoutingProtocol() = default;
@@ -140,6 +141,13 @@ TypeId RoutingProtocol::GetTypeId() {
                           DoubleValue(5.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_linkfailNotifyInterval),
                           MakeDoubleChecker<double>(0.0))
+            .AddAttribute("QueueTimeout",
+                          "How long a data packet may wait in the pending queue "
+                          "for a route before being dropped (issue #21: the "
+                          "paper's deliver-late vs discard trade).",
+                          TimeValue(Seconds(30)),
+                          MakeTimeAccessor(&RoutingProtocol::m_queueTimeout),
+                          MakeTimeChecker())
             .AddAttribute("EnableMacMetric",
                           "Congestion-aware per-hop cost (item 10/A2): forward ants "
                           "record (MAC-queue+1)*hop-time instead of wall-clock "
@@ -233,6 +241,7 @@ void RoutingProtocol::DoInitialize() {
     m_config.repairTimeout = m_repairTimeout;
     m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
     m_config.enableMacMetric = m_enableMacMetric;
+    m_queue.SetTimeout(m_queueTimeout);  // attribute lands after construction (#21)
     Ipv4RoutingProtocol::DoInitialize();
 }
 
