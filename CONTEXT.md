@@ -146,7 +146,8 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   install-bundle zip (Zenodo-ready); Conventional-Commit PR titles are
   CI-enforced (item 14).
 - **Open work is tracked in GitHub issues** — per-area epics #26–#31 and the
-  benchmark-found defects #19–#25 (see §10).
+  open defects (#20–#23, #51), prioritized via `priority:P1..P3` labels
+  (see §10).
 
 ## 8. What is missing / caveats
 
@@ -186,22 +187,25 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 
 > **Start here:** live work is tracked in GitHub issues, grouped into per-area
 > epics — #26 fidelity · #27 adapter · #28 benchmark · #29 observability · #30
-> packaging · #31 positioning — plus the benchmark-found defects #19–#25 and the
-> OMNeT++/INET adapter proposal #32. Each ticket has evidence, a fix sketch, and
-> acceptance criteria.
+> packaging · #31 positioning — plus the open defects (#20–#23, #51, all
+> `priority:P1`) and the OMNeT++/INET adapter proposal #32. Each ticket has
+> evidence, a fix sketch, and acceptance criteria; `priority:P1..P3` labels
+> order the backlog (ADR-0013).
 
-- **Highest-leverage next item — #19 (NS-3 MAC repair hook).** The NS-3 adapter
-  has no MAC transmit-failure callback, so broken links are only caught by
-  hello-timeout and route-repair ants never fire (`repair=0`). The benchmark
-  taxonomy shows this as a 99th-delay-tail (#21) + high-mobility (#22)
-  regression vs AODV. **NS-2 already implements it** — port
-  `ns2/src/ahn_router.cc::linkFailed` (the MAC `xmit_failure_` callback +
-  bounded repair ant).
+- **Highest-leverage next item — #51 (stock single-hop 802.11 unicast loses
+  ~50% of UDP in the ns-3 baselines harness).** It invalidates absolute PDR
+  numbers for *every* protocol and blocks promoting the validation anchors to
+  blocking CI gates (#59). The former top item — #19, the NS-3 MAC repair
+  hook — shipped as detector D (#44/#54, closed 2026-06-28; see
+  `docs/handoffs/2026-06-28-detector-d-link-failure.md`). The remaining
+  protocol regressions vs AODV are #20 (link-failure broadcast storm), #21
+  (99th-percentile delay tail), #22 (high-mobility underperformance), #23
+  (slow convergence) — all `priority:P1`.
 - **What defines "working"** is now partly answered: the scenario taxonomy +
   paper sweeps (`docs/benchmarks.md`, `ns3/tools/run-scenarios.py`) define the
-  metrics. Caveat: absolute PDR is low across *all* protocols pending PHY/channel
-  fidelity work (#24) — relative comparisons are valid, absolute numbers aren't
-  yet paper-like.
+  metrics. Caveat: absolute PDR is low across *all* protocols (#24, closed —
+  root cause isolated to the #51 single-hop loss) — relative comparisons are
+  valid, absolute numbers aren't yet paper-like.
 - Are the `Config` defaults (`alpha`/`betaAnts`/`betaData`/`gamma`, intervals, `maxPathLength`,
   `maxHistory`) the right operating point, or should they be tuned per
   simulator? (See #23 convergence, #26 fidelity.)

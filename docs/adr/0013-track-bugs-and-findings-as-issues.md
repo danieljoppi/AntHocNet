@@ -76,6 +76,14 @@ do not auto-apply labels):
      full matrix run).
    - `model:fable-5` — architectural / greenfield work (e.g. a new simulator
      adapter).
+4. **Priority** (`priority:P1`/`priority:P2`/`priority:P3`, exactly one on
+   non-epic issues; epics carry none — they aggregate their children):
+   - `priority:P1` — fix first: a regression, or a blocker that invalidates
+     published/benchmark numbers.
+   - `priority:P2` — gates publishing a result or enabling a gated feature
+     (verification runs, congestion-signal work, benchmark realism).
+   - `priority:P3` — valuable but not blocking: bigger bets, realism
+     extensions, mechanical chores.
 
 ## Alternatives considered
 
