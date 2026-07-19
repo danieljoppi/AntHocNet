@@ -457,14 +457,15 @@ void AntRouterLogic::reinforceFromBackAnt(const AntMessage& ant) {
 
 std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incoming,
                                                         NodeAddress prevHop) {
-    // Duplicate / loop detection. A reactive forward ant uses the multipath
-    // acceptance filter (#96, [1] §3.1): a later same-generation ant is
-    // forwarded when both its hops and its travel time are within
-    // antAcceptanceFactor of the best seen, so several good paths get laid down
-    // instead of only the first-arriving one. Every other ant (backward, hello,
-    // linkfail, proactive/repair forward) keeps strict (src,seq) dedup — each of
-    // those must act at most once per generation.
-    if (incoming.isForward() && incoming.type == AntType::Reactive) {
+    // Duplicate / loop detection. With multipath on (#96, [1] §3.1) a reactive
+    // forward ant uses the per-generation acceptance filter: a later
+    // same-generation ant is forwarded when both its hops and its travel time
+    // are within antAcceptanceFactor of the best seen, so several good paths
+    // get laid down instead of only the first-arriving one. Every other ant
+    // (backward, hello, linkfail, proactive/repair forward) — and every ant
+    // when multipath is off — keeps strict (src,seq) dedup.
+    if (config_.enableMultipath && incoming.isForward() &&
+        incoming.type == AntType::Reactive) {
         const auto hops = static_cast<std::uint32_t>(incoming.visited.size());
         Time travel = 0.0;
         for (const AntHop& h : incoming.visited) travel += h.time;

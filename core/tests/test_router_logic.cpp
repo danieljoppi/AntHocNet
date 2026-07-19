@@ -69,11 +69,12 @@ int main() {
         // The previous hop was learned as a neighbour.
         CHECK(router.table().numNeighbors() >= 1u);
 
-        // #96 multipath: a same-generation ant arriving via a much *worse* path
-        // (far outside the 1.5x hop/time band of the best seen) is dropped.
+        // #96 gate off (default): ANY same-generation copy — even one a
+        // multipath filter would admit — is dropped by strict (src,seq) dedup
+        // (pre-#96 single-path setup).
         AntMessage worse = fwd;
-        worse.visited = {{3, 0.0}, {5, 0.05}, {6, 0.05}, {7, 0.05}};  // 4 hops vs 2
-        auto dropped = router.onReceiveAnt(worse, 7);
+        worse.visited = {{3, 0.0}, {5, 0.005}, {6, 0.005}};  // comparable 3-hop path
+        auto dropped = router.onReceiveAnt(worse, 6);
         CHECK_EQ(dropped.size(), static_cast<std::size_t>(1));
         CHECK(dropped[0].action == RouteAction::Drop);
     }
@@ -81,6 +82,7 @@ int main() {
     // --- #96 multipath: a comparable second path of a generation is admitted --
     {
         Config mp = cfg;
+        mp.enableMultipath = true;
         mp.antAcceptanceFactor = 1.5;
         FakeClock clock;
         clock.set(1.0);
@@ -111,6 +113,18 @@ int main() {
         auto second = router.onReceiveAnt(b, 6);
         CHECK_EQ(second.size(), static_cast<std::size_t>(1));
         CHECK(second[0].action == RouteAction::Unicast);  // back ant for path 2
+
+        // A third copy via a much *worse* path (outside the 1.5x hop/time band
+        // of the best seen) is dropped even with multipath on.
+        AntMessage c;
+        c.type = AntType::Reactive;
+        c.src = 3;
+        c.dst = 9;
+        c.seqNum = 42;                       // same generation
+        c.visited = {{3, 0.0}, {5, 0.05}, {6, 0.05}, {7, 0.05}};  // 4 hops vs 2
+        auto dropped = router.onReceiveAnt(c, 7);
+        CHECK_EQ(dropped.size(), static_cast<std::size_t>(1));
+        CHECK(dropped[0].action == RouteAction::Drop);
     }
 
     // --- forward ant in transit with no route: broadcast ------------------

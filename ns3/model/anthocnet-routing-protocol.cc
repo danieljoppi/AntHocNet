@@ -54,6 +54,7 @@ RoutingProtocol::RoutingProtocol()
       m_repairWaitFactor(5.0),
       m_repairTimeout(1.0),
       m_hopTime(0.05),
+      m_enableMultipath(false),
       m_antAcceptanceFactor(1.5),
       m_linkfailNotifyInterval(5.0),
       m_queueTimeout(Seconds(3)),
@@ -149,14 +150,24 @@ TypeId RoutingProtocol::GetTypeId() {
                           DoubleValue(0.05),
                           MakeDoubleAccessor(&RoutingProtocol::m_hopTime),
                           MakeDoubleChecker<double>(0.0))
+            .AddAttribute("EnableMultipath",
+                          "Multipath reactive setup (issue #96, [1] §3.1): admit "
+                          "later same-generation reactive ants through the "
+                          "AntAcceptanceFactor band instead of strict (src,seq) "
+                          "dedup, laying down several good paths. Default off: "
+                          "regresses PDR on the disk-model harness (#96).",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableMultipath),
+                          MakeBooleanChecker())
             .AddAttribute("AntAcceptanceFactor",
-                          "Multipath acceptance factor for reactive setup (issue "
-                          "#96, [1] §3.1, empirically 1.5): a node forwards a "
-                          "later same-generation reactive ant only if both its "
-                          "hops and travel time are within this factor of the "
-                          "best seen, laying down several good paths instead of "
-                          "the first only. Set very high (e.g. 1e9) to disable "
-                          "multipath (single-path setup, pre-#96).",
+                          "Multipath acceptance factor (issue #96, [1] §3.1, "
+                          "empirically 1.5), used only when EnableMultipath is "
+                          "on: a node forwards a later same-generation reactive "
+                          "ant only if both its hops and travel time are within "
+                          "this factor of the best seen. Higher admits MORE "
+                          "copies (more multipath, up to a flood); no value "
+                          "reproduces strict single-path dedup — use "
+                          "EnableMultipath=false for that.",
                           DoubleValue(1.5),
                           MakeDoubleAccessor(&RoutingProtocol::m_antAcceptanceFactor),
                           MakeDoubleChecker<double>(1.0))
@@ -308,6 +319,7 @@ void RoutingProtocol::DoInitialize() {
     m_config.repairWaitFactor = m_repairWaitFactor;
     m_config.repairTimeout = m_repairTimeout;
     m_config.hopTimeSec = m_hopTime;
+    m_config.enableMultipath = m_enableMultipath;
     m_config.antAcceptanceFactor = m_antAcceptanceFactor;
     m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
     m_config.enableMacMetric = m_enableMacMetric;
@@ -371,6 +383,7 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.repairWaitFactor = m_repairWaitFactor;
         m_config.repairTimeout = m_repairTimeout;
         m_config.hopTimeSec = m_hopTime;
+        m_config.enableMultipath = m_enableMultipath;
         m_config.antAcceptanceFactor = m_antAcceptanceFactor;
         m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
         m_config.enableMacMetric = m_enableMacMetric;

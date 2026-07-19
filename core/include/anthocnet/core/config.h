@@ -95,13 +95,21 @@ struct Config {
     /// Max times a reactive forward ant may be (re)broadcast in a region with no
     /// pheromone, so route setup doesn't flood ([1] §3.2).
     int reactiveMaxBroadcasts = 2;
-    /// Multipath acceptance factor ([1] §3.1, "empirically set to 1.5"): when a
-    /// node receives a *later* reactive forward ant of a generation it already
-    /// saw, it forwards it only if both its hop count and its travel time are
-    /// within this factor of the best ant of that generation seen so far. This
-    /// is how AntHocNet lays down *multiple* good paths instead of just the
-    /// first-arriving one. >= a very large value collapses setup to single-path
-    /// (pre-#96 behaviour). Confirm the exact value vs the thesis (#96).
+    /// Multipath reactive setup ([1] §3.1, issue #96): when on, a *later*
+    /// reactive forward ant of an already-seen generation is forwarded if it
+    /// passes the antAcceptanceFactor band below, laying down *multiple* good
+    /// paths. When off (default), every ant type uses strict (src,seq) dedup —
+    /// only the first-arriving copy propagates (single-path setup). Default off:
+    /// validation on the ns-3 disk-model harness showed multipath regresses PDR
+    /// there (control-traffic contention + linkfail churn; #96 data).
+    bool enableMultipath = false;
+    /// Multipath acceptance factor ([1] §3.1, "empirically set to 1.5"), used
+    /// only when enableMultipath is on: a later same-generation reactive
+    /// forward ant is forwarded only if both its hop count and its travel time
+    /// are within this factor of the best ant of that generation seen so far.
+    /// *Higher* admits *more* copies (more multipath, up to a flood); 1.0 still
+    /// admits equal-metric copies, so no factor value reproduces strict
+    /// single-path dedup — that is what enableMultipath=false is for.
     double antAcceptanceFactor = 1.5;
     /// Max times a proactive forward ant may be (re)broadcast — covering both the
     /// per-hop exploratory broadcast ([1] §3.3) and a route gap en route. Proactive
