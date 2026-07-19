@@ -54,6 +54,8 @@ RoutingProtocol::RoutingProtocol()
       m_repairWaitFactor(5.0),
       m_repairTimeout(1.0),
       m_hopTime(0.05),
+      m_enableMultipath(true),
+      m_antAcceptanceFactor(1.5),
       m_linkfailNotifyInterval(5.0),
       m_queueTimeout(Seconds(3)),
       m_reactiveRetryInterval(Seconds(0.25)),
@@ -148,6 +150,28 @@ TypeId RoutingProtocol::GetTypeId() {
                           DoubleValue(0.05),
                           MakeDoubleAccessor(&RoutingProtocol::m_hopTime),
                           MakeDoubleChecker<double>(0.0))
+            .AddAttribute("EnableMultipath",
+                          "Multipath reactive setup (issue #96, [1] §3.1): admit "
+                          "later same-generation reactive ants through the "
+                          "AntAcceptanceFactor band instead of strict (src,seq) "
+                          "dedup, laying down several good paths, and absorb "
+                          "LinkFails while a usable alternate hop survives. "
+                          "false = pre-#96 single-path setup.",
+                          BooleanValue(true),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableMultipath),
+                          MakeBooleanChecker())
+            .AddAttribute("AntAcceptanceFactor",
+                          "Multipath acceptance factor (issue #96, [1] §3.1, "
+                          "empirically 1.5), used only when EnableMultipath is "
+                          "on: a node forwards a later same-generation reactive "
+                          "ant only if both its hops and travel time are within "
+                          "this factor of the best seen. Higher admits MORE "
+                          "copies (more multipath, up to a flood); no value "
+                          "reproduces strict single-path dedup — use "
+                          "EnableMultipath=false for that.",
+                          DoubleValue(1.5),
+                          MakeDoubleAccessor(&RoutingProtocol::m_antAcceptanceFactor),
+                          MakeDoubleChecker<double>(1.0))
             .AddAttribute("LinkfailNotifyInterval",
                           "Minimum spacing (s) between LinkFail notifications "
                           "originated about the same destination (issue #20); "
@@ -296,6 +320,8 @@ void RoutingProtocol::DoInitialize() {
     m_config.repairWaitFactor = m_repairWaitFactor;
     m_config.repairTimeout = m_repairTimeout;
     m_config.hopTimeSec = m_hopTime;
+    m_config.enableMultipath = m_enableMultipath;
+    m_config.antAcceptanceFactor = m_antAcceptanceFactor;
     m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
     m_config.enableMacMetric = m_enableMacMetric;
     m_queue.SetTimeout(m_queueTimeout);  // attribute lands after construction (#21)
@@ -358,6 +384,8 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.repairWaitFactor = m_repairWaitFactor;
         m_config.repairTimeout = m_repairTimeout;
         m_config.hopTimeSec = m_hopTime;
+        m_config.enableMultipath = m_enableMultipath;
+        m_config.antAcceptanceFactor = m_antAcceptanceFactor;
         m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
         m_config.enableMacMetric = m_enableMacMetric;
         m_logic.reset(new ::anthocnet::core::AntRouterLogic(

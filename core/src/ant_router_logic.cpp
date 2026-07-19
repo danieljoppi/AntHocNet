@@ -15,7 +15,8 @@ AntRouterLogic::AntRouterLogic(NodeAddress address, const Config& config, IClock
       engine_(config_),
       metric_(metric ? metric : &defaultMetric_),
       linkState_(linkState),
-      history_(config_.maxHistory) {}
+      history_(config_.maxHistory),
+      genQuality_(config_.maxHistory) {}
 
 // --- neighbour learning -----------------------------------------------------
 
@@ -148,6 +149,16 @@ std::vector<RouteDecision> AntRouterLogic::reportNeighborLoss(NodeAddress n) {
     for (const auto& pr : affected) {
         const double after = table_.bestRegular(pr.first);
         if (after >= pr.second) continue;  // no ground lost
+        // Multipath churn bound (#96 option 1): with multipath on, losing the
+        // best hop while a usable alternate next-hop survives is the expected
+        // case — data keeps flowing over the alternate, so don't turn every
+        // such break into a LinkFail flood (the #96 runs showed 2-3x linkfail
+        // volume eating the PDR). Only a destination left with NO usable path
+        // is advertised. Single-path (gate off) keeps the pre-#96 behaviour.
+        if (config_.enableMultipath && after > config_.minPheromone) {
+            ++linkfailOriginsSuppressed_;
+            continue;
+        }
         // Origin cooldown (issue #20): under link flapping, re-advertising the
         // same destination every evict/re-learn cycle is what turns breaks into
         // a notification storm; neighbours already applied the first note.
@@ -246,7 +257,14 @@ std::vector<RouteDecision> AntRouterLogic::handleLinkFail(const AntMessage& note
         }
 
         const double after = table_.bestRegular(d);
-        if (viaReporter && after < before) prop.helloDests.push_back({d, after});
+        if (viaReporter && after < before) {
+            // Multipath churn bound (#96 option 1), mirroring the origin side:
+            // if a usable alternate next-hop survives here, absorb the note
+            // instead of re-flooding it — the pheromone update above already
+            // happened, and data still has a path through this node.
+            if (config_.enableMultipath && after > config_.minPheromone) continue;
+            prop.helloDests.push_back({d, after});
+        }
     }
     if (prop.helloDests.empty()) return {};  // absorbed: our best path is intact
 
@@ -456,8 +474,23 @@ void AntRouterLogic::reinforceFromBackAnt(const AntMessage& ant) {
 
 std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incoming,
                                                         NodeAddress prevHop) {
-    // (src, seq) duplicate / loop detection.
-    if (!history_.record(incoming.src, incoming.seqNum)) {
+    // Duplicate / loop detection. With multipath on (#96, [1] §3.1) a reactive
+    // forward ant uses the per-generation acceptance filter: a later
+    // same-generation ant is forwarded when both its hops and its travel time
+    // are within antAcceptanceFactor of the best seen, so several good paths
+    // get laid down instead of only the first-arriving one. Every other ant
+    // (backward, hello, linkfail, proactive/repair forward) — and every ant
+    // when multipath is off — keeps strict (src,seq) dedup.
+    if (config_.enableMultipath && incoming.isForward() &&
+        incoming.type == AntType::Reactive) {
+        const auto hops = static_cast<std::uint32_t>(incoming.visited.size());
+        Time travel = 0.0;
+        for (const AntHop& h : incoming.visited) travel += h.time;
+        if (!genQuality_.accept(incoming.src, incoming.seqNum, hops, travel,
+                                config_.antAcceptanceFactor)) {
+            return {RouteDecision::drop()};
+        }
+    } else if (!history_.record(incoming.src, incoming.seqNum)) {
         return {RouteDecision::drop()};
     }
 

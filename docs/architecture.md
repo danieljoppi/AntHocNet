@@ -71,7 +71,13 @@ The adapters implement these so the core stays I/O-free:
 
 ```
 incoming ant  ->  AntRouterLogic::onReceiveAnt(msg, prevHop)
-                    - (src,seq) dedup  -> Drop on duplicate
+                    - reactive forward ant (enableMultipath, default on): per-
+                      generation acceptance band ([1] §3.1, #96) — a later
+                      (src,seq) copy within antAcceptanceFactor (1.5) of the
+                      best seen on BOTH hops and travel time is admitted, so
+                      several good paths get laid down; all other ants (and
+                      everything when the gate is off): strict (src,seq)
+                      dedup -> Drop on duplicate
                     - learn prevHop as neighbour
                     - hello: update virtual table, consume
                     - forward ant: stamp self; if dst==self spawn back ant;

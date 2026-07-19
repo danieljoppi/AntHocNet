@@ -388,5 +388,69 @@ int main() {
         CHECK_EQ(router0.linkfailOriginsSuppressed(), static_cast<std::uint64_t>(0));
     }
 
+    // 15. #96 multipath churn bound: with multipath on, losing the best hop
+    //     while a usable alternate next-hop survives originates NO LinkFail
+    //     (the alternate carries the data); losing the last path still does.
+    //     A received LinkFail is likewise absorbed, not re-flooded, when an
+    //     alternate survives. Gate off keeps the pre-#96 notifications.
+    {
+        Config mp = cfg;
+        mp.enableMultipath = true;
+        auto hasLinkFail = [](const std::vector<RouteDecision>& decs) {
+            for (const RouteDecision& d : decs) {
+                if (d.action == RouteAction::Broadcast &&
+                    d.message.type == AntType::LinkFail) return true;
+            }
+            return false;
+        };
+
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        AntRouterLogic router(/*addr*/ 0, mp, clock, rng);
+        router.table().setPheromoneRegular(9, 5, 0.8);  // best path via 5
+        router.table().setPheromoneRegular(9, 6, 0.5);  // usable alternate via 6
+        CHECK(!hasLinkFail(router.reportNeighborLoss(5)));  // alternate -> suppressed
+        CHECK_EQ(router.linkfailOriginsSuppressed(), static_cast<std::uint64_t>(1));
+
+        clock.advance(mp.linkfailNotifyInterval + 0.1);  // outside the #20 cooldown
+        CHECK(hasLinkFail(router.reportNeighborLoss(6)));   // last path -> notify
+
+        // Gate off, same topology: losing the best hop notifies (pre-#96).
+        Config sp = cfg;
+        sp.enableMultipath = false;
+        FakeClock clockOff;
+        ScriptedRng rngOff({0.5});
+        AntRouterLogic routerOff(/*addr*/ 0, sp, clockOff, rngOff);
+        routerOff.table().setPheromoneRegular(9, 5, 0.8);
+        routerOff.table().setPheromoneRegular(9, 6, 0.5);
+        CHECK(hasLinkFail(routerOff.reportNeighborLoss(5)));
+
+        // Propagation side: a LinkFail that degrades our best but leaves a
+        // usable alternate is applied yet absorbed with multipath on.
+        FakeClock clockP;
+        ScriptedRng rngP({0.5});
+        AntRouterLogic routerP(/*addr*/ 0, mp, clockP, rngP);
+        routerP.table().setPheromoneRegular(9, 5, 0.8);  // best via reporter 5
+        routerP.table().setPheromoneRegular(9, 6, 0.5);  // alternate via 6
+
+        AntMessage note;
+        note.type = AntType::LinkFail;
+        note.direction = AntDirection::Up;
+        note.src = 5;
+        note.seqNum = 1;
+        note.broadcastBudget = 2;
+        note.helloDests = {{9, 0.0}};
+        auto decs = routerP.onReceiveAnt(note, /*prevHop*/ 5);
+        CHECK(!hasLinkFail(decs));  // absorbed: 6 still carries the data
+        CHECK_NEAR(routerP.table().getPheromoneRegular(9, 5), 0.0, 1e-12);  // applied
+
+        // Losing the alternate too (a second note, now the last path) re-floods.
+        AntMessage note2 = note;
+        note2.src = 6;
+        note2.seqNum = 2;
+        auto decs2 = routerP.onReceiveAnt(note2, /*prevHop*/ 6);
+        CHECK(hasLinkFail(decs2));
+    }
+
     return RUN_TESTS();
 }

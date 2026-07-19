@@ -181,6 +181,7 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 | Forward / backward / hello / repair ant | path collector / pheromone depositor / neighbour-discovery + gossip / link-failure local search. |
 | Neighbour liveness | a neighbour is "gone" via either missed hellos (core timer, primary) or a failed unicast (MAC signal, fast-path); both call `loseNeighbor`. `INeighborProvider` is advisory, never authoritative for removal (ADR-0008). |
 | Stochastic data routing | data is forwarded by a per-packet pheromone-weighted draw, **excluding the prev hop** (loop safety; only-option fallback). Per-flow stickiness (a bounded `(src,dst)→hop` cache) is config-gated, default off (ADR-0010). |
+| Multipath reactive setup | a later reactive forward ant of an already-seen `(src,seq)` generation is still forwarded when both its hops and travel time are within `antAcceptanceFactor` (1.5) of the generation's best, laying down several good paths ([1] §3.1). Requires its **linkfail churn bound**: losing a best hop that leaves a usable alternate is absorbed, not flooded — without it multipath *regressed* PDR on the ns-3 disk-model harness. Config-gated (`enableMultipath`, default on; #96). |
 | `NodeAddress` | core address type (`int32_t`), = a node's primary interface IP, treated opaquely; `kInvalidAddress` = -1 = "no route / no specific next hop". Broadcast is a `RouteAction`, **never** a `NodeAddress` (ADR-0011). |
 
 ## 10. Open questions for future work

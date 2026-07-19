@@ -221,6 +221,8 @@ private:
     double m_repairWaitFactor;
     double m_repairTimeout;
     double m_hopTime;                 ///< T_hop unloaded-hop reference (s), #88
+    bool m_enableMultipath;           ///< multipath reactive setup gate, #96
+    double m_antAcceptanceFactor;     ///< multipath 1.5x acceptance factor, #96
     double m_linkfailNotifyInterval;  ///< issue #20 origin cooldown (s), 0 = off
     Time m_queueTimeout;              ///< issue #21 pending-queue hold before drop
     Time m_reactiveRetryInterval;     ///< issue #21 timer-driven re-discovery cadence (0 = off)
