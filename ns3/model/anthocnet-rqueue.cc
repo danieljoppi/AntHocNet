@@ -10,6 +10,10 @@ namespace anthocnet {
 
 bool RequestQueue::Enqueue(QueueEntry& entry) {
     Purge();
+    // Preserve the first-enqueue timestamp across re-queues (FlushQueue puts an
+    // entry back when its route vanishes again) so the #21 hold time measures
+    // the whole wait, not just the last leg.
+    if (entry.enqueueFirst.IsZero()) entry.enqueueFirst = Simulator::Now();
     entry.expire = Simulator::Now() + m_timeout;
     if (m_queue.size() >= m_maxLen) {
         // Drop the oldest to make room.
@@ -40,11 +44,26 @@ void RequestQueue::Purge() {
     for (QueueEntry& e : m_queue) {
         if (e.expire > now) {
             kept.push_back(e);
-        } else if (!e.ecb.IsNull()) {
-            e.ecb(e.packet, e.header, Socket::ERROR_NOROUTETOHOST);
+        } else {
+            // Aged out at QueueTimeout (#21): attribute the lost hold to its
+            // reason before firing the error callback.
+            const uint8_t r = e.holdReason < kHoldReasons ? e.holdReason : HOLD_SETUP;
+            m_stats.droppedCount[r] += 1;
+            m_stats.droppedSumS[r] += (now - e.enqueueFirst).GetSeconds();
+            if (!e.ecb.IsNull()) {
+                e.ecb(e.packet, e.header, Socket::ERROR_NOROUTETOHOST);
+            }
         }
     }
     m_queue.swap(kept);
+}
+
+void RequestQueue::NoteDelivered(const QueueEntry& e) {
+    const uint8_t r = e.holdReason < kHoldReasons ? e.holdReason : HOLD_SETUP;
+    const double hold = (Simulator::Now() - e.enqueueFirst).GetSeconds();
+    m_stats.deliveredCount[r] += 1;
+    m_stats.deliveredSumS[r] += hold;
+    if (hold > m_stats.deliveredMaxS[r]) m_stats.deliveredMaxS[r] = hold;
 }
 
 uint32_t RequestQueue::Size() {
