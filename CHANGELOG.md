@@ -33,6 +33,20 @@ adapters, the benchmark harness, and reproducible CI/packaging.
 [Unreleased]: https://github.com/danieljoppi/AntHocNet/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/danieljoppi/AntHocNet/releases/tag/v0.1.0
 
+## v0.4.0 (2026-07-19)
+
+### Feat
+
+- paper-parity QoS metrics, across-run dispersion, and the provisional thesis preset (#90)
+- measured A2 MAC metric (ns-3 + ns-2) + blocking benchmark anchors (#87)
+- **release**: release-pinned + :latest image tags, mirrored to Docker Hub (#77) (#79)
+
+### Fix
+
+- **ns3**: cut the delay tail via a measured 3 s pending-queue hold (#21) (#86)
+- **core**: bound the LinkFail origin storm + honest convergence metric (#20, #23) (#85)
+- **bench**: pin the paper's 2 Mbit/s radio — ns-3 default rate control halves single-hop PDR (#51) (#84)
+
 ## v0.3.0 (2026-07-06)
 
 ### Feat
