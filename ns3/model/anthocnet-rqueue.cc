@@ -58,6 +58,18 @@ void RequestQueue::Purge() {
     m_queue.swap(kept);
 }
 
+std::vector<Ipv4Address> RequestQueue::PendingDestinations() {
+    Purge();
+    std::vector<Ipv4Address> dests;
+    for (const QueueEntry& e : m_queue) {
+        const Ipv4Address d = Dst(e);
+        if (std::find(dests.begin(), dests.end(), d) == dests.end()) {
+            dests.push_back(d);
+        }
+    }
+    return dests;
+}
+
 void RequestQueue::NoteDelivered(const QueueEntry& e) {
     const uint8_t r = e.holdReason < kHoldReasons ? e.holdReason : HOLD_SETUP;
     const double hold = (Simulator::Now() - e.enqueueFirst).GetSeconds();

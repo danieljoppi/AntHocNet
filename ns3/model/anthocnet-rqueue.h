@@ -77,6 +77,11 @@ public:
 
     uint32_t Size();
 
+    /// Distinct destinations with at least one packet still waiting (issue #21:
+    /// the reactive-retry timer re-floods discovery only for these). Purges
+    /// expired entries first, so an aged-out destination is not retried.
+    std::vector<Ipv4Address> PendingDestinations();
+
     /// Record a packet leaving the queue by *delivery* (the adapter forwarded
     /// it once a route appeared): attributes its total hold time to its reason
     /// (issue #21). Call once per packet, just before invoking its ucb.

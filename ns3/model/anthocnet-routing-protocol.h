@@ -164,6 +164,13 @@ private:
     // timers
     void HelloTimerExpire();
     void ProactiveTimerExpire();
+    /// Issue #21: re-flood a reactive forward ant for every destination with
+    /// data still waiting in the pending queue but no route. onDataPacket only
+    /// retries when a data packet arrives (~1 pkt/s at paper CBR), so a lost
+    /// first re-discovery attempt otherwise waits a full second; this timer
+    /// retries at a sub-second cadence, shortening the reconvergence hold that
+    /// dominates the delay/jitter tail.
+    void ReactiveRetryTimerExpire();
 
     // ADR-0008 detector D: MAC transmit-failure hook. The WifiMac "DroppedMpdu"
     // trace fires when a unicast frame is dropped after exhausting retries; we
@@ -196,6 +203,7 @@ private:
 
     Timer m_helloTimer;
     Timer m_proactiveTimer;
+    Timer m_reactiveRetryTimer;  ///< issue #21: re-flood discovery for held data
 
     // attribute-backed parameters
     Time m_helloInterval;
@@ -215,6 +223,7 @@ private:
     double m_hopTime;                 ///< T_hop unloaded-hop reference (s), #88
     double m_linkfailNotifyInterval;  ///< issue #20 origin cooldown (s), 0 = off
     Time m_queueTimeout;              ///< issue #21 pending-queue hold before drop
+    Time m_reactiveRetryInterval;     ///< issue #21 timer-driven re-discovery cadence (0 = off)
     // Issue #68: measured per-packet MAC service time (EWMA of inter-ack
     // spacing while the MAC queue stays backlogged — pure service time, no
     // queue wait, so (Q+1)*T̂_mac does not double-count congestion).

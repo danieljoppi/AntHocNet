@@ -56,6 +56,7 @@ RoutingProtocol::RoutingProtocol()
       m_hopTime(0.05),
       m_linkfailNotifyInterval(5.0),
       m_queueTimeout(Seconds(3)),
+      m_reactiveRetryInterval(Seconds(0.25)),
       m_macServiceAlpha(0.7),
       m_lastAckTime(Seconds(0)),
       m_enableMacMetric(false) {}
@@ -162,6 +163,19 @@ TypeId RoutingProtocol::GetTypeId() {
                           "-2.4 pp PDR, still above AODV).",
                           TimeValue(Seconds(3)),
                           MakeTimeAccessor(&RoutingProtocol::m_queueTimeout),
+                          MakeTimeChecker())
+            .AddAttribute("ReactiveRetryInterval",
+                          "How often to re-flood a reactive forward ant for "
+                          "destinations that still have data waiting in the "
+                          "pending queue but no route (issue #21). The core's "
+                          "data-driven retry only fires when a data packet "
+                          "arrives (~1 pkt/s at paper CBR), so a lost first "
+                          "re-discovery attempt otherwise waits a full second — "
+                          "the reconvergence hold that dominates the delay/jitter "
+                          "tail. This timer retries independently; 0 disables it "
+                          "(pre-#21 behaviour).",
+                          TimeValue(Seconds(0.25)),
+                          MakeTimeAccessor(&RoutingProtocol::m_reactiveRetryInterval),
                           MakeTimeChecker())
             .AddAttribute("MacServiceAlpha",
                           "EWMA weight of the previous estimate when smoothing "
@@ -310,6 +324,14 @@ void RoutingProtocol::Start() {
     m_proactiveTimer.SetFunction(&RoutingProtocol::ProactiveTimerExpire, this);
     m_helloTimer.Schedule(m_helloInterval);
     m_proactiveTimer.Schedule(m_proactiveInterval);
+
+    // Issue #21: drive re-discovery for held data at a sub-second cadence
+    // (0 disables). Off the data-packet path, so a broken route re-forms
+    // without waiting for the next CBR packet to trigger the retry.
+    if (m_reactiveRetryInterval.IsStrictlyPositive()) {
+        m_reactiveRetryTimer.SetFunction(&RoutingProtocol::ReactiveRetryTimerExpire, this);
+        m_reactiveRetryTimer.Schedule(m_reactiveRetryInterval);
+    }
 }
 
 // --- interface notifications ------------------------------------------------
@@ -665,6 +687,34 @@ void RoutingProtocol::ProactiveTimerExpire() {
         }
     }
     m_proactiveTimer.Schedule(m_proactiveInterval);
+}
+
+void RoutingProtocol::ReactiveRetryTimerExpire() {
+    // Issue #21: the reconvergence hold — data waiting for a broken route to
+    // re-form — dominates the delay/jitter tail. The core only re-emits a
+    // reactive ant when a data packet arrives (~1 pkt/s at paper CBR), so a
+    // lost first attempt waits a full second. Re-flood discovery here, off the
+    // data path, for every destination still holding data with no route. Bounded
+    // by the pending queue: once a route forms the packets flush and the
+    // destination stops being retried; unreachable destinations age out at
+    // QueueTimeout. Mirrors the core's own reactive emission (createForwardAnt +
+    // Broadcast), so the ant is the same bounded expanding-ring flood.
+    if (m_logic) {
+        for (Ipv4Address dst : m_queue.PendingDestinations()) {
+            const NodeAddress coreDst = ToCore(dst);
+            if (m_logic->nextHopForData(coreDst) == kInvalidAddress) {
+                AntMessage refa = m_logic->createForwardAnt(AntType::Reactive, coreDst);
+                SendAnt(refa, Ipv4Address("255.255.255.255"));
+                // This emission bypasses the core's sendAnt (which fires the
+                // observer), so surface it on the Tx trace ourselves to keep the
+                // --diag antTx[reactive] tally honest. NRL is counted at the IP
+                // layer, so the flood already shows there.
+                onAntSent(AntType::Reactive, ::anthocnet::core::AntDirection::Up,
+                          /*broadcast=*/true);
+            }
+        }
+    }
+    m_reactiveRetryTimer.Schedule(m_reactiveRetryInterval);
 }
 
 // --- MAC transmit-failure hook (ADR-0008 detector D) ------------------------
