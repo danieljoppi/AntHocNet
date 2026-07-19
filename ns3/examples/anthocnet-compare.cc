@@ -535,7 +535,9 @@ int main(int argc, char* argv[]) {
     std::string protocols = "anthocnet,aodv,olsr,dsdv";
 
     CommandLine cmd(__FILE__);
-    cmd.AddValue("scenario", "Preset: 'paper' for the AntHocNet base scenario", scenario);
+    cmd.AddValue("scenario", "Preset: 'paper' (Broch/CMU calibration field) or "
+                             "'thesis' (the AntHocNet papers' own evaluation "
+                             "field, provisional values — #58)", scenario);
     cmd.AddValue("nNodes", "Number of nodes", nNodes);
     cmd.AddValue("time", "Simulation time (s)", simTime);
     cmd.AddValue("area", "Square area side (m); shorthand for areaX=areaY", area);
@@ -565,12 +567,23 @@ int main(int argc, char* argv[]) {
     cmd.Parse(argc, argv);
     if (runs < 1) runs = 1;
 
-    const bool paper = (scenario == "paper");
+    // 'paper' = the Broch/CMU MobiCom'98 field (the literature *calibration*
+    // anchor, #24). 'thesis' = the AntHocNet papers' own evaluation field
+    // (ETT 2005 / Ducatelle PhD 2007): 100 nodes on 3000x1000 m, otherwise the
+    // same radio/traffic/mobility regime. Fidelity claims run on 'thesis',
+    // calibration on 'paper'. VALUES ARE PROVISIONAL (#58): reconstructed from
+    // secondary knowledge because the primary PDFs are network-blocked here —
+    // verify against the thesis parameter table before publishing.
+    const bool thesis = (scenario == "thesis");
+    const bool paper = (scenario == "paper") || thesis;
     Params P;
-    P.nNodes  = nNodes > 0 ? static_cast<uint32_t>(nNodes) : (paper ? 50 : 20);
+    P.nNodes  = nNodes > 0 ? static_cast<uint32_t>(nNodes)
+                           : (thesis ? 100 : paper ? 50 : 20);
     P.simTime = simTime >= 0 ? simTime : (paper ? 900.0 : 40.0);
-    P.areaX   = areaX >= 0 ? areaX : (area >= 0 ? area : (paper ? 1500.0 : 300.0));
-    P.areaY   = areaY >= 0 ? areaY : (area >= 0 ? area : (paper ? 300.0 : 300.0));
+    P.areaX   = areaX >= 0 ? areaX
+                           : (area >= 0 ? area : (thesis ? 3000.0 : paper ? 1500.0 : 300.0));
+    P.areaY   = areaY >= 0 ? areaY
+                           : (area >= 0 ? area : (thesis ? 1000.0 : paper ? 300.0 : 300.0));
     P.speed   = speed >= 0 ? speed : (paper ? 20.0 : 5.0);
     P.pause   = pause >= 0 ? pause : (paper ? 30.0 : 1.0);
     P.range   = range >= 0 ? range : (paper ? 300.0 : 0.0);
