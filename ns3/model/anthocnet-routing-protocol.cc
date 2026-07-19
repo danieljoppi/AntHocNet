@@ -54,7 +54,7 @@ RoutingProtocol::RoutingProtocol()
       m_repairWaitFactor(5.0),
       m_repairTimeout(1.0),
       m_hopTime(0.05),
-      m_enableMultipath(false),
+      m_enableMultipath(true),
       m_antAcceptanceFactor(1.5),
       m_linkfailNotifyInterval(5.0),
       m_queueTimeout(Seconds(3)),
@@ -154,9 +154,10 @@ TypeId RoutingProtocol::GetTypeId() {
                           "Multipath reactive setup (issue #96, [1] §3.1): admit "
                           "later same-generation reactive ants through the "
                           "AntAcceptanceFactor band instead of strict (src,seq) "
-                          "dedup, laying down several good paths. Default off: "
-                          "regresses PDR on the disk-model harness (#96).",
-                          BooleanValue(false),
+                          "dedup, laying down several good paths, and absorb "
+                          "LinkFails while a usable alternate hop survives. "
+                          "false = pre-#96 single-path setup.",
+                          BooleanValue(true),
                           MakeBooleanAccessor(&RoutingProtocol::m_enableMultipath),
                           MakeBooleanChecker())
             .AddAttribute("AntAcceptanceFactor",

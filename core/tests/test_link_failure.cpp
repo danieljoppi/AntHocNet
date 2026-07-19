@@ -416,9 +416,11 @@ int main() {
         CHECK(hasLinkFail(router.reportNeighborLoss(6)));   // last path -> notify
 
         // Gate off, same topology: losing the best hop notifies (pre-#96).
+        Config sp = cfg;
+        sp.enableMultipath = false;
         FakeClock clockOff;
         ScriptedRng rngOff({0.5});
-        AntRouterLogic routerOff(/*addr*/ 0, cfg, clockOff, rngOff);
+        AntRouterLogic routerOff(/*addr*/ 0, sp, clockOff, rngOff);
         routerOff.table().setPheromoneRegular(9, 5, 0.8);
         routerOff.table().setPheromoneRegular(9, 6, 0.5);
         CHECK(hasLinkFail(routerOff.reportNeighborLoss(5)));

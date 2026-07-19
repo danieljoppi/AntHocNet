@@ -41,10 +41,12 @@ int main() {
 
     // --- forward ant reaches its destination: spawn backward ant ----------
     {
+        Config sp = cfg;
+        sp.enableMultipath = false;  // #96 gate off: single-path setup
         FakeClock clock;
         clock.set(1.0);
         ScriptedRng rng({0.5});
-        AntRouterLogic router(/*addr*/ 9, cfg, clock, rng);
+        AntRouterLogic router(/*addr*/ 9, sp, clock, rng);
 
         AntMessage fwd;
         fwd.type = AntType::Reactive;
@@ -69,8 +71,8 @@ int main() {
         // The previous hop was learned as a neighbour.
         CHECK(router.table().numNeighbors() >= 1u);
 
-        // #96 gate off (default): ANY same-generation copy — even one a
-        // multipath filter would admit — is dropped by strict (src,seq) dedup
+        // #96 gate off: ANY same-generation copy — even one the multipath
+        // filter would admit — is dropped by strict (src,seq) dedup
         // (pre-#96 single-path setup).
         AntMessage worse = fwd;
         worse.visited = {{3, 0.0}, {5, 0.005}, {6, 0.005}};  // comparable 3-hop path

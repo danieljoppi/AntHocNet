@@ -98,11 +98,14 @@ struct Config {
     /// Multipath reactive setup ([1] §3.1, issue #96): when on, a *later*
     /// reactive forward ant of an already-seen generation is forwarded if it
     /// passes the antAcceptanceFactor band below, laying down *multiple* good
-    /// paths. When off (default), every ant type uses strict (src,seq) dedup —
-    /// only the first-arriving copy propagates (single-path setup). Default off:
-    /// validation on the ns-3 disk-model harness showed multipath regresses PDR
-    /// there (control-traffic contention + linkfail churn; #96 data).
-    bool enableMultipath = false;
+    /// paths — and losing a best hop that leaves a usable alternate is absorbed
+    /// instead of flooding a LinkFail (the churn bound; without it multipath
+    /// regressed PDR on the ns-3 disk-model harness, #96 round 1). When off,
+    /// every ant type uses strict (src,seq) dedup — only the first-arriving
+    /// copy propagates (single-path setup). Default on: with the churn bound,
+    /// multipath beat single-path on every headline metric in the paper regime
+    /// (PDR 92.3 vs 89.4, delay/jitter/NRL all no worse; #96 round 2).
+    bool enableMultipath = true;
     /// Multipath acceptance factor ([1] §3.1, "empirically set to 1.5"), used
     /// only when enableMultipath is on: a later same-generation reactive
     /// forward ant is forwarded only if both its hop count and its travel time
