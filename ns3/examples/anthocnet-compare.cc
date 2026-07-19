@@ -695,8 +695,9 @@ int main(int argc, char* argv[]) {
               << std::right << std::setw(8) << "PDR%" << std::setw(11) << "delay(ms)"
               << std::setw(13) << "delay99(ms)" << std::setw(13) << "thrput(kbps)"
               << std::setw(8) << "NRL"
-              << std::setw(12) << "jitter(ms)" << std::setw(12) << "dOff90(ms)" << "\n";
-    std::cout << std::string(89, '-') << "\n";
+              << std::setw(12) << "jitter(ms)" << std::setw(12) << "dOff50(ms)"
+              << std::setw(12) << "dOff90(ms)" << "\n";
+    std::cout << std::string(101, '-') << "\n";
     for (std::size_t i = 0; i < list.size(); ++i) {
         std::cout << std::left << std::setw(12) << list[i] << std::right << std::fixed
                   << std::setw(8) << std::setprecision(1) << agg[i].pdr
@@ -705,8 +706,10 @@ int main(int argc, char* argv[]) {
                   << std::setw(13) << std::setprecision(2) << agg[i].thrput
                   << std::setw(8) << std::setprecision(2) << agg[i].nrl
                   << std::setw(12) << std::setprecision(2) << agg[i].jitter;
-        if (agg[i].dOff90 < 0) std::cout << std::setw(12) << "inf";
-        else std::cout << std::setw(12) << std::setprecision(1) << agg[i].dOff90;
+        for (double v : {agg[i].dOff50, agg[i].dOff90}) {
+            if (v < 0) std::cout << std::setw(12) << "inf";
+            else std::cout << std::setw(12) << std::setprecision(1) << v;
+        }
         std::cout << "\n";
     }
     // #28 dispersion: '# ' prefix keeps these out of the CSV/##BENCH## paths.
