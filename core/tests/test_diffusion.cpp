@@ -108,5 +108,34 @@ int main() {
         CHECK_EQ(router.selectNextHop(99, /*proactive=*/true), kInvalidAddress);
     }
 
+    // 6. Advert slots over maxAdverts are filled deterministically: active
+    //    sessions first, the remainder by best pheromone — never a coin flip
+    //    (issue #26, item 6.5).
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        Config cfg;
+        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+        router.table().setPheromoneRegular(/*dest*/ 10, /*neighbor*/ 1, 0.2);
+        router.table().setPheromoneRegular(/*dest*/ 11, /*neighbor*/ 1, 0.9);
+        router.table().setPheromoneRegular(/*dest*/ 12, /*neighbor*/ 1, 0.5);
+
+        // No active session: the two strongest destinations win the slots.
+        AntMessage hello = router.createHelloAnt(/*maxAdverts*/ 2);
+        CHECK_EQ(hello.helloDests.size(), static_cast<std::size_t>(2));
+        CHECK_NEAR(advertFor(hello, 11), 0.9, 1e-12);
+        CHECK_NEAR(advertFor(hello, 12), 0.5, 1e-12);
+        CHECK(advertFor(hello, 10) < 0.0);
+
+        // The weakest destination becomes an active session: it takes a slot
+        // ahead of stronger, inactive ones.
+        router.noteDataSession(10);
+        hello = router.createHelloAnt(/*maxAdverts*/ 2);
+        CHECK_EQ(hello.helloDests.size(), static_cast<std::size_t>(2));
+        CHECK_NEAR(advertFor(hello, 10), 0.2, 1e-12);
+        CHECK_NEAR(advertFor(hello, 11), 0.9, 1e-12);
+        CHECK(advertFor(hello, 12) < 0.0);
+    }
+
     return RUN_TESTS();
 }
