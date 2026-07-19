@@ -118,6 +118,7 @@ results.
 | You want to… | Go to |
 |--------------|-------|
 | Understand the design & decision flow | `docs/architecture.md` |
+| Check a claim/parameter against the papers | `docs/publications/` (digests of [1] + thesis status) |
 | Understand a structural decision / its "why" | `docs/adr/` |
 | **Pick up open work** | GitHub issues (epics #26–#31; start with `priority:P1`) |
 | Record a bug / finding, or hand off across sessions | [ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md) (always open/update an issue) + [`docs/handoffs/`](docs/handoffs/) |
