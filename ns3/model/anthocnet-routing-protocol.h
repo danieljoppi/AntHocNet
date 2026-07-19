@@ -32,6 +32,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 
 #include "anthocnet/core/ant_router_logic.h"
 #include "anthocnet/core/config.h"
@@ -113,6 +114,12 @@ public:
     uint64_t LinkfailOriginsSuppressed() const {
         return m_logic ? m_logic->linkfailOriginsSuppressed() : 0;
     }
+
+    /// Issue #21 hold-time attribution: per-reason (setup / reconvergence /
+    /// repair) pending-queue hold-time stats accumulated over the run, read by
+    /// the comparison harness under --diag to locate the delay tail's dominant
+    /// hold path.
+    const HoldStats& HoldTimeStats() const { return m_queue.Stats(); }
 
 protected:
     void DoInitialize() override;
@@ -226,6 +233,12 @@ private:
     // a MAC-dropped data packet it only sees as a raw MPDU (issue #46).
     UnicastForwardCallback m_cachedUcb;
     ErrorCallback m_cachedEcb;
+
+    // Destinations this node has ever had a usable next hop for (issue #21):
+    // separates a first-time reactive setup (never routed) from a
+    // reconvergence wait (route was known and lost) when a data packet is
+    // deferred, so the hold-time attribution can tell the two apart.
+    std::set<::anthocnet::core::NodeAddress> m_everRouted;
 
     // trace sources (item 15): ant sent/received and route add/remove.
     TracedCallback<uint8_t, uint8_t, bool> m_txAntTrace;

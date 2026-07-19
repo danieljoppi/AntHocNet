@@ -448,6 +448,7 @@ Ptr<Ipv4Route> RoutingProtocol::RouteOutput(Ptr<Packet> p, const Ipv4Header& hea
     m_logic->noteDataSession(ToCore(dst));
     NodeAddress next = m_logic->nextHopForData(ToCore(dst));
     if (next != kInvalidAddress) {
+        m_everRouted.insert(ToCore(dst));  // #21: this dest has been routed
         Ptr<Ipv4Route> route = Create<Ipv4Route>();
         route->SetDestination(dst);
         route->SetGateway(ToIpv4(next));
@@ -498,6 +499,7 @@ bool RoutingProtocol::RouteInput(Ptr<const Packet> p, const Ipv4Header& header,
     // prev hop), so exclusion is NS-2-only for now; NS-3 still relies on TTL.
     NodeAddress next = m_logic->nextHopForData(ToCore(dst));
     if (next != kInvalidAddress) {
+        m_everRouted.insert(ToCore(dst));  // #21: this dest has been routed
         Ptr<Ipv4Route> route = Create<Ipv4Route>();
         route->SetDestination(dst);
         route->SetGateway(ToIpv4(next));
@@ -520,6 +522,11 @@ void RoutingProtocol::DeferredRouteOutput(Ptr<const Packet> p, const Ipv4Header&
     entry.header = header;
     entry.ucb = ucb;
     entry.ecb = ecb;
+    // #21 attribution: a deferred packet is either a first-time reactive setup
+    // (this dest was never routed) or a reconvergence wait (route was known and
+    // lost). NotifyTxError's re-injection path tags its own entries HOLD_REPAIR.
+    entry.holdReason = m_everRouted.count(ToCore(header.GetDestination()))
+                           ? HOLD_RECONV : HOLD_SETUP;
     m_queue.Enqueue(entry);
 
     // Ask the core what to do; it returns Queue + a reactive forward ant.
@@ -614,7 +621,11 @@ void RoutingProtocol::FlushQueue(NodeAddress coreDest) {
         route->SetSource(e.header.GetSource());
         route->SetOutputDevice(m_ipv4->GetNetDevice(
             m_ipv4->GetInterfaceForAddress(m_socketAddresses.begin()->second.GetLocal())));
-        if (!e.ucb.IsNull()) e.ucb(route, e.packet, e.header);
+        if (!e.ucb.IsNull()) {
+            m_everRouted.insert(coreDest);      // #21: this dest has been routed
+            m_queue.NoteDelivered(e);           // #21: attribute this packet's hold
+            e.ucb(route, e.packet, e.header);
+        }
     }
 }
 
@@ -723,6 +734,7 @@ void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI
         entry.header = ipHeader;
         entry.ucb = m_cachedUcb;
         entry.ecb = m_cachedEcb;
+        entry.holdReason = HOLD_REPAIR;  // #21: held during local repair (#46)
         m_queue.Enqueue(entry);
         FlushQueue(dataDest);
     }

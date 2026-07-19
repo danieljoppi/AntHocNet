@@ -500,6 +500,45 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             std::cout << " linkfailProp=" << lfProp
                       << " linkfailBudgetDrop=" << lfBudget
                       << " linkfailOrigSuppressed=" << lfSuppressed;
+
+            // Issue #21: pending-queue hold-time attribution. dOff50 is ~3 ms
+            // (#88) so the delay/jitter gap vs AODV is carried by queue-held
+            // packets; this splits the delivered hold time (and the aged-out
+            // drops) across the setup / reconvergence / repair hold paths so
+            // the dominant one can be attacked. Summed across nodes.
+            ns3::anthocnet::HoldStats hs;
+            for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+                Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
+                if (!ip) continue;
+                Ptr<ns3::anthocnet::RoutingProtocol> ahn =
+                    DynamicCast<ns3::anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
+                if (!ahn) continue;
+                const ns3::anthocnet::HoldStats& s = ahn->HoldTimeStats();
+                for (uint8_t r = 0; r < ns3::anthocnet::kHoldReasons; ++r) {
+                    hs.deliveredCount[r] += s.deliveredCount[r];
+                    hs.deliveredSumS[r] += s.deliveredSumS[r];
+                    if (s.deliveredMaxS[r] > hs.deliveredMaxS[r])
+                        hs.deliveredMaxS[r] = s.deliveredMaxS[r];
+                    hs.droppedCount[r] += s.droppedCount[r];
+                    hs.droppedSumS[r] += s.droppedSumS[r];
+                }
+            }
+            static const char* kReasonName[3] = {"setup", "reconv", "repair"};
+            std::cout << " hold[";
+            for (uint8_t r = 0; r < ns3::anthocnet::kHoldReasons; ++r) {
+                const double meanMs = hs.deliveredCount[r]
+                    ? 1000.0 * hs.deliveredSumS[r] / hs.deliveredCount[r] : 0.0;
+                std::cout << (r ? " " : "") << kReasonName[r] << "="
+                          << hs.deliveredCount[r] << "/" << std::setprecision(1)
+                          << meanMs << "ms/max" << std::setprecision(1)
+                          << 1000.0 * hs.deliveredMaxS[r] << "ms";
+            }
+            std::cout << "] holdDrop[";
+            for (uint8_t r = 0; r < ns3::anthocnet::kHoldReasons; ++r) {
+                std::cout << (r ? " " : "") << kReasonName[r] << "="
+                          << hs.droppedCount[r];
+            }
+            std::cout << "]";
         }
         std::cout << "\n";
     }
