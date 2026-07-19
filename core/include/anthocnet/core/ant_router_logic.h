@@ -188,6 +188,7 @@ private:
     const ILinkMetric* metric_;            ///< pheromone strategy (item 16)
     const ILinkState* linkState_;          ///< MAC congestion signals (item 10/A2), optional
     AntHistoryTracker history_;
+    GenerationTracker genQuality_;   ///< multipath acceptance filter (#96)
     std::uint32_t   seqNum_ = 0;
     std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
     std::map<NodeAddress, double> lastSeen_;        ///< neighbor -> last reception time

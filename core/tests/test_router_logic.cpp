@@ -69,10 +69,48 @@ int main() {
         // The previous hop was learned as a neighbour.
         CHECK(router.table().numNeighbors() >= 1u);
 
-        // A duplicate of the same ant is dropped.
-        auto dup = router.onReceiveAnt(fwd, 4);
-        CHECK_EQ(dup.size(), static_cast<std::size_t>(1));
-        CHECK(dup[0].action == RouteAction::Drop);
+        // #96 multipath: a same-generation ant arriving via a much *worse* path
+        // (far outside the 1.5x hop/time band of the best seen) is dropped.
+        AntMessage worse = fwd;
+        worse.visited = {{3, 0.0}, {5, 0.05}, {6, 0.05}, {7, 0.05}};  // 4 hops vs 2
+        auto dropped = router.onReceiveAnt(worse, 7);
+        CHECK_EQ(dropped.size(), static_cast<std::size_t>(1));
+        CHECK(dropped[0].action == RouteAction::Drop);
+    }
+
+    // --- #96 multipath: a comparable second path of a generation is admitted --
+    {
+        Config mp = cfg;
+        mp.antAcceptanceFactor = 1.5;
+        FakeClock clock;
+        clock.set(1.0);
+        ScriptedRng rng({0.5});
+        AntRouterLogic router(/*addr*/ 9, mp, clock, rng);  // we are the dest
+
+        // First ant of the generation: 2 hops, admitted -> backward ant.
+        AntMessage a;
+        a.type = AntType::Reactive;
+        a.src = 3;
+        a.dst = 9;
+        a.seqNum = 42;
+        a.visited = {{3, 0.0}, {4, 0.01}};
+        auto first = router.onReceiveAnt(a, 4);
+        CHECK_EQ(first.size(), static_cast<std::size_t>(1));
+        CHECK(first[0].action == RouteAction::Unicast);  // back ant for path 1
+
+        // A second copy of the SAME generation via a comparable alternate path
+        // (3 hops, within 1.5x of the 2-hop best) is admitted -> a second back
+        // ant, laying down the alternate path (multipath).
+        AntMessage b;
+        b.type = AntType::Reactive;
+        b.src = 3;
+        b.dst = 9;
+        b.seqNum = 42;                       // same generation
+        // 3 hops (<= 1.5*2) and total time 0.01 (<= 1.5*0.01): within the band.
+        b.visited = {{3, 0.0}, {5, 0.005}, {6, 0.005}};
+        auto second = router.onReceiveAnt(b, 6);
+        CHECK_EQ(second.size(), static_cast<std::size_t>(1));
+        CHECK(second[0].action == RouteAction::Unicast);  // back ant for path 2
     }
 
     // --- forward ant in transit with no route: broadcast ------------------

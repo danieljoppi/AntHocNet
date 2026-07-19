@@ -95,6 +95,14 @@ struct Config {
     /// Max times a reactive forward ant may be (re)broadcast in a region with no
     /// pheromone, so route setup doesn't flood ([1] §3.2).
     int reactiveMaxBroadcasts = 2;
+    /// Multipath acceptance factor ([1] §3.1, "empirically set to 1.5"): when a
+    /// node receives a *later* reactive forward ant of a generation it already
+    /// saw, it forwards it only if both its hop count and its travel time are
+    /// within this factor of the best ant of that generation seen so far. This
+    /// is how AntHocNet lays down *multiple* good paths instead of just the
+    /// first-arriving one. >= a very large value collapses setup to single-path
+    /// (pre-#96 behaviour). Confirm the exact value vs the thesis (#96).
+    double antAcceptanceFactor = 1.5;
     /// Max times a proactive forward ant may be (re)broadcast — covering both the
     /// per-hop exploratory broadcast ([1] §3.3) and a route gap en route. Proactive
     /// ants monitor known paths; an unbounded budget let them flood any region of
