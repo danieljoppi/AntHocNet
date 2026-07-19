@@ -205,6 +205,7 @@ private:
     bool m_enableMacFailureDetector;
     double m_repairWaitFactor;
     double m_repairTimeout;
+    double m_hopTime;                 ///< T_hop unloaded-hop reference (s), #88
     double m_linkfailNotifyInterval;  ///< issue #20 origin cooldown (s), 0 = off
     Time m_queueTimeout;              ///< issue #21 pending-queue hold before drop
     // Issue #68: measured per-packet MAC service time (EWMA of inter-ack

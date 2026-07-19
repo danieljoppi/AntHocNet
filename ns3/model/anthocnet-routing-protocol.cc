@@ -53,6 +53,7 @@ RoutingProtocol::RoutingProtocol()
       m_enableMacFailureDetector(true),
       m_repairWaitFactor(5.0),
       m_repairTimeout(1.0),
+      m_hopTime(0.05),
       m_linkfailNotifyInterval(5.0),
       m_queueTimeout(Seconds(3)),
       m_macServiceAlpha(0.7),
@@ -136,6 +137,16 @@ TypeId RoutingProtocol::GetTypeId() {
                           DoubleValue(1.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_repairTimeout),
                           MakeDoubleChecker<double>())
+            .AddAttribute("HopTime",
+                          "Fixed unloaded-hop reference time T_hop (s): weights "
+                          "hop count against measured delay in the goodness "
+                          "(T_d + h*T_hop)/2, and is the A2 fallback service "
+                          "time. Default is the core's 50 ms; issue #88 "
+                          "suspects the papers meant a few ms — this attribute "
+                          "exists for that sensitivity sweep.",
+                          DoubleValue(0.05),
+                          MakeDoubleAccessor(&RoutingProtocol::m_hopTime),
+                          MakeDoubleChecker<double>(0.0))
             .AddAttribute("LinkfailNotifyInterval",
                           "Minimum spacing (s) between LinkFail notifications "
                           "originated about the same destination (issue #20); "
@@ -270,6 +281,7 @@ void RoutingProtocol::DoInitialize() {
     m_config.txFailureThreshold = static_cast<int>(m_txFailureThreshold);
     m_config.repairWaitFactor = m_repairWaitFactor;
     m_config.repairTimeout = m_repairTimeout;
+    m_config.hopTimeSec = m_hopTime;
     m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
     m_config.enableMacMetric = m_enableMacMetric;
     m_queue.SetTimeout(m_queueTimeout);  // attribute lands after construction (#21)
@@ -323,6 +335,7 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.txFailureThreshold = static_cast<int>(m_txFailureThreshold);
         m_config.repairWaitFactor = m_repairWaitFactor;
         m_config.repairTimeout = m_repairTimeout;
+        m_config.hopTimeSec = m_hopTime;
         m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
         m_config.enableMacMetric = m_enableMacMetric;
         m_logic.reset(new ::anthocnet::core::AntRouterLogic(
