@@ -115,5 +115,36 @@ int main() {
         CHECK(router.table().getPheromoneVirtual(9, 2) > 0.0);
     }
 
+    // --- 6.2: a forward ant past the hop cap is dropped -------------------
+    {
+        Config capCfg = cfg;
+        capCfg.maxPathLength = 3;  // small cap for the test
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        AntRouterLogic router(/*addr*/ 4, capCfg, clock, rng);
+
+        // Already traversed maxPathLength hops before reaching us: dropped.
+        AntMessage overCap;
+        overCap.type = AntType::Reactive;
+        overCap.src = 3;
+        overCap.dst = 9;  // not us, so the drop is the hop cap, not delivery
+        overCap.seqNum = 11;
+        overCap.visited = {{3, 0.0}, {5, 0.0}, {6, 0.0}};  // size 3 == cap
+        auto dropped = router.onReceiveAnt(overCap, 6);
+        CHECK_EQ(dropped.size(), static_cast<std::size_t>(1));
+        CHECK(dropped[0].action == RouteAction::Drop);
+
+        // One hop below the cap: forwarded (broadcast, no route), not dropped.
+        AntMessage underCap;
+        underCap.type = AntType::Reactive;
+        underCap.src = 3;
+        underCap.dst = 9;
+        underCap.seqNum = 12;
+        underCap.visited = {{3, 0.0}, {5, 0.0}};  // size 2 < cap
+        auto forwarded = router.onReceiveAnt(underCap, 5);
+        CHECK_EQ(forwarded.size(), static_cast<std::size_t>(1));
+        CHECK(forwarded[0].action == RouteAction::Broadcast);
+    }
+
     return RUN_TESTS();
 }

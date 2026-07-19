@@ -484,6 +484,14 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
     const bool proactive = (ant.type == AntType::Proactive);
 
     if (ant.isForward()) {
+        // 6.2 hop cap ([1] §4.2): an ant that has already traversed
+        // maxPathLength hops is dropped rather than forwarded further. Propagation
+        // is also bounded by broadcastBudget (A3) and (src,seq) dedup, but this is
+        // the explicit per-ant hop ceiling the spec calls for, and — living in the
+        // core — it caps ant reach on every adapter without a per-simulator TTL.
+        if (ant.visited.size() >= config_.maxPathLength) {
+            return {RouteDecision::drop()};
+        }
         stampForward(ant);
 
         if (ant.dst == address_) {
