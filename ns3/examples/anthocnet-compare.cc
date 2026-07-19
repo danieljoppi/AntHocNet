@@ -40,6 +40,7 @@
 #include "ns3/anthocnet-routing-protocol.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <iomanip>
 #include <map>
@@ -163,9 +164,13 @@ struct Result {
     uint64_t rxPackets = 0;
     double pdr = 0.0;            // %
     double meanDelayMs = 0.0;
-    double delay99Ms = 0.0;      // 99th percentile (the paper's QoS/jitter metric)
+    double delay99Ms = 0.0;      // 99th pct over *delivered* packets
     double throughputKbps = 0.0;
     double nrl = 0.0;            // control pkts / delivered data pkts
+    // #57 paper-parity / survivorship-safe QoS metrics:
+    double jitterMs = 0.0;       // mean delay jitter (the paper's QoS metric)
+    double dOff50Ms = -1.0;      // delay at the 50th pct of *offered* (sent)
+    double dOff90Ms = -1.0;      // packets, undelivered = inf; -1 encodes inf
 };
 
 Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
@@ -370,6 +375,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     double totalDelay = 0.0;
     uint64_t rxForDelay = 0;
     double totalRxBytes = 0.0;
+    double totalJitter = 0.0;    // #57: FlowMonitor jitterSum over data flows
+    uint64_t jitterSamples = 0;  // each flow contributes rx-1 jitter samples
     std::map<uint32_t, uint64_t> delayBins;  // aggregated delay histogram
     double binWidth = 0.0;
     // Restrict the delivery/delay/throughput metrics to the CBR *data* flows
@@ -385,6 +392,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         totalDelay += kv.second.delaySum.GetSeconds();
         rxForDelay += kv.second.rxPackets;
         totalRxBytes += kv.second.rxBytes;
+        totalJitter += kv.second.jitterSum.GetSeconds();
+        if (kv.second.rxPackets > 0) jitterSamples += kv.second.rxPackets - 1;
         // Copy: Histogram's accessors are non-const in older ns-3 (<=3.36).
         Histogram h = kv.second.delayHistogram;
         for (uint32_t b = 0; b < h.GetNBins(); ++b) {
@@ -397,6 +406,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     r.throughputKbps = (totalRxBytes * 8.0 / 1000.0) / P.simTime;
     r.nrl = r.rxPackets ? static_cast<double>(g_controlPkts) / r.rxPackets : 0.0;
 
+    r.jitterMs = jitterSamples ? 1000.0 * totalJitter / jitterSamples : 0.0;
+
     // 99th-percentile delay from the aggregated histogram.
     if (rxForDelay && binWidth > 0.0) {
         uint64_t target = static_cast<uint64_t>(0.99 * rxForDelay);
@@ -408,6 +419,28 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 break;
             }
         }
+    }
+
+    // #57 offered-load delay percentiles: the q-th percentile over *sent*
+    // packets, treating undelivered as infinite delay. Monotone-honest — a
+    // protocol cannot improve this by dropping the hard packets (the
+    // survivorship confound in cross-protocol delay99, see #21/#54). The
+    // histogram holds only delivered packets, but undelivered sort above every
+    // delivered delay, so the q·tx-th smallest overall is reachable iff
+    // q·tx <= delivered; otherwise the percentile is infinite (-1).
+    if (r.txPackets && binWidth > 0.0) {
+        auto offered = [&](double q) {
+            uint64_t target = static_cast<uint64_t>(q * r.txPackets);
+            if (target < 1) target = 1;
+            uint64_t cum = 0;
+            for (auto& kv : delayBins) {
+                cum += kv.second;
+                if (cum >= target) return 1000.0 * (kv.first + 0.5) * binWidth;
+            }
+            return -1.0;  // fewer than q of the sent packets ever arrived
+        };
+        r.dOff50Ms = offered(0.50);
+        r.dOff90Ms = offered(0.90);
     }
 
     // Diagnostics line (prefixed "# " so CSV consumers ignore it). Shows whether
@@ -502,7 +535,9 @@ int main(int argc, char* argv[]) {
     std::string protocols = "anthocnet,aodv,olsr,dsdv";
 
     CommandLine cmd(__FILE__);
-    cmd.AddValue("scenario", "Preset: 'paper' for the AntHocNet base scenario", scenario);
+    cmd.AddValue("scenario", "Preset: 'paper' (Broch/CMU calibration field) or "
+                             "'thesis' (the AntHocNet papers' own evaluation "
+                             "field, provisional values — #58)", scenario);
     cmd.AddValue("nNodes", "Number of nodes", nNodes);
     cmd.AddValue("time", "Simulation time (s)", simTime);
     cmd.AddValue("area", "Square area side (m); shorthand for areaX=areaY", area);
@@ -532,12 +567,23 @@ int main(int argc, char* argv[]) {
     cmd.Parse(argc, argv);
     if (runs < 1) runs = 1;
 
-    const bool paper = (scenario == "paper");
+    // 'paper' = the Broch/CMU MobiCom'98 field (the literature *calibration*
+    // anchor, #24). 'thesis' = the AntHocNet papers' own evaluation field
+    // (ETT 2005 / Ducatelle PhD 2007): 100 nodes on 3000x1000 m, otherwise the
+    // same radio/traffic/mobility regime. Fidelity claims run on 'thesis',
+    // calibration on 'paper'. VALUES ARE PROVISIONAL (#58): reconstructed from
+    // secondary knowledge because the primary PDFs are network-blocked here —
+    // verify against the thesis parameter table before publishing.
+    const bool thesis = (scenario == "thesis");
+    const bool paper = (scenario == "paper") || thesis;
     Params P;
-    P.nNodes  = nNodes > 0 ? static_cast<uint32_t>(nNodes) : (paper ? 50 : 20);
+    P.nNodes  = nNodes > 0 ? static_cast<uint32_t>(nNodes)
+                           : (thesis ? 100 : paper ? 50 : 20);
     P.simTime = simTime >= 0 ? simTime : (paper ? 900.0 : 40.0);
-    P.areaX   = areaX >= 0 ? areaX : (area >= 0 ? area : (paper ? 1500.0 : 300.0));
-    P.areaY   = areaY >= 0 ? areaY : (area >= 0 ? area : (paper ? 300.0 : 300.0));
+    P.areaX   = areaX >= 0 ? areaX
+                           : (area >= 0 ? area : (thesis ? 3000.0 : paper ? 1500.0 : 300.0));
+    P.areaY   = areaY >= 0 ? areaY
+                           : (area >= 0 ? area : (thesis ? 1000.0 : paper ? 300.0 : 300.0));
     P.speed   = speed >= 0 ? speed : (paper ? 20.0 : 5.0);
     P.pause   = pause >= 0 ? pause : (paper ? 30.0 : 1.0);
     P.range   = range >= 0 ? range : (paper ? 300.0 : 0.0);
@@ -559,7 +605,17 @@ int main(int argc, char* argv[]) {
     }
 
     // Each protocol: mean over runs (every protocol sees the same seed set).
-    struct Agg { double pdr = 0, delay = 0, delay99 = 0, thrput = 0, nrl = 0; };
+    // #28: also sample stddev across runs (0 when runs==1) so published numbers
+    // carry dispersion. Offered-load percentiles use -1 as "infinite": any
+    // infinite run makes the aggregate infinite (monotone-honest, like the
+    // metric itself).
+    struct Agg {
+        double pdr = 0, delay = 0, delay99 = 0, thrput = 0, nrl = 0;
+        double jitter = 0, dOff50 = 0, dOff90 = 0;
+        double pdrSq = 0, delaySq = 0, delay99Sq = 0, nrlSq = 0;
+        bool off50Inf = false, off90Inf = false;
+        double pdrSd = 0, delaySd = 0, delay99Sd = 0, nrlSd = 0;
+    };
     std::vector<Agg> agg(list.size());
     for (std::size_t i = 0; i < list.size(); ++i) {
         for (uint32_t s = 1; s <= runs; ++s) {
@@ -569,19 +625,43 @@ int main(int argc, char* argv[]) {
             agg[i].delay99 += r.delay99Ms;
             agg[i].thrput += r.throughputKbps;
             agg[i].nrl += r.nrl;
+            agg[i].jitter += r.jitterMs;
+            agg[i].pdrSq += r.pdr * r.pdr;
+            agg[i].delaySq += r.meanDelayMs * r.meanDelayMs;
+            agg[i].delay99Sq += r.delay99Ms * r.delay99Ms;
+            agg[i].nrlSq += r.nrl * r.nrl;
+            if (r.dOff50Ms < 0) agg[i].off50Inf = true; else agg[i].dOff50 += r.dOff50Ms;
+            if (r.dOff90Ms < 0) agg[i].off90Inf = true; else agg[i].dOff90 += r.dOff90Ms;
         }
         agg[i].pdr /= runs;
         agg[i].delay /= runs;
         agg[i].delay99 /= runs;
         agg[i].thrput /= runs;
         agg[i].nrl /= runs;
+        agg[i].jitter /= runs;
+        agg[i].dOff50 = agg[i].off50Inf ? -1.0 : agg[i].dOff50 / runs;
+        agg[i].dOff90 = agg[i].off90Inf ? -1.0 : agg[i].dOff90 / runs;
+        if (runs > 1) {
+            auto sd = [runs](double sum, double sumSq) {
+                const double mean = sum / runs;
+                const double var = (sumSq - runs * mean * mean) / (runs - 1);
+                return var > 0.0 ? std::sqrt(var) : 0.0;
+            };
+            agg[i].pdrSd = sd(agg[i].pdr * runs, agg[i].pdrSq);
+            agg[i].delaySd = sd(agg[i].delay * runs, agg[i].delaySq);
+            agg[i].delay99Sd = sd(agg[i].delay99 * runs, agg[i].delay99Sq);
+            agg[i].nrlSd = sd(agg[i].nrl * runs, agg[i].nrlSq);
+        }
     }
 
     if (csv) {
         // Field order through throughput_kbps is stable (downstream parsers rely
-        // on it); delay99_ms and nrl are appended.
+        // on it); later columns are append-only (consumers read by header name):
+        // delay99_ms/nrl, then #57 jitter + offered-load percentiles (-1 = inf),
+        // then #28 per-metric sample stddev across runs (0 when runs==1).
         std::cout << "protocol,runs,nNodes,area,speed,flows,pdr_pct,delay_ms,"
-                     "throughput_kbps,delay99_ms,nrl\n";
+                     "throughput_kbps,delay99_ms,nrl,jitter_ms,delay_off50_ms,"
+                     "delay_off90_ms,pdr_sd,delay_sd,delay99_sd,nrl_sd\n";
         std::cout << std::fixed;
         for (std::size_t i = 0; i < list.size(); ++i) {
             std::cout << list[i] << ',' << runs << ',' << P.nNodes << ','
@@ -591,7 +671,14 @@ int main(int argc, char* argv[]) {
                       << std::setprecision(1) << agg[i].delay << ','
                       << std::setprecision(2) << agg[i].thrput << ','
                       << std::setprecision(1) << agg[i].delay99 << ','
-                      << std::setprecision(3) << agg[i].nrl << '\n';
+                      << std::setprecision(3) << agg[i].nrl << ','
+                      << std::setprecision(2) << agg[i].jitter << ','
+                      << std::setprecision(1) << agg[i].dOff50 << ','
+                      << std::setprecision(1) << agg[i].dOff90 << ','
+                      << std::setprecision(2) << agg[i].pdrSd << ','
+                      << std::setprecision(1) << agg[i].delaySd << ','
+                      << std::setprecision(1) << agg[i].delay99Sd << ','
+                      << std::setprecision(3) << agg[i].nrlSd << '\n';
         }
         return 0;
     }
@@ -601,18 +688,39 @@ int main(int argc, char* argv[]) {
               << P.areaX << "x" << P.areaY << "m maxSpeed=" << P.speed
               << "m/s pause=" << P.pause << "s flows=" << P.nFlows
               << (P.sink >= 0 ? " sink=" + std::to_string(P.sink) : "") << "\n\n";
+    // First six fields (proto..NRL) are position-stable: the workflows' compact
+    // ##BENCH## re-emit and bench_parse.py read them by position. The #57 QoS
+    // columns (jitter, offered-load 90th pct) are appended to the right.
     std::cout << std::left << std::setw(12) << "protocol"
               << std::right << std::setw(8) << "PDR%" << std::setw(11) << "delay(ms)"
               << std::setw(13) << "delay99(ms)" << std::setw(13) << "thrput(kbps)"
-              << std::setw(8) << "NRL" << "\n";
-    std::cout << std::string(65, '-') << "\n";
+              << std::setw(8) << "NRL"
+              << std::setw(12) << "jitter(ms)" << std::setw(12) << "dOff50(ms)"
+              << std::setw(12) << "dOff90(ms)" << "\n";
+    std::cout << std::string(101, '-') << "\n";
     for (std::size_t i = 0; i < list.size(); ++i) {
         std::cout << std::left << std::setw(12) << list[i] << std::right << std::fixed
                   << std::setw(8) << std::setprecision(1) << agg[i].pdr
                   << std::setw(11) << std::setprecision(1) << agg[i].delay
                   << std::setw(13) << std::setprecision(1) << agg[i].delay99
                   << std::setw(13) << std::setprecision(2) << agg[i].thrput
-                  << std::setw(8) << std::setprecision(2) << agg[i].nrl << "\n";
+                  << std::setw(8) << std::setprecision(2) << agg[i].nrl
+                  << std::setw(12) << std::setprecision(2) << agg[i].jitter;
+        for (double v : {agg[i].dOff50, agg[i].dOff90}) {
+            if (v < 0) std::cout << std::setw(12) << "inf";
+            else std::cout << std::setw(12) << std::setprecision(1) << v;
+        }
+        std::cout << "\n";
+    }
+    // #28 dispersion: '# ' prefix keeps these out of the CSV/##BENCH## paths.
+    if (runs > 1) {
+        for (std::size_t i = 0; i < list.size(); ++i) {
+            std::cout << std::fixed << "# stddev " << list[i]
+                      << " pdr=" << std::setprecision(2) << agg[i].pdrSd
+                      << " delay=" << std::setprecision(1) << agg[i].delaySd
+                      << " delay99=" << std::setprecision(1) << agg[i].delay99Sd
+                      << " nrl=" << std::setprecision(3) << agg[i].nrlSd << "\n";
+        }
     }
     return 0;
 }

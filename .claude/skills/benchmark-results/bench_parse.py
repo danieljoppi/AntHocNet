@@ -25,9 +25,11 @@ import re
 import sys
 
 # A results row: "anthocnet   50.2   1108.3   10656.8   2.57   83.30"
+# (trailing columns — #57 jitter / offered-load percentiles, possibly "inf" —
+# are tolerated and ignored; the first six fields are position-stable).
 ROW = re.compile(
     r"^\s*([A-Za-z][\w-]*)\s+"
-    r"([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*$"
+    r"([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)(?:\s+\S+)*\s*$"
 )
 METRICS = ["pdr", "delay", "delay99", "thrput", "nrl"]
 # Compact single-line form the workflow can emit: "##BENCH## anthocnet 50.2 ..."
