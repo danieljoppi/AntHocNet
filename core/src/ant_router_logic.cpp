@@ -1,5 +1,6 @@
 #include "anthocnet/core/ant_router_logic.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace anthocnet {
@@ -355,13 +356,28 @@ AntMessage AntRouterLogic::createHelloAnt(std::size_t maxAdverts) {
 
     // Advertise this node's *best real pheromone* per destination so the
     // receiver can bootstrap a goodness-ordered virtual table (D3), skipping
-    // destinations we have no usable path to.
+    // destinations we have no usable path to. Advert slots are filled
+    // deterministically — active sessions first, the remainder by best
+    // pheromone — not by a coin flip (issue #26, item 6.5).
+    std::vector<HelloDest> candidates;
     for (NodeAddress dest : table_.regularDestinations()) {
         const double best = table_.bestRegular(dest);
         if (best <= config_.minPheromone) continue;
-        m.helloDests.push_back({dest, best});
-        if (m.helloDests.size() >= maxAdverts) break;
+        candidates.push_back({dest, best});
     }
+    const std::vector<NodeAddress> active = activeDestinations();
+    auto isActive = [&active](NodeAddress d) {
+        return std::find(active.begin(), active.end(), d) != active.end();
+    };
+    std::stable_sort(candidates.begin(), candidates.end(),
+                     [&isActive](const HelloDest& a, const HelloDest& b) {
+                         const bool activeA = isActive(a.node);
+                         const bool activeB = isActive(b.node);
+                         if (activeA != activeB) return activeA;
+                         return a.pheromone > b.pheromone;
+                     });
+    if (candidates.size() > maxAdverts) candidates.resize(maxAdverts);
+    m.helloDests = std::move(candidates);
     return m;
 }
 
