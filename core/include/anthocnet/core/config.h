@@ -21,8 +21,14 @@ struct Config {
 
     /// Eq.1 exponents for the stochastic next-hop choice. Ants explore with a
     /// small exponent; data is greedy with a larger one (betaData >= betaAnts).
-    double betaAnts = 2.0;   ///< BETA1: exponent for ant next-hop choice (exploratory).
-    double betaData = 20.0;  ///< BETA2: exponent for data next-hop choice (greedy).
+    /// [1] uses pheromone^2 for data (§3.2 "the square ... to be more greedy")
+    /// and unsquared pheromone for proactive ants (§3.3) — verified against the
+    /// paper (docs/publications/papers/2004-ppsn-anthocnet.md) and A/B'd on the
+    /// paper regime with multipath on (#70: performance-neutral vs the legacy
+    /// 20/2, slightly better delay/jitter). The legacy constants BETA1=2/
+    /// BETA2=20 had no basis in [1].
+    double betaAnts = 1.0;   ///< exponent for ant next-hop choice ([1] §3.3, unsquared).
+    double betaData = 2.0;   ///< exponent for data next-hop choice ([1] §3.2, squared).
 
     /// Per-hop time estimate used by the back-ant pheromone formula (Eq.2):
     /// the time to take one hop in unloaded conditions. In seconds, matching

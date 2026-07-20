@@ -42,8 +42,8 @@ RoutingProtocol::RoutingProtocol()
       m_helloInterval(Seconds(1.0)),
       m_proactiveInterval(Seconds(10.0)),
       m_alpha(0.7),
-      m_betaAnts(2.0),
-      m_betaData(20.0),
+      m_betaAnts(1.0),
+      m_betaData(2.0),
       m_gamma(0.7),
       m_enableProactive(true),
       m_enableDiffusion(true),
@@ -83,12 +83,12 @@ TypeId RoutingProtocol::GetTypeId() {
                           DoubleValue(0.7),
                           MakeDoubleAccessor(&RoutingProtocol::m_alpha),
                           MakeDoubleChecker<double>())
-            .AddAttribute("BetaAnts", "Eq.1 exponent for ant next-hop choice (BETA1).",
-                          DoubleValue(2.0),
+            .AddAttribute("BetaAnts", "Eq.1 exponent for ant next-hop choice ([1] unsquared).",
+                          DoubleValue(1.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_betaAnts),
                           MakeDoubleChecker<double>())
-            .AddAttribute("BetaData", "Eq.1 exponent for greedy data routing (BETA2).",
-                          DoubleValue(20.0),
+            .AddAttribute("BetaData", "Eq.1 exponent for greedy data routing ([1] squared).",
+                          DoubleValue(2.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_betaData),
                           MakeDoubleChecker<double>())
             .AddAttribute("Gamma", "Reinforcement weight (GAMA).",
