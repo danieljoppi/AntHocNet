@@ -644,11 +644,23 @@ void RoutingProtocol::RecvAnt(Ptr<Socket> socket) {
     NodeAddress prevHop = ToCore(sender);
     std::vector<RouteDecision> decisions = m_logic->onReceiveAnt(incoming, prevHop);
 
-    // A Deliver means a route to incoming.src was just discovered.
+    // A Deliver means a route to incoming.src was just discovered. And any
+    // backward ant that traverses this node installs/refreshes a route toward
+    // its origin (incoming.src) at EVERY retraced hop, not just at the data
+    // source that gets the Deliver — so flush held packets here too (#21: the
+    // reconv hold released only at the origin left intermediate-node queues
+    // waiting for the 3 s purge). FlushQueue self-guards: it re-queues
+    // anything whose route still doesn't resolve.
+    bool flushed = false;
     for (const RouteDecision& d : decisions) {
         if (d.action == RouteAction::Deliver) {
             FlushQueue(incoming.src);
+            flushed = true;
+            break;
         }
+    }
+    if (!flushed && incoming.isBackward()) {
+        FlushQueue(incoming.src);
     }
     ExecuteDecisions(decisions, incoming.src);
 }
@@ -739,6 +751,12 @@ void RoutingProtocol::ReactiveRetryTimerExpire() {
                 // layer, so the flood already shows there.
                 onAntSent(AntType::Reactive, ::anthocnet::core::AntDirection::Up,
                           /*broadcast=*/true);
+            } else {
+                // #21 dead spot: a route re-formed without a Deliver or a
+                // traversing backward ant (hello-learned neighbour, LinkFail
+                // side effect) routes NEW packets fine while the held ones
+                // rotted to the 3 s purge. Flush them on the retry cadence.
+                FlushQueue(coreDst);
             }
         }
     }
