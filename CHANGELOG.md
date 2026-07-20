@@ -33,6 +33,22 @@ adapters, the benchmark harness, and reproducible CI/packaging.
 [Unreleased]: https://github.com/danieljoppi/AntHocNet/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/danieljoppi/AntHocNet/releases/tag/v0.1.0
 
+## v0.5.0 (2026-07-20)
+
+### Feat
+
+- **core**: adopt the paper's routing exponents betaData=2 / betaAnts=1 (#70) (#100)
+- **core**: fill hello advert slots active-first, then by best pheromone (#26 item 6.5) (#99)
+- **core**: multipath reactive setup (1.5× acceptance filter) with linkfail churn bound, default on (#96) (#97)
+- **core**: enforce the maxPathLength ant hop cap with a drop (#26, item 6.2) (#95)
+- **ns3**: attribute pending-queue hold time by reason (#21) (#93)
+- **ns3**: expose T_hop as the HopTime attribute (#88) (#92)
+
+### Fix
+
+- **ns3**: release held packets on backward-ant traversal and retry-timer route hits (#21) (#101)
+- **ns3**: drive re-discovery for held data with a reactive-retry timer (#21) (#94)
+
 ## v0.4.0 (2026-07-19)
 
 ### Feat
