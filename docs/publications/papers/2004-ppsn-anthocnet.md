@@ -112,8 +112,8 @@ neighbour notification.
 | Pheromone running-average weight γ | **0.7** | 3.1 | `gamma = 0.7` | ✅ matches |
 | Per-hop cost formula | `(Q_mac + 1)·T̂_mac` | 3.1 | `enableMacMetric` path | ✅ formula confirmed (#70); repo default **off** (A2 gated) |
 | `T_hop` (unloaded one-hop time) | **not stated** | 3.1 | `hopTimeSec = 0.05` (provisional) | ⏳ thesis (#88) |
-| Data routing exponent | **2** (squared) | 3.2 | `betaData = 20` (legacy) | ❗ deviation; alignment tracked in #70 |
-| Ant routing exponent | **1** (unsquared) | 3.3 | `betaAnts = 2` (legacy) | ❗ deviation; alignment tracked in #70 |
+| Data routing exponent | **2** (squared) | 3.2 | `betaData = 2` | ✅ aligned (#70, A/B run 29708190748) |
+| Ant routing exponent | **1** (unsquared) | 3.3 | `betaAnts = 1` | ✅ aligned (#70, A/B run 29708190748) |
 | Proactive ant rate | 1 per n data packets | 3.3 | `proactiveInterval` (time-based) | ❗ deviation (rate- vs time-clocked), #26 item 04 area |
 | Proactive max broadcasts | **2** | 3.3 | `proactiveMaxBroadcasts = 2` | ✅ matches (#45) |
 | `t_hello` | **1 s** (example value) | 3.3 fn.1 | `helloInterval = 1.0` | ✅ matches |
