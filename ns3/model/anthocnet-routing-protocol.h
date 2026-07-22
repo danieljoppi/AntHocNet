@@ -225,6 +225,8 @@ private:
     double m_antAcceptanceFactor;     ///< multipath 1.5x acceptance factor, #96
     double m_linkfailNotifyInterval;  ///< issue #20 origin cooldown (s), 0 = off
     Time m_queueTimeout;              ///< issue #21 pending-queue hold before drop
+    Time m_reconvHoldCap;             ///< issue #21 L2: cap on reconv holds (0 = off)
+    Time m_repairHoldCap;             ///< issue #21 L2: cap on repair holds (0 = off)
     Time m_reactiveRetryInterval;     ///< issue #21 timer-driven re-discovery cadence (0 = off)
     // Issue #68: measured per-packet MAC service time (EWMA of inter-ack
     // spacing while the MAC queue stays backlogged — pure service time, no
