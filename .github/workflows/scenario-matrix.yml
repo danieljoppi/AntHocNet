@@ -40,6 +40,11 @@ jobs:
   matrix:
     name: scenario matrix + charts
     runs-on: ubuntu-latest
+    # Default job timeout (360 min) is too tight for a real (non-quick) sweep:
+    # a single point at runs=5/time=900 measured well over an hour, and a
+    # 4-5-point sweep can exceed 6h. Give real campaign dispatches headroom;
+    # a genuinely hung run still gets killed, just later.
+    timeout-minutes: 720
     container:
       image: ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }}
       credentials:
@@ -72,10 +77,20 @@ jobs:
             --only "${{ github.event.inputs.only }}" \
             $quick $propagation
       - name: Render charts
+        # always(): a mid-sweep failure (one anthocnet-compare invocation
+        # raising SystemExit) still leaves a valid, closed CSV for whatever
+        # points completed before it — try to chart it rather than skip.
+        if: always()
         run: |
           python3 ns3/tools/make-charts.py "$GITHUB_WORKSPACE/scenarios.csv" \
             --outdir "$GITHUB_WORKSPACE/docs/benchmarks"
       - name: Upload CSV + charts
+        # always(): upload whatever CSV/charts exist even if an earlier step
+        # failed, so a mid-sweep abort doesn't lose the completed points.
+        # (Does not help if the *job* hits timeout-minutes — GH Actions kills
+        # the whole job with no further steps in that case; only a generous
+        # timeout-minutes avoids that.)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: scenario-matrix
@@ -83,6 +98,7 @@ jobs:
             scenarios.csv
             docs/benchmarks/*.png
           retention-days: 7
+          if-no-files-found: warn
       - name: Commit charts into docs (optional)
         if: ${{ github.event.inputs.commit == 'true' }}
         run: |
