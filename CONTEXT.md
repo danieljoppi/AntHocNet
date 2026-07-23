@@ -161,6 +161,15 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 - The NS-2 patch depends on **stable text anchors** in upstream files; a future
   NS-2 release that moves an anchor makes the installer fail loudly (by design)
   and the fragment must be updated.
+- **Delay-tail (#21) is partly a channel-model artefact.** On the contention-
+  dominated ns-3 disk model AntHocNet's delay/jitter tail runs above AODV; on
+  two-ray (the paper's PHY) the gap roughly halves, and with the ns-3
+  `ReconvHoldCap` (issue #21 lever L2, default **1 s**: deep-tail
+  reconvergence holds drop at the cap instead of the 3 s `QueueTimeout`)
+  mean delay reaches parity with AODV on two-ray for near-noise PDR cost
+  (#103). The residual disk-model gap is the CONTEXT-§8 channel penalty plus
+  the still-unverified `T_hop` (#88), not an algorithmic deviation. NS-3 only;
+  the NS-2 adapter has no equivalent cap yet.
 
 ## 9. Glossary
 
