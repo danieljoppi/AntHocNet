@@ -24,6 +24,9 @@ on:
       only:
         description: 'all | discrete | sweeps | <scenario/sweep name>'
         default: 'all'
+      propagation:
+        description: 'Propagation model override for every point: range (disk) | tworay. Leave blank for anthocnet-compare''s default (range).'
+        default: ''
       commit:
         description: 'Commit regenerated charts + CSV into docs/ on this ref'
         type: boolean
@@ -58,12 +61,16 @@ jobs:
         run: |
           quick=""
           [ "${{ github.event.inputs.quick }}" = "true" ] && quick="--quick"
+          propagation=""
+          if [ -n "${{ github.event.inputs.propagation }}" ]; then
+            propagation="--propagation=${{ github.event.inputs.propagation }}"
+          fi
           python3 ns3/tools/run-scenarios.py /opt/ns-3 \
             --out "$GITHUB_WORKSPACE/scenarios.csv" \
             --runs "${{ github.event.inputs.runs }}" \
             --time "${{ github.event.inputs.time }}" \
             --only "${{ github.event.inputs.only }}" \
-            $quick
+            $quick $propagation
       - name: Render charts
         run: |
           python3 ns3/tools/make-charts.py "$GITHUB_WORKSPACE/scenarios.csv" \
