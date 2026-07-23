@@ -134,5 +134,5 @@ results.
 | Inspect protocol internals | NS-3 `Tx`/`Rx`/`RouteChanged` trace sources; core counters via `IRouterObserver` |
 | Compare benchmark A/B runs (deltas + noise verdict) | `benchmark-results` skill (`.claude/skills/benchmark-results/bench_parse.py`) |
 | Pre-push invariant check on a diff | `protocol-review` skill (`.claude/skills/protocol-review/check_invariants.sh`) |
-| Cut a release | run the `Release` workflow (Commitizen); see `CONTRIBUTING.md` |
+| Cut a release | run the `Release` workflow (Commitizen); see `CONTRIBUTING.md`. **Post-release the Zenodo DOI is a manual human step** — `zenodo.org` is proxy-blocked (403) and the DOI is minted async after publish, so an agent must ask the maintainer for it (never invent one) then update the README badge + `CITATION.cff` in a `docs:` PR |
 | Tune defaults | `core/include/anthocnet/core/config.h` |
