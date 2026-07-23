@@ -33,9 +33,9 @@ documentation, automated tests, CI, and community guidelines
       ready (#107).
 - [ ] Submit at <https://joss.theoj.org/papers/new> (points JOSS at the repo).
 
-No ORCID/affiliation TODO: the author has no research-organization
-affiliation or ORCID, so the byline is "Independent researcher" with no
-`orcid` field — both are optional in the JOSS `paper.md` schema.
+No affiliation TODO: the author has no research-organization affiliation,
+so the byline is "Independent researcher" (affiliation is optional in the
+JOSS `paper.md` schema). ORCID: 0009-0009-6436-8174.
 
 ## Note
 
