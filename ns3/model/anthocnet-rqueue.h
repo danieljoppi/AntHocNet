@@ -65,6 +65,17 @@ public:
     /// applied after construction, in RoutingProtocol::DoInitialize).
     void SetTimeout(Time timeout) { m_timeout = timeout; }
 
+    /// Per-reason hold cap (issue #21 lever L2, the multipath drop-vs-late
+    /// trade). When `cap` is non-zero it bounds the *total* time a packet of
+    /// this reason may wait since it FIRST entered the queue (`enqueueFirst`),
+    /// independent of re-queues, and never above the global timeout. Zero (the
+    /// default) disables the cap for that reason, leaving it on QueueTimeout.
+    /// SETUP is intentionally left uncapped (first discovery legitimately takes
+    /// longer); the tail is carried by RECONV/REPAIR (#21 attribution).
+    void SetHoldCap(uint8_t reason, Time cap) {
+        if (reason < kHoldReasons) m_holdCap[reason] = cap;
+    }
+
     /// Enqueue, dropping the oldest entry if at capacity. Returns false if the
     /// packet could not be queued.
     bool Enqueue(QueueEntry& entry);
@@ -96,6 +107,7 @@ private:
     std::vector<QueueEntry> m_queue;
     uint32_t m_maxLen;
     Time m_timeout;
+    Time m_holdCap[kHoldReasons] = {Time(), Time(), Time()};  // 0 == disabled (#21 L2)
     HoldStats m_stats;
 };
 

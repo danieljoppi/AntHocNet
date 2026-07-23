@@ -58,6 +58,8 @@ RoutingProtocol::RoutingProtocol()
       m_antAcceptanceFactor(1.5),
       m_linkfailNotifyInterval(5.0),
       m_queueTimeout(Seconds(3)),
+      m_reconvHoldCap(Seconds(1.0)),
+      m_repairHoldCap(Seconds(0)),
       m_reactiveRetryInterval(Seconds(0.25)),
       m_macServiceAlpha(0.7),
       m_lastAckTime(Seconds(0)),
@@ -187,6 +189,31 @@ TypeId RoutingProtocol::GetTypeId() {
                           "-2.4 pp PDR, still above AODV).",
                           TimeValue(Seconds(3)),
                           MakeTimeAccessor(&RoutingProtocol::m_queueTimeout),
+                          MakeTimeChecker())
+            .AddAttribute("ReconvHoldCap",
+                          "Issue #21 lever L2 (multipath drop-vs-late trade): "
+                          "cap the total time a RECONV-held data packet (waiting "
+                          "for a lost route to re-form) may wait since it first "
+                          "entered the queue, bounded by QueueTimeout. RECONV "
+                          "holds carry 60-71% of the delay-tail mass (#21 "
+                          "attribution); capping them below the 3 s timeout "
+                          "truncates delay99/jitter at a PDR cost (aged-out "
+                          "packets become drops). Default 1 s from the #103 A/B: "
+                          "delay99 -37% / jitter -26% on the disk model and "
+                          "delay/jitter near-parity with AODV on two-ray (the "
+                          "paper PHY), for PDR cost within run-to-run noise. "
+                          "0 = disabled (revert to QueueTimeout, pre-#103).",
+                          TimeValue(Seconds(1.0)),
+                          MakeTimeAccessor(&RoutingProtocol::m_reconvHoldCap),
+                          MakeTimeChecker())
+            .AddAttribute("RepairHoldCap",
+                          "Issue #21 lever L2: same cap for REPAIR-held packets "
+                          "(re-injected after a MAC transmit failure while local "
+                          "repair runs). REPAIR holds are mostly near-zero already "
+                          "(immediate flush when an alternate survives), so this "
+                          "is secondary to ReconvHoldCap. 0 = disabled.",
+                          TimeValue(Seconds(0)),
+                          MakeTimeAccessor(&RoutingProtocol::m_repairHoldCap),
                           MakeTimeChecker())
             .AddAttribute("ReactiveRetryInterval",
                           "How often to re-flood a reactive forward ant for "
@@ -325,6 +352,10 @@ void RoutingProtocol::DoInitialize() {
     m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
     m_config.enableMacMetric = m_enableMacMetric;
     m_queue.SetTimeout(m_queueTimeout);  // attribute lands after construction (#21)
+    // Issue #21 L2: per-reason hold caps (default 0 == disabled). SETUP stays
+    // uncapped on QueueTimeout; only the tail-dominant RECONV/REPAIR holds cap.
+    m_queue.SetHoldCap(HOLD_RECONV, m_reconvHoldCap);
+    m_queue.SetHoldCap(HOLD_REPAIR, m_repairHoldCap);
     Ipv4RoutingProtocol::DoInitialize();
 }
 

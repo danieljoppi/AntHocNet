@@ -14,7 +14,18 @@ bool RequestQueue::Enqueue(QueueEntry& entry) {
     // entry back when its route vanishes again) so the #21 hold time measures
     // the whole wait, not just the last leg.
     if (entry.enqueueFirst.IsZero()) entry.enqueueFirst = Simulator::Now();
-    entry.expire = Simulator::Now() + m_timeout;
+    // Global QueueTimeout, measured from this (re-)enqueue. Issue #21 lever L2:
+    // if a per-reason hold cap is set, also bound the expiry to `cap` since the
+    // packet FIRST entered the queue (so re-queues can't extend the tail), and
+    // take whichever fires sooner. Zero cap == disabled, so behaviour is
+    // unchanged by default.
+    Time expire = Simulator::Now() + m_timeout;
+    const Time cap = (entry.holdReason < kHoldReasons) ? m_holdCap[entry.holdReason] : Time();
+    if (!cap.IsZero()) {
+        const Time capped = entry.enqueueFirst + cap;
+        if (capped < expire) expire = capped;
+    }
+    entry.expire = expire;
     if (m_queue.size() >= m_maxLen) {
         // Drop the oldest to make room.
         m_queue.erase(m_queue.begin());
