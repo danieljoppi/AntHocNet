@@ -76,7 +76,32 @@ Releases are cut by running the **Release** workflow (manual dispatch):
 [Commitizen](https://commitizen-tools.github.io/commitizen/) computes the next
 version from the commit history, updates `VERSION` / `CITATION.cff` / the CMake
 version + `CHANGELOG.md`, tags it, and publishes the install bundle. Don't bump
-the version by hand.
+the version by hand. (The `major_version_zero` gate in `.cz.toml` was flipped to
+`false` at v1.0.0, so from 1.0 on a breaking `feat!`/`fix!` bumps the **major**.)
+
+### Post-release: Zenodo DOI (manual — the release's second step)
+
+The Release workflow does **not** set the DOI. With the repo linked to
+[Zenodo](https://zenodo.org), Zenodo archives each published GitHub release
+**asynchronously** and mints a new DOI a few minutes *after* publish. That value
+must then be pasted, by hand, into two places:
+
+1. the **README DOI badge** (top of `README.md`), and
+2. the **`doi:`** field in `CITATION.cff`.
+
+So a release is two steps: **(1)** run the Release workflow (automated), then
+**(2)** once Zenodo has archived the tag, update the DOI in those two files via a
+small `docs:` PR. Keep the two in sync — they have drifted apart before.
+
+**Prefer the concept DOI.** Zenodo issues a per-version DOI *and* a stable
+**concept DOI** ("all versions", which auto-resolves to the latest release).
+Point the badge and `CITATION.cff` at the **concept DOI** so step 2 becomes a
+one-time setup instead of a per-release chore.
+
+**Note for AI agents:** you **cannot** do step 2 from the sandbox — `zenodo.org`
+is blocked (the agent proxy returns 403), and the new DOI does not exist until
+after publish anyway. Ask the maintainer for the DOI (concept preferred) and
+open the `docs:` PR with the value they give you. **Never invent a DOI.**
 
 ## Pull requests
 
