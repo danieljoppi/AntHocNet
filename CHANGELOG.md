@@ -33,6 +33,12 @@ adapters, the benchmark harness, and reproducible CI/packaging.
 [Unreleased]: https://github.com/danieljoppi/AntHocNet/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/danieljoppi/AntHocNet/releases/tag/v0.1.0
 
+## v1.0.0 (2026-07-23)
+
+### Feat
+
+- **ns3**: per-reason pending-queue hold cap, default ReconvHoldCap=1.0s (#21, #103) (#104)
+
 ## v0.5.0 (2026-07-20)
 
 ### Feat

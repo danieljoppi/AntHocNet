@@ -2,7 +2,7 @@
 name = "cz_conventional_commits"
 # Current version. Commitizen bumps this and the files below from the
 # Conventional-Commit history; keep it in sync with the VERSION file.
-version = "0.5.0"
+version = "1.0.0"
 version_scheme = "semver"
 tag_format = "v$version"
 # 1.0+: a breaking change bumps the MAJOR (semver). Flipped from true for the

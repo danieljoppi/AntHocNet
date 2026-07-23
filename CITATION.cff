@@ -10,8 +10,8 @@ authors:
   - family-names: Joppi
     given-names: Daniel Henrique
     # orcid: "https://orcid.org/0000-0000-0000-0000"  # add if available
-version: 0.5.0
-date-released: "2026-07-20"
+version: 1.0.0
+date-released: "2026-07-23"
 license: GPL-2.0-only
 repository-code: "https://github.com/danieljoppi/AntHocNet"
 url: "https://github.com/danieljoppi/AntHocNet"
