@@ -83,16 +83,19 @@ METRICS = ["pdr_pct", "delay_ms", "delay99_ms", "throughput_kbps", "nrl",
            "pdr_sd", "delay_sd", "delay99_sd", "nrl_sd"]
 PARAMS = ["runs", "nNodes", "area", "speed", "flows"]
 OUT_COLUMNS = (["kind", "group", "x", "scenario", "class", "protocol"]
-               + ["runs", "nNodes", "areaX", "speed", "pause", "flows"] + METRICS)
+               + ["runs", "nNodes", "areaX", "speed", "pause", "flows", "propagation"]
+               + METRICS)
 
 
-def build_args(flags, runs, time, protocols):
+def build_args(flags, runs, time, protocols, propagation):
     """Turn a flags dict into an anthocnet-compare argument string."""
     merged = dict(flags)
     merged.setdefault("runs", runs)
     if time is not None:
         merged.setdefault("time", time)
     merged.setdefault("protocols", protocols)
+    if propagation is not None:
+        merged.setdefault("propagation", propagation)
     parts = ["--csv"]
     for k, v in merged.items():
         parts.append(f"--{k}={v}")
@@ -121,7 +124,7 @@ def run_compare(ns3dir, arg_str, dry_run):
     return list(csv.DictReader(io.StringIO("\n".join(keep))))
 
 
-def emit(writer, kind, group, x, scenario, klass, pause, rows):
+def emit(writer, kind, group, x, scenario, klass, pause, propagation, rows):
     for r in rows:
         out = {
             "kind": kind, "group": group, "x": x, "scenario": scenario,
@@ -129,6 +132,7 @@ def emit(writer, kind, group, x, scenario, klass, pause, rows):
             "runs": r.get("runs", ""), "nNodes": r.get("nNodes", ""),
             "areaX": r.get("area", ""), "speed": r.get("speed", ""),
             "pause": pause, "flows": r.get("flows", ""),
+            "propagation": propagation or "range",
         }
         for m in METRICS:
             out[m] = r.get(m, "")
@@ -143,6 +147,10 @@ def main():
     ap.add_argument("--time", type=int, default=None,
                     help="sim time (s) override; default uses each scenario's own")
     ap.add_argument("--protocols", default="anthocnet,aodv,olsr,dsdv")
+    ap.add_argument("--propagation", default=None,
+                    help="override propagation model for every point: "
+                         "range (disk) | tworay; default lets anthocnet-compare "
+                         "use its own default (range)")
     ap.add_argument("--only", default="all",
                     help="all|discrete|sweeps|<discrete name>|<sweep name>")
     ap.add_argument("--quick", action="store_true",
@@ -169,9 +177,11 @@ def main():
                 if args.only in DISCRETE and args.only != name:
                     continue
                 rows = run_compare(args.ns3dir,
-                                   build_args(flags, runs, time, args.protocols),
+                                   build_args(flags, runs, time, args.protocols,
+                                              args.propagation),
                                    args.dry_run)
-                emit(w, "discrete", name, "", name, klass, flags.get("pause", ""), rows)
+                emit(w, "discrete", name, "", name, klass, flags.get("pause", ""),
+                     args.propagation, rows)
 
         if want_sweeps:
             for name, (xlabel, base, points) in sweeps.items():
@@ -181,10 +191,11 @@ def main():
                     flags = dict(base)
                     flags.update(extra)
                     rows = run_compare(args.ns3dir,
-                                       build_args(flags, runs, time, args.protocols),
+                                       build_args(flags, runs, time, args.protocols,
+                                                  args.propagation),
                                        args.dry_run)
                     emit(w, "sweep", name, x, f"{name}={x}", xlabel,
-                         flags.get("pause", ""), rows)
+                         flags.get("pause", ""), args.propagation, rows)
 
     if not args.dry_run:
         print(f"wrote {args.out}", file=sys.stderr)
