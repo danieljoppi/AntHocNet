@@ -29,8 +29,8 @@ documentation, automated tests, CI, and community guidelines
 
 - [ ] Funding / acknowledgements, if any.
 - [ ] Preview the PDF with `inara` and proof the citations.
-- [ ] Tag a release to submit against (v1.0.0 is out) and have the Zenodo DOI
-      ready (#107).
+- [x] Tag a release to submit against (v1.0.0 is out) and have the Zenodo DOI
+      ready: 10.5281/zenodo.20981979 (concept DOI, resolves to latest) — #107.
 - [ ] Submit at <https://joss.theoj.org/papers/new> (points JOSS at the repo).
 
 No affiliation TODO: the author has no research-organization affiliation,
