@@ -23,9 +23,27 @@ docker run --rm -v "$PWD":/data -u $(id -u):$(id -g) \
 
 ## Before submitting
 
-The **software repo** already meets JOSS criteria: OSI license (GPL-2.0),
+**Submission is currently deferred — do not submit yet.** JOSS updated its
+scope/significance policy in January 2026, and the software repo fails two
+of the updated criteria (independent of code quality):
+
+1. **"Not concentrated bursts of work."** The repo was created in 2016, sat
+   with zero commits for ~10 years, then had its entire current
+   implementation written in a single ~4-week AI-assisted window
+   (2026-06-25 → 2026-07-23).
+2. **"Evidence of research impact."** No citations/adoption yet — the real
+   implementation only went public days ago.
+
+Revisit once the ICNS3 study paper is published (the citable reference that
+seeds #2) and the repo shows a few months of ordinary, spaced-out post-v1.0
+activity. Full reasoning: `danieljoppi/papers` repo,
+`docs/adr/0002-venue-strategy.md` (update section) and
+`AntHocNet/publication-options.md`.
+
+The repo already meets JOSS's *mechanical* criteria: OSI license (GPL-2.0),
 documentation, automated tests, CI, and community guidelines
-(`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`). Remaining paper TODOs:
+(`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`) — that was never the blocker.
+Remaining paper TODOs, for whenever submission resumes:
 
 - [ ] Funding / acknowledgements, if any.
 - [ ] Preview the PDF with `inara` and proof the citations.
