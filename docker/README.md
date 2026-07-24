@@ -13,11 +13,12 @@ vendors ns-2 or ns-3.
 | `ns2` | `2.34`, `2.35` | Plain ns-allinone-2.3x built from source, **no AntHocNet**. |
 | `anthocnet-ns2` | `2.34`, `2.35` | The same ns-2 **plus** the AntHocNet patch applied and **compiled** (the only place the ns-2 adapter is actually built). |
 
-Published to two registries — GHCR (`ghcr.io/danieljoppi/…`) and Docker Hub
-(`docker.io/danieljoppi/…`, when the `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`
-secrets are set) — for `{ns3,anthocnet-ns3,ns2,anthocnet-ns2}`. One build pushes
-to both registries. Each image carries three tag tiers, plus a build-profile
-tier that exists for the plain `ns3` image only:
+Published to **GHCR** (`ghcr.io/danieljoppi/…`) for
+`{ns3,anthocnet-ns3,ns2,anthocnet-ns2}`. A Docker Hub mirror exists in
+`images.yml` but is **off** (`MIRROR_DOCKERHUB: 'false'`, #158) — GHCR is the
+only registry CI, the campaign workflows and this README depend on. Each image
+carries three tag tiers, plus a build-profile tier that exists for the plain
+`ns3` image only:
 
 | Tag | Example | Meaning | Mutability |
 |-----|---------|---------|------------|
@@ -84,10 +85,13 @@ earlier attempt to append one corrupted ns-2's continued `CCOPT` line).
   `GITHUB_TOKEN` does not trigger other workflows, so a `push: tags` job would
   never fire — a `workflow_call` job dependency runs in the same release run and
   needs no PAT.
-- The **Docker Hub mirror** is gated on the `DOCKERHUB_USERNAME` secret: when
-  unset (e.g. forks) the Docker Hub login and `docker.io/…` tags drop out and
-  only GHCR is pushed. `docker/build-push-action` builds each image once and
-  pushes it to both registries, so mirroring adds no build cost.
+- The **Docker Hub mirror is disabled** (`MIRROR_DOCKERHUB: 'false'` in
+  `images.yml`; maintainer decision on #158). Its steps are kept rather than
+  deleted, each `continue-on-error: true` and separate from the GHCR push, so a
+  dead mirror can never again fail a publish or skip later steps — the #158 bug,
+  which silently prevented `ns3:<ver>-opt` from being published at all. To turn
+  it back on: set `MIRROR_DOCKERHUB: 'true'` and store a Docker Hub PAT with
+  **Read & Write** scope in `DOCKERHUB_TOKEN` (plus `DOCKERHUB_USERNAME`).
 - ns-2.34 is the oldest supported tree; if its build needs extra fixes on the
   pinned base they go in `docker/Dockerfile.ns2` behind the `NS2_VERSION` arg.
 - **Build profiles (#123).** `NS3_PROFILE` selects ns-3's build profile.
