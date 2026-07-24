@@ -115,6 +115,16 @@ public:
         return m_logic ? m_logic->linkfailOriginsSuppressed() : 0;
     }
 
+    /// Issue #133 observability: per-node pheromone-table size gauge from the
+    /// core — current (neighbor, dest) entry counts, split regular vs virtual.
+    /// Read by the comparison harness under --diag to watch table growth.
+    uint64_t PtableEntriesRegular() const {
+        return m_logic ? m_logic->table().numEntriesRegular() : 0;
+    }
+    uint64_t PtableEntriesVirtual() const {
+        return m_logic ? m_logic->table().numEntriesVirtual() : 0;
+    }
+
     /// Issue #21 hold-time attribution: per-reason (setup / reconvergence /
     /// repair) pending-queue hold-time stats accumulated over the run, read by
     /// the comparison harness under --diag to locate the delay tail's dominant
