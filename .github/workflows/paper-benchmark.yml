@@ -108,7 +108,15 @@ jobs:
           # stderr goes to a file (kept out of the results) and its tail is
           # printed so the fatal-error text is visible in the log.
           set -o pipefail
-          ./ns3 run "$cmd" 2>"$GITHUB_WORKSPACE/ns3-stderr.log" \
+          # #131: wrap in /usr/bin/time -v to measure wall clock + peak RSS of
+          # the whole sim process. -o keeps time's report in its own file so
+          # the ns-3 stderr handling below stays exactly as before; the compact
+          # result step parses it into a ##PERF## line.
+          timewrap=""
+          if [ -x /usr/bin/time ]; then
+            timewrap="/usr/bin/time -v -o $GITHUB_WORKSPACE/time-v.log"
+          fi
+          $timewrap ./ns3 run "$cmd" 2>"$GITHUB_WORKSPACE/ns3-stderr.log" \
             | tee "$GITHUB_WORKSPACE/paper-results.txt" \
             || { echo "--- ns-3 run FAILED; stderr tail ---"; \
                  tail -n 60 "$GITHUB_WORKSPACE/ns3-stderr.log"; exit 1; }
@@ -137,3 +145,18 @@ jobs:
             exit 1
           fi
           cat "$GITHUB_WORKSPACE/bench-rows.txt"
+          # #131: sim cost — one process-wide line (anthocnet-compare runs all
+          # protocols in one process, hence proto field "all"):
+          #   ##PERF## paper all <wall_s> <maxrss_kb>
+          # Elapsed comes as h:mm:ss or m:ss.cc; convert to seconds. Missing
+          # time-v.log (no /usr/bin/time in the image) just skips the line.
+          if [ -s "$GITHUB_WORKSPACE/time-v.log" ]; then
+            awk '/Elapsed \(wall clock\) time/ {
+                   n = split($NF, t, ":")
+                   wall = (n == 3) ? t[1]*3600 + t[2]*60 + t[3] : t[1]*60 + t[2]
+                 }
+                 /Maximum resident set size/ { rss = $NF }
+                 END { if (wall != "" && rss != "")
+                         printf "##PERF## paper all %.1f %d\n", wall, rss }' \
+              "$GITHUB_WORKSPACE/time-v.log"
+          fi

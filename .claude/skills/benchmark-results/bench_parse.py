@@ -34,6 +34,9 @@ ROW = re.compile(
 METRICS = ["pdr", "delay", "delay99", "thrput", "nrl"]
 # Compact single-line form the workflow can emit: "##BENCH## anthocnet 50.2 ..."
 BENCH = re.compile(r"##BENCH##\s+(.+)$")
+# Sim-cost line (#131): "##PERF## <scenario> all <wall_s> <maxrss_kb>" —
+# passed through verbatim so cost shows up next to the quality rows.
+PERF = re.compile(r"##PERF##.*")
 
 
 def parse_cell(text):
@@ -111,18 +114,21 @@ def main():
     for path in args.files:
         with (sys.stdin if path == "-" else open(path)) as fh:
             text = fh.read()
-        cells.append((label_of(path, text), parse_cell(text)))
+        perf = [m.group(0) for m in map(PERF.search, text.splitlines()) if m]
+        cells.append((label_of(path, text), parse_cell(text), perf))
 
     protos = ([args.proto] if not args.all else
-              sorted({p for _, r in cells for p in r}))
+              sorted({p for _, r, _ in cells for p in r}))
 
     hdr = f"{'cell':<28}{'proto':<11}" + "".join(f"{m:>9}" for m in METRICS)
     print(hdr)
     print("-" * len(hdr))
-    for lbl, rows in cells:
+    for lbl, rows, perf in cells:
         for p in protos:
             if p in rows:
                 print(f"{lbl:<28}{p:<11}" + "".join(fmt(rows[p][m]) for m in METRICS))
+        for ln in perf:
+            print(ln)
 
     if len(cells) < 2:
         return
@@ -149,7 +155,7 @@ def main():
     print(f"\ndeltas vs first cell ({p}):")
     base = cells[0][1].get(p)
     if base:
-        for lbl, rows in cells[1:]:
+        for lbl, rows, _ in cells[1:]:
             cur = rows.get(p)
             if not cur:
                 continue
