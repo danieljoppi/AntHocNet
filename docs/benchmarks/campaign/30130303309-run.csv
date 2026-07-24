@@ -1,0 +1,5 @@
+kind,group,x,scenario,class,protocol,runs,nNodes,areaX,speed,pause,flows,propagation,pdr_pct,delay_ms,delay99_ms,throughput_kbps,nrl,jitter_ms,delay_off50_ms,delay_off90_ms,pdr_sd,delay_sd,delay99_sd,nrl_sd,nrl_bytes
+sweep,area,1500,area=1500,area long edge (m),anthocnet,5,50,1500,20,,20,range,93.9,58.3,982.7,6.12,39.571,95.75,3.1,394.1,0.79,4.4,36.1,1.471,46.344
+sweep,area,1500,area=1500,area long edge (m),aodv,5,50,1500,20,,20,range,84.7,31.4,477.7,5.61,54.462,47.50,3.5,-1.0,1.26,3.1,48.1,1.475,28.684
+sweep,area,1500,area=1500,area long edge (m),olsr,5,50,1500,20,,20,range,78.4,7.7,26.5,4.94,5.100,10.46,1.5,-1.0,1.45,1.4,3.5,0.151,10.881
+sweep,area,1500,area=1500,area long edge (m),dsdv,5,50,1500,20,,20,range,71.2,15.6,372.5,4.73,26.298,26.36,2.1,-1.0,0.88,2.1,82.8,0.472,18.144
