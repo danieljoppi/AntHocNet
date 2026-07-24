@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'ns-3 image tag'
+        description: 'ns-3 image tag. Suffix -opt (e.g. 3.42-opt) selects the optimized-profile image — assertions/NS_LOG compiled out, typically 2-10x faster (#123). Use it for campaign runs; use the plain tag when you want assertions on.'
         default: '3.42'
       quick:
         description: 'Cheap preset (time=120, runs=2, 3 points/sweep)'
@@ -57,12 +57,47 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install AntHocNet module
         run: make install-ns3 NS3DIR=/opt/ns-3
+      - name: Resolve ns-3 build profile (#123)
+        # The reconfigure below must NOT silently downgrade an optimized image
+        # back to the default profile — that would quietly hand back the 2-10x
+        # speedup the -opt image exists for, and nothing in the results would
+        # say so. ns-3's `ns3 configure` only omits -DCMAKE_BUILD_TYPE (and so
+        # inherits the cached profile) while the tree is still "configured"; the
+        # moment that stops holding, the profile resets to `default`. So state
+        # it explicitly instead of relying on that inheritance.
+        #
+        # Source of truth is NS3_PROFILE, baked into the image env by
+        # docker/Dockerfile.ns3 — it travels with the image, so it stays right
+        # if the tag is renamed, mirrored or pinned to a release. Images built
+        # before #123 have no such env, hence the tag-suffix fallback.
+        env:
+          VERSION_TAG: ${{ github.event.inputs.version }}
+        run: |
+          profile="${NS3_PROFILE:-}"
+          if [ -z "$profile" ]; then
+            case "$VERSION_TAG" in
+              *-opt) profile=optimized ;;
+              *)     profile=default ;;
+            esac
+            echo "image has no NS3_PROFILE env (pre-#123 image); inferred from tag '$VERSION_TAG'"
+          fi
+          # Empty for `default`: keeps the configure line byte-identical to the
+          # pre-#123 one on the default images.
+          flag=""
+          [ "$profile" = "default" ] || flag="-d $profile"
+          echo "ns-3 build profile: $profile (configure flag: '${flag:-<none>}')"
+          echo "NS3_PROFILE=$profile" >> "$GITHUB_ENV"
+          echo "NS3_PROFILE_FLAG=$flag" >> "$GITHUB_ENV"
       - name: Configure + build
         run: |
           cd /opt/ns-3
-          ./ns3 configure --enable-examples \
+          # $NS3_PROFILE_FLAG unquoted on purpose: empty must expand to nothing.
+          ./ns3 configure $NS3_PROFILE_FLAG --enable-examples \
             --enable-modules='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
           ./ns3 build
+          # Recorded in the log so every campaign run is attributable to a
+          # profile after the fact (a run's cost is meaningless without it).
+          ./ns3 show profile
       - name: Install matplotlib
         run: apt-get update && apt-get install -y python3-matplotlib
       - name: Run scenario matrix

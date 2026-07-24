@@ -82,6 +82,74 @@ PDR / mean+99th-percentile delay / NRL vs. the swept parameter:
 Unlike the paper (AODV only), every baseline (AODV/OLSR/DSDV) is run on identical
 realisations, so the classification covers all of them.
 
+## Build profiles: `default` for CI, `optimized` for campaigns
+
+ns-3 builds under a *build profile*, and until [#123](https://github.com/danieljoppi/AntHocNet/issues/123)
+every benchmark minute the project had ever spent ran under the `default` one —
+assertions **and** `NS_LOG` compiled in. For simulation-heavy runs that is
+typically **2-10x slower** than ns-3's `optimized` profile, which is the single
+biggest cost lever on the campaign budget ([#121](https://github.com/danieljoppi/AntHocNet/issues/121)).
+
+| profile | `./ns3 configure` | what it compiles | published as |
+|---|---|---|---|
+| `default` | no `-d` flag (ns-3's own fallback) | `NS3_ASSERT=ON`, `NS3_LOG=ON`, `-O2 -g` | `ns3:<ver>`, `anthocnet-ns3:<ver>`, `:latest` |
+| `optimized` | `-d optimized` | `NS3_ASSERT=OFF`, `NS3_LOG=OFF`, `-O3` + `-march=native -mtune=native` | `ns3:<ver>-opt` (ns-3.42 only) |
+
+**The optimized image is additional, never a replacement.** CI (`ci.yml`, and
+the per-merge `benchmarks.yml` that regenerates the table below) keeps pulling
+the default-profile images on purpose: those assertions have caught real bugs,
+and a green run with assertions compiled out is a weaker statement. Only the two
+*manual* campaign workflows — `paper-benchmark.yml` and `scenario-matrix.yml` —
+accept an `-opt` tag, via their `version` input (e.g. `3.42-opt`).
+
+Only ns-3.42 gets an `-opt` tag: it is the version campaigns pin, and each extra
+profile is a second full ns-3 compile in `images.yml`.
+
+### Why the campaign workflows resolve the profile explicitly
+
+Both campaign workflows install the AntHocNet module into the image's `/opt/ns-3`
+and **re-run `./ns3 configure`** in the job. That reconfigure is where an
+optimized image could quietly stop being optimized. ns-3's `ns3` script only
+leaves `-DCMAKE_BUILD_TYPE` off the CMake command line — and so inherits the
+cached profile — while it finds the tree already configured; on any path where it
+does not (`project_configured()` false), it falls back to `build_profile =
+"default"`. Inheriting a profile by omission is not a property worth betting a
+six-hour campaign on, and the failure is silent: the run simply costs 2-10x more
+and nothing in the CSV says why.
+
+So the workflows resolve the profile in a dedicated step and pass it explicitly:
+
+1. **`NS3_PROFILE` from the image environment** is the source of truth.
+   `docker/Dockerfile.ns3` bakes it in (`default` or `optimized`), so it travels
+   with the image through renames, the Docker Hub mirror and release-pinned tags.
+2. **Tag suffix as fallback** — `*-opt` → `optimized` — for images published
+   before #123, which carry no such variable.
+3. The resolved profile becomes `-d <profile>`, or **the empty string for
+   `default`**, so the default path runs the byte-identical configure line it ran
+   before #123.
+
+Each job then logs `./ns3 show profile`, so a run's cost (the `##PERF##`
+wall-clock line from [#131](https://github.com/danieljoppi/AntHocNet/issues/131))
+is always attributable to a profile after the fact.
+
+### Caveats when reading `-opt` numbers
+
+- **Protocol metrics should be unchanged.** The adapter's four `NS_ASSERT`s are
+  null-pointer checks with no side effects, and `anthocnet-compare`'s `--diag` /
+  `--qdiag` output goes to `std::cout` via trace sources, not `NS_LOG` — so
+  diagnostics survive the optimized build. PDR/delay/NRL differences between
+  profiles are a red flag, not an expected effect.
+- **`-march=native` is baked in at image-build time.** ns-3 maps `optimized` to
+  `release` plus `NS3_NATIVE_OPTIMIZATIONS=ON`, which adds `-march=native
+  -mtune=native`. The prebuilt stock-module libraries in `ns3:<ver>-opt` are
+  therefore tuned for whichever runner built the image, while the in-job rebuild
+  targets the campaign runner. GitHub's hosted fleet is microarchitecturally
+  mixed, so if a campaign job ever dies with `Illegal instruction`, this is why —
+  the fix is `-d release` (identical to `optimized` minus the native flags).
+- **Never compare wall-clock across profiles as a protocol result.** Cost
+  comparisons are only meaningful profile-to-profile on the same scenario; the
+  sanctioned A/B speed measurement is its own ticket.
+
 ## Validation anchors (known-expected results)
 
 A benchmark is only trustworthy if it reproduces a *known* result on a reference
