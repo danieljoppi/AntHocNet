@@ -24,6 +24,9 @@ on:
       only:
         description: 'all | discrete | sweeps | <scenario/sweep name>'
         default: 'all'
+      point:
+        description: 'With only=<sweep name>: run just this one point (e.g. 1500 for area, 900 for pause, 1.4 for scale) instead of the whole sweep. Leave blank for the whole sweep.'
+        default: ''
       propagation:
         description: 'Propagation model override for every point: range (disk) | tworay. Leave blank for anthocnet-compare''s default (range).'
         default: ''
@@ -70,12 +73,16 @@ jobs:
           if [ -n "${{ github.event.inputs.propagation }}" ]; then
             propagation="--propagation=${{ github.event.inputs.propagation }}"
           fi
+          point=""
+          if [ -n "${{ github.event.inputs.point }}" ]; then
+            point="--point=${{ github.event.inputs.point }}"
+          fi
           python3 ns3/tools/run-scenarios.py /opt/ns-3 \
             --out "$GITHUB_WORKSPACE/scenarios.csv" \
             --runs "${{ github.event.inputs.runs }}" \
             --time "${{ github.event.inputs.time }}" \
             --only "${{ github.event.inputs.only }}" \
-            $quick $propagation
+            $quick $propagation $point
       - name: Render charts
         # always(): a mid-sweep failure (one anthocnet-compare invocation
         # raising SystemExit) still leaves a valid, closed CSV for whatever

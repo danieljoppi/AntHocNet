@@ -153,10 +153,18 @@ def main():
                          "use its own default (range)")
     ap.add_argument("--only", default="all",
                     help="all|discrete|sweeps|<discrete name>|<sweep name>")
+    ap.add_argument("--point", default=None,
+                    help="with --only <sweep name>, run just the one point whose "
+                         "x value matches this (e.g. 1500 for area, 900 for pause, "
+                         "1.4 for scale) instead of the whole sweep")
     ap.add_argument("--quick", action="store_true",
                     help="cheap CI preset: time=120, runs=2, 3 points/sweep")
     ap.add_argument("--dry-run", action="store_true", help="print commands, don't run")
     args = ap.parse_args()
+
+    if args.point is not None and args.only not in SWEEPS:
+        raise SystemExit("--point requires --only <sweep name> "
+                          f"(one of {', '.join(SWEEPS)}), got --only={args.only!r}")
 
     runs, time = args.runs, args.time
     sweeps = SWEEPS
@@ -188,6 +196,14 @@ def main():
             for name, (xlabel, base, points) in sweeps.items():
                 if args.only in SWEEPS and args.only != name:
                     continue
+                if args.point is not None:
+                    matched = [(x, extra) for x, extra in points
+                               if str(x) == args.point]
+                    if not matched:
+                        valid = ", ".join(str(x) for x, _ in points)
+                        raise SystemExit(f"--point {args.point!r} not in sweep "
+                                          f"{name!r} (valid: {valid})")
+                    points = matched
                 for x, extra in points:
                     flags = dict(base)
                     flags.update(extra)
