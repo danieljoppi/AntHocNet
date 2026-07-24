@@ -77,10 +77,12 @@ SWEEPS = {
 
 # Columns of the per-run anthocnet-compare CSV we carry through (by header name).
 # jitter/offered-load percentiles are the #57 paper-parity QoS metrics
-# (delay_off*_ms: -1 encodes infinity); *_sd are the #28 across-run stddevs.
+# (delay_off*_ms: -1 encodes infinity); *_sd are the #28 across-run stddevs;
+# nrl_bytes is the #132 byte-normalized routing load (empty for CSVs produced
+# before it existed — emit() defaults absent columns to "").
 METRICS = ["pdr_pct", "delay_ms", "delay99_ms", "throughput_kbps", "nrl",
            "jitter_ms", "delay_off50_ms", "delay_off90_ms",
-           "pdr_sd", "delay_sd", "delay99_sd", "nrl_sd"]
+           "pdr_sd", "delay_sd", "delay99_sd", "nrl_sd", "nrl_bytes"]
 PARAMS = ["runs", "nNodes", "area", "speed", "flows"]
 OUT_COLUMNS = (["kind", "group", "x", "scenario", "class", "protocol"]
                + ["runs", "nNodes", "areaX", "speed", "pause", "flows", "propagation"]

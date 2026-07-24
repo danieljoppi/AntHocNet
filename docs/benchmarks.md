@@ -21,6 +21,12 @@ same realisations. Metrics come from an NS-3 `FlowMonitor`:
 - **throughput** — application bytes delivered per second, kbps.
 - **NRL** — normalized routing load: routing-control packets transmitted (each
   hop) per data packet delivered, counted uniformly at the IP layer.
+- **nrl_bytes** — byte-normalized routing load: routing-control *bytes*
+  transmitted (each hop, same IP-layer counting point as NRL) per data byte
+  delivered. Complements packet-count NRL, which flatters protocols that send
+  fewer, larger messages — an AntHocNet ant carries its visited path (up to
+  `maxPathLength` addresses) while an AODV RREQ is small and fixed. The measured
+  packet-vs-byte comparison run is tracked in #132.
 
 Aggregates are means over the RNG runs; the CSV also carries per-metric sample
 stddev across runs (`pdr_sd`, `delay_sd`, `delay99_sd`, `nrl_sd`), which the

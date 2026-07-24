@@ -5,7 +5,9 @@
  * CBR traffic, driven from the same RNG run) under each routing protocol and
  * reports the metrics from the AntHocNet paper [1, §4]: packet-delivery ratio,
  * mean and 99th-percentile end-to-end delay, throughput, and normalized routing
- * load (NRL = routing-control packets transmitted / data packets delivered).
+ * load (NRL = routing-control packets transmitted / data packets delivered;
+ * nrl_bytes is the byte-level counterpart, control bytes / delivered data
+ * bytes, #132).
  * Fair comparison: the RNG run is reset before each protocol so every protocol
  * sees the identical mobility/traffic realisation, and NRL is counted uniformly
  * for every protocol from the IP layer.
@@ -55,10 +57,14 @@ namespace {
 // is how we count routing overhead uniformly across protocols.
 constexpr uint16_t kDataPort = 9;
 
-uint64_t g_controlPkts = 0;  // routing-control packets transmitted this run
+uint64_t g_controlPkts = 0;   // routing-control packets transmitted this run
+uint64_t g_controlBytes = 0;  // #132: routing-control bytes transmitted this run
 
 // Ipv4L3Protocol "Tx" trace: one call per IP packet sent out an interface (each
-// hop). Count the non-data UDP packets as routing control.
+// hop). Count the non-data UDP packets as routing control. Bytes are the full
+// IP packet size at the same hook (#132) — packet-count NRL flatters protocols
+// that send fewer, larger messages (ants carry a visited path; AODV RREQs are
+// small and fixed), so a byte-level number is kept alongside.
 void CountControlTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t) {
     Ptr<Packet> c = p->Copy();
     Ipv4Header ip;
@@ -66,7 +72,10 @@ void CountControlTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t) {
     if (ip.GetProtocol() != 17) return;  // not UDP; routing control here is UDP
     UdpHeader udp;
     if (c->PeekHeader(udp) == 0) return;
-    if (udp.GetDestinationPort() != kDataPort) ++g_controlPkts;
+    if (udp.GetDestinationPort() != kDataPort) {
+        ++g_controlPkts;
+        g_controlBytes += p->GetSize();
+    }
 }
 
 // --- diagnostics (--diag): ant-level introspection for AntHocNet -----------
@@ -167,6 +176,7 @@ struct Result {
     double delay99Ms = 0.0;      // 99th pct over *delivered* packets
     double throughputKbps = 0.0;
     double nrl = 0.0;            // control pkts / delivered data pkts
+    double nrlBytes = 0.0;       // #132: control bytes / delivered data bytes
     // #57 paper-parity / survivorship-safe QoS metrics:
     double jitterMs = 0.0;       // mean delay jitter (the paper's QoS metric)
     double dOff50Ms = -1.0;      // delay at the 50th pct of *offered* (sent)
@@ -178,6 +188,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     RngSeedManager::SetSeed(1);
     RngSeedManager::SetRun(seed);
     g_controlPkts = 0;
+    g_controlBytes = 0;
     g_antTx.clear();
     g_antRx.clear();
     g_firstDeliveryS = -1.0;
@@ -405,6 +416,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     r.meanDelayMs = rxForDelay ? 1000.0 * totalDelay / rxForDelay : 0.0;
     r.throughputKbps = (totalRxBytes * 8.0 / 1000.0) / P.simTime;
     r.nrl = r.rxPackets ? static_cast<double>(g_controlPkts) / r.rxPackets : 0.0;
+    // #132: same IP-layer counting point as nrl, but in bytes; delivered data
+    // bytes are the FlowMonitor rxBytes already summed for throughput.
+    r.nrlBytes = totalRxBytes > 0.0
+        ? static_cast<double>(g_controlBytes) / totalRxBytes : 0.0;
 
     r.jitterMs = jitterSamples ? 1000.0 * totalJitter / jitterSamples : 0.0;
 
@@ -650,10 +665,11 @@ int main(int argc, char* argv[]) {
     // metric itself).
     struct Agg {
         double pdr = 0, delay = 0, delay99 = 0, thrput = 0, nrl = 0;
+        double nrlBytes = 0;  // #132
         double jitter = 0, dOff50 = 0, dOff90 = 0;
-        double pdrSq = 0, delaySq = 0, delay99Sq = 0, nrlSq = 0;
+        double pdrSq = 0, delaySq = 0, delay99Sq = 0, nrlSq = 0, nrlBytesSq = 0;
         bool off50Inf = false, off90Inf = false;
-        double pdrSd = 0, delaySd = 0, delay99Sd = 0, nrlSd = 0;
+        double pdrSd = 0, delaySd = 0, delay99Sd = 0, nrlSd = 0, nrlBytesSd = 0;
     };
     std::vector<Agg> agg(list.size());
     for (std::size_t i = 0; i < list.size(); ++i) {
@@ -664,11 +680,13 @@ int main(int argc, char* argv[]) {
             agg[i].delay99 += r.delay99Ms;
             agg[i].thrput += r.throughputKbps;
             agg[i].nrl += r.nrl;
+            agg[i].nrlBytes += r.nrlBytes;
             agg[i].jitter += r.jitterMs;
             agg[i].pdrSq += r.pdr * r.pdr;
             agg[i].delaySq += r.meanDelayMs * r.meanDelayMs;
             agg[i].delay99Sq += r.delay99Ms * r.delay99Ms;
             agg[i].nrlSq += r.nrl * r.nrl;
+            agg[i].nrlBytesSq += r.nrlBytes * r.nrlBytes;
             if (r.dOff50Ms < 0) agg[i].off50Inf = true; else agg[i].dOff50 += r.dOff50Ms;
             if (r.dOff90Ms < 0) agg[i].off90Inf = true; else agg[i].dOff90 += r.dOff90Ms;
         }
@@ -677,6 +695,7 @@ int main(int argc, char* argv[]) {
         agg[i].delay99 /= runs;
         agg[i].thrput /= runs;
         agg[i].nrl /= runs;
+        agg[i].nrlBytes /= runs;
         agg[i].jitter /= runs;
         agg[i].dOff50 = agg[i].off50Inf ? -1.0 : agg[i].dOff50 / runs;
         agg[i].dOff90 = agg[i].off90Inf ? -1.0 : agg[i].dOff90 / runs;
@@ -690,6 +709,7 @@ int main(int argc, char* argv[]) {
             agg[i].delaySd = sd(agg[i].delay * runs, agg[i].delaySq);
             agg[i].delay99Sd = sd(agg[i].delay99 * runs, agg[i].delay99Sq);
             agg[i].nrlSd = sd(agg[i].nrl * runs, agg[i].nrlSq);
+            agg[i].nrlBytesSd = sd(agg[i].nrlBytes * runs, agg[i].nrlBytesSq);
         }
     }
 
@@ -697,10 +717,12 @@ int main(int argc, char* argv[]) {
         // Field order through throughput_kbps is stable (downstream parsers rely
         // on it); later columns are append-only (consumers read by header name):
         // delay99_ms/nrl, then #57 jitter + offered-load percentiles (-1 = inf),
-        // then #28 per-metric sample stddev across runs (0 when runs==1).
+        // then #28 per-metric sample stddev across runs (0 when runs==1), then
+        // #132 nrl_bytes (control bytes / delivered data bytes).
         std::cout << "protocol,runs,nNodes,area,speed,flows,pdr_pct,delay_ms,"
                      "throughput_kbps,delay99_ms,nrl,jitter_ms,delay_off50_ms,"
-                     "delay_off90_ms,pdr_sd,delay_sd,delay99_sd,nrl_sd\n";
+                     "delay_off90_ms,pdr_sd,delay_sd,delay99_sd,nrl_sd,"
+                     "nrl_bytes\n";
         std::cout << std::fixed;
         for (std::size_t i = 0; i < list.size(); ++i) {
             std::cout << list[i] << ',' << runs << ',' << P.nNodes << ','
@@ -717,7 +739,8 @@ int main(int argc, char* argv[]) {
                       << std::setprecision(2) << agg[i].pdrSd << ','
                       << std::setprecision(1) << agg[i].delaySd << ','
                       << std::setprecision(1) << agg[i].delay99Sd << ','
-                      << std::setprecision(3) << agg[i].nrlSd << '\n';
+                      << std::setprecision(3) << agg[i].nrlSd << ','
+                      << std::setprecision(3) << agg[i].nrlBytes << '\n';
         }
         return 0;
     }
@@ -729,14 +752,15 @@ int main(int argc, char* argv[]) {
               << (P.sink >= 0 ? " sink=" + std::to_string(P.sink) : "") << "\n\n";
     // First six fields (proto..NRL) are position-stable: the workflows' compact
     // ##BENCH## re-emit and bench_parse.py read them by position. The #57 QoS
-    // columns (jitter, offered-load 90th pct) are appended to the right.
+    // columns (jitter, offered-load 90th pct) are appended to the right, then
+    // #132 nrl_bytes (control bytes / delivered data bytes) as the last column.
     std::cout << std::left << std::setw(12) << "protocol"
               << std::right << std::setw(8) << "PDR%" << std::setw(11) << "delay(ms)"
               << std::setw(13) << "delay99(ms)" << std::setw(13) << "thrput(kbps)"
               << std::setw(8) << "NRL"
               << std::setw(12) << "jitter(ms)" << std::setw(12) << "dOff50(ms)"
-              << std::setw(12) << "dOff90(ms)" << "\n";
-    std::cout << std::string(101, '-') << "\n";
+              << std::setw(12) << "dOff90(ms)" << std::setw(12) << "nrlBytes" << "\n";
+    std::cout << std::string(113, '-') << "\n";
     for (std::size_t i = 0; i < list.size(); ++i) {
         std::cout << std::left << std::setw(12) << list[i] << std::right << std::fixed
                   << std::setw(8) << std::setprecision(1) << agg[i].pdr
@@ -749,7 +773,7 @@ int main(int argc, char* argv[]) {
             if (v < 0) std::cout << std::setw(12) << "inf";
             else std::cout << std::setw(12) << std::setprecision(1) << v;
         }
-        std::cout << "\n";
+        std::cout << std::setw(12) << std::setprecision(3) << agg[i].nrlBytes << "\n";
     }
     // #28 dispersion: '# ' prefix keeps these out of the CSV/##BENCH## paths.
     if (runs > 1) {
@@ -758,7 +782,8 @@ int main(int argc, char* argv[]) {
                       << " pdr=" << std::setprecision(2) << agg[i].pdrSd
                       << " delay=" << std::setprecision(1) << agg[i].delaySd
                       << " delay99=" << std::setprecision(1) << agg[i].delay99Sd
-                      << " nrl=" << std::setprecision(3) << agg[i].nrlSd << "\n";
+                      << " nrl=" << std::setprecision(3) << agg[i].nrlSd
+                      << " nrl_bytes=" << std::setprecision(3) << agg[i].nrlBytesSd << "\n";
         }
     }
     return 0;
