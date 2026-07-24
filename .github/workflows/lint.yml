@@ -21,6 +21,9 @@ jobs:
         with:
           python-version: '3.x'
       - name: Install ruff
-        run: pip install ruff
+        # Pinned: an unpinned install broke every PR when ruff 0.16.0 tightened
+        # defaults (I001/ISC004/PLW1510/EXE001 on untouched files). Bump
+        # deliberately, fixing new findings in the same PR.
+        run: pip install 'ruff==0.16.0'
       - name: Lint
         run: ruff check ns3/tools
