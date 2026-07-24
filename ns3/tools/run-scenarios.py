@@ -182,6 +182,7 @@ def main():
                                    args.dry_run)
                 emit(w, "discrete", name, "", name, klass, flags.get("pause", ""),
                      args.propagation, rows)
+                f.flush()
 
         if want_sweeps:
             for name, (xlabel, base, points) in sweeps.items():
@@ -196,6 +197,7 @@ def main():
                                        args.dry_run)
                     emit(w, "sweep", name, x, f"{name}={x}", xlabel,
                          flags.get("pause", ""), args.propagation, rows)
+                    f.flush()
 
     if not args.dry_run:
         print(f"wrote {args.out}", file=sys.stderr)
