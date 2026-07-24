@@ -18,6 +18,12 @@ name: Images
 # The rolling and :latest tags move on every default-branch push; the
 # release-pinned tag is only written when `release` is set and never overwritten.
 #
+# One extra tier exists for the plain ns-3 image only (#123):
+#   :<sim-version>-opt        e.g. :3.42-opt    — same tree, ns-3's *release*
+#     build profile (assertions + NS_LOG compiled out) for the benchmark
+#     campaigns. It is strictly ADDITIONAL: every tag above keeps ns-3's default
+#     profile, and CI must keep consuming those — assertions catch real bugs.
+#
 # `workflow_call` lets the Release workflow reuse this to publish the immutable
 # release-pinned tags. When `release` is set (e.g. `v0.3.0`) we check out that
 # tag and additionally push `<image>:<sim-version>-<release>`. Reusing this via
@@ -55,6 +61,12 @@ jobs:
     # (latest ns-3 version + latest AntHocNet). Bump when adding a newer version.
     env:
       NS_LATEST: '3.48'
+      # #123: the one version that additionally gets a release-profile base
+      # image (`ns3:<ver>-opt`). Campaigns (#110/#121) pin this version, and an
+      # extra full ns-3 compile per matrix leg is not worth spending on versions
+      # nothing runs campaigns against. Keep in sync with the `version` default
+      # in scenario-matrix.yml / paper-benchmark.yml.
+      NS_OPT: '3.42'
     strategy:
       fail-fast: false
       matrix:
@@ -90,6 +102,30 @@ jobs:
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/ns3:{1}-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
             ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/ns3:{1}', env.DOCKERHUB_USERNAME, matrix.version) || '' }}
             ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/ns3:{1}-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
+          push: ${{ env.PUSH == 'true' }}
+      - name: Plain ns-3, release profile (campaign image, ${{ env.NS_OPT }} only)
+        # #123: ADDITIONAL tag, never a replacement. The release profile
+        # compiles out assertions and NS_LOG (typically 2-10x faster on the
+        # simulation-heavy campaign runs of #121), but the default-profile
+        # images above are what ci.yml consumes precisely because those
+        # assertions have caught real bugs — do not point CI at `-opt`.
+        # Base stage only: the campaign workflows pull `ns3:<ver>` and build the
+        # AntHocNet module inside the job, so a release-profile `anthocnet-ns3` image
+        # would cost a second full compile that nothing consumes.
+        if: ${{ matrix.version == env.NS_OPT }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ns3
+          target: base
+          build-args: |
+            NS3_VERSION=ns-${{ matrix.version }}
+            NS3_PROFILE=release
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/ns3:${{ matrix.version }}-opt
+            ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/ns3:{1}-opt-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
+            ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/ns3:{1}-opt', env.DOCKERHUB_USERNAME, matrix.version) || '' }}
+            ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/ns3:{1}-opt-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
           push: ${{ env.PUSH == 'true' }}
       - name: ns-3 + AntHocNet
         uses: docker/build-push-action@v6

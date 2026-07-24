@@ -7,7 +7,20 @@
 #   # ns-3 + AntHocNet:
 #   docker build -f docker/Dockerfile.ns3 \
 #                --build-arg NS3_VERSION=ns-3.42 -t anthocnet-ns3:3.42 .
+#   # plain ns-3, campaign build profile (#123):
+#   docker build -f docker/Dockerfile.ns3 --target base \
+#                --build-arg NS3_VERSION=ns-3.42 --build-arg NS3_PROFILE=release \
+#                -t ns3:3.42-opt .
 #
+# NS3_PROFILE selects ns-3's build profile (`./ns3 configure -d <profile>`):
+#   default    — assertions + logging compiled in (`NS3_ASSERT=ON NS3_LOG=ON`).
+#                What CI consumes; assertions have caught real bugs, so this
+#                stays the profile of the untagged/`:latest` images.
+#   release    — `-O3`, assertions and logging compiled
+#                out. Typically 2-10x faster on simulation-heavy campaign runs
+#                (#121/#123), which is the *only* reason it exists.
+# `default` deliberately passes NO `-d` flag at all, so the default images are
+# built by byte-identical configure command lines to the ones used before #123.
 ARG UBUNTU=22.04
 
 # --- base: plain ns-3, no AntHocNet ----------------------------------------
@@ -16,6 +29,7 @@ ARG UBUNTU=22.04
 FROM ubuntu:${UBUNTU} AS base
 
 ARG NS3_VERSION=ns-3.42
+ARG NS3_PROFILE=default
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Recent ns-3 (3.47/3.48) require CMake >= 3.25, newer than Ubuntu 22.04's
@@ -32,12 +46,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # dependencies that vary by release (e.g. aodv's test needs v4ping/internet-apps
 # on ns-3.36; internet-apps' test needs csma on ns-3.47+), which would otherwise
 # force an ever-growing module list. CI exercises the test suites separately.
+#
+# `profile_flag` stays EMPTY for NS3_PROFILE=default so the configure line is
+# character-for-character the one used before #123 — `default` is also what
+# ns-3's own `ns3` script falls back to on an unconfigured tree, so the two are
+# equivalent, but keeping the flag off the default path makes that impossible to
+# regress. Unquoted on use, deliberately, so it word-splits into two argv items.
 RUN git clone --depth 1 --branch "${NS3_VERSION}" \
         https://gitlab.com/nsnam/ns-3-dev.git /opt/ns-3 \
  && cd /opt/ns-3 \
- && ./ns3 configure --enable-examples \
+ && profile_flag=$([ "${NS3_PROFILE}" = "default" ] || echo "-d ${NS3_PROFILE}") \
+ && ./ns3 configure ${profile_flag} --enable-examples \
         --enable-modules='wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point' \
- && ./ns3 build
+ && ./ns3 build \
+ && ./ns3 show profile
+
+# Record the profile in the image environment so consumers can branch on it
+# without parsing the tag. The campaign workflows read this to decide whether
+# their in-job `./ns3 configure` needs `-d release` (see #123).
+ENV NS3_PROFILE=${NS3_PROFILE}
 
 WORKDIR /opt/ns-3
 CMD ["bash"]
@@ -46,14 +73,21 @@ CMD ["bash"]
 # Adds the additive module and reconfigures/rebuilds; mirrors the CI ns3-build.
 FROM base AS anthocnet
 
+# No `ARG NS3_PROFILE` re-declaration here on purpose: base's ENV is inherited,
+# and an ENV always overrides an ARG of the same name, so re-declaring it would
+# be dead. Reading the inherited ENV is also the stronger guarantee — this
+# reconfigure cannot pick a different profile than the tree was built with.
+
 WORKDIR /opt/anthocnet
 COPY . .
 
 RUN make install-ns3 NS3DIR=/opt/ns-3 \
  && cd /opt/ns-3 \
- && ./ns3 configure --enable-examples \
+ && profile_flag=$([ "${NS3_PROFILE}" = "default" ] || echo "-d ${NS3_PROFILE}") \
+ && ./ns3 configure ${profile_flag} --enable-examples \
         --enable-modules='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point' \
  && ./ns3 build \
+ && ./ns3 show profile \
  && ./ns3 run anthocnet-example
 
 WORKDIR /opt/ns-3
