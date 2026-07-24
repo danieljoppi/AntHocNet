@@ -83,7 +83,7 @@ jobs:
           profile="${NS3_PROFILE:-}"
           if [ -z "$profile" ]; then
             case "$VERSION_TAG" in
-              *-opt) profile=optimized ;;
+              *-opt) profile=release ;;
               *)     profile=default ;;
             esac
             echo "image has no NS3_PROFILE env (pre-#123 image); inferred from tag '$VERSION_TAG'"

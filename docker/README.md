@@ -24,7 +24,7 @@ tier that exists for the plain `ns3` image only:
 | `:<sim-version>` | `:3.42` | latest build for that simulator version | rolling — moves on every merge to the default branch |
 | `:<sim-version>-<release>` | `:3.42-v0.3.0` | pinned to an AntHocNet release | **immutable** — written once, never overwritten |
 | `:latest` | `:latest` | newest simulator version + latest AntHocNet | rolling — moves on every merge to the default branch |
-| `:<sim-version>-opt` | `:3.42-opt` | `ns3` only — the same tree in ns-3's **optimized** build profile | rolling (plus `:3.42-opt-<release>` when a release is pinned) |
+| `:<sim-version>-opt` | `:3.42-opt` | `ns3` only — the same tree in ns-3's **`release`** build profile (optimized without `-march=native`) | rolling (plus `:3.42-opt-<release>` when a release is pinned) |
 
 Use `:<sim-version>-<release>` when you need a reproducible image for a citation
 (the rolling tiers track the default branch and can change under you). The
@@ -44,10 +44,10 @@ docker build -f docker/Dockerfile.ns3 --target base \
 docker build -f docker/Dockerfile.ns3 \
              --build-arg NS3_VERSION=ns-3.42 -t anthocnet-ns3:3.42 .
 
-# optimized build profile (the campaign image) — NS3_PROFILE applies to both
+# campaign build profile (release = optimized minus -march=native) — applies to both
 # stages; anything other than `default` becomes `./ns3 configure -d <profile>`:
 docker build -f docker/Dockerfile.ns3 --target base \
-             --build-arg NS3_VERSION=ns-3.42 --build-arg NS3_PROFILE=optimized \
+             --build-arg NS3_VERSION=ns-3.42 --build-arg NS3_PROFILE=release \
              -t ns3:3.42-opt .
 
 # plain ns-2 vs ns-2 + AntHocNet:
@@ -93,13 +93,13 @@ earlier attempt to append one corrupted ns-2's continued `CCOPT` line).
 - **Build profiles (#123).** `NS3_PROFILE` selects ns-3's build profile.
   `default` (assertions + `NS_LOG` compiled in) is what every image tier above
   carries and what CI consumes — those assertions have caught real bugs, so the
-  optimized image must **never** replace them in CI. `optimized` (assertions and
+  campaign image must **never** replace them in CI. `release` (assertions and
   logging compiled out, typically 2-10x faster on simulation-heavy runs) is
   published as the extra `ns3:<ver>-opt` tag, for **ns-3.42 only**, and is
   consumed solely by the manual `paper-benchmark` / `scenario-matrix`
   campaigns via their `version` input. Each image records its profile in the
   `NS3_PROFILE` environment variable (`docker inspect`), which is how those
-  workflows know whether their in-job `./ns3 configure` needs `-d optimized` —
-  see [`docs/benchmarks.md`](../docs/benchmarks.md#build-profiles-default-for-ci-optimized-for-campaigns)
+  workflows know whether their in-job `./ns3 configure` needs `-d release` —
+  see [`docs/benchmarks.md`](../docs/benchmarks.md#build-profiles-default-for-ci-release-for-campaigns)
   for why that is resolved explicitly rather than inherited, and for the
-  `-march=native` caveat that comes with ns-3's `optimized` profile.
+  rationale for `release` over ns-3's `optimized` (which adds `-march=native`).
