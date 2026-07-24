@@ -19,8 +19,9 @@ import os
 from collections import defaultdict
 
 import matplotlib
+
 matplotlib.use("Agg")  # headless: write PNGs, no display
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
 # Stable protocol order + colours so every figure is consistent.
 PROTO_ORDER = ["anthocnet", "aodv", "olsr", "dsdv", "dsr"]
