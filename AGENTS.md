@@ -132,7 +132,11 @@ results.
 | Work on the NS-3 adapter | `ns3/model/`, `ns3/helper/`, `ns3/examples/` |
 | Run / read benchmarks | `docs/benchmarks.md`, `ns3/tools/run-scenarios.py` + `make-charts.py`, `anthocnet-compare --diag` |
 | Inspect protocol internals | NS-3 `Tx`/`Rx`/`RouteChanged` trace sources; core counters via `IRouterObserver` |
+| Run the benchmark campaign loop (dispatch → fetch → parse) | `benchmark-results` skill (SKILL.md documents the whole procedure) |
 | Compare benchmark A/B runs (deltas + noise verdict) | `benchmark-results` skill (`.claude/skills/benchmark-results/bench_parse.py`) |
+| Summarize / export campaign sweep CSVs | `benchmark-results` skill (`sweep_summary.py`; `--export-sweeps` feeds the papers repo) |
+| Validate a scenario config or result plausibility | `benchmark-results` skill (`scenario_check.py`, #134): `preflight` before dispatching, `results [--anchor …]` before trusting numbers |
 | Pre-push invariant check on a diff | `protocol-review` skill (`.claude/skills/protocol-review/check_invariants.sh`) |
+| Understand why skills are script-first (and add a new analysis loop) | [ADR-0014](docs/adr/0014-agent-skills-are-script-first.md) — raw data stays out of LLM context; extend a skill script, don't eyeball |
 | Cut a release | run the `Release` workflow (Commitizen); see `CONTRIBUTING.md`. **Post-release the Zenodo DOI is a manual human step** — `zenodo.org` is proxy-blocked (403) and the DOI is minted async after publish, so an agent must ask the maintainer for it (never invent one) then update the README badge + `CITATION.cff` in a `docs:` PR |
 | Tune defaults | `core/include/anthocnet/core/config.h` |

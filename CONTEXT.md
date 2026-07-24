@@ -145,6 +145,11 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   `CHANGELOG.md`, a Commitizen-driven `Release` workflow that builds an
   install-bundle zip (Zenodo-ready); Conventional-Commit PR titles are
   CI-enforced (item 14).
+- **Agent tooling is script-first** (ADR-0014): the `.claude/skills/` scripts
+  do benchmark parsing/A/B noise calls (`bench_parse.py`), campaign-CSV
+  summaries (`sweep_summary.py`), scenario pre-flight + result-plausibility
+  validation (`scenario_check.py`, #134), and diff invariant checks — raw
+  tables and logs stay out of LLM context; only script verdicts are read.
 - **Open work is tracked in GitHub issues** — per-area epics #26–#31 and the
   open defects (#20–#23, #51), prioritized via `priority:P1..P3` labels
   (see §10).

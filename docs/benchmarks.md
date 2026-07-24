@@ -132,7 +132,11 @@ floor (PDR ≥ 85, vs. ≈ 92.5 measured, ~90 literature) run in `benchmarks.yml
 *before* the results table/charts are regenerated — a regressed anchor fails the
 workflow and blocks the publish step, so a #51-style channel/config regression can
 no longer silently corrupt the published numbers. Recalibration is a one-line
-edit to `anchors.yml`.
+edit to `anchors.yml`. For ad-hoc runs outside CI, the same floors (plus
+result-plausibility invariants and pre-dispatch scenario sanity checks) are
+enforced locally by
+[`.claude/skills/benchmark-results/scenario_check.py`](../.claude/skills/benchmark-results/scenario_check.py)
+(#134), which reads `anchors.yml` rather than duplicating it.
 
 ## Results
 
