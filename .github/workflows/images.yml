@@ -51,7 +51,16 @@ permissions:
 env:
   # Push on default-branch pushes, or whenever a release pin is requested.
   PUSH: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || (inputs.release || '') != '' }}
-  # Docker Hub namespace; empty (secret unset) disables the Docker Hub mirror.
+  # Docker Hub mirroring is OFF (maintainer decision, 2026-07-24, #158).
+  # GHCR is the only registry anything depends on: ci.yml, the campaign
+  # workflows and docker/README.md all pull ghcr.io. The mirror was a
+  # convenience copy (#77/#79) whose token expired, and re-enabling it means
+  # maintaining a Docker Hub PAT that expires again. The steps are kept intact
+  # rather than deleted so turning it back on is a one-line change: set this to
+  # 'true' and store a Read & Write Docker Hub PAT in the DOCKERHUB_TOKEN
+  # secret (plus DOCKERHUB_USERNAME for the namespace).
+  MIRROR_DOCKERHUB: 'false'
+  # Docker Hub namespace; empty (secret unset) also disables the mirror.
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
 jobs:
@@ -86,7 +95,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Log in to Docker Hub
-        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' }}
+        if: ${{ env.PUSH == 'true' && env.MIRROR_DOCKERHUB == 'true' && env.DOCKERHUB_USERNAME != '' }}
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
@@ -120,7 +129,7 @@ jobs:
       # so it publishes the same artifact. To turn mirroring off entirely, clear
       # the DOCKERHUB_USERNAME secret.
       - name: Mirror plain ns-3 to Docker Hub (non-fatal)
-        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' }}
+        if: ${{ env.PUSH == 'true' && env.MIRROR_DOCKERHUB == 'true' && env.DOCKERHUB_USERNAME != '' }}
         continue-on-error: true
         uses: docker/build-push-action@v6
         with:
@@ -155,7 +164,7 @@ jobs:
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/ns3:{1}-opt-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
           push: ${{ env.PUSH == 'true' }}
       - name: Mirror release-profile ns-3 to Docker Hub (non-fatal)
-        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' && matrix.version == env.NS_OPT }}
+        if: ${{ env.PUSH == 'true' && env.MIRROR_DOCKERHUB == 'true' && env.DOCKERHUB_USERNAME != '' && matrix.version == env.NS_OPT }}
         continue-on-error: true
         uses: docker/build-push-action@v6
         with:
@@ -182,7 +191,7 @@ jobs:
             ${{ matrix.version == env.NS_LATEST && format('ghcr.io/{0}/anthocnet-ns3:latest', github.repository_owner) || '' }}
           push: ${{ env.PUSH == 'true' }}
       - name: Mirror ns-3 + AntHocNet to Docker Hub (non-fatal)
-        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' }}
+        if: ${{ env.PUSH == 'true' && env.MIRROR_DOCKERHUB == 'true' && env.DOCKERHUB_USERNAME != '' }}
         continue-on-error: true
         uses: docker/build-push-action@v6
         with:
@@ -218,7 +227,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Log in to Docker Hub
-        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' }}
+        if: ${{ env.PUSH == 'true' && env.MIRROR_DOCKERHUB == 'true' && env.DOCKERHUB_USERNAME != '' }}
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
@@ -236,7 +245,7 @@ jobs:
           push: ${{ env.PUSH == 'true' }}
       # Same split as the ns-3 job — see the mirror rationale there (#158).
       - name: Mirror plain ns-2 to Docker Hub (non-fatal)
-        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' }}
+        if: ${{ env.PUSH == 'true' && env.MIRROR_DOCKERHUB == 'true' && env.DOCKERHUB_USERNAME != '' }}
         continue-on-error: true
         uses: docker/build-push-action@v6
         with:
@@ -261,7 +270,7 @@ jobs:
             ${{ matrix.version == env.NS_LATEST && format('ghcr.io/{0}/anthocnet-ns2:latest', github.repository_owner) || '' }}
           push: ${{ env.PUSH == 'true' }}
       - name: Mirror ns-2 + AntHocNet to Docker Hub (non-fatal)
-        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' }}
+        if: ${{ env.PUSH == 'true' && env.MIRROR_DOCKERHUB == 'true' && env.DOCKERHUB_USERNAME != '' }}
         continue-on-error: true
         uses: docker/build-push-action@v6
         with:

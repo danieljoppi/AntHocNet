@@ -84,8 +84,7 @@ Current results, regenerated on every merge to the default branch, are in
 ### Container images
 
 Prefer not to install a simulator yourself? Pre-built images are published to
-GHCR (`ghcr.io/danieljoppi/…`) and mirrored to Docker Hub
-(`docker.io/danieljoppi/…`) — for **each supported version**, a plain simulator
+GHCR (`ghcr.io/danieljoppi/…`) — for **each supported version**, a plain simulator
 and the same simulator with AntHocNet built in (so you can compare against a
 clean baseline):
 
