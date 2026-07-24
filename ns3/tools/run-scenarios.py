@@ -109,7 +109,8 @@ def run_compare(ns3dir, arg_str, dry_run):
         print(f"[dry-run] {cmd}", file=sys.stderr)
         return []
     print(f"[run] anthocnet-compare {arg_str}", file=sys.stderr)
-    proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    proc = subprocess.run(cmd, shell=True, capture_output=True, text=True,
+                          check=False)
     if proc.returncode != 0:
         sys.stderr.write(proc.stdout)
         sys.stderr.write(proc.stderr)
