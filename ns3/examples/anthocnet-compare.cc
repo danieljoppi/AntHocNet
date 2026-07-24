@@ -659,6 +659,25 @@ int main(int argc, char* argv[]) {
     for (std::size_t i = 0; i < list.size(); ++i) {
         for (uint32_t s = 1; s <= runs; ++s) {
             Result r = RunOne(list[i], P, s);
+            // #128: per-run (per-seed) row for paired statistics. Every
+            // protocol sees the identical RNG realisation per run, so
+            // downstream can pair rows by run number (per-seed deltas, sign
+            // tests) — far more powerful at small `runs` than the unpaired
+            // mean±sd. Same field order/precision as the final table and the
+            // workflow's ##BENCH## re-emit; dOff percentiles print "inf" like
+            // the table when -1 (infinite).
+            std::cout << std::fixed << "##RUN## " << s << ' ' << list[i]
+                      << ' ' << std::setprecision(1) << r.pdr
+                      << ' ' << std::setprecision(1) << r.meanDelayMs
+                      << ' ' << std::setprecision(1) << r.delay99Ms
+                      << ' ' << std::setprecision(2) << r.throughputKbps
+                      << ' ' << std::setprecision(2) << r.nrl
+                      << ' ' << std::setprecision(2) << r.jitterMs;
+            for (double v : {r.dOff50Ms, r.dOff90Ms}) {
+                if (v < 0) std::cout << " inf";
+                else std::cout << ' ' << std::setprecision(1) << v;
+            }
+            std::cout << "\n";
             agg[i].pdr += r.pdr;
             agg[i].delay += r.meanDelayMs;
             agg[i].delay99 += r.delay99Ms;
