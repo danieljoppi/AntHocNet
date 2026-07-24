@@ -721,6 +721,9 @@ int main(int argc, char* argv[]) {
                 if (v < 0) std::cout << " inf";
                 else std::cout << ' ' << std::setprecision(1) << v;
             }
+            // #132: keep the per-run row field-aligned with the mean row, so
+            // paired per-seed statistics cover nrl_bytes too.
+            std::cout << ' ' << std::setprecision(4) << r.nrlBytes;
             std::cout << "\n";
             agg[i].pdr += r.pdr;
             agg[i].delay += r.meanDelayMs;
