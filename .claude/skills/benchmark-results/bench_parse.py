@@ -19,6 +19,11 @@ cell (the baseline / OFF), with a per-pair verdict:
 If an even number of cells is given with --ab, they are read as (off,on) pairs
 and a cross-pair inconsistency (deltas disagreeing in sign) is called out as the
 signature of run-to-run noise.
+
+If both compared cells carry per-run ``##RUN##`` rows (#128), an additional
+"paired dPDR by run" line pairs the runs by number (every protocol/cell sees
+the identical RNG realisation per run) and reports the per-seed delta signs —
+PAIRED-NOISE when neither direction reaches >2/3 of the runs.
 """
 import argparse
 import re
@@ -34,6 +39,9 @@ ROW = re.compile(
 METRICS = ["pdr", "delay", "delay99", "thrput", "nrl"]
 # Compact single-line form the workflow can emit: "##BENCH## anthocnet 50.2 ..."
 BENCH = re.compile(r"##BENCH##\s+(.+)$")
+# Per-run row (#128): "##RUN## <run> <proto> <pdr> ..." — only PDR is needed
+# for the paired sign test; later fields (may include "inf") are ignored.
+RUN = re.compile(r"##RUN##\s+(\d+)\s+([A-Za-z][\w-]*)\s+([-\d.]+)")
 # Sim-cost line (#131): "##PERF## <scenario> all <wall_s> <maxrss_kb>" —
 # passed through verbatim so cost shows up next to the quality rows.
 PERF = re.compile(r"##PERF##.*")
@@ -58,6 +66,38 @@ def parse_cell(text):
         if len(vals) == 5:
             rows[proto] = dict(zip(METRICS, vals))
     return rows
+
+
+def parse_runs(text):
+    """Return {proto: {run: pdr}} from a cell's ##RUN## per-seed rows (#128)."""
+    runs = {}
+    for line in text.splitlines():
+        m = RUN.search(line)
+        if m:
+            runs.setdefault(m.group(2), {})[int(m.group(1))] = float(m.group(3))
+    return runs
+
+
+def paired(base_runs, cur_runs):
+    """Paired per-seed dPDR line (#128), or None without common runs.
+
+    Pairs the two cells' ##RUN## PDR values by run number and reports the
+    delta signs: sign-consistent when one direction reaches >2/3 of the runs,
+    else PAIRED-NOISE (the split-signs signature of run-to-run noise).
+    """
+    common = sorted(set(base_runs) & set(cur_runs))
+    if not common:
+        return None
+    signs = ["+" if cur_runs[r] > base_runs[r] else
+             "-" if cur_runs[r] < base_runs[r] else "0" for r in common]
+    pos, neg, n = signs.count("+"), signs.count("-"), len(signs)
+    if pos * 3 > n * 2:
+        call = f"{pos}/{n} positive (sign-consistent)"
+    elif neg * 3 > n * 2:
+        call = f"{neg}/{n} negative (sign-consistent)"
+    else:
+        call = f"{pos}/{n} positive, {neg}/{n} negative -> PAIRED-NOISE"
+    return f"paired dPDR by run: {','.join(signs)} -> {call}"
 
 
 def label_of(path, text):
@@ -115,15 +155,16 @@ def main():
         with (sys.stdin if path == "-" else open(path)) as fh:
             text = fh.read()
         perf = [m.group(0) for m in map(PERF.search, text.splitlines()) if m]
-        cells.append((label_of(path, text), parse_cell(text), perf))
+        cells.append((label_of(path, text), parse_cell(text),
+                      parse_runs(text), perf))
 
     protos = ([args.proto] if not args.all else
-              sorted({p for _, r, _ in cells for p in r}))
+              sorted({p for _, r, _, _ in cells for p in r}))
 
     hdr = f"{'cell':<28}{'proto':<11}" + "".join(f"{m:>9}" for m in METRICS)
     print(hdr)
     print("-" * len(hdr))
-    for lbl, rows, perf in cells:
+    for lbl, rows, _, perf in cells:
         for p in protos:
             if p in rows:
                 print(f"{lbl:<28}{p:<11}" + "".join(fmt(rows[p][m]) for m in METRICS))
@@ -147,6 +188,9 @@ def main():
             signs.append((dp > 0) - (dp < 0))
             print(f"  {off_lbl} -> {on_lbl:<20} dPDR={dp:+5.1f}pp  "
                   f"d_delay={dd:+6.1f}%  d_d99={dd99:+6.1f}%  d_NRL={dn:+6.1f}%   {v}")
+            pline = paired(cells[i][2].get(p, {}), cells[i + 1][2].get(p, {}))
+            if pline:
+                print(f"    {pline}")
         if len({s for s in signs if s}) > 1:
             print("\n  ! cross-pair PDR deltas disagree in sign -> run-to-run "
                   "NOISE, not a real effect (cf. issue #47). Bump --runs.")
@@ -155,13 +199,16 @@ def main():
     print(f"\ndeltas vs first cell ({p}):")
     base = cells[0][1].get(p)
     if base:
-        for lbl, rows, _ in cells[1:]:
+        for lbl, rows, runs, _ in cells[1:]:
             cur = rows.get(p)
             if not cur:
                 continue
             v, dp, dd, dd99, dn = verdict(base, cur)
             print(f"  {lbl:<26} dPDR={dp:+5.1f}pp  d_delay={dd:+6.1f}%  "
                   f"d_d99={dd99:+6.1f}%  d_NRL={dn:+6.1f}%   {v}")
+            pline = paired(cells[0][2].get(p, {}), runs.get(p, {}))
+            if pline:
+                print(f"    {pline}")
 
 
 if __name__ == "__main__":

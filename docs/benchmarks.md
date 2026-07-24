@@ -134,6 +134,21 @@ workflow and blocks the publish step, so a #51-style channel/config regression c
 no longer silently corrupt the published numbers. Recalibration is a one-line
 edit to `anchors.yml`.
 
+**Determinism anchor ([#129](https://github.com/danieljoppi/AntHocNet/issues/129)).**
+One further anchor's expected result is not a number but *identity*: golden
+rule 3 (AGENTS.md) routes all randomness through `IRng` and all time through
+`IClock`, so **the same seed twice must produce byte-identical results**.
+[`ns3/tools/check-determinism.sh`](../ns3/tools/check-determinism.sh) runs a
+small, fast `anthocnet-compare` scenario twice with identical parameters and
+diffs the per-protocol metric rows (build chatter and timing-dependent log
+noise are filtered out); any difference — a stray `rand()`, an uninjected
+wall-clock read, unordered-container iteration feeding a routing decision —
+fails the gate and prints both filtered outputs. It runs as a blocking step in
+`ci.yml` next to the single-hop anchor (inside the ns-3.42 `ns3-build` job).
+Because every relative comparison in this document is made on identical
+per-protocol realisations, a determinism break would invalidate all of them at
+once, which is why this anchor gates every push/PR.
+
 ## Results
 
 The per-scenario tables and the taxonomy chart below are regenerated and

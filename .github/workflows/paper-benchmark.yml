@@ -144,6 +144,13 @@ jobs:
             echo "FAIL: no protocol result rows in paper-results.txt — empty results table (#28)."
             exit 1
           fi
+          # #128: append the per-run ##RUN## rows (already machine-readable in
+          # the compare stdout, so present in paper-results.txt via the tee)
+          # after the ##BENCH## means, so paired per-seed statistics are
+          # fetchable from the same cheap log tail. `|| true`: absent on older
+          # binaries / the baselines harness — means-only block stays valid.
+          grep '^##RUN##' "$GITHUB_WORKSPACE/paper-results.txt" \
+            >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
           cat "$GITHUB_WORKSPACE/bench-rows.txt"
           # #131: sim cost — one process-wide line (anthocnet-compare runs all
           # protocols in one process, hence proto field "all"):
