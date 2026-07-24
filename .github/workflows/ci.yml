@@ -218,6 +218,18 @@ jobs:
         # Thresholds: ns3/tools/anchors.yml.
         if: matrix.version == '3.42'
         run: bash ns3/tools/check-anchors.sh /opt/ns-3 single-hop
+      - name: Determinism gate (same seed twice must be byte-identical, #129)
+        # Golden rule 3 (AGENTS.md): all randomness via IRng, all time via
+        # IClock, so identical seeds must reproduce identical runs — the
+        # property the per-protocol comparison on identical realisations rests
+        # on. Runs anthocnet-compare twice with identical parameters and diffs
+        # the per-protocol metric rows; a stray rand(), an uninjected
+        # wall-clock read, or unordered-container iteration feeding a decision
+        # fails here instead of silently invalidating every benchmark. Same
+        # single-matrix-version placement as the anchor gate above to keep CI
+        # cheap (reuses this job's build).
+        if: matrix.version == '3.42'
+        run: bash ns3/tools/check-determinism.sh /opt/ns-3
 
   ns3-asan:
     name: NS-3 module under ASan + LSan
