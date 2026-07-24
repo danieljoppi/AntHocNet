@@ -501,6 +501,34 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                       << " linkfailBudgetDrop=" << lfBudget
                       << " linkfailOrigSuppressed=" << lfSuppressed;
 
+            // Issue #133: pheromone-table size gauge at end of run. Per node
+            // the table grows with destinations x neighbours (regular +
+            // virtual) and only evaporation / link-failure removal shrink it,
+            // so avg/max across nodes is the growth observable for long runs
+            // (notably the enableEvaporation=false ablation).
+            uint64_t ptRegSum = 0, ptRegMax = 0, ptVirSum = 0, ptVirMax = 0;
+            uint32_t ptNodes = 0;
+            for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+                Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
+                if (!ip) continue;
+                Ptr<ns3::anthocnet::RoutingProtocol> ahn =
+                    DynamicCast<ns3::anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
+                if (!ahn) continue;
+                ++ptNodes;
+                const uint64_t reg = ahn->PtableEntriesRegular();
+                const uint64_t vir = ahn->PtableEntriesVirtual();
+                ptRegSum += reg;
+                ptVirSum += vir;
+                if (reg > ptRegMax) ptRegMax = reg;
+                if (vir > ptVirMax) ptVirMax = vir;
+            }
+            std::cout << " ptable[regAvg="
+                      << (ptNodes ? static_cast<double>(ptRegSum) / ptNodes : 0.0)
+                      << ",regMax=" << ptRegMax
+                      << ",virAvg="
+                      << (ptNodes ? static_cast<double>(ptVirSum) / ptNodes : 0.0)
+                      << ",virMax=" << ptVirMax << "]";
+
             // Issue #21: pending-queue hold-time attribution. dOff50 is ~3 ms
             // (#88) so the delay/jitter gap vs AODV is carried by queue-held
             // packets; this splits the delivered hold time (and the aged-out
