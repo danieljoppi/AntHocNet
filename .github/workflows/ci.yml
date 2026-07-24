@@ -109,6 +109,40 @@ jobs:
               echo "delivered CBR packets (rx at agent): $rx"
               [ "${rx:-0}" -gt 0 ]
             '
+      - name: Re-run the e2e smoke under valgrind (memcheck)
+        # Second pass of ci-smoke.tcl under valgrind to catch adapter-class
+        # memory errors (the original NS-2 module's headline bugs). Only on
+        # ns-2.35 to bound cost — valgrind slows the run ~20-50x and one tree
+        # version is enough for calibration. A fresh `docker run` is needed
+        # (the previous step's container is gone), but the image ships the
+        # stock tree pre-built, so this only recompiles the adapter + relinks.
+        # The image is Ubuntu 18.04, so valgrind comes from apt; the checkout
+        # is mounted at /src, hence the /src/... suppressions path. Note
+        # --leak-check=summary keeps leak *errors* off while calibrating
+        # (only memcheck errors like invalid reads/writes fail the run);
+        # tighten to --leak-check=full alongside promotion. Non-blocking —
+        # promote to blocking once green on main (#130).
+        if: matrix.version == '2.35'
+        continue-on-error: true
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src \
+            ghcr.io/${{ github.repository_owner }}/ns2:${{ matrix.version }} \
+            bash -euxc '
+              apt-get update && apt-get install -y --no-install-recommends valgrind
+              make install-ns2 NS2DIR="$NS2DIR"
+              cd "$NS2DIR"
+              ./config.status
+              make
+              test -x ./ns
+              cp /src/ns2/tcl/ci-smoke.tcl .
+              valgrind --error-exitcode=1 --errors-for-leak-kinds=definite \
+                --leak-check=summary \
+                --suppressions=/src/ns2/tools/valgrind.supp \
+                ./ns ci-smoke.tcl
+              rx=$(grep -c "^r.*AGT.*cbr" ci-smoke.tr || true)
+              echo "delivered CBR packets under valgrind (rx at agent): $rx"
+              [ "${rx:-0}" -gt 0 ]
+            '
 
   ns3-build:
     name: NS-3 module build + test
@@ -184,3 +218,75 @@ jobs:
         # Thresholds: ns3/tools/anchors.yml.
         if: matrix.version == '3.42'
         run: bash ns3/tools/check-anchors.sh /opt/ns-3 single-hop
+
+  ns3-asan:
+    name: NS-3 module under ASan + LSan
+    runs-on: ubuntu-latest
+    # Sanitize the adapter surface (pending-packet queue, timer cancel paths,
+    # header <-> AntMessage conversion): rebuild the AntHocNet module and its
+    # ns-3 dependencies with AddressSanitizer + LeakSanitizer, then re-run the
+    # same module test suite and e2e delivery smoke as ns3-build. Single matrix
+    # version (3.42, the anchor-gate pin) to bound cost. Non-blocking while the
+    # LSan suppression file (ns3/tools/lsan.supp) is calibrated against
+    # upstream ns-3 static/global allocations — promote to blocking once green
+    # on main (#130).
+    continue-on-error: true
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ns3:3.42
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      # LeakSanitizer attaches to the process via ptrace at exit. The default
+      # docker seccomp profile allows ptrace on current runners, but be
+      # explicit so LSan can't start failing with "ptrace failed" after a
+      # runner/docker update.
+      options: --cap-add=SYS_PTRACE
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install AntHocNet module
+        run: make install-ns3 NS3DIR=/opt/ns-3
+      - name: Configure with ASan/LSan
+        run: |
+          cd /opt/ns-3
+          # Scope LSan failures to AntHocNet code: suppress known upstream ns-3
+          # static-initializer allocations (see the file header for how to
+          # extend it). $GITHUB_WORKSPACE is the in-container checkout path.
+          echo "LSAN_OPTIONS=suppressions=$GITHUB_WORKSPACE/ns3/tools/lsan.supp" >> "$GITHUB_ENV"
+          mods='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          # ns-3's CMake build has first-class sanitizer support (NS3_SANITIZE),
+          # exposed by the ./ns3 wrapper as --enable-sanitizers
+          # (address + leak + undefined). Prefer it when the wrapper advertises
+          # it — it is re-applied on every configure, so it works on the image's
+          # already-configured tree. Fallback: inject the flags via
+          # CXXFLAGS/LDFLAGS, which ns-3's CMake only reads on a *fresh*
+          # configure, hence the ./ns3 clean first (the flag change forces a
+          # full rebuild either way). 3.42 has --filter-module-examples-and-tests
+          # (added after 3.36), so tests always run here.
+          if ./ns3 configure --help 2>/dev/null | grep -q enable-sanitizers; then
+            ./ns3 configure --enable-sanitizers --enable-tests --enable-examples \
+              --filter-module-examples-and-tests=anthocnet \
+              --enable-modules="$mods"
+          else
+            ./ns3 clean
+            CXXFLAGS='-fsanitize=address -fno-omit-frame-pointer -g' \
+            LDFLAGS='-fsanitize=address' \
+            ./ns3 configure --enable-tests --enable-examples \
+              --filter-module-examples-and-tests=anthocnet \
+              --enable-modules="$mods"
+          fi
+      - name: Build
+        run: cd /opt/ns-3 && ./ns3 build
+      - name: Run module test suite under ASan/LSan
+        run: cd /opt/ns-3 && ./test.py -s anthocnet
+      - name: E2E delivery smoke under ASan/LSan
+        # Same loose "routes data" gate as ns3-build, but without ns3-build's
+        # `2>/dev/null` so sanitizer reports land in the job log (command
+        # substitution only captures stdout, so the CSV parse is unaffected).
+        run: |
+          cd /opt/ns-3
+          out=$(./ns3 run "anthocnet-compare --csv --protocols=anthocnet --nNodes=8 --time=20 --area=150 --flows=2")
+          echo "$out"
+          pdr=$(printf '%s\n' "$out" | awk -F, '$1=="anthocnet"{print $7}')
+          echo "AntHocNet PDR% = ${pdr:-<none>}"
+          awk -v p="${pdr:-0}" 'BEGIN { exit (p+0 > 0) ? 0 : 1 }' \
+            || { echo "FAIL: AntHocNet delivered no packets (PDR=${pdr:-<none>})"; exit 1; }
