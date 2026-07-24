@@ -46,6 +46,16 @@ public:
     bool isEmptyRegular() const { return pheromoneRegular_.empty(); }
     bool isEmptyVirtual() const { return pheromoneVirtual_.empty(); }
 
+    /// Size gauge (issue #133): current (neighbor, dest) entry counts. The
+    /// table grows with destinations x neighbours (regular + virtual) and only
+    /// evaporation / link-failure removal shrink it, so adapters export these
+    /// to observe growth over long runs. Read-only; no routing behaviour.
+    std::size_t numEntriesRegular() const { return pheromoneRegular_.size(); }
+    std::size_t numEntriesVirtual() const { return pheromoneVirtual_.size(); }
+    std::size_t numEntries() const {
+        return pheromoneRegular_.size() + pheromoneVirtual_.size();
+    }
+
     // --- neighbour management --------------------------------------------
     void addNeighbor(NodeAddress neighbor);
     void removeNeighbor(NodeAddress neighbor);
