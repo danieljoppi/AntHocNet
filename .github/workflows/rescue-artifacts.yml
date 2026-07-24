@@ -1,0 +1,66 @@
+name: Rescue run artifacts into docs (manual)
+
+# One-shot rescue tool (#122): workflow artifacts expire (7-day retention on
+# the campaign runs), but the #110 campaign's completed sweep CSVs are
+# irreplaceable without re-paying the simulation cost. This job downloads the
+# `scenario-matrix` artifact of each given run and commits its scenarios.csv
+# into docs/benchmarks/campaign/ so the data survives expiry. Runs in seconds;
+# it does NOT dispatch any simulation.
+on:
+  workflow_dispatch:
+    inputs:
+      run_ids:
+        description: 'Comma-separated workflow run IDs whose scenario-matrix artifact to rescue'
+        default: '30031902395,30031904151'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  rescue:
+    name: rescue scenario-matrix CSVs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download artifacts and stage CSVs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p docs/benchmarks/campaign
+          IFS=',' read -ra IDS <<< "${{ github.event.inputs.run_ids }}"
+          for id in "${IDS[@]}"; do
+            id="$(echo "$id" | tr -d ' ')"
+            # Known campaign runs get a readable label; anything else keeps the id.
+            case "$id" in
+              30031902395) label="area-disk" ;;   # area sweep, range PHY, runs=5, time=900
+              30031904151) label="pause-disk" ;;  # pause sweep, range PHY, runs=5, time=900
+              *)           label="run" ;;
+            esac
+            dir="rescue-tmp/$id"
+            gh run download "$id" -R "$GITHUB_REPOSITORY" -n scenario-matrix -D "$dir"
+            if [ ! -f "$dir/scenarios.csv" ]; then
+              echo "FAIL: no scenarios.csv in artifact of run $id"; exit 1
+            fi
+            rows=$(( $(wc -l < "$dir/scenarios.csv") - 1 ))
+            if [ "$rows" -lt 1 ]; then
+              echo "FAIL: scenarios.csv of run $id has no data rows"; exit 1
+            fi
+            echo "run $id ($label): $rows data rows"
+            cp "$dir/scenarios.csv" "docs/benchmarks/campaign/${id}-${label}.csv"
+          done
+          rm -rf rescue-tmp
+      - name: Commit rescued CSVs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/benchmarks/campaign
+          if git diff --cached --quiet; then
+            echo "nothing new to commit"
+          else
+            git commit -m "benchmarks: rescue campaign sweep CSVs from expiring artifacts (#122) [skip ci]"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
