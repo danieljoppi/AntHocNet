@@ -123,7 +123,8 @@ def run_compare(ns3dir, arg_str, dry_run, label=""):
         cmd = (f'cd "{ns3dir}" && /usr/bin/time -v -o "{timefile}" '
                f'./ns3 run "anthocnet-compare {arg_str}"')
     t0 = time.monotonic()
-    proc = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    proc = subprocess.run(cmd, shell=True, capture_output=True, text=True,
+                          check=False)
     wall = time.monotonic() - t0
     maxrss = "-"
     if timefile is not None:
