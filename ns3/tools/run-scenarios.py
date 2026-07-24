@@ -34,8 +34,11 @@ The CSV is what make-charts.py reads; re-plotting never re-runs ns-3.
 import argparse
 import csv
 import io
+import os
 import subprocess
 import sys
+import tempfile
+import time
 
 # --- scenario taxonomy ------------------------------------------------------
 # Each value is a set of anthocnet-compare flags. "scenario=paper" pulls in the
@@ -104,19 +107,42 @@ def build_args(flags, runs, time, protocols, propagation):
     return " ".join(parts)
 
 
-def run_compare(ns3dir, arg_str, dry_run):
+def run_compare(ns3dir, arg_str, dry_run, label=""):
     """Run one anthocnet-compare invocation; return parsed CSV dict rows."""
     cmd = f'cd "{ns3dir}" && ./ns3 run "anthocnet-compare {arg_str}"'
     if dry_run:
         print(f"[dry-run] {cmd}", file=sys.stderr)
         return []
     print(f"[run] anthocnet-compare {arg_str}", file=sys.stderr)
+    # #131: sim cost per point — wall clock always; peak RSS via
+    # `/usr/bin/time -v` into a temp file when available (getrusage's
+    # RUSAGE_CHILDREN maxrss is a lifetime max, not per-child, so a delta is
+    # unreliable). Without /usr/bin/time the RSS field falls back to "-".
+    timefile = None
+    if os.path.exists("/usr/bin/time"):
+        fd, timefile = tempfile.mkstemp(prefix="time-v-", suffix=".log")
+        os.close(fd)
+        cmd = (f'cd "{ns3dir}" && /usr/bin/time -v -o "{timefile}" '
+               f'./ns3 run "anthocnet-compare {arg_str}"')
+    t0 = time.monotonic()
     proc = subprocess.run(cmd, shell=True, capture_output=True, text=True,
                           check=False)
+    wall = time.monotonic() - t0
+    maxrss = "-"
+    if timefile is not None:
+        try:
+            with open(timefile) as fh:
+                for ln in fh:
+                    if "Maximum resident set size" in ln:
+                        maxrss = ln.rsplit(" ", 1)[-1].strip()
+        finally:
+            os.unlink(timefile)
     if proc.returncode != 0:
         sys.stderr.write(proc.stdout)
         sys.stderr.write(proc.stderr)
         raise SystemExit(f"anthocnet-compare failed ({proc.returncode}) for: {arg_str}")
+    # One process runs all protocols, hence proto field "all".
+    print(f"##PERF## {label} all {wall:.1f} {maxrss}", flush=True)
     # Keep only the CSV (header + protocol rows); drop ns-3 build/run chatter and
     # any '# diag' lines.
     keep = [ln for ln in proc.stdout.splitlines()
@@ -169,10 +195,10 @@ def main():
         raise SystemExit("--point requires --only <sweep name> "
                           f"(one of {', '.join(SWEEPS)}), got --only={args.only!r}")
 
-    runs, time = args.runs, args.time
+    runs, sim_time = args.runs, args.time
     sweeps = SWEEPS
     if args.quick:
-        runs, time = 2, 120
+        runs, sim_time = 2, 120
         sweeps = {k: (xl, base, pts[:: max(1, (len(pts) - 1) // 2)])
                   for k, (xl, base, pts) in SWEEPS.items()}
 
@@ -188,9 +214,9 @@ def main():
                 if args.only in DISCRETE and args.only != name:
                     continue
                 rows = run_compare(args.ns3dir,
-                                   build_args(flags, runs, time, args.protocols,
+                                   build_args(flags, runs, sim_time, args.protocols,
                                               args.propagation),
-                                   args.dry_run)
+                                   args.dry_run, label=name)
                 emit(w, "discrete", name, "", name, klass, flags.get("pause", ""),
                      args.propagation, rows)
                 f.flush()
@@ -211,9 +237,9 @@ def main():
                     flags = dict(base)
                     flags.update(extra)
                     rows = run_compare(args.ns3dir,
-                                       build_args(flags, runs, time, args.protocols,
+                                       build_args(flags, runs, sim_time, args.protocols,
                                                   args.propagation),
-                                       args.dry_run)
+                                       args.dry_run, label=f"{name}={x}")
                     emit(w, "sweep", name, x, f"{name}={x}", xlabel,
                          flags.get("pause", ""), args.propagation, rows)
                     f.flush()
