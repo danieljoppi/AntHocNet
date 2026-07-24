@@ -39,3 +39,7 @@ CMakeFiles/
 *.tr
 *.nam
 rtable.txt
+
+# Python bytecode (ns3/tools/*.py, .claude/skills/*.py)
+__pycache__/
+*.pyc
