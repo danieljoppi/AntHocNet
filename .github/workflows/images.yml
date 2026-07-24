@@ -7,11 +7,12 @@ name: Images
 # post-merge, so they never gate a PR. A manual dispatch on a branch builds
 # only (no push) for validation.
 #
-# Published to two registries — GHCR (always) and Docker Hub (when the
-# DOCKERHUB_USERNAME / DOCKERHUB_TOKEN secrets are set). docker/build-push-action
-# builds each image once and pushes it to every tag in the list regardless of
-# registry, so the mirror costs no extra build. Three tag tiers per image (e.g.
-# anthocnet-ns3):
+# Published to two registries — GHCR (authoritative, always) and Docker Hub (a
+# best-effort mirror, when the DOCKERHUB_USERNAME / DOCKERHUB_TOKEN secrets are
+# set). Each image is published by a pair of steps: a primary step that pushes
+# only the `ghcr.io/...` tags, and a `continue-on-error` mirror step right after
+# it that pushes the matching `docker.io/...` tags (see the comment on the first
+# mirror step, and #158). Three tag tiers per image (e.g. anthocnet-ns3):
 #   :<sim-version>            e.g. :3.42        — latest build for that ns version (rolling)
 #   :<sim-version>-<release>  e.g. :3.42-v0.3.0 — immutable, pinned to a release
 #   :latest                                     — newest ns version + latest AntHocNet
@@ -100,6 +101,34 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/ns3:${{ matrix.version }}
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/ns3:{1}-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
+          push: ${{ env.PUSH == 'true' }}
+      # --- Docker Hub mirror (#158) -------------------------------------------
+      # GHCR is authoritative: it is what ci.yml, paper-benchmark and
+      # scenario-matrix pull. Docker Hub (added in #77/#79) is a convenience
+      # mirror for humans. They used to share one `tags:` block, so buildx pushed
+      # both registries in a single invocation — and when DOCKERHUB_TOKEN lost
+      # its write scope, the GHCR push succeeded, the Docker Hub push failed
+      # ("unauthorized: access token has insufficient scopes"), the step failed,
+      # and *every later step in the job was skipped*. That is how
+      # `ghcr.io/<owner>/ns3:<ver>-opt` (#123) silently stopped being published,
+      # blocking #124.
+      # So: primary steps carry ONLY ghcr.io tags, and each is followed by a
+      # `continue-on-error: true` mirror step carrying the docker.io tags. A
+      # dead, expired or absent Docker Hub token now costs a yellow mirror step
+      # and nothing else. The mirror rebuilds from the layer cache the primary
+      # step just populated and repeats context/file/target/build-args verbatim,
+      # so it publishes the same artifact. To turn mirroring off entirely, clear
+      # the DOCKERHUB_USERNAME secret.
+      - name: Mirror plain ns-3 to Docker Hub (non-fatal)
+        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' }}
+        continue-on-error: true
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ns3
+          target: base
+          build-args: NS3_VERSION=ns-${{ matrix.version }}
+          tags: |
             ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/ns3:{1}', env.DOCKERHUB_USERNAME, matrix.version) || '' }}
             ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/ns3:{1}-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
           push: ${{ env.PUSH == 'true' }}
@@ -124,6 +153,19 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/ns3:${{ matrix.version }}-opt
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/ns3:{1}-opt-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
+          push: ${{ env.PUSH == 'true' }}
+      - name: Mirror release-profile ns-3 to Docker Hub (non-fatal)
+        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' && matrix.version == env.NS_OPT }}
+        continue-on-error: true
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ns3
+          target: base
+          build-args: |
+            NS3_VERSION=ns-${{ matrix.version }}
+            NS3_PROFILE=release
+          tags: |
             ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/ns3:{1}-opt', env.DOCKERHUB_USERNAME, matrix.version) || '' }}
             ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/ns3:{1}-opt-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
           push: ${{ env.PUSH == 'true' }}
@@ -138,6 +180,17 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/anthocnet-ns3:${{ matrix.version }}
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/anthocnet-ns3:{1}-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
             ${{ matrix.version == env.NS_LATEST && format('ghcr.io/{0}/anthocnet-ns3:latest', github.repository_owner) || '' }}
+          push: ${{ env.PUSH == 'true' }}
+      - name: Mirror ns-3 + AntHocNet to Docker Hub (non-fatal)
+        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' }}
+        continue-on-error: true
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ns3
+          target: anthocnet
+          build-args: NS3_VERSION=ns-${{ matrix.version }}
+          tags: |
             ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/anthocnet-ns3:{1}', env.DOCKERHUB_USERNAME, matrix.version) || '' }}
             ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/anthocnet-ns3:{1}-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
             ${{ env.DOCKERHUB_USERNAME != '' && matrix.version == env.NS_LATEST && format('docker.io/{0}/anthocnet-ns3:latest', env.DOCKERHUB_USERNAME) || '' }}
@@ -180,6 +233,18 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/ns2:${{ matrix.version }}
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/ns2:{1}-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
+          push: ${{ env.PUSH == 'true' }}
+      # Same split as the ns-3 job — see the mirror rationale there (#158).
+      - name: Mirror plain ns-2 to Docker Hub (non-fatal)
+        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' }}
+        continue-on-error: true
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ns2
+          target: base
+          build-args: NS2_VERSION=${{ matrix.version }}
+          tags: |
             ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/ns2:{1}', env.DOCKERHUB_USERNAME, matrix.version) || '' }}
             ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/ns2:{1}-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
           push: ${{ env.PUSH == 'true' }}
@@ -194,6 +259,17 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/anthocnet-ns2:${{ matrix.version }}
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/anthocnet-ns2:{1}-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
             ${{ matrix.version == env.NS_LATEST && format('ghcr.io/{0}/anthocnet-ns2:latest', github.repository_owner) || '' }}
+          push: ${{ env.PUSH == 'true' }}
+      - name: Mirror ns-2 + AntHocNet to Docker Hub (non-fatal)
+        if: ${{ env.PUSH == 'true' && env.DOCKERHUB_USERNAME != '' }}
+        continue-on-error: true
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ns2
+          target: anthocnet
+          build-args: NS2_VERSION=${{ matrix.version }}
+          tags: |
             ${{ env.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/anthocnet-ns2:{1}', env.DOCKERHUB_USERNAME, matrix.version) || '' }}
             ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/anthocnet-ns2:{1}-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
             ${{ env.DOCKERHUB_USERNAME != '' && matrix.version == env.NS_LATEST && format('docker.io/{0}/anthocnet-ns2:latest', env.DOCKERHUB_USERNAME) || '' }}
