@@ -49,6 +49,11 @@ results.
   `Histogram` accessors, `RouteInput` by-value vs const-ref, scoped TestSuite
   enums). The `AHN_*`/`ANTHOCNET_NS3_*` macros in the NS-3 headers + CMake
   already gate several of these by version — extend that pattern, don't fork.
+- Sanitizer passes on the adapters (#130): the `ns3-asan` job rebuilds the
+  ns-3 module under ASan/LSan (suppressions: `ns3/tools/lsan.supp`) and the
+  ns-2.35 leg of `ns2-compile` re-runs the smoke under valgrind
+  (`ns2/tools/valgrind.supp`). Both are `continue-on-error` while suppression
+  calibration accumulates — read their logs even when they show green.
 - Validate the **core** half locally first (`make test`); only the adapter/build
   half needs CI.
 - Heavier, manual workflows: `paper-benchmark` and `scenario-matrix` (taxonomy +

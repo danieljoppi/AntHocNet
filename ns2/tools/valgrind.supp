@@ -1,0 +1,37 @@
+# Valgrind (memcheck) suppressions for the NS-2 e2e smoke run under valgrind
+# (ns2-compile job, #130).
+#
+# Goal: keep valgrind failures scoped to the AntHocNet adapter
+# (ns2/src/anthocnet_agent_ns2). The stock ns-2.35 tree — Tcl/OTcl/TclCL and
+# several stock modules — carries long-standing memory errors and definite
+# leaks that are not ours to fix; suppress those here, upstream frame by
+# upstream frame, as they show up in CI logs.
+#
+# This file starts as a commented skeleton on purpose: suppressions must be
+# calibrated against real job output, not guessed. To add one, re-run the job
+# with --gen-suppressions=all (temporarily, in ci.yml), copy the emitted block
+# for an error whose stack is entirely upstream code, give it a descriptive
+# name, and paste it here with a comment naming the offender. Keep the frames
+# specific (fun:/obj: lines), never a bare wildcard-only block.
+#
+# Format reference:
+#   https://valgrind.org/docs/manual/manual-core.html#manual-core.suppress
+#
+# Typical upstream offenders to expect (uncomment + complete once observed):
+#
+# {
+#    tcl-interp-init-leaks
+#    Memcheck:Leak
+#    match-leak-kinds: definite
+#    ...
+#    fun:Tcl_CreateInterp
+#    ...
+# }
+# {
+#    otcl-class-init-leaks
+#    Memcheck:Leak
+#    match-leak-kinds: definite
+#    ...
+#    fun:Otcl_Init
+#    ...
+# }
