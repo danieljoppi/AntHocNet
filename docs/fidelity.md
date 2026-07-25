@@ -74,6 +74,41 @@ per-path budget — bounding the flood without reintroducing the #169 hop limit.
 Numbers measured between those two fixes carry the flood and are not
 representative either.
 
+## Where we ship [1]'s algorithm and the 2007 thesis superseded it
+
+The thesis is this repo's **designated primary source for parameters that [1]
+leaves unspecified** (#58/#70). On three mechanisms the two sources disagree
+because the thesis's authors *changed the algorithm*, and in all three we ship
+the [1] version. That is defensible — [1] is a real published algorithm and the
+one this document's claims are written against — but it had not been stated
+anywhere, so a reader checking us against the thesis would read three
+deliberate choices as three defects. Recorded here (audit:
+[#182](https://github.com/danieljoppi/AntHocNet/issues/182)):
+
+1. **Multipath reactive route setup.** [1] §3.1 admits later same-generation
+   ants within a 1.5× band (`enableMultipath`, `antAcceptanceFactor`). The
+   thesis parameterises the same band differently (`a1 = 0.9`, plus `a2 = 2`
+   for first-hop-disjoint ants) and then records dropping the design: reactive
+   setup is restricted to a single route, with multiple routes obtained through
+   *proactive* maintenance instead.
+   [#177](https://github.com/danieljoppi/AntHocNet/issues/177) is measuring the
+   options; [#178](https://github.com/danieljoppi/AntHocNet/issues/178) records
+   the citation trap.
+2. **Proactive broadcast probability** (`proactiveBroadcastProb = 0.1`). Our
+   exact value appears in the thesis, but in §4.3.4, *"Older versions of
+   AntHocNet"*. In the shipped thesis algorithm proactive forward ants are
+   "never broadcast" — on reaching a node with no routing information for the
+   destination they are simply discarded.
+3. **Proactive broadcast budget** (`proactiveMaxBroadcasts = 2`). Same section,
+   same status: the thesis states the budget as `nb = 2` for the older
+   algorithm only. With no proactive broadcasting in the current version, there
+   is nothing for the budget to bound there.
+
+So the accurate claim is "faithful to [1]", not "as close to the 2007 thesis as
+possible". Provenance for each parameter is in
+[`configuration.md`](configuration.md) §3.1, where these rows are marked
+`thesis §4.3.4 (superseded version)` rather than a bare `thesis`.
+
 ## Known deviations (honest list)
 
 1. **Delay tail on the ns-3 disk model (#21).** On the contention-dominated
