@@ -79,7 +79,20 @@ The NS-3 module also ships `anthocnet-compare`, which benchmarks AntHocNet
 against AODV / OLSR / DSDV on an identical scenario (delivery ratio, delay,
 throughput via FlowMonitor) — see [ns3/README.md](ns3/README.md#compare-against-aodv--olsr--dsdv).
 Current results, regenerated on every merge to the default branch, are in
-[docs/benchmarks.md](docs/benchmarks.md).
+[docs/benchmarks.md](docs/benchmarks.md); the commands to reproduce a run, and
+the validation anchors to check first, are in
+[docs/benchmarks/methodology.md](docs/benchmarks/methodology.md).
+
+### Tune the protocol
+
+Every tunable parameter, its default, **where that default came from**, and the
+calibration loop (sweep one knob → A/B → noise verdict) are in
+[docs/configuration.md](docs/configuration.md). ns-3 exposes them as attributes:
+
+```bash
+./ns3 run "anthocnet-compare --scenario=paper --runs=5 \
+  --ns3::anthocnet::RoutingProtocol::HopTime=0.003"
+```
 
 ### Container images
 
@@ -135,6 +148,7 @@ History of the work is in the per-phase commits; design rationale is in
 
 - [architecture.md](docs/architecture.md) — core/ports design and decision flow
 - [porting-notes.md](docs/porting-notes.md) — bug fixes, NS-2 anchors, caveats
+- [configuration.md](docs/configuration.md) — every parameter, its provenance, how to calibrate
 - [benchmarks.md](docs/benchmarks.md) — AntHocNet vs AODV/OLSR/DSDV (auto-updated)
 - [cross-validation.md](docs/cross-validation.md) — NS-2 vs NS-3 behaviour check
 
@@ -145,6 +159,9 @@ History of the work is in the per-phase commits; design rationale is in
 | [docs/ant-colony-routing.md](docs/ant-colony-routing.md) | Concepts primer: ant foraging → ACO → AntNet → AntHocNet, and how they map to the code. Start here for the *idea*. |
 | [docs/architecture.md](docs/architecture.md) | Design, the core/adapter split, and the decision flow. |
 | [docs/porting-notes.md](docs/porting-notes.md) | Bugs fixed in extraction, NS-2 patch anchors, wire format, version caveats. |
+| [docs/configuration.md](docs/configuration.md) | **Every tunable parameter, its default and where that default came from**, the ns-3 attribute / NS-2 bind for it, and the calibration loop. Read before changing a knob or trusting one. |
+| [docs/benchmarks.md](docs/benchmarks.md) | Results index → [metrics](docs/benchmarks/metrics.md), [methodology](docs/benchmarks/methodology.md), per-scenario and per-sweep pages. |
+| [docs/fidelity.md](docs/fidelity.md) | What v1.0 reproduces from the 2004 paper and where it deliberately deviates. |
 | [docs/wire-format.md](docs/wire-format.md) | Canonical on-wire ant layout, version byte, and diff vs. the original and the papers. |
 | [docs/adr/](docs/adr) | Architecture Decision Records — the "why" behind the structure. |
 | [paper/](paper/) | JOSS software-paper draft (`paper.md`/`paper.bib`), for submission against this repo. |

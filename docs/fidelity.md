@@ -30,7 +30,10 @@ The living compliance ledger is [issue #91](https://github.com/danieljoppi/AntHo
 | Bounded local repair (≤2 broadcasts, wait 5×) | 3.4 | `repairMaxBroadcasts`, `repairWaitFactor` | ✅ |
 
 Every pinned-down parameter and its match/deviation status is tabulated in the
-[paper digest §3](publications/papers/2004-ppsn-anthocnet.md).
+[paper digest §3](publications/papers/2004-ppsn-anthocnet.md); the corresponding
+`Config` defaults, the provenance category of each (`[1] §x` / thesis / repo
+choice / **unknown**) and how to calibrate one are in
+[`configuration.md`](configuration.md).
 
 ## Headline results vs AODV (paper regime: 50 nodes, 1500×300 m, RWP 20 m/s, 20 CBR flows)
 
