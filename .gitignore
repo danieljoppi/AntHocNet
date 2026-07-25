@@ -50,3 +50,8 @@ rtable.txt
 # Python bytecode (ns3/tools/*.py, .claude/skills/*.py)
 __pycache__/
 *.pyc
+
+# Agent worktrees (Claude Code `isolation: worktree`). Each entry is a full
+# checkout of this repo created for a subagent to work in isolation, so it must
+# never be committed into the repo it is a copy of.
+.claude/worktrees/
