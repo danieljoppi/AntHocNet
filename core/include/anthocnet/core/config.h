@@ -74,9 +74,34 @@ struct Config {
     /// for this many seconds after the last locally-originated data packet to it.
     double sessionTtl = 5.0;
 
+    /// Emission gate for proactive forward ants (issue #180). The proactive
+    /// timer *considers* one ant per active session; this is the fraction by
+    /// which the best **virtual** pheromone for that destination must exceed the
+    /// best **regular** pheromone before the ant is actually sent.
+    ///
+    /// Ducatelle 2007 thesis (lines 4084-4088): *"In order to improve
+    /// efficiency, the actual sending of a proactive forward ant is conditional
+    /// to the availability of good new virtual pheromone: only if the best
+    /// virtual pheromone is significantly better (in our experiments: at least
+    /// 10% better) than the best regular pheromone, a proactive forward ant is
+    /// sent out."*
+    ///
+    /// Expressed as a **margin** (0.10 = "at least 10% better"), not as a 1.10
+    /// ratio, so that `0` reads unambiguously as "no margin required" — i.e. the
+    /// gate is off and every considered ant is sent, reproducing pre-#180
+    /// behaviour for the ablation. See `createProactiveAnts()` for the two
+    /// boundary cases (no virtual pheromone; no regular route at all).
+    double proactiveVirtualMargin = 0.10;
+
     /// Timer intervals (seconds).
     double helloInterval     = 1.0;
-    double proactiveInterval = 10.0;
+    /// Proactive forward-ant period per active session. **2.0 s is the thesis's
+    /// measured optimum, not its stated default** — the thesis normally clocks
+    /// proactive ants at `t_hello` (1 s) but its §5.3.3 sweep over
+    /// 0.5/1/2/5/10/20/50 s reports *"Sending one ant every 2 s almost always
+    /// gives the best performance"* (lines 6619-6621). Only affordable together
+    /// with `proactiveVirtualMargin` (#180).
+    double proactiveInterval = 2.0;
     double lifeAnt           = 2.0;
 
     /// A neighbour is presumed gone after this many missed hellos

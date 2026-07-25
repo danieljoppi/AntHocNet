@@ -54,6 +54,15 @@ double PheromoneTable::bestRegular(NodeAddress dest) const {
     return best;
 }
 
+double PheromoneTable::bestVirtual(NodeAddress dest) const {
+    double best = 0.0;
+    for (NodeAddress neighbor : neighborTable_) {
+        double ph = getPheromoneVirtual(dest, neighbor);
+        if (ph > best) best = ph;
+    }
+    return best;
+}
+
 void PheromoneTable::setPheromoneRegular(NodeAddress dest, NodeAddress neighbor, double value) {
     destRegular_.insert(dest);
     addNeighbor(neighbor);

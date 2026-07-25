@@ -40,6 +40,11 @@ public:
     /// Best (largest) regular pheromone any neighbour holds for `dest`, or 0 if
     /// none. Used to advertise this node's path goodness in hello adverts.
     double bestRegular(NodeAddress dest) const;
+    /// Best (largest) virtual pheromone any neighbour holds for `dest`, or 0 if
+    /// none. Same units as bestRegular (the diffusion bootstrap re-inverts into
+    /// regular units), so the two are directly comparable — that comparison is
+    /// the proactive emission gate (#180).
+    double bestVirtual(NodeAddress dest) const;
     void setPheromoneRegular(NodeAddress dest, NodeAddress neighbor, double value);
     void setPheromoneVirtual(NodeAddress dest, NodeAddress neighbor, double value);
 

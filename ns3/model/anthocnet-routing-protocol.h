@@ -225,6 +225,7 @@ private:
     bool m_enableProactive;
     bool m_enableDiffusion;
     double m_proactiveBroadcastProb;
+    double m_proactiveVirtualMargin;
     double m_sessionTtl;
     uint32_t m_txFailureThreshold;
     bool m_enableMacFailureDetector;

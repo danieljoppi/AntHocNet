@@ -15,7 +15,7 @@ One struct, two surfaces:
 
 | Layer | File | What it is |
 |---|---|---|
-| Core | [`core/include/anthocnet/core/config.h`](../core/include/anthocnet/core/config.h) | `anthocnet::core::Config` — **30 fields**, plain C++14 aggregate with default member initializers. The single source of truth; `AntRouterLogic` reads nothing else. |
+| Core | [`core/include/anthocnet/core/config.h`](../core/include/anthocnet/core/config.h) | `anthocnet::core::Config` — **31 fields**, plain C++14 aggregate with default member initializers. The single source of truth; `AntRouterLogic` reads nothing else. |
 | NS-3 | [`ns3/model/anthocnet-routing-protocol.cc`](../ns3/model/anthocnet-routing-protocol.cc) | 24 `AddAttribute` blocks on `ns3::anthocnet::RoutingProtocol`. **18** of them write into `Config`; the other 6 are adapter-side state (queue timeouts, hold caps, the MAC failure detector, the MAC service-time EWMA, the adapter's own reactive-retry timer). |
 | NS-2 | [`ns2/src/ahn_router.cc`](../ns2/src/ahn_router.cc) | 10 `bind()`/`bind_bool()` TCL variables writing into `Config`, plus four compile-time `AHN_*` macros in [`ahn_router.h`](../ns2/src/ahn_router.h) (`AHN_HELLO_INTERVAL`, `AHN_PROACTIVE_INTERVAL`, `AHN_NETWORK_DIAMETER`, `AHN_LIFE_ANT`). |
 
@@ -98,7 +98,7 @@ The `ns-3 attribute` column is the name you pass to
 `--ns3::anthocnet::RoutingProtocol::<name>`; `—` means the field is core-only
 (edit `config.h` and rebuild).
 
-### 3.1 All 30 fields
+### 3.1 All 31 fields
 
 | parameter | default | unit | ns-3 attribute | source | what it affects |
 |---|---|---|---|---|---|
@@ -115,9 +115,10 @@ The `ns-3 attribute` column is the name you pass to
 | `enableProactive` | `true` | bool | `EnableProactive` | Mechanism `[1] §3.3`; **the gate** is `repo choice` ([ADR-0007](adr/0007-proactive-diffusion-gated.md)) so the ablation is runnable. | Master switch for proactive ants **and** diffusion. Off = purely reactive AntHocNet. |
 | `enableDiffusion` | `true` | bool | `EnableDiffusion` | Mechanism `[1] §3.3` (hello messages as pheromone diffusion); **the gate** is `repo choice` (ADR-0007). | Whether hellos carry pheromone adverts and the virtual table is maintained. Virtual pheromone guides proactive ants only, never data. |
 | `proactiveBroadcastProb` | `0.1` | probability per hop | `ProactiveBroadcastProb` | Mechanism `[1] §3.3` ("a small probability of being broadcast"); the **number is `unknown`** — [1] states no value. | How often an in-transit proactive ant explores by broadcast instead of following pheromone. Higher = more exploration, more control overhead. |
+| `proactiveVirtualMargin` | `0.10` | fraction | `ProactiveVirtualMargin` | **`thesis`** — Ducatelle 2007 (lines 4084-4088): *"In order to improve efficiency, the actual sending of a proactive forward ant is conditional to the availability of good new virtual pheromone: only if the best virtual pheromone is significantly better (in our experiments: at least 10% better) than the best regular pheromone, a proactive forward ant is sent out."* ([#180](https://github.com/danieljoppi/AntHocNet/issues/180)). | Emission gate: a considered proactive ant is only sent when `bestVirtual >= bestRegular × (1 + margin)`. `0` = gate off (send every tick, pre-#180 behaviour). Boundary cases: **no regular route → always send** (the ant is needed most there); **no virtual pheromone → suppress**; `enableDiffusion=false` → gate does not apply. |
 | `sessionTtl` | `5.0` | s | `SessionTtl` | **`unknown`** — [1] §3.3 clocks proactive ants to the *data rate* (one per n packets) and has no session-TTL concept at all; this is the repo's timer-based substitute, and the value has no recorded basis. | How long after the last locally-originated data packet a destination keeps being probed by proactive ants. |
 | `helloInterval` | `1.0` | s | `HelloInterval` | `[1] §3.3 fn.1` — `t_hello`, "e.g. 1 s". | Beacon rate, and (with `allowedHelloLoss`) the neighbour-liveness window. Drives baseline control overhead. |
-| `proactiveInterval` | `10.0` | s | `ProactiveInterval` | **`unknown`** — the *mechanism* is a documented deviation (`repo choice`: timer-clocked vs [1]'s data-rate clocking, [`fidelity.md`](fidelity.md) deviation 4); the 10 s value has no recorded basis. | Proactive forward-ant rate per active session. Lower = faster path re-optimisation, more overhead. |
+| `proactiveInterval` | `2.0` | s | `ProactiveInterval` | **`thesis`** — Ducatelle 2007 §5.3.3 sweep (0.5/1/2/5/10/20/50 s): *"the optimal ant send rate is relatively stable and independent from the node mobility or data send rate. Sending one ant every 2 s almost always gives the best performance"* (lines 6619-6621). The thesis's *stated* default is `t_hello` = 1 s (lines 4081-4084); **2.0 is its measured optimum**, chosen deliberately over the stated default ([#180](https://github.com/danieljoppi/AntHocNet/issues/180)). The mechanism (a plain periodic timer) matches the thesis and is **not** a deviation — only [1] clocks per *n* data packets. | Proactive forward-ant rate per active session. Lower = faster path re-optimisation, more overhead. |
 | `lifeAnt` | `2.0` | s | — | **`unknown`** — no doc comment, no source. Note it is *carried on the wire* (`AntMessage::lifeAnt`, repair ants) but **no core code reads it back**, so today it changes nothing. | Nominal repair-ant lifetime budget. Currently inert; see §3.3. |
 | `allowedHelloLoss` | `2` | count | — | `[1] §3.3 fn.1` — a neighbour is removed after **2** missed expected hellos. | `maxIdle = helloInterval × allowedHelloLoss`. Lower = faster failure detection, more false evictions and rediscovery floods. |
 | `repairMaxBroadcasts` | `2` | count | — | `[1] §3.4` — route repair ant, "max **2** broadcasts" (`config.h` cites §3.5; see §3.3). | Re-broadcast budget for repair ants **and** for LinkFail notifications, so local repair cannot storm. |
@@ -147,7 +148,6 @@ worklist rather than a haystack:
 | `reactiveRetryInterval` | `1.0` s | `config.h` cites `[1] §4.2`, which in the PPSN paper is the results section; no interval appears in [1]. | Medium — too large delays rediscovery after a lost ant; too small re-floods. |
 | `proactiveBroadcastProb` | `0.1` | [1] §3.3 says "a small probability" and no more. | Medium — directly trades exploration against control overhead. |
 | `sessionTtl` | `5.0` s | Part of the timer-clocked-proactive deviation; no source for 5 s. | Medium — decides which destinations stay proactively maintained. |
-| `proactiveInterval` | `10.0` s | Same deviation; no source for 10 s. Note [1]'s clocking is *per n data packets*, so no direct translation exists. | Medium — the whole proactive maintenance rate. |
 | `repairTimeout` | `1.0` s | Fallback path the paper does not define. | Low–medium — only fires when the lost path had no delay estimate. |
 | `txFailureThreshold` | `3` | #19 justifies *having* a debounce; the value is not sweep-backed. | Medium — sets link-failure sensitivity, which drives repair/LinkFail volume (cf. #20). |
 | `lifeAnt` | `2.0` s | No doc comment, no source — and currently **inert** (written to the wire, never read back). | Low today; a trap for whoever implements the expiry and inherits an unjustified 2 s. |
@@ -262,13 +262,17 @@ implements a design its own authors dropped, at a looser factor than they ever
 ran, bounded by a mechanism this repo invented. #177 is measuring the three
 options; treat this row as unsettled until it closes.
 
-### Proactive & diffusion — `enableProactive`, `enableDiffusion`, `proactiveInterval`, `proactiveBroadcastProb`, `proactiveMaxBroadcasts`, `sessionTtl`
+### Proactive & diffusion — `enableProactive`, `enableDiffusion`, `proactiveInterval`, `proactiveVirtualMargin`, `proactiveBroadcastProb`, `proactiveMaxBroadcasts`, `sessionTtl`
 
-Path maintenance while a session runs. This group is the repo's largest
-*mechanism-level* deviation from [1]: the paper emits one proactive ant per *n*
-data packets, so its rate scales with offered load; the repo uses a fixed timer
-([`fidelity.md`](fidelity.md) deviation 4). Consequence: at low CBR rates the
-repo probes relatively *more*, at high rates relatively *less*, than the paper.
+Path maintenance while a session runs. Against **[1]** this is a
+*mechanism-level* deviation: the PPSN paper emits one proactive ant per *n* data
+packets, so its rate scales with offered load, while the repo uses a fixed timer
+— at low CBR rates the repo probes relatively *more*, at high rates relatively
+*less*, than [1]. Against the **thesis** (the primary source) it is *not* a
+deviation: the thesis clocks proactive ants on a plain periodic timer exactly as
+we do, and gates emission on the virtual/regular pheromone margin
+(`proactiveVirtualMargin`), which we now implement (#180). The rate and the gate
+are one mechanism — sweep them together, never the rate alone.
 Keep that in mind before attributing an overhead difference to the algorithm.
 
 `enableProactive=false` is the clean ablation (it also disables diffusion);

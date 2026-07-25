@@ -97,8 +97,21 @@ representative either.
 3. **Evaporation** (`enableEvaporation`, default on; ADR-0012) — a time-decay
    safety net **not present in [1]** (whose reinforcement is a pure running
    average). Config-gated so the paper-faithful ablation is available.
-4. **Proactive ant clocking** — [1] emits one proactive ant per *n* data
-   packets; the repo clocks it on a **timer** (`proactiveInterval`). #26 item 04.
+4. **Proactive ant clocking — not a deviation against the primary source
+   (#180, 2026-07-25).** [1] emits one proactive ant per *n* data packets, and
+   this entry used to record the repo's **timer** (`proactiveInterval`) as a
+   mechanism-level deviation. The **2007 Ducatelle thesis** — our designated
+   primary source — uses a plain periodic timer exactly as we do, normally at
+   `t_hello`, so the *mechanism* matches. What was actually wrong was the
+   number and a missing gate, both fixed in #180: the interval was **10 s**
+   (10× the thesis default, 5× its §5.3.3 measured optimum) and is now **2 s**;
+   and the thesis's emission gate — *"only if the best virtual pheromone is
+   significantly better (in our experiments: at least 10% better) than the best
+   regular pheromone, a proactive forward ant is sent out"* — was missing
+   entirely and is now `Config::proactiveVirtualMargin` (default `0.10`). The
+   deviation that remains is only against **[1]**: our rate does not scale with
+   offered load. **Benchmark numbers in this document predate the change.**
+   #26 item 04.
 5. **Multipath link-failure suppression** — with multipath on, a link break that
    leaves a usable alternate next-hop is absorbed rather than always notified
    (paper §3.4 always notifies). Benchmark-justified (#96): notification floods

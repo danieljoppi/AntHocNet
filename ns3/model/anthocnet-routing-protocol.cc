@@ -40,7 +40,7 @@ RoutingProtocol::RoutingProtocol()
     : m_started(false),
       m_queue(64, Seconds(3)),
       m_helloInterval(Seconds(1.0)),
-      m_proactiveInterval(Seconds(10.0)),
+      m_proactiveInterval(Seconds(2.0)),
       m_alpha(0.7),
       m_betaAnts(1.0),
       m_betaData(2.0),
@@ -48,6 +48,7 @@ RoutingProtocol::RoutingProtocol()
       m_enableProactive(true),
       m_enableDiffusion(true),
       m_proactiveBroadcastProb(0.1),
+      m_proactiveVirtualMargin(0.10),
       m_sessionTtl(5.0),
       m_txFailureThreshold(3),
       m_enableMacFailureDetector(true),
@@ -77,8 +78,13 @@ TypeId RoutingProtocol::GetTypeId() {
                           TimeValue(Seconds(1.0)),
                           MakeTimeAccessor(&RoutingProtocol::m_helloInterval),
                           MakeTimeChecker())
-            .AddAttribute("ProactiveInterval", "Proactive forward-ant interval.",
-                          TimeValue(Seconds(10.0)),
+            .AddAttribute("ProactiveInterval",
+                          "Proactive forward-ant interval per active session. "
+                          "Default 2 s = the Ducatelle 2007 thesis's measured "
+                          "optimum (sec 5.3.3: \"Sending one ant every 2 s almost "
+                          "always gives the best performance\"), not its stated "
+                          "t_hello=1 s default (#180).",
+                          TimeValue(Seconds(2.0)),
                           MakeTimeAccessor(&RoutingProtocol::m_proactiveInterval),
                           MakeTimeChecker())
             .AddAttribute("Alpha", "Pheromone evaporation weight (ALFA).",
@@ -112,6 +118,18 @@ TypeId RoutingProtocol::GetTypeId() {
                           DoubleValue(0.1),
                           MakeDoubleAccessor(&RoutingProtocol::m_proactiveBroadcastProb),
                           MakeDoubleChecker<double>())
+            .AddAttribute("ProactiveVirtualMargin",
+                          "Fraction by which the best virtual pheromone must "
+                          "exceed the best regular pheromone before a proactive "
+                          "forward ant is actually sent. Ducatelle 2007 thesis: "
+                          "\"only if the best virtual pheromone is significantly "
+                          "better (in our experiments: at least 10% better) than "
+                          "the best regular pheromone, a proactive forward ant is "
+                          "sent out\". 0 disables the gate (send every tick, "
+                          "pre-#180 behaviour).",
+                          DoubleValue(0.10),
+                          MakeDoubleAccessor(&RoutingProtocol::m_proactiveVirtualMargin),
+                          MakeDoubleChecker<double>(0.0))
             .AddAttribute("SessionTtl",
                           "Seconds a data session stays active for proactive probing.",
                           DoubleValue(5.0),
@@ -340,6 +358,7 @@ void RoutingProtocol::DoInitialize() {
     m_config.enableProactive = m_enableProactive;
     m_config.enableDiffusion = m_enableDiffusion;
     m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
+    m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
     m_config.sessionTtl = m_sessionTtl;
     m_config.helloInterval = m_helloInterval.GetSeconds();
     m_config.proactiveInterval = m_proactiveInterval.GetSeconds();
@@ -408,6 +427,7 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.enableProactive = m_enableProactive;
         m_config.enableDiffusion = m_enableDiffusion;
         m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
+        m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
         m_config.sessionTtl = m_sessionTtl;
         m_config.helloInterval = m_helloInterval.GetSeconds();
         m_config.proactiveInterval = m_proactiveInterval.GetSeconds();
