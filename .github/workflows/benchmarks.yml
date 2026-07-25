@@ -2,8 +2,9 @@ name: Benchmarks
 
 # After every merge to the default branch, re-run the scenario taxonomy across
 # all baselines (AODV/OLSR/DSDV) and publish the refreshed results back into the
-# repo: the per-scenario table in docs/benchmarks.md AND the taxonomy chart in
-# docs/benchmarks/. So the published numbers + figures always track the code.
+# repo: the cross-scenario summary in docs/benchmarks.md, the per-scenario pages
+# in docs/benchmarks/scenarios/ AND the taxonomy chart in docs/benchmarks/. So
+# the published numbers + figures always track the code.
 #
 # Scope: this runs the *discrete* named scenarios (quick preset). The heavier
 # parameter sweeps (area/pause/scale) stay in the manual "Scenario matrix +
@@ -53,8 +54,8 @@ jobs:
         # (cf. the #51 ~50% single-hop loss that silently depressed every
         # published PDR ~2x) this step fails and the table/charts below are
         # never refreshed from a mis-calibrated channel. Thresholds live in
-        # ns3/tools/anchors.yml; rationale in docs/benchmarks.md "Validation
-        # anchors".
+        # ns3/tools/anchors.yml; rationale in docs/benchmarks/methodology.md
+        # "Validation anchors".
         run: |
           bash ns3/tools/check-anchors.sh /opt/ns-3 single-hop
           bash ns3/tools/check-anchors.sh /opt/ns-3 broch-low-mobility
@@ -64,7 +65,7 @@ jobs:
             --out "$GITHUB_WORKSPACE/scenarios.csv" --only discrete --quick
       - name: Render charts
         run: python3 ns3/tools/make-charts.py "$GITHUB_WORKSPACE/scenarios.csv" --outdir docs/benchmarks
-      - name: Update results table
+      - name: Update results tables (index summary + per-scenario pages)
         run: python3 ns3/tools/update-benchmarks.py "$GITHUB_WORKSPACE/scenarios.csv" docs/benchmarks.md
       - name: Upload CSV + charts artifact
         uses: actions/upload-artifact@v4

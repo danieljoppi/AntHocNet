@@ -153,7 +153,7 @@ results.
 | Change the wire format | `docs/wire-format.md` → `core/include/.../ant_message_codec.h` (+ both adapters; bump `kWireVersion`) |
 | Work on the NS-2 adapter | `ns2/src/`, `ns2/tcl/` |
 | Work on the NS-3 adapter | `ns3/model/`, `ns3/helper/`, `ns3/examples/` |
-| Run / read benchmarks | `docs/benchmarks.md`, `ns3/tools/run-scenarios.py` + `make-charts.py`, `anthocnet-compare --diag` |
+| Run / read benchmarks | `docs/benchmarks.md` (index → `docs/benchmarks/{metrics,methodology}.md`, `scenarios/<name>.md`, `sweeps/<name>.md`), `ns3/tools/run-scenarios.py` + `make-charts.py` + `update-benchmarks.py`, `anthocnet-compare --diag` |
 | Inspect protocol internals | NS-3 `Tx`/`Rx`/`RouteChanged` trace sources; core counters via `IRouterObserver` |
 | Run the benchmark campaign loop (dispatch → fetch → parse) | `benchmark-results` skill (SKILL.md documents the whole procedure) |
 | Compare benchmark A/B runs (deltas + noise verdict) | `benchmark-results` skill (`.claude/skills/benchmark-results/bench_parse.py`) |

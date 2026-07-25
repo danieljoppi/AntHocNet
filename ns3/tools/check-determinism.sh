@@ -7,7 +7,7 @@
 # realisations rests on. A stray rand(), an uninjected wall-clock read, or
 # unordered-container iteration feeding a routing decision would break this
 # silently; this gate makes it fail CI loudly instead. It is the "identity"
-# anchor of docs/benchmarks.md "Validation anchors": the expected result is
+# anchor of docs/benchmarks/methodology.md "Validation anchors": the expected result is
 # not a number but *identical output*.
 #
 # Usage: check-determinism.sh <ns3-dir>
@@ -67,7 +67,7 @@ else
     echo "  byte-identical metric rows; a stray rand(), an uninjected clock read,"
     echo "  or unordered-container iteration feeding a decision breaks the"
     echo "  per-protocol comparison on identical realisations. See #129 and"
-    echo "  docs/benchmarks.md 'Validation anchors'."
+    echo "  docs/benchmarks/methodology.md 'Validation anchors'."
     echo "--- run 1 (filtered) ---"
     printf '%s\n' "$rows1"
     echo "--- run 2 (filtered) ---"

@@ -2,7 +2,7 @@
 # Consumed by ns3/tools/check-anchors.sh, which parses "key: number" lines
 # (a trailing "# comment" is fine as long as it contains no colon). Scenario
 # definitions live in the script; expected values and their rationale in
-# docs/benchmarks.md "Validation anchors".
+# docs/benchmarks/methodology.md "Validation anchors".
 
 # 2-node, in-range, static, fixed 2 Mbit/s radio: measured 100.0% post-#51.
 # A #51-style rate-manager regression reads ~50%, so 99.0 has wide margin

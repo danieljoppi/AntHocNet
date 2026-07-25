@@ -2,7 +2,7 @@
 # Validation-anchor gate (#59): run a known-expected scenario on the *stock*
 # baselines harness (manet-baselines — no AntHocNet code in the binary) and
 # fail if PDR falls below the floor in anchors.yml. This is the enforcement
-# half of docs/benchmarks.md "Validation anchors": a channel/PHY/harness
+# half of docs/benchmarks/methodology.md "Validation anchors": a channel/PHY/harness
 # regression (like the #51 IdealWifiManager ~50% single-hop loss) fails CI
 # loudly instead of silently corrupting every published number.
 #
@@ -79,7 +79,7 @@ for proto in ${protocols//,/ }; do
     else
         echo "FAIL [$ANCHOR] $proto PDR=$pdr < floor $floor — validation anchor regressed."
         echo "  A drop here means the harness/channel/PHY config broke (cf. #51), not a"
-        echo "  protocol property. See docs/benchmarks.md 'Validation anchors' and #59;"
+        echo "  protocol property. See docs/benchmarks/methodology.md 'Validation anchors' and #59;"
         echo "  thresholds live in ns3/tools/anchors.yml."
         status=1
     fi
