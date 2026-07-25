@@ -33,10 +33,13 @@ summarizable with the `benchmark-results` skill's `sweep_summary.py`.
 
 ## Results
 
-> **Caveat — published numbers predate the `T_hop` fix.** Anything measured with
-> the provisional `T_hop = 50 ms` needs re-measuring after
-> [#88](https://github.com/danieljoppi/AntHocNet/issues/88) (PR #167, in flight;
-> 50 ms → 3 ms). See [docs/fidelity.md](../../fidelity.md).
+> **Caveat — sweep numbers predate the #88 / #169 fixes.** Unlike the scenario
+> pages, the sweeps are produced by the *manual* campaign workflow and have not
+> been re-run since `T_hop` went to 3 ms
+> ([#88](https://github.com/danieljoppi/AntHocNet/issues/88), PR #167) and the
+> reactive hop cap was removed
+> ([#169](https://github.com/danieljoppi/AntHocNet/issues/169), PR #170). Both
+> change results. See [docs/fidelity.md](../../fidelity.md).
 
 <!-- BENCHMARK-TABLE-START -->
 <!-- BENCHMARK-TABLE-END -->
