@@ -18,6 +18,7 @@ add_library(anthocnet_core STATIC
   src/ant_history.cpp
   src/ant_message_codec.cpp
   src/ant_router_logic.cpp
+  src/link_metric_registry.cpp
 )
 target_include_directories(anthocnet_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
