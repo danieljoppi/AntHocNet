@@ -70,17 +70,23 @@ int main() {
         CHECK(o.delivered >= o.offered - 5);
     }
 
-    // 3. The regression itself, pinned: a finite budget still truncates
-    //    discovery. This documents *why* the default is unbounded — if someone
-    //    reintroduces a finite default, test 1 fails and this explains it.
+    // 3. The value is now a *per-node, per-generation* broadcast count, not a
+    //    per-path budget, so a finite value no longer truncates discovery: 9
+    //    hops still deliver at 2 (#173 changed the unit — see config.h). Under
+    //    the old per-path semantics this same call delivered 0, which is the
+    //    regression #169 fixed and this pins against reintroduction.
     {
         const Outcome capped = runLine(/*hops=*/9, /*reactiveBudget=*/2);
-        CHECK(capped.delivered == 0);
+        CHECK(capped.delivered >= capped.offered - 5);
     }
 
-    // 4. The default is the unbounded sentinel, not merely a large number.
-    //    A big-but-finite budget would just move the invisible ceiling.
-    CHECK(core::Config{}.reactiveMaxBroadcasts < 0);
+    // 4. Reach must not depend on the bound at all. A per-node count cannot be
+    //    a hop limit, so tightening it to 1 must still deliver over 9 hops —
+    //    the property that distinguishes the #173 bound from the #169 one.
+    {
+        const Outcome tight = runLine(/*hops=*/9, /*reactiveBudget=*/1);
+        CHECK(tight.delivered >= tight.offered - 5);
+    }
 
     return RUN_TESTS();
 }

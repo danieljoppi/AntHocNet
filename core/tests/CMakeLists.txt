@@ -21,6 +21,7 @@ set(ANTHOCNET_TESTS
   test_observability
   test_testbench
   test_reactive_hop_reach
+  test_reactive_flood_bound
 )
 
 foreach(test ${ANTHOCNET_TESTS})

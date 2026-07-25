@@ -326,11 +326,19 @@ AntMessage AntRouterLogic::createForwardAnt(AntType type, NodeAddress dest) {
     m.dst       = dest;
     m.seqNum    = nextSeq();
     m.timeStart = clock_.now();
-    // Every forward-ant type caps its broadcasts: reactive/repair per
-    // [1] §3.2/§3.5, and proactive too (issue #45) — an unbounded proactive
-    // budget let route gaps turn the path monitor into a network-wide flood.
+    // Repair and proactive ants carry a per-path broadcast budget, decremented
+    // at each hop ([1] §3.2/§3.5, and proactive per issue #45 — an unbounded
+    // proactive budget let route gaps turn the path monitor into a network-wide
+    // flood). Both are *maintenance* ants exploring near a known path, so
+    // bounding the path is the right unit for them.
+    //
+    // A reactive ant carries **no** per-path budget (#169): it broadcasts at
+    // every node lacking pheromone, so decrementing per hop is a hop limit on
+    // discovery. Its flood is bounded per (node, generation) instead, at the
+    // broadcast site in onReceiveAnt (#173) — config_.reactiveMaxBroadcasts is
+    // consumed there, not here.
     if (type == AntType::Repair)        m.broadcastBudget = config_.repairMaxBroadcasts;
-    else if (type == AntType::Reactive) m.broadcastBudget = config_.reactiveMaxBroadcasts;
+    else if (type == AntType::Reactive) m.broadcastBudget = -1;  // see above
     else                                m.broadcastBudget = config_.proactiveMaxBroadcasts;
     m.visited.push_back({address_, 0.0});  // source node enters the stack
     return m;
@@ -534,10 +542,13 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
 
     if (ant.isForward()) {
         // 6.2 hop cap ([1] §4.2): an ant that has already traversed
-        // maxPathLength hops is dropped rather than forwarded further. Propagation
-        // is also bounded by broadcastBudget (A3) and (src,seq) dedup, but this is
-        // the explicit per-ant hop ceiling the spec calls for, and — living in the
-        // core — it caps ant reach on every adapter without a per-simulator TTL.
+        // maxPathLength hops is dropped rather than forwarded further. This is
+        // the explicit per-ant hop ceiling the spec calls for, and — living in
+        // the core — it caps ant reach on every adapter without a per-simulator
+        // TTL. It is not, on its own, a flood bound: a *reactive* forward ant
+        // under multipath bypasses (src,seq) dedup (see the acceptance filter
+        // above) and carries no broadcast budget since #169, so its flood is
+        // bounded per (node, generation) at the broadcast site below (#173).
         if (ant.visited.size() >= config_.maxPathLength) {
             return {RouteDecision::drop()};
         }
@@ -556,6 +567,15 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
 
         NodeAddress next = selectNextHop(ant.dst, proactive);
         if (next == kInvalidAddress) {
+            // No pheromone for the destination: the ant explores by broadcast.
+            // For a reactive forward ant that is the flood, and it must be
+            // bounded *per (node, generation)* — see allowBroadcast (#173).
+            // Bounding it on the ant instead makes it a hop limit (#169).
+            if (ant.type == AntType::Reactive &&
+                !genQuality_.allowBroadcast(ant.src, ant.seqNum,
+                                            config_.reactiveMaxBroadcasts)) {
+                return {RouteDecision::drop()};
+            }
             return {broadcastForward(ant)};  // bounded per type (drop at budget 0)
         }
         // A proactive ant with a route is normally unicast, but with a small

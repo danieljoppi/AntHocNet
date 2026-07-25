@@ -102,22 +102,35 @@ struct Config {
     /// collision, not a topology change, and evicting the neighbour on it
     /// destroys valid routes and triggers rediscovery floods (issue #19).
     int txFailureThreshold = 3;
-    /// Max times a reactive forward ant may be (re)broadcast in a region with
-    /// no pheromone. **-1 (default) = unbounded**, which is what the sources
-    /// specify: the 2007 Ducatelle thesis says "each intermediate node
-    /// receiving a copy of the reactive forward ant forwards it … via
-    /// broadcasting otherwise", with proliferation limited by duplicate
-    /// suppression ("subsequent copies are destroyed"), `maxPathLength`, and
-    /// the `antAcceptanceFactor` band — never by a broadcast count.
+    /// Max times **one node** may broadcast **one reactive generation**
+    /// `(src, seqNum)`. `-1` = unbounded. Default 2.
     ///
-    /// A finite budget here is a *hop limit on discovery*: because the ant
-    /// broadcasts at every node lacking pheromone, budget 2 made destinations
-    /// more than ~5 hops away permanently undiscoverable (#169), which is what
-    /// made sparse/static fields look like an AntHocNet weakness. The 2-
-    /// broadcast bound is real but belongs to *proactive* ants ([1] §3.3,
-    /// `proactiveMaxBroadcasts`, issue #45); it was generalised here in error.
-    /// Kept configurable for sensitivity experiments only.
-    int reactiveMaxBroadcasts = -1;
+    /// **The unit of this field changed in #173 — read this before comparing it
+    /// to an older run or an older sweep.** It used to be a budget carried on
+    /// the ant and decremented at every hop, i.e. per *ant path*; it is now a
+    /// counter held at each node per generation. Same name, same default,
+    /// different meaning — the `alpha`/ADR-0012 trap, so it is spelled out
+    /// here (see `docs/configuration.md`).
+    ///
+    /// Why per node. A reactive forward ant broadcasts wherever there is no
+    /// pheromone for the destination, so a *per-path* budget is a hop limit on
+    /// discovery: at 2, destinations more than ~5 hops away were permanently
+    /// undiscoverable (#169), which is what made sparse/static fields look like
+    /// an AntHocNet weakness. A *per-node* count does not limit reach at all —
+    /// the ant may still travel arbitrarily far, each node along the way simply
+    /// does not re-broadcast the same generation indefinitely.
+    ///
+    /// Why a bound is needed at all, given the sources describe none. The 2007
+    /// thesis bounds proliferation by duplicate suppression ("subsequent copies
+    /// are destroyed"), `maxPathLength` and the `antAcceptanceFactor` band. But
+    /// with `enableMultipath` on (the default) a reactive forward ant is
+    /// admitted by the acceptance band *instead of* `(src,seq)` duplicate
+    /// suppression, and the band admits rather than suppresses. Removing the
+    /// per-path budget in #169 therefore left no bound: one discovery on a
+    /// 7x7 grid cost 30,090 ants, and ns-3 `large-scale` fell to 21.7% PDR at
+    /// NRL 3071 (#173). This restores duplicate suppression's *intent* for the
+    /// one ant type that bypasses it.
+    int reactiveMaxBroadcasts = 2;
     /// Multipath reactive setup ([1] §3.1, issue #96): when on, a *later*
     /// reactive forward ant of an already-seen generation is forwarded if it
     /// passes the antAcceptanceFactor band below, laying down *multiple* good

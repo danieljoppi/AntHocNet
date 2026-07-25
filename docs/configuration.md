@@ -55,9 +55,26 @@ struct had no traceable source, so nobody could tell it was wrong by reading it.
   sparse/static results that were being read as protocol character (see the
   correction notice in [`fidelity.md`](fidelity.md)).
 
-Both cost a benchmark campaign to detect and invalidated published numbers. The
-job of §3 below is to make the next one catchable **by reading**: each default
-carries the category of evidence behind it, and where there is none, it says so.
+- **`reactiveMaxBroadcasts`, again** ([#173](https://github.com/danieljoppi/AntHocNet/issues/173)).
+  Removing that budget exposed a second defect underneath it, and this one is
+  the more instructive of the two: **no single change was wrong.**
+  [#96](https://github.com/danieljoppi/AntHocNet/issues/96) made reactive
+  forward ants take the multipath acceptance band *instead of* `(src,seq)`
+  duplicate suppression — reasonable, since the band is the paper's multipath
+  rule. #169 then removed the broadcast budget — also reasonable, and correct.
+  But the band *admits* rather than suppresses, so between them the two changes
+  left reactive discovery with no flood bound at all: one discovery on a 7×7
+  grid cost **30,090** ants, and ns-3 `large-scale` fell from 75.8% to **21.7%**
+  PDR at NRL 3071. The fix bounds broadcasts per *(node, generation)*, which
+  bounds the flood without reintroducing a hop limit.
+
+The first two cost a benchmark campaign to detect and invalidated published
+numbers. The third was invisible to *every* existing test because each change
+was locally justified and the invariant they jointly broke — "a reactive flood
+is bounded by something" — was written only in a code comment, which silently
+became false. The job of §3 below is to make the next one catchable **by
+reading**: each default carries the category of evidence behind it, and where
+there is none, it says so.
 
 > **Rule of thumb.** If you cannot name the source of a number you are about to
 > rely on, treat it as a suspect, not as a setting.
@@ -106,14 +123,14 @@ The `ns-3 attribute` column is the name you pass to
 | `repairMaxBroadcasts` | `2` | count | — | `[1] §3.4` — route repair ant, "max **2** broadcasts" (`config.h` cites §3.5; see §3.3). | Re-broadcast budget for repair ants **and** for LinkFail notifications, so local repair cannot storm. |
 | `linkfailNotifyInterval` | `5.0` | s | `LinkfailNotifyInterval` | `repo choice` — the [#20](https://github.com/danieljoppi/AntHocNet/issues/20) sweep picked 5.0 (1 s misses the ~3 s flap cycle; 10 s costs PDR/delay). [1] has **no** rate limit. | Minimum spacing between LinkFail notices this node originates about the same destination. `0` disables (spec-faithful). |
 | `txFailureThreshold` | `3` | consecutive failures | `TxFailureThreshold` | `repo choice` — the *debounce* is argued in [#19](https://github.com/danieljoppi/AntHocNet/issues/19)/[ADR-0008](adr/0008-neighbour-liveness-two-detectors.md) detector D; the **value 3 is not sweep-backed** (see §3.2). | How many consecutive MAC transmit failures to the same next hop (with no reception in between) count as a broken link. Lower = jumpier, more rediscovery. |
-| `reactiveMaxBroadcasts` | `-1` (unbounded) | count, `-1` = no bound | — | `[1] §3.1` + `thesis` — the sources bound the reactive flood by duplicate suppression, `maxPathLength` and the acceptance band, **never by a count** ([#169](https://github.com/danieljoppi/AntHocNet/issues/169), PR #170). Kept configurable for sensitivity experiments only. | Reach of route discovery. **Any finite value is a hop limit** — 2 made destinations >~5 hops away undiscoverable. |
+| `reactiveMaxBroadcasts` | `2` | broadcasts per node per `(src,seq)` generation; `-1` = no bound | — | `derived` — the sources bound the reactive flood by duplicate suppression, `maxPathLength` and the acceptance band, **never by a count** ([#169](https://github.com/danieljoppi/AntHocNet/issues/169)); but with `enableMultipath` on a reactive forward ant bypasses duplicate suppression, so this restores its *intent* for that one case ([#173](https://github.com/danieljoppi/AntHocNet/issues/173)). | How many times a node re-broadcasts one discovery. **The unit changed in #173**: it was a budget carried on the ant and decremented per hop (a hop limit on reach, #169); it is now a per-node count, which bounds the flood without limiting reach. |
 | `enableMultipath` | `true` | bool | `EnableMultipath` | Mechanism `[1] §3.1` (the acceptance filter); **the gate and the linkfail churn bound** are `repo choice` ([#96](https://github.com/danieljoppi/AntHocNet/issues/96), A/B-justified: PDR 92.3 vs 89.4). | Whether later same-generation reactive ants may lay additional paths, and whether losing a best hop that leaves a usable alternate is absorbed instead of flooding a LinkFail. Off = strict `(src,seq)` dedup, single-path setup. |
 | `antAcceptanceFactor` | `1.5` | factor | `AntAcceptanceFactor` | `[1] §3.1` — "a parameter which we empirically set to **1.5**". | How many alternate paths get laid: a later ant is forwarded only if both hop count and travel time are within this factor of the generation's best. **Higher admits more copies** (up to a flood); no value reproduces single-path — use `enableMultipath=false`. |
 | `proactiveMaxBroadcasts` | `2` | count | — | `[1] §3.3` — a proactive ant may be broadcast "at most **2**" times, else deleted (#45). | Bounds proactive exploration, including across a route gap en route. Unbounded lets proactive ants flood regions of missing routes (#45). |
 | `repairWaitFactor` | `5.0` | × estimated path delay | `RepairWaitFactor` | `[1] §3.4` — wait **5×** the estimated end-to-end delay of the lost path (`config.h` cites §3.5; see §3.3). | How long buffered packets wait for a backward repair ant before being discarded and a LinkFail sent (spec D6). |
 | `repairTimeout` | `1.0` | s | `RepairTimeout` | **`unknown`** — a fallback the paper does not define (it always has a delay estimate); the value has no recorded basis. | Flat repair wait used when the lost path has no usable delay estimate. |
 | `networkDiameter` | `30` | hops | — | **`unknown`** — legacy constant. **No `core/` code reads this field**; only the NS-2 adapter uses its `AHN_NETWORK_DIAMETER` macro, and it uses the macro directly (as the IP TTL of ant packets), not the `Config` field. | Nothing, in `core/`. See §3.3. |
-| `maxPathLength` | `100` | nodes | — | `repo choice` — golden rule 5 (bounded structures); pinned to the wire format (`kMaxVisitedOnWire == 100`). Number is a deliberately generous cap, not a tuned value. | Caps the visited-node stack an ant carries, **and** is one of the two real bounds on the reactive flood (with duplicate suppression) now that `reactiveMaxBroadcasts` is unbounded. Changing it is a wire-format change (golden rule 4). |
+| `maxPathLength` | `100` | nodes | — | `repo choice` — golden rule 5 (bounded structures); pinned to the wire format (`kMaxVisitedOnWire == 100`). Number is a deliberately generous cap, not a tuned value. | Caps the visited-node stack an ant carries, **and** is a backstop on the reactive flood (with duplicate suppression and, since #173, the per-node broadcast count). Changing it is a wire-format change (golden rule 4). |
 | `maxHistory` | `4096` | entries | — | `repo choice` — golden rule 5; digest §6 records that dedup bounds are "not in [1]". Number is a generous cap, not tuned. | FIFO cap on the `(src,seq)` dedup history and the generation-quality tracker. Too small aliases dedup and re-admits old ants. |
 
 ### 3.2 Parameters with no recorded provenance
@@ -202,10 +219,21 @@ purely because no benchmark has yet justified flipping it.
 
 ### Reactive setup — `reactiveMaxBroadcasts`, `enableMultipath`, `antAcceptanceFactor`, `reactiveRetryInterval`, `maxPathLength`
 
-How routes are discovered. **Do not put a finite budget back into
-`reactiveMaxBroadcasts`** except as a deliberate sensitivity experiment: it is a
-hop limit, and that is exactly the #169 bug. The flood is bounded by duplicate
-suppression, `maxPathLength`, and — with multipath on — the acceptance band.
+How routes are discovered. `reactiveMaxBroadcasts` bounds how often **one
+node** re-broadcasts **one generation** (default 2). Read its history before
+touching it, because the same name has meant two different things:
+
+- As a budget *carried on the ant* and decremented at each hop it was a **hop
+  limit on discovery** — destinations beyond ~5 hops were never found (#169).
+  Never reintroduce that form.
+- As a per-node count it does not limit reach at all, and it is **required**:
+  with multipath on, a reactive forward ant is admitted by the acceptance band
+  *instead of* `(src,seq)` duplicate suppression, and the band admits rather
+  than suppresses. Without the per-node count one discovery on a 7x7 grid cost
+  30,090 ants and ns-3 `large-scale` fell to 21.7% PDR (#173).
+
+Setting it to `-1` restores the unbounded behaviour and is a sensitivity
+experiment, not a configuration.
 
 `antAcceptanceFactor` is the multipath dial and its direction is
 counter-intuitive: **higher admits more ant copies**, i.e. more paths and more
