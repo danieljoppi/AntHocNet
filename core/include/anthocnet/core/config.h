@@ -33,7 +33,11 @@ struct Config {
     /// Per-hop time estimate used by the back-ant pheromone formula (Eq.2):
     /// the time to take one hop in unloaded conditions. In seconds, matching
     /// IClock, so it is comparable in magnitude to the measured path time.
-    double hopTimeSec = 0.05;  ///< HOP_TIME (50 ms)
+    /// Value from the primary source (#88): Ducatelle, *Adaptive Routing in Ad
+    /// Hoc Wireless Multi-hop Networks*, PhD thesis, USI Lugano, 2007 — "we
+    /// kept thop on 0.003 sec". [1] (PPSN 2004) defines the constant but gives
+    /// no number, which is why this was a provisional 50 ms until 2026-07-25.
+    double hopTimeSec = 0.003;  ///< T_hop = 3 ms (2007 thesis)
 
     /// Congestion-aware per-hop cost (item 10/A2, [1] §3.2): when on and an
     /// ILinkState is injected, a forward ant records each node's expected

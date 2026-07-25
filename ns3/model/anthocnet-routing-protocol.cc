@@ -53,7 +53,7 @@ RoutingProtocol::RoutingProtocol()
       m_enableMacFailureDetector(true),
       m_repairWaitFactor(5.0),
       m_repairTimeout(1.0),
-      m_hopTime(0.05),
+      m_hopTime(0.003),
       m_enableMultipath(true),
       m_antAcceptanceFactor(1.5),
       m_linkfailNotifyInterval(5.0),
@@ -146,10 +146,10 @@ TypeId RoutingProtocol::GetTypeId() {
                           "Fixed unloaded-hop reference time T_hop (s): weights "
                           "hop count against measured delay in the goodness "
                           "(T_d + h*T_hop)/2, and is the A2 fallback service "
-                          "time. Default is the core's 50 ms; issue #88 "
-                          "suspects the papers meant a few ms — this attribute "
-                          "exists for that sensitivity sweep.",
-                          DoubleValue(0.05),
+                          "time. Default 3 ms, the value from the 2007 "
+                          "Ducatelle thesis (#88); it was a provisional 50 ms "
+                          "before that source was checked.",
+                          DoubleValue(0.003),
                           MakeDoubleAccessor(&RoutingProtocol::m_hopTime),
                           MakeDoubleChecker<double>(0.0))
             .AddAttribute("EnableMultipath",

@@ -86,7 +86,8 @@ int main() {
     AntRouterLogic byDefault(/*addr*/ 0, cfg, clock, rng);
     AntRouterLogic selected(/*addr*/ 0, cfg, clock, rng, metrics::find(metrics::kClassic));
     CHECK_NEAR(walk(byDefault, path), walk(selected, path), 1e-12);
-    CHECK_NEAR(walk(byDefault, path), std::pow((0.15 + 3 * 0.05) / 2.0, -1.0), 1e-12);
+    // T_hop from the Config default (#88), not a literal.
+    CHECK_NEAR(walk(byDefault, path), std::pow((0.15 + 3 * cfg.hopTimeSec) / 2.0, -1.0), 1e-12);
 
     return RUN_TESTS();
 }
