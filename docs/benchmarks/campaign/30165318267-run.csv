@@ -1,0 +1,25 @@
+kind,group,x,scenario,class,protocol,runs,nNodes,areaX,speed,pause,flows,propagation,pdr_pct,delay_ms,delay99_ms,throughput_kbps,nrl,jitter_ms,delay_off50_ms,delay_off90_ms,pdr_sd,delay_sd,delay99_sd,nrl_sd,nrl_bytes
+discrete,dense-small,,dense-small,dense / low-mobility,anthocnet,2,16,250,5,1,4,range,37.1,28.9,1329.5,8.22,5.048,14.05,-1.0,-1.0,1.56,8.6,626.5,0.352,5.136
+discrete,dense-small,,dense-small,dense / low-mobility,aodv,2,16,250,5,1,4,range,32.8,62.8,2138.0,7.30,2.288,29.50,-1.0,-1.0,12.98,23.4,1289.1,0.847,1.217
+discrete,dense-small,,dense-small,dense / low-mobility,olsr,2,16,250,5,1,4,range,59.4,3.3,14.0,7.54,1.274,1.67,13.0,-1.0,13.02,1.4,3.5,0.848,1.160
+discrete,dense-small,,dense-small,dense / low-mobility,dsdv,2,16,250,5,1,4,range,24.2,12.4,6.0,5.38,1.482,4.82,-1.0,-1.0,15.07,15.3,0.7,0.893,1.091
+discrete,paper-base,,paper-base,sparse / mobile,anthocnet,2,50,1500,20,,20,range,83.4,77.0,1058.5,4.14,56.555,116.46,8.0,-1.0,1.53,27.6,173.9,0.749,69.985
+discrete,paper-base,,paper-base,sparse / mobile,aodv,2,50,1500,20,,20,range,80.5,49.2,1018.5,4.47,56.618,73.62,4.5,-1.0,2.49,2.7,8.5,3.645,29.847
+discrete,paper-base,,paper-base,sparse / mobile,olsr,2,50,1500,20,,20,range,78.5,15.5,43.0,4.02,5.968,21.30,3.0,-1.0,2.82,1.2,13.4,0.355,12.625
+discrete,paper-base,,paper-base,sparse / mobile,dsdv,2,50,1500,20,,20,range,64.8,15.4,572.5,3.46,38.349,24.61,9.0,-1.0,11.60,3.1,613.8,10.649,25.884
+discrete,sparse-static,,sparse-static,sparse / static,anthocnet,2,50,1500,20,900,20,range,90.7,37.0,875.0,4.50,40.693,54.63,3.0,-1.0,6.43,20.2,256.7,0.434,49.483
+discrete,sparse-static,,sparse-static,sparse / static,aodv,2,50,1500,20,900,20,range,81.9,33.7,786.0,4.55,42.929,41.47,3.5,-1.0,3.14,3.6,246.8,1.108,22.555
+discrete,sparse-static,,sparse-static,sparse / static,olsr,2,50,1500,20,900,20,range,100.0,3.0,15.0,5.21,4.217,1.14,1.5,4.5,0.00,0.4,2.1,0.016,8.207
+discrete,sparse-static,,sparse-static,sparse / static,dsdv,2,50,1500,20,900,20,range,99.9,12.2,134.5,5.27,22.569,18.27,2.5,11.5,0.01,0.1,35.4,2.776,15.484
+discrete,high-mobility,,high-mobility,sparse / high-mobility,anthocnet,2,50,1500,20,0,20,range,86.6,97.7,1260.5,4.30,58.003,145.56,9.5,-1.0,0.26,1.0,103.2,0.054,70.802
+discrete,high-mobility,,high-mobility,sparse / high-mobility,aodv,2,50,1500,20,0,20,range,85.1,56.1,1154.0,4.73,56.000,86.23,2.0,-1.0,3.21,4.4,133.6,3.057,29.582
+discrete,high-mobility,,high-mobility,sparse / high-mobility,olsr,2,50,1500,20,0,20,range,79.7,23.7,1009.0,4.03,6.233,37.32,2.0,-1.0,2.05,1.2,6.4,0.273,14.310
+discrete,high-mobility,,high-mobility,sparse / high-mobility,dsdv,2,50,1500,20,0,20,range,58.7,20.2,965.5,3.11,43.127,34.73,9.0,-1.0,4.17,1.8,53.7,7.914,28.902
+discrete,heavy-load,,heavy-load,dense / heavy-load,anthocnet,2,50,1500,20,30,40,range,80.1,134.7,1456.5,56.60,8.746,97.11,32.5,-1.0,4.56,36.5,147.1,1.362,11.121
+discrete,heavy-load,,heavy-load,dense / heavy-load,aodv,2,50,1500,20,30,40,range,86.6,35.6,702.0,61.40,5.535,30.75,4.0,-1.0,1.91,5.8,87.0,0.721,2.940
+discrete,heavy-load,,heavy-load,dense / heavy-load,olsr,2,50,1500,20,30,40,range,81.0,12.9,359.0,54.24,0.439,11.32,2.0,-1.0,0.86,3.0,449.0,0.016,0.890
+discrete,heavy-load,,heavy-load,dense / heavy-load,dsdv,2,50,1500,20,30,40,range,70.6,26.2,830.5,50.04,2.562,19.23,3.0,-1.0,1.11,7.9,80.6,0.000,1.727
+discrete,large-scale,,large-scale,large / mobile,anthocnet,2,100,2100,20,,20,range,77.9,191.4,1836.5,4.42,167.762,271.48,51.5,-1.0,0.01,34.3,353.6,9.393,250.179
+discrete,large-scale,,large-scale,large / mobile,aodv,2,100,2100,20,,20,range,67.4,148.7,1935.0,3.62,163.429,220.95,60.0,-1.0,1.56,31.9,204.4,1.511,88.242
+discrete,large-scale,,large-scale,large / mobile,olsr,2,100,2100,20,,20,range,58.7,40.5,1019.0,3.03,20.660,60.64,-1.0,-1.0,12.69,6.1,0.7,4.388,60.500
+discrete,large-scale,,large-scale,large / mobile,dsdv,2,100,2100,20,,20,range,56.4,70.3,1050.0,2.97,177.841,118.41,522.5,-1.0,7.41,21.6,14.8,32.882,119.850
