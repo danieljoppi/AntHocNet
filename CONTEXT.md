@@ -87,6 +87,7 @@ AGENTS.md                 ← build/verify/conventions for AI agents
 Makefile                  ← make test | install-ns2 | install-ns3 | clean
 docs/
   architecture.md         ← design + decision flow
+  configuration.md        ← every tunable, its default's provenance, how to calibrate
   porting-notes.md        ← bugs fixed, NS-2 patch anchors, wire format, caveats
   wire-format.md          ← canonical ant byte layout, version byte, diffs vs original/spec
   adr/*.md                ← architecture decision records
@@ -223,4 +224,10 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   valid, absolute numbers aren't yet paper-like.
 - Are the `Config` defaults (`alpha`/`betaAnts`/`betaData`/`gamma`, intervals, `maxPathLength`,
   `maxHistory`) the right operating point, or should they be tuned per
-  simulator? (See #23 convergence, #26 fidelity.)
+  simulator? (See #23 convergence, #26 fidelity.) **Now partly answered:**
+  [`docs/configuration.md`](docs/configuration.md) tabulates all 30 fields with
+  the *provenance* of each default. Eleven have none — §3.2 lists them as the
+  standing worklist, `alpha` first (ADR-0012 changed its meaning and said it
+  "must be re-tuned"; no re-tune is on record). Two defaults have already been
+  found wrong this way (#88 `T_hop`, #169 `reactiveMaxBroadcasts`), so treat an
+  un-sourced number as a suspect rather than a setting.
