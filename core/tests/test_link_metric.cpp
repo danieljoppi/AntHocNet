@@ -40,8 +40,8 @@ int main() {
     LinkObservation o;
     o.hops = 3;
     o.pathTime = 0.15;
-    o.hopTime = 0.05;
-    CHECK_NEAR(classic.pheromone(o), std::pow((0.15 + 3 * 0.05) / 2.0, -1.0), 1e-12);
+    o.hopTime = 0.05;  // explicit observation value, not the Config default
+    CHECK_NEAR(classic.pheromone(o), std::pow((0.15 + 3 * o.hopTime) / 2.0, -1.0), 1e-12);
 
     FakeClock clock;
     ScriptedRng rng({0.5});
@@ -52,7 +52,8 @@ int main() {
     {
         AntRouterLogic r(/*addr*/ 0, cfg, clock, rng);
         const double ph = walk(r, {0.05, 0.05, 0.05});  // hops=3, pathTime=0.15
-        CHECK_NEAR(ph, std::pow((0.15 + 3 * 0.05) / 2.0, -1.0), 1e-12);
+        // T_hop comes from the Config default (#88), not a literal.
+        CHECK_NEAR(ph, std::pow((0.15 + 3 * cfg.hopTimeSec) / 2.0, -1.0), 1e-12);
     }
 
     // 3. A custom metric changes the deposit, with no edit to the state machine.

@@ -47,12 +47,19 @@ Every pinned-down parameter and its match/deviation status is tabulated in the
    after the multipath (#96), backward-ant flush (#101) and reconv hold-cap
    (#104) work. On **two-ray** — the paper's actual PHY — the gap closes to
    parity on mean delay. The residual is a **channel-model artefact**
-   (CONTEXT.md §8), compounded by the unverified `T_hop` (see 2), not an
-   algorithmic gap. Mitigated by `ReconvHoldCap=1.0 s` (default).
-2. **`T_hop` value unverified (#88).** [1] gives no numeric `T_hop`; the repo
-   uses a provisional 50 ms. A sweep suggests a few-ms value would cut
-   delay/jitter ~12 %. Pending the **2007 Ducatelle thesis** (the designated
-   primary source; #58/#88/#89 track the remaining thesis cross-checks).
+   (CONTEXT.md §8), not an algorithmic gap. Mitigated by `ReconvHoldCap=1.0 s`
+   (default). **Note (2026-07-25):** the `T_hop` co-lever named in item 2 has
+   now been corrected to the thesis value; the benchmark impact on this tail is
+   pending a re-run (#88).
+2. **`T_hop` — resolved from the primary source (#88, 2026-07-25).** [1] defines
+   the constant but states no number. The **2007 Ducatelle thesis** does: *"we
+   kept thop on 0.003 sec"*. The repo's provisional **50 ms was 16.7× too
+   large** and is now corrected to **3 ms**. Because `T_hop` weights hop count
+   against measured delay in every pheromone deposit, this changes all routing
+   goodness values — **every benchmark number in this document predates the fix
+   and must be re-measured** before being cited as current. A prior sweep
+   suggested a few-ms value cuts delay/jitter ~12 %, so the #21 delay tail may
+   improve.
 3. **Evaporation** (`enableEvaporation`, default on; ADR-0012) — a time-decay
    safety net **not present in [1]** (whose reinforcement is a pure running
    average). Config-gated so the paper-faithful ablation is available.
@@ -71,8 +78,10 @@ Every pinned-down parameter and its match/deviation status is tabulated in the
 - **Algorithm mechanisms**: ✅ covered by `core/tests` (unit + randomized
   property/invariant sweeps), NS-2/NS-3 e2e delivery smokes in CI.
 - **Parameters vs [1] (2004 paper)**: ✅ verified — see the digest table.
-- **Parameters vs 2007 thesis**: ⏳ pending PDF (T_hop #88, jitter estimator
-  #89, full field table #58).
+- **Parameters vs 2007 thesis**: 🟡 partial — thesis obtained 2026-07-25.
+  `T_hop` ✅ adopted (3 ms). Jitter estimator ✅ *defined* in the thesis
+  (eq. 5.1, `Σ|(tᵢ−tᵢ₋₁)−(tᵢ₋₁−tᵢ₋₂)|`) but **not yet reconciled** with our
+  FlowMonitor `jitterSum` metric (#89). Full field table ⏳ (#58).
 - **Numbers on the paper's own 900 s / large-scale field**: ⏳ `--scenario=thesis`
   preset exists; the multi-hour run is future work.
 
