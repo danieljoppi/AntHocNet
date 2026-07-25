@@ -104,6 +104,6 @@ earlier attempt to append one corrupted ns-2's continued `CCOPT` line).
   campaigns via their `version` input. Each image records its profile in the
   `NS3_PROFILE` environment variable (`docker inspect`), which is how those
   workflows know whether their in-job `./ns3 configure` needs `-d release` —
-  see [`docs/benchmarks.md`](../docs/benchmarks.md#build-profiles-default-for-ci-release-for-campaigns)
+  see [`docs/benchmarks/methodology.md`](../docs/benchmarks/methodology.md#build-profiles-default-for-ci-release-for-campaigns)
   for why that is resolved explicitly rather than inherited, and for the
   rationale for `release` over ns-3's `optimized` (which adds `-march=native`).
