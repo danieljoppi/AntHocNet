@@ -102,9 +102,22 @@ struct Config {
     /// collision, not a topology change, and evicting the neighbour on it
     /// destroys valid routes and triggers rediscovery floods (issue #19).
     int txFailureThreshold = 3;
-    /// Max times a reactive forward ant may be (re)broadcast in a region with no
-    /// pheromone, so route setup doesn't flood ([1] §3.2).
-    int reactiveMaxBroadcasts = 2;
+    /// Max times a reactive forward ant may be (re)broadcast in a region with
+    /// no pheromone. **-1 (default) = unbounded**, which is what the sources
+    /// specify: the 2007 Ducatelle thesis says "each intermediate node
+    /// receiving a copy of the reactive forward ant forwards it … via
+    /// broadcasting otherwise", with proliferation limited by duplicate
+    /// suppression ("subsequent copies are destroyed"), `maxPathLength`, and
+    /// the `antAcceptanceFactor` band — never by a broadcast count.
+    ///
+    /// A finite budget here is a *hop limit on discovery*: because the ant
+    /// broadcasts at every node lacking pheromone, budget 2 made destinations
+    /// more than ~5 hops away permanently undiscoverable (#169), which is what
+    /// made sparse/static fields look like an AntHocNet weakness. The 2-
+    /// broadcast bound is real but belongs to *proactive* ants ([1] §3.3,
+    /// `proactiveMaxBroadcasts`, issue #45); it was generalised here in error.
+    /// Kept configurable for sensitivity experiments only.
+    int reactiveMaxBroadcasts = -1;
     /// Multipath reactive setup ([1] §3.1, issue #96): when on, a *later*
     /// reactive forward ant of an already-seen generation is forwarded if it
     /// passes the antAcceptanceFactor band below, laying down *multiple* good

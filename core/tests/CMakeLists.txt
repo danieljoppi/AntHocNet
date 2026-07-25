@@ -20,6 +20,7 @@ set(ANTHOCNET_TESTS
   test_properties
   test_observability
   test_testbench
+  test_reactive_hop_reach
 )
 
 foreach(test ${ANTHOCNET_TESTS})
