@@ -232,7 +232,8 @@ private:
     double m_repairTimeout;
     double m_hopTime;                 ///< T_hop unloaded-hop reference (s), #88
     bool m_enableMultipath;           ///< multipath reactive setup gate, #96
-    double m_antAcceptanceFactor;     ///< multipath 1.5x acceptance factor, #96
+    double m_antAcceptanceFactor;     ///< multipath acceptance factor a1, #96/#177
+    double m_antAcceptanceFactorNewHop;  ///< disjoint-first-hop factor a2, #177
     double m_linkfailNotifyInterval;  ///< issue #20 origin cooldown (s), 0 = off
     Time m_queueTimeout;              ///< issue #21 pending-queue hold before drop
     Time m_reconvHoldCap;             ///< issue #21 L2: cap on reconv holds (0 = off)
