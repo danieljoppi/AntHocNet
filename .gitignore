@@ -30,10 +30,17 @@
 # Build directories
 build/
 core/build/
+core/build-*/
 ns3/build/
 *.cmake
 CMakeCache.txt
 CMakeFiles/
+
+# Coverage output (gcov counters + gcovr reports)
+coverage/
+*.gcda
+*.gcno
+*.gcov
 
 # Simulator trace output
 *.tr
