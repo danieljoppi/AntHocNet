@@ -92,7 +92,7 @@ OUT_COLUMNS = (["kind", "group", "x", "scenario", "class", "protocol"]
                + METRICS)
 
 
-def build_args(flags, runs, time, protocols, propagation):
+def build_args(flags, runs, time, protocols, propagation, extra_args=""):
     """Turn a flags dict into an anthocnet-compare argument string."""
     merged = dict(flags)
     merged.setdefault("runs", runs)
@@ -104,6 +104,13 @@ def build_args(flags, runs, time, protocols, propagation):
     parts = ["--csv"]
     for k, v in merged.items():
         parts.append(f"--{k}={v}")
+    # #177: caller-supplied args, appended verbatim and LAST so they override
+    # the taxonomy's own flags (ns-3's CommandLine takes the last occurrence).
+    # Same contract as paper-benchmark.yml's extraArgs input: the string is
+    # spliced into the `./ns3 run "anthocnet-compare ..."` command line and
+    # word-split there, so it may carry several space-separated arguments.
+    if extra_args:
+        parts.append(extra_args)
     return " ".join(parts)
 
 
@@ -180,6 +187,14 @@ def main():
                     help="override propagation model for every point: "
                          "range (disk) | tworay; default lets anthocnet-compare "
                          "use its own default (range)")
+    ap.add_argument("--extra-args", default="",
+                    help="extra anthocnet-compare arguments, appended verbatim "
+                         "to every point (pass the whole thing as ONE shell "
+                         "argument). Mainly ns-3 attribute overrides, so a "
+                         "protocol variant can be A/B'd from a workflow "
+                         "dispatch instead of a throwaway branch (#177), e.g. "
+                         "'--ns3::anthocnet::RoutingProtocol::BetaData=20 "
+                         "--ns3::anthocnet::RoutingProtocol::EnableMultipath=false'")
     ap.add_argument("--only", default="all",
                     help="all|discrete|sweeps|<discrete name>|<sweep name>")
     ap.add_argument("--point", default=None,
@@ -215,7 +230,7 @@ def main():
                     continue
                 rows = run_compare(args.ns3dir,
                                    build_args(flags, runs, sim_time, args.protocols,
-                                              args.propagation),
+                                              args.propagation, args.extra_args),
                                    args.dry_run, label=name)
                 emit(w, "discrete", name, "", name, klass, flags.get("pause", ""),
                      args.propagation, rows)
@@ -238,7 +253,7 @@ def main():
                     flags.update(extra)
                     rows = run_compare(args.ns3dir,
                                        build_args(flags, runs, sim_time, args.protocols,
-                                                  args.propagation),
+                                                  args.propagation, args.extra_args),
                                        args.dry_run, label=f"{name}={x}")
                     emit(w, "sweep", name, x, f"{name}={x}", xlabel,
                          flags.get("pause", ""), args.propagation, rows)

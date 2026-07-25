@@ -115,7 +115,10 @@ representative either.
 - **Parameters vs 2007 thesis**: 🟡 partial — thesis obtained 2026-07-25.
   `T_hop` ✅ adopted (3 ms). Jitter estimator ✅ *defined* in the thesis
   (eq. 5.1, `Σ|(tᵢ−tᵢ₋₁)−(tᵢ₋₁−tᵢ₋₂)|`) but **not yet reconciled** with our
-  FlowMonitor `jitterSum` metric (#89). Full field table ⏳ (#58).
+  FlowMonitor `jitterSum` metric (#89). Full field table ✅ read from §5.1.3 and
+  adopted into `--scenario=thesis` (#58) — five constants corrected
+  (2400×800 m, 10 m/s, 2048 bps, 250 m range, 20 repetitions); the thesis's
+  two-ray propagation still has to be asked for with `--propagation=tworay`.
 - **Numbers on the paper's own 900 s / large-scale field**: ⏳ `--scenario=thesis`
   preset exists; the multi-hour run is future work.
 

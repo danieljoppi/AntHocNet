@@ -28,6 +28,49 @@ cd /path/to/ns-3-dev
 bash /path/to/AntHocNet/ns3/tools/run-comparison.sh "$PWD" 10 20 40 300 5
 ```
 
+### Reproducing a *thesis* run
+
+`--scenario=paper` is the **calibration** field ([#24](https://github.com/danieljoppi/AntHocNet/issues/24));
+`--scenario=thesis` is AntHocNet's **own evaluation** field, and is what a
+fidelity claim runs on. Its constants come from Ducatelle, *Adaptive Routing in
+Ad Hoc Wireless Multi-hop Networks* (PhD thesis, 2007) **§5.1.3**, read from the
+PDF ([#58](https://github.com/danieljoppi/AntHocNet/issues/58)):
+
+| axis | thesis §5.1.3 | set by the preset? |
+|---|---|---|
+| nodes | 100 | ✅ |
+| area | 2400 × 800 m | ✅ |
+| mobility | random waypoint, speed U[0, **10**] m/s, pause 30 s | ✅ |
+| duration | 900 s | ✅ |
+| **repetitions** | **20** | ✅ *only when `--runs` is not passed* — see below |
+| sessions | 20 UDP, start uniform in [0, 180] s | ✅ |
+| traffic | **4 packets/s × 64 B = 2048 bps** per session | ✅ |
+| radio | 802.11 DCF, 2 Mbit/s, range **250 m** | ✅ |
+| **propagation** | **two-ray** | ❌ — harness default is the `range` disk model |
+
+Two axes therefore need care, and **both must be set explicitly to reproduce a
+thesis figure**:
+
+- **Propagation.** The harness defaults to `--propagation=range` (the disk
+  model) for every scenario. That is a deliberate #24 disentangler and is *not*
+  overridden per-preset, so the thesis's two-ray PHY must be asked for.
+- **Repetitions.** `--runs` defaults to **20 under `--scenario=thesis`** (1
+  otherwise), but an explicit `--runs=N` always wins — and
+  `run-scenarios.py`, `paper-benchmark.yml` and `scenario-matrix.yml` *always*
+  pass one. Through any of those paths you must set **`runs=20`** yourself; the
+  preset default only applies to a bare command line.
+
+```bash
+# the thesis field, faithfully (20 repetitions × 900 s — hours, not minutes):
+./ns3 run "anthocnet-compare --scenario=thesis --propagation=tworay --runs=20"
+```
+
+Averaging over fewer than 20 runs is a legitimate cheap probe, but it is not a
+thesis reproduction: several arguments in this repo have turned on differences
+smaller than the dispersion at low run counts, and `pdr_sd` as high as 6.43 has
+been observed ([#173](https://github.com/danieljoppi/AntHocNet/issues/173)).
+Record the run count next to any number quoted against a thesis figure.
+
 Publishing the results back into these pages is
 [`ns3/tools/update-benchmarks.py`](../../ns3/tools/update-benchmarks.py)'s job:
 it rewrites the generated block of every page in place, so hand-written prose

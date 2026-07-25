@@ -612,14 +612,14 @@ int main(int argc, char* argv[]) {
     double   speed = -1, pause = -1, range = -1, cbrBps = -1;
     int32_t  nFlows = 0;
     int32_t  sink = -1;
-    uint32_t runs = 1;
+    uint32_t runs = 0;  // 0 = unset; resolved below (preset-dependent, #58)
     bool csv = false;
     std::string protocols = "anthocnet,aodv,olsr,dsdv";
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("scenario", "Preset: 'paper' (Broch/CMU calibration field) or "
-                             "'thesis' (the AntHocNet papers' own evaluation "
-                             "field, provisional values — #58)", scenario);
+                             "'thesis' (AntHocNet's own evaluation field, "
+                             "Ducatelle PhD 2007 §5.1.3 — #58)", scenario);
     cmd.AddValue("nNodes", "Number of nodes", nNodes);
     cmd.AddValue("time", "Simulation time (s)", simTime);
     cmd.AddValue("area", "Square area side (m); shorthand for areaX=areaY", area);
@@ -632,7 +632,8 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("cbrBps", "Per-flow CBR rate (bits/s)", cbrBps);
     cmd.AddValue("sink", "If >=0, all flows converge on this node (gateway "
                          "hotspot, #71) instead of i->(n-1-i) pairing", sink);
-    cmd.AddValue("runs", "Number of RNG runs to average (seeds 1..runs)", runs);
+    cmd.AddValue("runs", "Number of RNG runs to average (seeds 1..runs); unset "
+                         "= 1, or 20 for --scenario=thesis (#58)", runs);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols", "Comma-separated list", protocols);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies, first delivery)", g_diag);
@@ -647,30 +648,58 @@ int main(int argc, char* argv[]) {
                  "DSSS rate; default constant2, the paper's radio) | arf | ideal "
                  "(ns-3 default; loses ~50% single-hop, #51)", rateManager);
     cmd.Parse(argc, argv);
-    if (runs < 1) runs = 1;
 
     // 'paper' = the Broch/CMU MobiCom'98 field (the literature *calibration*
-    // anchor, #24). 'thesis' = the AntHocNet papers' own evaluation field
-    // (ETT 2005 / Ducatelle PhD 2007): 100 nodes on 3000x1000 m, otherwise the
-    // same radio/traffic/mobility regime. Fidelity claims run on 'thesis',
-    // calibration on 'paper'. VALUES ARE PROVISIONAL (#58): reconstructed from
-    // secondary knowledge because the primary PDFs are network-blocked here —
-    // verify against the thesis parameter table before publishing.
+    // anchor, #24). 'thesis' = AntHocNet's own evaluation field, read from
+    // Ducatelle, "Adaptive Routing in Ad Hoc Wireless Multi-hop Networks"
+    // (PhD thesis, 2007) **§5.1.3** — quoted values, no longer reconstructed
+    // (#58). Fidelity claims run on 'thesis', calibration on 'paper'.
+    //
+    //   nodes        100
+    //   area         2400 x 800 m   ("move in a rectangular area of 2400 x 800m²")
+    //   mobility     RWP, speed U[0,10] m/s, pause 30 s  ("a minimum and maximum
+    //                speed of respectively 0 and 10 m/s, and a pause time of 30 s")
+    //   duration     900 s, repeated 20 times  ("Each experiment has a duration
+    //                of 900 s, and is repeated 20 times")
+    //   traffic      20 UDP sessions, 4 x 64-byte packets/s = 2048 bps  ("Each
+    //                session generates 4 packets of 64 bytes per second")
+    //   start window uniform in [0, 180] s
+    //   radio        802.11 DCF at 2 Mbit/s; range 250 m  ("The estimated radio
+    //                range is 250 m")
+    //
+    // Before #58's PDF pass this preset carried five wrong constants (3000x1000 m,
+    // 20 m/s, 512 bps, 300 m range, 5 runs), all inherited from 'paper' or from a
+    // secondary-source reconstruction. Provenance is spelled out inline on
+    // purpose: unsourced numbers caused #88, #169 and #173.
+    //
+    // Two axes are deliberately NOT forced by the preset:
+    //  - **propagation**: the thesis uses a **two-ray** model; this harness
+    //    defaults to the `range` disk model (the #24 calibration disentangler,
+    //    a global default we do not change per-preset). Pass
+    //    `--propagation=tworay` to match §5.1.3.
+    //  - **repetitions**: `--runs` defaults to 20 for this preset only (see
+    //    below), but any explicit `--runs=N` wins — and run-scenarios.py and
+    //    both benchmark workflows always pass one. Reproducing a thesis figure
+    //    through those means setting runs=20 there.
+    // See docs/benchmarks/methodology.md ("Reproducing a thesis run").
     const bool thesis = (scenario == "thesis");
     const bool paper = (scenario == "paper") || thesis;
+    // #58: the thesis averages 20 repetitions; everything else keeps the
+    // historical default of 1. Explicit --runs=N always overrides.
+    if (runs < 1) runs = thesis ? 20 : 1;
     Params P;
     P.nNodes  = nNodes > 0 ? static_cast<uint32_t>(nNodes)
                            : (thesis ? 100 : paper ? 50 : 20);
     P.simTime = simTime >= 0 ? simTime : (paper ? 900.0 : 40.0);
     P.areaX   = areaX >= 0 ? areaX
-                           : (area >= 0 ? area : (thesis ? 3000.0 : paper ? 1500.0 : 300.0));
+                           : (area >= 0 ? area : (thesis ? 2400.0 : paper ? 1500.0 : 300.0));
     P.areaY   = areaY >= 0 ? areaY
-                           : (area >= 0 ? area : (thesis ? 1000.0 : paper ? 300.0 : 300.0));
-    P.speed   = speed >= 0 ? speed : (paper ? 20.0 : 5.0);
+                           : (area >= 0 ? area : (thesis ? 800.0 : paper ? 300.0 : 300.0));
+    P.speed   = speed >= 0 ? speed : (thesis ? 10.0 : paper ? 20.0 : 5.0);
     P.pause   = pause >= 0 ? pause : (paper ? 30.0 : 1.0);
-    P.range   = range >= 0 ? range : (paper ? 300.0 : 0.0);
+    P.range   = range >= 0 ? range : (thesis ? 250.0 : paper ? 300.0 : 0.0);
     P.nFlows  = nFlows > 0 ? static_cast<uint32_t>(nFlows) : (paper ? 20 : 5);
-    P.cbrBps  = cbrBps >= 0 ? cbrBps : (paper ? 512.0 : 8000.0);
+    P.cbrBps  = cbrBps >= 0 ? cbrBps : (thesis ? 2048.0 : paper ? 512.0 : 8000.0);
     P.startWindow = paper ? 180.0 : 5.0;
     P.propagation = propagation;
     P.rateManager = rateManager;
