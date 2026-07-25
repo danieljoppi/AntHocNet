@@ -40,6 +40,63 @@ jobs:
           cmake --build core/build-san -j
           cd core/build-san && ctest --output-on-failure
 
+  core-coverage:
+    name: core test coverage (gcov, report-only)
+    runs-on: ubuntu-latest
+    # Which parts of core/ do the 18 ctest targets actually execute? The repo's
+    # expensive failures (D2 evaporation, the #19 detector-D storm, the 8-bit
+    # sequence wrap) were all behaviour in paths nothing exercised, so make that
+    # answerable instead of intuited — and use it to aim new tests.
+    #
+    # Report-only on purpose (#162): there is deliberately **no --fail-under**
+    # threshold here. Coverage is a map of untested paths, not a target; a floor
+    # chosen before a baseline exists is either meaningless or an obstacle that
+    # gets disabled the first time it bites. Observe the number across a few
+    # merges, then pick a floor from evidence in a follow-up.
+    #
+    # No container/simulator: core/ builds standalone in seconds (golden rule 1).
+    # Adapter coverage would mean instrumenting a containerized ns-3 build and is
+    # out of scope.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install toolchain
+        # gcovr is pinned so the reported baseline stays comparable across
+        # merges — its per-version gcov parsing shifts the numbers. Bump
+        # deliberately, noting the step change in the PR.
+        run: |
+          sudo apt-get update && sudo apt-get install -y cmake g++
+          pip install 'gcovr==8.6'
+      - name: Build core with gcov instrumentation
+        run: |
+          cmake -S core -B core/build-coverage -DCMAKE_BUILD_TYPE=Debug \
+            -DANTHOCNET_COVERAGE=ON
+          cmake --build core/build-coverage -j
+      - name: Run the unit tests (emits the .gcda counters)
+        run: cd core/build-coverage && ctest --output-on-failure
+      - name: Report coverage of core/src + core/include
+        # --exclude drops core/tests/ so the number measures coverage *of* the
+        # core, not of the tests (which are ~100% by construction and would
+        # dilute it). --txt gives the per-file table, --print-summary the overall
+        # line/function/branch totals; both land in the job log, and the drill-
+        # down HTML + Cobertura XML go to the artifact below.
+        run: |
+          mkdir -p coverage
+          gcovr --root . core/build-coverage \
+            --filter 'core/src/' --filter 'core/include/' \
+            --exclude 'core/tests/' \
+            --txt --print-summary \
+            --html-details coverage/index.html \
+            --xml-pretty --xml coverage/coverage.xml
+      - name: Upload the detailed report (HTML + Cobertura XML)
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-coverage-report
+          path: coverage/
+          retention-days: 14
+
   codec-fuzz:
     name: codec fuzz (libFuzzer, 60s)
     runs-on: ubuntu-latest

@@ -30,6 +30,24 @@ make install-ns3  NS3DIR=/path/to/ns-3-dev # install onto a real NS-3 tree
 make clean                                 # remove core/build
 ```
 
+### Test coverage
+
+`core/` has an opt-in gcov build (default build is untouched):
+
+```bash
+cmake -S core -B core/build-coverage -DCMAKE_BUILD_TYPE=Debug -DANTHOCNET_COVERAGE=ON
+cmake --build core/build-coverage -j
+cd core/build-coverage && ctest --output-on-failure && cd -
+gcovr --root . core/build-coverage --filter 'core/src/' --filter 'core/include/' \
+      --exclude 'core/tests/' --txt --print-summary   # pip install gcovr
+```
+
+CI's `core-coverage` job reports the same line/branch numbers **on every PR**
+(per-file table in the job log, HTML + Cobertura XML as a downloadable
+artifact). It is **report-only — there is no threshold** ([#162](https://github.com/danieljoppi/AntHocNet/issues/162)); a floor gets
+chosen from evidence later. Read it as a map of untested paths to aim tests at,
+not as a number to chase (CLAUDE.md rule 2).
+
 `make test` and the NS-2 patch self-test are the two checks that run in CI
 (`.github/workflows/ci.yml`) on every push/PR and are runnable here. An actual
 NS-2/NS-3 build needs an external simulator tree and is **not** possible from
