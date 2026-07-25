@@ -44,12 +44,12 @@ _Scenario taxonomy — **PDR %**, mean of 2 run(s) per scenario, every baseline 
 
 | scenario | class | anthocnet | aodv | olsr | dsdv |
 |---|---|---:|---:|---:|---:|
-| [dense-small](benchmarks/scenarios/dense-small.md) | dense / low-mobility | 37.4 | 32.8 | 59.4 | 24.2 |
-| [paper-base](benchmarks/scenarios/paper-base.md) | sparse / mobile | 81.7 | 80.5 | 78.5 | 64.8 |
-| [sparse-static](benchmarks/scenarios/sparse-static.md) | sparse / static | 83.8 | 81.9 | 100.0 | 99.9 |
-| [high-mobility](benchmarks/scenarios/high-mobility.md) | sparse / high-mobility | 82.4 | 85.1 | 79.7 | 58.7 |
-| [heavy-load](benchmarks/scenarios/heavy-load.md) | dense / heavy-load | 85.0 | 86.6 | 81.0 | 70.6 |
-| [large-scale](benchmarks/scenarios/large-scale.md) | large / mobile | 75.8 | 67.4 | 58.7 | 56.4 |
+| [dense-small](benchmarks/scenarios/dense-small.md) | dense / low-mobility | 37.3 | 32.8 | 59.4 | 24.2 |
+| [paper-base](benchmarks/scenarios/paper-base.md) | sparse / mobile | 82.2 | 80.5 | 78.5 | 64.8 |
+| [sparse-static](benchmarks/scenarios/sparse-static.md) | sparse / static | 93.0 | 81.9 | 100.0 | 99.9 |
+| [high-mobility](benchmarks/scenarios/high-mobility.md) | sparse / high-mobility | 85.8 | 85.1 | 79.7 | 58.7 |
+| [heavy-load](benchmarks/scenarios/heavy-load.md) | dense / heavy-load | 51.4 | 86.6 | 81.0 | 70.6 |
+| [large-scale](benchmarks/scenarios/large-scale.md) | large / mobile | 21.7 | 67.4 | 58.7 | 56.4 |
 
 <!-- BENCHMARK-TABLE-END -->
 
