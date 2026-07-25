@@ -177,7 +177,7 @@ TypeId RoutingProtocol::GetTypeId() {
                           "dedup, laying down several good paths, and absorb "
                           "LinkFails while a usable alternate hop survives. "
                           "false = pre-#96 single-path setup.",
-                          BooleanValue(true),
+                          BooleanValue(false),
                           MakeBooleanAccessor(&RoutingProtocol::m_enableMultipath),
                           MakeBooleanChecker())
             .AddAttribute("AntAcceptanceFactor",
