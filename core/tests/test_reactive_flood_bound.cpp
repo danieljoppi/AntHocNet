@@ -70,24 +70,39 @@ std::uint64_t discoveryCost(int side, int reactiveBudget, bool multipath) {
 }  // namespace
 
 int main() {
-    const int side = 5, n = side * side;   // 25 nodes, corner-to-corner 4 hops
-    const std::uint64_t bounded   = discoveryCost(side, 2, true);
-    const std::uint64_t unbounded = discoveryCost(side, -1, true);
-    const std::uint64_t dedup     = discoveryCost(side, -1, false);
+    const core::Config def;
 
-    std::printf("%dx%d grid (8-connected, %d nodes), one discovery 0 -> %d:\n"
-                "  budget=2,  multipath=on   -> %llu reactive ants\n"
-                "  budget=-1, multipath=on   -> %llu reactive ants   (current default)\n"
-                "  budget=-1, multipath=off  -> %llu reactive ants\n",
-                side, side, n, n - 1,
-                static_cast<unsigned long long>(bounded),
-                static_cast<unsigned long long>(unbounded),
-                static_cast<unsigned long long>(dedup));
+    // The invariant, at the *default* configuration: one discovery costs O(n)
+    // control packets, because each node puts a given generation on the medium
+    // at most reactiveMaxBroadcasts times. Checked as the grid grows, since the
+    // defect was combinatorial — a single size could pass by luck.
+    std::printf("8-connected grid, one discovery corner to corner:\n"
+                "%-6s %-7s %14s %14s %14s\n",
+                "side", "nodes", "default", "budget=-1", "multipath=off");
+    for (int side = 3; side <= 7; ++side) {
+        const int n = side * side;
+        const std::uint64_t dflt      = discoveryCost(side, def.reactiveMaxBroadcasts, true);
+        const std::uint64_t unbounded = discoveryCost(side, -1, true);
+        const std::uint64_t dedup     = discoveryCost(side, -1, false);
+        std::printf("%-6d %-7d %14llu %14llu %14llu\n", side, n,
+                    static_cast<unsigned long long>(dflt),
+                    static_cast<unsigned long long>(unbounded),
+                    static_cast<unsigned long long>(dedup));
 
-    // The invariant: one discovery costs O(n) control packets, because each
-    // node should put the generation on the medium a bounded number of times.
-    // 4n is generous headroom over the ideal n.
-    CHECK(unbounded <= 4 * static_cast<std::uint64_t>(n));
-    CHECK(dedup <= 4 * static_cast<std::uint64_t>(n));
+        // 8n is generous headroom: the per-node bound allows
+        // reactiveMaxBroadcasts broadcasts each, and the count also includes
+        // unicast forwards along established pheromone (which do not flood).
+        // The point is that it stays a small multiple of n as the grid grows —
+        // at 7x7 the unbounded column is 614n.
+        CHECK(dflt <= 8 * static_cast<std::uint64_t>(n));
+        // Strict dedup bounds it too, and always did — the defect was that
+        // reactive forward ants under multipath never reach that branch.
+        CHECK(dedup <= 4 * static_cast<std::uint64_t>(n));
+    }
+
+    // The default must be a finite per-node bound. `-1` is retained for
+    // sensitivity experiments and genuinely is unbounded — that column is
+    // printed above as the contrast, deliberately not asserted on.
+    CHECK(def.reactiveMaxBroadcasts > 0);
     return RUN_TESTS();
 }

@@ -36,7 +36,7 @@ bool GenerationTracker::accept(NodeAddress src, std::uint32_t seqNum,
     auto it = best_.find(key);
     if (it == best_.end()) {
         // First ant of this generation: always forward and record its metrics.
-        best_.emplace(key, Best{hops, time});
+        best_.emplace(key, Best{hops, time, 0});
         insertionOrder_.push_back(key);
         if (maxEntries_ != 0) {
             while (insertionOrder_.size() > maxEntries_) {
@@ -57,6 +57,29 @@ bool GenerationTracker::accept(NodeAddress src, std::uint32_t seqNum,
         return true;
     }
     return false;
+}
+
+bool GenerationTracker::allowBroadcast(NodeAddress src, std::uint32_t seqNum,
+                                      int maxBroadcasts) {
+    if (maxBroadcasts < 0) return true;               // unlimited
+    const Key key{src, seqNum};
+    auto it = best_.find(key);
+    if (it == best_.end()) {
+        // No accept() record (multipath off, or an originating ant): track the
+        // generation so its broadcasts are still counted.
+        best_.emplace(key, Best{0, 0.0, 0});
+        insertionOrder_.push_back(key);
+        if (maxEntries_ != 0) {
+            while (insertionOrder_.size() > maxEntries_) {
+                best_.erase(insertionOrder_.front());
+                insertionOrder_.pop_front();
+            }
+        }
+        it = best_.find(key);
+    }
+    if (it->second.broadcasts >= maxBroadcasts) return false;
+    it->second.broadcasts += 1;
+    return true;
 }
 
 void GenerationTracker::clear() {

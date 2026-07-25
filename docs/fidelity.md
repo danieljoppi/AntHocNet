@@ -61,6 +61,19 @@ Until the sweeps are re-run, treat every result below — including the headline
 PDR/NRL figures — as **pending re-measurement**, and do not cite the
 sparse-static weakness as a property of the algorithm.
 
+**Confirmed, and it exposed a second defect.** The first taxonomy run after the
+fix bears the diagnosis out: `sparse-static` rose 83.8 → **93.0 %**, overtaking
+AODV (81.9 %), and the inversion is gone. But `large-scale` fell 75.8 → 21.7 %
+and `heavy-load` 85.0 → 51.4 %, with NRL rising 99.9 → 3071. Cause
+([#173](https://github.com/danieljoppi/AntHocNet/issues/173)): with
+`enableMultipath` on, a reactive forward ant is admitted by the acceptance band
+*instead of* `(src,seq)` duplicate suppression, so removing the broadcast budget
+left the reactive flood unbounded in dense graphs. `reactiveMaxBroadcasts` is
+now a **per-(node, generation)** broadcast count (default 2) rather than a
+per-path budget — bounding the flood without reintroducing the #169 hop limit.
+Numbers measured between those two fixes carry the flood and are not
+representative either.
+
 ## Known deviations (honest list)
 
 1. **Delay tail on the ns-3 disk model (#21).** On the contention-dominated

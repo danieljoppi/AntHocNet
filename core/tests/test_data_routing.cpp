@@ -54,21 +54,24 @@ int main() {
         CHECK_EQ(router.nextHopForData(9, /*prevHop*/ kInvalidAddress), kInvalidAddress);
     }
 
-    // A3 — a reactive forward ant gets broadcastBudget == reactiveMaxBroadcasts
-    // and is broadcast at most that many times in a pheromone-free region.
+    // A3 — the per-path decrement-and-drop mechanism: a forward ant carrying a
+    // finite broadcastBudget is broadcast at most that many times in a
+    // pheromone-free region, then dropped.
     //
-    // The budget is set explicitly here rather than taken from the default:
-    // since #169 the shipped default is -1 (unbounded), because a finite value
-    // is a hop limit on discovery and made >5-hop destinations unreachable.
-    // This block still pins the decrement-and-drop *mechanism*, which remains
-    // correct for anyone who sets a finite budget for an experiment.
+    // Exercised on a **repair** ant. This block used to use a reactive ant, but
+    // reactive ants no longer carry a per-path budget: decrementing per hop is a
+    // hop limit on discovery (#169), and since #173 their flood is bounded per
+    // (node, generation) instead — createForwardAnt gives them -1. Repair and
+    // proactive ants still use this mechanism (they explore near a known path,
+    // so bounding the path is the right unit), so the coverage moves here rather
+    // than being deleted.
     {
         FakeClock clock;
         ScriptedRng rng({0.5});
         Config cfg = ::cfgWithBudget(2);
         AntRouterLogic origin(/*addr*/ 1, cfg, clock, rng);
-        AntMessage refa = origin.createForwardAnt(AntType::Reactive, /*dest*/ 99);
-        CHECK_EQ(refa.broadcastBudget, cfg.reactiveMaxBroadcasts);
+        AntMessage refa = origin.createForwardAnt(AntType::Repair, /*dest*/ 99);
+        CHECK_EQ(refa.broadcastBudget, cfg.repairMaxBroadcasts);
 
         auto step = [&](AntMessage ant, NodeAddress addr, NodeAddress prevHop) {
             FakeClock c;
@@ -85,6 +88,17 @@ int main() {
         CHECK_EQ(d2[0].message.broadcastBudget, 0);
         auto d3 = step(d2[0].message, 13, 12);
         CHECK(d3[0].action == RouteAction::Drop);
+    }
+
+    // A3.1 — and a reactive ant explicitly does *not* carry one, so no per-hop
+    // decrement can reintroduce the #169 hop limit.
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        Config cfg = ::cfgWithBudget(2);
+        AntRouterLogic origin(/*addr*/ 1, cfg, clock, rng);
+        AntMessage refa = origin.createForwardAnt(AntType::Reactive, /*dest*/ 99);
+        CHECK(refa.broadcastBudget < 0);
     }
 
     return RUN_TESTS();
