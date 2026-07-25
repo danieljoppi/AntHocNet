@@ -141,7 +141,7 @@ struct Config {
     /// copy propagates (single-path setup). Default on: with the churn bound,
     /// multipath beat single-path on every headline metric in the paper regime
     /// (PDR 92.3 vs 89.4, delay/jitter/NRL all no worse; #96 round 2).
-    bool enableMultipath = true;
+    bool enableMultipath = false;
     /// Multipath acceptance factor ([1] §3.1, "empirically set to 1.5"), used
     /// only when enableMultipath is on: a later same-generation reactive
     /// forward ant is forwarded only if both its hop count and its travel time
