@@ -36,8 +36,29 @@ Aggregates are means over the RNG runs; the CSV also carries per-metric sample
 stddev across runs (`pdr_sd`, `delay_sd`, `delay99_sd`, `nrl_sd`), which the
 charts render as error bars, and the human table prints as `# stddev` lines.
 
-**Caveat on the published AntHocNet delay/jitter figures.** Every number
-currently on the scenario and sweep pages was measured with the provisional
-`T_hop = 50 ms`; [#88](https://github.com/danieljoppi/AntHocNet/issues/88)
-(PR #167, in flight) takes it to 3 ms, so the delay-derived metrics above must
-be re-measured once it lands. See [docs/fidelity.md](../fidelity.md).
+**Caveat — the scenario and sweep pages are two different vintages.** Two
+protocol defaults were corrected on 2026-07-25. The **scenario** pages are
+regenerated on every merge and already include both; the **sweep** pages come
+from the manual campaign workflow and do not:
+
+- [#88](https://github.com/danieljoppi/AntHocNet/issues/88) (PR #167, merged):
+  `T_hop` 50 ms → **3 ms**, the value stated in the 2007 thesis. It scales the
+  hop-count term of every pheromone deposit, so it moves all delay-derived
+  metrics. Measured effect on the pause sweep: mean delay −7…−16 %, jitter
+  −8…−17 %, delay99 −8…−12 % under mobility, at flat PDR and NRL
+  ([#88 measurement](https://github.com/danieljoppi/AntHocNet/issues/88#issuecomment-5079151172)).
+- [#169](https://github.com/danieljoppi/AntHocNet/issues/169) (PR #170, merged):
+  `reactiveMaxBroadcasts` 2 → **unbounded**. The finite budget was a *hop limit
+  on route discovery* — destinations more than ~5 hops away were never found —
+  so it affects **PDR and NRL**, not just the delay columns.
+
+So: read a **sweep** page as the pre-fix behaviour, pending re-measurement. Read
+a **scenario** page as current — with one exception, because #169's fix exposed
+a third defect: [#173](https://github.com/danieljoppi/AntHocNet/issues/173) (P1,
+**open**) leaves reactive forward ants bounded neither by a broadcast budget nor
+by `(src,seq)` duplicate suppression, so discovery floods combinatorially in
+dense graphs. That inflates **NRL** and depresses **PDR** on `large-scale` and
+`heavy-load` specifically.
+
+See [docs/fidelity.md](../fidelity.md) and
+[configuration.md](../configuration.md) for the provenance of these values.

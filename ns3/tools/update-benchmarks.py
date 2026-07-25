@@ -43,13 +43,18 @@ _TABLE_HEAD = [
      "|------------:|------------:|"),
 ]
 
-# Mirrored from docs/fidelity.md "Known deviations" #2 so it is visible wherever
-# results are presented, not only on the fidelity page.
-_THOP_CAVEAT = (
-    "> **Caveat — these numbers predate the `T_hop` fix.** They were measured with\n"
-    "> the provisional `T_hop = 50 ms`; [#88](https://github.com/danieljoppi/AntHocNet/issues/88)\n"
-    "> (PR #167, in flight) takes it to 3 ms, so every AntHocNet delay/jitter figure\n"
-    "> below must be re-measured afterwards. See [docs/fidelity.md](../../fidelity.md).\n"
+# Mirrored from docs/fidelity.md so the standing caveat is visible wherever
+# results are presented, not only on the fidelity page. Keep this in step with
+# fidelity.md — a stale caveat is worse than none, because it tells the reader
+# the numbers are older than they are.
+_CAVEAT = (
+    "> **Caveat — `large-scale` and `heavy-load` currently reflect an open\n"
+    "> defect.** [#173](https://github.com/danieljoppi/AntHocNet/issues/173)\n"
+    "> (P1, open): with `enableMultipath` on, reactive forward ants are bounded\n"
+    "> neither by a broadcast budget nor by `(src,seq)` duplicate suppression, so\n"
+    "> route discovery floods combinatorially in dense graphs. Read those two rows\n"
+    "> as a bug report, not as protocol character. See\n"
+    "> [docs/fidelity.md](../../fidelity.md).\n"
 )
 
 
@@ -171,7 +176,7 @@ def scenario_stub(scen, srows, index_name):
         f"Defined as `DISCRETE[\"{scen}\"]` in "
         f"[`ns3/tools/run-scenarios.py`](../../../ns3/tools/run-scenarios.py).\n\n"
         f"## Results\n\n"
-        + _THOP_CAVEAT + "\n"
+        + _CAVEAT + "\n"
         + f"{START}\n{END}\n"
     )
 
@@ -189,7 +194,7 @@ def sweep_stub(name, srows, index_name):
         f"Defined as `SWEEPS[\"{name}\"]` in "
         f"[`ns3/tools/run-scenarios.py`](../../../ns3/tools/run-scenarios.py).\n\n"
         f"## Results\n\n"
-        + _THOP_CAVEAT + "\n"
+        + _CAVEAT + "\n"
         + f"{START}\n{END}\n"
     )
 
