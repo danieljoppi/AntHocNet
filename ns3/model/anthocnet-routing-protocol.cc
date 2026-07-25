@@ -239,7 +239,7 @@ TypeId RoutingProtocol::GetTypeId() {
                           "Congestion-aware per-hop cost (item 10/A2): forward ants "
                           "record (MAC-queue+1)*hop-time instead of wall-clock "
                           "transit, so paths shift off loaded nodes.",
-                          BooleanValue(false),
+                          BooleanValue(true),
                           MakeBooleanAccessor(&RoutingProtocol::m_enableMacMetric),
                           MakeBooleanChecker())
             .AddTraceSource("Tx",

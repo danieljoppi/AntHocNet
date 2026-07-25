@@ -45,7 +45,7 @@ struct Config {
     /// so the path-time term T̂_d reflects sustained MAC load. Gated + default
     /// off so the simpler item-02 metric stays the shipped default until a
     /// benchmark justifies the switch.
-    bool enableMacMetric = false;
+    bool enableMacMetric = true;
 
     /// Links whose pheromone drops below this are pruned.
     double minPheromone = 0.00001;  ///< MIN_PHEROMONE
