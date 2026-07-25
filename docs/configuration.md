@@ -125,7 +125,7 @@ The `ns-3 attribute` column is the name you pass to
 | `txFailureThreshold` | `3` | consecutive failures | `TxFailureThreshold` | `repo choice` — the *debounce* is argued in [#19](https://github.com/danieljoppi/AntHocNet/issues/19)/[ADR-0008](adr/0008-neighbour-liveness-two-detectors.md) detector D; the **value 3 is not sweep-backed** (see §3.2). | How many consecutive MAC transmit failures to the same next hop (with no reception in between) count as a broken link. Lower = jumpier, more rediscovery. |
 | `reactiveMaxBroadcasts` | `2` | broadcasts per node per `(src,seq)` generation; `-1` = no bound | — | `derived` — the sources bound the reactive flood by duplicate suppression, `maxPathLength` and the acceptance band, **never by a count** ([#169](https://github.com/danieljoppi/AntHocNet/issues/169)); but with `enableMultipath` on a reactive forward ant bypasses duplicate suppression, so this restores its *intent* for that one case ([#173](https://github.com/danieljoppi/AntHocNet/issues/173)). | How many times a node re-broadcasts one discovery. **The unit changed in #173**: it was a budget carried on the ant and decremented per hop (a hop limit on reach, #169); it is now a per-node count, which bounds the flood without limiting reach. |
 | `enableMultipath` | `true` | bool | `EnableMultipath` | Mechanism `[1] §3.1` (the acceptance filter); **the gate and the linkfail churn bound** are `repo choice` ([#96](https://github.com/danieljoppi/AntHocNet/issues/96), A/B-justified: PDR 92.3 vs 89.4). | Whether later same-generation reactive ants may lay additional paths, and whether losing a best hop that leaves a usable alternate is absorbed instead of flooding a LinkFail. Off = strict `(src,seq)` dedup, single-path setup. |
-| `antAcceptanceFactor` | `1.5` | factor | `AntAcceptanceFactor` | `[1] §3.1` — "a parameter which we empirically set to **1.5**". | How many alternate paths get laid: a later ant is forwarded only if both hop count and travel time are within this factor of the generation's best. **Higher admits more copies** (up to a flood); no value reproduces single-path — use `enableMultipath=false`. |
+| `antAcceptanceFactor` | `1.5` | factor | `AntAcceptanceFactor` | `[1] §3.1` — "a parameter which we empirically set to **1.5**" — **but the thesis supersedes this**: it parameterises the same band as `a1 = 0.9` with a second factor `a2 = 2` for first-hop-disjoint ants, and records the design being dropped (§3.3, [#177](https://github.com/danieljoppi/AntHocNet/issues/177)). | How many alternate paths get laid: a later ant is forwarded only if both hop count and travel time are within this factor of the generation's best. **Higher admits more copies** (up to a flood); no value reproduces single-path — use `enableMultipath=false`. |
 | `proactiveMaxBroadcasts` | `2` | count | — | `[1] §3.3` — a proactive ant may be broadcast "at most **2**" times, else deleted (#45). | Bounds proactive exploration, including across a route gap en route. Unbounded lets proactive ants flood regions of missing routes (#45). |
 | `repairWaitFactor` | `5.0` | × estimated path delay | `RepairWaitFactor` | `[1] §3.4` — wait **5×** the estimated end-to-end delay of the lost path (`config.h` cites §3.5; see §3.3). | How long buffered packets wait for a backward repair ant before being discarded and a LinkFail sent (spec D6). |
 | `repairTimeout` | `1.0` | s | `RepairTimeout` | **`unknown`** — a fallback the paper does not define (it always has a delay estimate); the value has no recorded basis. | Flat repair wait used when the lost path has no usable delay estimate. |
@@ -241,6 +241,26 @@ setup traffic. 1.0 still admits equal-metric copies, so no value gives you
 single-path — that is what `enableMultipath=false` is for. Turning multipath off
 also turns off the linkfail churn bound that ships with it; expect more LinkFail
 volume (#96 round 1 lost 7.5 pp PDR without it).
+
+**Read the sources before tuning this one**, because they do not agree and the
+disagreement caused [#173](https://github.com/danieljoppi/AntHocNet/issues/173).
+[1] §3.1 states a single factor of 1.5. The 2007 thesis parameterises the same
+band as **`a1 = 0.9`** — "set quite low … in order to only allow the best ants
+through and avoid too much proliferation" — plus a second, looser **`a2 = 2`**
+applied *only* when an ant's **first hop** differs from previously accepted
+ants, a disjointness rule this repo does not implement. At 0.9 the band admits
+only ants better than the incumbent, so it tightens with each admission and is
+self-limiting; at 1.5 it admits ants up to 50% worse, which in a dense graph is
+nearly every neighbour's copy. That is why a discovery in a 7×7 grid cost 30,090
+ants before the per-node bound landed.
+
+The thesis then records that the authors **abandoned the mechanism entirely** —
+"high levels of overhead were often experienced … we decided to restrict
+reactive route setup to the creation of just one single route, and to rely on
+proactive route maintenance to obtain multiple routes." So the shipped default
+implements a design its own authors dropped, at a looser factor than they ever
+ran, bounded by a mechanism this repo invented. #177 is measuring the three
+options; treat this row as unsettled until it closes.
 
 ### Proactive & diffusion — `enableProactive`, `enableDiffusion`, `proactiveInterval`, `proactiveBroadcastProb`, `proactiveMaxBroadcasts`, `sessionTtl`
 
