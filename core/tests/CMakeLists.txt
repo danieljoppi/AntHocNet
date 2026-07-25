@@ -18,6 +18,7 @@ set(ANTHOCNET_TESTS
   test_mac_metric
   test_properties
   test_observability
+  test_testbench
 )
 
 foreach(test ${ANTHOCNET_TESTS})
