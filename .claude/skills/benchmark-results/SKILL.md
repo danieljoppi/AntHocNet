@@ -100,9 +100,36 @@ its compact grid should reach context.
 S=.claude/skills/benchmark-results/sweep_summary.py
 python3 $S docs/benchmarks/campaign/*.csv        # anthocnet vs aodv per point
 python3 $S --baseline olsr --group pause FILE    # other baseline / one group
+python3 $S AFTER.csv --vs BEFORE.csv             # same sweep, two code
+                                                 #   generations (see below)
 python3 $S --export-sweeps sweeps.csv FILE...    # emit the papers-repo
                                                  #   plots/data/sweeps.csv schema
 ```
+
+### Did *our change* move the sweep? (`--vs`)
+
+The default mode answers "AntHocNet vs AODV". After a protocol change you need
+the other question — **what did this commit do to the sweep** — which is the
+loop #88 (`T_hop`) and #169 (`reactiveMaxBroadcasts`) forced when they
+invalidated every published number. `--vs` takes the BEFORE CSVs and diffs the
+same `(kind, group, x)` points of the same protocol:
+
+```bash
+python3 $S docs/benchmarks/campaign/<after>.csv --vs docs/benchmarks/campaign/<before>.csv
+```
+
+Note the argument order: `--vs` is greedy (`nargs='+'`), so the AFTER files must
+come **before** the flag.
+
+It also prints a **control** line, which is the part that makes the result
+trustworthy: the baseline protocols are untouched code on identical seeds, so
+their `pdr_pct`/`delay_ms`/`delay99_ms`/`nrl` must be *identical* across the two
+generations. If they moved, the harness moved too, the AntHocNet delta is not
+attributable to your change (a #51-class finding) — and the script **exits 1**
+so a scripted campaign stops instead of publishing the number.
+
+Points present in only one of the two CSVs are reported and skipped, so a
+partial re-run still compares cleanly against a full sweep.
 
 Per-point verdict uses bench_parse's materiality thresholds (PDR ±1pp,
 delay99/NRL ±10%); `~sd` marks a material PDR delta still inside

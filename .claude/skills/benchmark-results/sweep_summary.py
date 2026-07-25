@@ -11,6 +11,9 @@ Usage:
     sweep_summary.py FILE [FILE ...]              # summarize, anthocnet vs aodv
     sweep_summary.py --baseline olsr FILE         # different baseline
     sweep_summary.py --group area FILE            # one sweep/scenario group only
+    sweep_summary.py --vs BEFORE.csv AFTER.csv    # same sweep, two code
+                                                  #   generations (a default
+                                                  #   change): after vs before
     sweep_summary.py --export-sweeps out.csv F..  # emit the papers-repo
                                                   #   sweeps.csv schema
                                                   #   (sweep,x,proto,pdr,
@@ -19,6 +22,14 @@ Usage:
 Verdict per point (same materiality thresholds as bench_parse.py): PDR ±1pp,
 delay99 ±10%, NRL ±10%; a material PDR delta inside 2·RSS(pdr_sd) is tagged
 `~sd` (within run-to-run dispersion — treat as noise, bump --runs).
+
+`--vs` answers "what did this code change do to the sweep?" rather than "how
+does AntHocNet compare to AODV?" — the loop needed after #88 (T_hop) and #169
+(reactiveMaxBroadcasts) invalidated every published number. It also prints a
+**control**: the baseline protocols are untouched code on identical seeds, so
+their numbers must be byte-identical across the two generations. If they moved,
+the harness moved too and the AntHocNet delta is not attributable to the code
+change (a #51-class finding).
 """
 import argparse
 import csv
@@ -80,25 +91,101 @@ def verdict(a, b):
     return tag, dp, d99, dn
 
 
+def collect(paths, group=None):
+    """paths -> {(kind, group, x): {protocol: row}}"""
+    cells = {}
+    for path in paths:
+        for row in load(path):
+            if group and row["group"] != group:
+                continue
+            cells.setdefault(key(row), {})[row["protocol"]] = row
+    return cells
+
+
+CONTROL_COLS = ["pdr_pct", "delay_ms", "delay99_ms", "nrl"]
+
+
+def generation_diff(before, after, proto, baseline):
+    """Print after-vs-before for `proto`, plus the untouched-baseline control.
+
+    Returns the exit status: non-zero if the control failed.
+    """
+    print(f"{'group':<10}{'x':>8}  {'runs':>4}  "
+          f"{'after':>6}{'before':>7}  {'dPDR':>7}{'d99%':>8}{'dNRL%':>8}  "
+          f"verdict")
+    shared = sorted(k for k in after if k in before)
+    for k in shared:
+        kind, group, x = k
+        a, b = after[k].get(proto), before[k].get(proto)
+        if a is None or b is None:
+            print(f"{group:<10}{x:>8g}  -- {proto} missing in "
+                  f"{'after' if a is None else 'before'}")
+            continue
+        tag, dp, d99, dn = verdict(a, b)
+        print(f"{group:<10}{x:>8g}  {f(a,'runs',0):>4.0f}  "
+              f"{f(a,'pdr_pct',0):>6.1f}{f(b,'pdr_pct',0):>7.1f}  "
+              f"{dp:>+7.1f}{d99:>+8.1f}{dn:>+8.1f}  {tag}")
+
+    only_a = len(after) - len(shared)
+    only_b = len(before) - len(shared)
+    if only_a or only_b:
+        print(f"note: {only_a} point(s) only in after, {only_b} only in before "
+              f"— compared the {len(shared)} shared point(s)")
+
+    # Control: baselines are untouched code on identical seeds.
+    protos = {p for cell in after.values() for p in cell} - {proto}
+    moved = []
+    for k in shared:
+        for p in sorted(protos):
+            a, b = after[k].get(p), before[k].get(p)
+            if a is None or b is None:
+                continue
+            for col in CONTROL_COLS:
+                va, vb = f(a, col), f(b, col)
+                if va is None or vb is None or va == vb:
+                    continue
+                moved.append((k[1], k[2], p, col, vb, va))
+    if not protos:
+        print("control: no baseline protocols in these CSVs — not checked")
+        return 0
+    if not moved:
+        print(f"control: {', '.join(sorted(protos))} identical across "
+              f"generations on {len(shared)} point(s) x {len(CONTROL_COLS)} "
+              f"metrics — delta is attributable to the {proto} change")
+        return 0
+    print(f"control: FAIL — {len(moved)} baseline metric(s) moved; the "
+          f"harness is not held constant, so the {proto} delta is NOT "
+          f"attributable to the code change (#51-class). First few:")
+    for group, x, p, col, vb, va in moved[:6]:
+        print(f"  {group} x={x:g} {p}.{col}: {vb:g} -> {va:g}")
+    return 1
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("files", nargs="+")
     ap.add_argument("--baseline", default="aodv")
     ap.add_argument("--proto", default="anthocnet")
     ap.add_argument("--group", help="only this group (e.g. area, pause, scale)")
+    ap.add_argument("--vs", metavar="BEFORE", nargs="+",
+                    help="compare the same sweep across two code generations: "
+                         "these are the BEFORE CSVs, the positional files are "
+                         "AFTER. Prints per-point deltas for --proto plus a "
+                         "control that the baselines did not move.")
     ap.add_argument("--export-sweeps", metavar="OUT",
                     help="write the papers-repo sweeps.csv schema "
                          "(sweep rows, anthocnet+baseline only)")
     args = ap.parse_args()
 
-    cells = {}   # (kind, group, x) -> {protocol: row}
-    for path in args.files:
-        for row in load(path):
-            if args.group and row["group"] != args.group:
-                continue
-            cells.setdefault(key(row), {})[row["protocol"]] = row
+    cells = collect(args.files, args.group)   # (kind, group, x) -> {proto: row}
     if not cells:
         sys.exit("FAIL: no rows matched")
+
+    if args.vs:
+        before = collect(args.vs, args.group)
+        if not before:
+            sys.exit("FAIL: no rows matched in the --vs (before) files")
+        sys.exit(generation_diff(before, cells, args.proto, args.baseline))
 
     print(f"{'group':<10}{'x':>8}  {'runs':>4}  "
           f"{'PDR':>6}{'vs':>7}  {'dPDR':>7}{'d99%':>8}{'dNRL%':>8}  verdict")
