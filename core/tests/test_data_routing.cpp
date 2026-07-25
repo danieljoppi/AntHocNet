@@ -8,6 +8,16 @@ using namespace anthocnet::core;
 using anthocnet::test::FakeClock;
 using anthocnet::test::ScriptedRng;
 
+namespace {
+/// A Config with an explicit finite reactive broadcast budget, for the tests
+/// that exercise the decrement-and-drop mechanism (#169 made the default -1).
+Config cfgWithBudget(int budget) {
+    Config c;
+    c.reactiveMaxBroadcasts = budget;
+    return c;
+}
+}  // namespace
+
 int main() {
     Config cfg;
 
@@ -46,9 +56,16 @@ int main() {
 
     // A3 — a reactive forward ant gets broadcastBudget == reactiveMaxBroadcasts
     // and is broadcast at most that many times in a pheromone-free region.
+    //
+    // The budget is set explicitly here rather than taken from the default:
+    // since #169 the shipped default is -1 (unbounded), because a finite value
+    // is a hop limit on discovery and made >5-hop destinations unreachable.
+    // This block still pins the decrement-and-drop *mechanism*, which remains
+    // correct for anyone who sets a finite budget for an experiment.
     {
         FakeClock clock;
         ScriptedRng rng({0.5});
+        Config cfg = ::cfgWithBudget(2);
         AntRouterLogic origin(/*addr*/ 1, cfg, clock, rng);
         AntMessage refa = origin.createForwardAnt(AntType::Reactive, /*dest*/ 99);
         CHECK_EQ(refa.broadcastBudget, cfg.reactiveMaxBroadcasts);

@@ -40,6 +40,24 @@ Every pinned-down parameter and its match/deviation status is tabulated in the
 | **Overhead (NRL) below AODV** | ✅ | 45 vs 61 (disk); 44 vs 75 (two-ray) |
 | **Delay/jitter QoS advantage** (bounded tail) | 🟡 partial | **two-ray (paper PHY): mean-delay parity** with AODV (52.8 vs 52.6 ms), jitter within 11 %, after the #21 reconv hold cap (#104). **Disk model**: tail narrowed (delay99 −37 %, jitter −26 % via `ReconvHoldCap`) but still above AODV |
 
+## Correction pending re-measurement (#169, 2026-07-25)
+
+**Every benchmark number in this document was produced with
+`reactiveMaxBroadcasts = 2`**, which — because a reactive forward ant
+broadcasts at every node lacking pheromone for the destination — was a *hop
+limit on route discovery*: destinations more than ~5 hops away were never
+found at all. Both primary sources bound the reactive flood by duplicate
+suppression and `maxPathLength`, never by a broadcast count; the 2-broadcast
+rule belongs to *proactive* ants ([1] §3.3). The default is now unbounded.
+
+This most likely explains the sparse/long-path results that were previously
+read as protocol character — in particular the static-network inversion
+(delivery 59.9 % vs AODV 98.9 % at `pause=900`, while AntHocNet *led* under
+constant motion) and the decay of its advantage as the field is stretched.
+Until the sweeps are re-run, treat every result below — including the headline
+PDR/NRL figures — as **pending re-measurement**, and do not cite the
+sparse-static weakness as a property of the algorithm.
+
 ## Known deviations (honest list)
 
 1. **Delay tail on the ns-3 disk model (#21).** On the contention-dominated
