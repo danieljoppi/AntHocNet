@@ -56,6 +56,21 @@ adapters never reimplement routing logic.
   counter. It is pure: `onReceiveAnt()` / `onDataPacket()` return
   `RouteDecision`s; they never touch a simulator.
 
+### Pluggable link metrics
+
+- **`ILinkMetric`** — the strategy that turns a backward ant's `LinkObservation`
+  into a pheromone value. `ClassicMetric` is the canonical Eq.2 formula and the
+  default; a metric is pure (const, observation-only), so it never reaches for
+  the simulator, clock, or RNG.
+- **`metrics::find` / `metrics::get`** (`link_metric_registry.h`) — the shared
+  name → instance mapping both adapters resolve through, so `"classic"` means
+  the same thing on NS-2 and NS-3. Lookup returns a **non-owning** pointer to a
+  process-lifetime instance (metrics are stateless, so one instance is shared by
+  every node, and `AntRouterLogic`'s raw `const ILinkMetric*` can never dangle).
+  An unknown name is an error — `find` returns `nullptr`, `get` throws — never a
+  silent fall back to classic. With no selection at all nothing consults the
+  registry and `AntRouterLogic` uses `ClassicMetric` as before.
+
 ### Ports
 
 The adapters implement these so the core stays I/O-free:
