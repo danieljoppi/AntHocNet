@@ -30,6 +30,9 @@ on:
       propagation:
         description: 'Propagation model override for every point: range (disk) | tworay. Leave blank for anthocnet-compare''s default (range).'
         default: ''
+      extraArgs:
+        description: 'Extra anthocnet-compare args appended verbatim to every point — mainly ns-3 attribute overrides, so protocol variants can be A/B''d from a dispatch instead of a branch per arm (#177). e.g. --ns3::anthocnet::RoutingProtocol::BetaData=20 --ns3::anthocnet::RoutingProtocol::EnableMultipath=false'
+        default: ''
       commit:
         description: 'Commit regenerated charts + CSV into docs/ on this ref'
         type: boolean
@@ -126,11 +129,20 @@ jobs:
           if [ -n "${{ github.event.inputs.point }}" ]; then
             point="--point=${{ github.event.inputs.point }}"
           fi
+          # #177: extraArgs must reach anthocnet-compare as ONE argv element
+          # here, so it is quoted — unlike $quick/$propagation/$point above,
+          # which are single tokens deliberately left unquoted to expand to
+          # nothing when empty. run-scenarios.py splices the string into its
+          # `./ns3 run "anthocnet-compare ..."` command line, where the shell
+          # word-splits it — the same place paper-benchmark.yml's extraArgs is
+          # split, so multi-argument values behave identically in both
+          # workflows. Empty is the default and is a no-op.
           python3 ns3/tools/run-scenarios.py /opt/ns-3 \
             --out "$GITHUB_WORKSPACE/scenarios.csv" \
             --runs "${{ github.event.inputs.runs }}" \
             --time "${{ github.event.inputs.time }}" \
             --only "${{ github.event.inputs.only }}" \
+            --extra-args "${{ github.event.inputs.extraArgs }}" \
             $quick $propagation $point
       - name: Render charts
         # always(): a mid-sweep failure (one anthocnet-compare invocation

@@ -1,0 +1,1 @@
+kind,group,x,scenario,class,protocol,runs,nNodes,areaX,speed,pause,flows,propagation,pdr_pct,delay_ms,delay99_ms,throughput_kbps,nrl,jitter_ms,delay_off50_ms,delay_off90_ms,pdr_sd,delay_sd,delay99_sd,nrl_sd,nrl_bytes
