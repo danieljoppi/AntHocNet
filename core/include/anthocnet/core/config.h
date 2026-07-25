@@ -27,8 +27,17 @@ struct Config {
     /// paper regime with multipath on (#70: performance-neutral vs the legacy
     /// 20/2, slightly better delay/jitter). The legacy constants BETA1=2/
     /// BETA2=20 had no basis in [1].
-    double betaAnts = 1.0;   ///< exponent for ant next-hop choice ([1] §3.3, unsquared).
-    double betaData = 2.0;   ///< exponent for data next-hop choice ([1] §3.2, squared).
+    /// EXPERIMENT BRANCH (#179): both exponents set to the 2007 thesis value of
+    /// 20. The thesis states it three times, separately, for reactive ants
+    /// ("we keep beta1 relatively high, on 20", eq. 4.1), proactive ants
+    /// ("beta2 is normally kept on 20", eq. 4.5) and data ("we normally keep
+    /// beta3 on 20", eq. 4.6). [1] instead uses unsquared pheromone for ants
+    /// (§3.3) and squared for data (§3.2), which is where main's 1.0/2.0 come
+    /// from. NOT FOR MERGE: this branch exists to A/B (1,2) against (20,20).
+    /// Note betaAnts covers both beta1 and beta2, which the thesis keeps
+    /// separate; they coincide at 20 so this branch cannot tell them apart.
+    double betaAnts = 20.0;   ///< thesis beta1/beta2 (eq. 4.1, 4.5)
+    double betaData = 20.0;   ///< thesis beta3 (eq. 4.6)
 
     /// Per-hop time estimate used by the back-ant pheromone formula (Eq.2):
     /// the time to take one hop in unloaded conditions. In seconds, matching
