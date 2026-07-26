@@ -87,11 +87,11 @@ TypeId RoutingProtocol::GetTypeId() {
                           MakeDoubleAccessor(&RoutingProtocol::m_alpha),
                           MakeDoubleChecker<double>())
             .AddAttribute("BetaAnts", "Eq.1 exponent for ant next-hop choice ([1] unsquared).",
-                          DoubleValue(1.0),
+                          DoubleValue(20.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_betaAnts),
                           MakeDoubleChecker<double>())
             .AddAttribute("BetaData", "Eq.1 exponent for greedy data routing ([1] squared).",
-                          DoubleValue(2.0),
+                          DoubleValue(20.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_betaData),
                           MakeDoubleChecker<double>())
             .AddAttribute("Gamma", "Reinforcement weight (GAMA).",
