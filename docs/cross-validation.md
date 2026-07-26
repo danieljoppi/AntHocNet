@@ -86,6 +86,15 @@ NS-3 PHY/device model, not of the shared `core/` algorithm:
   AntHocNet-specific behaviour behind two of the columns: the core counts
   repair discards (`AntRouterLogic::repairDiscards()`) simulator-agnostically,
   so both adapters see the same events for the same run.
+- **Route quality** (`path_hops_mean`, `path_hops_max`, `path_div_used`,
+  `path_div_max`, `path_entropy_bits`, `jain_pkts`; #217). Path length comes
+  from the IP TTL at NS-3's `Ipv4L3Protocol` `LocalDeliver` trace and used-path
+  diversity from the `WifiMac` `AckedMpdu` trace — NS-3 device/PHY hooks with no
+  NS-2 counterpart, and diversity in particular depends on 802.11
+  acknowledgement, which the two simulators model differently. Jain's fairness
+  index is computable in principle from an NS-2 trace file, but the harness that
+  would produce it does not exist on the NS-2 side. As with energy, do not block
+  cross-validation on these columns.
 
 ## What "agreement" means
 

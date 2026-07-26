@@ -27,7 +27,9 @@ Output CSV columns:
   energy_init_j,first_death_s,reorder_ratio,reorder_ratio_max,
   reorder_extent_mean,reorder_extent_max,reorder_buf_max,
   drop_route_pct,drop_queue_pct,drop_mac_pct,
-  drop_chan_pct,drop_ttl_pct,drop_setup_pct,drop_reconv_pct,drop_repair_pct
+  drop_chan_pct,drop_ttl_pct,drop_setup_pct,drop_reconv_pct,drop_repair_pct,
+  path_hops_mean,path_hops_max,path_div_used,
+  path_div_max,path_entropy_bits,path_div_window_s,jain_pkts
                                 (see METRICS below for the full, append-only
                                  list)
 
@@ -109,6 +111,14 @@ SWEEPS = {
 # The three AntHocNet-only causes (setup / reconv / repair) are a sub-breakdown
 # of drop_route_pct and are deliberately **blank**, not 0, for protocols that
 # have no such cause.
+# The path_*/jain_* columns are #217 route quality (ns-3 only, all four
+# protocols): mean and max hop count actually traversed by delivered packets;
+# path_div_used = the mean number of distinct next hops that actually *carried*
+# a data packet for a destination within one path_div_window_s window (used
+# paths, not pheromone-available ones), path_div_max its maximum and
+# path_entropy_bits the Shannon entropy of that split; jain_pkts = Jain's
+# fairness index over per-flow delivered-packet counts. Baselines are expected
+# to read path_div_used ~1 — that is the instrumentation's self-check.
 # APPEND ONLY — downstream consumers (make-charts.py, sweep_summary.py,
 # bench_parse.py, scenario_check.py) look these columns up by header name, so
 # appending is safe and reordering is not.
@@ -122,7 +132,9 @@ METRICS = ["pdr_pct", "delay_ms", "delay99_ms", "throughput_kbps", "nrl",
            "reorder_extent_max", "reorder_buf_max",
            "drop_route_pct", "drop_queue_pct", "drop_mac_pct", "drop_chan_pct",
            "drop_ttl_pct", "drop_setup_pct", "drop_reconv_pct",
-           "drop_repair_pct"]
+           "drop_repair_pct",
+           "path_hops_mean", "path_hops_max", "path_div_used", "path_div_max",
+           "path_entropy_bits", "path_div_window_s", "jain_pkts"]
 PARAMS = ["runs", "nNodes", "area", "speed", "flows"]
 OUT_COLUMNS = (["kind", "group", "x", "scenario", "class", "protocol"]
                + ["runs", "nNodes", "areaX", "speed", "pause", "flows", "propagation"]

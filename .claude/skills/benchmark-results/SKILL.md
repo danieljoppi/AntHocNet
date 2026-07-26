@@ -164,7 +164,12 @@ the #215 drop-cause identity (PDR plus the
 five protocol-agnostic causes must account for ~100% of offered packets: WARN
 past 1 pp, FAIL past 5 pp — the tolerance is the data still queued when the run
 stops; also FAILs a negative cause share, which means two causes count the same
-packet; skipped for inputs predating drop instrumentation), and — with
-`--anchor` — the AODV floors read from
+packet; skipped for inputs predating drop instrumentation),
+the #217 route-quality invariants (mean path
+length ≥ 1 hop and ≤ `maxPathLength`, max ≥ mean; used-path diversity ≥ 1 and
+≤ its own maximum; path entropy in [0, log2(max diversity)]; Jain's fairness
+index ∈ [0,1] — each of them non-zero whenever PDR is, so a trace that silently
+failed to connect reads as a FAIL rather than as "no multipath"; all skipped for
+inputs predating route-quality instrumentation), and — with `--anchor` — the AODV floors read from
 `ns3/tools/anchors.yml` (never duplicated). A `results` FAIL is a #51-class
 harness regression: fix the harness before trusting any number from that run.
