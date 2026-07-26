@@ -10,25 +10,49 @@
 # anchor of docs/benchmarks/methodology.md "Validation anchors": the expected result is
 # not a number but *identical output*.
 #
-# Usage: check-determinism.sh <ns3-dir>
+# Usage: check-determinism.sh <ns3-dir> [compare|isl-grid]
+#
+# `compare` (the default) runs the wifi/MANET field; `isl-grid` runs the same
+# identity check on the satellite ISL topology (S5 of #237).
 #
 # The ns-3 tree must already be configured + built with the anthocnet module's
-# examples enabled (anthocnet-compare builds as part of the module's examples).
+# examples enabled (both harnesses build as part of the module's examples).
 set -euo pipefail
 
 NS3DIR=${1:-}
+HARNESS=${2:-compare}
 if [ -z "$NS3DIR" ]; then
-    echo "usage: $0 <ns3-dir>" >&2
+    echo "usage: $0 <ns3-dir> [compare|isl-grid]" >&2
     exit 2
 fi
 
-# Small, fast, connected field (same shape as ci.yml's e2e delivery smoke,
-# longer run): anthocnet exercises the core's IRng/IClock paths, aodv is a
-# stock control. --runs=1 fixes the RNG run number (seeds 1..runs), so both
-# invocations use identical seeds by construction.
-args="--nNodes=8 --area=150 --flows=2 --time=60 --runs=1"
-protocols="anthocnet,aodv"
-cmd="anthocnet-compare $args --protocols=$protocols"
+case "$HARNESS" in
+    compare)
+        # Small, fast, connected field (same shape as ci.yml's e2e delivery
+        # smoke, longer run): anthocnet exercises the core's IRng/IClock paths,
+        # aodv is a stock control. --runs=1 fixes the RNG run number (seeds
+        # 1..runs), so both invocations use identical seeds by construction.
+        args="--nNodes=8 --area=150 --flows=2 --time=60 --runs=1"
+        protocols="anthocnet,aodv"
+        cmd="anthocnet-compare $args --protocols=$protocols"
+        ;;
+    isl-grid)
+        # S5 of #237 — the same identity anchor on the satellite topology.
+        # Worth running separately rather than assuming it follows from the
+        # wifi case: a p2p ISL grid exercises a different device, a different
+        # channel and (post-#203) the multi-interface next-hop resolution,
+        # whose peer map is populated from received hellos — i.e. from an
+        # ordering that a container-iteration bug could perturb without ever
+        # showing up on a single-interface wifi node.
+        args="--rows=4 --cols=4 --torus=true --flows=2 --time=30 --runs=1"
+        protocols="anthocnet"
+        cmd="isl-grid $args --protocols=$protocols"
+        ;;
+    *)
+        echo "unknown harness '$HARNESS' (want: compare | isl-grid)" >&2
+        exit 2
+        ;;
+esac
 
 # Keep only the summary-table metric rows ("<proto> <number> ..."), the same
 # row pattern paper-benchmark.yml's ##BENCH## awk matches. This drops ./ns3
@@ -39,7 +63,7 @@ filter_rows() {
     awk '$1 ~ /^(anthocnet|aodv|olsr|dsdv)$/ && $2 ~ /^[0-9.]+$/'
 }
 
-echo "[determinism] ./ns3 run \"$cmd\"  (twice; gate: identical metric rows)"
+echo "[determinism:$HARNESS] ./ns3 run \"$cmd\"  (twice; gate: identical metric rows)"
 cd "$NS3DIR"
 
 rows1=
@@ -47,7 +71,7 @@ rows2=
 for i in 1 2; do
     if ! out=$(./ns3 run "$cmd" 2>&1); then
         printf '%s\n' "$out" | tail -n 40
-        echo "FAIL [determinism]: run $i of anthocnet-compare did not run (output tail above)"
+        echo "FAIL [determinism:$HARNESS]: run $i did not run (output tail above)"
         exit 1
     fi
     rows=$(printf '%s\n' "$out" | filter_rows)

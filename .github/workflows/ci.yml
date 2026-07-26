@@ -303,6 +303,32 @@ jobs:
         # cheap (reuses this job's build).
         if: matrix.version == '3.42'
         run: bash ns3/tools/check-determinism.sh /opt/ns-3
+      - name: Satellite validation anchors (#237, ISL topology)
+        # The ISL analogue of the anchor gate above, and stronger in kind: a
+        # point-to-point link has no contention and no loss model, so the
+        # expected values are *analytic* rather than literature-derived.
+        #   single-isl — 2 satellites, 1 ISL: PDR must be ~100% (the #51
+        #                lesson applied to the p2p stack).
+        #   hop-delay  — 4x4 torus, both flows 2 hops: mean delay must sit in
+        #                [h*d, h*d + slack]. The lower bound is the sharp one —
+        #                below it the packet beat propagation, so either the
+        #                channel delay is not applied (#200) or the topology is
+        #                not the 2-hop path it claims (#226).
+        # Same single-matrix-version placement as the gates above (ADR-0015
+        # also fixes satellite CI to one ns-3 version). Thresholds:
+        # ns3/tools/anchors.yml.
+        if: matrix.version == '3.42'
+        run: |
+          bash ns3/tools/check-sat-anchors.sh /opt/ns-3 single-isl
+          bash ns3/tools/check-sat-anchors.sh /opt/ns-3 hop-delay
+      - name: Determinism gate on the ISL topology (#237 S5)
+        # Run separately from the wifi determinism gate rather than assuming it
+        # follows: the ISL grid exercises a different device and channel, plus
+        # the post-#203 multi-interface next-hop resolution whose peer map is
+        # built from received hellos — an ordering a container-iteration bug
+        # could perturb without ever showing on a single-interface wifi node.
+        if: matrix.version == '3.42'
+        run: bash ns3/tools/check-determinism.sh /opt/ns-3 isl-grid
 
   ns3-asan:
     name: NS-3 module under ASan + LSan

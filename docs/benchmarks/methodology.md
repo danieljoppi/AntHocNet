@@ -249,6 +249,62 @@ enforced locally by
 [`.claude/skills/benchmark-results/scenario_check.py`](../../.claude/skills/benchmark-results/scenario_check.py)
 (#134), which reads `anchors.yml` rather than duplicating it.
 
+### Satellite validation anchors ([#237](https://github.com/danieljoppi/AntHocNet/issues/237))
+
+The anchors above are **literature-derived and approximate** ("AODV ≈ 90–100%")
+because a wifi channel is stochastic — the best available reference is somebody
+else's measurement. The satellite/ISL topology
+([`isl-grid`](../../ns3/examples/isl-grid.cc), [#214](https://github.com/danieljoppi/AntHocNet/issues/214))
+is different in kind: a point-to-point link has **no contention and no loss
+model**, so the expected values are **analytic**. The anchor is a derivation,
+not a remembered number, and a wrong substrate, image or topology cannot hide
+behind "that looks plausible".
+
+Notation: `d` = per-ISL one-way delay (`--islDelayMs`), `h` = hop count,
+`s` = serialisation + queueing (small, bounded).
+
+| anchor | configuration | expected (derived) | what it checks |
+|---|---|---|---|
+| `single-isl` | 2 satellites, 1 ISL, stock AODV | **PDR = 100%** — a p2p link drops nothing | that the link/IP/app stack delivers at all on this device. The ISL analogue of the single-hop anchor, and the same lesson as [#51](https://github.com/danieljoppi/AntHocNet/issues/51) |
+| `hop-delay` | 4×4 torus, both default flows at `h = 2`, uniform `d` | **delay ∈ [h·d, h·d + s]** | topology construction, delay application **and** routing optimality in one number |
+
+**Why `hop-delay` is the strongest number this repo produces.** Its *lower*
+bound is physics: a packet cannot arrive faster than propagation, so
+`delay < h·d` is impossible and means either the channel delay is not being
+applied ([#200](https://github.com/danieljoppi/AntHocNet/issues/200)'s
+load-bearing unknown) or the path is not the `h`-hop one it claims
+([#226](https://github.com/danieljoppi/AntHocNet/issues/226)). Its *upper* bound
+is nearly as sharp, because one extra hop costs a whole `d` — far more than the
+serialisation slack. On the 4×4 torus the wrap makes opposite corners near
+neighbours (`min(3, 4−3) = 1` step per dimension, so `h = 2`), predicting 10 ms
+at `d = 5`; the measured value is **10.39 ms**
+([#214](https://github.com/danieljoppi/AntHocNet/issues/214), CI run
+30190452648), i.e. 0.39 ms of serialisation over an exact floor.
+
+**Identity anchor.** The determinism gate also runs on the ISL topology
+(`check-determinism.sh <dir> isl-grid`) rather than being assumed to follow from
+the wifi case: the grid exercises a different device and channel plus the
+post-[#203](https://github.com/danieljoppi/AntHocNet/issues/203) multi-interface
+next-hop resolution, whose peer map is built from received hellos — an ordering
+a container-iteration bug could perturb without ever showing on a
+single-interface wifi node.
+
+**Enforcement.** [`ns3/tools/check-sat-anchors.sh`](../../ns3/tools/check-sat-anchors.sh),
+thresholds in the same [`anchors.yml`](../../ns3/tools/anchors.yml)
+(`sat_single_isl_pdr_min`, `sat_hop_delay_slack_ms`). Both anchors and the ISL
+determinism gate run in `ci.yml` on the ns-3.42 leg only — per
+[ADR-0015](../adr/0015-satellite-substrate-lives-in-the-image.md), satellite CI
+is pinned to one ns-3 version.
+
+**Still to come** (#237): these are the three anchors runnable *without* a
+satellite substrate. `S3` delay-linearity (sweep `d`, delay must scale linearly)
+and `S4` diameter-scaling follow from the same script with different flags;
+`S6` image-equivalence and `S7` substrate-presence-null need the image from
+[#234](https://github.com/danieljoppi/AntHocNet/issues/234) and are what will
+validate *it* — S7 in particular tests ADR-0015's "one binary" premise directly,
+by requiring `isl-grid` to give **identical** numbers with and without a
+substrate installed.
+
 **Determinism anchor ([#129](https://github.com/danieljoppi/AntHocNet/issues/129)).**
 One further anchor's expected result is not a number but *identity*: golden
 rule 3 (AGENTS.md) routes all randomness through `IRng` and all time through
