@@ -1197,6 +1197,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             // (origins = antTx[linkfail] - linkfailProp; budgetDrop counts
             // propagations suppressed by the inherited broadcastBudget).
             uint64_t lfProp = 0, lfBudget = 0, lfSuppressed = 0;
+            // Reactive ants steered by the diffusion gradient instead of
+            // broadcast (EnableDirectedReactive). Always 0 with the default
+            // gate off; on an enabled arm it is the "did the mechanism engage"
+            // number to read *before* comparing NRL between the two arms.
+            uint64_t steers = 0;
             for (uint32_t i = 0; i < nodes.GetN(); ++i) {
                 Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
                 if (!ip) continue;
@@ -1206,10 +1211,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 lfProp += ahn->LinkfailPropagations();
                 lfBudget += ahn->LinkfailBudgetDrops();
                 lfSuppressed += ahn->LinkfailOriginsSuppressed();
+                steers += ahn->DirectedSteers();
             }
             std::cout << " linkfailProp=" << lfProp
                       << " linkfailBudgetDrop=" << lfBudget
-                      << " linkfailOrigSuppressed=" << lfSuppressed;
+                      << " linkfailOrigSuppressed=" << lfSuppressed
+                      << " directedSteers=" << steers;
 
             // Issue #133: pheromone-table size gauge at end of run. Per node
             // the table grows with destinations x neighbours (regular +

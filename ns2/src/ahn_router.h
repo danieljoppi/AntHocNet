@@ -127,6 +127,10 @@ private:
     double beta_data_;
     int    enable_proactive_;
     int    enable_diffusion_;
+    int    enable_reactive_;           // reactive forward-ant gate (ablation)
+    int    enable_repair_;             // local-repair ant gate (ablation)
+    int    enable_linkfail_;           // link-failure notification gate (ablation)
+    int    enable_directed_reactive_;  // steer reactive ants by the virtual table
     double proactive_bcast_prob_;
     double session_ttl_;
     int    tx_failure_threshold_;

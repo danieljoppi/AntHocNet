@@ -61,6 +61,10 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
       beta_data_(2.0),
       enable_proactive_(1),
       enable_diffusion_(1),
+      enable_reactive_(1),
+      enable_repair_(1),
+      enable_linkfail_(1),
+      enable_directed_reactive_(0),
       proactive_bcast_prob_(0.1),
       session_ttl_(5.0),
       tx_failure_threshold_(3),
@@ -78,6 +82,10 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
     bind("beta_data_", &beta_data_);
     bind_bool("enable_proactive_", &enable_proactive_);
     bind_bool("enable_diffusion_", &enable_diffusion_);
+    bind_bool("enable_reactive_", &enable_reactive_);
+    bind_bool("enable_repair_", &enable_repair_);
+    bind_bool("enable_linkfail_", &enable_linkfail_);
+    bind_bool("enable_directed_reactive_", &enable_directed_reactive_);
     bind("proactive_bcast_prob_", &proactive_bcast_prob_);
     bind("session_ttl_", &session_ttl_);
     bind("tx_failure_threshold_", &tx_failure_threshold_);
@@ -102,6 +110,10 @@ void AntHocNetAgent::startProtocol() {
     config_.betaData          = beta_data_;
     config_.enableProactive   = enable_proactive_ != 0;
     config_.enableDiffusion   = enable_diffusion_ != 0;
+    config_.enableReactive    = enable_reactive_ != 0;
+    config_.enableRepair      = enable_repair_ != 0;
+    config_.enableLinkFail    = enable_linkfail_ != 0;
+    config_.enableDirectedReactive = enable_directed_reactive_ != 0;
     config_.proactiveBroadcastProb = proactive_bcast_prob_;
     config_.sessionTtl        = session_ttl_;
     config_.txFailureThreshold = tx_failure_threshold_;

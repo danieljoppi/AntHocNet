@@ -100,7 +100,7 @@ The `ns-3 attribute` column is the name you pass to
 `--ns3::anthocnet::RoutingProtocol::<name>`; `—` means the field is core-only
 (edit `config.h` and rebuild).
 
-### 3.1 All 31 fields
+### 3.1 All 35 fields
 
 | parameter | default | unit | ns-3 attribute | source | what it affects |
 |---|---|---|---|---|---|
@@ -116,6 +116,10 @@ The `ns-3 attribute` column is the name you pass to
 | `reactiveRetryInterval` | `1.0` | s | — (see note) | **`unknown`** (number only) — the *mechanism* is real and belongs to **thesis §4.1.2**; `config.h`'s `[1] §4.2` citation is wrong, because §4.2 of the PPSN paper is the *results* section (see §3.3 below). Neither source states a numeric interval, so the 1.0 s stays unsourced ([#182](https://github.com/danieljoppi/AntHocNet/issues/182)). | At most one reactive forward ant per destination per window, so packets to an unreachable destination cannot flood ants. Also rate-limits repair-ant launches. |
 | `enableProactive` | `true` | bool | `EnableProactive` | Mechanism `[1] §3.3`; **the gate** is `repo choice` ([ADR-0007](adr/0007-proactive-diffusion-gated.md)) so the ablation is runnable. | Master switch for proactive ants **and** diffusion. Off = purely reactive AntHocNet. |
 | `enableDiffusion` | `true` | bool | `EnableDiffusion` | Mechanism `[1] §3.3` (hello messages as pheromone diffusion); **the gate** is `repo choice` (ADR-0007). | Whether hellos carry pheromone adverts and the virtual table is maintained. Virtual pheromone guides proactive ants only, never data. |
+| `enableReactive` | `true` | bool | `EnableReactive` | Mechanism `[1] §3.1`; **the gate** is `repo choice` — an ablation switch, symmetric with `enableProactive`. Neither source contemplates running without reactive discovery. | Whether a data packet for an unknown destination launches a reactive forward ant. Off = **no source of regular pheromone at all**: data is queued and (barring diffusion) never delivered. Use it to measure what reactive setup buys, not as an operating mode. |
+| `enableRepair` | `true` | bool | `EnableRepair` | Mechanism `[1] §3.5` (local route repair); **the gate** is `repo choice`. | Whether a link break on an active path launches a repair ant. Off = reconvergence falls back to a fresh reactive discovery, so expect a longer outage and a wider flood per break. |
+| `enableLinkFail` | `true` | bool | `EnableLinkFail` | Mechanism `[1] §3.5` (link-failure notification); **the gate** is `repo choice`. | Whether this node *originates* a LinkFail notification. Off suppresses only the outbound note — local pruning of the dead neighbour and the release of packets held for it still run, because those are correctness, not signalling. Pairs with `linkfailNotifyInterval` (rate-limit) as the off-switch end of the same storm question ([#20](https://github.com/danieljoppi/AntHocNet/issues/20)). |
+| `enableDirectedReactive` | `false` | bool | `EnableDirectedReactive` | **`repo choice`** — not in either source. [1] §3.1 broadcasts a reactive forward ant whenever the node has no pheromone for the destination, full stop. | When the regular table has no entry but the *virtual* table (diffusion, [ADR-0007](adr/0007-proactive-diffusion-gated.md)) does, unicast the reactive ant along that gradient instead of broadcasting. **Default off** so the shipped protocol stays [1]-faithful and the A/B arm is explicit. Only engages once a gradient exists — diffusion advertises only destinations a node already reaches, so this is a *reconvergence / known-destination* optimisation, not a cold-start one. |
 | `proactiveBroadcastProb` | `0.1` | probability per hop | `ProactiveBroadcastProb` | `thesis §4.3.4 (superseded version)` — mechanism `[1] §3.3` ("a small probability of being broadcast"), which states no value; the thesis *does* state our exact 10%, but in **§4.3.4, "Older versions of AntHocNet"**. In the shipped thesis algorithm the mechanism does not exist: proactive forward ants are "**never broadcast**: when they arrive at a node that does not have any routing information for their destination, they are discarded" ([#182](https://github.com/danieljoppi/AntHocNet/issues/182)). Read as [1]'s algorithm, not the thesis's — see [`fidelity.md`](fidelity.md). | How often an in-transit proactive ant explores by broadcast instead of following pheromone. Higher = more exploration, more control overhead. |
 | `sessionTtl` | `5.0` | s | `SessionTtl` | `repo choice` — an implementation *necessity* with no source, which is a different thing from an unexplained number ([#182](https://github.com/danieljoppi/AntHocNet/issues/182)). The thesis's simulator knows session boundaries directly — proactive ants are scheduled "only from the moment a session is started, and until the end of it" — so it never needs an inactivity timeout; we have no such oracle. [1] §3.3 clocks proactive ants to the *data rate* (one per n packets) and has no session-TTL concept either. The 5 s value is still not sweep-backed. | How long after the last locally-originated data packet a destination keeps being probed by proactive ants. |
 | `helloInterval` | `1.0` | s | `HelloInterval` | `[1] §3.3 fn.1` — `t_hello`, "e.g. 1 s". | Beacon rate, and (with `allowedHelloLoss`) the neighbour-liveness window. Drives baseline control overhead. |
@@ -295,6 +299,57 @@ Keep that in mind before attributing an overhead difference to the algorithm.
 pheromone, so ants can no longer be guided toward destinations this node has
 never reached. `proactiveBroadcastProb` and `proactiveInterval` both buy
 adaptivity with control overhead — sweep them against NRL, not just PDR.
+
+### Ant-type gates & directed discovery — `enableReactive`, `enableRepair`, `enableLinkFail`, `enableDirectedReactive`
+
+Four switches that exist for one purpose: making the *ablation* runnable, so a
+claim like "repair ants are worth their overhead in regime X" is measured rather
+than asserted. All three gates default **on** and the directed switch defaults
+**off**, so the shipped protocol is unchanged by their existence.
+
+There is deliberately **no hello gate**. Hello is not an optional ant type here:
+it is detector A of ADR-0008 (the only always-on link-failure detector), the
+carrier for diffusion adverts (ADR-0007), and the sole source of the neighbour
+map every other mechanism selects over. Gating it would not ablate a feature, it
+would break the node.
+
+The three gates are each entangled with a piece of correctness, and only the
+signalling half is removed:
+
+* `enableReactive=false` still **queues** the packet — discovery disappears, the
+  pending queue does not. Note this is the harshest gate: reactive ants are the
+  only producer of *regular* pheromone, so with it off the protocol has no way
+  to learn a route to anywhere it is not already told about.
+* `enableRepair=false` still detects the break and prunes; only the repair ant
+  is not launched.
+* `enableLinkFail=false` still prunes the dead neighbour, still discards its
+  pending entries, and still applies an *incoming* neighbour's notification —
+  only the locally *originated* note is suppressed.
+
+`enableDirectedReactive` is the one that adds a mechanism rather than removing
+one, and it is the A/B the rest of the group is scaffolding for. Stock [1] §3.1
+floods a reactive forward ant when the regular table is empty for the
+destination — even when the node is holding a perfectly good *virtual* gradient
+for it from diffusion, because `selectNextHop` blends virtual pheromone in for
+proactive ants only. With the switch on, that gradient steers the ant by unicast
+instead. Two things to hold on to before reading a result:
+
+1. **It is not position-based.** Unlike LAR or GPSR, nothing here needs
+   coordinates or a location service; the "direction" is pheromone the node
+   already received. That is what makes it applicable to MANET and not just to
+   a constellation with a known topology.
+2. **It cannot help a cold start.** Diffusion advertises only destinations the
+   advertiser already has regular pheromone for, so the very first discovery in
+   a fresh network has no gradient to follow and the directed ant floods exactly
+   as the undirected one does. The win, if there is one, is on *re*-discovery
+   after a break and on destinations other sessions already reach — which is
+   also the case where flooding is most wasteful.
+
+The observable is `AntRouterLogic::directedSteers()`: the count of reactive ants
+that took the gradient instead of the broadcast. `directedSteers() == 0` on an
+enabled run means the precondition above was never met, not that the switch is
+broken — check that `enableProactive` **and** `enableDiffusion` are both on,
+since adverts only ride hellos when proactive is enabled.
 
 ### Neighbour liveness & link failure — `helloInterval`, `allowedHelloLoss`, `txFailureThreshold`, `linkfailNotifyInterval`
 
