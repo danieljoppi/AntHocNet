@@ -46,10 +46,13 @@
 #include "ns3/dsdv-module.h"
 #include "ns3/anthocnet-helper.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <iomanip>
 #include <map>
+#include <set>
 #include <sstream>
+#include <utility>
 #include <vector>
 
 using namespace ns3;
@@ -114,6 +117,16 @@ struct Result {
 /// Grid index -> node index. Row = orbital plane, column = position in plane.
 inline uint32_t Idx(uint32_t r, uint32_t c, const Params& P) { return r * P.cols + c; }
 
+/// Links laid along one axis of length n: none for a single element, a ring
+/// (n links) when the torus wraps it, a path (n-1) otherwise. An axis of
+/// length 2 is never wrapped — the wrap would duplicate the forward link — so
+/// it is a path. This is the closed form CheckTopology validates GridLinks
+/// against; the two are written independently on purpose.
+uint32_t AxisLinks(uint32_t n, bool torus) {
+    if (n < 2) return 0;
+    return (torus && n > 2) ? n : n - 1;
+}
+
 /// Link (r,c) to its +1 neighbour in each dimension, wrapping when torus is on.
 /// Only the two "forward" directions are walked, so every link is created once
 /// and each node ends up with degree 4 on a full torus. A dimension of size 2
@@ -139,6 +152,52 @@ std::vector<std::pair<uint32_t, uint32_t>> GridLinks(const Params& P) {
         }
     }
     return links;
+}
+
+/// Issue #226: assert the built graph *is* the topology claimed, before any
+/// packet is sent.
+///
+/// Without this, changing the wrap logic silently changes the network being
+/// measured and nothing fails — a slightly-wrong torus is still well connected,
+/// so PDR keeps reading ~100% and the run emits a plausible CSV row for the
+/// wrong graph. That is the harness-vs-algorithm confusion that cost several
+/// benchmark cycles in #19/#43 vs #51, in a place where it is nearly free to
+/// foreclose. Runs on every invocation, including the CI smoke on all five ns-3
+/// matrix legs.
+void CheckTopology(const std::vector<std::pair<uint32_t, uint32_t>>& links,
+                   const Params& P) {
+    const uint32_t n = P.rows * P.cols;
+    const uint32_t expected =
+        P.rows * AxisLinks(P.cols, P.torus) + P.cols * AxisLinks(P.rows, P.torus);
+    NS_ABORT_MSG_UNLESS(links.size() == expected,
+                        "isl-grid topology: built " << links.size() << " links, expected "
+                        << expected << " for " << P.rows << "x" << P.cols
+                        << " torus=" << P.torus);
+
+    std::set<std::pair<uint32_t, uint32_t>> seen;
+    std::vector<uint32_t> degree(n, 0);
+    for (const auto& l : links) {
+        NS_ABORT_MSG_IF(l.first == l.second,
+                        "isl-grid topology: self-loop at node " << l.first);
+        const uint32_t a = std::min(l.first, l.second);
+        const uint32_t b = std::max(l.first, l.second);
+        NS_ABORT_MSG_UNLESS(seen.insert(std::make_pair(a, b)).second,
+                            "isl-grid topology: duplicate link " << a << "-" << b
+                            << " (a parallel link is not a torus)");
+        degree[l.first]++;
+        degree[l.second]++;
+    }
+
+    // A full torus is regular: every satellite holds exactly 4 ISLs (fore/aft
+    // intra-plane, port/starboard cross-plane). Smaller or open grids are not
+    // regular, so the check applies only where the claim does.
+    if (P.torus && P.rows > 2 && P.cols > 2) {
+        for (uint32_t i = 0; i < n; ++i) {
+            NS_ABORT_MSG_UNLESS(degree[i] == 4,
+                                "isl-grid topology: node " << i << " has degree "
+                                << degree[i] << ", expected 4 on a full torus");
+        }
+    }
 }
 
 Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
@@ -180,6 +239,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     Ipv4AddressHelper address;
     address.SetBase("10.1.0.0", "255.255.255.252");
     const std::vector<std::pair<uint32_t, uint32_t>> links = GridLinks(P);
+    CheckTopology(links, P);  // #226: fail loudly rather than measure a wrong graph
     std::vector<Ipv4InterfaceContainer> ifs;
     ifs.reserve(links.size());
     for (const auto& l : links) {
@@ -410,9 +470,14 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    std::cout << "+Grid " << (torus ? "torus" : "open") << ' ' << rows << 'x' << cols
+    // Print the mean degree alongside the link count (#226): a wrong topology is
+    // visible here to anyone reading a run by eye, not only to the assertions.
+    std::cout << std::fixed << std::setprecision(2)
+              << "+Grid " << (torus ? "torus" : "open") << ' ' << rows << 'x' << cols
               << " = " << nNodes << " satellites, " << agg.front().links
-              << " ISLs @ " << islDelayMs << " ms " << islRate << ", " << nFlows
+              << " ISLs (mean degree "
+              << (nNodes ? 2.0 * agg.front().links / nNodes : 0.0) << ")"
+              << " @ " << islDelayMs << " ms " << islRate << ", " << nFlows
               << " flows, " << simTime << " s, mean of " << runs << " run(s)\n\n";
     std::cout << std::setw(14) << std::left << "protocol" << std::right
               << std::setw(8) << "PDR%" << std::setw(11) << "delay(ms)"
