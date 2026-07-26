@@ -26,18 +26,36 @@ Run: python3 test_scenario_check.py     (no pytest dependency; exits non-zero
 
 import argparse
 import contextlib
+import importlib.util
 import io
 import os
 import sys
 import tempfile
 
-# Import scenario_check from *source* every time. Without this a stale
-# __pycache__ entry can shadow an edited rule and the suite reports a pass (or
-# a phantom failure) for code that is not the code on disk — hit once while
-# writing these very cases.
-sys.dont_write_bytecode = True
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import scenario_check as sc  # noqa: E402
+
+def _load_scenario_check():
+    """Load scenario_check.py from source, next to this file.
+
+    Deliberately not a module-level `import`. Two reasons, both learned the
+    hard way:
+
+    - A stale `__pycache__` entry can shadow an edited rule, so the suite
+      reports a pass (or a phantom failure) for code that is not the code on
+      disk. `exec_module` on the file always runs what is there.
+    - The `sys.path` juggling an import would need puts a statement before the
+      import, which is E402, which needs a `noqa`, whose necessity then depends
+      on how ruff resolves config — it differed between this sandbox and CI on
+      0.16.0, failing the lint either way round.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "scenario_check.py")
+    spec = importlib.util.spec_from_file_location("scenario_check", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+sc = _load_scenario_check()
 
 # A row that must pass every rule cleanly. Deliberately an `anthocnet` row with
 # a closing identity (99.98 at dense-small is the real measured value), so any

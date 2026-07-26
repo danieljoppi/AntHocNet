@@ -261,9 +261,12 @@ def cmd_results(a):
             n += 1
             tag = f"{r['where']}/{r['proto']}"
 
-            def num(k):
+            # `row=r` binds the current row rather than closing over the loop
+            # variable (ruff B023). Every call happens inside this iteration so
+            # the behaviour is unchanged, but the late-binding footgun is gone.
+            def num(k, row=r):
                 try:
-                    return float(r.get(k))
+                    return float(row.get(k))
                 except (TypeError, ValueError):
                     return None
             pdr, delay, d99 = num("pdr"), num("delay"), num("delay99")
