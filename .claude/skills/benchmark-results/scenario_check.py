@@ -109,6 +109,31 @@ def cmd_preflight(a):
         report("WARN", "pause >= sim time — the field is static; that is "
                        "the sparse-static regime (a known AntHocNet weak "
                        "spot), not the paper's mobile one")
+    # #230: the diversity window must be short relative to how fast the
+    # topology changes, or a route being *replaced* inside one window reads as
+    # two concurrent paths and path_div_used stops meaning multipath. Two nodes
+    # close at up to 2*speed, so a link survives on the order of
+    # range/(2*speed); a multi-hop route breaks faster still, making this the
+    # generous bound. Skipped on a static field, where nothing churns — which is
+    # exactly why sparse-static was the only scenario whose baselines read ~1.
+    #
+    # This is the rule that would have caught #230 before spending a campaign:
+    # at the paper-base defaults it fires on the shipped 10 s default.
+    if a.pause < a.time and a.speed > 0:
+        churn = a.range / (2 * a.speed)
+        print(f"  path-diversity window {a.pathWindowS}s vs ~{churn:.1f}s "
+              f"link lifetime at {a.speed} m/s over {a.range} m")
+        if a.pathWindowS > churn:
+            report("FAIL", f"pathWindowS={a.pathWindowS}s exceeds the ~"
+                           f"{churn:.1f}s link lifetime — route replacement "
+                           "will be counted as concurrent multipath and "
+                           "path_div_* will not discriminate (#230); lower it "
+                           "before dispatching")
+        elif a.pathWindowS > churn / 2:
+            report("WARN", f"pathWindowS={a.pathWindowS}s is over half the ~"
+                           f"{churn:.1f}s link lifetime — path_div_* will be "
+                           "inflated by route churn; verify the single-path "
+                           "baselines read <=1.05 before quoting it")
     verdict()
 
 
@@ -472,6 +497,8 @@ def main():
     p.add_argument("--pktBytes", type=int, default=64)
     p.add_argument("--pktPerSec", type=float, default=1)
     p.add_argument("--rateMbps", type=float, default=2)
+    # kDefaultPathWindowS in ns3/examples/anthocnet-compare.cc (#217).
+    p.add_argument("--pathWindowS", type=float, default=10)
     r = sub.add_parser("results")
     r.add_argument("files", nargs="+")
     r.add_argument("--anchor", choices=sorted(ANCHOR_KEY))

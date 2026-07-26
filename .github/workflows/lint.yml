@@ -26,4 +26,17 @@ jobs:
         # deliberately, fixing new findings in the same PR.
         run: pip install 'ruff==0.16.0'
       - name: Lint
-        run: ruff check ns3/tools
+        # The skill dir is listed file-by-file on purpose: bench_parse.py and
+        # sweep_summary.py predate this and carry E701s that are not this
+        # change's to fix. Add new skill scripts here as they land.
+        run: |
+          ruff check ns3/tools \
+            .claude/skills/benchmark-results/scenario_check.py \
+            .claude/skills/benchmark-results/test_scenario_check.py
+      - name: Benchmark-gate self-test
+        # scenario_check.py decides whether a campaign's numbers may be read or
+        # published, and it was itself untested until #229/#230 showed what that
+        # costs: a metric can ship six merged campaigns' worth of numbers while
+        # failing the self-check its own documentation defines. Cheap (no
+        # simulator, no network, ~1 s) and it runs on every PR.
+        run: python3 .claude/skills/benchmark-results/test_scenario_check.py
