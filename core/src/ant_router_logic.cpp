@@ -77,6 +77,10 @@ std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
         out.push_back({RouteAction::DiscardPending, dest, false, {}});
         ++repairDiscards_;  // #215 drop cause "repair discard" (event count)
 
+        // Ablation gate: the DiscardPending above is the packets' fate and
+        // always happens; only the deferred notification is suppressed.
+        if (!config_.enableLinkFail) continue;
+
         // Same origin cooldown as reportNeighborLoss (issue #20): the break
         // that armed this repair usually already advertised dest's loss.
         if (config_.linkfailNotifyInterval > 0.0) {
@@ -145,6 +149,10 @@ std::vector<RouteDecision> AntRouterLogic::reportNeighborLoss(NodeAddress n) {
     }
 
     loseNeighbor(n);  // prune n from the table + last-seen
+
+    // Ablation gate: the pruning above is the *correctness* half and always
+    // runs; only the outbound notification is suppressed.
+    if (!config_.enableLinkFail) return {};
 
     AntMessage note;
     const double now = clock_.now();
@@ -220,7 +228,7 @@ std::vector<RouteDecision> AntRouterLogic::reportTxFailure(NodeAddress next,
     // neighbour, skip the repair ant. Rate-limit per destination so a burst of
     // failures to one dest can't spawn a stream of repair ants. broadcastForward
     // counts the ant (--diag repair>0) and caps re-broadcasts (repairMaxBroadcasts).
-    if (dataDest != kInvalidAddress && dataDest != address_ &&
+    if (config_.enableRepair && dataDest != kInvalidAddress && dataDest != address_ &&
         table_.bestRegular(dataDest) <= config_.minPheromone) {
         const double now = clock_.now();
         auto it = lastRepair_.find(dataDest);
@@ -269,6 +277,9 @@ std::vector<RouteDecision> AntRouterLogic::handleLinkFail(const AntMessage& note
         }
     }
     if (prop.helloDests.empty()) return {};  // absorbed: our best path is intact
+    // Ablation gate: the pheromone updates above (applying what the note told
+    // us) already happened — only onward propagation is suppressed.
+    if (!config_.enableLinkFail) return {};
 
     prop.type      = AntType::LinkFail;
     prop.direction = AntDirection::Up;
@@ -582,6 +593,16 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
         }
 
         NodeAddress next = selectNextHop(ant.dst, proactive);
+        if (next == kInvalidAddress && ant.type == AntType::Reactive &&
+            config_.enableDirectedReactive) {
+            // Directed reactive discovery (config-gated, default off): before
+            // flooding, consult the *virtual* table — the diffusion gradient
+            // built from hello adverts (ADR-0007). selectNextHop blends it in
+            // only for proactive ants, so an unmodified reactive ant floods
+            // straight past a usable hint the node already holds.
+            next = selectNextHop(ant.dst, /*blendVirtual=*/true);
+            if (next != kInvalidAddress) ++directedSteers_;
+        }
         if (next == kInvalidAddress) {
             // No pheromone for the destination: the ant explores by broadcast.
             // For a reactive forward ant that is the flood, and it must be
@@ -636,12 +657,24 @@ std::vector<RouteDecision> AntRouterLogic::onDataPacket(NodeAddress dest,
         // per destination per reactiveRetryInterval so a stream of packets to an
         // unreachable destination doesn't flood ants ([1] §4.2).
         std::vector<RouteDecision> out{{RouteAction::Queue, dest, false, {}}};
+        if (!config_.enableReactive) return out;  // ablation gate: hold, never discover
         const double now = clock_.now();
         auto it = lastReactive_.find(dest);
         if (it == lastReactive_.end() || now - it->second >= config_.reactiveRetryInterval) {
             lastReactive_[dest] = now;
             AntMessage refa = createForwardAnt(AntType::Reactive, dest);
-            out.push_back(sendAnt(RouteAction::Broadcast, kInvalidAddress, refa));
+            // Directed discovery applies at the origin too, and this is the
+            // most valuable place for it: this broadcast is generation 0, the
+            // one every downstream copy descends from.
+            NodeAddress steer = config_.enableDirectedReactive
+                                    ? selectNextHop(dest, /*blendVirtual=*/true)
+                                    : kInvalidAddress;
+            if (steer != kInvalidAddress) {
+                ++directedSteers_;
+                out.push_back(sendAnt(RouteAction::Unicast, steer, refa));
+            } else {
+                out.push_back(sendAnt(RouteAction::Broadcast, kInvalidAddress, refa));
+            }
         }
         return out;
     }

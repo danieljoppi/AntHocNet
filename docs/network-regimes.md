@@ -129,8 +129,22 @@ AntHocNet's mechanisms split cleanly along this line:
 
 - **Reactive discovery** — flooding forward ants to find a path nobody knows —
   is its answer to *unknown topology*. A constellation does not have that
-  problem. On 1584 nodes with four links each, the flood is cost without
-  benefit.
+  problem: the +Grid is a known graph and every node can compute where a
+  destination *is*.
+
+  Be precise about what that does and does not buy, though. Knowing the topology
+  is not the same as a node already holding a **next hop** for a given
+  destination: it still has to acquire direction, and on 1584 nodes with four
+  links each, acquiring it by flooding is the expensive way. The correction is
+  not "discovery is free" — it is that discovery here is *steerable* rather than
+  blind, because the direction is derivable instead of unknown.
+
+  That is exactly the gap `enableDirectedReactive`
+  ([`configuration.md`](configuration.md)) probes, and it does so without
+  assuming a constellation: it steers along the diffused virtual gradient, which
+  is pheromone the node already received, not a coordinate. So the same switch
+  is testable on a MANET, where it degrades to "no gradient yet, flood as
+  before" rather than to "wrong answer".
 - **Multipath with delay-weighted pheromone** is a different mechanism
   entirely: it responds to *load*, and load is precisely what orbits cannot
   predict.

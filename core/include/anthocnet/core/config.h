@@ -67,6 +67,54 @@ struct Config {
     bool enableProactive = true;   ///< master: proactive ants + diffusion.
     bool enableDiffusion = true;   ///< hello pheromone adverts + virtual table.
 
+    /// Per-ant-type gates, completing the ablation surface the other
+    /// `enable*` flags already provide. **All default true: turning none of
+    /// them off reproduces current behaviour exactly.** They exist so the
+    /// question "which ant types earn their keep in regime X?" is a
+    /// measurement rather than an argument — the same discipline that chose
+    /// the multipath and A2 defaults.
+    ///
+    /// There is deliberately **no** hello gate: ADR-0008 makes the
+    /// hello-timeout detector the one mandatory liveness path, and hello also
+    /// carries the diffusion adverts (`enableDiffusion`) and, on
+    /// multi-interface adapters, the canonical→link-local peer mapping. Use
+    /// `helloInterval` to make it cheaper; do not remove it.
+    ///
+    /// Note `enableReactive = false` removes the only source of *regular*
+    /// pheromone in the default configuration, so routes never form unless
+    /// something else installs them — which is exactly the interaction
+    /// `enableDirectedReactive` + `enableDiffusion` is there to test.
+    bool enableReactive = true;  ///< reactive forward ants (route discovery).
+    bool enableRepair   = true;  ///< local repair ants after a link break ([1] §3.5).
+    bool enableLinkFail = true;  ///< link-failure notifications ([1] §3.5).
+
+    /// Directed reactive discovery (default **off** — an explicit deviation
+    /// from [1] §3.1, kept behind a gate until a benchmark justifies it).
+    ///
+    /// [1] broadcasts a reactive forward ant wherever the current node has no
+    /// pheromone for the destination. That is the right move when nothing is
+    /// known — but it ignores information the protocol has already collected:
+    /// the **virtual** pheromone table, built from hello diffusion adverts
+    /// (ADR-0007), frequently holds a usable gradient toward a destination for
+    /// which no *regular* pheromone exists yet. `selectNextHop` only blends the
+    /// virtual table in for proactive ants, so a reactive ant floods past it.
+    ///
+    /// With this on, a reactive forward ant consults the virtual table before
+    /// falling back to broadcast, and unicasts along it when it finds one. The
+    /// flood becomes a directed walk wherever diffusion has reached, and stays
+    /// a flood everywhere else.
+    ///
+    /// Deliberately **not** position- or topology-specific: the gradient is
+    /// the protocol's own, so this behaves identically on a MANET and on a
+    /// satellite ISL mesh, and needs neither GPS (cf. LAR/GPSR) nor an orbital
+    /// model. Nothing new travels on the wire — the virtual table is local
+    /// state — so this costs no `kWireVersion` bump.
+    ///
+    /// Risk to measure, not assume: a stale or wrong gradient sends the ant
+    /// down a dead end where a flood would have found a path, trading overhead
+    /// for discovery latency and possibly for delivery.
+    bool enableDirectedReactive = false;
+
     /// Per-hop probability that an in-transit proactive forward ant is broadcast
     /// to explore for new paths rather than unicast along pheromone ([1] §3.3).
     double proactiveBroadcastProb = 0.1;

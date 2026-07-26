@@ -115,6 +115,14 @@ public:
         return m_logic ? m_logic->linkfailOriginsSuppressed() : 0;
     }
 
+    /// Directed reactive discovery diagnostics: reactive forward ants unicast
+    /// along the diffusion gradient instead of broadcast (EnableDirectedReactive).
+    /// Zero on an enabled run means the gradient never covered a destination the
+    /// regular table was missing, i.e. the switch was inert for this scenario.
+    uint64_t DirectedSteers() const {
+        return m_logic ? m_logic->directedSteers() : 0;
+    }
+
     /// Issue #133 observability: per-node pheromone-table size gauge from the
     /// core — current (neighbor, dest) entry counts, split regular vs virtual.
     /// Read by the comparison harness under --diag to watch table growth.
@@ -273,6 +281,10 @@ private:
     double m_gamma;
     bool m_enableProactive;
     bool m_enableDiffusion;
+    bool m_enableReactive;            ///< reactive forward-ant gate (ablation)
+    bool m_enableRepair;              ///< local-repair ant gate (ablation)
+    bool m_enableLinkFail;            ///< link-failure notification gate (ablation)
+    bool m_enableDirectedReactive;    ///< steer reactive ants by the virtual table
     double m_proactiveBroadcastProb;
     double m_sessionTtl;
     uint32_t m_txFailureThreshold;

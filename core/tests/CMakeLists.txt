@@ -23,6 +23,7 @@ set(ANTHOCNET_TESTS
   test_reactive_hop_reach
   test_reactive_flood_bound
   test_reactive_source_band
+  test_ant_type_gates
 )
 
 foreach(test ${ANTHOCNET_TESTS})

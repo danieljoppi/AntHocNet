@@ -64,6 +64,12 @@ public:
     /// Per-destination advertisements dropped by the origin cooldown
     /// (config.linkfailNotifyInterval, issue #20).
     std::uint64_t linkfailOriginsSuppressed() const { return linkfailOriginsSuppressed_; }
+    /// Reactive forward ants steered along the diffusion gradient instead of
+    /// being broadcast (config.enableDirectedReactive). This is the number that
+    /// says whether directed discovery is doing anything at all: zero means the
+    /// virtual table never held a hint where the regular one was empty, so the
+    /// gate is inert rather than harmful.
+    std::uint64_t directedSteers() const { return directedSteers_; }
     /// Local repairs that expired without a backward ant and therefore released
     /// the data buffered for their destination — the number of DiscardPending
     /// decisions this node has emitted ([1] §3.5, D6; drop-cause breakdown,
@@ -212,6 +218,7 @@ private:
     std::uint64_t linkfailBudgetDrops_  = 0;        ///< budget-suppressed propagations (issue #20)
     std::uint64_t linkfailOriginsSuppressed_ = 0;   ///< cooldown-suppressed advertisements (issue #20)
     std::uint64_t repairDiscards_ = 0;              ///< expired local repairs that discarded pending data (#215)
+    std::uint64_t directedSteers_ = 0;              ///< reactive ants unicast along the diffusion gradient
     std::map<NodeAddress, double> lastLinkfailNotify_;  ///< dest -> last originated LinkFail time
 };
 

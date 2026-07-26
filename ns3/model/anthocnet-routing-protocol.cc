@@ -47,6 +47,10 @@ RoutingProtocol::RoutingProtocol()
       m_gamma(0.7),
       m_enableProactive(true),
       m_enableDiffusion(true),
+      m_enableReactive(true),
+      m_enableRepair(true),
+      m_enableLinkFail(true),
+      m_enableDirectedReactive(false),
       m_proactiveBroadcastProb(0.1),
       m_sessionTtl(5.0),
       m_txFailureThreshold(3),
@@ -107,6 +111,35 @@ TypeId RoutingProtocol::GetTypeId() {
                           "Hello pheromone adverts + virtual table.",
                           BooleanValue(true),
                           MakeBooleanAccessor(&RoutingProtocol::m_enableDiffusion),
+                          MakeBooleanChecker())
+            .AddAttribute("EnableReactive",
+                          "Reactive forward ants ([1] §3.1 route discovery). Off "
+                          "removes the only source of regular pheromone, so data "
+                          "for an unknown destination stays queued — an ablation "
+                          "switch, not an operating mode.",
+                          BooleanValue(true),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableReactive),
+                          MakeBooleanChecker())
+            .AddAttribute("EnableRepair",
+                          "Local repair ants after a link break ([1] §3.5). Off "
+                          "leaves reconvergence to a fresh reactive discovery.",
+                          BooleanValue(true),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableRepair),
+                          MakeBooleanChecker())
+            .AddAttribute("EnableLinkFail",
+                          "Link-failure notifications ([1] §3.5). Off suppresses "
+                          "only the outbound note; local pruning and the pending "
+                          "queue release still run.",
+                          BooleanValue(true),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableLinkFail),
+                          MakeBooleanChecker())
+            .AddAttribute("EnableDirectedReactive",
+                          "Steer a reactive forward ant along the diffused virtual "
+                          "gradient (ADR-0007) instead of broadcasting, when the "
+                          "regular table has no entry. Default off: this is the "
+                          "A/B arm against stock [1] §3.1 flooding.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableDirectedReactive),
                           MakeBooleanChecker())
             .AddAttribute("ProactiveBroadcastProb",
                           "Per-hop explore-broadcast probability for proactive ants.",
@@ -363,6 +396,10 @@ void RoutingProtocol::DoInitialize() {
     m_config.gamma = m_gamma;
     m_config.enableProactive = m_enableProactive;
     m_config.enableDiffusion = m_enableDiffusion;
+    m_config.enableReactive = m_enableReactive;
+    m_config.enableRepair = m_enableRepair;
+    m_config.enableLinkFail = m_enableLinkFail;
+    m_config.enableDirectedReactive = m_enableDirectedReactive;
     m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
     m_config.sessionTtl = m_sessionTtl;
     m_config.helloInterval = m_helloInterval.GetSeconds();
@@ -432,6 +469,10 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.gamma = m_gamma;
         m_config.enableProactive = m_enableProactive;
         m_config.enableDiffusion = m_enableDiffusion;
+        m_config.enableReactive = m_enableReactive;
+        m_config.enableRepair = m_enableRepair;
+        m_config.enableLinkFail = m_enableLinkFail;
+        m_config.enableDirectedReactive = m_enableDirectedReactive;
         m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
         m_config.sessionTtl = m_sessionTtl;
         m_config.helloInterval = m_helloInterval.GetSeconds();
