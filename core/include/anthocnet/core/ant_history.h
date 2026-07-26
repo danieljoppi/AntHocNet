@@ -51,7 +51,7 @@ private:
 /// paths get laid down instead of only the first-arriving one. Bounded FIFO like
 /// AntHistoryTracker (golden rule 5).
 ///
-/// The factor is not a single number (#177 arm B). The 2007 thesis applies a
+/// The factor is not a single number (#177). The 2007 thesis applies a
 /// *low* base factor a1 (0.9) to ants whose first hop has already been seen, and
 /// a *higher* factor a2 (2.0) to an ant arriving over a first hop no previously
 /// accepted ant of that generation used — "to boost the creation of disjoint

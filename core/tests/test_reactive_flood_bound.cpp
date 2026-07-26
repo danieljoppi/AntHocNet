@@ -77,9 +77,9 @@ int main() {
     // at most reactiveMaxBroadcasts times. Checked as the grid grows, since the
     // defect was combinatorial — a single size could pass by luck.
     //
-    // On this branch (#177 arm B) the default budget is -1, so the "default"
-    // column *is* the band-only regime; the per-node bound of #174 is shown
-    // beside it at its shipped value of 2 rather than as the default.
+    // Since #177 the default budget is -1, so the "default" column *is* the
+    // band-only regime; the per-node bound of #174 is shown beside it at 2,
+    // the value it had while it was the default.
     std::printf("8-connected grid, one discovery corner to corner:\n"
                 "%-6s %-7s %14s %14s %14s\n",
                 "side", "nodes", "default", "budget=2", "multipath=off");
@@ -105,14 +105,14 @@ int main() {
         CHECK(dedup <= 4 * static_cast<std::uint64_t>(n));
     }
 
-    // On `main` this asserted `def.reactiveMaxBroadcasts > 0` — the flood had to
+    // Until #177 this asserted `def.reactiveMaxBroadcasts > 0`: the flood had to
     // be bounded by the per-node count, because the single-factor band at 1.5
-    // admitted rather than suppressed. #177 arm B removes that bound *on this
-    // branch only*, to measure whether the thesis's two-factor band (a1=0.9 /
-    // a2=2.0) bounds the flood on its own. It does — see the "default" column
-    // above and test_reactive_source_band.cpp, which pins the trend. The
-    // assertion is inverted here so the branch's premise is explicit rather
-    // than an accidentally-dropped check; `main` keeps the positive default.
+    // admitted rather than suppressed. #177 adopted the thesis's two-factor band
+    // (a1=0.9 / a2=2.0), which bounds the flood on its own — see the "default"
+    // column above and test_reactive_source_band.cpp, which pins the trend — so
+    // the shipped default is now unbounded and the per-node bound is retained
+    // only for sensitivity experiments. The assertion is inverted rather than
+    // deleted so that silently re-introducing a count-based default fails here.
     CHECK(def.reactiveMaxBroadcasts < 0);
     return RUN_TESTS();
 }

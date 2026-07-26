@@ -505,7 +505,7 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
     // get laid down instead of only the first-arriving one — antAcceptanceFactor
     // (a1) normally, the looser antAcceptanceFactorNewHop (a2) when the ant
     // reached us over a first hop no accepted ant of this generation used
-    // (#177 arm B). Every other ant
+    // (#177). Every other ant
     // (backward, hello, linkfail, proactive/repair forward) — and every ant
     // when multipath is off — keeps strict (src,seq) dedup.
     if (config_.enableMultipath && incoming.isForward() &&

@@ -131,13 +131,14 @@ struct Config {
     /// NRL 3071 (#173). This restores duplicate suppression's *intent* for the
     /// one ant type that bypasses it.
     ///
-    /// **EXPERIMENT BRANCH (#177 arm B): defaulted to `-1` (unbounded) here.**
-    /// Arm B asks whether the thesis's *two-factor* acceptance band alone
-    /// bounds the flood, as its authors' parameterisation implies. Leaving the
-    /// per-node count in force would confound the measurement — the band would
-    /// be credited with a bound the counter actually supplied. Not a proposal
-    /// for `main`: the shipped default stays 2 until arm A/B/C data says
-    /// otherwise.
+    /// **Default is now `-1` (unbounded), as of #177.** The two-factor band
+    /// below (a1=0.9 / a2=2.0) bounds the flood on its own — one discovery on a
+    /// 7x7 grid costs 154 ants with no count in force, ~3.1n and flat in n — so
+    /// the per-node counter is no longer load-bearing, and leaving it on cost
+    /// delivery in dense graphs (heavy-load +1.8 pp, large-scale +4.7 pp at
+    /// 11.6%/25.6% less overhead once removed). Kept configurable for
+    /// sensitivity experiments; any finite value still bounds re-broadcasts
+    /// per (node, generation).
     int reactiveMaxBroadcasts = -1;
     /// Multipath reactive setup ([1] §3.1, issue #96): when on, a *later*
     /// reactive forward ant of an already-seen generation is forwarded if it
@@ -158,8 +159,8 @@ struct Config {
     /// admits equal-metric copies, so no factor value reproduces strict
     /// single-path dedup — that is what enableMultipath=false is for.
     ///
-    /// **EXPERIMENT BRANCH (#177 arm B): defaulted to `0.9` here, not the 1.5
-    /// of [1] §3.1.** The 2007 Ducatelle thesis describes the same mechanism
+    /// **Default is 0.9, not the 1.5 of [1] §3.1, as of #177.** The 2007
+    /// Ducatelle thesis describes the same mechanism
     /// but states the value its authors actually ran, and it is *below* 1.0:
     ///
     ///   "If the number of hops and travel time of a newly received ant are

@@ -76,7 +76,7 @@ bool GenerationTracker::accept(NodeAddress src, std::uint32_t seqNum,
     // A later ant of a known generation: admit only if both its hop count and
     // its travel time are within the applicable factor of the best seen (a
     // bad/looping path exceeds this and is dropped). Which factor applies is
-    // decided by the ant's first hop (#177 arm B, 2007 thesis lines 4667-4671):
+    // decided by the ant's first hop (#177, 2007 thesis lines 4667-4671):
     // an unseen first hop means a disjoint branch, and earns the less
     // restrictive a2; a repeated one is judged against the strict a1. Admitted
     // ants refresh the per-metric minima.

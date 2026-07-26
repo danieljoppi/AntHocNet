@@ -1,4 +1,4 @@
-// The two-factor reactive acceptance band (#177 arm B).
+// The two-factor reactive acceptance band (#177).
 //
 // `main` implements the 2004 reactive setup with ONE acceptance factor
 // (antAcceptanceFactor = 1.5, [1] §3.1) and bounds the resulting flood with a
@@ -23,10 +23,10 @@
 //
 // a1 < 1 changes the band's character completely: it *suppresses* (a later ant
 // must beat the incumbent by ~10% on both metrics) where 1.5 *admitted*. That is
-// why this branch can also set reactiveMaxBroadcasts = -1 — the question it
+// why reactiveMaxBroadcasts also defaults to -1 — the question it
 // exists to answer is whether the band alone bounds the flood.
 //
-// This test pins the four properties that distinguish arm B from what ships:
+// This test pins the four properties of the two-factor band:
 //   1. a repeat first hop is judged against a1, so an ant that 1.5 would have
 //      forwarded is now dropped;
 //   2. a new first hop is judged against a2, so the same-shaped ant IS
@@ -192,11 +192,11 @@ int main() {
 
     // 3. The band alone bounds the flood. No broadcast bound is in force at the
     //    branch default (reactiveMaxBroadcasts = -1), so anything printed in the
-    //    "arm B" column is the two-factor band's doing. The contrast column is
+    //    first column is the two-factor band's doing. The contrast column is
     //    the same run with the single 1.5 factor, i.e. #173's unbounded case.
     CHECK(def.reactiveMaxBroadcasts < 0);
     std::printf("8-connected grid, one discovery corner to corner, no broadcast bound:\n"
-                "%-6s %-7s %14s %14s\n", "side", "nodes", "arm B (0.9/2.0)", "single 1.5");
+                "%-6s %-7s %14s %14s\n", "side", "nodes", "band 0.9/2.0", "single 1.5");
     for (int side = 3; side <= 7; ++side) {
         const int n = side * side;
 
