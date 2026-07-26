@@ -208,15 +208,31 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 > evidence, a fix sketch, and acceptance criteria; `priority:P1..P3` labels
 > order the backlog (ADR-0013).
 
-- **Highest-leverage next item — #51 (stock single-hop 802.11 unicast loses
-  ~50% of UDP in the ns-3 baselines harness).** It invalidates absolute PDR
-  numbers for *every* protocol and blocks promoting the validation anchors to
-  blocking CI gates (#59). The former top item — #19, the NS-3 MAC repair
-  hook — shipped as detector D (#44/#54, closed 2026-06-28; see
-  `docs/handoffs/2026-06-28-detector-d-link-failure.md`). The remaining
-  protocol regressions vs AODV are #20 (link-failure broadcast storm), #21
-  (99th-percentile delay tail), #22 (high-mobility underperformance), #23
-  (slow convergence) — all `priority:P1`.
+- **Do not read a static list of "open" issues from this file.** An earlier
+  revision named #51 as the highest-leverage open item and listed #20/#22/#23
+  as open P1 regressions; all five of those, plus #24 and #59, had been closed
+  by 2026-07-18, and the stale paragraph caused a session to recommend a
+  closed issue as the top priority. Issue state belongs in the issue tracker,
+  not in prose that nobody updates. The live query is:
+
+  ```
+  gh issue list --repo danieljoppi/AntHocNet --state open --label priority:P1
+  ```
+
+  (or the equivalent GitHub UI filter). As of 2026-07-26 that returns **#21**
+  (99th-percentile delay tail — the last contradicted paper headline), **#91**
+  (the compliance-ledger epic), **#121** (campaign affordability / the 6 h job
+  ceiling), and the two largest thesis-fidelity gaps found by the #182 audit:
+  **#179** (all three pheromone exponents are 20 in the thesis; we ship
+  1.0/2.0) and **#180** (proactive rate 10x too slow, and the thesis's
+  "10% better virtual pheromone" emission gate is missing entirely).
+- **Where the fidelity work stands.** The 2007 Ducatelle thesis is now readable
+  in the private `papers` repo, and auditing every `Config` default against it
+  (#182) changed the shape of the question: [1] (PPSN 2004) and the thesis
+  **disagree**, and the thesis supersedes. "Paper-compliant" and
+  "thesis-faithful" are different targets, and v1.1.0 ships a hybrid — see
+  `docs/fidelity.md` "Where we ship [1]'s algorithm and the 2007 thesis
+  superseded it", and `docs/configuration.md` for the per-parameter provenance.
 - **What defines "working"** is now partly answered: the scenario taxonomy +
   paper sweeps (`docs/benchmarks.md`, `ns3/tools/run-scenarios.py`) define the
   metrics. Caveat: absolute PDR is low across *all* protocols (#24, closed —
