@@ -100,6 +100,34 @@ These come from the protocol's item-15 trace sources (`Tx`, `Rx`,
 `Config::Connect` to. The heavy paper-regime run is wired up as the
 manually-dispatched **Paper benchmark** GitHub Actions workflow.
 
+## Satellite / ISL topology (`isl-grid`)
+
+An inter-satellite-link mesh is conventionally abstracted as a **+Grid torus**:
+two intra-plane links (fore/aft) and two cross-plane links (port/starboard) per
+satellite. Frozen at one instant that is a static torus of point-to-point links,
+which stock ns-3 builds today — no orbital mechanics and no third-party
+satellite module:
+
+```bash
+./ns3 configure --enable-examples \
+  --enable-modules='anthocnet;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+./ns3 build
+
+./ns3 run "isl-grid --rows=10 --cols=10 --protocols=anthocnet,aodv"
+./ns3 run "isl-grid --rows=6 --cols=6 --islDelayMs=12 --csv"   # longer ISLs
+```
+
+Every node holds 4 ISLs on 4 **separate subnets**, which is the shape the
+multi-interface routing fix ([#203](https://github.com/danieljoppi/AntHocNet/issues/203))
+exists for — a 4×4 delivery smoke runs in CI on every matrix leg. Options:
+`--rows --cols --torus --islDelayMs --islRate --time --flows --cbrBps --runs
+--protocols --csv --diag`.
+
+This is a **scenario, not a satellite module**: no orbital mobility, no link
+budget, no handover. Those belong to the satellite track
+([#192](https://github.com/danieljoppi/AntHocNet/issues/192)) and its substrate
+decision ([#193](https://github.com/danieljoppi/AntHocNet/issues/193)).
+
 ## Uninstall
 
 ```bash
@@ -134,6 +162,7 @@ ns3/
   helper/anthocnet-helper.{h,cc}       Ipv4RoutingHelper
   examples/anthocnet-example.cc        minimal wifi adhoc demo
   examples/anthocnet-compare.cc        vs AODV/OLSR/DSDV (FlowMonitor metrics)
+  examples/isl-grid.cc                 +Grid torus of point-to-point ISLs (#214)
   test/anthocnet-test-suite.cc         header round-trip + multi-hop delivery
   CMakeLists.txt                       ns-3.36+ build
   wscript                              ns-3 < 3.36 build

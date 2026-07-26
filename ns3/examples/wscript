@@ -15,3 +15,10 @@ def build(bld):
                                       'wifi', 'mobility', 'applications',
                                       'aodv', 'olsr', 'dsdv', 'flow-monitor'])
         cmp.source = 'anthocnet-compare.cc'
+
+        # ISL-grid scenario (#214): static +Grid torus of point-to-point links.
+        isl = bld.create_ns3_program('isl-grid',
+                                     ['anthocnet', 'core', 'network', 'internet',
+                                      'applications', 'point-to-point',
+                                      'aodv', 'olsr', 'dsdv', 'flow-monitor'])
+        isl.source = 'isl-grid.cc'
