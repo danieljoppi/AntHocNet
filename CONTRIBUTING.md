@@ -103,6 +103,30 @@ is blocked (the agent proxy returns 403), and the new DOI does not exist until
 after publish anyway. Ask the maintainer for the DOI (concept preferred) and
 open the `docs:` PR with the value they give you. **Never invent a DOI.**
 
+#### DOI record
+
+Because the badge and `CITATION.cff` intentionally carry the **concept** DOI,
+the per-version DOIs are not recorded anywhere else — and those are what you
+cite when referencing a *specific* version rather than "the software". This
+table is that record.
+
+| Target | DOI | Resolves to |
+|---|---|---|
+| **Concept ("all versions")** | `10.5281/zenodo.20981979` | always the latest release — this is the value in the README badge and `CITATION.cff` |
+| v1.0.0 | `10.5281/zenodo.21502372` | [record 21502372](https://zenodo.org/records/21502372) |
+| v1.1.0 | `10.5281/zenodo.21583731` | [record 21583731](https://zenodo.org/records/21583731) |
+
+**Adding a row is the whole per-release chore.** Append the new version DOI
+here; do **not** touch the README badge or `CITATION.cff`, which already point
+at the concept DOI and therefore need no update. Pinning either of them to a
+version DOI is the regression [#116](https://github.com/danieljoppi/AntHocNet/pull/116)
+fixed — the badge had been left on an earlier release's version DOI and had
+silently gone stale.
+
+Cite the **concept** DOI for the software in general, and a **version** DOI when
+reproducing a specific result — benchmark numbers in `docs/` are tied to a
+release, so a paper reproducing them should cite that release's DOI.
+
 ## Pull requests
 
 - Branch from `main`; keep PRs focused.
