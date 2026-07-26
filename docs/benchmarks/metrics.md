@@ -114,6 +114,114 @@ every ns-3 release the CI matrix covers (3.36–3.48).
 - **NS-3 only.** The NS-2 adapter has no energy instrumentation; see
   [cross-validation.md](../cross-validation.md).
 
+## Packet reordering (#212, NS-3 only)
+
+Stochastic multipath forwarding delivers packets out of order **by
+construction**: AntHocNet picks the next hop per packet, pheromone-weighted,
+across several paths of differing delay, so a packet sent later on a shorter
+path can overtake one sent earlier on a longer one.
+[configuration.md](../configuration.md) already names this as the cost of a low
+`betaData` ("lower = more spread — and more reordering"); these columns measure
+it. **Read a non-zero AntHocNet figure as the mechanism working as designed, not
+as a fault.** It is a trade, not a defect: what it buys is the load spreading and
+the route redundancy that the PDR and NRL columns report. The number that
+matters is whether the reordering an application would feel is worth those
+gains — which is exactly the question [#179](https://github.com/danieljoppi/AntHocNet/issues/179) (`betaData` 2 → the thesis's 20)
+has to answer, and could not before this metric existed.
+
+`FlowMonitor` reports per-flow counts and delays, never per-packet order, so
+these come from an application-level sequence number instead: the ns-3
+`OnOffApplication` sources set `EnableSeqTsSizeHeader`, and every `PacketSink`
+reads the sequence number off each delivered datagram. **Packet size is
+unchanged** — ns-3 builds the 20-byte `SeqTsSizeHeader` *inside* the configured
+64-byte `PacketSize`, so the datagram is still 64 bytes on the wire and no
+existing PDR / delay / throughput / NRL number moves.
+
+Metrics are computed **per flow** (keyed by the source socket address, so the
+`--sink` converge mode's shared sink still separates flows) and only then
+aggregated. A single badly-spread flow is the interesting case and a pooled
+number alone would hide it, hence the worst-flow column.
+
+- **reorder_ratio** — out-of-order delivery ratio, pooled over all data flows:
+  reordered packets / received packets, in [0,1].
+- **reorder_ratio_max** — the same ratio for the **worst single flow**.
+- **reorder_extent_mean / reorder_extent_max** — reordering extent over the
+  reordered packets, in packets: mean, and the largest seen.
+- **reorder_buf_max** — the largest reorder-buffer occupancy, in packets, that a
+  receiver would need to hand the delivered packets up in sequence order.
+
+### The exact definitions used
+
+"Reordering" has several non-equivalent definitions in the literature, so the
+choice is stated here rather than left implicit. All three follow
+[RFC 4737](https://www.rfc-editor.org/rfc/rfc4737) (*Packet Reordering
+Metrics*), applied to the receive stream of one flow at the sink:
+
+1. **Reordered / out-of-order** — RFC 4737's `Type-P-Reordered` singleton.
+   Maintain `NextExp`, the largest sequence number seen so far plus one. An
+   arriving packet with sequence number `s` is **reordered iff `s < NextExp`**;
+   when it is not, `NextExp` advances to `s + 1`, and when it is, `NextExp` is
+   left alone. `NextExp` never decreases, which is what makes the criterion
+   order-preserving. Equivalently — and this is how issue #212 words it — a
+   packet counts as reordered when its sequence number is below the running
+   maximum for that flow.
+   **Loss is not reordering**: a lost packet merely makes `NextExp` jump, and
+   the packets that follow are still in order. This matters here, because the
+   harness runs at PDRs well below 100 %.
+2. **Reordering extent** — RFC 4737's `Type-P-Packet-Reordering-Extent`, the
+   position-distance form: for a reordered packet received at position `i` with
+   sequence number `s`, the extent is `i − min{ j < i : seq[j] > s }`, i.e. the
+   number of positions back, **in the received stream**, to the earliest packet
+   received that has a larger sequence number. It is ≥ 1 for every reordered
+   packet by construction. This is what distinguishes "one straggler" (a large
+   extent on a handful of packets) from "systematically interleaved" (a small
+   extent on many). RFC 4737 notes that this position-distance form *tends to
+   overestimate* the receiver storage actually needed to restore order — which
+   is precisely why the next metric is carried alongside it.
+3. **Reorder-buffer occupancy** — the high-water mark of a receiver buffer that
+   releases packets in sequence order, defined **over the packets that actually
+   arrived**. On each arrival the packet is buffered, then the longest complete
+   prefix of the flow's delivered-packet sequence is released; the metric is the
+   largest number held at once. Defining it over arrivals rather than over the
+   sent sequence is deliberate: a buffer that waits for the literal next
+   sequence number stalls forever on the first lost packet, so at this harness's
+   PDRs it would measure loss rather than reordering.
+
+Duplicates are not handled specially: `OnOffApplication` emits each sequence
+number once and IP-layer unicast forwarding does not duplicate, so a flow's
+received sequence numbers are unique.
+
+### Instrumentation self-check
+
+Two arms should read ≈ 0 and are the reason to believe the AntHocNet number:
+
+- **AODV, OLSR and DSDV** are single-path — one next hop per destination at a
+  time — so the only reordering they can produce is the incidental kind around a
+  route change. This is the control a reviewer will look for first.
+- **AntHocNet with `--ns3::anthocnet::RoutingProtocol::EnableMultipath=false`**
+  collapses to a single next hop and should likewise fall to ≈ 0. That is a free
+  validation of the instrumentation itself: if it does not, the metric is
+  measuring something other than multipath spreading.
+
+Neither is expected to be exactly zero — a route change can hand consecutive
+packets to paths of different length under any protocol — but both should be
+small next to the multipath figure.
+
+### Caveats
+
+- **The `*_max` columns are averaged over the RNG runs** like every other
+  column: they are a mean of per-run maxima, not a maximum over runs.
+- **Reordering is traffic-pattern dependent.** At the paper's 1 packet/s per
+  flow, consecutive packets are 1 s apart and only a path-delay difference of
+  that order can reorder them; a denser source reorders far more readily at the
+  same routing behaviour. Compare these columns only between arms of the same
+  scenario, never across scenarios with different `cbrBps` or `flows`.
+- **The reported figures are CSV columns; the human table prints them on a
+  `# reorder` line** rather than as table columns, because the table's field
+  positions are a parsing contract for `bench_parse.py` and the workflows'
+  `##BENCH##` re-emit.
+- **NS-3 only.** The NS-2 adapter has no equivalent instrumentation.
+
 Aggregates are means over the RNG runs; the CSV also carries per-metric sample
 stddev across runs (`pdr_sd`, `delay_sd`, `delay99_sd`, `nrl_sd`), which the
 charts render as error bars, and the human table prints as `# stddev` lines.

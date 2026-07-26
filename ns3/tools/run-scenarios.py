@@ -24,7 +24,9 @@ Output CSV columns:
   kind,group,x,scenario,class,protocol,runs,nNodes,areaX,speed,pause,flows,
   pdr_pct,delay_ms,delay99_ms,throughput_kbps,nrl,...,energy_j,
   energy_per_pkt_j,energy_res_min_j,energy_res_mean_j,energy_res_sd_j,
-  energy_init_j,first_death_s   (see METRICS below for the full, append-only
+  energy_init_j,first_death_s,reorder_ratio,reorder_ratio_max,
+  reorder_extent_mean,reorder_extent_max,reorder_buf_max
+                                (see METRICS below for the full, append-only
                                  list)
 
   kind   = "discrete" (named scenario) or "sweep" (one point of a sweep)
@@ -92,13 +94,22 @@ SWEEPS = {
 # nodes at end of run, the initial per-node energy the run was configured with
 # (so residual <= initial is checkable downstream), and the first-node-death
 # time with -1 meaning no node died.
-# APPEND ONLY — sweep_summary.py and bench_parse.py read these by name.
+# The reorder_* columns are #212 (ns-3 only): the RFC 4737 out-of-order delivery
+# ratio pooled over the data flows, the same ratio for the worst single flow,
+# the reordering extent (mean/max, in packets) and the reorder-buffer occupancy
+# needed to restore order. Multipath reordering is expected AntHocNet behaviour;
+# see docs/benchmarks/metrics.md for the exact definitions.
+# APPEND ONLY — downstream consumers (make-charts.py, sweep_summary.py,
+# bench_parse.py, scenario_check.py) look these columns up by header name, so
+# appending is safe and reordering is not.
 METRICS = ["pdr_pct", "delay_ms", "delay99_ms", "throughput_kbps", "nrl",
            "jitter_ms", "delay_off50_ms", "delay_off90_ms",
            "pdr_sd", "delay_sd", "delay99_sd", "nrl_sd", "nrl_bytes",
            "energy_j", "energy_per_pkt_j", "energy_res_min_j",
            "energy_res_mean_j", "energy_res_sd_j", "energy_init_j",
-           "first_death_s"]
+           "first_death_s",
+           "reorder_ratio", "reorder_ratio_max", "reorder_extent_mean",
+           "reorder_extent_max", "reorder_buf_max"]
 PARAMS = ["runs", "nNodes", "area", "speed", "flows"]
 OUT_COLUMNS = (["kind", "group", "x", "scenario", "class", "protocol"]
                + ["runs", "nNodes", "areaX", "speed", "pause", "flows", "propagation"]

@@ -10,7 +10,11 @@
  * bytes, #132), plus radio energy (#209): total joules consumed, joules per
  * delivered packet, the residual-energy spread across nodes and the
  * first-node-death time, from a BasicEnergySource + WifiRadioEnergyModel
- * installed identically on every node for every protocol.
+ * installed identically on every node for every protocol,
+ * plus packet reordering (#212): the RFC 4737 out-of-order
+ * delivery ratio, the reordering extent (mean/max) and the reorder-buffer
+ * occupancy needed to restore order, measured per flow at the sink and then
+ * aggregated.
  * Fair comparison: the RNG run is reset before each protocol so every protocol
  * sees the identical mobility/traffic realisation, and NRL is counted uniformly
  * for every protocol from the IP layer.
@@ -37,6 +41,10 @@
 #include "ns3/ipv4-flow-classifier.h"
 #include "ns3/ipv4-l3-protocol.h"
 #include "ns3/udp-header.h"
+// #212: the application-level sequence number the reordering metrics key on.
+// Part of the applications module (already included above) since ns-3.31, so it
+// is available across the whole CI matrix (3.36-3.48).
+#include "ns3/seq-ts-size-header.h"
 
 // #209: BasicEnergySource lives in the energy module; WifiRadioEnergyModel and
 // its helper live in the wifi module (already included above) in every ns-3 the
@@ -84,6 +92,26 @@ void CountControlTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t) {
         ++g_controlPkts;
         g_controlBytes += p->GetSize();
     }
+}
+
+// --- packet reordering (#212) ----------------------------------------------
+// Per-flow arrival-order sequence numbers, keyed by the *source* socket address
+// (source IP + ephemeral port). That key is unique per OnOff application in both
+// the default i->(n-1-i) pairing and the --sink converge mode, where several
+// flows share one PacketSink and a per-sink index would not separate them.
+// Filled for every protocol and every run — reordering is a reported metric, not
+// a --diag extra.
+//
+// The ordering key is the sequence number ns-3's OnOffApplication writes when
+// its EnableSeqTsSizeHeader attribute is set (see the SetAttribute call in
+// RunOne for why this does not change the packet size). FlowMonitor cannot
+// supply it: it reports per-flow counts and delays, never per-packet order.
+std::map<Address, std::vector<uint32_t>> g_rxSeq;
+
+void RecordRxSeq(Ptr<const Packet> p, const Address& from) {
+    SeqTsSizeHeader h;
+    p->PeekHeader(h);
+    g_rxSeq[from].push_back(h.GetSeq());
 }
 
 // --- diagnostics (--diag): ant-level introspection for AntHocNet -----------
@@ -253,6 +281,12 @@ struct Result {
     double resMeanJ = 0.0;       // sample stddev (J) — the fairness spread
     double resSdJ = 0.0;
     double firstDeathS = -1.0;   // -1 = no node died (see OnEnergyDepleted)
+    // #212 packet reordering (definitions in docs/benchmarks/metrics.md):
+    double reorderRatio = 0.0;     // RFC 4737 Type-P-Reordered fraction, [0,1]
+    double reorderRatioMax = 0.0;  // worst single flow's ratio, [0,1]
+    double reorderExtMean = 0.0;   // mean reordering extent over reordered pkts
+    double reorderExtMax = 0.0;    // max reordering extent, packets
+    double reorderBufMax = 0.0;    // max reorder-buffer occupancy, packets
 };
 
 Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
@@ -269,6 +303,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_qCount = g_qNonzero = g_qMax = 0;
     g_qSum = 0.0;
     g_firstDeathS = -1.0;
+    g_rxSeq.clear();
 
     NodeContainer nodes;
     nodes.Create(P.nNodes);
@@ -431,6 +466,17 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                           InetSocketAddress(ifs.GetAddress(dst), port));
         onoff.SetAttribute("DataRate", StringValue(rate.str()));
         onoff.SetAttribute("PacketSize", UintegerValue(64));
+        // #212: carry a per-flow application sequence number so reordering can
+        // be measured at the sink. This does NOT change the packet size, and so
+        // does not move a single existing PDR / delay / throughput / NRL number:
+        // ns-3 builds the 20-byte SeqTsSizeHeader *inside* the configured
+        // PacketSize (onoff-application.cc does
+        // `Create<Packet>(m_pktSize - header.GetSerializedSize())` and then
+        // `AddHeader`), so the datagram stays 64 bytes on the wire and only 44
+        // of them are now dummy payload. The attribute and that construction
+        // date from ns-3.31, i.e. they predate the whole CI matrix (3.36-3.48),
+        // which is where this is actually compiled and run.
+        onoff.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
         const double startS = startVar->GetValue();
         onoff.SetAttribute("StartTime", TimeValue(Seconds(startS)));
         onoff.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
@@ -451,6 +497,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         sinks.Add(sink.Install(nodes.Get(P.sink)));
     }
     sinks.Start(Seconds(0.0));
+
+    // #212: reordering is a reported metric for every protocol and every run, so
+    // this hook is unconditional — unlike the --diag hooks below. The sink's
+    // plain "Rx" trace hands over the whole datagram, header included, so the
+    // sequence number is read here rather than through PacketSink's own
+    // EnableSeqTsSizeHeader path (that one runs a TCP-oriented reassembly buffer
+    // we have no use for on UDP).
+    for (uint32_t i = 0; i < sinks.GetN(); ++i) {
+        sinks.Get(i)->TraceConnectWithoutContext("Rx", MakeCallback(&RecordRxSeq));
+    }
 
     if (g_diag) {
         // First-delivery timestamp from every data sink (all protocols), plus
@@ -610,6 +666,92 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             }
         }
         r.firstDeathS = g_firstDeathS;
+    }
+
+    // --- packet reordering (#212) --------------------------------------------
+    // Computed per flow first and only then aggregated: a single badly-spread
+    // flow is the interesting case, and a packet-weighted aggregate alone would
+    // hide it — hence reorderRatioMax (the worst flow) alongside the pooled
+    // ratio. Definitions (stated in full in docs/benchmarks/metrics.md because
+    // "reordering" has several non-equivalent definitions in the literature):
+    //
+    //  - **Out-of-order (reordered) ratio** — RFC 4737's `Type-P-Reordered`
+    //    singleton: keep NextExp = (largest sequence number seen so far) + 1;
+    //    an arriving packet with sequence number s is reordered iff s < NextExp,
+    //    and NextExp advances to s+1 only when it is not. Losses do not count as
+    //    reordering: a gap merely makes NextExp jump.
+    //  - **Reordering extent** — RFC 4737's `Type-P-Packet-Reordering-Extent`:
+    //    for a reordered packet received at position i, the number of positions
+    //    back to the *earliest* packet received with a larger sequence number,
+    //    i.e. i - min{ j < i : seq[j] > s }. RFC 4737 notes this
+    //    position-distance form tends to *overestimate* the receiver storage
+    //    actually needed, which is exactly why the buffer-occupancy figure below
+    //    is carried alongside it.
+    //  - **Reorder-buffer occupancy** — the largest number of packets a receiver
+    //    would have to hold at once to hand the *delivered* packets up in
+    //    sequence order. Defined over the packets that actually arrived, so a
+    //    lost packet does not stall the buffer forever (a naive "wait for the
+    //    next sequence number" buffer would measure loss, not reordering, at
+    //    this harness's PDRs).
+    //
+    // Prefix maxima make both the reordered test and the extent search cheap:
+    // pref[i] = max(seq[0..i]) is non-decreasing, so s is reordered iff
+    // s <= pref[i-1], and the earliest arrival with a larger sequence number is
+    // the first index at which pref exceeds s (binary search).
+    {
+        uint64_t rxSeqTotal = 0, reorderedTotal = 0;
+        uint64_t extSum = 0, extCount = 0, extMax = 0, bufMax = 0;
+        double ratioMaxFlow = 0.0;
+        for (auto& kv : g_rxSeq) {
+            const std::vector<uint32_t>& arr = kv.second;  // arrival order
+            if (arr.empty()) continue;
+            std::vector<uint32_t> pref(arr.size());
+            uint32_t m = arr[0];
+            for (std::size_t i = 0; i < arr.size(); ++i) {
+                if (arr[i] > m) m = arr[i];
+                pref[i] = m;
+            }
+            uint64_t reordered = 0;
+            for (std::size_t i = 1; i < arr.size(); ++i) {
+                if (arr[i] > pref[i - 1]) continue;  // in order (s >= NextExp)
+                ++reordered;
+                const std::size_t j = static_cast<std::size_t>(
+                    std::upper_bound(pref.begin(), pref.begin() + i, arr[i])
+                    - pref.begin());
+                const uint64_t ext = i - j;  // >= 1 for any reordered packet
+                extSum += ext;
+                ++extCount;
+                if (ext > extMax) extMax = ext;
+            }
+            // Reorder-buffer occupancy: walk the arrivals, release the prefix of
+            // the sorted (in-sequence) delivery order that has become complete,
+            // and record the high-water mark of what is still held.
+            std::vector<uint32_t> ordered(arr);
+            std::sort(ordered.begin(), ordered.end());
+            std::vector<char> arrived(ordered.size(), 0);
+            std::size_t k = 0;
+            uint64_t occ = 0, occMax = 0;
+            for (uint32_t s : arr) {
+                arrived[static_cast<std::size_t>(
+                    std::lower_bound(ordered.begin(), ordered.end(), s)
+                    - ordered.begin())] = 1;
+                ++occ;
+                while (k < ordered.size() && arrived[k]) { --occ; ++k; }
+                if (occ > occMax) occMax = occ;
+            }
+            rxSeqTotal += arr.size();
+            reorderedTotal += reordered;
+            const double ratio = static_cast<double>(reordered) / arr.size();
+            if (ratio > ratioMaxFlow) ratioMaxFlow = ratio;
+            if (occMax > bufMax) bufMax = occMax;
+        }
+        r.reorderRatio = rxSeqTotal
+            ? static_cast<double>(reorderedTotal) / rxSeqTotal : 0.0;
+        r.reorderRatioMax = ratioMaxFlow;
+        r.reorderExtMean = extCount
+            ? static_cast<double>(extSum) / extCount : 0.0;
+        r.reorderExtMax = static_cast<double>(extMax);
+        r.reorderBufMax = static_cast<double>(bufMax);
     }
 
     // Diagnostics line (prefixed "# " so CSV consumers ignore it). Shows whether
@@ -907,6 +1049,10 @@ int main(int argc, char* argv[]) {
         double resMin = 0, resMean = 0, resSd = 0;
         double firstDeath = 0;
         uint32_t deathRuns = 0;
+        // #212 reordering. The *Max fields are averaged across runs like every
+        // other column: a mean of per-run maxima, not a max over runs.
+        double reordRatio = 0, reordRatioMax = 0;
+        double reordExtMean = 0, reordExtMax = 0, reordBufMax = 0;
     };
     std::vector<Agg> agg(list.size());
     for (std::size_t i = 0; i < list.size(); ++i) {
@@ -957,6 +1103,11 @@ int main(int argc, char* argv[]) {
                 agg[i].firstDeath += r.firstDeathS;
                 ++agg[i].deathRuns;
             }
+            agg[i].reordRatio += r.reorderRatio;
+            agg[i].reordRatioMax += r.reorderRatioMax;
+            agg[i].reordExtMean += r.reorderExtMean;
+            agg[i].reordExtMax += r.reorderExtMax;
+            agg[i].reordBufMax += r.reorderBufMax;
         }
         agg[i].pdr /= runs;
         agg[i].delay /= runs;
@@ -974,6 +1125,11 @@ int main(int argc, char* argv[]) {
         agg[i].resSd /= runs;
         agg[i].firstDeath = agg[i].deathRuns
             ? agg[i].firstDeath / agg[i].deathRuns : -1.0;
+        agg[i].reordRatio /= runs;
+        agg[i].reordRatioMax /= runs;
+        agg[i].reordExtMean /= runs;
+        agg[i].reordExtMax /= runs;
+        agg[i].reordBufMax /= runs;
         if (runs > 1) {
             auto sd = [runs](double sum, double sumSq) {
                 const double mean = sum / runs;
@@ -996,13 +1152,17 @@ int main(int argc, char* argv[]) {
         // #132 nrl_bytes (control bytes / delivered data bytes), then #209
         // energy (total consumed, per delivered packet, residual spread across
         // nodes, the initial energy the run was configured with, and the
-        // first-node-death time with -1 = no node died).
+        // first-node-death time with -1 = no node died), then #212
+        // reordering (out-of-order ratio pooled over flows and for the worst
+        // single flow, reordering extent mean/max, reorder-buffer occupancy).
         std::cout << "protocol,runs,nNodes,area,speed,flows,pdr_pct,delay_ms,"
                      "throughput_kbps,delay99_ms,nrl,jitter_ms,delay_off50_ms,"
                      "delay_off90_ms,pdr_sd,delay_sd,delay99_sd,nrl_sd,"
                      "nrl_bytes,energy_j,energy_per_pkt_j,energy_res_min_j,"
                      "energy_res_mean_j,energy_res_sd_j,energy_init_j,"
-                     "first_death_s\n";
+                     "first_death_s,reorder_ratio,reorder_ratio_max,"
+                     "reorder_extent_mean,reorder_extent_max,"
+                     "reorder_buf_max\n";
         std::cout << std::fixed;
         for (std::size_t i = 0; i < list.size(); ++i) {
             std::cout << list[i] << ',' << runs << ',' << P.nNodes << ','
@@ -1027,7 +1187,12 @@ int main(int argc, char* argv[]) {
                       << std::setprecision(2) << agg[i].resMean << ','
                       << std::setprecision(3) << agg[i].resSd << ','
                       << std::setprecision(2) << P.energyJ << ','
-                      << std::setprecision(1) << agg[i].firstDeath << '\n';
+                      << std::setprecision(1) << agg[i].firstDeath << ','
+                      << std::setprecision(4) << agg[i].reordRatio << ','
+                      << std::setprecision(4) << agg[i].reordRatioMax << ','
+                      << std::setprecision(2) << agg[i].reordExtMean << ','
+                      << std::setprecision(2) << agg[i].reordExtMax << ','
+                      << std::setprecision(2) << agg[i].reordBufMax << '\n';
         }
         return 0;
     }
@@ -1095,6 +1260,22 @@ int main(int argc, char* argv[]) {
                       << " nrl=" << std::setprecision(3) << agg[i].nrlSd
                       << " nrl_bytes=" << std::setprecision(3) << agg[i].nrlBytesSd << "\n";
         }
+    }
+    // #212 packet reordering. Deliberately a '# ' line rather than five more
+    // fixed-width table columns: the table's field *positions* are a parsing
+    // contract (bench_parse.py and the workflows' ##BENCH## awk read the left
+    // columns by position), and reordering is a diagnostic of the multipath
+    // mechanism rather than a headline comparison number. The CSV carries all
+    // five columns by name. Expect ~0 for AODV/OLSR/DSDV and for AntHocNet with
+    // EnableMultipath=false; a non-zero AntHocNet figure is the stochastic
+    // multipath working as designed, not a fault (docs/benchmarks/metrics.md).
+    for (std::size_t i = 0; i < list.size(); ++i) {
+        std::cout << std::fixed << "# reorder " << list[i]
+                  << " ratio=" << std::setprecision(4) << agg[i].reordRatio
+                  << " ratioWorstFlow=" << std::setprecision(4) << agg[i].reordRatioMax
+                  << " extentMean=" << std::setprecision(2) << agg[i].reordExtMean
+                  << " extentMax=" << std::setprecision(2) << agg[i].reordExtMax
+                  << " bufMax=" << std::setprecision(2) << agg[i].reordBufMax << "\n";
     }
     return 0;
 }
