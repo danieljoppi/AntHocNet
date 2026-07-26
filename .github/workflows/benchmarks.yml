@@ -12,6 +12,11 @@ name: Benchmarks
 on:
   push:
     branches: [main, master]   # both, so it survives the default-branch rename
+  # Backstop. The push trigger alone is not enough: see the concurrency note
+  # below. A daily run bounds how stale the published table can get at 24 h,
+  # whatever the merge cadence.
+  schedule:
+    - cron: '17 4 * * *'
   workflow_dispatch:
 
 # Needed to push the regenerated table + charts back to the branch; packages to
@@ -20,9 +25,23 @@ permissions:
   contents: write
   packages: read
 
-# One benchmark at a time; newer pushes supersede older queued runs.
+# One benchmark at a time; newer pushes supersede older queued runs -- for a
+# *push*, the latest merge is the only state worth publishing, so cancelling is
+# right and queueing would just build a backlog of tables nobody reads.
+#
+# But the event name is part of the group on purpose. With a single group,
+# cancel-in-progress silently starves the refresh whenever merges arrive faster
+# than the job takes: each push kills the run in flight, and the table simply
+# stops regenerating. That happened -- eight merges landed between 07:43 and
+# 17:50 UTC on 2026-07-26 and not one produced a refresh commit, so the
+# published numbers sat on the far side of a shared-adapter change (#224) with
+# nothing measuring it. Nothing failed; a cancelled run is not a failed run,
+# which is exactly why it went unnoticed.
+#
+# Separating the groups means the scheduled backstop above cannot be cancelled
+# by merge traffic, so the table always refreshes at least daily.
 concurrency:
-  group: benchmarks-${{ github.ref }}
+  group: benchmarks-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
