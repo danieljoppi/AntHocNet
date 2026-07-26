@@ -151,6 +151,82 @@ private:
     uint32_t m_rxBytes;
 };
 
+// Issue #203 — delivery across a node with MORE THAN ONE interface.
+//
+// Same 3-node line as above, but built from two separate channels on two
+// separate subnets, so the middle node has two interfaces:
+//
+//     0 (10.1.1.1) --- (10.1.1.2) 1 (10.1.2.1) --- (10.1.2.2) 2
+//
+// This is the satellite/ISL shape (#192, #194) and it fails before #203: the
+// data path derived its output device from m_socketAddresses.begin(), so node 1
+// forwarded packets for 10.1.2.2 back out of its 10.1.1.0/24 device, and
+// backward ants unicast to a canonical address that is not on the link they
+// were sent over.
+class MultiInterfaceDeliveryTestCase : public TestCase
+{
+public:
+    MultiInterfaceDeliveryTestCase()
+        : TestCase("Multi-hop delivery through a multi-interface node (#203)"), m_rxBytes(0) {}
+
+    void DoRun() override {
+        RngSeedManager::SetSeed(1);
+        RngSeedManager::SetRun(1);
+
+        NodeContainer nodes;
+        nodes.Create(3);
+
+        // Two point-to-point-style links, each its own channel: 0<->1 and 1<->2.
+        // Node 1 therefore holds one device (and one subnet) per link, and 0 and
+        // 2 share no medium at all.
+        NodeContainer leftPair(nodes.Get(0), nodes.Get(1));
+        NodeContainer rightPair(nodes.Get(1), nodes.Get(2));
+        SimpleNetDeviceHelper devHelper;
+        NetDeviceContainer leftDevs = devHelper.Install(leftPair, CreateObject<SimpleChannel>());
+        NetDeviceContainer rightDevs = devHelper.Install(rightPair, CreateObject<SimpleChannel>());
+
+        AntHocNetHelper anthocnet;
+        InternetStackHelper internet;
+        internet.SetRoutingHelper(anthocnet);
+        internet.Install(nodes);
+
+        Ipv4AddressHelper address;
+        address.SetBase("10.1.1.0", "255.255.255.0");
+        Ipv4InterfaceContainer leftIfs = address.Assign(leftDevs);
+        address.SetBase("10.1.2.0", "255.255.255.0");
+        Ipv4InterfaceContainer rightIfs = address.Assign(rightDevs);
+
+        const uint16_t port = 9;
+
+        Ptr<Socket> rx = Socket::CreateSocket(nodes.Get(2), UdpSocketFactory::GetTypeId());
+        rx->Bind(InetSocketAddress(Ipv4Address::GetAny(), port));
+        rx->SetRecvCallback(MakeCallback(&MultiInterfaceDeliveryTestCase::Receive, this));
+
+        // Node 0 -> node 2's address, which lives on the far subnet and is only
+        // reachable through node 1's second interface.
+        Ptr<Socket> tx = Socket::CreateSocket(nodes.Get(0), UdpSocketFactory::GetTypeId());
+        tx->Connect(InetSocketAddress(rightIfs.GetAddress(1), port));
+        for (double t = 10.0; t < 18.0; t += 0.5) {
+            Simulator::Schedule(Seconds(t), &MultiInterfaceDeliveryTestCase::Send, this, tx);
+        }
+
+        Simulator::Stop(Seconds(20.0));
+        Simulator::Run();
+        Simulator::Destroy();
+
+        NS_TEST_ASSERT_MSG_GT(m_rxBytes, 0u,
+                              "node 2 received no data across the multi-interface relay");
+    }
+
+private:
+    void Send(Ptr<Socket> s) { s->Send(Create<Packet>(64)); }
+    void Receive(Ptr<Socket> s) {
+        Ptr<Packet> p;
+        while ((p = s->Recv())) m_rxBytes += p->GetSize();
+    }
+    uint32_t m_rxBytes;
+};
+
 // B3 — address mapping never aliases the core's kInvalidAddress sentinel.
 class AddressMappingTestCase : public TestCase
 {
@@ -296,6 +372,7 @@ public:
         AddTestCase(new AntHeaderRoundTripTestCase(), AHN_TEST_QUICK);
         AddTestCase(new AddressMappingTestCase(), AHN_TEST_QUICK);
         AddTestCase(new AntHocNetDeliveryTestCase(), AHN_TEST_QUICK);
+        AddTestCase(new MultiInterfaceDeliveryTestCase(), AHN_TEST_QUICK);
         AddTestCase(new RepairAntOnLinkBreakTestCase(), AHN_TEST_QUICK);
     }
 };

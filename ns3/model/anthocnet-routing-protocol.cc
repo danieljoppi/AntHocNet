@@ -519,6 +519,44 @@ void RoutingProtocol::NotifyRemoveAddress(uint32_t, Ipv4InterfaceAddress) {}
 
 // --- routing ----------------------------------------------------------------
 
+void RoutingProtocol::ResolveNextHop(NodeAddress next, Ipv4Address& gateway,
+                                     Ptr<NetDevice>& dev, uint32_t& iface) const {
+    const Ipv4Address nextIp = ToIpv4(next);
+
+    // 1. Directly attached: the next hop is on one of our own subnets. Every
+    //    single-interface topology takes this path, so the common case keeps
+    //    exactly its pre-#203 gateway/device.
+    for (const auto& kv : m_socketAddresses) {
+        const Ipv4InterfaceAddress& addr = kv.second;
+        if (addr.GetLocal().CombineMask(addr.GetMask()) ==
+            nextIp.CombineMask(addr.GetMask())) {
+            const int32_t i = m_ipv4->GetInterfaceForAddress(addr.GetLocal());
+            if (i < 0) continue;
+            gateway = nextIp;
+            iface   = static_cast<uint32_t>(i);
+            dev     = m_ipv4->GetNetDevice(iface);
+            return;
+        }
+    }
+
+    // 2. Multi-interface peer: the core named it by its canonical address,
+    //    which sits on a subnet we are not attached to. Its hello told us which
+    //    of our links actually reaches it, and at what address.
+    std::map<Ipv4Address, PeerRoute>::const_iterator it = m_peerRoutes.find(nextIp);
+    if (it != m_peerRoutes.end() && it->second.iface < m_ipv4->GetNInterfaces()) {
+        gateway = it->second.linkLocal;
+        iface   = it->second.iface;
+        dev     = m_ipv4->GetNetDevice(iface);
+        return;
+    }
+
+    // 3. Unknown next hop: degrade to the first interface exactly as before.
+    gateway = nextIp;
+    iface   = static_cast<uint32_t>(
+        m_ipv4->GetInterfaceForAddress(m_socketAddresses.begin()->second.GetLocal()));
+    dev = m_ipv4->GetNetDevice(iface);
+}
+
 Ptr<Ipv4Route> RoutingProtocol::LoopbackRoute(const Ipv4Header& header, Ptr<NetDevice> oif) const {
     Ptr<Ipv4Route> route = Create<Ipv4Route>();
     route->SetDestination(header.GetDestination());
@@ -556,14 +594,15 @@ Ptr<Ipv4Route> RoutingProtocol::RouteOutput(Ptr<Packet> p, const Ipv4Header& hea
     NodeAddress next = m_logic->nextHopForData(ToCore(dst));
     if (next != kInvalidAddress) {
         m_everRouted.insert(ToCore(dst));  // #21: this dest has been routed
+        Ipv4Address gateway;
+        Ptr<NetDevice> dev;
+        uint32_t ifIdx;
+        ResolveNextHop(next, gateway, dev, ifIdx);  // #203
         Ptr<Ipv4Route> route = Create<Ipv4Route>();
         route->SetDestination(dst);
-        route->SetGateway(ToIpv4(next));
-        Ipv4InterfaceAddress ifaceAddr = m_socketAddresses.begin()->second;
-        route->SetSource(m_ipv4->SourceAddressSelection(
-            m_ipv4->GetInterfaceForAddress(ifaceAddr.GetLocal()), dst));
-        route->SetOutputDevice(m_ipv4->GetNetDevice(
-            m_ipv4->GetInterfaceForAddress(ifaceAddr.GetLocal())));
+        route->SetGateway(gateway);
+        route->SetSource(m_ipv4->SourceAddressSelection(ifIdx, dst));
+        route->SetOutputDevice(dev);
         return route;
     }
 
@@ -607,12 +646,15 @@ bool RoutingProtocol::RouteInput(Ptr<const Packet> p, const Ipv4Header& header,
     NodeAddress next = m_logic->nextHopForData(ToCore(dst));
     if (next != kInvalidAddress) {
         m_everRouted.insert(ToCore(dst));  // #21: this dest has been routed
+        Ipv4Address gateway;
+        Ptr<NetDevice> dev;
+        uint32_t ifIdx;
+        ResolveNextHop(next, gateway, dev, ifIdx);  // #203
         Ptr<Ipv4Route> route = Create<Ipv4Route>();
         route->SetDestination(dst);
-        route->SetGateway(ToIpv4(next));
+        route->SetGateway(gateway);
         route->SetSource(header.GetSource());
-        route->SetOutputDevice(m_ipv4->GetNetDevice(
-            m_ipv4->GetInterfaceForAddress(m_socketAddresses.begin()->second.GetLocal())));
+        route->SetOutputDevice(dev);
         ucb(route, p, header);
         return true;
     }
@@ -649,18 +691,31 @@ void RoutingProtocol::SendAnt(const AntMessage& msg, Ipv4Address dest) {
     AntHeader header(msg);
     packet->AddHeader(header);
 
-    for (auto& kv : m_socketAddresses) {
-        Ptr<Socket> socket = kv.first;
-        Ipv4Address iface = kv.second.GetLocal();
-        Ipv4Address destination =
-            (dest == Ipv4Address("255.255.255.255"))
-                ? kv.second.GetBroadcast()
-                : dest;
-        socket->SendTo(packet->Copy(), 0, InetSocketAddress(destination, ANT_PORT));
-        // For unicast we only need to send out once.
-        if (dest != Ipv4Address("255.255.255.255")) break;
-        (void) iface;
+    if (dest == Ipv4Address("255.255.255.255")) {
+        for (auto& kv : m_socketAddresses) {
+            kv.first->SendTo(packet->Copy(), 0,
+                             InetSocketAddress(kv.second.GetBroadcast(), ANT_PORT));
+        }
+        return;
     }
+
+    // Unicast: out of the interface that actually reaches this next hop, and
+    // addressed to where it is reachable on that link (#203). A backward ant
+    // retraces a path made of canonical addresses, so on a multi-interface node
+    // the ant's next hop is routinely NOT on the subnet it must be sent over.
+    Ipv4Address gateway;
+    Ptr<NetDevice> dev;
+    uint32_t ifIdx;
+    ResolveNextHop(ToCore(dest), gateway, dev, ifIdx);
+    for (auto& kv : m_socketAddresses) {
+        if (m_ipv4->GetInterfaceForAddress(kv.second.GetLocal()) ==
+            static_cast<int32_t>(ifIdx)) {
+            kv.first->SendTo(packet->Copy(), 0, InetSocketAddress(gateway, ANT_PORT));
+            return;
+        }
+    }
+    m_socketAddresses.begin()->first->SendTo(packet->Copy(), 0,
+                                             InetSocketAddress(gateway, ANT_PORT));
 }
 
 void RoutingProtocol::ExecuteDecisions(const std::vector<RouteDecision>& decisions,
@@ -698,6 +753,40 @@ void RoutingProtocol::RecvAnt(Ptr<Socket> socket) {
     packet->RemoveHeader(header);
     AntMessage incoming = header.Message();
 
+    // #203: a hello carries both of the sender's names — `src` is how the core
+    // will name it in pheromone tables and retraced ant paths, `sender` is where
+    // it actually is on this link. They differ only when the peer is
+    // multi-interface and reached us over something other than its first
+    // interface, which is precisely the case ResolveNextHop needs help with.
+    if (incoming.type == AntType::Hello && incoming.src != kInvalidAddress) {
+        const Ipv4Address canonical = ToIpv4(incoming.src);
+        if (canonical != sender) {
+            // A hello arrives on the subnet-broadcast socket; check the unicast
+            // map too so the mapping is still learned if that ever changes.
+            bool known = false;
+            Ipv4InterfaceAddress ifaceAddr;
+            auto bit = m_socketSubnetBroadcast.find(socket);
+            if (bit != m_socketSubnetBroadcast.end()) {
+                ifaceAddr = bit->second;
+                known = true;
+            } else {
+                auto uit = m_socketAddresses.find(socket);
+                if (uit != m_socketAddresses.end()) {
+                    ifaceAddr = uit->second;
+                    known = true;
+                }
+            }
+            const int32_t i =
+                known ? m_ipv4->GetInterfaceForAddress(ifaceAddr.GetLocal()) : -1;
+            if (i >= 0) {
+                PeerRoute pr;
+                pr.iface = static_cast<uint32_t>(i);
+                pr.linkLocal = sender;
+                m_peerRoutes[canonical] = pr;
+            }
+        }
+    }
+
     NodeAddress prevHop = ToCore(sender);
     std::vector<RouteDecision> decisions = m_logic->onReceiveAnt(incoming, prevHop);
 
@@ -734,12 +823,15 @@ void RoutingProtocol::FlushQueue(NodeAddress coreDest) {
             m_queue.Enqueue(e);
             continue;
         }
+        Ipv4Address gateway;
+        Ptr<NetDevice> dev;
+        uint32_t ifIdx;
+        ResolveNextHop(next, gateway, dev, ifIdx);  // #203
         Ptr<Ipv4Route> route = Create<Ipv4Route>();
         route->SetDestination(dst);
-        route->SetGateway(ToIpv4(next));
+        route->SetGateway(gateway);
         route->SetSource(e.header.GetSource());
-        route->SetOutputDevice(m_ipv4->GetNetDevice(
-            m_ipv4->GetInterfaceForAddress(m_socketAddresses.begin()->second.GetLocal())));
+        route->SetOutputDevice(dev);
         if (!e.ucb.IsNull()) {
             m_everRouted.insert(coreDest);      // #21: this dest has been routed
             m_queue.NoteDelivered(e);           // #21: attribute this packet's hold

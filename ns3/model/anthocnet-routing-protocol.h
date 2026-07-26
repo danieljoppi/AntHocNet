@@ -194,6 +194,21 @@ private:
     bool MapMacToCore(const Mac48Address& mac,
                       ::anthocnet::core::NodeAddress& out) const;
 
+    /// Issue #203: resolve a core next-hop name to the concrete way of reaching
+    /// it — the gateway address to send to, the device to send it out of, and
+    /// that device's interface index.
+    ///
+    /// Necessary because the core names a node by ONE address (the first
+    /// interface's, fixed when the logic is constructed in NotifyInterfaceUp)
+    /// while a multi-interface node is reachable on a different subnet per
+    /// link. On single-interface topologies the two coincide and this resolves
+    /// to exactly the pre-#203 values.
+    ///
+    /// Never fails: an unresolvable hop falls back to the first interface, the
+    /// old behaviour, rather than dropping the packet.
+    void ResolveNextHop(::anthocnet::core::NodeAddress next, Ipv4Address& gateway,
+                        Ptr<NetDevice>& dev, uint32_t& iface) const;
+
     // state
     Ptr<Ipv4> m_ipv4;
     // Per-interface sockets: one bound to the unicast address (receives
@@ -202,6 +217,20 @@ private:
     // address does NOT receive broadcasts, so both are required.
     std::map<Ptr<Socket>, Ipv4InterfaceAddress> m_socketAddresses;
     std::map<Ptr<Socket>, Ipv4InterfaceAddress> m_socketSubnetBroadcast;
+
+    /// Issue #203: where a peer the core named actually is. `iface` is the ns-3
+    /// interface index whose device shares a link with it; `linkLocal` is the
+    /// address to send to on that link.
+    struct PeerRoute {
+        uint32_t    iface = 0;
+        Ipv4Address linkLocal;
+    };
+    /// Peer canonical address (how the core names it, i.e. how it appears in
+    /// pheromone tables and ant paths) -> how to reach it. Learned from hello
+    /// ants, the one message carrying both of a peer's names: `msg.src` is the
+    /// canonical one, the IP source is the link-local one. Only populated when
+    /// the two differ, so it stays empty on every single-interface topology.
+    std::map<Ipv4Address, PeerRoute> m_peerRoutes;
 
     ::anthocnet::core::Config m_config;
     Ns3Clock m_clock;
