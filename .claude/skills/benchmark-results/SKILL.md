@@ -157,6 +157,9 @@ warnings. `results` checks: PDR ∈ [0,100], delay99 ≥ mean delay, negative
 metrics, dead cells (#28), the #209 energy invariants (total energy positive
 and finite, energy-per-delivered-packet finite and non-negative — and non-zero
 whenever PDR is, residual energy within [0, initial]; all skipped for inputs
-predating energy instrumentation), and — with `--anchor` — the AODV floors read from
+predating energy instrumentation), the #212 reordering bounds (out-of-order
+ratios in [0,1]; extents and reorder-buffer occupancies finite and
+non-negative — all skipped for inputs predating reordering instrumentation),
+and — with `--anchor` — the AODV floors read from
 `ns3/tools/anchors.yml` (never duplicated). A `results` FAIL is a #51-class
 harness regression: fix the harness before trusting any number from that run.

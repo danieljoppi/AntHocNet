@@ -108,6 +108,12 @@ def parse_results(path):
     columns (energy(J), J/pkt) at positions 10/11; the residual spread, the
     configured initial energy and the first-death time live in the CSV only
     (the human output puts them on a '# energy' line, which ROW does not match).
+
+    Reordering fields (#212) exist only in CSVs produced after the reordering
+    instrumentation landed; older inputs simply omit them and the reordering
+    rules below are skipped. They are CSV-only by design — anthocnet-compare
+    prints them on a '# reorder' line rather than widening the fixed-width
+    results table, and ROW does not match a '# ' line.
     """
     with open(path) as fh:
         text = fh.read()
@@ -123,7 +129,12 @@ def parse_results(path):
                    "energy_per_pkt": r.get("energy_per_pkt_j"),
                    "res_min": r.get("energy_res_min_j"),
                    "res_mean": r.get("energy_res_mean_j"),
-                   "energy_init": r.get("energy_init_j")}
+                   "energy_init": r.get("energy_init_j"),
+                   "reorder_ratio": r.get("reorder_ratio"),
+                   "reorder_ratio_max": r.get("reorder_ratio_max"),
+                   "reorder_extent_mean": r.get("reorder_extent_mean"),
+                   "reorder_extent_max": r.get("reorder_extent_max"),
+                   "reorder_buf_max": r.get("reorder_buf_max")}
         return
     for line in text.splitlines():
         m = ROW.match(line)
@@ -200,6 +211,25 @@ def cmd_results(a):
                     if v < 0.0:
                         report("FAIL", f"{tag}: negative residual energy "
                                        f"{k}={v} J")
+            # #212 reordering plausibility. These are definitional bounds, not
+            # protocol expectations: the ratios are fractions of received
+            # packets, and extents/occupancies are counts of packets. A
+            # violation means the sequence tracking at the sink is broken (flows
+            # merged under one key, sequence numbers not carried, aggregation
+            # divided by the wrong denominator), so it is a harness regression —
+            # hence FAIL. A *high* but in-range reordering figure for AntHocNet
+            # is expected multipath behaviour and is deliberately not flagged.
+            for k in ("reorder_ratio", "reorder_ratio_max"):
+                v = num(k)
+                if v is not None and not (math.isfinite(v) and 0.0 <= v <= 1.0):
+                    report("FAIL", f"{tag}: {k} {r.get(k)} outside [0,1] — "
+                                   "reordering instrumentation broken")
+            for k in ("reorder_extent_mean", "reorder_extent_max",
+                      "reorder_buf_max"):
+                v = num(k)
+                if v is not None and not (math.isfinite(v) and v >= 0.0):
+                    report("FAIL", f"{tag}: {k} {r.get(k)} is not a finite "
+                                   "non-negative packet count")
             if floor is not None and r["proto"] == "aodv" and pdr is not None:
                 if pdr < floor:
                     report("FAIL", f"{tag}: anchor '{a.anchor}' floor "
