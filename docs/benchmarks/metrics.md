@@ -148,6 +148,122 @@ conclusion is unsafe until it is fixed.
   (bad checksum, interface down, fragment timeout — structurally zero in this
   harness). If it is ever non-zero it is the reason the identity misses.
 
+## Route quality: path length, path diversity, fairness (#217, NS-3 only)
+
+AntHocNet's defining property is that it lays and maintains **multiple paths**,
+and until #217 the harness measured nothing about paths. These columns are
+produced protocol-agnostically from NS-3's own traces for **all four
+protocols** — the single-path baselines are the instrumentation's self-check,
+not a blank column.
+
+- **path_hops_mean / path_hops_max** — mean and maximum hop count *actually
+  traversed by delivered data packets*, where one hop is one transmission (a
+  packet delivered to a neighbour is 1 hop). This is what settles whether
+  AntHocNet's delay advantage comes from **shorter** paths or from better path
+  **selection**: compare `path_hops_mean` alongside `delay_ms`. 0 when nothing
+  was delivered (the `nrl` convention).
+
+  *Definition and source.* Taken from the IP TTL observed at the destination's
+  `Ipv4L3Protocol` `LocalDeliver` trace — one call per packet handed to the
+  local transport, i.e. exactly the packets PDR counts — as
+  `hops = (initial TTL − TTL at delivery) + 1`. The initial TTL is NS-3's
+  `Ipv4L3Protocol::DefaultTtl` default of 64 (unchanged across the 3.36–3.48 CI
+  matrix; nothing in the harness sets a `SocketIpTtlTag`). Every real forwarding
+  hop passes through `Ipv4L3Protocol::IpForward`, which decrements the TTL
+  exactly once. This is numerically the same quantity as FlowMonitor's
+  `FlowStats::timesForwarded + 1` — which accumulates only over delivered
+  packets — but observed per packet rather than per flow, which is what makes
+  the **maximum** available at all: FlowMonitor exposes only the sum.
+
+- **path_div_used** — **used** path diversity: the mean number of *distinct next
+  hops that actually carried a data packet* for a destination, per (node,
+  destination) pair, within one `path_div_window_s` window, averaged over the
+  cells that carried data. **path_div_max** is the largest such count seen in
+  any one cell.
+
+  *Used, not available — and the distinction is the point.* Pheromone entries
+  above `minPheromone` are the paths the table makes **available**; a table full
+  of pheromone that data never uses would read as diversity that does not
+  exist. What is reported here is **usage**: a next hop counts only when a data
+  frame it carried was acknowledged.
+
+  *Why a window.* Diversity is *concurrency*. Over a whole run a single-path
+  protocol also touches several next hops for one destination — sequentially, as
+  routes break and are rediscovered — so a whole-run distinct count would credit
+  AODV with multipath it does not have. Counting per window separates
+  concurrent spreading from sequential replacement. **Expect the baselines
+  (AODV/OLSR/DSDV) to read ≈1**; the residual excess above 1 is route churn
+  inside one window, not spreading, and it grows with mobility. A baseline
+  reading well above 1, or AntHocNet reading exactly 1, is an instrumentation
+  or protocol regression.
+
+  *Source.* The `WifiMac` `AckedMpdu` trace: it fires at the transmitter for
+  every unicast MPDU the next hop acknowledged, and the 802.11 header's `Addr1`
+  **is** the next hop. It is the only address-bearing transmit hook NS-3 offers
+  uniformly to all four protocols (the `Ipv4L3Protocol` traces do not carry the
+  gateway), and "acknowledged" makes "carried" literal — a frame the next hop
+  never received is not a path that was used. The AntHocNet adapter already
+  depends on this trace across the whole CI matrix (#68).
+
+- **path_entropy_bits** — mean Shannon entropy (bits) of the per-next-hop packet
+  split within a cell, averaged over the same cells as `path_div_used`. **0 =
+  single path**; 1 bit = an even two-way split; it is bounded above by
+  log2(`path_div_max`). Reported because the count alone cannot distinguish a
+  genuine 50/50 split from 999 packets down one next hop and 1 down another.
+
+- **path_div_window_s** — the window (s) the diversity columns are counted over
+  (`--pathWindowS`, default **10 s**), carried in the CSV because it *defines*
+  what the diversity number means. Provenance: a repo choice, not a paper value.
+  It must be long enough to hold several packets of a flow (the paper base
+  scenario offers 1 packet/s per flow, so 10 s ≈ 10 packets) and short enough
+  that a single-path protocol rarely replaces a route inside it. Comparisons
+  across different window settings are meaningless — check the column matches
+  before differencing two runs.
+
+- **jain_pkts** — **Jain's fairness index** over the per-flow delivered-packet
+  counts, `J = (Σxᵢ)² / (n·Σxᵢ²)`. `J = 1` when every flow is served equally,
+  `J = 1/n` at maximum unfairness (one flow gets everything). `heavy-load` runs
+  40 flows and the rest of the table reports only aggregates, so without this
+  one starved flow is invisible. This is where stochastic spreading should beat
+  single-path protocols.
+
+  *Population.* `n` is the number of source applications actually installed, so
+  a flow so starved that not one of its packets ever reached the IP layer — its
+  socket send failed for want of a route, which FlowMonitor never records —
+  still counts as a **zero** rather than vanishing from the index. (That is a
+  deliberate divergence from PDR's denominator, which counts only packets
+  FlowMonitor saw offered.)
+
+  *One index, two readings.* Computed over delivered **packet counts**; because
+  every flow in this harness sends the same 64-byte payload, the per-flow
+  throughput vector is a scalar multiple of the packet-count vector and Jain's
+  index is scale-invariant, so the same number is also the throughput-based
+  index. If the harness ever gains per-flow packet sizes, the two separate and
+  a second column is needed.
+
+### Caveats (route quality)
+
+- **Reactive protocols read one hop high on route-discovery packets.** A
+  protocol with no route yet bounces the packet through the loopback device to
+  reach `RouteInput` (AODV and this adapter both do); the packet then leaves via
+  `IpForward`, costing one TTL decrement that no radio carried. Those packets
+  report one hop too many, so `path_hops_mean` for `anthocnet`/`aodv` is a
+  slight over-estimate, bounded by (route discoveries)/(delivered packets) — a
+  fraction of a percent in the paper scenario, larger where routes break often.
+  FlowMonitor's `timesForwarded` counts the same bounce, so this is a property
+  of the loopback idiom, not of the TTL route to the number.
+- **Diversity is measured on acknowledged unicasts only.** Broadcast frames are
+  never acknowledged; that is correct here (routing control must not count as a
+  used data path) but it also means a protocol that delivered data over
+  broadcast would read 0. None of the four does.
+- **Diversity aggregates over every relay, not just sources.** A cell is a
+  (node, destination, window) triple, so a node forwarding for one destination
+  in a window contributes a 1 whatever the source is doing. That is the
+  intended reading — AntHocNet spreads at every hop — but it means the mean is
+  diluted by relays that saw only one packet in a window.
+- **NS-3 only.** The NS-2 adapter has no equivalent instrumentation; see
+  [cross-validation.md](../cross-validation.md).
+
 ## Energy (#209, NS-3 only)
 
 Radio energy comes from an ns-3 `BasicEnergySource` on every node plus a

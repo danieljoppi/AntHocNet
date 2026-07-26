@@ -19,7 +19,11 @@
  * breakdown (#215): why the packets PDR is missing went missing — L3 route
  * failure, interface-queue overflow, MAC retry exhaustion, channel loss and TTL
  * expiry, measured identically for all four protocols and summing with PDR to
- * ~100% of offered packets.
+ * ~100% of offered packets,
+ * and route quality
+ * (#217): the hop count actually traversed by delivered packets, the number of
+ * distinct next hops that actually *carried* data per destination (the direct
+ * measurement of multipath), and Jain's fairness index across the flows.
  * Fair comparison: the RNG run is reset before each protocol so every protocol
  * sees the identical mobility/traffic realisation, and NRL is counted uniformly
  * for every protocol from the IP layer.
@@ -53,6 +57,9 @@
 // #215 drop causes: Ipv4FlowProbe::DropReason indexes FlowStats::packetsDropped;
 // LlcSnapHeader is what a wifi MPDU carries above the MAC header.
 #include "ns3/ipv4-flow-probe.h"
+// #217 path diversity: the WifiMac "AckedMpdu" trace carries the MPDU whose
+// 802.11 header names the next hop; above that MAC header a wifi frame carries
+// an LLC/SNAP header before the IP header.
 #include "ns3/llc-snap-header.h"
 
 // #209: BasicEnergySource lives in the energy module; WifiRadioEnergyModel and
@@ -71,6 +78,7 @@
 #include <cstdint>
 #include <iomanip>
 #include <map>
+#include <utility>
 #include <vector>
 
 using namespace ns3;
@@ -294,6 +302,139 @@ constexpr double kDefaultVoltageV = 3.0;
 // longer runs; lower it deliberately to provoke node deaths.
 constexpr double kDefaultEnergyJ = 5000.0;
 
+// --- route quality: path length, path diversity, fairness (#217) ------------
+// AntHocNet's defining property is that it lays and maintains *multiple* paths,
+// and until now the harness measured nothing about paths at all: `a2 = 2.0`
+// (antAcceptanceFactorNewHop) exists in the 2007 thesis specifically to buy
+// disjoint paths and shipped in v1.1.0 evaluated on PDR/delay/NRL alone.
+// Everything below is measured protocol-agnostically, from ns-3's own traces,
+// for all four arms — the single-path baselines are the instrumentation's
+// self-check, not a blank column.
+
+// PATH LENGTH — hop count actually traversed by *delivered* data packets.
+// Taken from the IP TTL seen at the destination's Ipv4L3Protocol "LocalDeliver"
+// hook: every real forwarding hop runs through Ipv4L3Protocol::IpForward, which
+// decrements the TTL exactly once, so
+//     hops = (initial TTL - TTL at delivery) + 1
+// counts transmissions, i.e. a neighbour delivery is 1 hop. Equivalent to
+// FlowMonitor's FlowStats::timesForwarded + 1 (which accumulates only for
+// delivered packets), but per packet rather than per flow — which is what makes
+// the *maximum* available, and FlowMonitor exposes only the sum.
+//
+// The initial TTL is ns-3's Ipv4L3Protocol "DefaultTtl" attribute default, 64,
+// unchanged across the 3.36-3.48 CI matrix; nothing here sets a SocketIpTtlTag,
+// so every data packet starts there. CAVEAT (documented in
+// docs/benchmarks/metrics.md): a reactive protocol that has no route yet bounces
+// the packet through the loopback device to reach RouteInput (AODV and this
+// adapter both do), and the resolved packet then leaves via IpForward — one
+// extra TTL decrement that no radio ever carried. Those packets therefore read
+// one hop high, so for anthocnet/aodv the mean is a slight over-estimate,
+// bounded by (route discoveries)/(delivered packets). FlowMonitor's
+// timesForwarded counts that same bounce, so this is not a defect of the TTL
+// route specifically.
+constexpr uint8_t kIpDefaultTtl = 64;
+uint64_t g_hopSum = 0;    // sum of hop counts over delivered data packets
+uint64_t g_hopCount = 0;  // delivered data packets seen at LocalDeliver
+uint32_t g_hopMax = 0;
+
+// PATH DIVERSITY (used, not available). The issue is explicit about the
+// definition and it matters: pheromone entries above `minPheromone` are
+// *available* paths, and a table full of pheromone that data never uses would
+// read as diversity that does not exist. What is counted here is the number of
+// distinct next hops that actually **carried a data packet**, per (node,
+// destination) pair, within a time window.
+//
+// The window is load-bearing. Over a whole run a single-path protocol also
+// touches several next hops for one destination — sequentially, as routes break
+// and are rediscovered — so a whole-run count would credit AODV with
+// "multipath" it does not have. Diversity is *concurrency*, so it is measured
+// per (node, destination, window) cell and averaged over the cells that carried
+// data. At the default 10 s window the baselines read ~1 (the residual excess
+// above 1 is sequential route replacement inside one window, which is route
+// churn, not spreading), while AntHocNet's stochastic spreading shows up
+// immediately.
+//
+// Source: the WifiMac "AckedMpdu" trace. It fires at the transmitter for each
+// unicast MPDU the next hop acknowledged, and its 802.11 header's Addr1 *is*
+// the next hop — the only address-bearing transmit hook ns-3 offers uniformly
+// to all four protocols (the Ipv4L3Protocol traces do not carry the gateway).
+// "Acked" also makes "carried" literal: a frame the next hop never received is
+// not a path that was used. The AntHocNet adapter already relies on this same
+// trace across the whole CI matrix (#68), so its availability is established.
+constexpr double kDefaultPathWindowS = 10.0;
+double   g_pathWindowS = kDefaultPathWindowS;
+uint64_t g_divWindow = 0;  // index of the window g_divCur is accumulating
+// (node index, destination IPv4) -> next-hop MAC (packed) -> data packets.
+// Holds the current window only and is flushed into the accumulators when time
+// crosses into the next one, so memory stays bounded however long the run is.
+std::map<std::pair<uint32_t, uint32_t>, std::map<uint64_t, uint32_t>> g_divCur;
+uint64_t g_divCells = 0;   // (node, dest, window) cells that carried data
+double   g_divSum = 0.0;   // sum over cells of distinct used next hops
+double   g_divEntSum = 0.0;  // sum over cells of the split's Shannon entropy
+uint32_t g_divMax = 0;     // most distinct next hops seen in any one cell
+
+void FlushDiversityWindow() {
+    for (const auto& cell : g_divCur) {
+        uint64_t total = 0;
+        for (const auto& kv : cell.second) total += kv.second;
+        if (total == 0) continue;
+        double entropy = 0.0;
+        for (const auto& kv : cell.second) {
+            const double p = static_cast<double>(kv.second) / total;
+            if (p > 0.0) entropy -= p * std::log(p) / std::log(2.0);
+        }
+        const uint32_t k = static_cast<uint32_t>(cell.second.size());
+        ++g_divCells;
+        g_divSum += k;
+        g_divEntSum += entropy;
+        if (k > g_divMax) g_divMax = k;
+    }
+    g_divCur.clear();
+}
+
+void CountAckedDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
+    if (!mpdu) return;
+    Ptr<Packet> pkt = mpdu->GetPacket()->Copy();
+    LlcSnapHeader llc;
+    if (pkt->GetSize() < llc.GetSerializedSize()) return;
+    pkt->RemoveHeader(llc);
+    if (llc.GetType() != 0x0800) return;  // not IPv4
+    Ipv4Header ip;
+    if (pkt->RemoveHeader(ip) == 0) return;
+    if (ip.GetProtocol() != 17) return;  // not UDP; routing control here is UDP
+    UdpHeader udp;
+    if (pkt->PeekHeader(udp) == 0) return;
+    // Data only: routing control is exactly what must NOT count as a used path.
+    if (udp.GetDestinationPort() != kDataPort) return;
+    const uint64_t window =
+        static_cast<uint64_t>(Simulator::Now().GetSeconds() / g_pathWindowS);
+    if (window != g_divWindow) {
+        FlushDiversityWindow();
+        g_divWindow = window;
+    }
+    uint8_t mac[6] = {0, 0, 0, 0, 0, 0};
+    mpdu->GetHeader().GetAddr1().CopyTo(mac);
+    uint64_t nextHop = 0;
+    for (int i = 0; i < 6; ++i) nextHop = (nextHop << 8) | mac[i];
+    g_divCur[std::make_pair(node, ip.GetDestination().Get())][nextHop] += 1;
+}
+
+// Ipv4L3Protocol "LocalDeliver": one call per packet handed to the local
+// transport, i.e. exactly the delivered packets PDR counts. The header arrives
+// with the TTL the packet carried on the wire.
+void CountDeliveredHops(const Ipv4Header& ip, Ptr<const Packet> p, uint32_t) {
+    if (ip.GetProtocol() != 17) return;
+    UdpHeader udp;
+    if (p->PeekHeader(udp) == 0) return;
+    if (udp.GetDestinationPort() != kDataPort) return;
+    const uint8_t ttl = ip.GetTtl();
+    const uint32_t hops =
+        ttl < kIpDefaultTtl ? static_cast<uint32_t>(kIpDefaultTtl - ttl) + 1u : 1u;
+    g_hopSum += hops;
+    ++g_hopCount;
+    if (hops > g_hopMax) g_hopMax = hops;
+}
+
 void SampleQueues(NodeContainer nodes, double period, double until) {
     for (uint32_t i = 0; i < nodes.GetN(); ++i) {
         const uint32_t q = NodeMacBacklog(nodes.Get(i));
@@ -325,6 +466,9 @@ struct Params {
     double   energyJ;         // initial energy per node (J)
     double   voltageV;        // supply voltage (V)
     double   txCurrentA, rxCurrentA, idleCurrentA;
+    // #217: window over which "distinct next hops used for a destination" is
+    // counted (s). See the path-diversity block above main().
+    double   pathWindowS;
 };
 
 struct Result {
@@ -368,6 +512,15 @@ struct Result {
     double dropReconvPct = -1.0; // AntHocNet: pending-queue loss, route lost
     double dropRepairPct = -1.0; // AntHocNet: DiscardPending after a failed repair
     double dropOtherPct  = 0.0;  // L3 drops in none of the buckets above (diag)
+    // #217 route quality. hops* are 0 when nothing was delivered and div*/
+    // entropy are 0 when no data hop was ever acked, matching the `nrl` and
+    // `energy_per_pkt_j` convention for an empty denominator.
+    double hopsMean = 0.0;       // mean hop count over delivered data packets
+    double hopsMax = 0.0;        // max hop count over delivered data packets
+    double divUsed = 0.0;        // mean distinct *used* next hops per cell
+    double divMax = 0.0;         // max distinct used next hops in any one cell
+    double divEntropyBits = 0.0; // mean Shannon entropy (bits) of the split
+    double jain = 0.0;           // Jain's index over per-flow delivered packets
 };
 
 Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
@@ -386,6 +539,15 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_firstDeathS = -1.0;
     g_rxSeq.clear();
     g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;  // #215
+    // #217
+    g_hopSum = g_hopCount = 0;
+    g_hopMax = 0;
+    g_pathWindowS = P.pathWindowS;
+    g_divWindow = 0;
+    g_divCur.clear();
+    g_divCells = 0;
+    g_divSum = g_divEntSum = 0.0;
+    g_divMax = 0;
 
     NodeContainer nodes;
     nodes.Create(P.nNodes);
@@ -525,6 +687,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         if (l3) {
             l3->TraceConnectWithoutContext("Tx", MakeCallback(&CountDataHopTx));
             l3->TraceConnectWithoutContext("Rx", MakeCallback(&CountDataHopRx));
+            // #217 path length: TTL of every locally delivered data packet.
+            l3->TraceConnectWithoutContext("LocalDeliver",
+                                           MakeCallback(&CountDeliveredHops));
         }
     }
     for (uint32_t i = 0; i < devices.GetN(); ++i) {
@@ -533,9 +698,17 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // TraceConnect returns false if the source is absent on this ns-3
         // release; tolerated, exactly as the adapter's detector D does — the
         // MAC column then reads 0 and its share lands in channel loss.
+        // #217 path diversity: the next hop of every data frame the MAC got an
+        // ack for, bound to the transmitting node. `devices` is index-aligned
+        // with `nodes` (one wifi device per node), so `i` names the transmitter.
+        // The same tolerance applies — the diversity columns then read 0, which
+        // scenario_check.py FAILs whenever PDR is non-zero rather than letting a
+        // silently-missing trace pass as "no multipath".
         if (wmac) {
             wmac->TraceConnectWithoutContext("DroppedMpdu",
                                              MakeCallback(&CountMacDataDrop));
+            wmac->TraceConnectWithoutContext(
+                "AckedMpdu", MakeBoundCallback(&CountAckedDataHop, i));
         }
     }
 
@@ -649,6 +822,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     Simulator::Run();
 
     monitor->CheckForLostPackets();
+    // #217: fold the window still open at Simulator::Stop() into the diversity
+    // accumulators, or the last (up to) --pathWindowS seconds are dropped.
+    FlushDiversityWindow();
     Result r;
     r.proto = proto;
     double totalDelay = 0.0;
@@ -663,6 +839,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // Ipv4FlowProbe::DropReason and grows the vector lazily, so every read is
     // bounds-checked.
     uint64_t dropRoute = 0, dropTtl = 0, dropQueue = 0, dropL3Total = 0;
+    // #217: per-flow delivered-packet counts, for Jain's fairness index.
+    std::vector<double> flowRx;
     // Restrict the delivery/delay/throughput metrics to the CBR *data* flows
     // (dest port kDataPort). FlowMonitor also classifies the routing-control
     // flows, which must not count toward PDR.
@@ -678,6 +856,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         totalRxBytes += kv.second.rxBytes;
         totalJitter += kv.second.jitterSum.GetSeconds();
         if (kv.second.rxPackets > 0) jitterSamples += kv.second.rxPackets - 1;
+        // #217: one entry per data flow that offered at least one packet.
+        if (kv.second.txPackets > 0) {
+            flowRx.push_back(static_cast<double>(kv.second.rxPackets));
+        }
         // Copy: Histogram's accessors are non-const in older ns-3 (<=3.36).
         Histogram h = kv.second.delayHistogram;
         for (uint32_t b = 0; b < h.GetNBins(); ++b) {
@@ -940,6 +1122,37 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         r.dropOtherPct = 100.0 * other / tx;
     }
 
+    // #217 route quality.
+    r.hopsMean = g_hopCount
+        ? static_cast<double>(g_hopSum) / static_cast<double>(g_hopCount) : 0.0;
+    r.hopsMax = static_cast<double>(g_hopMax);
+    r.divUsed = g_divCells ? g_divSum / static_cast<double>(g_divCells) : 0.0;
+    r.divEntropyBits =
+        g_divCells ? g_divEntSum / static_cast<double>(g_divCells) : 0.0;
+    r.divMax = static_cast<double>(g_divMax);
+    // Jain's fairness index over per-flow delivered-packet counts:
+    //     J = (sum x_i)^2 / (n * sum x_i^2),  J in (0, 1], J = 1/n at maximum
+    // unfairness (one flow gets everything), J = 1 when every flow gets the
+    // same. n is the number of source applications actually installed, so a
+    // flow so starved that not one of its packets ever reached the IP layer
+    // (its socket send failed for want of a route, which FlowMonitor never
+    // sees) still counts as a zero rather than vanishing from the index — that
+    // starved flow is the whole point of the metric. Equivalently computed over
+    // per-flow throughput: every flow here sends the same 64-byte payload, so
+    // the throughput vector is a scalar multiple of the packet-count vector and
+    // Jain is scale-invariant. One column, both readings.
+    {
+        std::vector<double> x = flowRx;
+        while (x.size() < apps.GetN()) x.push_back(0.0);
+        double sum = 0.0, sumSq = 0.0;
+        for (double v : x) {
+            sum += v;
+            sumSq += v * v;
+        }
+        r.jain = (!x.empty() && sumSq > 0.0)
+            ? (sum * sum) / (static_cast<double>(x.size()) * sumSq) : 0.0;
+    }
+
     // Diagnostics line (prefixed "# " so CSV consumers ignore it). Shows whether
     // routes form (reactive ants sent vs received elsewhere; back-ant arrivals)
     // and when the first packet is delivered.
@@ -1153,6 +1366,13 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("rxCurrentA", "Radio receive current (A)", rxCurrentA);
     cmd.AddValue("idleCurrentA", "Radio idle current (A); also applied to the "
                                  "CCA-busy and switching states", idleCurrentA);
+    // #217: the window over which concurrently-used next hops are counted.
+    // Carried into the CSV (path_div_window_s) because it defines what the
+    // diversity number means — see the path-diversity block above main().
+    double pathWindowS = kDefaultPathWindowS;
+    cmd.AddValue("pathWindowS", "Window (s) over which distinct next hops used "
+                                "for a destination are counted as concurrent "
+                                "paths (#217); default 10", pathWindowS);
     cmd.Parse(argc, argv);
 
     // 'paper' = the Broch/CMU MobiCom'98 field (the literature *calibration*
@@ -1215,6 +1435,7 @@ int main(int argc, char* argv[]) {
     P.txCurrentA = txCurrentA;
     P.rxCurrentA = rxCurrentA;
     P.idleCurrentA = idleCurrentA;
+    P.pathWindowS = pathWindowS > 0.0 ? pathWindowS : kDefaultPathWindowS;
 
     // 1 ms delay bins for the 99th-percentile computation.
     Config::SetDefault("ns3::FlowMonitor::DelayBinWidth", DoubleValue(0.001));
@@ -1254,6 +1475,11 @@ int main(int argc, char* argv[]) {
         double dropRoute = 0, dropQueue = 0, dropMac = 0, dropChan = 0, dropTtl = 0;
         double dropSetup = 0, dropReconv = 0, dropRepair = 0, dropOther = 0;
         bool dropNa = false;
+        // #217: route-quality means across runs. hopsMax/divMax are averaged
+        // like every other column rather than maxed, so they stay comparable
+        // with the per-run rows and with the mean columns beside them.
+        double hopsMean = 0, hopsMax = 0;
+        double divUsed = 0, divMax = 0, divEntropy = 0, jain = 0;
     };
     std::vector<Agg> agg(list.size());
     for (std::size_t i = 0; i < list.size(); ++i) {
@@ -1322,6 +1548,12 @@ int main(int argc, char* argv[]) {
                 agg[i].dropReconv += r.dropReconvPct;
                 agg[i].dropRepair += r.dropRepairPct;
             }
+            agg[i].hopsMean += r.hopsMean;
+            agg[i].hopsMax += r.hopsMax;
+            agg[i].divUsed += r.divUsed;
+            agg[i].divMax += r.divMax;
+            agg[i].divEntropy += r.divEntropyBits;
+            agg[i].jain += r.jain;
         }
         agg[i].pdr /= runs;
         agg[i].delay /= runs;
@@ -1357,6 +1589,12 @@ int main(int argc, char* argv[]) {
             agg[i].dropReconv /= runs;
             agg[i].dropRepair /= runs;
         }
+        agg[i].hopsMean /= runs;
+        agg[i].hopsMax /= runs;
+        agg[i].divUsed /= runs;
+        agg[i].divMax /= runs;
+        agg[i].divEntropy /= runs;
+        agg[i].jain /= runs;
         if (runs > 1) {
             auto sd = [runs](double sum, double sumSq) {
                 const double mean = sum / runs;
@@ -1386,7 +1624,10 @@ int main(int argc, char* argv[]) {
         // causes (which sum with pdr_pct to ~100), then the three AntHocNet-only
         // ones, which are a sub-breakdown of drop_route_pct and are **blank**
         // for the other protocols (blank = the cause does not exist there;
-        // 0 would mean it exists and never fired).
+        // 0 would mean it exists and never fired), then #217 route
+        // quality (hop count of delivered packets, *used* next-hop diversity
+        // and the entropy of that split, the window those are counted over,
+        // and Jain's fairness index across flows).
         std::cout << "protocol,runs,nNodes,area,speed,flows,pdr_pct,delay_ms,"
                      "throughput_kbps,delay99_ms,nrl,jitter_ms,delay_off50_ms,"
                      "delay_off90_ms,pdr_sd,delay_sd,delay99_sd,nrl_sd,"
@@ -1397,7 +1638,10 @@ int main(int argc, char* argv[]) {
                      "reorder_buf_max,drop_route_pct,drop_queue_pct,"
                      "drop_mac_pct,"
                      "drop_chan_pct,drop_ttl_pct,drop_setup_pct,"
-                     "drop_reconv_pct,drop_repair_pct\n";
+                     "drop_reconv_pct,drop_repair_pct,"
+                     "path_hops_mean,path_hops_max,"
+                     "path_div_used,path_div_max,path_entropy_bits,"
+                     "path_div_window_s,jain_pkts\n";
         std::cout << std::fixed;
         // Blank, not zero, when a cause does not apply to this protocol (#215).
         auto optPct = [](double v) {
@@ -1441,7 +1685,14 @@ int main(int argc, char* argv[]) {
                       << std::setprecision(3) << agg[i].dropTtl << ','
                       << optPct(agg[i].dropSetup) << ','
                       << optPct(agg[i].dropReconv) << ','
-                      << optPct(agg[i].dropRepair) << '\n';
+                      << optPct(agg[i].dropRepair) << ','
+                      << std::setprecision(2) << agg[i].hopsMean << ','
+                      << std::setprecision(1) << agg[i].hopsMax << ','
+                      << std::setprecision(3) << agg[i].divUsed << ','
+                      << std::setprecision(1) << agg[i].divMax << ','
+                      << std::setprecision(3) << agg[i].divEntropy << ','
+                      << std::setprecision(1) << P.pathWindowS << ','
+                      << std::setprecision(4) << agg[i].jain << '\n';
         }
         return 0;
     }
@@ -1460,14 +1711,17 @@ int main(int argc, char* argv[]) {
     // appending here cannot disturb it. The remaining #209 numbers (residual
     // spread, first death) go on the '# energy' lines below, the way #28's
     // dispersion does, rather than widening the fixed-width table further.
+    // #217 appends two more headline columns (mean hop count, Jain's fairness);
+    // used-next-hop diversity and its entropy go on the '# paths' lines.
     std::cout << std::left << std::setw(12) << "protocol"
               << std::right << std::setw(8) << "PDR%" << std::setw(11) << "delay(ms)"
               << std::setw(13) << "delay99(ms)" << std::setw(13) << "thrput(kbps)"
               << std::setw(8) << "NRL"
               << std::setw(12) << "jitter(ms)" << std::setw(12) << "dOff50(ms)"
               << std::setw(12) << "dOff90(ms)" << std::setw(12) << "nrlBytes"
-              << std::setw(12) << "energy(J)" << std::setw(12) << "J/pkt" << "\n";
-    std::cout << std::string(137, '-') << "\n";
+              << std::setw(12) << "energy(J)" << std::setw(12) << "J/pkt"
+              << std::setw(12) << "hops" << std::setw(12) << "jain" << "\n";
+    std::cout << std::string(161, '-') << "\n";
     for (std::size_t i = 0; i < list.size(); ++i) {
         std::cout << std::left << std::setw(12) << list[i] << std::right << std::fixed
                   << std::setw(8) << std::setprecision(1) << agg[i].pdr
@@ -1483,6 +1737,23 @@ int main(int argc, char* argv[]) {
         std::cout << std::setw(12) << std::setprecision(3) << agg[i].nrlBytes
                   << std::setw(12) << std::setprecision(1) << agg[i].energy
                   << std::setw(12) << std::setprecision(4) << agg[i].energyPerPkt
+                  << std::setw(12) << std::setprecision(2) << agg[i].hopsMean
+                  << std::setw(12) << std::setprecision(4) << agg[i].jain
+                  << "\n";
+    }
+    // #217 path detail: used-path diversity (distinct next hops that actually
+    // carried data for a destination, within a --pathWindowS window), the
+    // entropy of that split, and the longest delivered path. divUsed ~1 with
+    // entropy ~0 is a single-path protocol — the expected reading for aodv,
+    // olsr and dsdv, and the instrumentation's self-check.
+    for (std::size_t i = 0; i < list.size(); ++i) {
+        std::cout << std::fixed << "# paths " << list[i]
+                  << " divUsed=" << std::setprecision(3) << agg[i].divUsed
+                  << " divMax=" << std::setprecision(1) << agg[i].divMax
+                  << " entropyBits=" << std::setprecision(3) << agg[i].divEntropy
+                  << " windowS=" << std::setprecision(1) << P.pathWindowS
+                  << " hopsMean=" << std::setprecision(2) << agg[i].hopsMean
+                  << " hopsMax=" << std::setprecision(1) << agg[i].hopsMax
                   << "\n";
     }
     // #209 energy detail: residual-energy spread across nodes (the fairness

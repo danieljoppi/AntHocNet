@@ -36,6 +36,11 @@ ANCHORS_YML = os.path.normpath(
 ANCHOR_KEY = {"single-hop": "single_hop_pdr_min",
               "broch-low-mobility": "broch_low_mobility_aodv_pdr_min"}
 
+# #217: core Config::maxPathLength — the cap on the visited path an ant carries
+# and therefore on any path the protocol can lay. A delivered data packet
+# reported above it is an instrumentation error, not a long route.
+MAX_PATH_LENGTH = 100
+
 ROW = re.compile(r"^\s*(?:##BENCH##\s+)?([a-z][\w-]*)((?:\s+[-\d.]+|\s+inf)+)\s*$")
 
 issues = []
@@ -122,6 +127,11 @@ def parse_results(path):
     **blank** for the other protocols (the cause does not exist there, as
     opposed to existing and measuring zero); a blank parses to None and is
     skipped, exactly like an absent column.
+
+    Route-quality fields (#217) are likewise post-instrumentation and skipped
+    when absent. The results table carries the two headline columns (hops,
+    jain) at positions 12/13; used-path diversity and its entropy live in the
+    CSV only (the human output puts them on a '# paths' line).
     """
     with open(path) as fh:
         text = fh.read()
@@ -150,7 +160,13 @@ def parse_results(path):
                    "drop_ttl": r.get("drop_ttl_pct"),
                    "drop_setup": r.get("drop_setup_pct"),
                    "drop_reconv": r.get("drop_reconv_pct"),
-                   "drop_repair": r.get("drop_repair_pct")}
+                   "drop_repair": r.get("drop_repair_pct"),
+                   "hops": r.get("path_hops_mean"),
+                   "hops_max": r.get("path_hops_max"),
+                   "div": r.get("path_div_used"),
+                   "div_max": r.get("path_div_max"),
+                   "entropy": r.get("path_entropy_bits"),
+                   "jain": r.get("jain_pkts")}
         return
     for line in text.splitlines():
         m = ROW.match(line)
@@ -167,6 +183,9 @@ def parse_results(path):
         if len(nums) >= 11:  # #209: ... nrlBytes, energy(J), J/pkt
             row["energy"] = nums[9]
             row["energy_per_pkt"] = nums[10]
+        if len(nums) >= 13:  # #217: ... J/pkt, hops, jain
+            row["hops"] = nums[11]
+            row["jain"] = nums[12]
         yield row
 
 
@@ -306,6 +325,62 @@ def cmd_results(a):
                 report("WARN", f"{tag}: setup+reconv+repair {sum(sub):.2f} != "
                                f"drop_route_pct {route:.2f} — a pending-queue "
                                "exit path is not attributed")
+            # #217 route-quality plausibility. Absent columns (inputs predating
+            # the instrumentation) simply skip, as the energy rules do. A 0 is
+            # the "empty denominator" convention shared with nrl/J-per-packet:
+            # legitimate only when nothing was delivered, and a harness failure
+            # (trace not connected on this ns-3 release, hook never fired)
+            # whenever PDR is non-zero.
+            hops, hops_max = num("hops"), num("hops_max")
+            div, div_max = num("div"), num("div_max")
+            entropy, jain = num("entropy"), num("jain")
+            if hops is not None:
+                if hops < 0.0:
+                    report("FAIL", f"{tag}: negative path length ({hops})")
+                elif hops == 0.0 and pdr:
+                    report("FAIL", f"{tag}: mean path length 0 with PDR {pdr} — "
+                                   "packets delivered but no hop count "
+                                   "recorded")
+                elif hops > 0.0 and hops < 1.0:
+                    report("FAIL", f"{tag}: mean path length {hops} < 1 hop — "
+                                   "a delivered packet traverses at least one "
+                                   "transmission")
+                elif hops > MAX_PATH_LENGTH:
+                    report("FAIL", f"{tag}: mean path length {hops} exceeds "
+                                   f"maxPathLength ({MAX_PATH_LENGTH})")
+            if hops_max is not None:
+                if hops_max > MAX_PATH_LENGTH:
+                    report("FAIL", f"{tag}: max path length {hops_max} exceeds "
+                                   f"maxPathLength ({MAX_PATH_LENGTH})")
+                if hops is not None and hops_max and hops_max < hops:
+                    report("FAIL", f"{tag}: max path length {hops_max} < mean "
+                                   f"path length {hops}")
+            if div is not None:
+                if div == 0.0 and pdr:
+                    report("FAIL", f"{tag}: path diversity 0 with PDR {pdr} — "
+                                   "data was carried but no next hop was "
+                                   "attributed (MAC trace not connected?)")
+                elif div < 0.0 or (0.0 < div < 1.0):
+                    report("FAIL", f"{tag}: path diversity {div} < 1 — a "
+                                   "carried destination uses at least one "
+                                   "next hop")
+            if div_max is not None and div is not None and div_max and div_max < div:
+                report("FAIL", f"{tag}: max path diversity {div_max} < mean "
+                               f"path diversity {div}")
+            if entropy is not None:
+                if entropy < 0.0:
+                    report("FAIL", f"{tag}: negative path entropy ({entropy})")
+                elif div_max and div_max >= 1.0 and entropy > math.log2(div_max) + 0.01:
+                    report("FAIL", f"{tag}: path entropy {entropy} bits exceeds "
+                                   f"log2(max diversity {div_max})")
+            if jain is not None:
+                if not (0.0 <= jain <= 1.0 + 1e-9):
+                    report("FAIL", f"{tag}: Jain's fairness index {jain} "
+                                   "outside [0,1]")
+                elif jain == 0.0 and pdr:
+                    report("FAIL", f"{tag}: Jain's fairness index 0 with PDR "
+                                   f"{pdr} — packets delivered but no per-flow "
+                                   "counts")
             if floor is not None and r["proto"] == "aodv" and pdr is not None:
                 if pdr < floor:
                     report("FAIL", f"{tag}: anchor '{a.anchor}' floor "
