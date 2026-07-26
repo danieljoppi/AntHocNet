@@ -7,7 +7,10 @@
  * mean and 99th-percentile end-to-end delay, throughput, and normalized routing
  * load (NRL = routing-control packets transmitted / data packets delivered;
  * nrl_bytes is the byte-level counterpart, control bytes / delivered data
- * bytes, #132).
+ * bytes, #132), plus radio energy (#209): total joules consumed, joules per
+ * delivered packet, the residual-energy spread across nodes and the
+ * first-node-death time, from a BasicEnergySource + WifiRadioEnergyModel
+ * installed identically on every node for every protocol.
  * Fair comparison: the RNG run is reset before each protocol so every protocol
  * sees the identical mobility/traffic realisation, and NRL is counted uniformly
  * for every protocol from the IP layer.
@@ -34,6 +37,11 @@
 #include "ns3/ipv4-flow-classifier.h"
 #include "ns3/ipv4-l3-protocol.h"
 #include "ns3/udp-header.h"
+
+// #209: BasicEnergySource lives in the energy module; WifiRadioEnergyModel and
+// its helper live in the wifi module (already included above) in every ns-3 the
+// CI matrix covers — see the cross-version note in RunOne().
+#include "ns3/energy-module.h"
 
 #include "ns3/aodv-module.h"
 #include "ns3/olsr-module.h"
@@ -138,6 +146,59 @@ static uint32_t NodeMacBacklog(Ptr<Node> node) {
     return total;
 }
 
+// --- energy (#209) ----------------------------------------------------------
+// First-node-death time: the sim time at which the first node's energy source
+// raises ns-3's depletion event. BasicEnergySource fires that at
+// BasicEnergyLowBatteryThreshold (10% of initial energy remaining), not at
+// literally zero, and WifiRadioEnergyModel then stops drawing current — so
+// "death" here means "battery exhausted for routing purposes", which is the
+// operationally meaningful instant. Sentinel -1.0 = no node died this run,
+// which is the expected outcome at the default --energyJ (see kDefaultEnergyJ).
+double g_firstDeathS = -1.0;
+
+void OnEnergyDepleted() {
+    if (g_firstDeathS < 0.0) g_firstDeathS = Simulator::Now().GetSeconds();
+}
+
+// Radio energy parameters. These are ns-3's own WifiRadioEnergyModel /
+// BasicEnergySource defaults, restated here explicitly instead of being
+// inherited silently — docs/configuration.md's provenance rule, and this repo
+// has already been bitten three times by unsourced defaults (#88, #169, #173).
+//
+// PROVENANCE (from ns-3's src/wifi/model/wifi-radio-energy-model.h, verbatim
+// in every release from 3.36 to 3.48): the values come from the measurements
+// reported in D. Halperin, B. Greenstein, A. Sheth and D. Wetherall,
+// "Demystifying 802.11n power consumption", Proceedings of HotPower'10. The
+// modelled hardware is a **single-antenna 802.11n NIC**, measured at
+//   P_tx = 1.14 W (transmitting at 0 dBm), P_rx = 0.94 W,
+//   P_idle = 0.82 W, P_sleep = 0.10 W,
+// which at BasicEnergySource's 3.0 V default supply voltage give
+//   I_tx = 0.380 A, I_rx = 0.313 A, I_idle = 0.273 A, I_sleep = 0.033 A.
+// CcaBusy and Switching default to the idle current; Sleep is left at ns-3's
+// 0.033 A and never reached (AdhocWifiMac has no power-save state here).
+//
+// CAVEAT worth carrying into any claim made from these numbers: the modelled
+// NIC is 802.11n, while this harness runs 802.11b DCF at 2 Mbit/s (#51) — so
+// absolute joules are a consistent yardstick across the four protocols, not a
+// measurement of the paper's radio. --txCurrentA / --rxCurrentA /
+// --idleCurrentA / --voltageV re-target them.
+constexpr double kDefaultTxCurrentA = 0.380;
+constexpr double kDefaultRxCurrentA = 0.313;
+constexpr double kDefaultIdleCurrentA = 0.273;
+constexpr double kDefaultVoltageV = 3.0;
+
+// Initial energy per node (J). Deliberately sized so that no node dies during
+// a normal run: a dying node makes PDR energy-limited, and every other metric
+// in the taxonomy would silently change meaning. Bound: one node cannot draw
+// more than the tx current for the whole run, 0.380 A x 3.0 V = 1.14 W, so the
+// longest scenario the harness runs (900 s — --scenario=paper and =thesis)
+// cannot consume more than 1026 J per node; the realistic idle-dominated draw
+// is ~0.82 W, i.e. ~740 J. 5000 J is ~4.9x that hard upper bound (and covers
+// runs up to ~4380 s even if a node transmitted continuously), while staying a
+// physically plausible cell: 5000 J / 3.0 V = 463 mAh. Raise --energyJ for
+// longer runs; lower it deliberately to provoke node deaths.
+constexpr double kDefaultEnergyJ = 5000.0;
+
 void SampleQueues(NodeContainer nodes, double period, double until) {
     for (uint32_t i = 0; i < nodes.GetN(); ++i) {
         const uint32_t q = NodeMacBacklog(nodes.Get(i));
@@ -165,6 +226,10 @@ struct Params {
     std::string rateManager;  // "constant2" (paper's 2 Mbit/s radio, default) | ... (#51)
     int32_t  sink;            // >=0: all flows converge on this node (gateway
                               // hotspot, #71); <0: default i->(n-1-i) pairing.
+    // #209 energy model (see the provenance block above main()).
+    double   energyJ;         // initial energy per node (J)
+    double   voltageV;        // supply voltage (V)
+    double   txCurrentA, rxCurrentA, idleCurrentA;
 };
 
 struct Result {
@@ -181,6 +246,13 @@ struct Result {
     double jitterMs = 0.0;       // mean delay jitter (the paper's QoS metric)
     double dOff50Ms = -1.0;      // delay at the 50th pct of *offered* (sent)
     double dOff90Ms = -1.0;      // packets, undelivered = inf; -1 encodes inf
+    // #209 energy:
+    double energyJ = 0.0;        // total consumed over all nodes (J)
+    double energyPerPktJ = 0.0;  // energyJ / delivered data packets (J/pkt)
+    double resMinJ = 0.0;        // residual energy across nodes: min / mean /
+    double resMeanJ = 0.0;       // sample stddev (J) — the fairness spread
+    double resSdJ = 0.0;
+    double firstDeathS = -1.0;   // -1 = no node died (see OnEnergyDepleted)
 };
 
 Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
@@ -196,6 +268,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_flowFirstRx.clear();
     g_qCount = g_qNonzero = g_qMax = 0;
     g_qSum = 0.0;
+    g_firstDeathS = -1.0;
 
     NodeContainer nodes;
     nodes.Create(P.nNodes);
@@ -246,6 +319,45 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     WifiMacHelper mac;
     mac.SetType("ns3::AdhocWifiMac");
     NetDeviceContainer devices = wifi.Install(phy, mac, nodes);
+
+    // --- energy model (#209) -------------------------------------------------
+    // A BasicEnergySource on every node (linear drain at a constant supply
+    // voltage) plus a WifiRadioEnergyModel on every wifi device (per-PHY-state
+    // current draw). Installed here — before the routing stack, from the same
+    // parameters, for every protocol — so the joule figures are comparable
+    // across arms exactly the way PDR/NRL already are.
+    //
+    // Cross-version API note (ns-3.36..3.48, the CI matrix in ci.yml): in
+    // **ns-3.42** the energy module's classes moved into namespace
+    // `ns3::energy` (EnergySource, BasicEnergySource, EnergySourceContainer,
+    // DeviceEnergyModel, DeviceEnergyModelContainer) — 3.36..3.41 have them in
+    // plain `ns3`. What did *not* move: the helpers (EnergySourceHelper,
+    // BasicEnergySourceHelper, DeviceEnergyModelHelper,
+    // WifiRadioEnergyModelHelper) are in `ns3` across the whole range, and
+    // WifiRadioEnergyModel itself has lived in the **wifi** module in namespace
+    // `ns3` for the whole range too. So this block names only helpers and lets
+    // `auto` carry every relocated type; that is why it needs no AHN_*/
+    // ANTHOCNET_NS3_* version macro. Do NOT spell out `EnergySourceContainer`
+    // or `Ptr<EnergySource>` here — that is precisely what would break half the
+    // matrix. Attribute names and their defaults are identical across 3.36-3.48
+    // (checked against each release's basic-energy-source.cc /
+    // wifi-radio-energy-model.cc).
+    BasicEnergySourceHelper energySources;
+    energySources.Set("BasicEnergySourceInitialEnergyJ", DoubleValue(P.energyJ));
+    energySources.Set("BasicEnergySupplyVoltageV", DoubleValue(P.voltageV));
+    auto sources = energySources.Install(nodes);
+    WifiRadioEnergyModelHelper radioEnergy;
+    radioEnergy.Set("TxCurrentA", DoubleValue(P.txCurrentA));
+    radioEnergy.Set("RxCurrentA", DoubleValue(P.rxCurrentA));
+    // ns-3 defaults CcaBusy and Switching to the idle current; keep that tie so
+    // that --idleCurrentA moves the whole non-tx/rx draw instead of a third of
+    // it (the radio is idle or CCA-busy for almost the entire run, so a
+    // half-applied override would silently dominate the result).
+    radioEnergy.Set("IdleCurrentA", DoubleValue(P.idleCurrentA));
+    radioEnergy.Set("CcaBusyCurrentA", DoubleValue(P.idleCurrentA));
+    radioEnergy.Set("SwitchingCurrentA", DoubleValue(P.idleCurrentA));
+    radioEnergy.SetDepletionCallback(MakeCallback(&OnEnergyDepleted));
+    radioEnergy.Install(devices, sources);
 
     MobilityHelper mobility;
     Ptr<UniformRandomVariable> ux = CreateObject<UniformRandomVariable>();
@@ -458,6 +570,48 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         r.dOff90Ms = offered(0.90);
     }
 
+    // #209 energy. Consumption is read as initial - remaining per source rather
+    // than from WifiRadioEnergyModel::GetTotalEnergyConsumption(): the source
+    // recomputes on demand (GetRemainingEnergy() calls UpdateEnergySource()),
+    // so it accounts for the final, still-open PHY state at Simulator::Stop(),
+    // and the accessor pair is identical across ns-3.36..3.48. Must run before
+    // Simulator::Destroy() — the sources die with the simulator.
+    {
+        std::vector<double> residual;
+        residual.reserve(sources.GetN());
+        double consumed = 0.0;
+        for (uint32_t i = 0; i < sources.GetN(); ++i) {
+            auto src = sources.Get(i);
+            const double rem = src->GetRemainingEnergy();
+            consumed += src->GetInitialEnergy() - rem;
+            residual.push_back(rem);
+        }
+        r.energyJ = consumed;
+        // Efficiency figure: joules spent per data packet actually delivered.
+        // Comparable across protocols sitting at different PDRs, which total
+        // joules alone is not (every node's radio is on for the same wall time
+        // whatever the protocol does). 0 when nothing was delivered, matching
+        // how nrl handles the same case.
+        r.energyPerPktJ = r.rxPackets
+            ? consumed / static_cast<double>(r.rxPackets) : 0.0;
+        if (!residual.empty()) {
+            double sum = 0.0, sumSq = 0.0;
+            r.resMinJ = residual[0];
+            for (double v : residual) {
+                sum += v;
+                sumSq += v * v;
+                if (v < r.resMinJ) r.resMinJ = v;
+            }
+            const double n = static_cast<double>(residual.size());
+            r.resMeanJ = sum / n;
+            if (residual.size() > 1) {
+                const double var = (sumSq - n * r.resMeanJ * r.resMeanJ) / (n - 1.0);
+                r.resSdJ = var > 0.0 ? std::sqrt(var) : 0.0;
+            }
+        }
+        r.firstDeathS = g_firstDeathS;
+    }
+
     // Diagnostics line (prefixed "# " so CSV consumers ignore it). Shows whether
     // routes form (reactive ants sent vs received elsewhere; back-ant arrivals)
     // and when the first packet is delivered.
@@ -647,6 +801,21 @@ int main(int argc, char* argv[]) {
                  "Rate control: constant1|constant2|constant5|constant11 (fixed "
                  "DSSS rate; default constant2, the paper's radio) | arf | ideal "
                  "(ns-3 default; loses ~50% single-hop, #51)", rateManager);
+    // #209 energy model. Defaults and their provenance: see the kDefault*
+    // block above. Overridable because they are modelling choices, not
+    // measurements of this scenario's radio.
+    double energyJ = kDefaultEnergyJ;
+    double voltageV = kDefaultVoltageV;
+    double txCurrentA = kDefaultTxCurrentA;
+    double rxCurrentA = kDefaultRxCurrentA;
+    double idleCurrentA = kDefaultIdleCurrentA;
+    cmd.AddValue("energyJ", "Initial energy per node (J); default 5000 is sized "
+                            "so no node dies in a 900 s run (#209)", energyJ);
+    cmd.AddValue("voltageV", "Energy-source supply voltage (V)", voltageV);
+    cmd.AddValue("txCurrentA", "Radio transmit current (A)", txCurrentA);
+    cmd.AddValue("rxCurrentA", "Radio receive current (A)", rxCurrentA);
+    cmd.AddValue("idleCurrentA", "Radio idle current (A); also applied to the "
+                                 "CCA-busy and switching states", idleCurrentA);
     cmd.Parse(argc, argv);
 
     // 'paper' = the Broch/CMU MobiCom'98 field (the literature *calibration*
@@ -704,6 +873,11 @@ int main(int argc, char* argv[]) {
     P.propagation = propagation;
     P.rateManager = rateManager;
     P.sink = sink;
+    P.energyJ = energyJ;
+    P.voltageV = voltageV;
+    P.txCurrentA = txCurrentA;
+    P.rxCurrentA = rxCurrentA;
+    P.idleCurrentA = idleCurrentA;
 
     // 1 ms delay bins for the 99th-percentile computation.
     Config::SetDefault("ns3::FlowMonitor::DelayBinWidth", DoubleValue(0.001));
@@ -727,6 +901,12 @@ int main(int argc, char* argv[]) {
         double pdrSq = 0, delaySq = 0, delay99Sq = 0, nrlSq = 0, nrlBytesSq = 0;
         bool off50Inf = false, off90Inf = false;
         double pdrSd = 0, delaySd = 0, delay99Sd = 0, nrlSd = 0, nrlBytesSd = 0;
+        // #209: energy means across runs. firstDeath is averaged over the runs
+        // that actually saw a death (deathRuns); -1 when no run did.
+        double energy = 0, energyPerPkt = 0;
+        double resMin = 0, resMean = 0, resSd = 0;
+        double firstDeath = 0;
+        uint32_t deathRuns = 0;
     };
     std::vector<Agg> agg(list.size());
     for (std::size_t i = 0; i < list.size(); ++i) {
@@ -768,6 +948,15 @@ int main(int argc, char* argv[]) {
             agg[i].nrlBytesSq += r.nrlBytes * r.nrlBytes;
             if (r.dOff50Ms < 0) agg[i].off50Inf = true; else agg[i].dOff50 += r.dOff50Ms;
             if (r.dOff90Ms < 0) agg[i].off90Inf = true; else agg[i].dOff90 += r.dOff90Ms;
+            agg[i].energy += r.energyJ;
+            agg[i].energyPerPkt += r.energyPerPktJ;
+            agg[i].resMin += r.resMinJ;
+            agg[i].resMean += r.resMeanJ;
+            agg[i].resSd += r.resSdJ;
+            if (r.firstDeathS >= 0.0) {
+                agg[i].firstDeath += r.firstDeathS;
+                ++agg[i].deathRuns;
+            }
         }
         agg[i].pdr /= runs;
         agg[i].delay /= runs;
@@ -778,6 +967,13 @@ int main(int argc, char* argv[]) {
         agg[i].jitter /= runs;
         agg[i].dOff50 = agg[i].off50Inf ? -1.0 : agg[i].dOff50 / runs;
         agg[i].dOff90 = agg[i].off90Inf ? -1.0 : agg[i].dOff90 / runs;
+        agg[i].energy /= runs;
+        agg[i].energyPerPkt /= runs;
+        agg[i].resMin /= runs;
+        agg[i].resMean /= runs;
+        agg[i].resSd /= runs;
+        agg[i].firstDeath = agg[i].deathRuns
+            ? agg[i].firstDeath / agg[i].deathRuns : -1.0;
         if (runs > 1) {
             auto sd = [runs](double sum, double sumSq) {
                 const double mean = sum / runs;
@@ -797,11 +993,16 @@ int main(int argc, char* argv[]) {
         // on it); later columns are append-only (consumers read by header name):
         // delay99_ms/nrl, then #57 jitter + offered-load percentiles (-1 = inf),
         // then #28 per-metric sample stddev across runs (0 when runs==1), then
-        // #132 nrl_bytes (control bytes / delivered data bytes).
+        // #132 nrl_bytes (control bytes / delivered data bytes), then #209
+        // energy (total consumed, per delivered packet, residual spread across
+        // nodes, the initial energy the run was configured with, and the
+        // first-node-death time with -1 = no node died).
         std::cout << "protocol,runs,nNodes,area,speed,flows,pdr_pct,delay_ms,"
                      "throughput_kbps,delay99_ms,nrl,jitter_ms,delay_off50_ms,"
                      "delay_off90_ms,pdr_sd,delay_sd,delay99_sd,nrl_sd,"
-                     "nrl_bytes\n";
+                     "nrl_bytes,energy_j,energy_per_pkt_j,energy_res_min_j,"
+                     "energy_res_mean_j,energy_res_sd_j,energy_init_j,"
+                     "first_death_s\n";
         std::cout << std::fixed;
         for (std::size_t i = 0; i < list.size(); ++i) {
             std::cout << list[i] << ',' << runs << ',' << P.nNodes << ','
@@ -819,7 +1020,14 @@ int main(int argc, char* argv[]) {
                       << std::setprecision(1) << agg[i].delaySd << ','
                       << std::setprecision(1) << agg[i].delay99Sd << ','
                       << std::setprecision(3) << agg[i].nrlSd << ','
-                      << std::setprecision(3) << agg[i].nrlBytes << '\n';
+                      << std::setprecision(3) << agg[i].nrlBytes << ','
+                      << std::setprecision(2) << agg[i].energy << ','
+                      << std::setprecision(4) << agg[i].energyPerPkt << ','
+                      << std::setprecision(2) << agg[i].resMin << ','
+                      << std::setprecision(2) << agg[i].resMean << ','
+                      << std::setprecision(3) << agg[i].resSd << ','
+                      << std::setprecision(2) << P.energyJ << ','
+                      << std::setprecision(1) << agg[i].firstDeath << '\n';
         }
         return 0;
     }
@@ -832,14 +1040,20 @@ int main(int argc, char* argv[]) {
     // First six fields (proto..NRL) are position-stable: the workflows' compact
     // ##BENCH## re-emit and bench_parse.py read them by position. The #57 QoS
     // columns (jitter, offered-load 90th pct) are appended to the right, then
-    // #132 nrl_bytes (control bytes / delivered data bytes) as the last column.
+    // #132 nrl_bytes (control bytes / delivered data bytes), then #209's two
+    // headline energy columns. paper-benchmark.yml's ##BENCH## awk re-emits
+    // fields $1..$10, so anything from nrlBytes rightwards is table-only —
+    // appending here cannot disturb it. The remaining #209 numbers (residual
+    // spread, first death) go on the '# energy' lines below, the way #28's
+    // dispersion does, rather than widening the fixed-width table further.
     std::cout << std::left << std::setw(12) << "protocol"
               << std::right << std::setw(8) << "PDR%" << std::setw(11) << "delay(ms)"
               << std::setw(13) << "delay99(ms)" << std::setw(13) << "thrput(kbps)"
               << std::setw(8) << "NRL"
               << std::setw(12) << "jitter(ms)" << std::setw(12) << "dOff50(ms)"
-              << std::setw(12) << "dOff90(ms)" << std::setw(12) << "nrlBytes" << "\n";
-    std::cout << std::string(113, '-') << "\n";
+              << std::setw(12) << "dOff90(ms)" << std::setw(12) << "nrlBytes"
+              << std::setw(12) << "energy(J)" << std::setw(12) << "J/pkt" << "\n";
+    std::cout << std::string(137, '-') << "\n";
     for (std::size_t i = 0; i < list.size(); ++i) {
         std::cout << std::left << std::setw(12) << list[i] << std::right << std::fixed
                   << std::setw(8) << std::setprecision(1) << agg[i].pdr
@@ -852,7 +1066,24 @@ int main(int argc, char* argv[]) {
             if (v < 0) std::cout << std::setw(12) << "inf";
             else std::cout << std::setw(12) << std::setprecision(1) << v;
         }
-        std::cout << std::setw(12) << std::setprecision(3) << agg[i].nrlBytes << "\n";
+        std::cout << std::setw(12) << std::setprecision(3) << agg[i].nrlBytes
+                  << std::setw(12) << std::setprecision(1) << agg[i].energy
+                  << std::setw(12) << std::setprecision(4) << agg[i].energyPerPkt
+                  << "\n";
+    }
+    // #209 energy detail: residual-energy spread across nodes (the fairness
+    // signal — a protocol that funnels traffic through one relay drains it
+    // first) and the first-node-death time (-1 = no node died, the expected
+    // case at the default --energyJ). '# ' prefix keeps these off the
+    // CSV/##BENCH## paths, same as the '# stddev' lines.
+    for (std::size_t i = 0; i < list.size(); ++i) {
+        std::cout << std::fixed << "# energy " << list[i]
+                  << " initJ=" << std::setprecision(1) << P.energyJ
+                  << " resMinJ=" << std::setprecision(1) << agg[i].resMin
+                  << " resMeanJ=" << std::setprecision(1) << agg[i].resMean
+                  << " resSdJ=" << std::setprecision(3) << agg[i].resSd
+                  << " firstDeathS=" << std::setprecision(1) << agg[i].firstDeath
+                  << "\n";
     }
     // #28 dispersion: '# ' prefix keeps these out of the CSV/##BENCH## paths.
     if (runs > 1) {

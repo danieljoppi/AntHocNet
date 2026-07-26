@@ -22,7 +22,10 @@ classifies all of them per scenario.
 
 Output CSV columns:
   kind,group,x,scenario,class,protocol,runs,nNodes,areaX,speed,pause,flows,
-  pdr_pct,delay_ms,delay99_ms,throughput_kbps,nrl
+  pdr_pct,delay_ms,delay99_ms,throughput_kbps,nrl,...,energy_j,
+  energy_per_pkt_j,energy_res_min_j,energy_res_mean_j,energy_res_sd_j,
+  energy_init_j,first_death_s   (see METRICS below for the full, append-only
+                                 list)
 
   kind   = "discrete" (named scenario) or "sweep" (one point of a sweep)
   group  = scenario name (discrete) or sweep name (area/pause/scale)
@@ -83,9 +86,19 @@ SWEEPS = {
 # (delay_off*_ms: -1 encodes infinity); *_sd are the #28 across-run stddevs;
 # nrl_bytes is the #132 byte-normalized routing load (empty for CSVs produced
 # before it existed — emit() defaults absent columns to "").
+# The energy_* / first_death_s columns are #209 (ns-3 only; NS-2 has no
+# equivalent, see docs/cross-validation.md): total joules consumed summed over
+# nodes, joules per delivered data packet, the residual-energy spread across
+# nodes at end of run, the initial per-node energy the run was configured with
+# (so residual <= initial is checkable downstream), and the first-node-death
+# time with -1 meaning no node died.
+# APPEND ONLY — sweep_summary.py and bench_parse.py read these by name.
 METRICS = ["pdr_pct", "delay_ms", "delay99_ms", "throughput_kbps", "nrl",
            "jitter_ms", "delay_off50_ms", "delay_off90_ms",
-           "pdr_sd", "delay_sd", "delay99_sd", "nrl_sd", "nrl_bytes"]
+           "pdr_sd", "delay_sd", "delay99_sd", "nrl_sd", "nrl_bytes",
+           "energy_j", "energy_per_pkt_j", "energy_res_min_j",
+           "energy_res_mean_j", "energy_res_sd_j", "energy_init_j",
+           "first_death_s"]
 PARAMS = ["runs", "nNodes", "area", "speed", "flows"]
 OUT_COLUMNS = (["kind", "group", "x", "scenario", "class", "protocol"]
                + ["runs", "nNodes", "areaX", "speed", "pause", "flows", "propagation"]

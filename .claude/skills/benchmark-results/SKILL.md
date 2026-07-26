@@ -154,6 +154,9 @@ python3 $S results --anchor broch-low-mobility cell.txt   # enforce #59 floor
 ln(n) connectivity threshold, offered load vs the pinned 2 Mbit/s channel
 (#84), `range ≥ area` single-hop degeneracy, short-sim and static-field
 warnings. `results` checks: PDR ∈ [0,100], delay99 ≥ mean delay, negative
-metrics, dead cells (#28), and — with `--anchor` — the AODV floors read from
+metrics, dead cells (#28), the #209 energy invariants (total energy positive
+and finite, energy-per-delivered-packet finite and non-negative — and non-zero
+whenever PDR is, residual energy within [0, initial]; all skipped for inputs
+predating energy instrumentation), and — with `--anchor` — the AODV floors read from
 `ns3/tools/anchors.yml` (never duplicated). A `results` FAIL is a #51-class
 harness regression: fix the harness before trusting any number from that run.

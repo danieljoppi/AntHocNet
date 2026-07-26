@@ -59,6 +59,22 @@ awk '
 To match the NS-3 scenario, set `val(nn)`, `val(x)`, `val(y)`, `val(stop)` and
 the CBR sources in the tcl to the same values you passed to `cross-check.sh`.
 
+## NS-3-only metrics
+
+Some columns of the NS-3 benchmark tables have **no NS-2 counterpart** and are
+therefore outside the scope of this comparison — they are properties of the
+NS-3 PHY/device model, not of the shared `core/` algorithm:
+
+- **Radio energy** (`energy_j`, `energy_per_pkt_j`, `energy_res_*_j`,
+  `first_death_s`; #209). These come from NS-3's energy framework
+  (`BasicEnergySource` + `WifiRadioEnergyModel`) installed on every node by
+  `anthocnet-compare`. The NS-2 adapter wires up no energy model at all, and
+  NS-2's own energy model is a different formulation on a different PHY, so
+  even after wiring one up the joule figures would not be comparable — as with
+  every other PHY-dependent divergence noted above. Do not attempt to
+  cross-validate energy; cross-validate the routing behaviour, and read the
+  energy caveats in [benchmarks/metrics.md](benchmarks/metrics.md).
+
 ## What "agreement" means
 
 Expect the same qualitative picture: routes are discovered after the first
