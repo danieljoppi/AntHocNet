@@ -25,7 +25,9 @@ Output CSV columns:
   pdr_pct,delay_ms,delay99_ms,throughput_kbps,nrl,...,energy_j,
   energy_per_pkt_j,energy_res_min_j,energy_res_mean_j,energy_res_sd_j,
   energy_init_j,first_death_s,reorder_ratio,reorder_ratio_max,
-  reorder_extent_mean,reorder_extent_max,reorder_buf_max
+  reorder_extent_mean,reorder_extent_max,reorder_buf_max,
+  drop_route_pct,drop_queue_pct,drop_mac_pct,
+  drop_chan_pct,drop_ttl_pct,drop_setup_pct,drop_reconv_pct,drop_repair_pct
                                 (see METRICS below for the full, append-only
                                  list)
 
@@ -99,6 +101,14 @@ SWEEPS = {
 # the reordering extent (mean/max, in packets) and the reorder-buffer occupancy
 # needed to restore order. Multipath reordering is expected AntHocNet behaviour;
 # see docs/benchmarks/metrics.md for the exact definitions.
+# The drop_*_pct columns are #215 (ns-3 only): why the packets PDR is missing
+# went missing, each as a percentage of *offered* packets. The five
+# protocol-agnostic causes (route / queue / mac / chan / ttl) are measured
+# identically for all four protocols and sum with pdr_pct to ~100 — a
+# discrepancy is a harness finding, and scenario_check.py results fails on it.
+# The three AntHocNet-only causes (setup / reconv / repair) are a sub-breakdown
+# of drop_route_pct and are deliberately **blank**, not 0, for protocols that
+# have no such cause.
 # APPEND ONLY — downstream consumers (make-charts.py, sweep_summary.py,
 # bench_parse.py, scenario_check.py) look these columns up by header name, so
 # appending is safe and reordering is not.
@@ -109,7 +119,10 @@ METRICS = ["pdr_pct", "delay_ms", "delay99_ms", "throughput_kbps", "nrl",
            "energy_res_mean_j", "energy_res_sd_j", "energy_init_j",
            "first_death_s",
            "reorder_ratio", "reorder_ratio_max", "reorder_extent_mean",
-           "reorder_extent_max", "reorder_buf_max"]
+           "reorder_extent_max", "reorder_buf_max",
+           "drop_route_pct", "drop_queue_pct", "drop_mac_pct", "drop_chan_pct",
+           "drop_ttl_pct", "drop_setup_pct", "drop_reconv_pct",
+           "drop_repair_pct"]
 PARAMS = ["runs", "nNodes", "area", "speed", "flows"]
 OUT_COLUMNS = (["kind", "group", "x", "scenario", "class", "protocol"]
                + ["runs", "nNodes", "areaX", "speed", "pause", "flows", "propagation"]

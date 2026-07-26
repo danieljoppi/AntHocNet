@@ -14,7 +14,12 @@
  * plus packet reordering (#212): the RFC 4737 out-of-order
  * delivery ratio, the reordering extent (mean/max) and the reorder-buffer
  * occupancy needed to restore order, measured per flow at the sink and then
- * aggregated.
+ * aggregated,
+ * and a per-cause drop
+ * breakdown (#215): why the packets PDR is missing went missing — L3 route
+ * failure, interface-queue overflow, MAC retry exhaustion, channel loss and TTL
+ * expiry, measured identically for all four protocols and summing with PDR to
+ * ~100% of offered packets.
  * Fair comparison: the RNG run is reset before each protocol so every protocol
  * sees the identical mobility/traffic realisation, and NRL is counted uniformly
  * for every protocol from the IP layer.
@@ -45,6 +50,10 @@
 // Part of the applications module (already included above) since ns-3.31, so it
 // is available across the whole CI matrix (3.36-3.48).
 #include "ns3/seq-ts-size-header.h"
+// #215 drop causes: Ipv4FlowProbe::DropReason indexes FlowStats::packetsDropped;
+// LlcSnapHeader is what a wifi MPDU carries above the MAC header.
+#include "ns3/ipv4-flow-probe.h"
+#include "ns3/llc-snap-header.h"
 
 // #209: BasicEnergySource lives in the energy module; WifiRadioEnergyModel and
 // its helper live in the wifi module (already included above) in every ns-3 the
@@ -112,6 +121,64 @@ void RecordRxSeq(Ptr<const Packet> p, const Address& from) {
     SeqTsSizeHeader h;
     p->PeekHeader(h);
     g_rxSeq[from].push_back(h.GetSeq());
+}
+
+// --- drop-cause breakdown (#215) --------------------------------------------
+// A lost packet used to be anonymous: PDR said how many went missing, nothing
+// said why. #173 needed a whole campaign to establish that its collapse was
+// channel loss rather than route failure; in a breakdown that is one column.
+//
+// The protocol-agnostic causes are measured here, in the simulator, for all
+// four protocols. Two of them are per-hop tallies at the IP layer — the same
+// counting point NRL uses:
+//   g_dataHopTx  data IP packets handed to a real interface for transmission
+//   g_dataHopRx  data IP packets that arrived at the next hop's IP layer
+// Their difference is every data packet that entered the medium and did not
+// come out of it. That pool is then carved up: the MAC reports the frames it
+// gave up on after exhausting retries (g_macDataDrops), FlowMonitor reports the
+// interface/qdisc queue overflows, and whatever remains is genuine channel loss
+// — collisions, capture, out-of-range, ARP failures. Only the simulator can see
+// that difference, which is exactly why it cannot come from core/ (issue #215).
+//
+// Interface 0 is the loopback device. AntHocNet (like AODV) bounces a routeless
+// packet through it to reach RouteInput, so it must be excluded from BOTH
+// tallies or the bounce reads as a hop that was sent and never received.
+uint64_t g_dataHopTx = 0;
+uint64_t g_dataHopRx = 0;
+uint64_t g_macDataDrops = 0;  // data frames dropped at the MAC retry limit
+
+// Is this a CBR *data* IP packet (as opposed to routing control)? Same test as
+// CountControlTx, from the other side.
+bool IsDataIp(Ptr<const Packet> p) {
+    Ptr<Packet> c = p->Copy();
+    Ipv4Header ip;
+    if (c->RemoveHeader(ip) == 0) return false;
+    if (ip.GetProtocol() != 17) return false;  // not UDP
+    UdpHeader udp;
+    if (c->PeekHeader(udp) == 0) return false;
+    return udp.GetDestinationPort() == kDataPort;
+}
+
+void CountDataHopTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
+    if (iface != 0 && IsDataIp(p)) ++g_dataHopTx;
+}
+void CountDataHopRx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
+    if (iface != 0 && IsDataIp(p)) ++g_dataHopRx;
+}
+
+// WifiMac "DroppedMpdu": a retry-limit drop is the MAC giving up on a unicast,
+// i.e. the link broke under the packet. Counted for every protocol from the
+// same trace the AntHocNet adapter uses for ADR-0008 detector D, so the column
+// means the same thing in all four arms. Other drop reasons (queue full,
+// lifetime expiry) are congestion and are counted by FlowMonitor instead.
+void CountMacDataDrop(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu) {
+    if (reason != WIFI_MAC_DROP_REACHED_RETRY_LIMIT || !mpdu) return;
+    Ptr<Packet> pkt = mpdu->GetPacket()->Copy();
+    LlcSnapHeader llc;
+    if (pkt->GetSize() < llc.GetSerializedSize()) return;
+    pkt->RemoveHeader(llc);
+    if (llc.GetType() != 0x0800) return;  // not IPv4
+    if (IsDataIp(pkt)) ++g_macDataDrops;
 }
 
 // --- diagnostics (--diag): ant-level introspection for AntHocNet -----------
@@ -287,6 +354,20 @@ struct Result {
     double reorderExtMean = 0.0;   // mean reordering extent over reordered pkts
     double reorderExtMax = 0.0;    // max reordering extent, packets
     double reorderBufMax = 0.0;    // max reorder-buffer occupancy, packets
+    // #215 drop causes, each as a % of *offered* (txPackets), so that
+    // pdr + the five protocol-agnostic causes ≈ 100. Sentinel **-1 = not
+    // applicable to this protocol** (emitted as a blank field, never a 0, so
+    // "this protocol has no such cause" stays distinguishable from "measured
+    // zero"); the three AntHocNet-only causes use it for every other arm.
+    double dropRoutePct = 0.0;   // L3 route failure (no route / route error)
+    double dropQueuePct = 0.0;   // interface or qdisc queue overflow
+    double dropMacPct   = 0.0;   // MAC retry limit, terminal (not re-injected)
+    double dropChanPct  = 0.0;   // sent on the medium, never received
+    double dropTtlPct   = 0.0;   // IP TTL exhausted
+    double dropSetupPct  = -1.0; // AntHocNet: pending-queue loss, never routed
+    double dropReconvPct = -1.0; // AntHocNet: pending-queue loss, route lost
+    double dropRepairPct = -1.0; // AntHocNet: DiscardPending after a failed repair
+    double dropOtherPct  = 0.0;  // L3 drops in none of the buckets above (diag)
 };
 
 Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
@@ -304,6 +385,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_qSum = 0.0;
     g_firstDeathS = -1.0;
     g_rxSeq.clear();
+    g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;  // #215
 
     NodeContainer nodes;
     nodes.Create(P.nNodes);
@@ -437,6 +519,24 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     for (uint32_t i = 0; i < nodes.GetN(); ++i) {
         Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
         if (l3) l3->TraceConnectWithoutContext("Tx", MakeCallback(&CountControlTx));
+        // #215: the same IP-layer hook, counting *data* hops in and out, plus
+        // the MAC's own retry-limit verdict. Connected per protocol arm, so the
+        // causes are measured identically for anthocnet, aodv, olsr and dsdv.
+        if (l3) {
+            l3->TraceConnectWithoutContext("Tx", MakeCallback(&CountDataHopTx));
+            l3->TraceConnectWithoutContext("Rx", MakeCallback(&CountDataHopRx));
+        }
+    }
+    for (uint32_t i = 0; i < devices.GetN(); ++i) {
+        Ptr<WifiNetDevice> w = devices.Get(i)->GetObject<WifiNetDevice>();
+        Ptr<WifiMac> wmac = w ? w->GetMac() : nullptr;  // `mac` above is the helper
+        // TraceConnect returns false if the source is absent on this ns-3
+        // release; tolerated, exactly as the adapter's detector D does — the
+        // MAC column then reads 0 and its share lands in channel loss.
+        if (wmac) {
+            wmac->TraceConnectWithoutContext("DroppedMpdu",
+                                             MakeCallback(&CountMacDataDrop));
+        }
     }
 
     Ipv4AddressHelper address;
@@ -558,6 +658,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     uint64_t jitterSamples = 0;  // each flow contributes rx-1 jitter samples
     std::map<uint32_t, uint64_t> delayBins;  // aggregated delay histogram
     double binWidth = 0.0;
+    // #215: IP-layer drop attribution, restricted to the data flows exactly the
+    // way PDR is. FlowMonitor indexes FlowStats::packetsDropped by
+    // Ipv4FlowProbe::DropReason and grows the vector lazily, so every read is
+    // bounds-checked.
+    uint64_t dropRoute = 0, dropTtl = 0, dropQueue = 0, dropL3Total = 0;
     // Restrict the delivery/delay/throughput metrics to the CBR *data* flows
     // (dest port kDataPort). FlowMonitor also classifies the routing-control
     // flows, which must not count toward PDR.
@@ -579,6 +684,17 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             if (binWidth == 0.0) binWidth = h.GetBinWidth(b);
             delayBins[b] += h.GetBinCount(b);
         }
+        // #215 drop attribution for this data flow.
+        const std::vector<uint32_t>& pd = kv.second.packetsDropped;
+        auto reason = [&pd](std::size_t i) -> uint64_t {
+            return i < pd.size() ? pd[i] : 0u;
+        };
+        dropRoute += reason(Ipv4FlowProbe::DROP_NO_ROUTE)
+                   + reason(Ipv4FlowProbe::DROP_ROUTE_ERROR);
+        dropTtl += reason(Ipv4FlowProbe::DROP_TTL_EXPIRE);
+        dropQueue += reason(Ipv4FlowProbe::DROP_QUEUE)
+                   + reason(Ipv4FlowProbe::DROP_QUEUE_DISC);
+        for (uint32_t v : pd) dropL3Total += v;
     }
     r.pdr = r.txPackets ? 100.0 * r.rxPackets / r.txPackets : 0.0;
     r.meanDelayMs = rxForDelay ? 1000.0 * totalDelay / rxForDelay : 0.0;
@@ -754,6 +870,76 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         r.reorderBufMax = static_cast<double>(bufMax);
     }
 
+    // #215 drop-cause breakdown, as a fraction of offered packets.
+    //
+    // The identity this is built to satisfy, and which scenario_check.py
+    // enforces, follows from packet conservation at the IP layer. Over all
+    // nodes and all data packets:
+    //
+    //   offered + hopRx + reinjected = hopTx + delivered + L3drops + stillQueued
+    //
+    // (a node's data packets come in from the app or from a device — or back
+    // from the MAC-failure re-injection path — and leave to a device, to the
+    // local transport, or into a drop). With
+    //   hopTx - hopRx = macDrops + queueDrops + channel      [definition of channel]
+    //   macTerminal   = macDrops - reinjected                [the rest came back]
+    // it rearranges to
+    //   offered - delivered = L3drops + macTerminal + queueDrops + channel + stillQueued
+    // i.e. pdr + route + ttl + queue + mac + channel = 100, up to the packets
+    // still sitting in a pending queue when the run stops. Nothing here is
+    // forced to add up: the L3 causes come from FlowMonitor, the hop tallies
+    // from the Ipv4L3Protocol traces and the MAC verdicts from the WifiMac
+    // trace, so a shortfall means one of those three books is wrong — which is
+    // precisely the harness regression the check is there to catch.
+    if (r.txPackets) {
+        const double tx = static_cast<double>(r.txPackets);
+        // AntHocNet-only causes: the pending queue and the local-repair discard
+        // exist in no other arm, so they stay at the -1 "not applicable"
+        // sentinel there rather than reporting a misleading 0.
+        uint64_t reinjected = 0;
+        if (proto == "anthocnet") {
+            uint64_t holdSetup = 0, holdReconv = 0, repairPkts = 0;
+            for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+                Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
+                if (!ip) continue;
+                Ptr<ns3::anthocnet::RoutingProtocol> ahn =
+                    DynamicCast<ns3::anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
+                if (!ahn) continue;
+                const ns3::anthocnet::HoldStats& s = ahn->HoldTimeStats();
+                holdSetup += s.droppedCount[ns3::anthocnet::HOLD_SETUP];
+                // A packet re-injected after a MAC failure (#46) and then aged
+                // out was still waiting for a route that had existed and did
+                // not come back — the reconvergence cause, not a separate one.
+                holdReconv += s.droppedCount[ns3::anthocnet::HOLD_RECONV]
+                            + s.droppedCount[ns3::anthocnet::HOLD_REPAIR];
+                repairPkts += ahn->RepairDiscardedPackets();
+                reinjected += ahn->MacReinjectedPackets();
+            }
+            r.dropSetupPct  = 100.0 * holdSetup / tx;
+            r.dropReconvPct = 100.0 * holdReconv / tx;
+            r.dropRepairPct = 100.0 * repairPkts / tx;
+        }
+        // Every one of these three ends in an error callback, so together they
+        // are a *sub-breakdown* of dropRoutePct, not extra causes on top of it;
+        // adding them to the identity would double-count.
+        const uint64_t macTerminal =
+            g_macDataDrops > reinjected ? g_macDataDrops - reinjected : 0;
+        const double hopLoss = static_cast<double>(g_dataHopTx)
+                             - static_cast<double>(g_dataHopRx);
+        r.dropRoutePct = 100.0 * dropRoute / tx;
+        r.dropTtlPct   = 100.0 * dropTtl / tx;
+        r.dropQueuePct = 100.0 * dropQueue / tx;
+        r.dropMacPct   = 100.0 * macTerminal / tx;
+        r.dropChanPct  = 100.0 * (hopLoss - static_cast<double>(g_macDataDrops)
+                                          - static_cast<double>(dropQueue)) / tx;
+        // L3 drops in none of the buckets above (bad checksum, interface down,
+        // fragment timeout — all structurally zero in this harness). Diagnostic
+        // only: if it is ever non-zero it is the reason the identity misses.
+        const uint64_t other = dropL3Total > dropRoute + dropTtl + dropQueue
+            ? dropL3Total - dropRoute - dropTtl - dropQueue : 0;
+        r.dropOtherPct = 100.0 * other / tx;
+    }
+
     // Diagnostics line (prefixed "# " so CSV consumers ignore it). Shows whether
     // routes form (reactive ants sent vs received elsewhere; back-ant arrivals)
     // and when the first packet is delivered.
@@ -846,12 +1032,19 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             // drops) across the setup / reconvergence / repair hold paths so
             // the dominant one can be attacked. Summed across nodes.
             ns3::anthocnet::HoldStats hs;
+            // #215: the repair-discard cause from both sides — the core's
+            // simulator-agnostic event count (how many local repairs expired)
+            // and the adapter's packet count (how much data each released).
+            uint64_t repairEvents = 0, repairPkts = 0, macReinjected = 0;
             for (uint32_t i = 0; i < nodes.GetN(); ++i) {
                 Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
                 if (!ip) continue;
                 Ptr<ns3::anthocnet::RoutingProtocol> ahn =
                     DynamicCast<ns3::anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
                 if (!ahn) continue;
+                repairEvents += ahn->RepairDiscards();
+                repairPkts += ahn->RepairDiscardedPackets();
+                macReinjected += ahn->MacReinjectedPackets();
                 const ns3::anthocnet::HoldStats& s = ahn->HoldTimeStats();
                 for (uint8_t r = 0; r < ns3::anthocnet::kHoldReasons; ++r) {
                     hs.deliveredCount[r] += s.deliveredCount[r];
@@ -877,7 +1070,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 std::cout << (r ? " " : "") << kReasonName[r] << "="
                           << hs.droppedCount[r];
             }
-            std::cout << "]";
+            std::cout << "]"
+                      << " repairDiscard=" << repairEvents << "ev/" << repairPkts
+                      << "pkt macReinject=" << macReinjected;
         }
         std::cout << "\n";
     }
@@ -1053,6 +1248,12 @@ int main(int argc, char* argv[]) {
         // other column: a mean of per-run maxima, not a max over runs.
         double reordRatio = 0, reordRatioMax = 0;
         double reordExtMean = 0, reordExtMax = 0, reordBufMax = 0;
+        // #215: drop-cause means across runs. dropNa latches when a cause does
+        // not apply to this protocol, so the mean stays the -1 "not applicable"
+        // sentinel and is emitted blank rather than as a measured 0.
+        double dropRoute = 0, dropQueue = 0, dropMac = 0, dropChan = 0, dropTtl = 0;
+        double dropSetup = 0, dropReconv = 0, dropRepair = 0, dropOther = 0;
+        bool dropNa = false;
     };
     std::vector<Agg> agg(list.size());
     for (std::size_t i = 0; i < list.size(); ++i) {
@@ -1108,6 +1309,19 @@ int main(int argc, char* argv[]) {
             agg[i].reordExtMean += r.reorderExtMean;
             agg[i].reordExtMax += r.reorderExtMax;
             agg[i].reordBufMax += r.reorderBufMax;
+            agg[i].dropRoute += r.dropRoutePct;
+            agg[i].dropQueue += r.dropQueuePct;
+            agg[i].dropMac += r.dropMacPct;
+            agg[i].dropChan += r.dropChanPct;
+            agg[i].dropTtl += r.dropTtlPct;
+            agg[i].dropOther += r.dropOtherPct;
+            if (r.dropSetupPct < 0.0) {
+                agg[i].dropNa = true;  // #215: cause not applicable to this arm
+            } else {
+                agg[i].dropSetup += r.dropSetupPct;
+                agg[i].dropReconv += r.dropReconvPct;
+                agg[i].dropRepair += r.dropRepairPct;
+            }
         }
         agg[i].pdr /= runs;
         agg[i].delay /= runs;
@@ -1130,6 +1344,19 @@ int main(int argc, char* argv[]) {
         agg[i].reordExtMean /= runs;
         agg[i].reordExtMax /= runs;
         agg[i].reordBufMax /= runs;
+        agg[i].dropRoute /= runs;
+        agg[i].dropQueue /= runs;
+        agg[i].dropMac /= runs;
+        agg[i].dropChan /= runs;
+        agg[i].dropTtl /= runs;
+        agg[i].dropOther /= runs;
+        if (agg[i].dropNa) {
+            agg[i].dropSetup = agg[i].dropReconv = agg[i].dropRepair = -1.0;
+        } else {
+            agg[i].dropSetup /= runs;
+            agg[i].dropReconv /= runs;
+            agg[i].dropRepair /= runs;
+        }
         if (runs > 1) {
             auto sd = [runs](double sum, double sumSq) {
                 const double mean = sum / runs;
@@ -1154,7 +1381,12 @@ int main(int argc, char* argv[]) {
         // nodes, the initial energy the run was configured with, and the
         // first-node-death time with -1 = no node died), then #212
         // reordering (out-of-order ratio pooled over flows and for the worst
-        // single flow, reordering extent mean/max, reorder-buffer occupancy).
+        // single flow, reordering extent mean/max, reorder-buffer occupancy),
+        // then #215's drop-cause breakdown: the five protocol-agnostic
+        // causes (which sum with pdr_pct to ~100), then the three AntHocNet-only
+        // ones, which are a sub-breakdown of drop_route_pct and are **blank**
+        // for the other protocols (blank = the cause does not exist there;
+        // 0 would mean it exists and never fired).
         std::cout << "protocol,runs,nNodes,area,speed,flows,pdr_pct,delay_ms,"
                      "throughput_kbps,delay99_ms,nrl,jitter_ms,delay_off50_ms,"
                      "delay_off90_ms,pdr_sd,delay_sd,delay99_sd,nrl_sd,"
@@ -1162,8 +1394,17 @@ int main(int argc, char* argv[]) {
                      "energy_res_mean_j,energy_res_sd_j,energy_init_j,"
                      "first_death_s,reorder_ratio,reorder_ratio_max,"
                      "reorder_extent_mean,reorder_extent_max,"
-                     "reorder_buf_max\n";
+                     "reorder_buf_max,drop_route_pct,drop_queue_pct,"
+                     "drop_mac_pct,"
+                     "drop_chan_pct,drop_ttl_pct,drop_setup_pct,"
+                     "drop_reconv_pct,drop_repair_pct\n";
         std::cout << std::fixed;
+        // Blank, not zero, when a cause does not apply to this protocol (#215).
+        auto optPct = [](double v) {
+            std::ostringstream o;
+            if (v >= 0.0) o << std::fixed << std::setprecision(3) << v;
+            return o.str();
+        };
         for (std::size_t i = 0; i < list.size(); ++i) {
             std::cout << list[i] << ',' << runs << ',' << P.nNodes << ','
                       << std::setprecision(0) << P.areaX << ','
@@ -1192,7 +1433,15 @@ int main(int argc, char* argv[]) {
                       << std::setprecision(4) << agg[i].reordRatioMax << ','
                       << std::setprecision(2) << agg[i].reordExtMean << ','
                       << std::setprecision(2) << agg[i].reordExtMax << ','
-                      << std::setprecision(2) << agg[i].reordBufMax << '\n';
+                      << std::setprecision(2) << agg[i].reordBufMax << ','
+                      << std::setprecision(3) << agg[i].dropRoute << ','
+                      << std::setprecision(3) << agg[i].dropQueue << ','
+                      << std::setprecision(3) << agg[i].dropMac << ','
+                      << std::setprecision(3) << agg[i].dropChan << ','
+                      << std::setprecision(3) << agg[i].dropTtl << ','
+                      << optPct(agg[i].dropSetup) << ','
+                      << optPct(agg[i].dropReconv) << ','
+                      << optPct(agg[i].dropRepair) << '\n';
         }
         return 0;
     }
@@ -1249,6 +1498,35 @@ int main(int argc, char* argv[]) {
                   << " resSdJ=" << std::setprecision(3) << agg[i].resSd
                   << " firstDeathS=" << std::setprecision(1) << agg[i].firstDeath
                   << "\n";
+    }
+    // #215 drop causes: why the packets PDR is missing went missing, as a % of
+    // offered. `sum` is pdr + the five protocol-agnostic causes and should read
+    // ~100; `other` and the gap between `sum` and 100 are the diagnostic
+    // handles when it does not (unbucketed L3 drop reasons, and packets still
+    // held in a pending queue when the run stopped). setup/reconv/repair are
+    // AntHocNet's sub-breakdown of `route` and print as "-" elsewhere. '# '
+    // prefix keeps the line off the CSV/##BENCH## paths, like '# energy'.
+    auto opt = [](double v) {
+        std::ostringstream o;
+        if (v < 0.0) o << "-";
+        else o << std::fixed << std::setprecision(2) << v;
+        return o.str();
+    };
+    for (std::size_t i = 0; i < list.size(); ++i) {
+        const double sum = agg[i].pdr + agg[i].dropRoute + agg[i].dropQueue
+                         + agg[i].dropMac + agg[i].dropChan + agg[i].dropTtl;
+        std::cout << std::fixed << std::setprecision(2) << "# drops " << list[i]
+                  << " pdr=" << agg[i].pdr
+                  << " route=" << agg[i].dropRoute
+                  << " queue=" << agg[i].dropQueue
+                  << " mac=" << agg[i].dropMac
+                  << " chan=" << agg[i].dropChan
+                  << " ttl=" << agg[i].dropTtl
+                  << " sum=" << sum
+                  << " other=" << agg[i].dropOther
+                  << " [route: setup=" << opt(agg[i].dropSetup)
+                  << " reconv=" << opt(agg[i].dropReconv)
+                  << " repair=" << opt(agg[i].dropRepair) << "]\n";
     }
     // #28 dispersion: '# ' prefix keeps these out of the CSV/##BENCH## paths.
     if (runs > 1) {

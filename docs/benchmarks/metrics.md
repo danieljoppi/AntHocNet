@@ -32,6 +32,122 @@ same realisations. Metrics come from an NS-3 `FlowMonitor`:
   `maxPathLength` addresses) while an AODV RREQ is small and fixed. The measured
   packet-vs-byte comparison run is tracked in #132.
 
+## Drop causes (#215, NS-3 only)
+
+PDR says how many packets went missing. These columns say **why**, as a
+percentage of *offered* (sent) packets, so that
+
+```
+pdr_pct + drop_route_pct + drop_queue_pct + drop_mac_pct
+        + drop_chan_pct  + drop_ttl_pct   ≈ 100
+```
+
+Every offered packet is accounted for exactly once: it was delivered, or it
+died of one of five causes. That identity is what makes the breakdown readable
+— a cause is a *share of the loss*, not a free-floating counter — and
+`scenario_check.py results` enforces it (see *Why the identity must close*).
+
+The five causes are measured **identically for all four protocols**, so a
+column means the same thing in the AntHocNet arm and in the AODV arm:
+
+- **drop_route_pct** — the routing layer gave up: no route was ever found, or
+  the route it was waiting on did not come back in time. Measured from
+  FlowMonitor's per-flow drop reasons (`DROP_NO_ROUTE` + `DROP_ROUTE_ERROR`),
+  i.e. from the protocol's own error callback, whichever protocol raised it.
+- **drop_queue_pct** — the packet was overtaken by congestion at the
+  *interface*: the device transmit queue or the traffic-control queue disc was
+  full (`DROP_QUEUE` + `DROP_QUEUE_DISC`). This is the "network is drowning in
+  its own traffic" signal, not a routing failure.
+- **drop_mac_pct** — the link broke under the packet: 802.11 exhausted its
+  retry limit on the unicast (`WIFI_MAC_DROP_REACHED_RETRY_LIMIT` on the
+  `WifiMac` `DroppedMpdu` trace — the same signal AntHocNet's ADR-0008 detector
+  D uses). **Terminal failures only**: AntHocNet re-injects a MAC-dropped data
+  packet into its pending queue (#46), and a re-injected packet is not lost —
+  its real fate is counted wherever it finally ends up — so re-injections are
+  subtracted here rather than counted twice.
+- **drop_chan_pct** — sent and never received. Counted as the difference
+  between data IP packets handed to a real interface and data IP packets that
+  arrived at the next hop's IP layer (the `Ipv4L3Protocol` `Tx`/`Rx` traces,
+  the same counting point as NRL), minus the MAC and interface-queue drops
+  already attributed above. What remains is genuine on-air loss: collisions,
+  capture, a next hop that moved out of range mid-frame, ARP failures. **This
+  one can only come from the simulator** — it is the gap between "we sent it"
+  and "it arrived", which `core/` by construction cannot see (golden rule 1).
+- **drop_ttl_pct** — the IP TTL reached zero (`DROP_TTL_EXPIRE`): the packet
+  was forwarded in a loop or along a path longer than the TTL allows. Note this
+  is the *IP* TTL on data packets; `Config::maxPathLength` is the analogous
+  ceiling on *ants* and does not appear here (ants are control traffic, counted
+  by NRL).
+
+Three further columns split `drop_route_pct` for AntHocNet. They are a
+**sub-breakdown of that column, not extra causes** — adding them into the
+identity would double-count — and they are **blank, never `0`, for the other
+protocols**, because the mechanisms simply do not exist there. Blank means "not
+applicable"; `0` would mean "applicable and never fired", and the two must stay
+distinguishable:
+
+- **drop_setup_pct** — held in the pending queue for a destination this node
+  had **never** routed to, and aged out at `QueueTimeout` (or was evicted when
+  the queue filled). This is the true *no route* case: discovery never
+  succeeded.
+- **drop_reconv_pct** — same exit, but for a destination this node **had**
+  routed to: a route existed, was lost, and did not return within
+  `QueueTimeout`. Reconvergence loss, not discovery failure. Packets
+  re-injected after a MAC failure and then aged out land here too — they were
+  also waiting for a route that had existed.
+- **drop_repair_pct** — released by `DiscardPending` after a **local repair
+  timed out** (the paper's §3.5, decision D6). The core counts the repair events
+  (`AntRouterLogic::repairDiscards()`); the NS-3 adapter owns the queue and so
+  counts the packets.
+
+### Which causes are protocol behaviour, not faults
+
+This is the part that matters when reading a table. Not every drop is a bug.
+
+| Cause | Reading |
+|-------|---------|
+| **drop_repair_pct** | **Expected, deliberate behaviour.** The AntHocNet paper (§3.4 link failures / §3.5 local repair) chooses to discard the packets buffered behind a failed local repair rather than hold them indefinitely: it trades a slice of PDR for a **bounded delay tail**. A non-zero repair-discard share is the protocol working as specified, and #21's `RepairHoldCap`/`ReconvHoldCap` levers move packets *deliberately* between this column and the delay tail. Read it against `delay99_ms`/`jitter_ms`, never on its own. |
+| **drop_reconv_pct** | **Expected under mobility**, in proportion to how fast links break. It is the direct cost of reactive re-discovery; a *rising* share as `pause` falls is the protocol responding to mobility, not degrading. It becomes a finding only when it dominates on a **static** field. |
+| **drop_setup_pct** | Expected during the start-up transient and for genuinely unreachable destinations (a partitioned field — `scenario_check.py preflight` warns about those before the run). A large steady-state share means discovery is failing: that is #169's signature. |
+| **drop_chan_pct** | **PHY/scenario property, not a protocol property**, up to the control traffic the protocol puts on the air. All four arms share a channel, so compare the column *across* arms: the protocol with the higher share is the one filling the medium. A collapse dominated by this column is [#173](https://github.com/danieljoppi/AntHocNet/issues/173)'s exact signature — and having it as a column is why #215 exists at all, since #173 cost a benchmark campaign, a testbench reproduction and a code audit to reach that same conclusion. |
+| **drop_queue_pct** | Congestion, same reading as `drop_chan_pct`: offered load (or control overhead) exceeding what the interface can drain. Cross-check against `--qdiag` and `preflight`'s offered-load fraction. |
+| **drop_mac_pct** | Link breakage. Expected under mobility; a high share at low speed points at the PHY setup (`--rateManager`, #51) rather than at routing. |
+| **drop_ttl_pct** | **Always a fault signal.** Data should not loop. Anything materially above zero means forwarding loops — read it with `EnableMultipath` and the A1 loop-suppression caveat in the NS-3 adapter. |
+
+### Why the identity must close
+
+The five protocol-agnostic causes come from **three independent books**:
+FlowMonitor's per-flow drop reasons, the `Ipv4L3Protocol` `Tx`/`Rx` hop
+tallies, and the `WifiMac` retry-limit verdicts. Nothing forces them to agree,
+which is what makes their sum a real check rather than an accounting tautology.
+`scenario_check.py results` therefore treats a mismatch as a harness
+regression, in the same class as the #51 anchor floors:
+
+- **WARN** past 1 percentage point, **FAIL** past 5.
+- The tolerance exists for one legitimate residual: data still sitting in a
+  routing protocol's pending queue when the run stops. A packet waits there at
+  most `QueueTimeout` (3 s), so the residual is bounded by 3 s of offered
+  traffic — ≈0.3 % of a 900 s paper run, ≈2.5 % of the 120 s `--quick` preset.
+  5 pp leaves plenty of room for that while still catching a #173-scale
+  misattribution (tens of pp).
+- A negative share in any cause also FAILs: it means two causes are counting
+  the same packet.
+
+If the check fails, **do not read the breakdown** — one of the three books is
+wrong (a drop path that fires no error callback, a trace hook that did not
+connect on this ns-3 release, a cause counted twice) and every per-cause
+conclusion is unsafe until it is fixed.
+
+### Caveats
+
+- **NS-3 only.** The NS-2 adapter has no equivalent instrumentation; see
+  [cross-validation.md](../cross-validation.md).
+- The human table prints these on a `# drops` line (like `# energy`) rather
+  than widening the fixed-width table; the CSV carries all eight columns.
+- `# drops` also prints `other=`, the L3 drops in none of the five buckets
+  (bad checksum, interface down, fragment timeout — structurally zero in this
+  harness). If it is ever non-zero it is the reason the identity misses.
+
 ## Energy (#209, NS-3 only)
 
 Radio energy comes from an ns-3 `BasicEnergySource` on every node plus a

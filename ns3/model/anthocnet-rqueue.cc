@@ -27,8 +27,20 @@ bool RequestQueue::Enqueue(QueueEntry& entry) {
     }
     entry.expire = expire;
     if (m_queue.size() >= m_maxLen) {
-        // Drop the oldest to make room.
+        // Drop the oldest to make room. Accounted and error-callback'd exactly
+        // like an aged-out entry (#215): it is the same loss for the same
+        // reason — the route did not arrive in time — and leaving it silent
+        // made the packet vanish from every downstream tally, so the drop-cause
+        // breakdown could not add up. Matches aodv-rqueue, which also drops the
+        // most-aged packet through its error callback.
+        const QueueEntry old = m_queue.front();  // copy: the ecb runs after the erase
         m_queue.erase(m_queue.begin());
+        const uint8_t r = old.holdReason < kHoldReasons ? old.holdReason : HOLD_SETUP;
+        m_stats.droppedCount[r] += 1;
+        m_stats.droppedSumS[r] += (Simulator::Now() - old.enqueueFirst).GetSeconds();
+        if (!old.ecb.IsNull()) {
+            old.ecb(old.packet, old.header, Socket::ERROR_NOROUTETOHOST);
+        }
     }
     m_queue.push_back(entry);
     return true;

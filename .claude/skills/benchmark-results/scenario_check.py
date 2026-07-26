@@ -114,6 +114,14 @@ def parse_results(path):
     rules below are skipped. They are CSV-only by design — anthocnet-compare
     prints them on a '# reorder' line rather than widening the fixed-width
     results table, and ROW does not match a '# ' line.
+
+    Drop-cause fields (#215) are likewise CSV-only and post-instrumentation:
+    anthocnet-compare prints them on a '# drops' line rather than widening the
+    fixed-width table, so a results table yields None for all of them and the
+    drop rules below skip. The three AntHocNet-only causes are deliberately
+    **blank** for the other protocols (the cause does not exist there, as
+    opposed to existing and measuring zero); a blank parses to None and is
+    skipped, exactly like an absent column.
     """
     with open(path) as fh:
         text = fh.read()
@@ -134,7 +142,15 @@ def parse_results(path):
                    "reorder_ratio_max": r.get("reorder_ratio_max"),
                    "reorder_extent_mean": r.get("reorder_extent_mean"),
                    "reorder_extent_max": r.get("reorder_extent_max"),
-                   "reorder_buf_max": r.get("reorder_buf_max")}
+                   "reorder_buf_max": r.get("reorder_buf_max"),
+                   "drop_route": r.get("drop_route_pct"),
+                   "drop_queue": r.get("drop_queue_pct"),
+                   "drop_mac": r.get("drop_mac_pct"),
+                   "drop_chan": r.get("drop_chan_pct"),
+                   "drop_ttl": r.get("drop_ttl_pct"),
+                   "drop_setup": r.get("drop_setup_pct"),
+                   "drop_reconv": r.get("drop_reconv_pct"),
+                   "drop_repair": r.get("drop_repair_pct")}
         return
     for line in text.splitlines():
         m = ROW.match(line)
@@ -230,6 +246,66 @@ def cmd_results(a):
                 if v is not None and not (math.isfinite(v) and v >= 0.0):
                     report("FAIL", f"{tag}: {k} {r.get(k)} is not a finite "
                                    "non-negative packet count")
+            # #215 drop-cause breakdown. The five protocol-agnostic causes are
+            # measured from three independent books — FlowMonitor's per-flow
+            # drop reasons, the Ipv4L3Protocol Tx/Rx hop tallies and the WifiMac
+            # retry-limit verdicts — so nothing forces them to add up. They must
+            # account, together with the delivered packets, for every offered
+            # packet:
+            #
+            #     pdr + route + queue + mac + chan + ttl  ==  100
+            #
+            # TOLERANCE. The one legitimate shortfall is data still sitting in a
+            # routing protocol's pending queue when the run stops; a packet can
+            # wait there at most QueueTimeout (3 s), so the residual is bounded
+            # by 3 s of offered traffic — 0.3 % of a 900 s paper run, ~2.5 % of
+            # the 120 s --quick preset. Hence WARN past 1 pp and FAIL past 5 pp,
+            # which still leaves the check able to see a #173-scale
+            # misattribution (tens of pp) without firing on run length.
+            #
+            # A FAIL here is a finding in its own right, not a formality: it
+            # means one of the three books is wrong (a drop path that fires no
+            # error callback, a trace hook not connected, a cause counted
+            # twice), and every conclusion drawn from the breakdown is unsafe
+            # until it is fixed.
+            causes = {k: num(f"drop_{k}")
+                      for k in ("route", "queue", "mac", "chan", "ttl")}
+            for k, v in causes.items():
+                if v is None:
+                    continue
+                if not math.isfinite(v) or not (0.0 <= v <= 100.0):
+                    report("FAIL", f"{tag}: drop_{k}_pct {r.get('drop_' + k)} "
+                                   "outside [0,100] — drop attribution broken "
+                                   "(a negative share means causes overlap)")
+            if pdr is not None and all(v is not None for v in causes.values()):
+                total = pdr + sum(causes.values())
+                gap = total - 100.0
+                detail = (f"pdr {pdr:.1f} + " +
+                          " + ".join(f"{k} {causes[k]:.2f}"
+                                     for k in ("route", "queue", "mac",
+                                               "chan", "ttl")) +
+                          f" = {total:.2f}")
+                if abs(gap) > 5.0:
+                    report("FAIL", f"{tag}: drop causes do not account for the "
+                                   f"offered packets ({detail}, off by "
+                                   f"{gap:+.2f} pp) — attribution is wrong, do "
+                                   "not read the breakdown")
+                elif abs(gap) > 1.0:
+                    report("WARN", f"{tag}: drop causes off by {gap:+.2f} pp "
+                                   f"({detail}) — expected only from packets "
+                                   "still queued at end of run")
+            # The AntHocNet-only causes are a *sub-breakdown* of drop_route_pct
+            # (all three end in the same L3 error callback), never causes on top
+            # of it. A mismatch means one pending-queue exit path is unaccounted
+            # for; WARN rather than FAIL, since the identity above is the rule
+            # that decides whether the numbers are usable.
+            sub = [num(f"drop_{k}") for k in ("setup", "reconv", "repair")]
+            route = causes["route"]
+            if (route is not None and all(v is not None for v in sub)
+                    and abs(sum(sub) - route) > 1.0):
+                report("WARN", f"{tag}: setup+reconv+repair {sum(sub):.2f} != "
+                               f"drop_route_pct {route:.2f} — a pending-queue "
+                               "exit path is not attributed")
             if floor is not None and r["proto"] == "aodv" and pdr is not None:
                 if pdr < floor:
                     report("FAIL", f"{tag}: anchor '{a.anchor}' floor "

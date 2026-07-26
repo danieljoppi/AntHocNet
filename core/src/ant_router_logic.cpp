@@ -75,6 +75,7 @@ std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
         if (table_.bestRegular(dest) > config_.minPheromone) continue;
 
         out.push_back({RouteAction::DiscardPending, dest, false, {}});
+        ++repairDiscards_;  // #215 drop cause "repair discard" (event count)
 
         // Same origin cooldown as reportNeighborLoss (issue #20): the break
         // that armed this repair usually already advertised dest's loss.

@@ -160,6 +160,11 @@ whenever PDR is, residual energy within [0, initial]; all skipped for inputs
 predating energy instrumentation), the #212 reordering bounds (out-of-order
 ratios in [0,1]; extents and reorder-buffer occupancies finite and
 non-negative — all skipped for inputs predating reordering instrumentation),
-and — with `--anchor` — the AODV floors read from
+the #215 drop-cause identity (PDR plus the
+five protocol-agnostic causes must account for ~100% of offered packets: WARN
+past 1 pp, FAIL past 5 pp — the tolerance is the data still queued when the run
+stops; also FAILs a negative cause share, which means two causes count the same
+packet; skipped for inputs predating drop instrumentation), and — with
+`--anchor` — the AODV floors read from
 `ns3/tools/anchors.yml` (never duplicated). A `results` FAIL is a #51-class
 harness regression: fix the harness before trusting any number from that run.
