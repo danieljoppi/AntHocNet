@@ -265,6 +265,21 @@ jobs:
           echo "AntHocNet PDR% = ${pdr:-<none>}"
           awk -v p="${pdr:-0}" 'BEGIN { exit (p+0 > 0) ? 0 : 1 }' \
             || { echo "FAIL: AntHocNet delivered no packets (PDR=${pdr:-<none>})"; exit 1; }
+      - name: ISL-grid delivery smoke (#214 — multi-interface satellite shape)
+        # The same loose "must deliver something" gate as above, on the topology
+        # the satellite track needs (#192): a +Grid torus of point-to-point
+        # links where every node holds 4 ISLs on 4 separate subnets. This is the
+        # shape that the #203 multi-interface fix exists for, so a regression
+        # there shows up here as zero delivery rather than only in a manual run.
+        # Kept small (4x4, 30 s) so it costs a few seconds per matrix leg.
+        run: |
+          cd /opt/ns-3
+          out=$(./ns3 run "isl-grid --csv --protocols=anthocnet --rows=4 --cols=4 --time=30 --flows=2" 2>/dev/null)
+          echo "$out"
+          pdr=$(printf '%s\n' "$out" | awk -F, '$1=="anthocnet"{print $9}')
+          echo "AntHocNet ISL-grid PDR% = ${pdr:-<none>}"
+          awk -v p="${pdr:-0}" 'BEGIN { exit (p+0 > 0) ? 0 : 1 }' \
+            || { echo "FAIL: AntHocNet delivered no packets on the ISL grid (PDR=${pdr:-<none>})"; exit 1; }
       - name: Validation-anchor gate (single-hop PDR floor, #59)
         # Blocking anchor from docs/benchmarks/methodology.md "Validation
         # anchors": on a static, in-range 2-node link the *stock* stack

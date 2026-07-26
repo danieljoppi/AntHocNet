@@ -44,6 +44,25 @@ build_lib_example(
     ${libdsdv}
 )
 
+# ISL-grid scenario (#214): a static +Grid torus of point-to-point links — the
+# LEO inter-satellite-link abstraction — with no mobility and no wifi. Needs
+# point-to-point in addition to the comparison example's dependencies.
+build_lib_example(
+  NAME isl-grid
+  SOURCE_FILES isl-grid.cc
+  LIBRARIES_TO_LINK
+    ${libanthocnet}
+    ${libcore}
+    ${libnetwork}
+    ${libinternet}
+    ${libapplications}
+    ${libpoint-to-point}
+    ${libflow-monitor}
+    ${libaodv}
+    ${libolsr}
+    ${libdsdv}
+)
+
 # #24 control: STOCK baselines only (AODV/OLSR/DSDV) on the identical scenario,
 # deliberately NOT linking ${libanthocnet}/${libcore} so no AntHocNet code is in
 # the binary — isolates "is the scenario hard" from "does our module break the
