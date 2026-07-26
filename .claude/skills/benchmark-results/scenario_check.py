@@ -134,6 +134,37 @@ def cmd_preflight(a):
                            f"{churn:.1f}s link lifetime — path_div_* will be "
                            "inflated by route churn; verify the single-path "
                            "baselines read <=1.05 before quoting it")
+        # #230: the other end of the same squeeze. A (node, destination,
+        # window) cell can only report diversity > 1 if at least two packets
+        # land in it, so shortening the window to escape churn eventually
+        # forces every cell to exactly 1.0 — measured: at 0.5-2 s on paper-base
+        # all four protocols read 1.000-1.002, AntHocNet included. Sampling is
+        # per flow, so packets-per-cell is bounded above by pktPerSec*window.
+        samples = a.pktPerSec * a.pathWindowS
+        print(f"  ~{samples:.1f} packet(s) per diversity cell "
+              f"({a.pktPerSec}/s x {a.pathWindowS}s)")
+        if samples < 2.0:
+            report("FAIL", f"pathWindowS={a.pathWindowS}s at {a.pktPerSec} "
+                           f"pkt/s gives ~{samples:.1f} packets per cell — a "
+                           "cell needs >=2 to report diversity above 1, so "
+                           "path_div_used is pinned at 1.0 for every protocol "
+                           "(#230)")
+        elif samples < 4.0:
+            # Measured, not guessed: paper-base at 1 pkt/s x 2 s (exactly the
+            # 2-sample floor) reads anthocnet 1.002 and aodv 1.002 — the floor
+            # is necessary but nowhere near sufficient, because a cell holding
+            # two packets can only ever report 1.0 or 2.0.
+            report("WARN", f"~{samples:.1f} packets per diversity cell is at "
+                           "the floor — measured at paper-base, 2 packets/cell "
+                           "gave anthocnet 1.002 vs aodv 1.002, i.e. no "
+                           "separation. Treat path_div_* as underpowered here "
+                           "(#230)")
+        if a.pathWindowS > churn and samples < 4.0:
+            report("FAIL", "no usable pathWindowS at these knobs: churn needs "
+                           f"<={churn:.1f}s, adequate sampling needs "
+                           f">={4.0 / a.pktPerSec:.1f}s. Raise pktPerSec or "
+                           "measure diversity per-packet instead of "
+                           "per-window (#230)")
     verdict()
 
 

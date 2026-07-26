@@ -252,10 +252,46 @@ def _preflight_fires():
     expect("link lifetime" in out, "preflight-fires", out)
 
 
-@case("#230 preflight passes a short window")
+@case("#230 preflight downgrades a mid window to WARN, not clean")
 def _preflight_quiet():
+    # 2 s clears the churn bound but sits exactly on the 2-packets/cell floor.
+    # It must not FAIL (the window itself is fine) and must not pass silently
+    # (the measurement says it does not separate).
     levels, out = run_preflight(pathWindowS=2.0)
-    expect(levels == [], "preflight-quiet", f"fired at 2s\n{out}")
+    expect("FAIL" not in levels, "preflight-quiet",
+           f"2s should not FAIL on churn\n{out}")
+    expect("WARN" in levels, "preflight-quiet",
+           f"2s passed clean despite being at the sampling floor\n{out}")
+
+
+@case("#230 preflight FAILs a window too short to sample")
+def _preflight_starved():
+    # 0.5 s at 1 pkt/s = 0.5 packets/cell; a cell needs >=2 to exceed 1.0.
+    # Measured: all four protocols read 1.000-1.001 at this window.
+    levels, out = run_preflight(pathWindowS=0.5)
+    expect("FAIL" in levels, "preflight-starved",
+           f"0.5s did not FAIL on sampling\n{out}")
+    expect("per cell" in out, "preflight-starved", out)
+
+
+@case("#230 preflight flags every window at the paper's 1 pkt/s")
+def _preflight_no_window():
+    # The squeeze: churn caps the window at ~7.5 s, sampling floors it at 4 s,
+    # and the 2 s midpoint measured anthocnet 1.002 vs aodv 1.002. Every window
+    # in the swept range must be flagged, or the calibration looks solvable
+    # when it is not.
+    for w in (0.5, 1.0, 2.0, 5.0, 10.0):
+        levels, out = run_preflight(pathWindowS=w)
+        expect(levels != [], "preflight-no-window",
+               f"window {w}s passed clean at 1 pkt/s\n{out}")
+
+
+@case("#230 preflight passes once the rate supports the window")
+def _preflight_rate_fixes():
+    # Raising the offered rate is the escape the FAIL points at.
+    levels, out = run_preflight(pathWindowS=2.0, pktPerSec=4.0)
+    expect(levels == [], "preflight-rate",
+           f"2s at 4 pkt/s should be clean, got {levels}\n{out}")
 
 
 @case("#230 preflight skips a static field")

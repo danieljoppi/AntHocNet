@@ -289,13 +289,40 @@ not a blank column.
 > only one where the baseline reads ≈ 1 (olsr 1.004) and the separation from
 > AntHocNet (1.225) is real.
 >
-> `--pathWindowS` already exists as a CLI knob; the window needs calibrating to
-> the largest value at which all three single-path baselines read ≤ 1.05.
-> `scenario_check.py results` now **FAILs** a single-path protocol reading above
-> 1.10, so this cannot be forgotten. Tracked as
-> [#230](https://github.com/danieljoppi/AntHocNet/issues/230). Until it closes,
-> read `path_hops_*` and `jain_pkts` (unaffected) and treat the diversity and
-> entropy columns as uncalibrated.
+> **The window was swept, and no value works.** Five single points on the
+> paper-base knobs, identical config, `--pathWindowS` the only variable:
+>
+> | window | anthocnet | aodv | olsr | dsdv |
+> |---:|---:|---:|---:|---:|
+> | 0.5 s | 1.001 | 1.000 | 1.000 | 1.000 |
+> | 1.0 s | 1.001 | 1.000 | 1.000 | 1.000 |
+> | 2.0 s | 1.002 | 1.002 | 1.000 | 1.001 |
+> | 5.0 s | 1.147 | 1.157 | **1.164** | 1.066 |
+> | 10.0 s | 1.291 | 1.311 | **1.327** | 1.167 |
+>
+> Below 2 s every protocol reads ≈ 1.000 — AntHocNet included, so there is no
+> signal to have. At 5 s and above the baselines are already past 1.05 **and
+> OLSR outranks AntHocNet**. There is no window in between: at 2 s AntHocNet
+> ties AODV to three decimals.
+>
+> **Root cause: the metric is sample-starved at the paper's traffic rate, not
+> merely mis-windowed.** A (node, destination, window) cell can only report
+> diversity above 1 if at least two packets land in it, so packets-per-cell is
+> bounded by `pktPerSec × window` — 1 × 2 s = 2 at paper-base, the bare floor,
+> where a cell can only ever read 1.0 or 2.0. Shortening the window to escape
+> route churn starves the sample; lengthening it to gather samples lets churn
+> dominate. The two bounds cross, which is why the sweep has no solution.
+>
+> `kDefaultPathWindowS` is therefore **left at 10 s** — no other value is
+> better, and moving it would imply the problem was solved. The fix is to raise
+> the offered rate for diversity measurement or to count concurrent next hops
+> per packet-pair rather than per time window;
+> [#230](https://github.com/danieljoppi/AntHocNet/issues/230) tracks it.
+> `scenario_check.py` now flags **every** window at 1 pkt/s — FAIL below the
+> 2-packet floor, WARN at it, WARN/FAIL past the churn bound — and `preflight`
+> refuses the dispatch before a run is spent. Until it closes, read
+> `path_hops_*` and `jain_pkts` (unaffected) and treat the diversity and
+> entropy columns as not yet measuring what they claim.
 
 - **Reactive protocols read one hop high on route-discovery packets.** A
   protocol with no route yet bounces the packet through the loopback device to
