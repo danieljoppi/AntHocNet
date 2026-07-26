@@ -501,8 +501,11 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
     // Duplicate / loop detection. With multipath on (#96, [1] §3.1) a reactive
     // forward ant uses the per-generation acceptance filter: a later
     // same-generation ant is forwarded when both its hops and its travel time
-    // are within antAcceptanceFactor of the best seen, so several good paths
-    // get laid down instead of only the first-arriving one. Every other ant
+    // are within an acceptance factor of the best seen, so several good paths
+    // get laid down instead of only the first-arriving one — antAcceptanceFactor
+    // (a1) normally, the looser antAcceptanceFactorNewHop (a2) when the ant
+    // reached us over a first hop no accepted ant of this generation used
+    // (#177). Every other ant
     // (backward, hello, linkfail, proactive/repair forward) — and every ant
     // when multipath is off — keeps strict (src,seq) dedup.
     if (config_.enableMultipath && incoming.isForward() &&
@@ -510,8 +513,20 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
         const auto hops = static_cast<std::uint32_t>(incoming.visited.size());
         Time travel = 0.0;
         for (const AntHop& h : incoming.visited) travel += h.time;
+        // The ant's *first hop*: the node it travelled to immediately after the
+        // source. `visited` is built source-first (createAnt pushes the source,
+        // then each forwarder appends itself in stampForward), so it is
+        // visited[1]. If the ant has not been forwarded yet — visited holds only
+        // the source, i.e. this node is receiving the source's own broadcast —
+        // then *this node* is the first hop the path will have, so use our own
+        // address. Both readings agree that distinct branches out of the source
+        // get distinct first hops, which is all the a2 rule needs.
+        const NodeAddress firstHop = incoming.visited.size() >= 2
+                                         ? incoming.visited[1].node
+                                         : address_;
         if (!genQuality_.accept(incoming.src, incoming.seqNum, hops, travel,
-                                config_.antAcceptanceFactor)) {
+                                firstHop, config_.antAcceptanceFactor,
+                                config_.antAcceptanceFactorNewHop)) {
             return {RouteDecision::drop()};
         }
     } else if (!history_.record(incoming.src, incoming.seqNum)) {

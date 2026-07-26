@@ -55,7 +55,8 @@ RoutingProtocol::RoutingProtocol()
       m_repairTimeout(1.0),
       m_hopTime(0.003),
       m_enableMultipath(true),
-      m_antAcceptanceFactor(1.5),
+      m_antAcceptanceFactor(0.9),
+      m_antAcceptanceFactorNewHop(2.0),
       m_linkfailNotifyInterval(5.0),
       m_queueTimeout(Seconds(3)),
       m_reconvHoldCap(Seconds(1.0)),
@@ -163,17 +164,40 @@ TypeId RoutingProtocol::GetTypeId() {
                           MakeBooleanAccessor(&RoutingProtocol::m_enableMultipath),
                           MakeBooleanChecker())
             .AddAttribute("AntAcceptanceFactor",
-                          "Multipath acceptance factor (issue #96, [1] §3.1, "
-                          "empirically 1.5), used only when EnableMultipath is "
-                          "on: a node forwards a later same-generation reactive "
-                          "ant only if both its hops and travel time are within "
-                          "this factor of the best seen. Higher admits MORE "
-                          "copies (more multipath, up to a flood); no value "
+                          "Base multipath acceptance factor a1 (issue #96; [1] "
+                          "§3.1 says 1.5, the 2007 thesis says its authors ran "
+                          "0.9 — \"a1 is set quite low (to 0.9), in order to "
+                          "only allow the best ants through\", lines 4655-4659, "
+                          "which is the default on this #177 arm B branch). Used "
+                          "only when EnableMultipath is on: a node forwards a "
+                          "later same-generation reactive ant only if both its "
+                          "hops and travel time are within this factor of the "
+                          "best seen — unless its first hop is new, in which "
+                          "case AntAcceptanceFactorNewHop applies. Higher admits "
+                          "MORE copies (more multipath, up to a flood); no value "
                           "reproduces strict single-path dedup — use "
                           "EnableMultipath=false for that.",
-                          DoubleValue(1.5),
+                          DoubleValue(0.9),
                           MakeDoubleAccessor(&RoutingProtocol::m_antAcceptanceFactor),
-                          MakeDoubleChecker<double>(1.0))
+                          // Lower bound relaxed from 1.0 for #177 arm B: a1 < 1
+                          // is the thesis parameterisation, and is what makes
+                          // the band suppress rather than admit.
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("AntAcceptanceFactorNewHop",
+                          "Disjoint-path acceptance factor a2 (issue #177, 2007 "
+                          "thesis lines 4667-4671: \"To boost the creation of "
+                          "disjoint paths ... If this first hop is different "
+                          "from those taken by previously accepted ants, we "
+                          "apply a higher (less restrictive) acceptance factor "
+                          "a2 ... (a2 was set to 2)\"). Applied in place of "
+                          "AntAcceptanceFactor when the ant's first hop after "
+                          "the source is one no previously accepted ant of that "
+                          "route setup used. Keep >= AntAcceptanceFactor, or the "
+                          "mechanism penalises disjointness instead of "
+                          "rewarding it.",
+                          DoubleValue(2.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_antAcceptanceFactorNewHop),
+                          MakeDoubleChecker<double>(0.0))
             .AddAttribute("LinkfailNotifyInterval",
                           "Minimum spacing (s) between LinkFail notifications "
                           "originated about the same destination (issue #20); "
@@ -349,6 +373,7 @@ void RoutingProtocol::DoInitialize() {
     m_config.hopTimeSec = m_hopTime;
     m_config.enableMultipath = m_enableMultipath;
     m_config.antAcceptanceFactor = m_antAcceptanceFactor;
+    m_config.antAcceptanceFactorNewHop = m_antAcceptanceFactorNewHop;
     m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
     m_config.enableMacMetric = m_enableMacMetric;
     m_queue.SetTimeout(m_queueTimeout);  // attribute lands after construction (#21)
@@ -417,6 +442,7 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.hopTimeSec = m_hopTime;
         m_config.enableMultipath = m_enableMultipath;
         m_config.antAcceptanceFactor = m_antAcceptanceFactor;
+        m_config.antAcceptanceFactorNewHop = m_antAcceptanceFactorNewHop;
         m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
         m_config.enableMacMetric = m_enableMacMetric;
         m_logic.reset(new ::anthocnet::core::AntRouterLogic(

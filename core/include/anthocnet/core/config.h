@@ -130,7 +130,16 @@ struct Config {
     /// 7x7 grid cost 30,090 ants, and ns-3 `large-scale` fell to 21.7% PDR at
     /// NRL 3071 (#173). This restores duplicate suppression's *intent* for the
     /// one ant type that bypasses it.
-    int reactiveMaxBroadcasts = 2;
+    ///
+    /// **Default is now `-1` (unbounded), as of #177.** The two-factor band
+    /// below (a1=0.9 / a2=2.0) bounds the flood on its own — one discovery on a
+    /// 7x7 grid costs 154 ants with no count in force, ~3.1n and flat in n — so
+    /// the per-node counter is no longer load-bearing, and leaving it on cost
+    /// delivery in dense graphs (heavy-load +1.8 pp, large-scale +4.7 pp at
+    /// 11.6%/25.6% less overhead once removed). Kept configurable for
+    /// sensitivity experiments; any finite value still bounds re-broadcasts
+    /// per (node, generation).
+    int reactiveMaxBroadcasts = -1;
     /// Multipath reactive setup ([1] §3.1, issue #96): when on, a *later*
     /// reactive forward ant of an already-seen generation is forwarded if it
     /// passes the antAcceptanceFactor band below, laying down *multiple* good
@@ -149,7 +158,48 @@ struct Config {
     /// *Higher* admits *more* copies (more multipath, up to a flood); 1.0 still
     /// admits equal-metric copies, so no factor value reproduces strict
     /// single-path dedup — that is what enableMultipath=false is for.
-    double antAcceptanceFactor = 1.5;
+    ///
+    /// **Default is 0.9, not the 1.5 of [1] §3.1, as of #177.** The 2007
+    /// Ducatelle thesis describes the same mechanism
+    /// but states the value its authors actually ran, and it is *below* 1.0:
+    ///
+    ///   "If the number of hops and travel time of a newly received ant are
+    ///    both within an acceptance factor a1 of those of the best previously
+    ///    received ant of the same route setup, the new ant is accepted and
+    ///    forwarded; otherwise, it is discarded. a1 is set quite low (to 0.9),
+    ///    in order to only allow the best ants through and avoid too much
+    ///    proliferation of forward ants in the network."
+    ///                                    -- 2007 thesis, lines 4655-4659
+    ///
+    /// So a1 < 1 is deliberate: a later ant must be *strictly better* than the
+    /// generation's best by ~10% on **both** metrics to be forwarded, which is
+    /// what makes the band a suppressor rather than an admitter. This is the
+    /// same field and the same meaning as on `main` — only the default moves —
+    /// so it is not the #173 "unit changed under the name" trap.
+    double antAcceptanceFactor = 0.9;
+    /// Disjoint-path acceptance factor **a2** — the less restrictive factor
+    /// applied when a reactive forward ant's *first hop* (the node it travelled
+    /// to immediately after the source) has **not** been seen among the ants
+    /// this node already accepted for that `(src, seqNum)` generation:
+    ///
+    ///   "To boost the creation of disjoint paths, a different mechanism is
+    ///    applied, which takes into account the first hop taken by each ant. If
+    ///    this first hop is different from those taken by previously accepted
+    ///    ants, we apply a higher (less restrictive) acceptance factor a2 than
+    ///    in the case the first hop was already seen before (a2 was set to 2)."
+    ///                                    -- 2007 thesis, lines 4667-4671
+    ///
+    /// A new first hop is evidence that the ant arrived over a genuinely
+    /// *disjoint* branch of the network, which is worth a path even when its
+    /// metrics are worse than the incumbent's; a repeat first hop is a likely
+    /// near-copy of a path already laid, so it must clear `antAcceptanceFactor`
+    /// (a1). Used only when `enableMultipath` is on. Set below a1 and this
+    /// mechanism inverts — it would penalise disjointness — so keep a2 >= a1.
+    ///
+    /// New field, deliberately not folded into `antAcceptanceFactor`: silently
+    /// redefining an existing field's meaning is the #173 defect this repo has
+    /// already paid for once (see `docs/configuration.md` §2).
+    double antAcceptanceFactorNewHop = 2.0;
     /// Max times a proactive forward ant may be (re)broadcast — covering both the
     /// per-hop exploratory broadcast ([1] §3.3) and a route gap en route. Proactive
     /// ants monitor known paths; an unbounded budget let them flood any region of
