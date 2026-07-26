@@ -131,6 +131,26 @@ public:
     /// hold path.
     const HoldStats& HoldTimeStats() const { return m_queue.Stats(); }
 
+    /// Issue #215 drop-cause breakdown, the AntHocNet-specific causes. The
+    /// generic ones (channel, MAC, TTL, interface queue) are measured
+    /// simulator-side by the comparison harness for every protocol; these three
+    /// exist only here because only this protocol has a pending queue and a
+    /// local-repair discard.
+    ///
+    /// Data packets released by a failed local repair ([1] §3.5, D6) — the
+    /// *packet* count behind the core's DiscardPending events. This is expected
+    /// protocol behaviour, not a fault: the paper trades these packets for a
+    /// bounded delay tail.
+    uint64_t RepairDiscardedPackets() const { return m_repairDiscardedPackets; }
+    /// Expired local repairs (the core's event count; several packets may be
+    /// released per event).
+    uint64_t RepairDiscards() const { return m_logic ? m_logic->repairDiscards() : 0; }
+    /// Data packets a MAC retry-limit drop put *back* into the pending queue
+    /// (#46 re-injection). Such a packet is not lost yet — its terminal fate is
+    /// counted wherever it finally ends up — so the harness subtracts these from
+    /// the raw MAC-failure tally to avoid double-counting them (#215).
+    uint64_t MacReinjectedPackets() const { return m_macReinjectedPackets; }
+
 protected:
     void DoInitialize() override;
     void DoDispose() override;
@@ -263,6 +283,10 @@ private:
     // reconvergence wait (route was known and lost) when a data packet is
     // deferred, so the hold-time attribution can tell the two apart.
     std::set<::anthocnet::core::NodeAddress> m_everRouted;
+
+    // Issue #215 drop-cause counters (see the accessors above).
+    uint64_t m_repairDiscardedPackets = 0;
+    uint64_t m_macReinjectedPackets = 0;
 
     // trace sources (item 15): ant sent/received and route add/remove.
     TracedCallback<uint8_t, uint8_t, bool> m_txAntTrace;

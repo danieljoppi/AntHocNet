@@ -74,6 +74,18 @@ NS-3 PHY/device model, not of the shared `core/` algorithm:
   every other PHY-dependent divergence noted above. Do not attempt to
   cross-validate energy; cross-validate the routing behaviour, and read the
   energy caveats in [benchmarks/metrics.md](benchmarks/metrics.md).
+- **Drop-cause breakdown** (`drop_route_pct`, `drop_queue_pct`,
+  `drop_mac_pct`, `drop_chan_pct`, `drop_ttl_pct`, and AntHocNet's
+  `drop_setup_pct` / `drop_reconv_pct` / `drop_repair_pct`; #215). Channel loss
+  is by definition the gap between what a node put on the medium and what the
+  next hop received — a property of the NS-3 PHY/channel model, not of the
+  shared algorithm — and the interface-queue and MAC-retry causes are read from
+  NS-3's `FlowMonitor` and `WifiMac` traces. NS-2's counterparts are a
+  different PHY and a different set of hooks, so the *shares* would not be
+  comparable even if wired up. What **is** cross-validatable is the
+  AntHocNet-specific behaviour behind two of the columns: the core counts
+  repair discards (`AntRouterLogic::repairDiscards()`) simulator-agnostically,
+  so both adapters see the same events for the same run.
 
 ## What "agreement" means
 

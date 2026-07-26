@@ -751,6 +751,10 @@ void RoutingProtocol::FlushQueue(NodeAddress coreDest) {
 void RoutingProtocol::DiscardQueue(NodeAddress coreDest) {
     std::vector<QueueEntry> pending;
     m_queue.DequeueAll(ToIpv4(coreDest), pending);
+    // #215: count the packets, not just the event — the core counts the events
+    // (repairDiscards()), but only the adapter owns the queue and so knows how
+    // many packets each expired repair released.
+    m_repairDiscardedPackets += pending.size();
     for (QueueEntry& e : pending) {
         if (!e.ecb.IsNull()) e.ecb(e.packet, e.header, Socket::ERROR_NOROUTETOHOST);
     }
@@ -888,6 +892,7 @@ void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI
         entry.ucb = m_cachedUcb;
         entry.ecb = m_cachedEcb;
         entry.holdReason = HOLD_REPAIR;  // #21: held during local repair (#46)
+        ++m_macReinjectedPackets;        // #215: this MAC failure was not terminal
         m_queue.Enqueue(entry);
         FlushQueue(dataDest);
     }

@@ -272,12 +272,14 @@ int main() {
 
         router.reportTxFailure(/*next*/ 5, /*dataDest*/ 9);  // launches the repair
         CHECK_EQ(router.antsSent(AntType::Repair), static_cast<std::uint64_t>(1));
+        CHECK_EQ(router.repairDiscards(), static_cast<std::uint64_t>(0));
 
         // Before the deadline (5 × 1/0.8 = 6.25 s) nothing fires.
         clock.advance(1.0);
         for (const RouteDecision& d : router.onMaintenanceTick()) {
             CHECK(d.action != RouteAction::DiscardPending);
         }
+        CHECK_EQ(router.repairDiscards(), static_cast<std::uint64_t>(0));
 
         // Past the deadline, still no route: discard + notify.
         clock.advance(cfg1.repairWaitFactor / 0.8);
@@ -295,12 +297,17 @@ int main() {
         }
         CHECK(discard);
         CHECK(notified);
+        // #215: the discard is counted in the core, so the drop cause "repair
+        // discard" is available to both adapters without either of them
+        // re-deriving it from the decision stream.
+        CHECK_EQ(router.repairDiscards(), static_cast<std::uint64_t>(1));
 
         // The deadline is one-shot: a later tick does not re-fire it.
         clock.advance(1.0);
         for (const RouteDecision& d : router.onMaintenanceTick()) {
             CHECK(d.action != RouteAction::DiscardPending);
         }
+        CHECK_EQ(router.repairDiscards(), static_cast<std::uint64_t>(1));  // #215: not re-counted
     }
 
     // 12. A backward ant from the destination within the window cancels the
@@ -330,6 +337,8 @@ int main() {
         for (const RouteDecision& d : router.onMaintenanceTick()) {
             CHECK(d.action != RouteAction::DiscardPending);
         }
+        // #215: a repair that succeeded is not a drop cause.
+        CHECK_EQ(router.repairDiscards(), static_cast<std::uint64_t>(0));
     }
 
     // 13. A route restored by other means (reactive ant, diffusion) also

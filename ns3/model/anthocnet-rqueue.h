@@ -29,8 +29,12 @@ constexpr uint8_t kHoldReasons = 3;
 /// The #88 sweep showed the median offered packet delivers in ~3 ms (dOff50):
 /// the mean/jitter gap vs AODV is carried entirely by queue-held packets, so
 /// which reason accumulates the most *delivered* hold time is the dominant
-/// cause of the tail. `dropped*` counts packets that aged out at QueueTimeout
-/// (a PDR loss rather than a delay, but the same hold mechanic).
+/// cause of the tail. `dropped*` counts packets that left the queue without
+/// being forwarded — aged out at QueueTimeout, or evicted as the oldest entry
+/// when the queue was full (#215) — a PDR loss rather than a delay, but the
+/// same hold mechanic. It does NOT count packets released by a failed local
+/// repair (`DiscardPending`); those are a distinct drop cause and are counted
+/// by RoutingProtocol::RepairDiscardedPackets().
 struct HoldStats
 {
     uint64_t deliveredCount[kHoldReasons] = {0, 0, 0};

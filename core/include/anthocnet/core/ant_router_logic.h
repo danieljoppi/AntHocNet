@@ -64,6 +64,13 @@ public:
     /// Per-destination advertisements dropped by the origin cooldown
     /// (config.linkfailNotifyInterval, issue #20).
     std::uint64_t linkfailOriginsSuppressed() const { return linkfailOriginsSuppressed_; }
+    /// Local repairs that expired without a backward ant and therefore released
+    /// the data buffered for their destination — the number of DiscardPending
+    /// decisions this node has emitted ([1] §3.5, D6; drop-cause breakdown,
+    /// issue #215). This is the *event* count: the adapter owns the pending
+    /// queue, so only it knows how many packets each discard released. Counted
+    /// here so the cause stays simulator-agnostic and both adapters get it.
+    std::uint64_t repairDiscards() const { return repairDiscards_; }
 
     // --- neighbour learning ----------------------------------------------
     /// Record that `neighbor` is reachable (link-layer detection / hello),
@@ -204,6 +211,7 @@ private:
     std::uint64_t linkfailPropagations_ = 0;        ///< re-broadcast LinkFails (issue #20)
     std::uint64_t linkfailBudgetDrops_  = 0;        ///< budget-suppressed propagations (issue #20)
     std::uint64_t linkfailOriginsSuppressed_ = 0;   ///< cooldown-suppressed advertisements (issue #20)
+    std::uint64_t repairDiscards_ = 0;              ///< expired local repairs that discarded pending data (#215)
     std::map<NodeAddress, double> lastLinkfailNotify_;  ///< dest -> last originated LinkFail time
 };
 
