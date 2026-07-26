@@ -33,6 +33,32 @@ adapters, the benchmark harness, and reproducible CI/packaging.
 [Unreleased]: https://github.com/danieljoppi/AntHocNet/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/danieljoppi/AntHocNet/releases/tag/v0.1.0
 
+## v1.1.0 (2026-07-26)
+
+### Feat
+
+- **core**: adopt the thesis's two-factor acceptance band as the reactive-setup default (#190)
+- **skill**: compare a sweep across two code generations with a baseline control (#172)
+- **core**: add an ILinkMetric registry mapping metric names to instances (#163)
+- **skills**: campaign-loop tooling, scenario validation (#134), and ADR-0014 (#161)
+- **infra**: publish a release-profile ns-3 campaign image (ns3:&lt;ver&gt;-opt) (#157)
+- **bench**: emit ##PERF## wall-clock + peak-RSS lines per sim run (#139)
+- **bench**: byte-normalized routing load nrl_bytes (#140)
+- **bench**: emit per-run ##RUN## rows and paired A/B verdicts (#137)
+- **core**: pheromone-table size gauge (regular/virtual) in counters + --diag (#141)
+- **bench**: add --point for single-point sweep dispatch (#120)
+- **bench**: add a --propagation override to run-scenarios.py (#114)
+
+### Fix
+
+- **bench**: correct the --scenario=thesis preset from the thesis, add extraArgs to scenario-matrix (#187)
+- **core**: bound the reactive flood per (node, generation), not per ant path (#174)
+- **core**: stop bounding reactive floods — a broadcast budget is a hop limit (#170)
+- **core**: adopt T_hop = 3 ms from the 2007 thesis, replacing the provisional 50 ms (#167)
+- **infra**: split the Docker Hub mirror into non-fatal steps so a bad token can't skip GHCR publishes (#159)
+- **bench**: flush the CSV after every point, not just at script exit (#119)
+- correct the Zenodo DOI (concept DOI, README badge + CITATION.cff) (#116)
+
 ## v1.0.0 (2026-07-23)
 
 ### Feat
