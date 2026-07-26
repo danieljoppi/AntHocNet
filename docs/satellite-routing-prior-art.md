@@ -55,6 +55,57 @@ written into [#196](https://github.com/danieljoppi/AntHocNet/issues/196) /
 [#216](https://github.com/danieljoppi/AntHocNet/issues/216), and this survey
 confirms it is not a self-imposed handicap but the field's actual convention.
 
+### 2.1 What protocols actually run on satellites
+
+Checked against the same source (§4.2), because "what is the baseline" is a
+question about deployed and proposed practice, not only about the ACO corner.
+
+**The starting point is the terrestrial suite, and it does not work.** Westphal
+et al. record that TCP/IP, IPv6 for addressing, **BGP** to share routing
+information and **OSPF** to compute routes are commonly used, then state
+directly that *"these are inadequate in the high mobility, highly dynamic
+environment of satellite constellations"* (§4.2). They cite an analysis finding
+network usability falls **below 20%** if IP protocols are applied as-is.
+
+So the real landscape is adaptations of the terrestrial stack:
+
+| Family | Named examples | What it does |
+|---|---|---|
+| **Snapshot / precomputed** | virtual topology, per-snapshot Dijkstra | Treat the topology as static per snapshot; tables typically precomputed and uploaded from the ground |
+| **Link-state, predictability-aware** | **OPSPF** (Orbit Prediction Shortest Path First), **ASER** (Area-based Satellite Routing, hierarchical) | OSPF adapted to the orbit's periodicity. OPSPF exists to fix *"endless route convergence with OSPF that consumes expensive inter-satellite link bandwidth"* — i.e. plain OSPF's reconvergence is the problem being solved |
+| **Shortest-path refinements** | **StableRoute** | Among equal-cost paths, prefer the one requiring fewest route updates — churn, not distance, is the cost being minimised |
+| **BGP adaptations** | — | Studied for link intermittency on the space/ground link and its effect on peering sessions; the survey states BGP *"needs to be modified as well"* |
+| **Traffic engineering** | **segment routing (SR)**, LCRA | Zone-based path selection to spread load across the constellation |
+| **Disruption-tolerant** | DTN / Bundle Protocol (IETF WG) | From deep-space work; addresses disruption rather than constellation ISL routing |
+| **Bio-inspired** | ACO variants (§3) | Load balancing |
+
+Not covered by this source, and flagged as such: the access/link layer
+(DVB-S2/RCS2 for GEO — what SNS3 models; CCSDS for space links; 3GPP **5G NTN**
+integration, which the survey does cite) and transport-layer work (PEPs, TCP
+variants — though the survey notes routing being optimised *to stay compatible
+with TCP's timer granularity*, which inverts the usual layering).
+
+**What operators actually run is largely undisclosed.** Starlink's
+inter-satellite routing is proprietary. This document deliberately makes no
+claim about any operator's deployed protocol — see the withdrawn Iridium
+assertion in §1 for why.
+
+### 2.2 Consequence for our baselines
+
+Two things follow, and both change #216:
+
+1. **AODV / OLSR / DSDV are not satellite protocols.** Nobody proposes them for
+   a constellation. Comparing AntHocNet only against them on an ISL grid would
+   be a strawman, and a reviewer would say so. They stay useful as a *sanity*
+   row — "here is what a naive terrestrial protocol does here" — never as the
+   claim.
+2. **The realistic incumbent is predictability-aware link state, not just
+   "precomputed shortest path".** OPSPF is the sharper control: it is what the
+   field proposes *because* plain OSPF reconverges badly, so beating a
+   precomputed table is a weaker result than beating OPSPF. A precomputed
+   control remains the right first implementation (it is simpler and bounds the
+   best case), but the ceiling it represents should be named honestly.
+
 ## 3. Prior art: ACO on LEO constellations
 
 The field is **substantial and converged**. Every ACO-on-LEO paper found frames
@@ -150,6 +201,34 @@ That claim is worth making only if the measurement is honest about the likely
 outcome: **on a quiet, fully-predicted constellation the control should win**,
 and the interesting cells are the ones where its assumptions fail.
 
+### 5.1 The competitor set is wider than the ACO papers
+
+A correction to this document's own earlier framing, from the §2.1 protocol
+check. §3 established that the ACO-on-LEO field converged on **load balancing**,
+and §4 concluded the gap is reproducibility rather than mechanism. But the
+congestion niche is not contested only by ACO papers:
+
+**Segment routing already targets the same problem**, is standardised, runs on
+real hardware, and needs no per-packet stochastic decision — Westphal et al.
+record SR being used to divide the constellation into zones and spread traffic
+across them, alongside LCRA as a low-complexity alternative.
+
+That does not overturn §5, but it sharpens what must be argued. Our claim cannot
+be *"adaptive routing addresses congestion that precomputed paths cannot see"* —
+so does SR-based traffic engineering, deployably. It has to be narrower, e.g.:
+
+- **distributed and reactive without a controller** — SR zone assignment is
+  computed centrally from a traffic view; ACO's pheromone is local and needs no
+  such view, which matters exactly when the controller's view is stale or
+  unreachable (the disrupted regimes in §6);
+- **no separate traffic-engineering plane** — the same mechanism that discovers
+  routes also balances them.
+
+Both are testable, and neither is tested by beating a *precomputed shortest
+path* control alone. Anyone taking this to publication should expect "why not
+segment routing?" as a reviewer question and have an answer that is not "we
+didn't compare".
+
 ## 6. What the benchmark must create
 
 Directly actionable for [#216](https://github.com/danieljoppi/AntHocNet/issues/216) —
@@ -182,7 +261,7 @@ makes building them part of #216 rather than a follow-up.
 | [#197](https://github.com/danieljoppi/AntHocNet/issues/197) | Assess Hypatia's mobility layer separately from its precomputed forwarding — the former is Silva's model, and may be usable without the latter |
 | [#195](https://github.com/danieljoppi/AntHocNet/issues/195) | **Weakened** — the infrastructure exists; building our own is harder to justify |
 | [#206](https://github.com/danieljoppi/AntHocNet/issues/206) | **Confirmed load-bearing** — congestion is *the* claim, and the signal is wifi-only today |
-| [#216](https://github.com/danieljoppi/AntHocNet/issues/216) | Control is mandatory and matches field convention; §6 defines the cells |
+| [#216](https://github.com/danieljoppi/AntHocNet/issues/216) | Control is mandatory and matches field convention; §6 defines the cells. **Updated by §2.1/§5.1:** AODV/OLSR/DSDV are a sanity row, not the claim; **OPSPF** is the sharper realistic incumbent; and **segment routing** contests the same congestion niche, so "why not SR?" needs an answer |
 
 ## 8. Limits of this survey
 
