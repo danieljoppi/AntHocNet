@@ -8,6 +8,11 @@
 > Everything outside §2 remains abstract-level — see
 > [§8 Limits](#8-limits-of-this-survey) for what still needs a human pass.
 
+> **Companion page:** [`network-regimes.md`](network-regimes.md) draws the two
+> regimes and tabulates how they differ. Read that first if the question is
+> *"why doesn't my MANET intuition transfer?"*; read this one for *"what has
+> already been published, and what may we claim?"*
+
 ## 1. The question this answers
 
 Before spending anything on a satellite substrate ([#193](https://github.com/danieljoppi/AntHocNet/issues/193))
