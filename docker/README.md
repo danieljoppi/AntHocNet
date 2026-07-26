@@ -13,6 +13,15 @@ vendors ns-2 or ns-3.
 | `ns2` | `2.34`, `2.35` | Plain ns-allinone-2.3x built from source, **no AntHocNet**. |
 | `anthocnet-ns2` | `2.34`, `2.35` | The same ns-2 **plus** the AntHocNet patch applied and **compiled** (the only place the ns-2 adapter is actually built). |
 
+> **Satellite work uses an image variant, not a different build of AntHocNet**
+> ([ADR-0015](../docs/adr/0015-satellite-substrate-lives-in-the-image.md)). A
+> satellite substrate (ns3-leo, Hypatia, …) is a third-party module installed
+> into the *ns-3 tree*, so it belongs to the image; the AntHocNet module itself
+> compiles once and is identical in both regimes. No satellite image is
+> published yet — the substrate is not chosen ([#193](https://github.com/danieljoppi/AntHocNet/issues/193)),
+> and the parameterised build target that answers that question is deliberately
+> unpublished. See [#192](https://github.com/danieljoppi/AntHocNet/issues/192).
+
 Published to **GHCR** (`ghcr.io/danieljoppi/…`) for
 `{ns3,anthocnet-ns3,ns2,anthocnet-ns2}`. A Docker Hub mirror exists in
 `images.yml` but is **off** (`MIRROR_DOCKERHUB: 'false'`, #158) — GHCR is the
