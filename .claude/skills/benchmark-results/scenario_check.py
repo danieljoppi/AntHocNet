@@ -100,7 +100,15 @@ def cmd_preflight(a):
 
 
 def parse_results(path):
-    """Yield dicts with proto/pdr/delay/delay99/nrl/jitter (+context) per row."""
+    """Yield dicts with proto/pdr/delay/delay99/nrl/jitter (+context) per row.
+
+    Energy fields (#209) are present only for runs produced after energy
+    instrumentation landed; older inputs simply omit them and the energy rules
+    below are skipped. The results table carries the two headline energy
+    columns (energy(J), J/pkt) at positions 10/11; the residual spread, the
+    configured initial energy and the first-death time live in the CSV only
+    (the human output puts them on a '# energy' line, which ROW does not match).
+    """
     with open(path) as fh:
         text = fh.read()
     first = text.lstrip().splitlines()[0] if text.strip() else ""
@@ -110,7 +118,12 @@ def parse_results(path):
                    "proto": r.get("protocol"),
                    "pdr": r.get("pdr_pct"), "delay": r.get("delay_ms"),
                    "delay99": r.get("delay99_ms"), "nrl": r.get("nrl"),
-                   "jitter": r.get("jitter_ms")}
+                   "jitter": r.get("jitter_ms"),
+                   "energy": r.get("energy_j"),
+                   "energy_per_pkt": r.get("energy_per_pkt_j"),
+                   "res_min": r.get("energy_res_min_j"),
+                   "res_mean": r.get("energy_res_mean_j"),
+                   "energy_init": r.get("energy_init_j")}
         return
     for line in text.splitlines():
         m = ROW.match(line)
@@ -124,6 +137,9 @@ def parse_results(path):
                "nrl": nums[4]}
         if len(nums) >= 6:
             row["jitter"] = nums[5]
+        if len(nums) >= 11:  # #209: ... nrlBytes, energy(J), J/pkt
+            row["energy"] = nums[9]
+            row["energy_per_pkt"] = nums[10]
         yield row
 
 
@@ -152,6 +168,38 @@ def cmd_results(a):
             if pdr is not None and pdr == 0.0:
                 report("WARN", f"{tag}: PDR 0 — dead scenario or harness "
                                "failure (#28 empty-table class)")
+            # #209 energy plausibility. Every radio is powered for the whole
+            # run, so consumption is strictly positive and residual energy can
+            # never exceed what the source started with; a violation is a
+            # harness regression (energy models not installed, read after
+            # Simulator::Destroy, wrong container indexing), not a protocol
+            # result — hence FAIL, like the rules above.
+            energy, epp = num("energy"), num("energy_per_pkt")
+            init = num("energy_init")
+            if energy is not None and not (math.isfinite(energy) and energy > 0.0):
+                report("FAIL", f"{tag}: total energy {r.get('energy')} is "
+                               "not a positive finite number — energy "
+                               "model not installed or not read")
+            if epp is not None:
+                if not math.isfinite(epp) or epp < 0.0:
+                    report("FAIL", f"{tag}: energy per delivered packet "
+                                   f"{r.get('energy_per_pkt')} is not finite "
+                                   "and non-negative")
+                elif epp == 0.0 and pdr:
+                    report("FAIL", f"{tag}: energy per delivered packet 0 with "
+                                   f"PDR {pdr} — packets delivered but no "
+                                   "energy attributed")
+            if init is not None:
+                for k in ("res_min", "res_mean"):
+                    v = num(k)
+                    if v is None:
+                        continue
+                    if v > init:
+                        report("FAIL", f"{tag}: residual energy {k}={v} J "
+                                       f"exceeds initial {init} J")
+                    if v < 0.0:
+                        report("FAIL", f"{tag}: negative residual energy "
+                                       f"{k}={v} J")
             if floor is not None and r["proto"] == "aodv" and pdr is not None:
                 if pdr < floor:
                     report("FAIL", f"{tag}: anchor '{a.anchor}' floor "

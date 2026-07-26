@@ -33,6 +33,12 @@ build_lib_example(
     ${libmobility}
     ${libapplications}
     ${libflow-monitor}
+    # energy (#209): BasicEnergySource/BasicEnergySourceHelper live in the
+    # energy module. WifiRadioEnergyModel(Helper) is in wifi, already linked.
+    # wifi itself depends on energy in every ns-3 from 3.36 to 3.48, so
+    # --enable-modules lists that name wifi already pull energy in; this entry
+    # just makes the direct dependency explicit.
+    ${libenergy}
     ${libaodv}
     ${libolsr}
     ${libdsdv}
