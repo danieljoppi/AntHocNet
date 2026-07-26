@@ -1,10 +1,12 @@
 # ACO routing on satellite constellations — prior art and the deterministic-topology objection
 
-> **Status:** web/abstract-level survey, 2026-07-26. Answers the gating question
-> on [#202](https://github.com/danieljoppi/AntHocNet/issues/202) for the
-> satellite track ([#192](https://github.com/danieljoppi/AntHocNet/issues/192)).
-> **Not** a full-text review — see [§8 Limits](#8-limits-of-this-survey) for
-> exactly what still needs a human pass.
+> **Status:** web/abstract-level survey, 2026-07-26, **with §2 since checked
+> against a full-text source** (see [§2](#2-what-the-mainstream-actually-does)).
+> Answers the gating question on
+> [#202](https://github.com/danieljoppi/AntHocNet/issues/202) for the satellite
+> track ([#192](https://github.com/danieljoppi/AntHocNet/issues/192)).
+> Everything outside §2 remains abstract-level — see
+> [§8 Limits](#8-limits-of-this-survey) for what still needs a human pass.
 
 ## 1. The question this answers
 
@@ -18,20 +20,34 @@ the track needs an answer to the objection a reviewer raises in one sentence:
 > network with an algorithm designed for an unpredictable one — when you can
 > precompute shortest paths?
 
-The objection is sound, and the operational world agrees with it: Iridium runs
-**virtual-topology-based snapshot routing**, and the research substrate the
-track was considering (Hypatia) precomputes per-timestep forwarding tables
-rather than running a routing protocol at all.
+The objection is sound: the research substrate the track was considering
+(Hypatia) precomputes per-timestep forwarding tables rather than running a
+routing protocol at all.
+
+> **Correction, 2026-07-26.** An earlier revision of this document also asserted
+> that *"Iridium runs virtual-topology-based snapshot routing operationally"*.
+> That claim came from a web-search snippet and is **not supported** by the
+> full-text source since checked (Westphal et al. 2023, below), whose only
+> mention of Iridium is historical — the late-1990s/early-2000s proposal wave.
+> The claim may still be true, but it is unattributed and must not be relied on
+> until a source is found. It is withdrawn here rather than quietly softened,
+> because "an operational system does X" is exactly the kind of load-bearing
+> fact a reviewer would check.
 
 ## 2. What the mainstream actually does
 
 The LEO routing literature splits into two families:
 
-| Family | Mechanism | Notes |
+**§2 is the one section checked against a full-text source**: Westphal, Han &
+Li, *LEO Satellite Networking Relaunched: Survey and Current Research
+Challenges*, ITU Journal / arXiv 2310.07646 (2023). Verdicts below are marked
+accordingly.
+
+| Family | Mechanism | Evidence |
 |---|---|---|
-| **Static / topology-exploiting** | Virtual topology (VT), virtual node (VN), snapshot routing (SSR) — Dijkstra per snapshot, tables uploaded periodically from the ground | Exploits the periodicity and predictability of the constellation to avoid onboard computation and distributed signalling. **Iridium uses this operationally.** |
-| **Time-expanded** | Time-expanded graph (TEG) — links adjacent snapshots so a path can span a topology change | Addresses the core limitation of snapshot methods: they optimise *within* one snapshot and ignore the relation between neighbouring ones |
-| **Dynamic** | On-demand and traffic-aware routing | Where the adaptive/ACO work lives |
+| **Static / topology-exploiting** | Snapshot routing — the topology is treated as static for a snapshot's duration, routing is computed on it, and a new table is populated as the topology evolves | ✅ **Confirmed by Westphal et al. §1**, which splits satellite routing into exactly two categories, snapshot and dynamic, and notes the tables are typically precomputed and uploaded or stored. Its §4.1 adds that each satellite holds a few snapshots' tables, uploaded periodically from ground stations |
+| **Dynamic** | On-demand and traffic-aware routing; the protocol must adapt as the topology changes, and a snapshot's stable lifetime is short | ✅ **Confirmed** — the other half of the same split |
+| *Named taxonomy:* virtual topology (VT), virtual node (VN), time-expanded graph (TEG) | Finer-grained modelling of the static family | ⚠️ **Not attributable to Westphal et al.** — none of the three terms appears in it. The taxonomy comes from other (abstract-level) sources and may well be right, but this document cannot cite that survey for it |
 
 This is the bar. Any claim we make is measured against a precomputed
 shortest-path control, not against AODV — which is exactly the framing already
@@ -53,6 +69,11 @@ its contribution as **load balancing / congestion**, not as topology discovery.
 | *A distributed QoS routing based on ant algorithm for LEO satellite network*, J. Electronics (China), 2006 | Distributed QoS routing | — | — |
 | *Application of ACO to Adaptive Routing in LEO Telecommunications Satellite Network* (early) | Adaptive routing | compared against link-state algorithms | custom C++ + MATLAB frontend |
 | ACO-PSO hybrid, IJSDR, 2025 | Optimal path selection | — | — |
+
+**Independently corroborated:** Westphal et al. (2023) — a survey with no stake
+in ACO — also references a LEO work applying ant colony optimization as a
+learning mechanism to optimize end-to-end paths under fragment routing. So the
+presence of ACO in this literature is not an artifact of searching for it.
 
 Two facts from this table drive everything below.
 
@@ -89,6 +110,22 @@ areas can be evaluated in satellite networks*. That is a direct hit on
 [#198](https://github.com/danieljoppi/AntHocNet/issues/198) and a strong signal
 for the substrate decision — and it further weakens the case for building our
 own module ([#195](https://github.com/danieljoppi/AntHocNet/issues/195)).
+
+Two substrate facts recovered from the Westphal et al. full text, both new to
+this track:
+
+- **ns3-leo is peer-reviewed**, not merely a GitHub repository — Schubert, Wolf
+  & Kulau, *ns-3-leo: Evaluation Tool for Satellite Swarm Communication
+  Protocols*, IEEE Access 10 (2022), 11527–11537,
+  [doi:10.1109/ACCESS.2022.3146770](https://doi.org/10.1109/ACCESS.2022.3146770).
+  Worth knowing before betting a substrate decision on it, and citable.
+- **A candidate the track had missed:** Pedro Silva, *Satellite Mobility Model
+  for ns-3 Simulator* (<https://gitlab.inesctec.pt/pmms/ns3-satellite>) — and
+  Westphal et al. state that **Hypatia is built on it**. That makes it the layer
+  *beneath* the option [#197](https://github.com/danieljoppi/AntHocNet/issues/197)
+  evaluates: potentially the mobility half of a substrate without Hypatia's
+  precomputed-forwarding baggage, and a plausible ready-made answer to the
+  roll-your-own floor in [#200](https://github.com/danieljoppi/AntHocNet/issues/200).
 
 ## 5. The defensible claim
 
@@ -140,7 +177,9 @@ makes building them part of #216 rather than a follow-up.
 |---|---|
 | [#192](https://github.com/danieljoppi/AntHocNet/issues/192) | Track is **not** closed as a negative result — a defensible claim exists, but it is an evaluation claim, not an algorithmic one |
 | [#193](https://github.com/danieljoppi/AntHocNet/issues/193) | Substrate must be a *current, reproducible* ns-3 base; that is now a selection criterion, not a nice-to-have |
-| [#198](https://github.com/danieljoppi/AntHocNet/issues/198) | **Promoted** — ns3-leo's stated goal is literally this use case |
+| [#198](https://github.com/danieljoppi/AntHocNet/issues/198) | **Promoted** — ns3-leo's stated goal is literally this use case, and it is peer-reviewed (IEEE Access 2022) rather than only a repository |
+| [#200](https://github.com/danieljoppi/AntHocNet/issues/200) | **New candidate:** Silva's *Satellite Mobility Model for ns-3* — Hypatia is built on it, so it may already be the roll-your-own floor this spike was going to estimate |
+| [#197](https://github.com/danieljoppi/AntHocNet/issues/197) | Assess Hypatia's mobility layer separately from its precomputed forwarding — the former is Silva's model, and may be usable without the latter |
 | [#195](https://github.com/danieljoppi/AntHocNet/issues/195) | **Weakened** — the infrastructure exists; building our own is harder to justify |
 | [#206](https://github.com/danieljoppi/AntHocNet/issues/206) | **Confirmed load-bearing** — congestion is *the* claim, and the signal is wifi-only today |
 | [#216](https://github.com/danieljoppi/AntHocNet/issues/216) | Control is mandatory and matches field convention; §6 defines the cells |
@@ -149,10 +188,16 @@ makes building them part of #216 rather than a follow-up.
 
 Stated plainly so nobody mistakes its reach:
 
-- **Abstract-level only.** This is a web search over titles, abstracts and
-  landing pages. No paywalled full text was read — the environment cannot fetch
-  academic PDFs (proxy 403), the same constraint that blocks the 2007 thesis
-  work ([#58](https://github.com/danieljoppi/AntHocNet/issues/58)/[#88](https://github.com/danieljoppi/AntHocNet/issues/88)).
+- **Abstract-level, except §2.** This began as a web search over titles,
+  abstracts and landing pages. §2 has since been checked against the full text
+  of Westphal et al. (2023), supplied by the maintainer on 2026-07-26 — which
+  is how the Iridium claim was caught and withdrawn. **Every other section is
+  still abstract-level.** The environment cannot fetch academic PDFs itself
+  (proxy 403), the same constraint that gated the 2007 thesis work
+  ([#58](https://github.com/danieljoppi/AntHocNet/issues/58)/[#88](https://github.com/danieljoppi/AntHocNet/issues/88)).
+- **One claim has already been withdrawn on contact with a source** (§2,
+  Iridium). Treat that as a base rate, not a one-off: the unchecked sections
+  were written the same way.
 - **Baseline columns are largely unfilled**, which is the single most important
   column in §3. Only ACORA-WR's baselines were recoverable from the abstract.
   Whether the other works use a shortest-path control decides how strong the
@@ -169,12 +214,15 @@ Stated plainly so nobody mistakes its reach:
    clear and the scenario parameters to mirror.
 2. **Zhi et al. 2025 (LBRA-ACO)** — the most recent; establishes current
    state of the art.
-3. **The ITU/arXiv survey** *LEO Satellite Networking Relaunched: Survey and
-   Current Research Challenges* (arXiv 2310.07646) — open access, so this one
-   needs no paywall access and is the cheapest way to validate §2.
+3. ~~**The ITU/arXiv survey**~~ ✅ **obtained and checked, 2026-07-26.** Results
+   are folded into §2, §3 and §4 above; it confirmed the snapshot/dynamic split,
+   refuted the Iridium claim, could not support the VT/VN/TEG taxonomy,
+   corroborated ACO's presence in the literature, and supplied the ns3-leo
+   citation plus a substrate candidate the track had missed.
 
-Once obtained, land them under `library/` and grep them with the `pdf-extract`
-skill rather than reading them into context.
+Land sources in the **private** papers repo under `AntHocNet/library/` and grep
+them with the `pdf-extract` skill rather than reading them into context. Note
+that this (public) repo keeps digests and citations only — never extracted text.
 
 ## Sources
 
