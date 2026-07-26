@@ -138,6 +138,38 @@ wrong (a drop path that fires no error callback, a trace hook that did not
 connect on this ns-3 release, a cause counted twice) and every per-cause
 conclusion is unsafe until it is fixed.
 
+**The three AntHocNet-only columns are a sub-breakdown of `drop_route_pct`, not
+causes on top of it.** `drop_setup_pct + drop_reconv_pct + drop_repair_pct`
+partitions `drop_route_pct`: all three exit paths end in the same L3 error
+callback, so the parent already contains them. Adding them to the identity
+double-counts route failures and manufactures a ~156 % total out of a correct
+breakdown — a mistake made once while reading these very columns
+([#229](https://github.com/danieljoppi/AntHocNet/issues/229)). The identity has
+**five** terms plus PDR. `scenario_check.py` cross-checks the partition
+separately (WARN if the three do not reconstruct their parent within 1 pp).
+
+#### What is measurable, per protocol
+
+`drop_queue_pct` comes from `Ipv4FlowProbe`'s `DROP_QUEUE` / `DROP_QUEUE_DISC`
+reasons, which observe the **interface and qdisc queues only**. A routing
+protocol's own pending queue — the buffer holding packets awaiting a route — is
+invisible to them unless the protocol reports its discards through an L3 error
+callback.
+
+| Protocol | Routing-layer pending-queue drops |
+|---|---|
+| **anthocnet** | **Counted.** They run through the error callback, so they land in `DROP_NO_ROUTE` and hence in `drop_route_pct` (further split by the three sub-columns above). This is why AntHocNet's identity closes to within 0.06 pp on every scenario. |
+| **aodv** | Counted, same mechanism. |
+| **olsr** | Not applicable — OLSR is proactive and does not buffer awaiting a route. |
+| **dsdv** | **Not counted.** ns-3's `dsdv::PacketQueue` sheds on `MaxQueueLen` / `MaxQueueTime` without an error callback, so those packets are offered, never delivered, and attributed to no cause. `drop_queue_pct` reads a confident `0.00` on all six scenarios. |
+
+The consequence is bounded but real: it costs **11.46 pp** of the DSDV identity
+at `dense-small` (the most congested scenario, so the most buffering) and
+≤ 0.73 pp elsewhere. **Do not include DSDV in a cross-protocol drop-cause
+comparison** until [#229](https://github.com/danieljoppi/AntHocNet/issues/229)
+closes. DSDV's aggregate metrics — PDR, delay, NRL — never depended on the
+breakdown and are unaffected.
+
 ### Caveats
 
 - **NS-3 only.** The NS-2 adapter has no equivalent instrumentation; see
@@ -242,6 +274,28 @@ not a blank column.
   a second column is needed.
 
 ### Caveats (route quality)
+
+> **`path_div_*` and `path_entropy_bits` are not publishable at the current
+> default window.** The single-path baselines are this metric's self-check, and
+> they fail it. OLSR installs exactly one route per destination and so must read
+> `path_div_used` ≈ 1.000; on the first full campaign it read **1.428** at
+> `heavy-load`, 1.383 at `high-mobility` and 1.344 at `paper-base`. AntHocNet's
+> whole range (1.225–1.512) sits *inside* OLSR's.
+>
+> The cause is the window, not the counter: `path_div_window_s` defaults to
+> **10 s**, which is longer than a route survives under mobility, so a single
+> route being *replaced* is counted as two concurrent paths. `sparse-static` is
+> the control that proves it — the only scenario with no route churn, and the
+> only one where the baseline reads ≈ 1 (olsr 1.004) and the separation from
+> AntHocNet (1.225) is real.
+>
+> `--pathWindowS` already exists as a CLI knob; the window needs calibrating to
+> the largest value at which all three single-path baselines read ≤ 1.05.
+> `scenario_check.py results` now **FAILs** a single-path protocol reading above
+> 1.10, so this cannot be forgotten. Tracked as
+> [#230](https://github.com/danieljoppi/AntHocNet/issues/230). Until it closes,
+> read `path_hops_*` and `jain_pkts` (unaffected) and treat the diversity and
+> entropy columns as uncalibrated.
 
 - **Reactive protocols read one hop high on route-discovery packets.** A
   protocol with no route yet bounces the packet through the loopback device to
@@ -438,6 +492,42 @@ Two arms should read ≈ 0 and are the reason to believe the AntHocNet number:
 Neither is expected to be exactly zero — a route change can hand consecutive
 packets to paths of different length under any protocol — but both should be
 small next to the multipath figure.
+
+#### What the self-check actually returned
+
+The floor half passes: on the stable-field scenarios (`sparse-static`,
+`paper-base`) every single-path baseline reads **exactly 0.0000** at 93–100 %
+PDR. Loss is correctly *not* counted as reordering and the sequence plumbing is
+sound.
+
+The discrimination half fails. Pooled over the six scenarios, `reorder_ratio`
+reads **anthocnet max 0.0208** against **aodv max 0.0243** — AntHocNet does not
+exceed the single-path control. At `dense-small` it is inverted outright:
+
+| | reorder_ratio | reorder_extent_mean | reorder_buf_max |
+|---|---:|---:|---:|
+| anthocnet | 0.0030 | 5.49 | **151.0** |
+| aodv | **0.0243** | **45.80** | 22.6 |
+
+**Why: `reorder_ratio` and `reorder_extent_*` measure route flapping, not
+concurrent paths.** RFC 4737 tags *every* subsequent lower-sequence arrival
+after one early packet. On the arrival order `1, 10, 2, 3, 4, 5`, packets 2–5
+are each `Type-P-Reordered` with extents 1, 2, 3, 4 — a mean extent of 2.5 from
+a **single** displacement. That is RFC-correct and the implementation is right;
+it simply makes the statistic a function of how often a route switches
+*forward*. AODV re-discovers constantly under `dense-small` congestion, and each
+re-discovery onto a shorter path is one such event. The fingerprint is a mean
+extent above the buffer high-water mark (45.80 vs 22.6) — impossible unless few
+displacements are tagging long runs behind them, and now a `scenario_check.py`
+WARN.
+
+**`reorder_buf_max` is the honest multipath signal.** It is the receiver-side
+buffer depth concurrent paths actually impose, and it separates AntHocNet from
+every baseline on **6 of 6** scenarios (anthocnet 12.6–973.8, baselines
+0.0–22.6, largest in every scenario). Prefer it. Quote `reorder_ratio` or
+`reorder_extent_*` only alongside the caveat above —
+[#230](https://github.com/danieljoppi/AntHocNet/issues/230) tracks the
+documentation and check work.
 
 ### Caveats
 

@@ -41,6 +41,14 @@ ANCHOR_KEY = {"single-hop": "single_hop_pdr_min",
 # reported above it is an instrumentation error, not a long route.
 MAX_PATH_LENGTH = 100
 
+# #230: the baselines all install exactly one route per destination at a time,
+# so their path_div_used is 1.0 by construction. Anything materially above that
+# is the diversity *window* counting route replacement as concurrent multipath —
+# it calibrates the window, and it is the only external check on whether an
+# AntHocNet diversity figure means anything.
+SINGLE_PATH_PROTOS = ("aodv", "olsr", "dsdv")
+SINGLE_PATH_DIV_MAX = 1.10
+
 ROW = re.compile(r"^\s*(?:##BENCH##\s+)?([a-z][\w-]*)((?:\s+[-\d.]+|\s+inf)+)\s*$")
 
 issues = []
@@ -265,6 +273,22 @@ def cmd_results(a):
                 if v is not None and not (math.isfinite(v) and v >= 0.0):
                     report("FAIL", f"{tag}: {k} {r.get(k)} is not a finite "
                                    "non-negative packet count")
+            # #230: mean extent above the reorder-buffer high-water mark is
+            # legal but diagnostic. RFC 4737 tags *every* lower-sequence arrival
+            # behind one early packet, so a single forward route switch produces
+            # a run of "reordered" packets with growing extents while the buffer
+            # depth actually needed stays small. When the mean exceeds the
+            # high-water mark, the extent figure is measuring route flapping,
+            # not sustained multipath disorder — the reading that made AODV
+            # score 8x AntHocNet at dense-small (extent 45.80 vs buf_max 22.6).
+            ext_mean, buf_max = num("reorder_extent_mean"), num("reorder_buf_max")
+            if (ext_mean is not None and buf_max is not None
+                    and ext_mean > buf_max):
+                report("WARN", f"{tag}: reorder_extent_mean {ext_mean} exceeds "
+                               f"reorder_buf_max {buf_max} — the extent here is "
+                               "route flapping (few displacements tagging long "
+                               "runs), not sustained reordering; do not read it "
+                               "as a multipath signal")
             # #215 drop-cause breakdown. The five protocol-agnostic causes are
             # measured from three independent books — FlowMonitor's per-flow
             # drop reasons, the Ipv4L3Protocol Tx/Rx hop tallies and the WifiMac
@@ -313,6 +337,25 @@ def cmd_results(a):
                     report("WARN", f"{tag}: drop causes off by {gap:+.2f} pp "
                                    f"({detail}) — expected only from packets "
                                    "still queued at end of run")
+                # #229: name the usual cause of a shortfall instead of leaving
+                # it as arithmetic. A protocol that buffers packets awaiting a
+                # route sheds them from its *own* queue, and only AntHocNet
+                # routes those discards through the L3 error callback that
+                # Ipv4FlowProbe's DROP_QUEUE / DROP_QUEUE_DISC reasons observe
+                # (those see the interface and qdisc queues, nothing else).
+                # ns-3's dsdv::PacketQueue sheds on MaxQueueLen / MaxQueueTime
+                # silently, so its packets are offered, never delivered, and
+                # attributed nowhere — the 11.46 pp shortfall at dense-small.
+                # Gated on a real shortfall: AntHocNet and AODV also report
+                # queue 0.00 there, but their identities close, so a bare
+                # "queue is zero" heuristic would fire on protocols that are
+                # accounting correctly.
+                if gap < -1.0 and causes["queue"] == 0.0:
+                    report("WARN", f"{tag}: drop_queue_pct is exactly 0 while "
+                                   f"{-gap:.2f} pp is unaccounted — the likely "
+                                   "cause is a routing-layer pending queue that "
+                                   "sheds without an L3 error callback and so "
+                                   "is invisible to the drop probes (#229)")
             # The AntHocNet-only causes are a *sub-breakdown* of drop_route_pct
             # (all three end in the same L3 error callback), never causes on top
             # of it. A mismatch means one pending-queue exit path is unaccounted
@@ -364,6 +407,16 @@ def cmd_results(a):
                     report("FAIL", f"{tag}: path diversity {div} < 1 — a "
                                    "carried destination uses at least one "
                                    "next hop")
+                elif (r["proto"] in SINGLE_PATH_PROTOS
+                        and div > SINGLE_PATH_DIV_MAX):
+                    report("FAIL", f"{tag}: path diversity {div} > "
+                                   f"{SINGLE_PATH_DIV_MAX} for a single-path "
+                                   "protocol — path_div_window_s is longer than "
+                                   "the route lifetime, so route replacement is "
+                                   "being counted as concurrent multipath; "
+                                   "recalibrate the window (#230) before "
+                                   "reading any path_div_* or path_entropy_bits "
+                                   "figure, including AntHocNet's")
             if div_max is not None and div is not None and div_max and div_max < div:
                 report("FAIL", f"{tag}: max path diversity {div_max} < mean "
                                f"path diversity {div}")
