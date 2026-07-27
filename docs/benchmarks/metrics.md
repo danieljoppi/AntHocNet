@@ -16,8 +16,47 @@ same realisations. Metrics come from an NS-3 `FlowMonitor`:
   survivorship-confounded — the extra packets a protocol delivers are precisely
   the hard/late ones — so prefer the offered-load percentiles for cross-protocol
   tail claims.
-- **jitter** — mean delay jitter over delivered packets (FlowMonitor
-  `jitterSum`), ms. The original paper's QoS metric (avg delay + jitter).
+- **jitter** (`jitter_ms`) — mean delay jitter over delivered packets
+  (FlowMonitor `jitterSum` / (rx−1)), ms. Accumulates
+  `|delay_i − delay_{i−1}|`, where `delay = arrival − send`.
+- **jitterEq51** (`jitter_eq51_ms`) — the **thesis's** delay jitter, eq 5.1,
+  ms. **This is a different quantity from `jitter_ms`, not a variant of it**
+  ([#89](https://github.com/danieljoppi/AntHocNet/issues/89)):
+
+  ```
+  eq 5.1:       Σ |(t_i − t_{i−1}) − (t_{i−1} − t_{i−2})|      normalised by (n−2)
+  jitter_ms:    Σ |delay_i − delay_{i−1}|                       normalised by (n−1)
+  ```
+
+  Eq 5.1 contains **no send times at all** — it measures how far each
+  inter-arrival gap falls from the *previous gap*, where `jitter_ms` measures
+  how far each packet's *delay* falls from the previous packet's. Under a
+  perfectly periodic source the two differ by one further differencing step,
+  which for iid arrival noise inflates eq 5.1 by roughly √2 in scale. There is
+  no constant with which to convert one into the other.
+
+  Three properties of the source formula that the implementation had to decide
+  and therefore records here:
+
+  - The thesis writes eq 5.1 as a bare **sum**, though every figure caption
+    calls it "average delay jitter". A sum scales with packets delivered, so the
+    worse-delivering protocol would score better arithmetically — the same
+    survivorship trap the offered-load percentiles exist to dodge. We normalise.
+  - The normaliser is **(n−2)** per flow: the sum's first well-defined term is
+    at `i = 3`. (The thesis writes `i = 2` but references `t_{i−2}` — an
+    off-by-one in the source.) Flows with fewer than 3 arrivals contribute
+    nothing.
+  - It is computed in **arrival order, not sequence order**. The thesis says
+    "the time of arrival of the *i*th packet", so a reordered packet
+    legitimately registers as jitter. Do not sort by sequence number to
+    "fix" this; that would silently change the metric.
+
+  **Which to cite:** paper-parity claims ("reproduces the thesis's jitter
+  result") must cite `jitter_eq51_ms`. Cross-protocol comparisons may cite
+  either, as long as one is used consistently — both are measured identically
+  across all arms on identical realisations. A large divergence between the two
+  columns is itself informative: it says the arrival process is bursty in a way
+  the delay distribution alone does not show.
 - **dOff90** (`delay_off50_ms`/`delay_off90_ms` in the CSV) — delay at the
   50th/90th percentile of *offered* (sent) packets, counting an undelivered
   packet as infinite delay (`inf` / `-1` in the CSV when less than that fraction

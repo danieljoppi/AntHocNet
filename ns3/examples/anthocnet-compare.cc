@@ -125,10 +125,33 @@ void CountControlTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t) {
 // supply it: it reports per-flow counts and delays, never per-packet order.
 std::map<Address, std::vector<uint32_t>> g_rxSeq;
 
+// --- the thesis's delay jitter, eq 5.1 (#89) ---------------------------------
+// Arrival times per flow, same key and same arrival order as g_rxSeq.
+//
+// This exists because the thesis's "average delay jitter" is NOT the quantity
+// FlowMonitor's jitterSum reports, and the difference is not a constant factor:
+//
+//   thesis eq 5.1   sum |(t_i - t_{i-1}) - (t_{i-1} - t_{i-2})|
+//   FlowMonitor     sum |delay_i - delay_{i-1}|,  delay = arrival - send
+//
+// Eq 5.1 contains no send times at all — it measures how much each inter-arrival
+// gap differs from the *previous gap*, where the delay-based figure measures how
+// much each packet's delay differs from the previous packet's. Under a perfectly
+// periodic source the two differ by one further differencing step, which for iid
+// arrival noise inflates eq 5.1's variance by roughly 2x. So the columns are
+// reported side by side and are not interchangeable: paper-parity claims cite
+// eq 5.1, everything else may cite either as long as it is consistent.
+//
+// Arrival order, not sequence order, is correct here — the thesis says "the time
+// of arrival of the ith packet", so a reordered packet legitimately registers as
+// jitter. Do not sort this by sequence number.
+std::map<Address, std::vector<double>> g_rxArrival;
+
 void RecordRxSeq(Ptr<const Packet> p, const Address& from) {
     SeqTsSizeHeader h;
     p->PeekHeader(h);
     g_rxSeq[from].push_back(h.GetSeq());
+    g_rxArrival[from].push_back(Simulator::Now().GetSeconds());
 }
 
 // --- drop-cause breakdown (#215) --------------------------------------------
@@ -483,6 +506,7 @@ struct Result {
     double nrlBytes = 0.0;       // #132: control bytes / delivered data bytes
     // #57 paper-parity / survivorship-safe QoS metrics:
     double jitterMs = 0.0;       // mean delay jitter (the paper's QoS metric)
+    double jitterEq51Ms = 0.0;   // #89: the thesis's eq 5.1, a different quantity
     double dOff50Ms = -1.0;      // delay at the 50th pct of *offered* (sent)
     double dOff90Ms = -1.0;      // packets, undelivered = inf; -1 encodes inf
     // #209 energy:
@@ -538,6 +562,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_qSum = 0.0;
     g_firstDeathS = -1.0;
     g_rxSeq.clear();
+    g_rxArrival.clear();  // #89
     g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;  // #215
     // #217
     g_hopSum = g_hopCount = 0;
@@ -888,6 +913,30 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         ? static_cast<double>(g_controlBytes) / totalRxBytes : 0.0;
 
     r.jitterMs = jitterSamples ? 1000.0 * totalJitter / jitterSamples : 0.0;
+
+    // #89: the thesis's eq 5.1, computed from arrival times per flow.
+    //
+    // The thesis writes eq 5.1 as a bare *sum* over a session, even though every
+    // figure caption calls it "average delay jitter". A sum is unusable here: it
+    // scales with the number of packets delivered, so the protocol that delivers
+    // less scores *better* purely arithmetically — the survivorship trap #57
+    // already had to design around. So it is normalised, and the normaliser is
+    // recorded rather than assumed: each flow of n arrivals contributes n-2
+    // terms, because the sum's first well-defined index is i=3 (the thesis
+    // writes i=2 but references t_{i-2}, an off-by-one in the source).
+    {
+        double sumEq51 = 0.0;
+        uint64_t termsEq51 = 0;
+        for (auto& kv : g_rxArrival) {
+            const std::vector<double>& t = kv.second;  // arrival order
+            if (t.size() < 3) continue;                // no term is defined
+            for (std::size_t i = 2; i < t.size(); ++i) {
+                sumEq51 += std::fabs((t[i] - t[i - 1]) - (t[i - 1] - t[i - 2]));
+            }
+            termsEq51 += t.size() - 2;
+        }
+        r.jitterEq51Ms = termsEq51 ? 1000.0 * sumEq51 / termsEq51 : 0.0;
+    }
 
     // 99th-percentile delay from the aggregated histogram.
     if (rxForDelay && binWidth > 0.0) {
@@ -1463,6 +1512,7 @@ int main(int argc, char* argv[]) {
         double pdr = 0, delay = 0, delay99 = 0, thrput = 0, nrl = 0;
         double nrlBytes = 0;  // #132
         double jitter = 0, dOff50 = 0, dOff90 = 0;
+        double jitterEq51 = 0;  // #89
         double pdrSq = 0, delaySq = 0, delay99Sq = 0, nrlSq = 0, nrlBytesSq = 0;
         bool off50Inf = false, off90Inf = false;
         double pdrSd = 0, delaySd = 0, delay99Sd = 0, nrlSd = 0, nrlBytesSd = 0;
@@ -1521,6 +1571,7 @@ int main(int argc, char* argv[]) {
             agg[i].nrl += r.nrl;
             agg[i].nrlBytes += r.nrlBytes;
             agg[i].jitter += r.jitterMs;
+            agg[i].jitterEq51 += r.jitterEq51Ms;  // #89
             agg[i].pdrSq += r.pdr * r.pdr;
             agg[i].delaySq += r.meanDelayMs * r.meanDelayMs;
             agg[i].delay99Sq += r.delay99Ms * r.delay99Ms;
@@ -1569,6 +1620,7 @@ int main(int argc, char* argv[]) {
         agg[i].nrl /= runs;
         agg[i].nrlBytes /= runs;
         agg[i].jitter /= runs;
+        agg[i].jitterEq51 /= runs;  // #89
         agg[i].dOff50 = agg[i].off50Inf ? -1.0 : agg[i].dOff50 / runs;
         agg[i].dOff90 = agg[i].off90Inf ? -1.0 : agg[i].dOff90 / runs;
         agg[i].energy /= runs;
@@ -1648,7 +1700,7 @@ int main(int argc, char* argv[]) {
                      "drop_reconv_pct,drop_repair_pct,"
                      "path_hops_mean,path_hops_max,"
                      "path_div_used,path_div_max,path_entropy_bits,"
-                     "path_div_window_s,jain_pkts\n";
+                     "path_div_window_s,jain_pkts,jitter_eq51_ms\n";
         std::cout << std::fixed;
         // Blank, not zero, when a cause does not apply to this protocol (#215).
         auto optPct = [](double v) {
@@ -1699,7 +1751,10 @@ int main(int argc, char* argv[]) {
                       << std::setprecision(1) << agg[i].divMax << ','
                       << std::setprecision(3) << agg[i].divEntropy << ','
                       << std::setprecision(1) << P.pathWindowS << ','
-                      << std::setprecision(4) << agg[i].jain << '\n';
+                      << std::setprecision(4) << agg[i].jain << ','
+                      // #89: appended last — the CSV is append-only and
+                      // consumers read by header name.
+                      << std::setprecision(2) << agg[i].jitterEq51 << '\n';
         }
         return 0;
     }
@@ -1727,8 +1782,11 @@ int main(int argc, char* argv[]) {
               << std::setw(12) << "jitter(ms)" << std::setw(12) << "dOff50(ms)"
               << std::setw(12) << "dOff90(ms)" << std::setw(12) << "nrlBytes"
               << std::setw(12) << "energy(J)" << std::setw(12) << "J/pkt"
-              << std::setw(12) << "hops" << std::setw(12) << "jain" << "\n";
-    std::cout << std::string(161, '-') << "\n";
+              << std::setw(12) << "hops" << std::setw(12) << "jain"
+              // #89: eq 5.1 sits next to the FlowMonitor jitter it is NOT
+              // interchangeable with; see docs/benchmarks/metrics.md.
+              << std::setw(13) << "jitterEq51" << "\n";
+    std::cout << std::string(174, '-') << "\n";
     for (std::size_t i = 0; i < list.size(); ++i) {
         std::cout << std::left << std::setw(12) << list[i] << std::right << std::fixed
                   << std::setw(8) << std::setprecision(1) << agg[i].pdr
@@ -1746,6 +1804,7 @@ int main(int argc, char* argv[]) {
                   << std::setw(12) << std::setprecision(4) << agg[i].energyPerPkt
                   << std::setw(12) << std::setprecision(2) << agg[i].hopsMean
                   << std::setw(12) << std::setprecision(4) << agg[i].jain
+                  << std::setw(13) << std::setprecision(2) << agg[i].jitterEq51
                   << "\n";
     }
     // #217 path detail: used-path diversity (distinct next hops that actually
