@@ -1,6 +1,11 @@
 # ADR-0007: Keep virtual pheromone / proactive diffusion, but gate it
 
-- **Status:** Accepted — implementation tracked in
+- **Status:** Accepted — **partly superseded on one point by
+  [ADR-0016](0016-directed-reactive-discovery-is-gated-and-off.md)**, which lets
+  a *reactive ant* be steered by virtual pheromone too (gated,
+  default off). The invariant this ADR was protecting is unchanged: **data still
+  never reads virtual pheromone.** Read "one consumer … reactive paths never read
+  it" below as the state at the time of writing. Implementation tracked in
   item 03,
   item 04, measured by
   item 07 /

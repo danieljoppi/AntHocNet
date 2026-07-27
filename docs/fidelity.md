@@ -25,6 +25,7 @@ The living compliance ledger is [issue #91](https://github.com/danieljoppi/AntHo
 | Stochastic data routing, pheromone² | 3.2 | `betaData=2` (#70/#100) | ✅ aligned |
 | Proactive ants, unsquared pheromone, broadcast≤2 | 3.3 | `betaAnts=1`, `proactiveMaxBroadcasts=2` (#45/#70) | ✅ |
 | Pheromone diffusion via hello ants | 3.3 | `enableDiffusion` (ADR-0007) | ✅ |
+| Reactive ant floods when it has no pheromone | 3.1 | default behaviour; `enableDirectedReactive` steers instead (ADR-0016) | ✅ faithful by default — the deviation is **off** |
 | Hello beacons (1 s, 2 missed → remove) | 3.3 fn.1 | `helloInterval`, `allowedHelloLoss` | ✅ |
 | Link-failure detection + notification | 3.4 | detectors A/D (#19/#44/#54) | ✅ |
 | Bounded local repair (≤2 broadcasts, wait 5×) | 3.4 | `repairMaxBroadcasts`, `repairWaitFactor` | ✅ |
@@ -138,7 +139,16 @@ possible". Provenance for each parameter is in
    leaves a usable alternate next-hop is absorbed rather than always notified
    (paper §3.4 always notifies). Benchmark-justified (#96): notification floods
    cost PDR on the ns-3 channel.
-6. **Cross-simulator parity is not guaranteed** — NS-2 and NS-3 have different
+6. **Directed reactive discovery** (`enableDirectedReactive`, default **off**;
+   ADR-0016) — a mechanism in **neither source**: a reactive forward ant may be
+   unicast along the diffused virtual gradient instead of broadcast. Listed here
+   for completeness rather than as an active deviation — with the default off the
+   shipped protocol matches [1] §3.1 exactly, and the gate exists to make the
+   *deviation* runnable (the inverse of item 3, where the gate makes the
+   *fidelity* runnable). #244 measures it; #245 tracks the open hazard that a
+   stale gradient can strand the single steered ant where a flood would not have
+   been.
+7. **Cross-simulator parity is not guaranteed** — NS-2 and NS-3 have different
    MAC/PHY; the NS-2 adapter also has no pending-queue hold cap yet. Treat
    cross-sim comparison as behaviour re-validation, not a bit-for-bit port.
 
