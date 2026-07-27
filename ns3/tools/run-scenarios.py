@@ -134,7 +134,13 @@ METRICS = ["pdr_pct", "delay_ms", "delay99_ms", "throughput_kbps", "nrl",
            "drop_ttl_pct", "drop_setup_pct", "drop_reconv_pct",
            "drop_repair_pct",
            "path_hops_mean", "path_hops_max", "path_div_used", "path_div_max",
-           "path_entropy_bits", "path_div_window_s", "jain_pkts"]
+           "path_entropy_bits", "path_div_window_s", "jain_pkts",
+           # #89: the thesis's eq 5.1 jitter, a *different quantity* from
+           # jitter_ms (arrival-gap change vs delay change) — both are carried
+           # because paper-parity claims must cite this one. emit() copies only
+           # the names in this list, so a column absent here is silently dropped
+           # from every campaign CSV even though anthocnet-compare emits it.
+           "jitter_eq51_ms"]
 PARAMS = ["runs", "nNodes", "area", "speed", "flows"]
 OUT_COLUMNS = (["kind", "group", "x", "scenario", "class", "protocol"]
                + ["runs", "nNodes", "areaX", "speed", "pause", "flows", "propagation"]
