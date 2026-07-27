@@ -185,6 +185,19 @@ jobs:
           # binaries / the baselines harness — means-only block stays valid.
           grep '^##RUN##' "$GITHUB_WORKSPACE/paper-results.txt" \
             >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
+          # #230: the '# paths/energy/drops/stddev/reorder' diagnostic lines are
+          # the *only* place the #209/#212/#215/#217 metric families appear in a
+          # single-point run — the fixed-width table cannot carry them (its field
+          # positions are a parsing contract) and the CSV only exists for
+          # scenario-matrix. They were therefore unreachable from a cheap tail:
+          # this step's own script echo is ~35 lines, so reaching '# paths' cost
+          # tail_lines=121 and ~8k tokens per point, against ~300 for the
+          # ##BENCH## block. That made the #230 window calibration — five points,
+          # read only from '# paths' — 40x more expensive than the runs it was
+          # reading. Re-emit them last so one small tail carries everything.
+          grep '^# \(paths\|energy\|drops\|stddev\|reorder\) ' \
+            "$GITHUB_WORKSPACE/paper-results.txt" \
+            >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
           cat "$GITHUB_WORKSPACE/bench-rows.txt"
           # #131: sim cost — one process-wide line (anthocnet-compare runs all
           # protocols in one process, hence proto field "all"):
