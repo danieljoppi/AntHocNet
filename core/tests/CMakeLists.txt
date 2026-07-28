@@ -33,6 +33,21 @@ foreach(test ${ANTHOCNET_TESTS})
   add_test(NAME ${test} COMMAND ${test})
 endforeach()
 
+# Experiments. Built like a test so they cannot silently rot against core
+# changes, but deliberately NOT registered with ctest: their value is the
+# numbers they print, not a pass/fail assertion, and a "test" that always
+# returns 0 would be noise in the suite. Run one by hand to reproduce the
+# finding recorded in the issue its header cites.
+set(ANTHOCNET_EXPERIMENTS
+  exp_gate_cascade
+)
+
+foreach(exp ${ANTHOCNET_EXPERIMENTS})
+  add_executable(${exp} ${exp}.cpp)
+  target_link_libraries(${exp} PRIVATE anthocnet_core)
+  target_include_directories(${exp} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+endforeach()
+
 # Optional libFuzzer target for the untrusted codec (clang only). Off by default
 # so the normal build/test stays toolchain-agnostic:
 #   cmake -DANTHOCNET_FUZZ=ON -DCMAKE_CXX_COMPILER=clang++ ..

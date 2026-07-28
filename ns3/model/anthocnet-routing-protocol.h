@@ -286,6 +286,7 @@ private:
     bool m_enableLinkFail;            ///< link-failure notification gate (ablation)
     bool m_enableDirectedReactive;    ///< steer reactive ants by the virtual table
     double m_proactiveBroadcastProb;
+    double m_proactiveVirtualMargin;
     double m_sessionTtl;
     uint32_t m_txFailureThreshold;
     bool m_enableMacFailureDetector;

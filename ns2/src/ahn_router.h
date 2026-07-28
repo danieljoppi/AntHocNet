@@ -27,7 +27,7 @@
 #include "anthocnet/ant_packet_ns2.h"
 
 #define AHN_HELLO_INTERVAL      1.0
-#define AHN_PROACTIVE_INTERVAL  10.0
+#define AHN_PROACTIVE_INTERVAL  2.0
 #define AHN_NETWORK_DIAMETER    30
 #define AHN_LIFE_ANT            2.0
 #define AHN_QUEUE_MAX           64      // total pending packets cap (B1)
@@ -132,6 +132,7 @@ private:
     int    enable_linkfail_;           // link-failure notification gate (ablation)
     int    enable_directed_reactive_;  // steer reactive ants by the virtual table
     double proactive_bcast_prob_;
+    double proactive_virtual_margin_;
     double session_ttl_;
     int    tx_failure_threshold_;
     int    enable_mac_failure_detector_;  // detector D gate (issue #46)
