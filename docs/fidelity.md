@@ -135,6 +135,22 @@ possible". Provenance for each parameter is in
    average). Config-gated so the paper-faithful ablation is available.
 4. **Proactive ant clocking** — [1] emits one proactive ant per *n* data
    packets; the repo clocks it on a **timer** (`proactiveInterval`). #26 item 04.
+   Note the *mechanism* is not a deviation against the **thesis**, which uses a
+   plain periodic timer as we do; what differs there is only the interval, and
+   that number is unsourced (#182) and being swept in **#248**.
+4b. **The thesis's proactive emission gate is implemented but shipped OFF**
+   (`proactiveVirtualMargin`, default `0`; the thesis states `0.10`). This is a
+   deviation *by measurement*, not by omission. At the thesis value the gate
+   suppresses essentially all proactive maintenance — measured pass rate 1.9 %
+   of (node, destination) pairs on a 4×4 grid, 0 % on a line — because it
+   compares a **bootstrapped** virtual estimate against a **directly measured**
+   regular one; for the same path the bootstrapped value is systematically worse
+   (~0.65×), so "10 % better" is really "10 % better despite a ~35 % handicap".
+   Starving maintenance then multiplies reactive rediscovery ~3×, which is what
+   PR #188 measured in ns-3 as **NRL +36-68 %** and **PDR −5 to −6.4 pp**.
+   **#180** owns re-deriving what the thesis actually compares before any
+   non-zero default is considered; `core/tests/exp_gate_cascade.cpp` reproduces
+   the effect.
 5. **Multipath link-failure suppression** — with multipath on, a link break that
    leaves a usable alternate next-hop is absorbed rather than always notified
    (paper §3.4 always notifies). Benchmark-justified (#96): notification floods

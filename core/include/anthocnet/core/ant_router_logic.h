@@ -116,8 +116,14 @@ public:
     /// Destinations with data sent within `config_.sessionTtl` (const query).
     std::vector<NodeAddress> activeDestinations() const;
     /// One proactive forward ant per active destination (empty if none or if
-    /// `!config_.enableProactive`). Also prunes expired sessions.
+    /// `!config_.enableProactive`), subject to the thesis emission gate
+    /// `shouldSendProactive()`. Also prunes expired sessions.
     std::vector<AntMessage> createProactiveAnts();
+    /// The thesis's emission gate (#180): true when the best virtual pheromone
+    /// for `dest` beats the best regular one by `config_.proactiveVirtualMargin`
+    /// (or when the gate does not apply — see the definition for the boundary
+    /// cases). Exposed for tests/observability; `createProactiveAnts()` calls it.
+    bool shouldSendProactive(NodeAddress dest) const;
 
     // --- ant construction -------------------------------------------------
     AntMessage createForwardAnt(AntType type, NodeAddress dest);

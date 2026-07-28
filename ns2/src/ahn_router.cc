@@ -66,6 +66,7 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
       enable_linkfail_(1),
       enable_directed_reactive_(0),
       proactive_bcast_prob_(0.1),
+      proactive_virtual_margin_(0.0),
       session_ttl_(5.0),
       tx_failure_threshold_(3),
       enable_mac_failure_detector_(1),
@@ -87,6 +88,7 @@ AntHocNetAgent::AntHocNetAgent(nsaddr_t id)
     bind_bool("enable_linkfail_", &enable_linkfail_);
     bind_bool("enable_directed_reactive_", &enable_directed_reactive_);
     bind("proactive_bcast_prob_", &proactive_bcast_prob_);
+    bind("proactive_virtual_margin_", &proactive_virtual_margin_);
     bind("session_ttl_", &session_ttl_);
     bind("tx_failure_threshold_", &tx_failure_threshold_);
     bind_bool("enable_mac_failure_detector_", &enable_mac_failure_detector_);
@@ -115,6 +117,7 @@ void AntHocNetAgent::startProtocol() {
     config_.enableLinkFail    = enable_linkfail_ != 0;
     config_.enableDirectedReactive = enable_directed_reactive_ != 0;
     config_.proactiveBroadcastProb = proactive_bcast_prob_;
+    config_.proactiveVirtualMargin = proactive_virtual_margin_;
     config_.sessionTtl        = session_ttl_;
     config_.txFailureThreshold = tx_failure_threshold_;
     config_.repairWaitFactor  = repair_wait_factor_;

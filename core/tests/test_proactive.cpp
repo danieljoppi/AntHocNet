@@ -157,5 +157,112 @@ int main() {
         CHECK_EQ(d[0].nextHop, 5);
     }
 
+    // --- thesis emission gate (issue #180) ---------------------------------
+    // "only if the best virtual pheromone is significantly better (in our
+    // experiments: at least 10% better) than the best regular pheromone, a
+    // proactive forward ant is sent out" (Ducatelle 2007, lines 4084-4088).
+    // Note setPheromoneVirtual() does not register the neighbour (unlike the
+    // regular setter), and best*/next-hop selection iterate the neighbour set,
+    // so the virtual neighbour is added explicitly below.
+
+    // 10. Gate blocks: virtual is better, but by less than the 10% margin.
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        Config cfg;
+        cfg.proactiveVirtualMargin = 0.10;  // gate under test; default is 0 (off)
+        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+        router.table().setPheromoneRegular(/*dest*/ 5, /*neighbor*/ 1, 1.0);
+        router.table().addNeighbor(2);
+        router.table().setPheromoneVirtual(/*dest*/ 5, /*neighbor*/ 2, 1.05);
+        router.noteDataSession(5);
+        CHECK(!router.shouldSendProactive(5));
+        CHECK(router.createProactiveAnts().empty());
+        CHECK_EQ(router.antsSent(AntType::Proactive), static_cast<std::uint64_t>(0));
+
+        // The session is not consumed by a blocked tick: once diffusion turns
+        // up pheromone that does clear the margin, the next tick emits.
+        router.table().setPheromoneVirtual(5, 2, 1.5);
+        std::vector<AntMessage> ants = router.createProactiveAnts();
+        CHECK_EQ(ants.size(), static_cast<std::size_t>(1));
+        CHECK_EQ(ants[0].dst, 5);
+    }
+
+    // 11. Gate passes: exactly 10% better clears it (the thesis's "at least").
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        Config cfg;
+        cfg.proactiveVirtualMargin = 0.10;  // gate under test; default is 0 (off)
+        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+        router.table().setPheromoneRegular(/*dest*/ 5, /*neighbor*/ 1, 1.0);
+        router.table().addNeighbor(2);
+        router.table().setPheromoneVirtual(/*dest*/ 5, /*neighbor*/ 2, 1.10);
+        router.noteDataSession(5);
+        CHECK(router.shouldSendProactive(5));
+        std::vector<AntMessage> ants = router.createProactiveAnts();
+        CHECK_EQ(ants.size(), static_cast<std::size_t>(1));
+        CHECK(ants[0].type == AntType::Proactive);
+        CHECK_EQ(router.antsSent(AntType::Proactive), static_cast<std::uint64_t>(1));
+    }
+
+    // 12. Margin 0 = gate off = pre-#180 behaviour: emit unconditionally, even
+    //     with a good regular route and no virtual pheromone at all.
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        Config cfg;
+        cfg.proactiveVirtualMargin = 0.0;
+        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+        router.table().setPheromoneRegular(/*dest*/ 5, /*neighbor*/ 1, 1.0);
+        router.noteDataSession(5);
+        CHECK(router.shouldSendProactive(5));
+        CHECK_EQ(router.createProactiveAnts().size(), static_cast<std::size_t>(1));
+    }
+
+    // 13. Boundary A — no regular route at all: always emit. Data is flowing to
+    //     a destination we cannot route to, so this is the ant that matters
+    //     most; the gate must never suppress it.
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        Config cfg;
+        cfg.proactiveVirtualMargin = 0.10;  // gate under test; default is 0 (off)
+        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+        router.noteDataSession(5);  // empty table: no regular, no virtual
+        CHECK(router.shouldSendProactive(5));
+        CHECK_EQ(router.createProactiveAnts().size(), static_cast<std::size_t>(1));
+    }
+
+    // 14. Boundary B — a regular route exists but there is no virtual pheromone
+    //     for the destination: suppress. "conditional to the availability of
+    //     good new virtual pheromone" — there is none, so nothing to check.
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        Config cfg;
+        cfg.proactiveVirtualMargin = 0.10;  // gate under test; default is 0 (off)
+        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+        router.table().setPheromoneRegular(/*dest*/ 5, /*neighbor*/ 1, 0.8);
+        router.noteDataSession(5);
+        CHECK(!router.shouldSendProactive(5));
+        CHECK(router.createProactiveAnts().empty());
+    }
+
+    // 15. Diffusion off keeps its documented meaning ("proactive ants without
+    //     virtual-pheromone guidance"), not "no proactive ants": with an empty
+    //     virtual table by construction, the gate does not apply.
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        Config cfg;
+        cfg.enableDiffusion = false;
+        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+        router.table().setPheromoneRegular(/*dest*/ 5, /*neighbor*/ 1, 0.8);
+        router.noteDataSession(5);
+        CHECK(router.shouldSendProactive(5));
+        CHECK_EQ(router.createProactiveAnts().size(), static_cast<std::size_t>(1));
+    }
+
     return RUN_TESTS();
 }

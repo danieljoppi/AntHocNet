@@ -309,6 +309,46 @@ std::vector<NodeAddress> AntRouterLogic::activeDestinations() const {
     return dests;
 }
 
+// The thesis's emission gate (#180): "the actual sending of a proactive forward
+// ant is conditional to the availability of good new virtual pheromone: only if
+// the best virtual pheromone is significantly better (in our experiments: at
+// least 10% better) than the best regular pheromone, a proactive forward ant is
+// sent out" (Ducatelle 2007, lines 4084-4088). This is what makes the 2 s rate
+// affordable: without it, every session emits on every tick.
+bool AntRouterLogic::shouldSendProactive(NodeAddress dest) const {
+    // Margin <= 0 means "no margin required": the gate is off and behaviour is
+    // exactly pre-#180 (unconditional emission), so the ablation is runnable.
+    if (config_.proactiveVirtualMargin <= 0.0) return true;
+
+    // With diffusion off (ADR-0007 ablation) the virtual table is never
+    // populated, so the thesis's condition cannot be evaluated at all. Falling
+    // back to unconditional emission keeps that ablation meaning what it has
+    // always meant — "proactive ants without virtual-pheromone guidance" —
+    // instead of silently turning it into "no proactive ants".
+    if (!config_.enableDiffusion) return true;
+
+    const double regular = table_.bestRegular(dest);
+
+    // Boundary case A — no regular route at all. Send. The gate is an
+    // *efficiency* filter over an existing good path; with no path, the ratio
+    // test is degenerate (anything beats zero) and, more importantly, this is
+    // the session that needs an ant most: data is actively being sent to a
+    // destination we cannot currently route to. Suppressing here would be the
+    // exact opposite of the thesis's intent. minPheromone is the repo's
+    // "a route exists" threshold, used the same way in selectNextHop.
+    if (regular <= config_.minPheromone) return true;
+
+    // Boundary case B — no (or weak) virtual pheromone for this destination.
+    // bestVirtual() returns 0 when the virtual table holds nothing for `dest`,
+    // so the comparison below fails and the ant is suppressed. That is the
+    // intended reading: "conditional to the availability of good new virtual
+    // pheromone" — no new virtual pheromone, nothing to go and check. Note this
+    // makes the gate a no-op-suppressor when diffusion is off
+    // (enableDiffusion=false keeps the virtual table empty), which is why that
+    // ablation should also set proactiveVirtualMargin=0.
+    return table_.bestVirtual(dest) >= regular * (1.0 + config_.proactiveVirtualMargin);
+}
+
 std::vector<AntMessage> AntRouterLogic::createProactiveAnts() {
     std::vector<AntMessage> ants;
     if (!config_.enableProactive) return ants;
@@ -316,6 +356,10 @@ std::vector<AntMessage> AntRouterLogic::createProactiveAnts() {
     for (auto it = activeSessions_.begin(); it != activeSessions_.end();) {
         if (now - it->second > config_.sessionTtl) {
             it = activeSessions_.erase(it);  // expired session
+            continue;
+        }
+        if (!shouldSendProactive(it->first)) {
+            ++it;  // session stays active; we just skip this tick's ant
             continue;
         }
         ants.push_back(createForwardAnt(AntType::Proactive, it->first));

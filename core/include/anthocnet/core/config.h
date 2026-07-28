@@ -122,9 +122,50 @@ struct Config {
     /// for this many seconds after the last locally-originated data packet to it.
     double sessionTtl = 5.0;
 
+    /// Emission gate for proactive forward ants (issue #180). The proactive
+    /// timer *considers* one ant per active session; this is the fraction by
+    /// which the best **virtual** pheromone for that destination must exceed the
+    /// best **regular** pheromone before the ant is actually sent.
+    ///
+    /// Ducatelle 2007 thesis (lines 4084-4088): *"In order to improve
+    /// efficiency, the actual sending of a proactive forward ant is conditional
+    /// to the availability of good new virtual pheromone: only if the best
+    /// virtual pheromone is significantly better (in our experiments: at least
+    /// 10% better) than the best regular pheromone, a proactive forward ant is
+    /// sent out."*
+    ///
+    /// Expressed as a **margin** (0.10 = "at least 10% better"), not as a 1.10
+    /// ratio, so that `0` reads unambiguously as "no margin required" — i.e. the
+    /// gate is off and every considered ant is sent, reproducing pre-#180
+    /// behaviour for the ablation. See `createProactiveAnts()` for the two
+    /// boundary cases (no virtual pheromone; no regular route at all).
+    ///
+    /// **Defaults to 0 (gate OFF), which is NOT the thesis's 0.10 — deliberately.**
+    /// The mechanism is here so it is runnable and so the #180 experiment
+    /// compiles; the thesis value is *not* adopted because it was measured and
+    /// found harmful. At 0.10 the gate suppresses essentially all proactive
+    /// maintenance (measured pass rate: 0 % on a line, 3.8 % on a 4×4 grid),
+    /// because it compares a **bootstrapped** virtual estimate against a
+    /// **directly measured** regular one — for the same path the bootstrapped
+    /// value is systematically worse (~0.65×), so "10 % better" is really
+    /// "10 % better despite a ~35 % handicap". Starving maintenance then triples
+    /// reactive rediscovery, which is what PR #188 measured as +36-68 % NRL and
+    /// -5 to -6.4 pp PDR in ns-3.
+    ///
+    /// So this is not a constant to retune: #180 owns re-deriving what the
+    /// thesis actually compares before any non-zero default is considered.
+    /// `core/tests/exp_gate_cascade.cpp` reproduces the above.
+    double proactiveVirtualMargin = 0.0;
+
     /// Timer intervals (seconds).
     double helloInterval     = 1.0;
-    double proactiveInterval = 10.0;
+    /// Proactive forward-ant period per active session. **2.0 s is the thesis's
+    /// measured optimum, not its stated default** — the thesis normally clocks
+    /// proactive ants at `t_hello` (1 s) but its §5.3.3 sweep over
+    /// 0.5/1/2/5/10/20/50 s reports *"Sending one ant every 2 s almost always
+    /// gives the best performance"* (lines 6619-6621). Only affordable together
+    /// with `proactiveVirtualMargin` (#180).
+    double proactiveInterval = 2.0;
     double lifeAnt           = 2.0;
 
     /// A neighbour is presumed gone after this many missed hellos
