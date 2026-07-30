@@ -423,6 +423,133 @@ def _cell_pdr_authoritative():
            f"'# drops' pdr leaked into the row: {levels} vs {base}\n{out}")
 
 
+# --- #259 satellite (isl-grid) input: CSV schema + human mode + rules --------
+#
+# The CSV fixture is a realistic 4x4 torus at the anchor knobs: 16 satellites,
+# 32 ISLs, islDelayMs=5, 8 flows. delay 10.4 ms is the measured hop-delay
+# identity reading (h=2, d=5 ms: 10.39 ms, CI run 30190452648, anchors.yml).
+
+ISL_CLEAN = {
+    "protocol": "anthocnet", "runs": "3", "rows": "4", "cols": "4",
+    "nodes": "16", "links": "32", "isl_delay_ms": "5.0", "flows": "8",
+    "pdr_pct": "100.0", "delay_ms": "10.4", "delay99_ms": "10.9",
+    "throughput_kbps": "32.28", "nrl": "1.401", "nrl_bytes": "0.988",
+    "jitter_ms": "0.15",
+}
+
+
+def run_isl(**overrides):
+    """Check one isl-grid --csv row (ISL_CLEAN + overrides)."""
+    row = dict(ISL_CLEAN, **overrides)
+    return run_cell(",".join(row) + "\n"
+                    + ",".join(str(v) for v in row.values()) + "\n")
+
+
+# The human-mode fixture mirrors what satellite-benchmark.yml's
+# satellite-results.txt artifact holds: ##RUN## per-seed rows, '# diag' ant
+# tallies (deliberately unparsed), the '+Grid' summary and the aggregate table
+# — whose column order (…thrput nrl nrlbytes jitter) differs from the MANET
+# table, the trap the dedicated branch exists for.
+
+ISL_CELL = """\
+##RUN## 1 anthocnet 100.00 10.40 10.90 32.28 1.40 0.99 0.15
+##RUN## 2 anthocnet 100.00 10.41 10.92 32.29 1.41 0.99 0.15
+# diag anthocnet seed=1 ctrlTx=1234 antTx[1=100,2=50,] antRx[1=98,2=49,]
+##RUN## 1 aodv 100.00 10.30 10.60 32.28 0.60 0.35 0.10
+##RUN## 2 aodv 100.00 10.31 10.61 32.28 0.60 0.35 0.10
++Grid torus 4x4 = 16 satellites, 32 ISLs (mean degree 4.00) @ 5.00 ms 10Mbps, 8 flows, 60.00 s, mean of 2 run(s)
+
+protocol          PDR%  delay(ms)  delay99(ms)  thrput(kbps)     NRL   NRLbytes  jitter(ms)
+-------------------------------------------------------------------------------------------
+anthocnet        100.0       10.4         10.9         32.28    1.40       0.99        0.15
+aodv             100.0       10.3         10.6         32.28    0.60       0.35        0.10
+"""
+
+
+@case("#259 clean isl-grid CSV row reports nothing")
+def _isl_clean():
+    levels, out = run_isl()
+    expect(levels == [], "isl-clean", f"expected no reports, got {levels}\n{out}")
+    expect("checked 1 rows" in out, "isl-clean",
+           f"CSV row not parsed\n{out}")
+
+
+@case("#259 mean delay below the one-ISL propagation floor FAILs")
+def _isl_floor_fires():
+    levels, out = run_isl(delay_ms="3.2", delay99_ms="3.4")
+    expect("FAIL" in levels, "isl-floor-fires",
+           f"delay 3.2 < islDelayMs 5.0 did not FAIL\n{out}")
+    expect("propagation floor" in out, "isl-floor-fires",
+           f"FAIL did not name the floor\n{out}")
+
+
+@case("#259 propagation floor skips a dead cell (delay 0, PDR 0)")
+def _isl_floor_dead_cell():
+    # Nothing delivered => the mean-of-none prints 0.0; the dead-cell WARN
+    # owns that reading, the physics floor must not pile a FAIL on top.
+    levels, out = run_isl(pdr_pct="0.0", delay_ms="0.0", delay99_ms="0.0",
+                          throughput_kbps="0.00", jitter_ms="0.00")
+    expect("FAIL" not in levels, "isl-floor-dead",
+           f"floor fired on a dead cell\n{out}")
+    expect("WARN" in levels, "isl-floor-dead",
+           f"dead cell not WARNed\n{out}")
+
+
+@case("#259 single-ISL AODV row below sat_single_isl_pdr_min FAILs")
+def _isl_anchor_fires():
+    levels, out = run_isl(protocol="aodv", rows="1", cols="2", nodes="2",
+                          links="1", delay_ms="5.2", delay99_ms="5.4",
+                          pdr_pct="97.0")
+    expect("FAIL" in levels, "isl-anchor-fires",
+           f"AODV 97.0 on one lossless ISL did not FAIL\n{out}")
+    expect("sat_single_isl_pdr_min" in out, "isl-anchor-fires",
+           f"FAIL did not name the anchor key\n{out}")
+
+
+@case("#259 single-ISL anchor stays quiet at 100.0 and off-anchor topologies")
+def _isl_anchor_quiet():
+    levels, out = run_isl(protocol="aodv", rows="1", cols="2", nodes="2",
+                          links="1", delay_ms="5.2", delay99_ms="5.4",
+                          pdr_pct="100.0")
+    expect(levels == [], "isl-anchor-quiet",
+           f"fired on a perfect single-ISL row\n{out}")
+    # 97.0 on the 4x4 grid is congestion territory, not the anchor topology;
+    # firing there would make the gate cry wolf on every loaded run.
+    levels, out = run_isl(protocol="aodv", pdr_pct="97.0")
+    expect(levels == [], "isl-anchor-quiet",
+           f"anchor fired off the 2-node/1-link topology\n{out}")
+
+
+@case("#259 human satellite-results.txt parses runs+table and stays quiet")
+def _isl_cell_clean():
+    levels, out = run_cell(ISL_CELL)
+    expect(levels == [], "isl-cell-clean",
+           f"clean human-mode output reported {levels}\n{out}")
+    # 4 ##RUN## rows + 2 table rows; the '# diag' line must bind to nothing.
+    expect("checked 6 rows" in out, "isl-cell-clean",
+           f"wrong row count from human mode\n{out}")
+
+
+@case("#259 planted sub-floor delay on a ##RUN## line fires")
+def _isl_cell_floor_fires():
+    _levels, out = run_cell(ISL_CELL.replace("##RUN## 2 aodv 100.00 10.31",
+                                            "##RUN## 2 aodv 100.00 3.10"))
+    expect("propagation floor" in out and "run2/aodv" in out,
+           "isl-cell-floor", f"per-run sub-floor delay not flagged\n{out}")
+
+
+@case("#259 table jitter binds to column 7, not to NRLbytes")
+def _isl_cell_jitter_position():
+    # Corrupt only the table's last column (jitter). Under the MANET mapping
+    # position 5 (NRLbytes) would be read as jitter and this would stay
+    # silent — the mis-binding the dedicated isl-grid branch prevents.
+    _levels, out = run_cell(ISL_CELL.replace(
+        "aodv             100.0       10.3         10.6         32.28    0.60       0.35        0.10",
+        "aodv             100.0       10.3         10.6         32.28    0.60       0.35       -0.10"))
+    expect("negative jitter" in out, "isl-cell-jitter",
+           f"negative jitter in the last table column not flagged\n{out}")
+
+
 def main():
     for name, fn in CASES:
         fn()

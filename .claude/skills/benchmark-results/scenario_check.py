@@ -18,10 +18,14 @@ Usage:
         # overrides. Exit 1 on any FAIL-level degeneracy.
 
     scenario_check.py results FILE [FILE ...] [--anchor single-hop|broch-low-mobility]
-        # FILE = a saved ##BENCH## cell / results-table text, or a classified
-        # campaign CSV (sniffed by header). --anchor additionally enforces
-        # the ns3/tools/anchors.yml floor on AODV rows (#59, single source
-        # of thresholds). Exit 1 on any FAIL.
+        # FILE = a saved ##BENCH## cell / results-table text, a classified
+        # campaign CSV (sniffed by header), or isl-grid output (#259): its
+        # --csv schema (sniffed by the 'protocol,runs,rows,cols,...' header)
+        # or the human satellite-results.txt ('+Grid' summary + ##RUN## rows
+        # + table). --anchor additionally enforces the ns3/tools/anchors.yml
+        # floor on AODV rows (#59, single source of thresholds); the
+        # satellite floors fire automatically when the input identifies the
+        # topology. Exit 1 on any FAIL.
 """
 import argparse
 import csv
@@ -50,6 +54,19 @@ SINGLE_PATH_PROTOS = ("aodv", "olsr", "dsdv")
 SINGLE_PATH_DIV_MAX = 1.10
 
 ROW = re.compile(r"^\s*(?:##BENCH##\s+)?([a-z][\w-]*)((?:\s+[-\d.]+|\s+inf)+)\s*$")
+
+# #259: isl-grid human-mode output. The '+Grid' summary line carries the
+# topology context the per-row rules need (node/link count identifies the
+# single-ISL anchor topology; the ISL delay is the propagation floor), and its
+# presence disambiguates the whole file — the isl-grid table shares ROW's shape
+# but orders columns pdr/delay/delay99/thrput/nrl/nrlbytes/jitter, so the MANET
+# mapping would silently bind jitter to nrl_bytes.
+ISL_GRID = re.compile(r"^\+Grid \w+ \d+x\d+ = (\d+) satellites, (\d+) ISLs"
+                      r".* @ ([\d.]+) ms", re.MULTILINE)
+# Per-run line: '##RUN## <seed> <proto> <pdr> <delay> <delay99> <thrput> <nrl>
+# <nrlBytes> <jitter>'.
+ISL_RUN = re.compile(r"^\s*##RUN##\s+(\d+)\s+([a-z][\w-]*)"
+                     r"((?:\s+[-\d.]+|\s+inf)+)\s*$")
 
 # Diagnostic lines of a saved cell ('# paths anthocnet divUsed=1.104 ...').
 # anthocnet-compare prints one per (family, protocol) after the table; they are
@@ -87,13 +104,16 @@ def report(level, msg):
     print(f"{level}: {msg}")
 
 
-def anchor_floor(anchor):
-    key = ANCHOR_KEY[anchor]
+def yml_floor(key):
     with open(ANCHORS_YML) as fh:
         for line in fh:
             if line.split(":")[0].strip() == key:
                 return float(line.split(":")[1].split("#")[0])
     sys.exit(f"FAIL: {key} not found in {ANCHORS_YML}")
+
+
+def anchor_floor(anchor):
+    return yml_floor(ANCHOR_KEY[anchor])
 
 
 def cmd_preflight(a):
@@ -230,6 +250,52 @@ def parse_results(path):
     with open(path) as fh:
         text = fh.read()
     first = text.lstrip().splitlines()[0] if text.strip() else ""
+    # #259: isl-grid --csv. One row per protocol; rows/cols/nodes/links/
+    # isl_delay_ms are topology context the satellite rules read, mapped under
+    # sat_*/isl_delay keys so they can never collide with a MANET column.
+    if first.startswith("protocol,runs,rows,cols,"):
+        for r in csv.DictReader(text.splitlines()):
+            yield {"where": f"isl-grid {r.get('rows')}x{r.get('cols')}",
+                   "proto": r.get("protocol"),
+                   "pdr": r.get("pdr_pct"), "delay": r.get("delay_ms"),
+                   "delay99": r.get("delay99_ms"), "nrl": r.get("nrl"),
+                   "jitter": r.get("jitter_ms"),
+                   "isl_delay": r.get("isl_delay_ms"),
+                   "sat_nodes": r.get("nodes"), "sat_links": r.get("links")}
+        return
+    # #259: isl-grid human mode (the satellite-results.txt artifact). The
+    # '+Grid' summary identifies the format and supplies the topology context;
+    # ##RUN## per-seed rows and the aggregate table rows both map into the
+    # standard row dict — note jitter sits at position 6 here (position 5 is
+    # nrl_bytes), which is why this input must not fall through to the MANET
+    # ROW mapping below. '# diag' ant-tally lines are deliberately not parsed:
+    # no results-mode rule reads them.
+    grid = ISL_GRID.search(text)
+    if grid:
+        ctx = {"isl_delay": grid.group(3), "sat_nodes": grid.group(1),
+               "sat_links": grid.group(2)}
+        base = os.path.basename(path)
+        for line in text.splitlines():
+            m = ISL_RUN.match(line)
+            if m:
+                seed, proto = m.group(1), m.group(2)
+                nums = m.group(3).split()
+                if len(nums) >= 7:
+                    yield {"where": f"{base} run{seed}", "proto": proto,
+                           "pdr": nums[0], "delay": nums[1],
+                           "delay99": nums[2], "nrl": nums[4],
+                           "jitter": nums[6], **ctx}
+                continue
+            m = ROW.match(line)
+            if not m:
+                continue
+            proto, nums = m.group(1), m.group(2).split()
+            if proto in ("protocol",) or len(nums) < 7:
+                continue
+            yield {"where": base, "proto": proto,
+                   "pdr": nums[0], "delay": nums[1], "delay99": nums[2],
+                   "nrl": nums[4], "jitter": nums[6], **ctx}
+        return
     if first.startswith("kind,") or ",protocol," in first:
         for r in csv.DictReader(text.splitlines()):
             yield {"where": f"{r.get('group')}={r.get('x')}",
@@ -541,6 +607,52 @@ def cmd_results(a):
                     report("FAIL", f"{tag}: Jain's fairness index 0 with PDR "
                                    f"{pdr} — packets delivered but no per-flow "
                                    "counts")
+            # #259 satellite (isl-grid) rules. Present only when the input
+            # carried the topology context (the --csv columns or the '+Grid'
+            # summary line); MANET inputs never set isl_delay, so nothing here
+            # can fire on them.
+            isl = num("isl_delay")
+            if isl is not None and isl > 0:
+                # Propagation floor. Soundness: flows connect distinct
+                # satellites and every ISL is a point-to-point link with a
+                # fixed one-way delay of isl_delay_ms, so every delivered
+                # packet crosses >= 1 ISL and pays >= isl_delay_ms of pure
+                # propagation before serialisation/queueing; the mean over
+                # delivered packets inherits the bound. A mean below it is a
+                # harness/instrumentation bug (wrong clock, wrong counting
+                # point), never a fast protocol — the satellite counterpart of
+                # "path length < 1 hop". No stronger floor is derivable from
+                # the columns present: flow endpoints (and hence per-flow hop
+                # counts) are not in the output, so every flow could legally be
+                # between adjacent satellites (h=1). The h*d hop-delay identity
+                # with its sat_hop_delay_slack_ms band stays a dispatch-time
+                # gate (check-sat-anchors.sh), where h is known.
+                if delay is not None and pdr and delay < isl:
+                    report("FAIL", f"{tag}: mean delay {delay} ms below the "
+                                   f"one-ISL propagation floor {isl} ms — "
+                                   "every delivered packet crosses >= 1 ISL, "
+                                   "so this is a harness/instrumentation bug, "
+                                   "not a fast protocol (#259)")
+                # Single-ISL anchor, applied to a fetched result (#259): a
+                # 2-node/1-link row identifies the sat-single-isl anchor
+                # topology from the input itself, so the anchors.yml floor
+                # fires without an --anchor flag. Soundness: one lossless p2p
+                # link, static, no contention — physics says PDR 100; the
+                # floor's own margin (99.0) tolerates only route-setup loss at
+                # t=0. Scoped to AODV rows because that is the protocol the
+                # anchor is calibrated for (see anchors.yml), mirroring the
+                # --anchor floors above.
+                nsat, nisl = num("sat_nodes"), num("sat_links")
+                if (nsat == 2 and nisl == 1 and r["proto"] == "aodv"
+                        and pdr is not None):
+                    sfloor = yml_floor("sat_single_isl_pdr_min")
+                    if pdr < sfloor:
+                        report("FAIL", f"{tag}: single-ISL anchor floor "
+                                       f"sat_single_isl_pdr_min {sfloor} "
+                                       f"violated (AODV PDR {pdr}) — a p2p "
+                                       "link is lossless, so the substrate or "
+                                       "route setup is broken; do not trust "
+                                       "these numbers (#259)")
             if floor is not None and r["proto"] == "aodv" and pdr is not None:
                 if pdr < floor:
                     report("FAIL", f"{tag}: anchor '{a.anchor}' floor "

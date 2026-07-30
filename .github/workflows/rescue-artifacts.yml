@@ -6,12 +6,19 @@ name: Rescue run artifacts into docs (manual)
 # `scenario-matrix` artifact of each given run and commits its scenarios.csv
 # into docs/benchmarks/campaign/ so the data survives expiry. Runs in seconds;
 # it does NOT dispatch any simulation.
+#
+# #259 extends the same rescue to the satellite suite: the `satellite-benchmark`
+# artifact's satellite-results.txt (human table + ##RUN## rows, not a CSV)
+# lands as docs/benchmarks/campaign/<runid>-sat.txt.
 on:
   workflow_dispatch:
     inputs:
       run_ids:
         description: 'Comma-separated workflow run IDs whose scenario-matrix artifact to rescue'
         default: '30031902395,30031904151'
+      sat_run_ids:
+        description: 'Comma-separated workflow run IDs whose satellite-benchmark artifact to rescue (#259); clear run_ids when rescuing only satellite runs'
+        default: ''
 
 permissions:
   contents: write
@@ -19,12 +26,13 @@ permissions:
 
 jobs:
   rescue:
-    name: rescue scenario-matrix CSVs
+    name: rescue campaign result artifacts
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Download artifacts and stage CSVs
+        if: github.event.inputs.run_ids != ''
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -53,7 +61,35 @@ jobs:
             cp "$dir/scenarios.csv" "docs/benchmarks/campaign/${id}-${label}.csv"
           done
           rm -rf rescue-tmp
-      - name: Commit rescued CSVs
+      - name: Download satellite artifacts and stage results (#259)
+        if: github.event.inputs.sat_run_ids != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p docs/benchmarks/campaign
+          IFS=',' read -ra IDS <<< "${{ github.event.inputs.sat_run_ids }}"
+          for id in "${IDS[@]}"; do
+            id="$(echo "$id" | tr -d ' ')"
+            # satellite-benchmark uploads a results *text* (human table +
+            # ##RUN## per-seed rows), not a CSV; the -sat.txt suffix tells
+            # readers and scenario_check.py the format on sight.
+            label="sat"
+            dir="rescue-tmp/$id"
+            gh run download "$id" -R "$GITHUB_REPOSITORY" -n satellite-benchmark -D "$dir"
+            if [ ! -f "$dir/satellite-results.txt" ]; then
+              echo "FAIL: no satellite-results.txt in artifact of run $id"; exit 1
+            fi
+            runs=$(grep -c '##RUN##' "$dir/satellite-results.txt" || true)
+            if [ "$runs" -lt 1 ]; then
+              echo "FAIL: satellite-results.txt of run $id has no ##RUN## result rows (#28 empty-table class)"; exit 1
+            fi
+            echo "run $id ($label): $runs per-run result rows"
+            cp "$dir/satellite-results.txt" "docs/benchmarks/campaign/${id}-${label}.txt"
+          done
+          rm -rf rescue-tmp
+      - name: Commit rescued results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -61,6 +97,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "nothing new to commit"
           else
-            git commit -m "benchmarks: rescue campaign sweep CSVs from expiring artifacts (#122) [skip ci]"
+            git commit -m "benchmarks: rescue campaign results from expiring artifacts (#122, #259) [skip ci]"
             git push origin "HEAD:${{ github.ref_name }}"
           fi

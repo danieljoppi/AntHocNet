@@ -73,11 +73,38 @@ excess tracked in [#250](https://github.com/danieljoppi/AntHocNet/issues/250)
 
 ## Results
 
-**No committed results yet.** This suite has no per-merge refresh (the MANET
-quick taxonomy keeps that job); satellite numbers are produced by manual
-dispatch and should be recorded here (and on the driving issue, per ADR-0013)
-when a campaign-grade run exists. Do not quote the CI smoke numbers — they are
-delivery gates at tiny scale, not measurements.
+**No committed results yet**, but the pipeline that lands and gates them is
+real ([#259](https://github.com/danieljoppi/AntHocNet/issues/259)) — the same
+dispatch → rescue → validate → parse loop the MANET suite runs, so no
+satellite number is ever eyeball-only:
+
+1. **Dispatch** `satellite-benchmark.yml` (above). The results file
+   (`satellite-results.txt`: `##RUN##` per-seed rows plus the summary table)
+   is uploaded as the `satellite-benchmark` artifact (30-day retention).
+2. **Rescue** it past expiry with the `rescue-artifacts` workflow
+   (`sat_run_ids` input); it is committed as
+   `docs/benchmarks/campaign/<runid>-sat.txt`.
+3. **Validate** before reading:
+   `python3 .claude/skills/benchmark-results/scenario_check.py results FILE`
+   understands both the `--csv` schema and the human
+   `##RUN##`/table output, runs the generic plausibility rules (PDR bounds,
+   delay99 ≥ mean, negatives, dead cells) and adds the satellite invariants —
+   mean delay at or above the one-ISL propagation floor (`isl_delay_ms`), and
+   the `sat_single_isl_pdr_min` floor from
+   [`ns3/tools/anchors.yml`](../../../ns3/tools/anchors.yml) on any AODV row
+   whose topology is the 2-node/1-link anchor. A FAIL is a harness bug: do
+   not compare, publish, or quote the numbers.
+4. **Parse / A/B** with
+   `python3 .claude/skills/benchmark-results/bench_parse.py OFF ON` — both
+   the text output and `--csv` rows are accepted; the
+   [#244](https://github.com/danieljoppi/AntHocNet/issues/244) directed-arm
+   and [#250](https://github.com/danieljoppi/AntHocNet/issues/250) comparisons
+   are exactly this. Record the verdict + run IDs on the driving issue
+   (ADR-0013).
+
+This suite has no per-merge refresh (the MANET quick taxonomy keeps that
+job). Do not quote the CI smoke numbers — they are delivery gates at tiny
+scale, not measurements.
 
 What the suite is waiting on, in dependency order:
 
