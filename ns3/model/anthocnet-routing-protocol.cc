@@ -573,6 +573,41 @@ void RoutingProtocol::NotifyInterfaceDown(uint32_t interface) {
             break;
         }
     }
+
+    // ADR-0008 detector-D equivalent for non-wifi links (#260). A scripted ISL
+    // break (Ipv4::SetDown, the stock ns-3 way to cut a point-to-point link)
+    // surfaces here and nowhere else: a PointToPointNetDevice has no
+    // retry-limit signal, never reports its link down, and a packet routed at
+    // a down interface is dropped by Ipv4L3Protocol before any device trace
+    // could fire. A real ISL terminal reports loss-of-light locally within
+    // milliseconds, so treating this local event as a definitive transmit
+    // failure is more faithful than waiting for the hello timeout (detector A,
+    // which stays on as the mandatory backstop — e.g. for silent losses this
+    // path never sees). Wifi devices keep their DroppedMpdu path (NotifyTxError,
+    // byte-identical) and are excluded here; both fast paths share the
+    // EnableMacFailureDetector ablation gate.
+    if (!m_enableMacFailureDetector || !m_logic) return;
+    Ptr<NetDevice> dev = m_ipv4->GetNetDevice(interface);
+    if (dev && dev->GetObject<WifiNetDevice>()) return;
+    auto nbIt = m_ifaceNeighbors.find(interface);
+    if (nbIt == m_ifaceNeighbors.end()) return;  // cannot attribute a next hop: no-op
+    const std::set<NodeAddress> lost = nbIt->second;
+    m_ifaceNeighbors.erase(nbIt);
+    for (NodeAddress nb : lost) {
+        // Converge on the shared reportTxFailure seam (prune + LinkFail
+        // notifications), like the wifi path. Its txFailureThreshold debounce
+        // exists to filter transient per-frame collisions (issue #19); an
+        // interface-down is not transient, so it counts as a full failure
+        // streak — drive the seam to its threshold instead of bypassing it,
+        // leaving core/ and the threshold's meaning untouched. No data packet
+        // is in hand, so dataDest stays invalid: no repair ant here, and held
+        // data re-routes through the normal reactive path.
+        std::vector<RouteDecision> decisions = m_logic->reportTxFailure(nb, kInvalidAddress);
+        for (int k = 1; k < m_config.txFailureThreshold && decisions.empty(); ++k) {
+            decisions = m_logic->reportTxFailure(nb, kInvalidAddress);
+        }
+        ExecuteDecisions(decisions, kInvalidAddress);
+    }
 }
 
 void RoutingProtocol::NotifyAddAddress(uint32_t, Ipv4InterfaceAddress) {}
@@ -821,25 +856,32 @@ void RoutingProtocol::RecvAnt(Ptr<Socket> socket) {
     // interface, which is precisely the case ResolveNextHop needs help with.
     if (incoming.type == AntType::Hello && incoming.src != kInvalidAddress) {
         const Ipv4Address canonical = ToIpv4(incoming.src);
-        if (canonical != sender) {
-            // A hello arrives on the subnet-broadcast socket; check the unicast
-            // map too so the mapping is still learned if that ever changes.
-            bool known = false;
-            Ipv4InterfaceAddress ifaceAddr;
-            auto bit = m_socketSubnetBroadcast.find(socket);
-            if (bit != m_socketSubnetBroadcast.end()) {
-                ifaceAddr = bit->second;
+        // A hello arrives on the subnet-broadcast socket; check the unicast
+        // map too so the mapping is still learned if that ever changes.
+        bool known = false;
+        Ipv4InterfaceAddress ifaceAddr;
+        auto bit = m_socketSubnetBroadcast.find(socket);
+        if (bit != m_socketSubnetBroadcast.end()) {
+            ifaceAddr = bit->second;
+            known = true;
+        } else {
+            auto uit = m_socketAddresses.find(socket);
+            if (uit != m_socketAddresses.end()) {
+                ifaceAddr = uit->second;
                 known = true;
-            } else {
-                auto uit = m_socketAddresses.find(socket);
-                if (uit != m_socketAddresses.end()) {
-                    ifaceAddr = uit->second;
-                    known = true;
-                }
             }
-            const int32_t i =
-                known ? m_ipv4->GetInterfaceForAddress(ifaceAddr.GetLocal()) : -1;
-            if (i >= 0) {
+        }
+        const int32_t i =
+            known ? m_ipv4->GetInterfaceForAddress(ifaceAddr.GetLocal()) : -1;
+        if (i >= 0) {
+            // #260: record both names the core may hold this neighbour under
+            // (learnNeighbor sees the link-local prevHop on every ant and the
+            // canonical src on hellos) so the non-wifi interface-down fast
+            // path can attribute which next hops a link break severed.
+            std::set<NodeAddress>& nbs = m_ifaceNeighbors[static_cast<uint32_t>(i)];
+            nbs.insert(ToCore(sender));
+            nbs.insert(incoming.src);
+            if (canonical != sender) {
                 PeerRoute pr;
                 pr.iface = static_cast<uint32_t>(i);
                 pr.linkLocal = sender;

@@ -19,6 +19,12 @@
  * This is a *scenario*, not a module. It adds no net devices and no mobility;
  * if it ever grows either, it belongs in #195 instead.
  *
+ * Issue #260: one scripted ISL break is supported (--breakLink=r1,c1,r2,c2
+ * --breakAt=<s>), cutting that link's two interfaces via Ipv4::SetDown at
+ * breakAt and reporting the detect/reconverge split as a "# failcell" line —
+ * see the comment at the failcell globals below for exactly what each number
+ * measures (and what the reconverge proxy does NOT measure).
+ *
  * Metrics mirror anthocnet-compare's definitions (PDR, mean and 99th-pct delay,
  * throughput, NRL as routing-control packets over delivered data packets, plus
  * #132 byte-NRL and #57 jitter) so numbers are comparable across the two
@@ -89,6 +95,52 @@ void DiagAntRx(uint8_t type, uint8_t /*dir*/) {
     if (g_diag) g_antRx[type] += 1;
 }
 
+// --- scripted ISL break, detect/reconverge split (#260) ----------------------
+// tDetect: break -> the protocol's first neighbour-loss event for the severed
+// peer at either endpoint, observed via anthocnet's RouteChanged trace source
+// (a removal fires from the core's loseNeighbor). Only anthocnet exposes that
+// trace, so tDetect prints "nan" for the baseline protocols. With the #260
+// interface-down fast path this is ~0 by construction for a SetDown-scripted
+// break; disabling it (EnableMacFailureDetector=false) makes the same number
+// read the detector-A hello timeout instead — the instrumentation measures
+// whichever detector actually fired.
+// tReconverge: break -> the LAST of the per-flow first deliveries after the
+// break, maximised over all flows. This is a PROXY, not path truth: the
+// harness does not know which flows crossed the broken ISL, so an unaffected
+// flow contributes roughly one CBR inter-packet gap (~125 ms at the default
+// 64 B / 4096 bps) and the maximum is dominated by the slowest genuinely
+// re-routed flow. If no flow crossed the broken ISL, the number degenerates to
+// about that gap — read it as an upper bound on re-convergence, meaningful
+// only when it clearly exceeds the inter-packet gap.
+double g_breakAt = 0.0;                  // s; 0 = no scripted break this run
+double g_tDetect = -1.0;                 // s after the break; -1 = never fired
+std::set<uint32_t> g_breakPeerAddrs;     // every Ipv4 address of both endpoints
+std::vector<double> g_flowFirstRxAfter;  // abs time; -1 = nothing after break
+
+void FailcellRouteChanged(uint32_t /*dest*/, uint32_t neighbor, bool added) {
+    if (added || g_tDetect >= 0.0 || g_breakAt <= 0.0) return;
+    const double now = Simulator::Now().GetSeconds();
+    if (now < g_breakAt) return;
+    if (g_breakPeerAddrs.count(neighbor)) g_tDetect = now - g_breakAt;
+}
+
+void FailcellSinkRx(uint32_t flow, Ptr<const Packet>, const Address&) {
+    const double now = Simulator::Now().GetSeconds();
+    if (g_breakAt <= 0.0 || now < g_breakAt) return;
+    if (flow < g_flowFirstRxAfter.size() && g_flowFirstRxAfter[flow] < 0.0) {
+        g_flowFirstRxAfter[flow] = now;
+    }
+}
+
+/// Cut one ISL: both endpoint interfaces go administratively down, which is
+/// the event the adapter's non-wifi fast path (#260) keys on. A p2p device has
+/// no other failure surface — its link never reports down and IP drops packets
+/// to a down interface before any device trace fires.
+void BreakIsl(Ptr<Ipv4> a, uint32_t ifA, Ptr<Ipv4> b, uint32_t ifB) {
+    a->SetDown(ifA);
+    b->SetDown(ifB);
+}
+
 struct Params {
     uint32_t rows;
     uint32_t cols;
@@ -98,6 +150,9 @@ struct Params {
     uint32_t nFlows;
     double   cbrBps;
     bool     torus;
+    double   breakAt;   // #260: 0 = no scripted break
+    uint32_t breakA;    // node index of one break endpoint
+    uint32_t breakB;    // node index of the other
 };
 
 struct Result {
@@ -207,6 +262,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_controlBytes = 0;
     g_antTx.clear();
     g_antRx.clear();
+    g_breakAt = P.breakAt;
+    g_tDetect = -1.0;
+    g_breakPeerAddrs.clear();
+    g_flowFirstRxAfter.clear();
 
     const uint32_t nNodes = P.rows * P.cols;
     NodeContainer nodes;
@@ -247,6 +306,45 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             p2p.Install(NodeContainer(nodes.Get(l.first), nodes.Get(l.second)));
         ifs.push_back(address.Assign(devs));
         address.NewNetwork();
+    }
+
+    // #260 scripted break: locate the named ISL among the built links and
+    // schedule both of its interfaces down at breakAt.
+    if (P.breakAt > 0.0) {
+        int breakIdx = -1;
+        for (std::size_t k = 0; k < links.size(); ++k) {
+            if ((links[k].first == P.breakA && links[k].second == P.breakB) ||
+                (links[k].first == P.breakB && links[k].second == P.breakA)) {
+                breakIdx = static_cast<int>(k);
+                break;
+            }
+        }
+        NS_ABORT_MSG_IF(breakIdx < 0, "--breakLink names no built ISL: nodes "
+                        << P.breakA << " and " << P.breakB << " are not adjacent");
+        std::pair<Ptr<Ipv4>, uint32_t> endA = ifs[breakIdx].Get(0);
+        std::pair<Ptr<Ipv4>, uint32_t> endB = ifs[breakIdx].Get(1);
+        Simulator::Schedule(Seconds(P.breakAt), &BreakIsl, endA.first, endA.second,
+                            endB.first, endB.second);
+        // Every address of both endpoint satellites: the core may name the lost
+        // neighbour by its canonical (first-interface) address or by the
+        // link-local one its hellos arrive from, and a removal at either
+        // endpoint identifies the break.
+        for (uint32_t nodeIdx : {P.breakA, P.breakB}) {
+            Ptr<Ipv4> ip = nodes.Get(nodeIdx)->GetObject<Ipv4>();
+            for (uint32_t i = 0; ip && i < ip->GetNInterfaces(); ++i) {
+                for (uint32_t j = 0; j < ip->GetNAddresses(i); ++j) {
+                    g_breakPeerAddrs.insert(ip->GetAddress(i, j).GetLocal().Get());
+                }
+            }
+            // tDetect from the RouteChanged trace at the two endpoints. Only
+            // anthocnet has this trace source; the connect quietly fails for
+            // the baselines and tDetect stays -1 (printed as nan).
+            Ptr<Ipv4RoutingProtocol> rp = ip ? ip->GetRoutingProtocol() : nullptr;
+            if (rp) {
+                rp->TraceConnectWithoutContext(
+                    "RouteChanged", MakeCallback(&FailcellRouteChanged));
+            }
+        }
     }
 
     // Routing overhead, counted at the IP layer exactly as anthocnet-compare
@@ -298,6 +396,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         sinks.Add(sink.Install(nodes.Get(dst)));
     }
     sinks.Start(Seconds(0.0));
+
+    // #260: per-flow first delivery after the break, for the tReconverge proxy
+    // (see the failcell comment above for what the maximum over flows means).
+    if (P.breakAt > 0.0) {
+        g_flowFirstRxAfter.assign(sinks.GetN(), -1.0);
+        for (uint32_t f = 0; f < sinks.GetN(); ++f) {
+            sinks.Get(f)->TraceConnectWithoutContext(
+                "Rx", MakeBoundCallback(&FailcellSinkRx, f));
+        }
+    }
 
     if (g_diag && proto == "anthocnet") {
         for (uint32_t i = 0; i < nodes.GetN(); ++i) {
@@ -373,6 +481,8 @@ int main(int argc, char* argv[]) {
     bool torus = true, csv = false;
     std::string islRate = "10Mbps";
     std::string protocols = "anthocnet";
+    std::string breakLink;
+    double breakAt = 0.0;
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("rows", "Orbital planes (grid rows)", rows);
@@ -388,6 +498,10 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("protocols", "Comma-separated list", protocols);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies)", g_diag);
+    cmd.AddValue("breakLink", "Scripted ISL break (#260): endpoints as r1,c1,r2,c2 "
+                              "(must be adjacent); requires --breakAt", breakLink);
+    cmd.AddValue("breakAt", "Time (s) to cut --breakLink's ISL (both interfaces "
+                            "down via Ipv4::SetDown); 0 = no break", breakAt);
     cmd.Parse(argc, argv);
 
     // Same 1 ms delay bin as anthocnet-compare, so delay99 is comparable.
@@ -402,6 +516,34 @@ int main(int argc, char* argv[]) {
     P.nFlows = nFlows;
     P.cbrBps = cbrBps;
     P.torus = torus;
+    P.breakAt = 0.0;
+    P.breakA = P.breakB = 0;
+
+    // #260: parse and validate the scripted break before any run.
+    if (!breakLink.empty() || breakAt > 0.0) {
+        NS_ABORT_MSG_IF(breakLink.empty() || breakAt <= 0.0,
+                        "--breakLink and --breakAt must be given together");
+        NS_ABORT_MSG_IF(breakAt >= simTime, "--breakAt is past --time");
+        std::vector<uint32_t> rc;
+        std::stringstream bs(breakLink);
+        std::string tok;
+        while (std::getline(bs, tok, ',')) {
+            std::stringstream ts(tok);
+            uint32_t v = 0;
+            NS_ABORT_MSG_IF(!(ts >> v), "--breakLink expects r1,c1,r2,c2, got '"
+                            << breakLink << "'");
+            rc.push_back(v);
+        }
+        NS_ABORT_MSG_IF(rc.size() != 4, "--breakLink expects r1,c1,r2,c2, got '"
+                        << breakLink << "'");
+        NS_ABORT_MSG_IF(rc[0] >= rows || rc[2] >= rows || rc[1] >= cols || rc[3] >= cols,
+                        "--breakLink endpoint outside the " << rows << "x" << cols
+                        << " grid");
+        P.breakA = Idx(rc[0], rc[1], P);
+        P.breakB = Idx(rc[2], rc[3], P);
+        NS_ABORT_MSG_IF(P.breakA == P.breakB, "--breakLink endpoints are the same node");
+        P.breakAt = breakAt;
+    }
 
     std::vector<std::string> list;
     std::stringstream ss(protocols);
@@ -441,6 +583,25 @@ int main(int argc, char* argv[]) {
                     std::cout << static_cast<int>(kv.first) << '=' << kv.second << ',';
                 }
                 std::cout << ']' << std::endl;
+            }
+            // #260 detect/reconverge split for the scripted break (definitions
+            // and proxy caveats at the failcell globals above). "nan" = the
+            // event was never observed (no RouteChanged trace on baselines /
+            // no delivery after the break).
+            if (P.breakAt > 0.0) {
+                double tReconv = -1.0;
+                for (double t : g_flowFirstRxAfter) {
+                    if (t >= 0.0) tReconv = std::max(tReconv, t - P.breakAt);
+                }
+                std::cout << std::fixed << std::setprecision(4)
+                          << "# failcell " << list[i] << " seed=" << s
+                          << " breakAt=" << P.breakAt << " tDetect=";
+                if (g_tDetect >= 0.0) std::cout << g_tDetect;
+                else std::cout << "nan";
+                std::cout << " tReconverge=";
+                if (tReconv >= 0.0) std::cout << tReconv;
+                else std::cout << "nan";
+                std::cout << std::endl;
             }
         }
         agg[i].pdr /= runs;
