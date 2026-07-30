@@ -113,3 +113,17 @@ if diff -ru "$PRISTINE" "$TREE"; then
 else
     echo "FAIL: revert did not restore the tree"; exit 1
 fi
+
+# Every tcl-bound variable in ahn_router.cc must have a default in the
+# ns-default.tcl fragment, or it is not settable from a simulation script
+# (issue #251).
+echo ">> bind coverage in ns-default.tcl.fragment"
+FRAGMENT="$SCRIPT_DIR/fragments/ns-default.tcl.fragment"
+missing=""
+for v in $(grep -oP 'bind(_bool)?\("\K[a-z_]+' "$SCRIPT_DIR/../src/ahn_router.cc"); do
+    grep -q "Agent/AntHocNet set $v " "$FRAGMENT" || missing="$missing $v"
+done
+if [ -n "$missing" ]; then
+    echo "FAIL: bound variables missing from ns-default.tcl.fragment:$missing"; exit 1
+fi
+echo "PASS: all bound variables have ns-default.tcl entries"
