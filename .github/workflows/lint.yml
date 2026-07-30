@@ -40,3 +40,11 @@ jobs:
         # failing the self-check its own documentation defines. Cheap (no
         # simulator, no network, ~1 s) and it runs on every PR.
         run: python3 .claude/skills/benchmark-results/test_scenario_check.py
+      - name: Config default parity (core vs ns-2 vs ns-3)
+        # A Config default that drifts in one tree only is the #252/#254
+        # failure mode: proactiveInterval leaked 10 -> 2 in a PR that claimed
+        # not to change it, and the benchmark regression took two days to
+        # trace. core/tests/test_config_defaults.cpp pins the core values;
+        # this pins the adapter copies to core. Cheap (stdlib-only regexes,
+        # <1 s) and it runs on every PR. See #258.
+        run: python3 ns3/tools/check-default-parity.py

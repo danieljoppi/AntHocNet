@@ -1,5 +1,6 @@
 # Each test is a standalone executable returning non-zero on failure.
 set(ANTHOCNET_TESTS
+  test_config_defaults
   test_pheromone_table
   test_pheromone_engine
   test_ant_history
