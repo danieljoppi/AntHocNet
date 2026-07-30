@@ -1,0 +1,161 @@
+name: Satellite benchmark (manual)
+
+# The satellite regime's counterpart of paper-benchmark.yml (#192 track).
+# Runs the isl-grid harness — a +Grid torus of point-to-point ISLs, every node
+# holding one interface per link — instead of the wifi MANET field. Manual
+# dispatch only: like the paper scenario, a real grid at runs>=5 is too heavy
+# for per-merge CI, and the CI matrix already runs the fast pieces of this
+# suite on every PR (the 4x4 delivery smoke on every leg; the analytic anchor
+# gate and the ISL determinism gate on the 3.42 leg — see ci.yml and
+# ns3/tools/check-sat-anchors.sh).
+#
+# Results interpretation lives in docs/benchmarks/satellite/isl-grid.md.
+# The precomputed-shortest-path control row this suite ultimately needs is
+# #216's scope and does not exist yet: until it lands, AODV/OLSR/DSDV are
+# secondary references, not the claim.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'ns-3 image tag. Suffix -opt (e.g. 3.42-opt) selects the optimized-profile image (#123); use it for campaign runs.'
+        default: '3.42'
+      rows:
+        description: 'Orbital planes (grid rows)'
+        default: '4'
+      cols:
+        description: 'Satellites per plane (grid columns)'
+        default: '4'
+      torus:
+        description: 'Wrap the grid edges (+Grid torus); false = open grid'
+        default: 'true'
+      islDelayMs:
+        description: 'One-way ISL propagation delay (ms) — ~3-13 ms for LEO'
+        default: '5'
+      islRate:
+        description: 'ISL data rate'
+        default: '10Mbps'
+      time:
+        description: 'Sim time (s)'
+        default: '300'
+      runs:
+        description: 'RNG runs to average'
+        default: '3'
+      flows:
+        description: 'Number of CBR flows'
+        default: '8'
+      cbrBps:
+        description: 'Per-flow CBR rate (bits/s)'
+        default: '4096'
+      protocols:
+        description: 'Comma-separated protocol list. anthocnet,aodv is the #250 hop-delay discriminator pair.'
+        default: 'anthocnet,aodv,olsr,dsdv'
+      extraArgs:
+        description: 'Extra isl-grid args appended verbatim (e.g. --ns3::anthocnet::RoutingProtocol::EnableDirectedReactive=true for the #244 satellite arm)'
+        default: ''
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  satellite:
+    name: isl-grid scenario + diagnostics
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install AntHocNet module
+        run: make install-ns3 NS3DIR=/opt/ns-3
+      - name: Resolve ns-3 build profile (#123)
+        # Same rule as paper-benchmark.yml: the reconfigure below must not
+        # silently downgrade an optimized image to the default profile. Source
+        # of truth is NS3_PROFILE from the image env; tag-suffix fallback for
+        # pre-#123 images.
+        env:
+          VERSION_TAG: ${{ github.event.inputs.version }}
+        run: |
+          profile="${NS3_PROFILE:-}"
+          if [ -z "$profile" ]; then
+            case "$VERSION_TAG" in
+              *-opt) profile=release ;;
+              *)     profile=default ;;
+            esac
+            echo "image has no NS3_PROFILE env (pre-#123 image); inferred from tag '$VERSION_TAG'"
+          fi
+          flag=""
+          [ "$profile" = "default" ] || flag="-d $profile"
+          echo "ns-3 build profile: $profile (configure flag: '${flag:-<none>}')"
+          echo "NS3_PROFILE=$profile" >> "$GITHUB_ENV"
+          echo "NS3_PROFILE_FLAG=$flag" >> "$GITHUB_ENV"
+      - name: Configure
+        run: |
+          cd /opt/ns-3
+          # $NS3_PROFILE_FLAG unquoted on purpose: empty must expand to nothing.
+          ./ns3 configure $NS3_PROFILE_FLAG --enable-examples \
+            --enable-modules='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+      - name: Build
+        run: cd /opt/ns-3 && ./ns3 build && ./ns3 show profile
+      - name: Run isl-grid scenario
+        # bash explicitly: container jobs default to sh, where pipefail is an
+        # illegal option (the paper-benchmark run 29664072922 lesson).
+        shell: bash
+        run: |
+          cd /opt/ns-3
+          cmd="isl-grid \
+            --rows=${{ github.event.inputs.rows }} \
+            --cols=${{ github.event.inputs.cols }} \
+            --torus=${{ github.event.inputs.torus }} \
+            --islDelayMs=${{ github.event.inputs.islDelayMs }} \
+            --islRate=${{ github.event.inputs.islRate }} \
+            --time=${{ github.event.inputs.time }} \
+            --runs=${{ github.event.inputs.runs }} \
+            --flows=${{ github.event.inputs.flows }} \
+            --cbrBps=${{ github.event.inputs.cbrBps }} \
+            --diag --protocols=${{ github.event.inputs.protocols }}"
+          if [ -n "${{ github.event.inputs.extraArgs }}" ]; then
+            cmd="$cmd ${{ github.event.inputs.extraArgs }}"
+          fi
+          echo "$cmd"
+          # pipefail + captured stderr, per the #28 hardening in
+          # paper-benchmark.yml: a bad extraArgs attribute must fail the job,
+          # not pass it with an empty table.
+          set -o pipefail
+          timewrap=""
+          if [ -x /usr/bin/time ]; then
+            timewrap="/usr/bin/time -v -o $GITHUB_WORKSPACE/time-v.log"
+          fi
+          $timewrap ./ns3 run "$cmd" 2>"$GITHUB_WORKSPACE/ns3-stderr.log" \
+            | tee "$GITHUB_WORKSPACE/satellite-results.txt" \
+            || { echo "--- ns-3 run FAILED; stderr tail ---"; \
+                 tail -n 60 "$GITHUB_WORKSPACE/ns3-stderr.log"; exit 1; }
+          if [ -s "$GITHUB_WORKSPACE/ns3-stderr.log" ]; then
+            echo "--- ns-3 stderr tail (non-fatal) ---"
+            tail -n 20 "$GITHUB_WORKSPACE/ns3-stderr.log"
+          fi
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: satellite-benchmark
+          path: |
+            satellite-results.txt
+            ns3-stderr.log
+            time-v.log
+          retention-days: 30
+      - name: Compact result block (cheap to fetch via get_job_logs tail)
+        # Re-run the identical scenario in --csv mode? No — that doubles the
+        # sim cost. The human table + ##RUN## lines are already in the results
+        # file; print its tail plus a ##PERF## line so a 20-line log fetch
+        # captures the numbers, mirroring paper-benchmark's contract.
+        shell: bash
+        run: |
+          tail -n 30 "$GITHUB_WORKSPACE/satellite-results.txt"
+          if [ -f "$GITHUB_WORKSPACE/time-v.log" ]; then
+            wall=$(grep -oP 'Elapsed \(wall clock\) time.*: \K.*' "$GITHUB_WORKSPACE/time-v.log" || true)
+            rss=$(grep -oP 'Maximum resident set size \(kbytes\): \K\d+' "$GITHUB_WORKSPACE/time-v.log" || true)
+            echo "##PERF## isl-grid all ${wall:-?} ${rss:-?}"
+          fi
