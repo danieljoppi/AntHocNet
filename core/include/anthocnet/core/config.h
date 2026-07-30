@@ -159,13 +159,13 @@ struct Config {
 
     /// Timer intervals (seconds).
     double helloInterval     = 1.0;
-    /// Proactive forward-ant period per active session. **2.0 s is the thesis's
-    /// measured optimum, not its stated default** — the thesis normally clocks
-    /// proactive ants at `t_hello` (1 s) but its §5.3.3 sweep over
-    /// 0.5/1/2/5/10/20/50 s reports *"Sending one ant every 2 s almost always
-    /// gives the best performance"* (lines 6619-6621). Only affordable together
-    /// with `proactiveVirtualMargin` (#180).
-    double proactiveInterval = 2.0;
+    /// Proactive forward-ant period per active session. 10.0 is the
+    /// long-standing repo value with no recorded source (#182); the thesis's
+    /// §5.3.3 measured optimum is 2 s, but adopting it is #248's sweep to
+    /// decide — PR #252 accidentally shipped 2.0 here while claiming not to,
+    /// which the per-merge refresh measured as NRL ×4.7 / PDR −12 pp at
+    /// paper-base (#254). Do not change this default without that A/B.
+    double proactiveInterval = 10.0;
     double lifeAnt           = 2.0;
 
     /// A neighbour is presumed gone after this many missed hellos
