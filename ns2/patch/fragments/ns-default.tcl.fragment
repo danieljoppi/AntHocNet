@@ -14,4 +14,8 @@ Agent/AntHocNet set enable_directed_reactive_ 0
 Agent/AntHocNet set proactive_bcast_prob_ 0.1
 Agent/AntHocNet set proactive_virtual_margin_ 0.0
 Agent/AntHocNet set session_ttl_ 5.0
+Agent/AntHocNet set tx_failure_threshold_ 3
+Agent/AntHocNet set enable_mac_failure_detector_ 1
+Agent/AntHocNet set repair_wait_factor_ 5.0
+Agent/AntHocNet set repair_timeout_ 1.0
 Agent/AntHocNet set enable_mac_metric_ 0
