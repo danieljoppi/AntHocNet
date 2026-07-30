@@ -23,10 +23,33 @@ It is a **static snapshot** grid: no orbital mechanics, no GSL handover, no
 link churn. That makes it the quiet-cell instrument — the regime where the
 [#216](https://github.com/danieljoppi/AntHocNet/issues/216) precomputed
 shortest-path control is expected to win and AntHocNet is expected to lose.
-The adversarial cells that could show the opposite (unpredicted ISL loss,
-asymmetric congestion, handover churn) are #216's scope and **do not exist
-yet**; until they do, results from this page support harness-validation
-claims, not protocol-advantage claims.
+Of the adversarial cells that could show the opposite (unpredicted ISL loss,
+asymmetric congestion, handover churn), only the **first has an instrument**:
+[#260](https://github.com/danieljoppi/AntHocNet/issues/260) added a scripted
+single-ISL break (`--breakLink=r1,c1,r2,c2 --breakAt=<s>`, cut via
+`Ipv4::SetDown` on both endpoint interfaces) that reports a per-run
+`# failcell … tDetect=<s> tReconverge=<s>` line. The remaining cells are
+#216's scope and do not exist yet; until the #216 control row exists, results
+from this page — failcell lines included — support harness-validation claims,
+not protocol-advantage claims.
+
+**Read the failcell numbers honestly.** `tDetect` (break → the protocol's
+first neighbour-loss event for the severed peer, from the `RouteChanged`
+trace; AntHocNet only — the baselines expose no such trace) is ~0 *by
+construction* for a scripted break: the adapter's #260 fast path is the
+`Ipv4` interface-down notification itself, the only failure signal a
+`PointToPointNetDevice` offers (no retry-limit trace; IP drops packets to a
+down interface before any device trace can fire). That models an ISL terminal
+reporting loss-of-light locally within ms. A *silent* failure — the interface
+stays up but frames stop arriving (e.g. a receive-side error model) — is not
+covered by the fast path and still waits the full hello timeout,
+`helloInterval × allowedHelloLoss` = 2 s at defaults; a failure cell built on
+silent loss lower-bounds the protocol, exactly the pre-#260 caveat.
+`tReconverge` (break → the last of the per-flow first deliveries after the
+break) is a **proxy**: the harness does not know which flows crossed the
+broken ISL, so unaffected flows contribute ~one CBR inter-packet gap
+(~125 ms at the 64 B / 4096 bps defaults) and only a value clearly above that
+gap measures re-convergence.
 
 ## Configuration
 
@@ -38,6 +61,7 @@ claims, not protocol-advantage claims.
 | `islRate` | 10Mbps | ISL data rate |
 | `flows` / `cbrBps` | 8 / 4096 | CBR load |
 | `protocols` | anthocnet,aodv,olsr,dsdv | `anthocnet,aodv` is the [#250](https://github.com/danieljoppi/AntHocNet/issues/250) hop-delay discriminator pair |
+| `breakLink` / `breakAt` | off | [#260](https://github.com/danieljoppi/AntHocNet/issues/260) scripted single-ISL break: endpoints `r1,c1,r2,c2` + cut time (s); emits `# failcell` detect/reconverge lines |
 
 ## How to run it
 

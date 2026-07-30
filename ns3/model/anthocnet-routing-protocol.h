@@ -260,6 +260,14 @@ private:
     /// the two differ, so it stays empty on every single-interface topology.
     std::map<Ipv4Address, PeerRoute> m_peerRoutes;
 
+    /// Issue #260: every core name a neighbour was heard under, per interface —
+    /// both the link-local sender (what learnNeighbor records as prevHop) and
+    /// the canonical `msg.src` a hello carries. Consulted only by the non-wifi
+    /// interface-down fast path in NotifyInterfaceDown so an ISL break can
+    /// attribute which next hop(s) it severed; an interface that never heard a
+    /// hello has no entry, and that path is then a no-op.
+    std::map<uint32_t, std::set<::anthocnet::core::NodeAddress>> m_ifaceNeighbors;
+
     ::anthocnet::core::Config m_config;
     Ns3Clock m_clock;
     Ns3Rng m_rng;
