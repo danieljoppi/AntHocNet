@@ -51,6 +51,34 @@ SINGLE_PATH_DIV_MAX = 1.10
 
 ROW = re.compile(r"^\s*(?:##BENCH##\s+)?([a-z][\w-]*)((?:\s+[-\d.]+|\s+inf)+)\s*$")
 
+# Diagnostic lines of a saved cell ('# paths anthocnet divUsed=1.104 ...').
+# anthocnet-compare prints one per (family, protocol) after the table; they are
+# structured key=value, so parse_results() folds them into the protocol's row
+# and the CSV-born rules fire unchanged on text input (#230 finding 3 — the
+# results gate returned OK on a cell whose diversity figures were out of band,
+# because ROW can never match a '# ' line). '# stddev' is deliberately not a
+# family here: no results-mode rule reads dispersion, so parsing it would be
+# dead weight.
+DIAG_LINE = re.compile(r"^\s*#\s+(paths|energy|drops|reorder)\s+([a-z][\w-]*)\s+(.+)$")
+DIAG_KEYS = {
+    "paths":   {"hopsMean": "hops", "hopsMax": "hops_max", "divUsed": "div",
+                "divMax": "div_max", "entropyBits": "entropy"},
+    # energy(J)/J-per-pkt live at table positions 10/11, which the 9-number
+    # ##BENCH## block does not carry; the '# energy' line adds the residual
+    # bounds. 'pdr' on the '# drops' line is deliberately unmapped — the
+    # table row's pdr is the authoritative one and must not be overwritten
+    # by a rounded duplicate.
+    "energy":  {"initJ": "energy_init", "resMinJ": "res_min",
+                "resMeanJ": "res_mean"},
+    "drops":   {"route": "drop_route", "queue": "drop_queue",
+                "mac": "drop_mac", "chan": "drop_chan", "ttl": "drop_ttl",
+                "setup": "drop_setup", "reconv": "drop_reconv",
+                "repair": "drop_repair"},
+    "reorder": {"ratio": "reorder_ratio", "ratioWorstFlow": "reorder_ratio_max",
+                "extentMean": "reorder_extent_mean",
+                "extentMax": "reorder_extent_max", "bufMax": "reorder_buf_max"},
+}
+
 issues = []
 
 
@@ -178,24 +206,26 @@ def parse_results(path):
     configured initial energy and the first-death time live in the CSV only
     (the human output puts them on a '# energy' line, which ROW does not match).
 
-    Reordering fields (#212) exist only in CSVs produced after the reordering
-    instrumentation landed; older inputs simply omit them and the reordering
-    rules below are skipped. They are CSV-only by design — anthocnet-compare
-    prints them on a '# reorder' line rather than widening the fixed-width
-    results table, and ROW does not match a '# ' line.
+    Reordering (#212), drop-cause (#215) and route-quality (#217) fields ride
+    the '# reorder' / '# drops' / '# paths' / '# energy' diagnostic lines of a
+    saved cell rather than the fixed-width table, and until #230's second
+    finding they were **not parsed at all** on text input — every rule below
+    silently skipped, so `results` on a ##BENCH## cell certified only the four
+    headline invariants while returning the same OK it returns for a fully
+    checked CSV. That is exactly the input the skill's own order-of-operations
+    recommends validating *before* a taxonomy sweep, so the cheap pre-sweep
+    check was the one that could not see the defects the sweep would be full
+    of. DIAG_LINE/DIAG_KEYS below close that: the diagnostic lines are
+    structured key=value, so they parse into the same row dict the CSV branch
+    yields and every existing rule fires unchanged on both input formats.
 
-    Drop-cause fields (#215) are likewise CSV-only and post-instrumentation:
-    anthocnet-compare prints them on a '# drops' line rather than widening the
-    fixed-width table, so a results table yields None for all of them and the
-    drop rules below skip. The three AntHocNet-only causes are deliberately
-    **blank** for the other protocols (the cause does not exist there, as
-    opposed to existing and measuring zero); a blank parses to None and is
-    skipped, exactly like an absent column.
-
-    Route-quality fields (#217) are likewise post-instrumentation and skipped
-    when absent. The results table carries the two headline columns (hops,
-    jain) at positions 12/13; used-path diversity and its entropy live in the
-    CSV only (the human output puts them on a '# paths' line).
+    Fields absent from an input (older runs predating an instrumentation, the
+    energy table columns the 9-number ##BENCH## block does not carry, the
+    AntHocNet-only drop causes printed as '-' for the other protocols) parse
+    to None and their rules skip, exactly like an absent CSV column. If a file
+    holds several tables for the same protocol, diagnostics attach to that
+    protocol's last row — a saved single-point cell has one row per protocol,
+    which is the intended input.
     """
     with open(path) as fh:
         text = fh.read()
@@ -232,25 +262,43 @@ def parse_results(path):
                    "entropy": r.get("path_entropy_bits"),
                    "jain": r.get("jain_pkts")}
         return
+    rows = []          # yielded in table order
+    by_proto = {}      # diagnostics merge into the protocol's last row
     for line in text.splitlines():
         m = ROW.match(line)
-        if not m:
+        if m:
+            proto, nums = m.group(1), m.group(2).split()
+            if proto in ("protocol",) or len(nums) < 5:
+                continue
+            row = {"where": os.path.basename(path), "proto": proto,
+                   "pdr": nums[0], "delay": nums[1], "delay99": nums[2],
+                   "nrl": nums[4]}
+            if len(nums) >= 6:
+                row["jitter"] = nums[5]
+            if len(nums) >= 11:  # #209: ... nrlBytes, energy(J), J/pkt
+                row["energy"] = nums[9]
+                row["energy_per_pkt"] = nums[10]
+            if len(nums) >= 13:  # #217: ... J/pkt, hops, jain
+                row["hops"] = nums[11]
+                row["jain"] = nums[12]
+            rows.append(row)
+            by_proto[proto] = row
             continue
-        proto, nums = m.group(1), m.group(2).split()
-        if proto in ("protocol",) or len(nums) < 5:
+        d = DIAG_LINE.match(line)
+        if not d:
             continue
-        row = {"where": os.path.basename(path), "proto": proto,
-               "pdr": nums[0], "delay": nums[1], "delay99": nums[2],
-               "nrl": nums[4]}
-        if len(nums) >= 6:
-            row["jitter"] = nums[5]
-        if len(nums) >= 11:  # #209: ... nrlBytes, energy(J), J/pkt
-            row["energy"] = nums[9]
-            row["energy_per_pkt"] = nums[10]
-        if len(nums) >= 13:  # #217: ... J/pkt, hops, jain
-            row["hops"] = nums[11]
-            row["jain"] = nums[12]
-        yield row
+        family, proto = d.group(1), d.group(2)
+        row = by_proto.get(proto)
+        if row is None:
+            continue  # diagnostic with no table row above it — nothing to bind to
+        keys = DIAG_KEYS[family]
+        for k, v in re.findall(r"([A-Za-z]\w*)=([-\w.]+)", d.group(3)):
+            # '-' (an AntHocNet-only cause on a baseline row) and other
+            # non-numeric junk are stored as-is; num() turns them into None,
+            # so the rules skip them exactly like an absent CSV blank.
+            if k in keys:
+                row[keys[k]] = v
+    yield from rows
 
 
 def cmd_results(a):

@@ -319,6 +319,110 @@ def _preflight_static():
            f"window rule fired on a static field\n{out}")
 
 
+# --- ##BENCH## cell input: the diagnostic lines feed the same rules (#230) ----
+#
+# Until this landed, `results` on a saved cell parsed only the table rows: every
+# '# paths' / '# drops' / '# reorder' / '# energy' line was skipped by ROW, so
+# the drop/reorder/route-quality/energy rules never ran and a cell whose
+# diversity figures were out of band still returned OK — measured on run
+# 30379320885, where planting divUsed=9.999 changed nothing. The fixture below
+# is that run's real cell (paper-base, main@6a479fa, time=300, runs=2,
+# pathWindowS=4); its aodv/olsr rows genuinely breach the single-path bound, so
+# the *unmodified* cell must FAIL — that is finding 2 on #230, now gate-visible.
+
+CELL = """\
+##BENCH## anthocnet 71.9 410.8 1797.5 3.63 278.02 212.35 542.5 inf 302.165
+##BENCH## aodv 81.7 41.4 802.5 4.60 60.09 66.65 6.0 inf 31.557
+##BENCH## olsr 76.6 10.2 30.0 3.84 6.45 13.89 1.5 inf 13.284
+##BENCH## dsdv 70.2 16.5 698.0 3.77 33.90 29.13 2.0 inf 23.232
+# paths anthocnet divUsed=1.104 divMax=3.0 entropyBits=0.101 windowS=4.0 hopsMean=3.42 hopsMax=44.5
+# paths aodv divUsed=1.112 divMax=2.5 entropyBits=0.112 windowS=4.0 hopsMean=2.07 hopsMax=7.5
+# paths olsr divUsed=1.117 divMax=2.0 entropyBits=0.117 windowS=4.0 hopsMean=1.69 hopsMax=6.0
+# paths dsdv divUsed=1.057 divMax=2.0 entropyBits=0.057 windowS=4.0 hopsMean=1.73 hopsMax=6.5
+# energy anthocnet initJ=5000.0 resMinJ=4740.6 resMeanJ=4741.9 resSdJ=0.868 firstDeathS=-1.0
+# drops anthocnet pdr=71.88 route=2.33 queue=0.00 mac=0.97 chan=24.01 ttl=0.36 sum=99.56 other=0.00 [route: setup=0.12 reconv=2.26 repair=0.27]
+# drops aodv pdr=81.72 route=3.29 queue=0.00 mac=9.25 chan=5.59 ttl=0.04 sum=99.89 other=0.00 [route: setup=- reconv=- repair=-]
+# reorder anthocnet ratio=0.0077 ratioWorstFlow=0.0358 extentMean=0.23 extentMax=1.00 bufMax=58.00
+"""
+
+
+def run_cell(text):
+    """Check a ##BENCH## cell text; return (levels, printed output)."""
+    fd, path = tempfile.mkstemp(suffix=".txt")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(text)
+        sc.issues = []
+        args = argparse.Namespace(files=[path], anchor=None)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            try:
+                sc.cmd_results(args)
+            except SystemExit:
+                pass
+        return list(sc.issues), out.getvalue()
+    finally:
+        os.unlink(path)
+
+
+@case("cell: real run 30379320885 FAILs on its own out-of-band baselines")
+def _cell_real():
+    levels, out = run_cell(CELL)
+    expect(levels.count("FAIL") == 2, "cell-real",
+           f"expected exactly the aodv+olsr diversity FAILs, got {levels}\n{out}")
+    expect("aodv: path diversity 1.112" in out and
+           "olsr: path diversity 1.117" in out, "cell-real",
+           f"wrong rows flagged\n{out}")
+
+
+@case("cell: impossible divUsed on a '# paths' line fires (the 9.999 probe)")
+def _cell_div_fires():
+    levels, out = run_cell(CELL.replace("aodv divUsed=1.112",
+                                        "aodv divUsed=9.999"))
+    expect("path diversity 9.999" in out, "cell-div",
+           f"planted divUsed=9.999 not flagged\n{out}")
+
+
+@case("cell: broken drop identity on a '# drops' line fires")
+def _cell_drops_fire():
+    levels, out = run_cell(CELL.replace("chan=24.01", "chan=90.00"))
+    expect("do not account for the offered packets" in out, "cell-drops",
+           f"planted chan=90 left the identity unchecked\n{out}")
+
+
+@case("cell: closing drop identity stays quiet, '-' sub-causes skip")
+def _cell_drops_quiet():
+    levels, out = run_cell(CELL)
+    expect("do not account" not in out and "exit path is not attributed" not in out,
+           "cell-drops-quiet",
+           f"drop rules over-fired on a closing identity / '-' causes\n{out}")
+
+
+@case("cell: out-of-range reorder ratio on a '# reorder' line fires")
+def _cell_reorder_fires():
+    levels, out = run_cell(CELL.replace("ratio=0.0077", "ratio=9.9999"))
+    expect("reorder_ratio 9.9999 outside [0,1]" in out, "cell-reorder",
+           f"planted ratio not flagged\n{out}")
+
+
+@case("cell: residual energy above initial on a '# energy' line fires")
+def _cell_energy_fires():
+    levels, out = run_cell(CELL.replace("resMinJ=4740.6", "resMinJ=5740.6"))
+    expect("exceeds initial" in out, "cell-energy",
+           f"planted residual > initial not flagged\n{out}")
+
+
+@case("cell: rounded pdr on a '# drops' line must NOT overwrite the row pdr")
+def _cell_pdr_authoritative():
+    # The '# drops' pdr is a rounded duplicate; mapping it would let a
+    # corrupted diagnostic line silently replace the table value the headline
+    # rules already checked. Corrupt it and nothing may change.
+    levels, out = run_cell(CELL.replace("# drops anthocnet pdr=71.88",
+                                        "# drops anthocnet pdr=1.00"))
+    base, _ = run_cell(CELL)
+    expect(levels == base, "cell-pdr",
+           f"'# drops' pdr leaked into the row: {levels} vs {base}\n{out}")
+
+
 def main():
     for name, fn in CASES:
         fn()
