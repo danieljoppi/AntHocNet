@@ -48,9 +48,31 @@ PERF = re.compile(r"##PERF##.*")
 
 
 def parse_cell(text):
-    """Return {proto: {metric: float}} from one run's output text."""
+    """Return {proto: {metric: float}} from one run's output text.
+
+    isl-grid's human table and ##RUN## rows (#259) already parse via ROW/RUN
+    (the first six fields are position-identical to anthocnet-compare's);
+    its --csv rows are mapped by header name below, so a satellite cell A/Bs
+    exactly like a MANET one (#244 directed arm, #250 discriminator).
+    """
     rows = {}
+    isl_cols = None
     for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("protocol,runs,rows,cols,"):  # isl-grid --csv header
+            isl_cols = s.split(",")
+            continue
+        if isl_cols and "," in s:
+            d = dict(zip(isl_cols, s.split(",")))
+            try:
+                rows[d["protocol"]] = {
+                    "pdr": float(d["pdr_pct"]), "delay": float(d["delay_ms"]),
+                    "delay99": float(d["delay99_ms"]),
+                    "thrput": float(d["throughput_kbps"]),
+                    "nrl": float(d["nrl"])}
+            except (KeyError, ValueError):
+                pass
+            continue
         m = BENCH.search(line) or ROW.match(line)
         parts = (m.group(1).split() if m and m.re is BENCH
                  else (m.groups() if m else None))
