@@ -40,7 +40,7 @@ RoutingProtocol::RoutingProtocol()
     : m_started(false),
       m_queue(64, Seconds(3)),
       m_helloInterval(Seconds(1.0)),
-      m_proactiveInterval(Seconds(2.0)),
+      m_proactiveInterval(Seconds(10.0)),
       m_alpha(0.7),
       m_betaAnts(1.0),
       m_betaData(2.0),
@@ -83,13 +83,8 @@ TypeId RoutingProtocol::GetTypeId() {
                           TimeValue(Seconds(1.0)),
                           MakeTimeAccessor(&RoutingProtocol::m_helloInterval),
                           MakeTimeChecker())
-            .AddAttribute("ProactiveInterval",
-                          "Proactive forward-ant interval per active session. "
-                          "Default 2 s = the Ducatelle 2007 thesis's measured "
-                          "optimum (sec 5.3.3: \"Sending one ant every 2 s almost "
-                          "always gives the best performance\"), not its stated "
-                          "t_hello=1 s default (#180).",
-                          TimeValue(Seconds(2.0)),
+            .AddAttribute("ProactiveInterval", "Proactive forward-ant interval.",
+                          TimeValue(Seconds(10.0)),
                           MakeTimeAccessor(&RoutingProtocol::m_proactiveInterval),
                           MakeTimeChecker())
             .AddAttribute("Alpha", "Pheromone evaporation weight (ALFA).",

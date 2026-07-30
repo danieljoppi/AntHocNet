@@ -27,7 +27,7 @@
 #include "anthocnet/ant_packet_ns2.h"
 
 #define AHN_HELLO_INTERVAL      1.0
-#define AHN_PROACTIVE_INTERVAL  2.0
+#define AHN_PROACTIVE_INTERVAL  10.0
 #define AHN_NETWORK_DIAMETER    30
 #define AHN_LIFE_ANT            2.0
 #define AHN_QUEUE_MAX           64      // total pending packets cap (B1)
