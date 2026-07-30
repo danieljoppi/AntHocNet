@@ -150,11 +150,32 @@ jobs:
           if [ -x /usr/bin/time ]; then
             timewrap="/usr/bin/time -v -o $GITHUB_WORKSPACE/time-v.log"
           fi
-          # #256 forensics: on failure, also dump time -v — GNU time writes its
-          # report (including "Command terminated by signal 9" and Maximum
-          # resident set size) even when the sim is SIGKILLed, so the OOM's
-          # peak RSS is in that file. All three 900 s SIGKILLs lost it because
-          # nothing printed or uploaded it on the failure path.
+          # #256 forensics, layer 2: run 30574873901 died by losing the RUNNER
+          # (job log 404, artifacts zero, if:always() steps never ran), so
+          # post-mortem files cannot be trusted to exist. The live log stream
+          # survives up to the last flush, so sample memory into stdout every
+          # 60 s: top-RSS process + MemAvailable, greppable as ##RSS##. Pure
+          # /proc + awk — the ns-3 image has no procps. The sampler dies with
+          # the step; its lines are already streamed.
+          (
+            t0=$(date +%s)
+            while sleep 60; do
+              best=0; bestpid=0
+              for f in /proc/[0-9]*/status; do
+                rss=$(awk '/^VmRSS/ {print $2}' "$f" 2>/dev/null)
+                if [ -n "$rss" ] && [ "$rss" -gt "$best" ]; then
+                  best=$rss; bestpid=${f#/proc/}; bestpid=${bestpid%/status}
+                fi
+              done
+              comm=$(cat /proc/$bestpid/comm 2>/dev/null || echo '?')
+              avail=$(awk '/^MemAvailable/ {print $2}' /proc/meminfo)
+              echo "##RSS## t=$(( $(date +%s) - t0 ))s top=$comm pid=$bestpid rss_kb=$best mem_avail_kb=$avail"
+            done
+          ) & sampler_pid=$!
+          # #256 forensics, layer 1 (#267): on failure, also dump time -v —
+          # GNU time writes its report (including "Command terminated by
+          # signal 9" and Maximum resident set size) even when the sim is
+          # SIGKILLed — IF the runner survives to run this branch.
           $timewrap ./ns3 run "$cmd" 2>"$GITHUB_WORKSPACE/ns3-stderr.log" \
             | tee "$GITHUB_WORKSPACE/paper-results.txt" \
             || { echo "--- ns-3 run FAILED; stderr tail ---"; \
@@ -162,7 +183,8 @@ jobs:
                  if [ -s "$GITHUB_WORKSPACE/time-v.log" ]; then \
                    echo "--- /usr/bin/time -v (peak RSS survives a SIGKILL) ---"; \
                    cat "$GITHUB_WORKSPACE/time-v.log"; \
-                 fi; exit 1; }
+                 fi; kill "$sampler_pid" 2>/dev/null; exit 1; }
+          kill "$sampler_pid" 2>/dev/null || true
           if [ -s "$GITHUB_WORKSPACE/ns3-stderr.log" ]; then
             echo "--- ns-3 stderr tail (non-fatal) ---"
             tail -n 20 "$GITHUB_WORKSPACE/ns3-stderr.log"
