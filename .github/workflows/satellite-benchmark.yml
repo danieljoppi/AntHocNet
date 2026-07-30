@@ -138,6 +138,10 @@ jobs:
             tail -n 20 "$GITHUB_WORKSPACE/ns3-stderr.log"
           fi
       - name: Upload results
+        # if: always(): a failed run is exactly when the stderr + time -v
+        # forensics are needed (#256's lesson — three SIGKILLed paper runs
+        # lost their peak-RSS evidence to a skipped upload).
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: satellite-benchmark

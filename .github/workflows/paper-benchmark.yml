@@ -150,19 +150,35 @@ jobs:
           if [ -x /usr/bin/time ]; then
             timewrap="/usr/bin/time -v -o $GITHUB_WORKSPACE/time-v.log"
           fi
+          # #256 forensics: on failure, also dump time -v — GNU time writes its
+          # report (including "Command terminated by signal 9" and Maximum
+          # resident set size) even when the sim is SIGKILLed, so the OOM's
+          # peak RSS is in that file. All three 900 s SIGKILLs lost it because
+          # nothing printed or uploaded it on the failure path.
           $timewrap ./ns3 run "$cmd" 2>"$GITHUB_WORKSPACE/ns3-stderr.log" \
             | tee "$GITHUB_WORKSPACE/paper-results.txt" \
             || { echo "--- ns-3 run FAILED; stderr tail ---"; \
-                 tail -n 60 "$GITHUB_WORKSPACE/ns3-stderr.log"; exit 1; }
+                 tail -n 60 "$GITHUB_WORKSPACE/ns3-stderr.log"; \
+                 if [ -s "$GITHUB_WORKSPACE/time-v.log" ]; then \
+                   echo "--- /usr/bin/time -v (peak RSS survives a SIGKILL) ---"; \
+                   cat "$GITHUB_WORKSPACE/time-v.log"; \
+                 fi; exit 1; }
           if [ -s "$GITHUB_WORKSPACE/ns3-stderr.log" ]; then
             echo "--- ns-3 stderr tail (non-fatal) ---"
             tail -n 20 "$GITHUB_WORKSPACE/ns3-stderr.log"
           fi
       - name: Upload results
+        # if: always() + stderr/time-v in the artifact — a failed run is
+        # exactly when the forensics are needed (#256), and skipping upload on
+        # failure discarded them three times.
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: paper-benchmark
-          path: paper-results.txt
+          path: |
+            paper-results.txt
+            ns3-stderr.log
+            time-v.log
           retention-days: 7
       - name: Compact result block (cheap to fetch via get_job_logs tail)
         # Re-emit each protocol row as a single greppable line as the LAST log
