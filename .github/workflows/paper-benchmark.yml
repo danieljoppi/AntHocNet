@@ -172,6 +172,16 @@ jobs:
               echo "##RSS## t=$(( $(date +%s) - t0 ))s top=$comm pid=$bestpid rss_kb=$best mem_avail_kb=$avail"
             done
           ) & sampler_pid=$!
+          # #256 forensics, layer 3: cap the sim's address space BELOW the
+          # runner's ceiling so it dies by bad_alloc (graceful: wrapper
+          # reports, job finalizes, logs/artifacts survive) instead of by
+          # taking the whole runner down (runs 30574873901 and 30584510356:
+          # frozen steps, logs 404 server-side, artifacts zero — even the
+          # streamed ##RSS## lines were unretrievable because the log blob
+          # never finalized). 13 GiB leaves ~3 GiB for OS+runner agent on
+          # the 16 GiB ubuntu-latest VM. ulimit -v is per-process inherited,
+          # so it caps the sim binary itself, not just the wrapper.
+          ulimit -v 13631488 || echo "ulimit -v failed (non-fatal)"
           # #256 forensics, layer 1 (#267): on failure, also dump time -v —
           # GNU time writes its report (including "Command terminated by
           # signal 9" and Maximum resident set size) even when the sim is
