@@ -96,14 +96,14 @@ def norm(literal):
 def parse_config_h(text):
     # e.g. "double alpha = 0.7;  ///< ..." / "std::size_t maxHistory = 4096;"
     pat = re.compile(
-        r"^\s*(?:double|bool|int|std::size_t)\s+(\w+)\s*=\s*([-\w.]+)\s*;", re.M
+        r"^\s*(?:double|bool|int|std::size_t)\s+(\w+)\s*=\s*([-\w.]+)\s*;", re.MULTILINE
     )
     return {name: norm(value) for name, value in pat.findall(text)}
 
 
 def parse_ns2_macros(text):
     # e.g. "#define AHN_HELLO_INTERVAL      1.0"
-    pat = re.compile(r"^#define\s+(AHN_\w+)\s+([-\d.]+)", re.M)
+    pat = re.compile(r"^#define\s+(AHN_\w+)\s+([-\d.]+)", re.MULTILINE)
     return {name: norm(value) for name, value in pat.findall(text)}
 
 
@@ -115,7 +115,7 @@ def parse_ns2_ctor(text):
         var = spec.get("ns2_var")
         if var is None:
             continue
-        m = re.search(rf"^\s*{re.escape(var)}\(([-\d.]+)\)", text, re.M)
+        m = re.search(rf"^\s*{re.escape(var)}\(([-\d.]+)\)", text, re.MULTILINE)
         if m:
             out[var] = norm(m.group(1))
     return out
@@ -123,14 +123,14 @@ def parse_ns2_ctor(text):
 
 def parse_ns2_tcl(text):
     # e.g. "Agent/AntHocNet set beta_ants_ 1.0"
-    pat = re.compile(r"^Agent/AntHocNet\s+set\s+(\w+)\s+([-\d.]+)", re.M)
+    pat = re.compile(r"^Agent/AntHocNet\s+set\s+(\w+)\s+([-\d.]+)", re.MULTILINE)
     return {name: norm(value) for name, value in pat.findall(text)}
 
 
 def parse_ns3_ctor(text):
     # e.g. "      m_helloInterval(Seconds(1.0))," / "m_alpha(0.7)," /
     #      "m_enableProactive(true),"
-    pat = re.compile(r"^\s*(m_\w+)\((?:Seconds\()?(true|false|[-\d.]+)\)?\)", re.M)
+    pat = re.compile(r"^\s*(m_\w+)\((?:Seconds\()?(true|false|[-\d.]+)\)?\)", re.MULTILINE)
     return {name: norm(value) for name, value in pat.findall(text)}
 
 

@@ -376,7 +376,7 @@ def _cell_real():
 
 @case("cell: impossible divUsed on a '# paths' line fires (the 9.999 probe)")
 def _cell_div_fires():
-    levels, out = run_cell(CELL.replace("aodv divUsed=1.112",
+    _levels, out = run_cell(CELL.replace("aodv divUsed=1.112",
                                         "aodv divUsed=9.999"))
     expect("path diversity 9.999" in out, "cell-div",
            f"planted divUsed=9.999 not flagged\n{out}")
@@ -384,14 +384,14 @@ def _cell_div_fires():
 
 @case("cell: broken drop identity on a '# drops' line fires")
 def _cell_drops_fire():
-    levels, out = run_cell(CELL.replace("chan=24.01", "chan=90.00"))
+    _levels, out = run_cell(CELL.replace("chan=24.01", "chan=90.00"))
     expect("do not account for the offered packets" in out, "cell-drops",
            f"planted chan=90 left the identity unchecked\n{out}")
 
 
 @case("cell: closing drop identity stays quiet, '-' sub-causes skip")
 def _cell_drops_quiet():
-    levels, out = run_cell(CELL)
+    _levels, out = run_cell(CELL)
     expect("do not account" not in out and "exit path is not attributed" not in out,
            "cell-drops-quiet",
            f"drop rules over-fired on a closing identity / '-' causes\n{out}")
@@ -399,14 +399,14 @@ def _cell_drops_quiet():
 
 @case("cell: out-of-range reorder ratio on a '# reorder' line fires")
 def _cell_reorder_fires():
-    levels, out = run_cell(CELL.replace("ratio=0.0077", "ratio=9.9999"))
+    _levels, out = run_cell(CELL.replace("ratio=0.0077", "ratio=9.9999"))
     expect("reorder_ratio 9.9999 outside [0,1]" in out, "cell-reorder",
            f"planted ratio not flagged\n{out}")
 
 
 @case("cell: residual energy above initial on a '# energy' line fires")
 def _cell_energy_fires():
-    levels, out = run_cell(CELL.replace("resMinJ=4740.6", "resMinJ=5740.6"))
+    _levels, out = run_cell(CELL.replace("resMinJ=4740.6", "resMinJ=5740.6"))
     expect("exceeds initial" in out, "cell-energy",
            f"planted residual > initial not flagged\n{out}")
 
