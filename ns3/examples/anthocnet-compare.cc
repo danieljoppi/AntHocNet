@@ -646,22 +646,37 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // matrix. Attribute names and their defaults are identical across 3.36-3.48
     // (checked against each release's basic-energy-source.cc /
     // wifi-radio-energy-model.cc).
+    // --energyJ=0 disables the model entirely (issue #256): ns-3's
+    // WifiRadioEnergyModel::ChangeState runs on EVERY PHY state change and
+    // cancel-reschedules its m_switchToOffEvent at the depletion horizon —
+    // thousands of sim-seconds out at the default 5000 J, i.e. past the end of
+    // every run. A cancelled ns-3 event is only marked dead; its EventImpl
+    // stays in the scheduler until its timestamp pops, so the far-future
+    // switchToOff events accumulate at the PHY state-change rate (~1e5/sim-s
+    // in this dense 50-node field) for the whole sim — ~12 MB per simulated
+    // second, ~11 GB per 900 s seed, the OOM that killed five 900 s campaign
+    // runs. Energy off restores flat memory at the cost of zeroed energy
+    // columns; the manet-baselines harness (no energy model) is the control
+    // that isolated this.
+    const bool energyOn = P.energyJ > 0.0;
     BasicEnergySourceHelper energySources;
     energySources.Set("BasicEnergySourceInitialEnergyJ", DoubleValue(P.energyJ));
     energySources.Set("BasicEnergySupplyVoltageV", DoubleValue(P.voltageV));
-    auto sources = energySources.Install(nodes);
-    WifiRadioEnergyModelHelper radioEnergy;
-    radioEnergy.Set("TxCurrentA", DoubleValue(P.txCurrentA));
-    radioEnergy.Set("RxCurrentA", DoubleValue(P.rxCurrentA));
-    // ns-3 defaults CcaBusy and Switching to the idle current; keep that tie so
-    // that --idleCurrentA moves the whole non-tx/rx draw instead of a third of
-    // it (the radio is idle or CCA-busy for almost the entire run, so a
-    // half-applied override would silently dominate the result).
-    radioEnergy.Set("IdleCurrentA", DoubleValue(P.idleCurrentA));
-    radioEnergy.Set("CcaBusyCurrentA", DoubleValue(P.idleCurrentA));
-    radioEnergy.Set("SwitchingCurrentA", DoubleValue(P.idleCurrentA));
-    radioEnergy.SetDepletionCallback(MakeCallback(&OnEnergyDepleted));
-    radioEnergy.Install(devices, sources);
+    auto sources = energySources.Install(energyOn ? nodes : NodeContainer());
+    if (energyOn) {
+        WifiRadioEnergyModelHelper radioEnergy;
+        radioEnergy.Set("TxCurrentA", DoubleValue(P.txCurrentA));
+        radioEnergy.Set("RxCurrentA", DoubleValue(P.rxCurrentA));
+        // ns-3 defaults CcaBusy and Switching to the idle current; keep that
+        // tie so that --idleCurrentA moves the whole non-tx/rx draw instead of
+        // a third of it (the radio is idle or CCA-busy for almost the entire
+        // run, so a half-applied override would silently dominate the result).
+        radioEnergy.Set("IdleCurrentA", DoubleValue(P.idleCurrentA));
+        radioEnergy.Set("CcaBusyCurrentA", DoubleValue(P.idleCurrentA));
+        radioEnergy.Set("SwitchingCurrentA", DoubleValue(P.idleCurrentA));
+        radioEnergy.SetDepletionCallback(MakeCallback(&OnEnergyDepleted));
+        radioEnergy.Install(devices, sources);
+    }
 
     MobilityHelper mobility;
     Ptr<UniformRandomVariable> ux = CreateObject<UniformRandomVariable>();
@@ -1416,7 +1431,11 @@ int main(int argc, char* argv[]) {
     double rxCurrentA = kDefaultRxCurrentA;
     double idleCurrentA = kDefaultIdleCurrentA;
     cmd.AddValue("energyJ", "Initial energy per node (J); default 5000 is sized "
-                            "so no node dies in a 900 s run (#209)", energyJ);
+                            "so no node dies in a 900 s run (#209). 0 disables "
+                            "the energy model entirely — required for long "
+                            "sims, whose OOM was the model's cancelled "
+                            "switchToOff events (#256); energy columns then "
+                            "read 0", energyJ);
     cmd.AddValue("voltageV", "Energy-source supply voltage (V)", voltageV);
     cmd.AddValue("txCurrentA", "Radio transmit current (A)", txCurrentA);
     cmd.AddValue("rxCurrentA", "Radio receive current (A)", rxCurrentA);
