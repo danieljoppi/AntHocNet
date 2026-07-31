@@ -9,8 +9,8 @@
  * nrl_bytes is the byte-level counterpart, control bytes / delivered data
  * bytes, #132), plus radio energy (#209): total joules consumed, joules per
  * delivered packet, the residual-energy spread across nodes and the
- * first-node-death time, from a BasicEnergySource + WifiRadioEnergyModel
- * installed identically on every node for every protocol,
+ * first-node-death time, integrated from the PHY's own State trace with the
+ * same currents on every node for every protocol (leak-free per #256),
  * plus packet reordering (#212): the RFC 4737 out-of-order
  * delivery ratio, the reordering extent (mean/max) and the reorder-buffer
  * occupancy needed to restore order, measured per flow at the sink and then
@@ -62,10 +62,6 @@
 // an LLC/SNAP header before the IP header.
 #include "ns3/llc-snap-header.h"
 
-// #209: BasicEnergySource lives in the energy module; WifiRadioEnergyModel and
-// its helper live in the wifi module (already included above) in every ns-3 the
-// CI matrix covers — see the cross-version note in RunOne().
-#include "ns3/energy-module.h"
 
 #include "ns3/aodv-module.h"
 #include "ns3/olsr-module.h"
@@ -273,17 +269,60 @@ static uint32_t NodeMacBacklog(Ptr<Node> node) {
 }
 
 // --- energy (#209) ----------------------------------------------------------
-// First-node-death time: the sim time at which the first node's energy source
-// raises ns-3's depletion event. BasicEnergySource fires that at
-// BasicEnergyLowBatteryThreshold (10% of initial energy remaining), not at
-// literally zero, and WifiRadioEnergyModel then stops drawing current — so
-// "death" here means "battery exhausted for routing purposes", which is the
-// operationally meaningful instant. Sentinel -1.0 = no node died this run,
-// which is the expected outcome at the default --energyJ (see kDefaultEnergyJ).
+// Accounted directly from WifiPhyStateHelper's "State" trace — NOT from ns-3's
+// BasicEnergySource + WifiRadioEnergyModel, which this harness used until
+// #256: WifiRadioEnergyModel::ChangeState cancel-reschedules its
+// m_switchToOffEvent (fire time = the battery's depletion horizon) on EVERY
+// PHY state change, and a cancelled ns-3 event stays in the scheduler until
+// its timestamp pops. With --energyJ sized so no node ever depletes, that
+// horizon lies beyond Simulator::Stop, so the dense 50-node field leaked
+// ~1e5 dead events per simulated second — ~12 MB/sim-s, ~11 GB per 900 s
+// seed, the OOM that killed six 900 s campaign runs (measured: 11.09 GB with
+// the model on vs 114 MB off, every other metric byte-identical — runs
+// 30593659946 / 30596625756).
+//
+// The physics is unchanged: the "State" trace fires once per PHY state period
+// with its exact duration, so consumed energy is the same
+// sum(duration x I(state) x V) the framework integrated — with zero scheduled
+// events and zero per-event allocation. The final still-open state at
+// Simulator::Stop is never logged (the framework's GetRemainingEnergy()
+// force-update did catch it); the resulting undercount is one state period,
+// micro- to milliseconds of idle draw, ~1e-4 J.
+//
+// First-node-death: the framework's BasicEnergySource raised depletion at
+// BasicEnergyLowBatteryThreshold (10% of initial remaining), and
+// WifiRadioEnergyModel then STOPPED the radio. Here the crossing time is
+// recorded at the same 10% threshold, but the radio keeps running — this is
+// accounting, not battery emulation. Identical at the default --energyJ
+// (nothing ever crosses; see kDefaultEnergyJ's sizing bound); a run that
+// lowers --energyJ to provoke deaths now measures when nodes WOULD die
+// instead of an energy-limited PDR. Sentinel -1.0 = no crossing this run.
 double g_firstDeathS = -1.0;
+std::vector<double> g_energyConsumedJ;  // per node, index-aligned with nodes
+double g_energyInitJ = 0.0;             // this run's --energyJ
+double g_energyVoltV = 0.0;
+double g_energyTxA = 0.0, g_energyRxA = 0.0, g_energyIdleA = 0.0;
 
-void OnEnergyDepleted() {
-    if (g_firstDeathS < 0.0) g_firstDeathS = Simulator::Now().GetSeconds();
+void OnPhyState(uint32_t node, Time, Time duration, WifiPhyState state) {
+    double currentA;
+    switch (state) {
+        case WifiPhyState::TX: currentA = g_energyTxA; break;
+        case WifiPhyState::RX: currentA = g_energyRxA; break;
+        // CcaBusy and Switching draw the idle current — the same tie the
+        // helper-based install kept (see the --idleCurrentA note below).
+        case WifiPhyState::IDLE:
+        case WifiPhyState::CCA_BUSY:
+        case WifiPhyState::SWITCHING: currentA = g_energyIdleA; break;
+        // SLEEP/OFF: unreachable under AdhocWifiMac (no power save, and
+        // nothing turns a PHY off any more — that was the leaking event's
+        // job). Zero draw if a future config ever reaches them.
+        default: currentA = 0.0; break;
+    }
+    double& consumed = g_energyConsumedJ[node];
+    consumed += duration.GetSeconds() * currentA * g_energyVoltV;
+    if (g_firstDeathS < 0.0 && g_energyInitJ - consumed <= 0.10 * g_energyInitJ) {
+        g_firstDeathS = Simulator::Now().GetSeconds();
+    }
 }
 
 // Radio energy parameters. These are ns-3's own WifiRadioEnergyModel /
@@ -515,7 +554,7 @@ struct Result {
     double resMinJ = 0.0;        // residual energy across nodes: min / mean /
     double resMeanJ = 0.0;       // sample stddev (J) — the fairness spread
     double resSdJ = 0.0;
-    double firstDeathS = -1.0;   // -1 = no node died (see OnEnergyDepleted)
+    double firstDeathS = -1.0;   // -1 = no node died (see OnPhyState)
     // #212 packet reordering (definitions in docs/benchmarks/metrics.md):
     double reorderRatio = 0.0;     // RFC 4737 Type-P-Reordered fraction, [0,1]
     double reorderRatioMax = 0.0;  // worst single flow's ratio, [0,1]
@@ -624,58 +663,36 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     mac.SetType("ns3::AdhocWifiMac");
     NetDeviceContainer devices = wifi.Install(phy, mac, nodes);
 
-    // --- energy model (#209) -------------------------------------------------
-    // A BasicEnergySource on every node (linear drain at a constant supply
-    // voltage) plus a WifiRadioEnergyModel on every wifi device (per-PHY-state
-    // current draw). Installed here — before the routing stack, from the same
-    // parameters, for every protocol — so the joule figures are comparable
-    // across arms exactly the way PDR/NRL already are.
+    // --- energy accounting (#209, leak-free per #256) ------------------------
+    // Hooked here — right after the devices exist, before the routing stack,
+    // from the same parameters, for every protocol — so the joule figures are
+    // comparable across arms exactly the way PDR/NRL already are. See the
+    // OnPhyState block above for why this integrates the PHY "State" trace
+    // instead of installing BasicEnergySource + WifiRadioEnergyModel, and for
+    // the --energyJ=0 / first-death semantics. WifiPhy::GetState() and the
+    // WifiPhyStateHelper "State" trace (Time start, Time duration,
+    // WifiPhyState) are unchanged across the 3.36-3.48 CI matrix (checked
+    // against 3.36's wifi-phy.h / wifi-phy-state-helper.h).
     //
-    // Cross-version API note (ns-3.36..3.48, the CI matrix in ci.yml): in
-    // **ns-3.42** the energy module's classes moved into namespace
-    // `ns3::energy` (EnergySource, BasicEnergySource, EnergySourceContainer,
-    // DeviceEnergyModel, DeviceEnergyModelContainer) — 3.36..3.41 have them in
-    // plain `ns3`. What did *not* move: the helpers (EnergySourceHelper,
-    // BasicEnergySourceHelper, DeviceEnergyModelHelper,
-    // WifiRadioEnergyModelHelper) are in `ns3` across the whole range, and
-    // WifiRadioEnergyModel itself has lived in the **wifi** module in namespace
-    // `ns3` for the whole range too. So this block names only helpers and lets
-    // `auto` carry every relocated type; that is why it needs no AHN_*/
-    // ANTHOCNET_NS3_* version macro. Do NOT spell out `EnergySourceContainer`
-    // or `Ptr<EnergySource>` here — that is precisely what would break half the
-    // matrix. Attribute names and their defaults are identical across 3.36-3.48
-    // (checked against each release's basic-energy-source.cc /
-    // wifi-radio-energy-model.cc).
-    // --energyJ=0 disables the model entirely (issue #256): ns-3's
-    // WifiRadioEnergyModel::ChangeState runs on EVERY PHY state change and
-    // cancel-reschedules its m_switchToOffEvent at the depletion horizon —
-    // thousands of sim-seconds out at the default 5000 J, i.e. past the end of
-    // every run. A cancelled ns-3 event is only marked dead; its EventImpl
-    // stays in the scheduler until its timestamp pops, so the far-future
-    // switchToOff events accumulate at the PHY state-change rate (~1e5/sim-s
-    // in this dense 50-node field) for the whole sim — ~12 MB per simulated
-    // second, ~11 GB per 900 s seed, the OOM that killed five 900 s campaign
-    // runs. Energy off restores flat memory at the cost of zeroed energy
-    // columns; the manet-baselines harness (no energy model) is the control
-    // that isolated this.
+    // --idleCurrentA covers Idle, CcaBusy and Switching alike — the same tie
+    // the helper-based install kept: the radio is idle or CCA-busy for almost
+    // the entire run, so a third-applied override would silently dominate the
+    // result.
     const bool energyOn = P.energyJ > 0.0;
-    BasicEnergySourceHelper energySources;
-    energySources.Set("BasicEnergySourceInitialEnergyJ", DoubleValue(P.energyJ));
-    energySources.Set("BasicEnergySupplyVoltageV", DoubleValue(P.voltageV));
-    auto sources = energySources.Install(energyOn ? nodes : NodeContainer());
+    g_energyConsumedJ.assign(nodes.GetN(), 0.0);
+    g_energyInitJ = P.energyJ;
+    g_energyVoltV = P.voltageV;
+    g_energyTxA = P.txCurrentA;
+    g_energyRxA = P.rxCurrentA;
+    g_energyIdleA = P.idleCurrentA;
     if (energyOn) {
-        WifiRadioEnergyModelHelper radioEnergy;
-        radioEnergy.Set("TxCurrentA", DoubleValue(P.txCurrentA));
-        radioEnergy.Set("RxCurrentA", DoubleValue(P.rxCurrentA));
-        // ns-3 defaults CcaBusy and Switching to the idle current; keep that
-        // tie so that --idleCurrentA moves the whole non-tx/rx draw instead of
-        // a third of it (the radio is idle or CCA-busy for almost the entire
-        // run, so a half-applied override would silently dominate the result).
-        radioEnergy.Set("IdleCurrentA", DoubleValue(P.idleCurrentA));
-        radioEnergy.Set("CcaBusyCurrentA", DoubleValue(P.idleCurrentA));
-        radioEnergy.Set("SwitchingCurrentA", DoubleValue(P.idleCurrentA));
-        radioEnergy.SetDepletionCallback(MakeCallback(&OnEnergyDepleted));
-        radioEnergy.Install(devices, sources);
+        for (uint32_t i = 0; i < devices.GetN(); ++i) {
+            Ptr<WifiNetDevice> w = devices.Get(i)->GetObject<WifiNetDevice>();
+            if (w && w->GetPhy()) {
+                w->GetPhy()->GetState()->TraceConnectWithoutContext(
+                    "State", MakeBoundCallback(&OnPhyState, i));
+            }
+        }
     }
 
     MobilityHelper mobility;
@@ -988,21 +1005,19 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         r.dOff90Ms = offered(0.90);
     }
 
-    // #209 energy. Consumption is read as initial - remaining per source rather
-    // than from WifiRadioEnergyModel::GetTotalEnergyConsumption(): the source
-    // recomputes on demand (GetRemainingEnergy() calls UpdateEnergySource()),
-    // so it accounts for the final, still-open PHY state at Simulator::Stop(),
-    // and the accessor pair is identical across ns-3.36..3.48. Must run before
-    // Simulator::Destroy() — the sources die with the simulator.
+    // #209 energy: read out of the g_energyConsumedJ integration (see the
+    // OnPhyState block for the method and its one-open-state undercount).
+    // energyOn=false leaves every entry 0, so the columns read 0/-1 exactly as
+    // the --energyJ=0 ablation documented in #270.
     {
         std::vector<double> residual;
-        residual.reserve(sources.GetN());
+        residual.reserve(g_energyConsumedJ.size());
         double consumed = 0.0;
-        for (uint32_t i = 0; i < sources.GetN(); ++i) {
-            auto src = sources.Get(i);
-            const double rem = src->GetRemainingEnergy();
-            consumed += src->GetInitialEnergy() - rem;
-            residual.push_back(rem);
+        if (energyOn) {
+            for (double c : g_energyConsumedJ) {
+                consumed += c;
+                residual.push_back(P.energyJ - c);
+            }
         }
         r.energyJ = consumed;
         // Efficiency figure: joules spent per data packet actually delivered.
@@ -1432,10 +1447,8 @@ int main(int argc, char* argv[]) {
     double idleCurrentA = kDefaultIdleCurrentA;
     cmd.AddValue("energyJ", "Initial energy per node (J); default 5000 is sized "
                             "so no node dies in a 900 s run (#209). 0 disables "
-                            "the energy model entirely — required for long "
-                            "sims, whose OOM was the model's cancelled "
-                            "switchToOff events (#256); energy columns then "
-                            "read 0", energyJ);
+                            "energy accounting; energy columns then read 0",
+                 energyJ);
     cmd.AddValue("voltageV", "Energy-source supply voltage (V)", voltageV);
     cmd.AddValue("txCurrentA", "Radio transmit current (A)", txCurrentA);
     cmd.AddValue("rxCurrentA", "Radio receive current (A)", rxCurrentA);
