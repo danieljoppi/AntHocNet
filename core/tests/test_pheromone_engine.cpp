@@ -49,6 +49,37 @@ int main() {
     CHECK(table.getPheromoneRegular(9, 1) > cfg.minPheromone);
     CHECK(table.getPheromoneRegular(9, 2) < cfg.minPheromone);
 
+    // Virtual pheromone ages on the SAME time-proportional clock as regular
+    // (#262): evaporateAll applies alpha^(dt/interval) to both tables, and
+    // updateVirtual only reinforces — receiving a hello must not age anything.
+    // This pins the commensurability the #180/#252 emission gate assumes.
+    {
+        PheromoneTable t;
+        t.addNeighbor(1);
+        t.setPheromoneRegular(9, 1, 0.4);
+        t.setPheromoneVirtual(9, 1, 0.4);
+        engine.evaporateAll(t, cfg.evaporationInterval);
+        CHECK_NEAR(t.getPheromoneRegular(9, 1), 0.4 * 0.7, 1e-9);
+        CHECK_NEAR(t.getPheromoneVirtual(9, 1), 0.4 * 0.7, 1e-9);  // same factor
+
+        // A hello advertising some other destination leaves the existing
+        // virtual entry byte-identical (the old per-hello whole-table decay
+        // would have multiplied it by alpha here).
+        const double before = t.getPheromoneVirtual(9, 1);
+        AntMessage hello;
+        hello.type = AntType::Hello;
+        hello.src = 1;
+        hello.helloDests.push_back({7, 0.5});
+        engine.updateVirtual(t, hello);
+        CHECK_NEAR(t.getPheromoneVirtual(9, 1), before, 1e-12);
+        CHECK(t.getPheromoneVirtual(7, 1) > 0.0);  // advert reinforced
+
+        // Unrefreshed virtual entries decay below minPheromone and are pruned
+        // by evaporateAll, matching regular-table eviction.
+        for (int i = 0; i < 60; ++i) engine.evaporateAll(t, cfg.evaporationInterval);
+        CHECK_NEAR(t.getPheromoneVirtual(9, 1), 0.0, 1e-12);
+    }
+
     // cleanNeighbor wipes a vanished neighbour from the table.
     PheromoneTable t2;
     t2.setPheromoneRegular(9, 3, 0.8);

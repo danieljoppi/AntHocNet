@@ -64,6 +64,22 @@ and hellos are periodic, so that path is effectively periodic and roughly matche
 the Bellman-Ford-style diffusion refresh; it may be aligned onto the same tick for
 consistency but is not the deviation this ADR fixes.
 
+> **Update (2026-08-01, #262):** the alignment anticipated above is done. The
+> per-hello whole-table decay was *not* effectively periodic — it fired once per
+> **received** hello, so the virtual table aged at `α^degree` per second, a rate
+> set by topology, not time. The thesis itself defines **no** virtual aging at
+> all (per-hello replacement semantics §4.2.3 plus eviction on neighbour loss
+> §4.2.5), so any decay is our extension — and the #262 three-arm A/B showed
+> the fast accidental clock had been acting as a proactive throttle (removing
+> it costs +7–13 % NRL at any proactive rate, with no PDR gain). Virtual aging
+> now lives in `evaporateAll` on the identical `α^(Δt/interval)` factor as
+> regular, making the two tables **commensurable** — the property every
+> virtual-vs-regular comparison (the #180/#252 emission gate included)
+> silently assumed. The NRL cost is moot under the #248 MANET guidance
+> (proactive off); the satellite regime, which keeps proactive, needs the
+> clock correct. Full evidence on
+> [#262](https://github.com/danieljoppi/AntHocNet/issues/262).
+
 ## Alternatives considered
 
 - **Event-driven on reinforcement (status quo).** Indefensible on any reading:
