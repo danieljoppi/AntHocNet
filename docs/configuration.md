@@ -241,6 +241,16 @@ against — the thesis audit confirmed it has no evaporation term at all (§3.1,
 per-hop cost to the paper's congestion-aware A2 formula; it is off by default
 purely because no benchmark has yet justified flipping it.
 
+Where the A2 signal comes from is **regime-selected by the devices the build
+instantiates** (ADR-0017, #206): wifi devices feed it from the MAC queue +
+inter-ack service EWMA (the MANET benchmark build), point-to-point/ISL and
+other queue-bearing devices from the per-interface transmit queue +
+inter-dequeue EWMA (the satellite build). The signal is per-next-hop — on a
+multi-interface satellite each ISL reports its own backlog — and propagation
+is deliberately excluded from the service time: an ISL's constant 3–18 ms is
+distance, not congestion. There is no knob to select the reader; the device
+type decides, wifi preferred where both exist.
+
 ### Reactive setup — `reactiveMaxBroadcasts`, `enableMultipath`, `antAcceptanceFactor`, `reactiveRetryInterval`, `maxPathLength`
 
 How routes are discovered. `reactiveMaxBroadcasts` bounds how often **one
