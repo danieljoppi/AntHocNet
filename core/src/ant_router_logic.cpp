@@ -472,12 +472,12 @@ NodeAddress AntRouterLogic::randomDestination() {
     return table_.randomDestination(rng_);
 }
 
-void AntRouterLogic::stampForward(AntMessage& ant) const {
+void AntRouterLogic::stampForward(AntMessage& ant, NodeAddress nextHop) const {
     if (ant.visited.size() >= config_.maxPathLength) return;
-    ant.visited.push_back({address_, localHopCost(ant)});
+    ant.visited.push_back({address_, localHopCost(ant, nextHop)});
 }
 
-double AntRouterLogic::localHopCost(const AntMessage& ant) const {
+double AntRouterLogic::localHopCost(const AntMessage& ant, NodeAddress nextHop) const {
     // Congestion-aware per-hop cost (item 10/A2, [1] §3.2): when the MAC metric
     // is enabled and a link-state signal is available, this node contributes its
     // *expected time to send one packet given its current queue* — (Q_mac+1) *
@@ -491,9 +491,9 @@ double AntRouterLogic::localHopCost(const AntMessage& ant) const {
     // implementation time, so it is isolated here and flagged for a maintainer
     // cross-check. Any correction is a one-line change in this function.
     if (config_.enableMacMetric && linkState_) {
-        const double tmac = linkState_->macServiceTime();
+        const double tmac = linkState_->macServiceTime(nextHop);
         if (tmac > 0.0) {
-            const int q = linkState_->macQueueLength();
+            const int q = linkState_->macQueueLength(nextHop);
             return (static_cast<double>(q > 0 ? q : 0) + 1.0) * tmac;
         }
         return config_.hopTimeSec;  // no MAC sample yet: unloaded reference hop
@@ -623,10 +623,19 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
         if (ant.visited.size() >= config_.maxPathLength) {
             return {RouteDecision::drop()};
         }
-        stampForward(ant);
+
+        // The stamp happens where the outgoing interface is known (#206): the
+        // unicast branch stamps with its chosen next hop so the congestion
+        // signal reads the queue the ant will actually wait in; the broadcast
+        // and destination branches have no single outgoing interface and stamp
+        // kInvalidAddress (ILinkState aggregates). A looped-back own ant is
+        // dropped unstamped — its stamp never reached the wire anyway.
 
         if (ant.dst == address_) {
-            // Destination reached: spawn the backward ant and send it home.
+            // Destination reached: stamp our own contribution — the backward
+            // ant's path time includes the destination's load — then spawn it
+            // and send it home.
+            stampForward(ant, kInvalidAddress);
             AntMessage back = createBackAnt(ant);
             NodeAddress next = advanceBackAnt(back);
             if (next == kInvalidAddress) return {RouteDecision::drop()};
@@ -657,6 +666,7 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
                                             config_.reactiveMaxBroadcasts)) {
                 return {RouteDecision::drop()};
             }
+            stampForward(ant, kInvalidAddress);  // flood: every interface at once
             return {broadcastForward(ant)};  // bounded per type (drop at budget 0)
         }
         // A proactive ant with a route is normally unicast, but with a small
@@ -666,8 +676,10 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
         // a routable ant.
         if (proactive && config_.enableProactive && ant.broadcastBudget != 0 &&
             rng_.uniform() < config_.proactiveBroadcastProb) {
+            stampForward(ant, kInvalidAddress);
             return {broadcastForward(ant)};
         }
+        stampForward(ant, next);
         return {sendAnt(RouteAction::Unicast, next, ant)};
     }
 

@@ -77,9 +77,11 @@ public:
 
     void linkFailed(Packet* p);
 
-    // core::ILinkState (item 10/A2)
-    int macQueueLength() const override;
-    anthocnet::core::Time macServiceTime() const override;
+    // core::ILinkState (item 10/A2). NS-2's mobilenode has one interface
+    // queue, so this is the degenerate single-interface case and the
+    // per-next-hop parameter (#206) is ignored.
+    int macQueueLength(anthocnet::core::NodeAddress nextHop) const override;
+    anthocnet::core::Time macServiceTime(anthocnet::core::NodeAddress nextHop) const override;
 
 protected:
     // packet paths

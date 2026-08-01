@@ -165,14 +165,16 @@ int AntHocNetAgent::command(int argc, const char* const* argv) {
 
 // --- item 10/A2: MAC congestion signals (core::ILinkState) ------------------
 
-int AntHocNetAgent::macQueueLength() const {
+int AntHocNetAgent::macQueueLength(anthocnet::core::NodeAddress /*nextHop*/) const {
     // Packets backlogged in the interface queue between LL and MAC — those a
     // newly-forwarded packet would wait behind. Without the "if-queue" handle
     // the backlog reads 0, so the metric degrades to the unloaded hop time.
+    // One interface queue per mobilenode: the per-next-hop parameter (#206)
+    // is ignored.
     return ifqueue_ ? ifqueue_->length() : 0;
 }
 
-anthocnet::core::Time AntHocNetAgent::macServiceTime() const {
+anthocnet::core::Time AntHocNetAgent::macServiceTime(anthocnet::core::NodeAddress /*nextHop*/) const {
     // Nominal per-packet MAC service time, matching the NS-3 adapter's current
     // pass: the congestion signal is the *measured queue occupancy*
     // (macQueueLength), so per-hop cost = (Q+1)*hopTime. A measured tx-time

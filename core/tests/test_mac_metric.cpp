@@ -15,12 +15,22 @@ using anthocnet::test::ScriptedRng;
 
 namespace {
 
-// Scriptable MAC signals for the node under test.
+// Scriptable MAC signals for the node under test. Records every next hop the
+// core queries so the per-next-hop contract (#206) is pinnable: unicast stamps
+// must name the chosen next hop, broadcast/destination stamps must pass
+// kInvalidAddress (= "no single outgoing interface, aggregate").
 struct FakeLinkState : ILinkState {
     int    q    = 0;
     double tmac = 0.0;
-    int  macQueueLength() const override { return q; }
-    Time macServiceTime() const override { return tmac; }
+    mutable std::vector<NodeAddress> queried;
+    int macQueueLength(NodeAddress nextHop) const override {
+        queried.push_back(nextHop);
+        return q;
+    }
+    Time macServiceTime(NodeAddress nextHop) const override {
+        queried.push_back(nextHop);
+        return tmac;
+    }
 };
 
 // An in-transit forward ant that has just left `src` heading to `dst`.
@@ -48,7 +58,7 @@ int main() {
         AntRouterLogic r(/*addr*/ 1, cfg, clock, rng);
         AntMessage a = inTransit(/*src*/ 0, /*dst*/ 9);
         clock.advance(0.3);
-        r.stampForward(a);
+        r.stampForward(a, /*nextHop*/ 5);
         CHECK_EQ(a.visited.size(), static_cast<std::size_t>(2));
         CHECK_NEAR(a.visited.back().time, 0.3, 1e-9);
     }
@@ -65,7 +75,7 @@ int main() {
         AntRouterLogic r(1, cfg, clock, rng, /*metric*/ nullptr, &ls);
         AntMessage a = inTransit(0, 9);
         clock.advance(5.0);  // large wall-clock: must not leak into the cost
-        r.stampForward(a);
+        r.stampForward(a, /*nextHop*/ 5);
         CHECK_NEAR(a.visited.back().time, (3 + 1) * 0.02, 1e-9);  // 0.08
     }
 
@@ -80,7 +90,7 @@ int main() {
         ls.tmac = 0.02;
         AntRouterLogic r(1, cfg, clock, rng, nullptr, &ls);
         AntMessage a = inTransit(0, 9);
-        r.stampForward(a);
+        r.stampForward(a, /*nextHop*/ 5);
         CHECK_NEAR(a.visited.back().time, 0.02, 1e-9);
     }
 
@@ -96,7 +106,7 @@ int main() {
         ls.tmac = 0.0;  // no sample observed
         AntRouterLogic r(1, cfg, clock, rng, nullptr, &ls);
         AntMessage a = inTransit(0, 9);
-        r.stampForward(a);
+        r.stampForward(a, /*nextHop*/ 5);
         CHECK_NEAR(a.visited.back().time, cfg.hopTimeSec, 1e-9);
     }
 
@@ -111,7 +121,7 @@ int main() {
         ls.tmac = 0.02;
         AntRouterLogic r(1, cfg, clock, rng, nullptr, &ls);
         AntMessage a = inTransit(0, 9);
-        r.stampForward(a);
+        r.stampForward(a, /*nextHop*/ 5);
         CHECK_NEAR(a.visited.back().time, 0.02, 1e-9);  // (0+1)*0.02
     }
 
@@ -130,7 +140,7 @@ int main() {
             ls.tmac = tmac;
             AntRouterLogic r(1, cfg, clock, rng, nullptr, &ls);
             AntMessage a = inTransit(0, 9);
-            r.stampForward(a);
+            r.stampForward(a, /*nextHop*/ 5);
             double t = 0.0;
             for (const AntHop& h : a.visited) t += h.time;
             return t;
@@ -149,6 +159,73 @@ int main() {
         oBusy.hopTime = cfg.hopTimeSec;
         oBusy.pathTime = busy;
         CHECK(m.pheromone(oBusy) < m.pheromone(oIdle));
+    }
+
+    // 7. Per-next-hop contract through the real receive path (#206): the stamp
+    //    happens where the outgoing interface is known, so the congestion
+    //    signal is read for the queue the ant will actually wait in.
+    {
+        Config cfg;
+        cfg.enableMacMetric = true;
+
+        // 7a. Unicast: a routed forward ant stamps with its chosen next hop.
+        {
+            FakeClock clock;
+            ScriptedRng rng({0.99});  // stay on the unicast branch (no proactive broadcast)
+            FakeLinkState ls;
+            ls.q = 2;
+            ls.tmac = 0.02;
+            AntRouterLogic r(/*addr*/ 1, cfg, clock, rng, nullptr, &ls);
+            r.table().setPheromoneRegular(/*dest*/ 9, /*neighbor*/ 5, 0.9);
+            AntMessage a = inTransit(/*src*/ 3, /*dst*/ 9);
+            auto decisions = r.onReceiveAnt(a, /*prevHop*/ 3);
+            CHECK_EQ(decisions.size(), static_cast<std::size_t>(1));
+            CHECK(decisions[0].action == RouteAction::Unicast);
+            CHECK_EQ(decisions[0].nextHop, 5);
+            CHECK(!ls.queried.empty());
+            for (NodeAddress qh : ls.queried) CHECK_EQ(qh, 5);
+            CHECK_NEAR(decisions[0].message.visited.back().time, (2 + 1) * 0.02, 1e-9);
+        }
+
+        // 7b. Broadcast (no route): no single outgoing interface — the stamp
+        //     queries kInvalidAddress, the aggregate-across-interfaces contract.
+        {
+            FakeClock clock;
+            ScriptedRng rng({0.99});
+            FakeLinkState ls;
+            ls.q = 2;
+            ls.tmac = 0.02;
+            AntRouterLogic r(1, cfg, clock, rng, nullptr, &ls);
+            AntMessage a = inTransit(3, 9);  // no pheromone for 9 anywhere
+            auto decisions = r.onReceiveAnt(a, 3);
+            CHECK_EQ(decisions.size(), static_cast<std::size_t>(1));
+            CHECK(decisions[0].action == RouteAction::Broadcast);
+            CHECK(!ls.queried.empty());
+            for (NodeAddress qh : ls.queried) CHECK_EQ(qh, kInvalidAddress);
+        }
+
+        // 7c. Destination: the terminal node still contributes its own cost to
+        //     the backward ant's path time (aggregate — it forwards nowhere).
+        {
+            FakeClock clock;
+            ScriptedRng rng({0.99});
+            FakeLinkState ls;
+            ls.q = 2;
+            ls.tmac = 0.02;
+            AntRouterLogic r(/*addr*/ 9, cfg, clock, rng, nullptr, &ls);
+            AntMessage a = inTransit(3, /*dst*/ 9);
+            a.visited = {{3, 0.0}, {4, 0.01}};
+            auto decisions = r.onReceiveAnt(a, /*prevHop*/ 4);
+            CHECK_EQ(decisions.size(), static_cast<std::size_t>(1));
+            CHECK(decisions[0].action == RouteAction::Unicast);  // backward ant home
+            CHECK(!ls.queried.empty());
+            for (NodeAddress qh : ls.queried) CHECK_EQ(qh, kInvalidAddress);
+            // The destination's own stamp is on the retraced path: after
+            // advanceBackAnt moved node 9 onto history, its cost is there.
+            CHECK_EQ(decisions[0].message.history.size(), static_cast<std::size_t>(1));
+            CHECK_EQ(decisions[0].message.history.back().node, 9);
+            CHECK_NEAR(decisions[0].message.history.back().time, (2 + 1) * 0.02, 1e-9);
+        }
     }
 
     return RUN_TESTS();

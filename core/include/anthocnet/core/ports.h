@@ -55,19 +55,28 @@ public:
 /// MAC, so it measures; the core turns these into a per-hop cost. Optional —
 /// when no ILinkState is injected (or the feature is gated off) the core falls
 /// back to the forward ant's wall-clock transit time, i.e. unchanged behaviour.
+/// Both queries name the next hop the cost is being computed *for* (#206): a
+/// multi-interface node (a satellite with one queue per ISL) has no single
+/// "the queue", and the useful congestion signal is per-next-hop.
+/// `nextHop == kInvalidAddress` means the caller has no single outgoing
+/// interface — the ant is being broadcast on every interface, or this node is
+/// the path's terminal — and the adapter should aggregate across interfaces.
+/// Single-interface adapters (one wifi radio) may ignore the parameter: there
+/// per-next-hop degenerates to per-node for free.
 class ILinkState {
 public:
     virtual ~ILinkState() = default;
-    /// Packets currently queued for transmission at this node's interface (those
-    /// a newly-enqueued packet would wait behind). Returns >= 0; negative is
+    /// Packets currently queued for transmission toward `nextHop` (those a
+    /// newly-enqueued packet would wait behind). Returns >= 0; negative is
     /// treated as 0.
-    virtual int macQueueLength() const = 0;
-    /// Smoothed per-packet MAC service time (seconds): a running average of the
-    /// time from a packet reaching the head of the interface queue to a
-    /// successful transmission, including contention/retransmission. Returns
-    /// <= 0 when no sample has been observed yet (the core then uses the
-    /// unloaded reference hop time for that hop).
-    virtual Time macServiceTime() const = 0;
+    virtual int macQueueLength(NodeAddress nextHop) const = 0;
+    /// Smoothed per-packet MAC service time (seconds) toward `nextHop`: a
+    /// running average of the time from a packet reaching the head of the
+    /// interface queue to a successful transmission, including
+    /// contention/retransmission — and excluding propagation, which is real
+    /// delay but not congestion. Returns <= 0 when no sample has been observed
+    /// yet (the core then uses the unloaded reference hop time for that hop).
+    virtual Time macServiceTime(NodeAddress nextHop) const = 0;
 };
 
 /// Optional observer the core notifies of routing events (item 15). It only
