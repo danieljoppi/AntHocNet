@@ -502,6 +502,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                          InetSocketAddress(nodeAddr[Idx(0, 2, P)], kLoadPort));
         load.SetAttribute("DataRate", StringValue(P.corridorLoad));
         load.SetAttribute("PacketSize", UintegerValue(1000));
+        // Constant duty: the OnOff DEFAULT is 1 s on / 1 s off, under which a
+        // 12 Mbps load on a 10 Mbps ISL oscillates the queue empty->full->empty
+        // every 2 s — an ant sampling in the off-phase reads zero backlog, and
+        // the first cell-1 dispatches measured exactly that (mac-metric arm
+        // shifted only 2/5 seeds; see #216). Sustained congestion IS the cell,
+        // so the background transmits continuously at corridorLoad.
+        load.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+        load.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
         load.SetAttribute("StartTime", TimeValue(Seconds(P.corridorLoadAt)));
         load.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
         apps.Add(load.Install(nodes.Get(Idx(0, 1, P))));
