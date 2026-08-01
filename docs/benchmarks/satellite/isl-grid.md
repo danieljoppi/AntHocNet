@@ -84,7 +84,10 @@ since [#206](https://github.com/danieljoppi/AntHocNet/issues/206) gave
 there are exactly two shortest paths, each `cols/2` hops — **east**
 `(0,0)→(0,1)→…→(0,cols/2)` and **west** `(0,0)→(0,cols−1)→…→(0,cols/2)`;
 any path leaving row 0 is ≥ 2 hops longer. A background OnOff flow
-`(0,1)→(0,2)` (1000 B packets, rate `corridorLoad`, UDP port 10) loads the
+`(0,1)→(0,2)` (1000 B packets, rate `corridorLoad`, UDP port 10, **constant
+duty** — the OnOff default of 1 s on/1 s off would oscillate the queue
+empty→full→empty every 2 s, and an ant sampling the off-phase reads zero
+backlog; the first dispatches measured exactly that) loads the
 east corridor's second link from `corridorLoadAt` onward — after discovery
 has settled on the quiet net, so a reactive baseline has already committed a
 route. Hop count cannot distinguish the corridors; only a congestion signal
