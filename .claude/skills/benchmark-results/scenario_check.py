@@ -52,6 +52,16 @@ MAX_PATH_LENGTH = 100
 # AntHocNet diversity figure means anything.
 SINGLE_PATH_PROTOS = ("aodv", "olsr", "dsdv")
 SINGLE_PATH_DIV_MAX = 1.10
+# The dedicated diversity-measurement cell (#230, run 30650903707): window
+# <= DIV_CELL_WINDOW_S is the calibrated churn-free window, where a raised
+# offered rate feeds the cells and the single-path baselines legitimately sit
+# ABOVE 1.10 (a route break at 8 pkt/s lands packets on both routes within one
+# short window — floor measured at aodv=1.133). In that cell diversity is read
+# as EXCESS over the in-run single-path floor, so the absolute bound relaxes to
+# a sanity ceiling: a baseline above DIV_CELL_SANITY_MAX means the window is
+# not churn-free at this rate and the cell is unreadable.
+DIV_CELL_WINDOW_S = 2.0
+DIV_CELL_SANITY_MAX = 1.50
 
 ROW = re.compile(r"^\s*(?:##BENCH##\s+)?([a-z][\w-]*)((?:\s+[-\d.]+|\s+inf)+)\s*$")
 
@@ -79,7 +89,8 @@ ISL_RUN = re.compile(r"^\s*##RUN##\s+(\d+)\s+([a-z][\w-]*)"
 DIAG_LINE = re.compile(r"^\s*#\s+(paths|energy|drops|reorder)\s+([a-z][\w-]*)\s+(.+)$")
 DIAG_KEYS = {
     "paths":   {"hopsMean": "hops", "hopsMax": "hops_max", "divUsed": "div",
-                "divMax": "div_max", "entropyBits": "entropy"},
+                "divMax": "div_max", "entropyBits": "entropy",
+                "windowS": "div_window"},
     # energy(J)/J-per-pkt live at table positions 10/11, which the 9-number
     # ##BENCH## block does not carry; the '# energy' line adds the residual
     # bounds. 'pdr' on the '# drops' line is deliberately unmapped — the
@@ -325,6 +336,7 @@ def parse_results(path):
                    "hops_max": r.get("path_hops_max"),
                    "div": r.get("path_div_used"),
                    "div_max": r.get("path_div_max"),
+                   "div_window": r.get("path_div_window_s"),
                    "entropy": r.get("path_entropy_bits"),
                    "jain": r.get("jain_pkts")}
         return
@@ -549,6 +561,7 @@ def cmd_results(a):
             # whenever PDR is non-zero.
             hops, hops_max = num("hops"), num("hops_max")
             div, div_max = num("div"), num("div_max")
+            div_window = num("div_window")
             entropy, jain = num("entropy"), num("jain")
             if hops is not None:
                 if hops < 0.0:
@@ -581,15 +594,29 @@ def cmd_results(a):
                                    "carried destination uses at least one "
                                    "next hop")
                 elif (r["proto"] in SINGLE_PATH_PROTOS
+                        and div_window is not None
+                        and div_window <= DIV_CELL_WINDOW_S
+                        and div > DIV_CELL_SANITY_MAX):
+                    report("FAIL", f"{tag}: path diversity {div} > "
+                                   f"{DIV_CELL_SANITY_MAX} for a single-path "
+                                   "protocol even at the churn-free window "
+                                   f"(<= {DIV_CELL_WINDOW_S} s) — the window "
+                                   "is not churn-free at this offered rate, "
+                                   "so the diversity cell is unreadable "
+                                   "(#230)")
+                elif (r["proto"] in SINGLE_PATH_PROTOS
+                        and (div_window is None
+                             or div_window > DIV_CELL_WINDOW_S)
                         and div > SINGLE_PATH_DIV_MAX):
                     report("FAIL", f"{tag}: path diversity {div} > "
                                    f"{SINGLE_PATH_DIV_MAX} for a single-path "
                                    "protocol — path_div_window_s is longer than "
                                    "the route lifetime, so route replacement is "
                                    "being counted as concurrent multipath; "
-                                   "recalibrate the window (#230) before "
-                                   "reading any path_div_* or path_entropy_bits "
-                                   "figure, including AntHocNet's")
+                                   "diversity is only readable from the "
+                                   "dedicated cell (cbrBps=4096, "
+                                   "pathWindowS=2), as excess over the "
+                                   "single-path floor (#230)")
             if div_max is not None and div is not None and div_max and div_max < div:
                 report("FAIL", f"{tag}: max path diversity {div_max} < mean "
                                f"path diversity {div}")
