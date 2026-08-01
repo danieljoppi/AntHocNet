@@ -25,8 +25,21 @@ void AntRouterLogic::learnNeighbor(NodeAddress neighbor) {
     if (neighbor == address_ || neighbor == kInvalidAddress) return;
     const bool isNew = lastSeen_.find(neighbor) == lastSeen_.end();
     table_.addNeighbor(neighbor);
-    // Seed an equal-weight regular entry, as the legacy recvAHN did.
-    engine_.updateRegular(table_, neighbor, neighbor, 1.0);
+    // A reception is direct evidence of a live 1-hop path, so it refreshes the
+    // (neighbor, neighbor) entry — at the metric's UNLOADED 1-HOP value, not
+    // the legacy constant 1.0 (#279). The constant gamma-blended the entry
+    // ~100x below its backward-ant value on every packet, corrupting every
+    // 1-hop hello advert (measured: hub pinned at 0.78 vs 74.24 refreshed).
+    // But the per-reception refresh itself is load-bearing: seeding only new
+    // neighbours let 1-hop entries evaporate between backward-ant refreshes,
+    // and the resulting route flaps collapsed the ISL field into a reactive
+    // discovery storm (NRL 37 -> 10801; A/B recorded on the issue). So:
+    // refresh every reception, in the same units backward ants deposit.
+    LinkObservation obs;
+    obs.hops = 1;
+    obs.pathTime = config_.hopTimeSec;
+    obs.hopTime = config_.hopTimeSec;
+    engine_.updateRegular(table_, neighbor, neighbor, metric_->pheromone(obs));
     lastSeen_[neighbor] = clock_.now();  // liveness: any reception refreshes it
     txFailures_.erase(neighbor);         // a reception clears the tx-failure streak (#19)
     if (isNew && observer_) observer_->onRouteChanged(neighbor, neighbor, true);
