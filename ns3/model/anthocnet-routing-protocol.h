@@ -16,6 +16,7 @@
 #include "ns3/timer.h"
 #include "ns3/traced-callback.h"
 #include "ns3/mac48-address.h"
+#include "ns3/queue.h"
 #include "ns3/wifi-mac.h"
 
 // ns-3 renamed WifiMacQueueItem -> WifiMpdu (and wifi-mac-queue-item.h ->
@@ -322,8 +323,27 @@ private:
     bool m_enableMacMetric;  ///< item 10/A2 congestion-aware per-hop metric
 
     // WifiMac handle for the item-10/A2 queue-occupancy signal (null on non-wifi
-    // devices, where the metric falls back to the unloaded reference hop time).
+    // devices, where the p2p/ISL transmit-queue reader below takes over, #206).
     Ptr<WifiMac> m_wifiMac;
+
+    // #206 step 2: per-interface transmit-queue congestion for non-wifi
+    // devices — the p2p/ISL regime, where each interface is one ISL with its
+    // own queue and the useful signal is per-next-hop. `queue` is the device's
+    // "TxQueue" (PointToPointNetDevice, CsmaNetDevice and SimpleNetDevice all
+    // expose the attribute); the EWMA samples inter-dequeue spacing while the
+    // queue stays backlogged — the transmitter-side analogue of the wifi
+    // inter-ack EWMA (#68), which excludes propagation by construction (the
+    // sender never waits for it). Smoothing shares MacServiceAlpha.
+    struct TxQueueState {
+        Ptr<Queue<Packet>> queue;
+        double ewmaSec = 0.0;             ///< 0 = no sample yet (core falls back)
+        Time   lastDequeue;               ///< previous Dequeue timestamp
+        bool   backlogAtLastDequeue = false;
+    };
+    std::map<uint32_t, TxQueueState> m_txQueues;  ///< iface index -> queue state
+    void NotifyTxDequeue(uint32_t interface, Ptr<const Packet> p);
+    static void TxDequeueTrace(RoutingProtocol* self, uint32_t interface,
+                               Ptr<const Packet> p);
 
     // L3 forwarding callbacks cached from RouteInput (Ipv4L3Protocol passes the
     // same bound callbacks on every call). NotifyTxError needs them to re-inject

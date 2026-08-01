@@ -30,6 +30,7 @@
 #include "ns3/position-allocator.h"
 #include "ns3/vector.h"
 #include "ns3/double.h"
+#include "ns3/data-rate.h"
 #include "ns3/ipv4.h"
 
 #include "ns3/anthocnet-packet.h"
@@ -227,6 +228,127 @@ private:
     uint32_t m_rxBytes;
 };
 
+// #206 — the per-next-hop congestion signal on non-wifi devices.
+//
+// The same multi-interface relay shape as the #203 test (one SimpleNetDevice
+// per link, so node 1 has one transmit queue per neighbour), with the relay's
+// egress toward node 2 slowed to 32 kb/s so a data burst backlogs that queue
+// while the queue toward node 0 stays idle. The ILinkState surface must then
+// DISCRIMINATE: a positive backlog and a sampled service time toward the
+// loaded next hop, (near-)nothing toward the idle one, and an aggregate at
+// least as large as any single queue. A node-wide signal cannot pass this —
+// it would read the same value for both hops, which is exactly the silent
+// failure #206 exists to prevent.
+class PerHopCongestionSignalTestCase : public TestCase
+{
+public:
+    PerHopCongestionSignalTestCase()
+        : TestCase("Per-next-hop congestion signal on non-wifi devices (#206)"),
+          m_qLoaded(0), m_qIdle(0), m_qAggregate(0), m_tLoaded(0.0), m_tIdle(0.0) {}
+
+    void DoRun() override {
+        using ns3::anthocnet::RoutingProtocol;
+        RngSeedManager::SetSeed(1);
+        RngSeedManager::SetRun(1);
+
+        NodeContainer nodes;
+        nodes.Create(3);
+
+        NodeContainer leftPair(nodes.Get(0), nodes.Get(1));
+        NodeContainer rightPair(nodes.Get(1), nodes.Get(2));
+        SimpleNetDeviceHelper devHelper;
+        NetDeviceContainer leftDevs = devHelper.Install(leftPair, CreateObject<SimpleChannel>());
+        NetDeviceContainer rightDevs = devHelper.Install(rightPair, CreateObject<SimpleChannel>());
+
+        // Slow the relay's egress toward node 2. The left link keeps the
+        // default infinite rate, so its queue drains instantly and stays idle.
+        Ptr<SimpleNetDevice> relayRight = DynamicCast<SimpleNetDevice>(rightDevs.Get(0));
+        relayRight->SetAttribute("DataRate", DataRateValue(DataRate("32kbps")));
+
+        AntHocNetHelper anthocnet;
+        InternetStackHelper internet;
+        internet.SetRoutingHelper(anthocnet);
+        internet.Install(nodes);
+
+        Ipv4AddressHelper address;
+        address.SetBase("10.1.1.0", "255.255.255.0");
+        Ipv4InterfaceContainer leftIfs = address.Assign(leftDevs);
+        address.SetBase("10.1.2.0", "255.255.255.0");
+        Ipv4InterfaceContainer rightIfs = address.Assign(rightDevs);
+
+        const uint16_t port = 9;
+        Ptr<Socket> rx = Socket::CreateSocket(nodes.Get(2), UdpSocketFactory::GetTypeId());
+        rx->Bind(InetSocketAddress(Ipv4Address::GetAny(), port));
+        rx->SetRecvCallback(MakeCallback(&PerHopCongestionSignalTestCase::Drain, this));
+
+        // A sustained 1000-byte burst from node 0: at 32 kb/s the relay drains
+        // ~4 pkt/s, so sending 40/s from t=10 guarantees a deep backlog toward
+        // node 2 at the probe time.
+        Ptr<Socket> tx = Socket::CreateSocket(nodes.Get(0), UdpSocketFactory::GetTypeId());
+        tx->Connect(InetSocketAddress(rightIfs.GetAddress(1), port));
+        for (double t = 10.0; t < 14.0; t += 0.025) {
+            Simulator::Schedule(Seconds(t), &PerHopCongestionSignalTestCase::Send, this, tx);
+        }
+
+        Simulator::Schedule(Seconds(13.0), &PerHopCongestionSignalTestCase::Probe, this,
+                            nodes.Get(1),
+                            RoutingProtocol::ToCore(rightIfs.GetAddress(1)),
+                            RoutingProtocol::ToCore(leftIfs.GetAddress(0)));
+
+        Simulator::Stop(Seconds(15.0));
+        Simulator::Run();
+        Simulator::Destroy();
+
+        NS_TEST_ASSERT_MSG_GT(m_qLoaded, 0,
+                              "no backlog read toward the loaded next hop");
+        // The instant-drain queue can momentarily hold the packet being
+        // serialised within a timestep; anything beyond that is a real backlog
+        // and breaks the discrimination this test pins.
+        NS_TEST_ASSERT_MSG_LT(m_qIdle, 2,
+                              "backlog read toward the idle next hop");
+        NS_TEST_ASSERT_MSG_GT(m_qLoaded, m_qIdle,
+                              "signal does not discriminate between next hops");
+        NS_TEST_ASSERT_MSG_GT_OR_EQ(m_qAggregate, m_qLoaded,
+                                    "aggregate smaller than a single queue");
+        // Service time toward the loaded hop: sampled (positive) and at the
+        // serialisation scale — 1000 B at 32 kb/s is 0.25 s; ants are smaller.
+        // A value near an ISL's propagation delay would mean the decomposition
+        // folded propagation in, which it must not.
+        NS_TEST_ASSERT_MSG_GT(m_tLoaded, 0.0,
+                              "no service-time sample toward the loaded next hop");
+        NS_TEST_ASSERT_MSG_LT(m_tLoaded, 1.0,
+                              "service time off the serialisation scale");
+        NS_TEST_ASSERT_MSG_EQ(m_tIdle, 0.0,
+                              "service-time sample on the never-backlogged link");
+    }
+
+private:
+    void Send(Ptr<Socket> s) { s->Send(Create<Packet>(1000)); }
+    void Drain(Ptr<Socket> s) {
+        Ptr<Packet> p;
+        while ((p = s->Recv())) {
+        }
+    }
+    void Probe(Ptr<Node> relay, ::anthocnet::core::NodeAddress towardLoaded,
+               ::anthocnet::core::NodeAddress towardIdle) {
+        Ptr<ns3::anthocnet::RoutingProtocol> rp =
+            relay->GetObject<ns3::anthocnet::RoutingProtocol>();
+        NS_TEST_ASSERT_MSG_EQ((rp != nullptr), true, "relay has no AntHocNet protocol");
+        if (!rp) return;
+        m_qLoaded    = rp->macQueueLength(towardLoaded);
+        m_qIdle      = rp->macQueueLength(towardIdle);
+        m_qAggregate = rp->macQueueLength(::anthocnet::core::kInvalidAddress);
+        m_tLoaded    = rp->macServiceTime(towardLoaded);
+        m_tIdle      = rp->macServiceTime(towardIdle);
+    }
+
+    int m_qLoaded;
+    int m_qIdle;
+    int m_qAggregate;
+    double m_tLoaded;
+    double m_tIdle;
+};
+
 // B3 — address mapping never aliases the core's kInvalidAddress sentinel.
 class AddressMappingTestCase : public TestCase
 {
@@ -373,6 +495,7 @@ public:
         AddTestCase(new AddressMappingTestCase(), AHN_TEST_QUICK);
         AddTestCase(new AntHocNetDeliveryTestCase(), AHN_TEST_QUICK);
         AddTestCase(new MultiInterfaceDeliveryTestCase(), AHN_TEST_QUICK);
+        AddTestCase(new PerHopCongestionSignalTestCase(), AHN_TEST_QUICK);
         AddTestCase(new RepairAntOnLinkBreakTestCase(), AHN_TEST_QUICK);
     }
 };

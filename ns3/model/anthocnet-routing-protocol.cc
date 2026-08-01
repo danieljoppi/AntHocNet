@@ -5,6 +5,7 @@
 #include "ns3/node.h"
 #include "ns3/boolean.h"
 #include "ns3/double.h"
+#include "ns3/pointer.h"
 #include "ns3/uinteger.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/udp-socket-factory.h"
@@ -354,33 +355,106 @@ void RoutingProtocol::onRouteChanged(::anthocnet::core::NodeAddress dest,
 
 // --- item 10/A2: MAC congestion signals (core::ILinkState) ------------------
 
-int RoutingProtocol::macQueueLength(NodeAddress /*nextHop*/) const {
-    // Packets currently backlogged at the wifi MAC across all access categories
-    // — the queue a newly-forwarded packet would wait behind. Summed over the
-    // per-AC txop queues (unified since ns-3.36, the CI-matrix floor). Returns 0
-    // on non-wifi devices, so the metric degrades to the unloaded hop time.
-    // Single radio: every next hop shares this one MAC queue, so the
-    // per-next-hop parameter (#206) is ignored here.
-    if (!m_wifiMac) return 0;
-    uint32_t total = 0;
-    // AC_BE_NQOS is essential: a non-QoS mac (AdhocWifiMac, the MANET default)
-    // keeps its single DCF queue under AC_BE_NQOS, not AC_BE — without it
-    // GetTxopQueue returns nullptr and the backlog always reads 0, so the whole
-    // A2 signal was silently absent (issue #73).
-    for (AcIndex ac : {AC_BE_NQOS, AC_BE, AC_BK, AC_VI, AC_VO}) {
-        Ptr<WifiMacQueue> q = m_wifiMac->GetTxopQueue(ac);
-        if (q) total += q->GetNPackets();
+int RoutingProtocol::macQueueLength(NodeAddress nextHop) const {
+    // Wifi regime: packets backlogged at the wifi MAC across all access
+    // categories — the queue a newly-forwarded packet would wait behind.
+    // Summed over the per-AC txop queues (unified since ns-3.36, the CI-matrix
+    // floor). Single radio: every next hop shares this one MAC queue, so the
+    // per-next-hop parameter (#206) is ignored — and preferred where it
+    // exists, keeping pre-#206 wifi behaviour byte-identical.
+    if (m_wifiMac) {
+        uint32_t total = 0;
+        // AC_BE_NQOS is essential: a non-QoS mac (AdhocWifiMac, the MANET
+        // default) keeps its single DCF queue under AC_BE_NQOS, not AC_BE —
+        // without it GetTxopQueue returns nullptr and the backlog always reads
+        // 0, so the whole A2 signal was silently absent (issue #73).
+        for (AcIndex ac : {AC_BE_NQOS, AC_BE, AC_BK, AC_VI, AC_VO}) {
+            Ptr<WifiMacQueue> q = m_wifiMac->GetTxopQueue(ac);
+            if (q) total += q->GetNPackets();
+        }
+        return static_cast<int>(total);
     }
-    return static_cast<int>(total);
+    // p2p/ISL regime (#206): the backlog lives in the per-interface device
+    // transmit queue. A named next hop reads the one queue the packet would
+    // wait in; kInvalidAddress means no single outgoing interface (broadcast,
+    // or the path's terminal) — aggregate across them, per the ILinkState
+    // contract.
+    if (m_txQueues.empty()) return 0;
+    if (nextHop == kInvalidAddress) {
+        uint32_t total = 0;
+        for (const auto& kv : m_txQueues) {
+            if (kv.second.queue) total += kv.second.queue->GetNPackets();
+        }
+        return static_cast<int>(total);
+    }
+    if (m_socketAddresses.empty()) return 0;  // ResolveNextHop needs an iface
+    Ipv4Address gateway;
+    Ptr<NetDevice> dev;
+    uint32_t iface = 0;
+    ResolveNextHop(nextHop, gateway, dev, iface);
+    const auto it = m_txQueues.find(iface);
+    if (it == m_txQueues.end() || !it->second.queue) return 0;
+    return static_cast<int>(it->second.queue->GetNPackets());
 }
 
-::anthocnet::core::Time RoutingProtocol::macServiceTime(NodeAddress /*nextHop*/) const {
-    // Measured per-packet MAC service time (issue #68): EWMA of inter-ack
-    // spacing sampled while the MAC queue stayed backlogged, so contention and
-    // retransmissions are included but queue wait is not — (Q+1)*T̂_mac must
-    // not double-count the queue. 0 until the first sample; the core then
-    // falls back to the unloaded reference hop time (ILinkState contract).
-    return m_macServiceEwmaSec;
+::anthocnet::core::Time RoutingProtocol::macServiceTime(NodeAddress nextHop) const {
+    // Wifi regime (issue #68): EWMA of inter-ack spacing sampled while the MAC
+    // queue stayed backlogged, so contention and retransmissions are included
+    // but queue wait is not — (Q+1)*T̂_mac must not double-count the queue.
+    // 0 until the first sample; the core then falls back to the unloaded
+    // reference hop time (ILinkState contract).
+    if (m_wifiMac || m_txQueues.empty()) return m_macServiceEwmaSec;
+    // p2p/ISL regime (#206): per-interface inter-dequeue EWMA — serialisation
+    // only, never propagation (an ISL's 3-18 ms is real delay but not
+    // congestion; folding it in would swamp the signal's dynamic range).
+    if (nextHop != kInvalidAddress) {
+        if (m_socketAddresses.empty()) return 0.0;
+        Ipv4Address gateway;
+        Ptr<NetDevice> dev;
+        uint32_t iface = 0;
+        ResolveNextHop(nextHop, gateway, dev, iface);
+        const auto it = m_txQueues.find(iface);
+        return it != m_txQueues.end() ? it->second.ewmaSec : 0.0;
+    }
+    // Aggregate (broadcast / terminal): mean of the sampled interfaces, 0 (=
+    // fall back to the unloaded reference) when none has a sample yet.
+    double sum = 0.0;
+    int n = 0;
+    for (const auto& kv : m_txQueues) {
+        if (kv.second.ewmaSec > 0.0) {
+            sum += kv.second.ewmaSec;
+            ++n;
+        }
+    }
+    return n > 0 ? sum / n : 0.0;
+}
+
+void RoutingProtocol::TxDequeueTrace(RoutingProtocol* self, uint32_t interface,
+                                     Ptr<const Packet> p) {
+    self->NotifyTxDequeue(interface, p);
+}
+
+void RoutingProtocol::NotifyTxDequeue(uint32_t interface, Ptr<const Packet>) {
+    // A valid pure-service sample is the spacing between two consecutive
+    // dequeues during which the queue never emptied — the device pulls the
+    // next packet the moment the previous one finishes serialising, so that
+    // spacing IS the per-packet service time (and never includes propagation:
+    // the sender does not wait for it). Mirrors NotifyAckedMpdu.
+    auto it = m_txQueues.find(interface);
+    if (it == m_txQueues.end()) return;
+    TxQueueState& st = it->second;
+    const Time now = Simulator::Now();
+    if (st.backlogAtLastDequeue && st.lastDequeue.IsStrictlyPositive()) {
+        const double sample = (now - st.lastDequeue).GetSeconds();
+        if (sample > 0.0) {
+            st.ewmaSec = st.ewmaSec > 0.0
+                             ? m_macServiceAlpha * st.ewmaSec +
+                                   (1.0 - m_macServiceAlpha) * sample
+                             : sample;
+        }
+    }
+    st.lastDequeue = now;
+    st.backlogAtLastDequeue = st.queue && st.queue->GetNPackets() > 0;
 }
 
 void RoutingProtocol::NotifyAckedMpdu(Ptr<const AHN_WIFI_MPDU>) {
@@ -558,6 +632,27 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         }
     }
 
+    // #206 step 2: non-wifi devices (the p2p/ISL regime) carry their backlog
+    // in the per-device transmit queue instead. Grab it through the generic
+    // "TxQueue" attribute — PointToPointNetDevice, CsmaNetDevice and
+    // SimpleNetDevice all expose one, so no device-specific module dependency
+    // — and sample the service time from its "Dequeue" trace. Which regime a
+    // node runs is decided by what the build's scenario instantiated: wifi
+    // devices select the MAC reader above, queue-bearing devices select this
+    // one. A device with neither (loopback) contributes no signal.
+    if (!wifi && dev) {
+        PointerValue txq;
+        if (dev->GetAttributeFailSafe("TxQueue", txq)) {
+            Ptr<Queue<Packet>> q = txq.Get<Queue<Packet>>();
+            if (q) {
+                m_txQueues[interface].queue = q;
+                q->TraceConnectWithoutContext(
+                    "Dequeue",
+                    MakeBoundCallback(&RoutingProtocol::TxDequeueTrace, this, interface));
+            }
+        }
+    }
+
     Start();
 }
 
@@ -575,6 +670,10 @@ void RoutingProtocol::NotifyInterfaceDown(uint32_t interface) {
             break;
         }
     }
+
+    // #206: stop reading a dead ISL's transmit queue — its residual backlog
+    // must not keep inflating the aggregate congestion signal.
+    m_txQueues.erase(interface);
 
     // ADR-0008 detector-D equivalent for non-wifi links (#260). A scripted ISL
     // break (Ipv4::SetDown, the stock ns-3 way to cut a point-to-point link)
