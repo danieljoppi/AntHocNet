@@ -354,11 +354,13 @@ void RoutingProtocol::onRouteChanged(::anthocnet::core::NodeAddress dest,
 
 // --- item 10/A2: MAC congestion signals (core::ILinkState) ------------------
 
-int RoutingProtocol::macQueueLength() const {
+int RoutingProtocol::macQueueLength(NodeAddress /*nextHop*/) const {
     // Packets currently backlogged at the wifi MAC across all access categories
     // — the queue a newly-forwarded packet would wait behind. Summed over the
     // per-AC txop queues (unified since ns-3.36, the CI-matrix floor). Returns 0
     // on non-wifi devices, so the metric degrades to the unloaded hop time.
+    // Single radio: every next hop shares this one MAC queue, so the
+    // per-next-hop parameter (#206) is ignored here.
     if (!m_wifiMac) return 0;
     uint32_t total = 0;
     // AC_BE_NQOS is essential: a non-QoS mac (AdhocWifiMac, the MANET default)
@@ -372,7 +374,7 @@ int RoutingProtocol::macQueueLength() const {
     return static_cast<int>(total);
 }
 
-::anthocnet::core::Time RoutingProtocol::macServiceTime() const {
+::anthocnet::core::Time RoutingProtocol::macServiceTime(NodeAddress /*nextHop*/) const {
     // Measured per-packet MAC service time (issue #68): EWMA of inter-ack
     // spacing sampled while the MAC queue stayed backlogged, so contention and
     // retransmissions are included but queue wait is not — (Q+1)*T̂_mac must
@@ -397,7 +399,7 @@ void RoutingProtocol::NotifyAckedMpdu(Ptr<const AHN_WIFI_MPDU>) {
         }
     }
     m_lastAckTime = now;
-    m_backlogAtLastAck = macQueueLength() > 0;
+    m_backlogAtLastAck = macQueueLength(kInvalidAddress) > 0;
 }
 
 // --- lifecycle --------------------------------------------------------------

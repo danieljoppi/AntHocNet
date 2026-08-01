@@ -145,8 +145,11 @@ public:
 
     /// Append this node to a forward ant's visited stack, recording this hop's
     /// cost (congestion-aware MAC estimate when enabled, else wall-clock delta).
-    /// Bounded by Config::maxPathLength.
-    void stampForward(AntMessage& ant) const;
+    /// `nextHop` is the interface the ant leaves by, so the congestion signal
+    /// is read for the queue it will actually wait in; kInvalidAddress when
+    /// there is no single one (broadcast, or this node is the destination) —
+    /// the ILinkState then aggregates (#206). Bounded by Config::maxPathLength.
+    void stampForward(AntMessage& ant, NodeAddress nextHop) const;
 
     /// Advance a backward ant by one hop: move this node from the visited stack
     /// onto `history` and return the next hop (path management only; the deposit
@@ -193,9 +196,10 @@ private:
     void computeBackAntState(AntMessage& ant) const;
 
     /// This node's contribution to a forward ant's path-time estimate: the
-    /// congestion-aware MAC cost (Q_mac+1)*T̂_mac when enabled and available,
-    /// else the ant's wall-clock transit delta since the previous stamp.
-    double localHopCost(const AntMessage& ant) const;
+    /// congestion-aware MAC cost (Q_mac+1)*T̂_mac toward `nextHop` when enabled
+    /// and available, else the ant's wall-clock transit delta since the
+    /// previous stamp.
+    double localHopCost(const AntMessage& ant, NodeAddress nextHop) const;
 
     NodeAddress     address_;
     Config          config_;

@@ -82,9 +82,12 @@ public:
 
     // core::ILinkState (item 10/A2): supply MAC congestion signals for the
     // congestion-aware per-hop metric. Only meaningful when EnableMacMetric is
-    // set; the core queries these while stamping a forward ant.
-    int macQueueLength() const override;
-    ::anthocnet::core::Time macServiceTime() const override;
+    // set; the core queries these while stamping a forward ant, naming the
+    // next hop the cost is for (#206). This wifi implementation is the
+    // degenerate single-interface case — one radio, one MAC, one queue — so
+    // the parameter is ignored and per-next-hop collapses to per-node.
+    int macQueueLength(::anthocnet::core::NodeAddress nextHop) const override;
+    ::anthocnet::core::Time macServiceTime(::anthocnet::core::NodeAddress nextHop) const override;
 
     // Ipv4RoutingProtocol
     Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p, const Ipv4Header& header,

@@ -69,9 +69,9 @@ int main() {
         clock.set(0.0);
         AntMessage fwd = router.createForwardAnt(AntType::Reactive, 9);  // visited=[{0,0}]
         clock.set(0.02);
-        router.stampForward(fwd);  // delta 0.02
+        router.stampForward(fwd, kInvalidAddress);  // delta 0.02
         clock.set(0.05);
-        router.stampForward(fwd);  // delta 0.03 (cumulative 0.05 - prior 0.02)
+        router.stampForward(fwd, kInvalidAddress);  // delta 0.03 (cumulative 0.05 - prior 0.02)
         CHECK_EQ(fwd.visited.size(), static_cast<std::size_t>(3));
         CHECK_NEAR(fwd.visited[1].time, 0.02, 1e-9);
         CHECK_NEAR(fwd.visited[2].time, 0.03, 1e-9);
