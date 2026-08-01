@@ -41,6 +41,7 @@ endforeach()
 # finding recorded in the issue its header cites.
 set(ANTHOCNET_EXPERIMENTS
   exp_gate_cascade
+  exp_uniformity_probe
 )
 
 foreach(exp ${ANTHOCNET_EXPERIMENTS})
