@@ -24,14 +24,22 @@ link churn. That makes it the quiet-cell instrument — the regime where the
 [#216](https://github.com/danieljoppi/AntHocNet/issues/216) precomputed
 shortest-path control is expected to win and AntHocNet is expected to lose.
 Of the adversarial cells that could show the opposite (unpredicted ISL loss,
-asymmetric congestion, handover churn), only the **first has an instrument**:
-[#260](https://github.com/danieljoppi/AntHocNet/issues/260) added a scripted
-single-ISL break (`--breakLink=r1,c1,r2,c2 --breakAt=<s>`, cut via
-`Ipv4::SetDown` on both endpoint interfaces) that reports a per-run
-`# failcell … tDetect=<s> tReconverge=<s>` line. The remaining cells are
-#216's scope and do not exist yet; until the #216 control row exists, results
-from this page — failcell lines included — support harness-validation claims,
-not protocol-advantage claims.
+asymmetric congestion, handover churn), the first **two have instruments**:
+
+- **Unpredicted ISL loss** —
+  [#260](https://github.com/danieljoppi/AntHocNet/issues/260) added a scripted
+  single-ISL break (`--breakLink=r1,c1,r2,c2 --breakAt=<s>`, cut via
+  `Ipv4::SetDown` on both endpoint interfaces) that reports a per-run
+  `# failcell … tDetect=<s> tReconverge=<s>` line.
+- **Asymmetric congestion** ([#216](https://github.com/danieljoppi/AntHocNet/issues/216)
+  cell 1, unblocked by [#206](https://github.com/danieljoppi/AntHocNet/issues/206)) —
+  `--corridorLoad=<rate>` offers background load over one of two equal-length
+  corridors and reports a per-run `# corridor` line; see
+  [the congestion cell](#the-congestion-cell-216-cell-1) below.
+
+The handover cell is still #216's scope and does not exist yet; until the
+#216 control row exists, results from this page — failcell and corridor lines
+included — support harness-validation claims, not protocol-advantage claims.
 
 **Read the failcell numbers honestly.** `tDetect` (break → the protocol's
 first neighbour-loss event for the severed peer, from the `RouteChanged`
@@ -62,6 +70,51 @@ gap measures re-convergence.
 | `flows` / `cbrBps` | 8 / 4096 | CBR load |
 | `protocols` | anthocnet,aodv,olsr,dsdv | `anthocnet,aodv` is the [#250](https://github.com/danieljoppi/AntHocNet/issues/250) hop-delay discriminator pair |
 | `breakLink` / `breakAt` | off | [#260](https://github.com/danieljoppi/AntHocNet/issues/260) scripted single-ISL break: endpoints `r1,c1,r2,c2` + cut time (s); emits `# failcell` detect/reconverge lines |
+| `corridorLoad` / `corridorLoadAt` | off / 15 | [#216](https://github.com/danieljoppi/AntHocNet/issues/216) cell 1: background rate (e.g. `12Mbps`) loading one of two equal-length corridors, switched on at `corridorLoadAt` (s); emits `# corridor` path-shift lines. Needs `torus=true` and even `cols` ≥ 4 |
+
+### The congestion cell (#216 cell 1)
+
+"Congestion the precomputed control cannot see" — the adversarial regime the
+[#202 survey](../../satellite-routing-prior-art.md) §6 names first, runnable
+since [#206](https://github.com/danieljoppi/AntHocNet/issues/206) gave
+`EnableMacMetric` a real per-next-hop signal on ISLs (ADR-0017).
+
+**Construction** (fixed, derived from the grid): probe flow from satellite
+`(0,0)` to `(0,cols/2)` at the standard `cbrBps`/64 B. On the torus row ring
+there are exactly two shortest paths, each `cols/2` hops — **east**
+`(0,0)→(0,1)→…→(0,cols/2)` and **west** `(0,0)→(0,cols−1)→…→(0,cols/2)`;
+any path leaving row 0 is ≥ 2 hops longer. A background OnOff flow
+`(0,1)→(0,2)` (1000 B packets, rate `corridorLoad`, UDP port 10) loads the
+east corridor's second link from `corridorLoadAt` onward — after discovery
+has settled on the quiet net, so a reactive baseline has already committed a
+route. Hop count cannot distinguish the corridors; only a congestion signal
+can. The background load is *offered load*, not traffic under measurement:
+port 10 is excluded from the data metrics and from the NRL control counter.
+
+**Output**, one line per (protocol, seed) next to the `##RUN##` row:
+
+```
+# corridor <proto> seed=<s> loadStart=<s> viaLoaded=<n> viaClean=<n> viaOther=<n> probePdr=<pct> probeDelayMs=<ms>
+```
+
+`viaLoaded`/`viaClean`/`viaOther` count probe data packets by the interface
+they leave the source on (east / west / off-row), **from `loadStart` onward**;
+`probePdr`/`probeDelayMs` are the probe flow's own whole-run FlowMonitor
+numbers. **Pass criterion:** the congestion-aware arm
+(`--ns3::anthocnet::RoutingProtocol::EnableMacMetric=true`) moves probe
+traffic off the loaded corridor (`viaClean` dominates, or at least the
+loaded share drops materially vs the blind arms) *and* its
+`probePdr`/`probeDelayMs` beat the blind control's on the same seeds.
+
+**Read it honestly:** the background flow is itself routed by the protocol
+under test — real cross-traffic is — so an adaptive arm may *spread* the load
+across both corridors rather than leave it east; and AntHocNet's default
+wall-clock ant metric also feels queueing delay, so the mac-metric-OFF arm is
+not fully blind. The truly load-blind references are the hop-count baselines
+(OLSR/DSDV) and, once it exists, the #216 precomputed control. Judge the cell
+on the probe's counters and QoS across arms, not on the background's path.
+With `--flows=0` the headline `##RUN##`/table row *is* the probe flow, so the
+standard pipeline compares the cell without any new parsing.
 
 ## How to run it
 

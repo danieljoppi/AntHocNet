@@ -25,6 +25,13 @@
  * see the comment at the failcell globals below for exactly what each number
  * measures (and what the reconverge proxy does NOT measure).
  *
+ * Issue #216 cell 1: the asymmetric-congestion cell (--corridorLoad=<rate>
+ * [--corridorLoadAt=<s>]) offers background load over one of two equal-length
+ * row corridors between a probe pair, and reports per run how the probe's
+ * traffic split across the corridors plus the probe's own PDR/delay as a
+ * "# corridor" line — see the comment at the corridor globals below for the
+ * exact construction and what each number means.
+ *
  * Metrics mirror anthocnet-compare's definitions (PDR, mean and 99th-pct delay,
  * throughput, NRL as routing-control packets over delivered data packets, plus
  * #132 byte-NRL and #57 jitter) so numbers are comparable across the two
@@ -68,6 +75,11 @@ namespace {
 // Same counting point and convention as anthocnet-compare: data traffic uses
 // this UDP port, every other UDP packet seen at the IP layer is routing control.
 constexpr uint16_t kDataPort = 9;
+// #216 cell 1: the corridor cell's background load rides this port. It is
+// offered load, not traffic under measurement and not routing control, so it
+// is excluded from both the data metrics (the FlowMonitor loop keeps kDataPort
+// only) and the control counter below.
+constexpr uint16_t kLoadPort = 10;
 
 uint64_t g_controlPkts = 0;
 uint64_t g_controlBytes = 0;
@@ -82,7 +94,8 @@ void CountControlTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t) {
     if (ip.GetProtocol() != 17) return;  // not UDP; routing control here is UDP
     UdpHeader udp;
     if (c->PeekHeader(udp) == 0) return;
-    if (udp.GetDestinationPort() != kDataPort) {
+    const uint16_t dport = udp.GetDestinationPort();
+    if (dport != kDataPort && dport != kLoadPort) {
         ++g_controlPkts;
         g_controlBytes += p->GetSize();
     }
@@ -141,6 +154,48 @@ void BreakIsl(Ptr<Ipv4> a, uint32_t ifA, Ptr<Ipv4> b, uint32_t ifB) {
     b->SetDown(ifB);
 }
 
+// --- asymmetric-congestion cell, #216 cell 1 ---------------------------------
+// "Congestion the precomputed control cannot see": two equal-length row
+// corridors between probe src (0,0) and probe dst (0,cols/2) on the torus —
+// east (0,0)->(0,1)->...->(0,cols/2) and west (0,0)->(0,cols-1)->...->
+// (0,cols/2), each cols/2 hops. Any path leaving row 0 is at least 2 hops
+// longer, so with cols even and >= 4 the shortest paths are EXACTLY the two
+// corridors; a hop-count control is indifferent between them. A background
+// OnOff flow (0,1) -> (0,2) on kLoadPort loads the east corridor's second
+// link from corridorLoadAt onward (after route discovery has settled on the
+// quiet net, so a reactive baseline has already committed).
+// The path-shift signal is counted at the probe source's IP Tx trace: every
+// probe data packet is classified by the interface it leaves (0,0) on —
+// viaLoaded (toward (0,1)), viaClean (toward (0,cols-1)), viaOther (off-row)
+// — from corridorLoadAt onward, so the pre-load phase does not dilute the
+// steady-state read. Caveat: the background flow is itself routed by the
+// protocol under test (real cross-traffic is), so an adaptive arm may spread
+// the load as well as dodge it; the probe's counters and its own PDR/delay
+// (probePdr/probeDelayMs on the "# corridor" line, whole-run) are the cell's
+// verdict, not the background's path.
+double      g_corridorLoadAt = 0.0;  // s; counters gate on this
+Ipv4Address g_corridorDst;           // probe dst canonical (first-interface) addr
+uint32_t    g_ifLoaded = 0;          // src interface entering the east corridor
+uint32_t    g_ifClean = 0;           // src interface entering the west corridor
+uint64_t    g_viaLoaded = 0, g_viaClean = 0, g_viaOther = 0;
+uint64_t    g_probeTx = 0, g_probeRx = 0;
+double      g_probeDelay = 0.0;      // s, summed over delivered probe packets
+
+void CorridorTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
+    if (Simulator::Now().GetSeconds() < g_corridorLoadAt) return;
+    Ptr<Packet> c = p->Copy();
+    Ipv4Header ip;
+    if (c->RemoveHeader(ip) == 0) return;
+    if (ip.GetProtocol() != 17) return;
+    if (ip.GetDestination() != g_corridorDst) return;
+    UdpHeader udp;
+    if (c->PeekHeader(udp) == 0) return;
+    if (udp.GetDestinationPort() != kDataPort) return;  // probe data only
+    if (iface == g_ifLoaded)     ++g_viaLoaded;
+    else if (iface == g_ifClean) ++g_viaClean;
+    else                         ++g_viaOther;
+}
+
 struct Params {
     uint32_t rows;
     uint32_t cols;
@@ -153,6 +208,8 @@ struct Params {
     double   breakAt;   // #260: 0 = no scripted break
     uint32_t breakA;    // node index of one break endpoint
     uint32_t breakB;    // node index of the other
+    std::string corridorLoad;   // #216 cell 1: background rate; "" = cell off
+    double   corridorLoadAt;    // s; when the background load switches on
 };
 
 struct Result {
@@ -266,6 +323,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_tDetect = -1.0;
     g_breakPeerAddrs.clear();
     g_flowFirstRxAfter.clear();
+    g_corridorLoadAt = 0.0;
+    g_viaLoaded = g_viaClean = g_viaOther = 0;
+    g_probeTx = g_probeRx = 0;
+    g_probeDelay = 0.0;
 
     const uint32_t nNodes = P.rows * P.cols;
     NodeContainer nodes;
@@ -372,6 +433,30 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         }
     }
 
+    // #216 cell 1: resolve the corridor endpoints and the source's two row
+    // interfaces (construction and counter semantics at the corridor globals).
+    const bool corridor = !P.corridorLoad.empty();
+    uint32_t corridorDstIdx = 0;
+    if (corridor) {
+        corridorDstIdx = Idx(0, P.cols / 2, P);
+        g_corridorDst = nodeAddr[corridorDstIdx];
+        g_corridorLoadAt = P.corridorLoadAt;
+        const uint32_t east = Idx(0, 1, P);           // first hop, loaded corridor
+        const uint32_t west = Idx(0, P.cols - 1, P);  // first hop, clean corridor
+        for (std::size_t k = 0; k < links.size(); ++k) {
+            // The east link is built as (src, east); the west one is the row's
+            // wrap link, built as (west, src) — see GridLinks.
+            if (links[k].first == Idx(0, 0, P) && links[k].second == east) {
+                g_ifLoaded = ifs[k].Get(0).second;
+            }
+            if (links[k].first == west && links[k].second == Idx(0, 0, P)) {
+                g_ifClean = ifs[k].Get(1).second;
+            }
+        }
+        Ptr<Ipv4L3Protocol> l3 = nodes.Get(Idx(0, 0, P))->GetObject<Ipv4L3Protocol>();
+        if (l3) l3->TraceConnectWithoutContext("Tx", MakeCallback(&CorridorTx));
+    }
+
     std::ostringstream rate;
     rate << static_cast<uint64_t>(P.cbrBps) << "bps";
     Ptr<UniformRandomVariable> startVar = CreateObject<UniformRandomVariable>();
@@ -394,6 +479,37 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         PacketSinkHelper sink("ns3::UdpSocketFactory",
                               InetSocketAddress(Ipv4Address::GetAny(), kDataPort));
         sinks.Add(sink.Install(nodes.Get(dst)));
+    }
+
+    // #216 cell 1: the probe flow (a normal data flow, same rate/size as the
+    // standard ones) plus the background load on kLoadPort.
+    if (corridor) {
+        OnOffHelper probe("ns3::UdpSocketFactory",
+                          InetSocketAddress(nodeAddr[corridorDstIdx], kDataPort));
+        probe.SetAttribute("DataRate", StringValue(rate.str()));
+        probe.SetAttribute("PacketSize", UintegerValue(64));
+        probe.SetAttribute("StartTime", TimeValue(Seconds(startVar->GetValue())));
+        probe.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
+        apps.Add(probe.Install(nodes.Get(Idx(0, 0, P))));
+        PacketSinkHelper probeSink("ns3::UdpSocketFactory",
+                                   InetSocketAddress(Ipv4Address::GetAny(), kDataPort));
+        sinks.Add(probeSink.Install(nodes.Get(corridorDstIdx)));
+
+        // Background: deterministic start (the load is scripted, like the #260
+        // break), 1000 B packets so the loaded link's queue fills in bytes the
+        // way real cross-traffic does.
+        OnOffHelper load("ns3::UdpSocketFactory",
+                         InetSocketAddress(nodeAddr[Idx(0, 2, P)], kLoadPort));
+        load.SetAttribute("DataRate", StringValue(P.corridorLoad));
+        load.SetAttribute("PacketSize", UintegerValue(1000));
+        load.SetAttribute("StartTime", TimeValue(Seconds(P.corridorLoadAt)));
+        load.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
+        apps.Add(load.Install(nodes.Get(Idx(0, 1, P))));
+        PacketSinkHelper loadSink("ns3::UdpSocketFactory",
+                                  InetSocketAddress(Ipv4Address::GetAny(), kLoadPort));
+        // Not in `sinks`: the failcell per-flow tracing is about data flows.
+        ApplicationContainer loadSinkApp = loadSink.Install(nodes.Get(Idx(0, 2, P)));
+        loadSinkApp.Start(Seconds(0.0));
     }
     sinks.Start(Seconds(0.0));
 
@@ -436,6 +552,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     for (auto& kv : monitor->GetFlowStats()) {
         Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(kv.first);
         if (t.destinationPort != kDataPort) continue;  // data flows only
+        if (corridor && t.destinationAddress == g_corridorDst) {
+            g_probeTx += kv.second.txPackets;
+            g_probeRx += kv.second.rxPackets;
+            g_probeDelay += kv.second.delaySum.GetSeconds();
+        }
         r.txPackets += kv.second.txPackets;
         r.rxPackets += kv.second.rxPackets;
         totalDelay += kv.second.delaySum.GetSeconds();
@@ -483,6 +604,8 @@ int main(int argc, char* argv[]) {
     std::string protocols = "anthocnet";
     std::string breakLink;
     double breakAt = 0.0;
+    std::string corridorLoad;
+    double corridorLoadAt = 15.0;
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("rows", "Orbital planes (grid rows)", rows);
@@ -502,6 +625,12 @@ int main(int argc, char* argv[]) {
                               "(must be adjacent); requires --breakAt", breakLink);
     cmd.AddValue("breakAt", "Time (s) to cut --breakLink's ISL (both interfaces "
                             "down via Ipv4::SetDown); 0 = no break", breakAt);
+    cmd.AddValue("corridorLoad", "Asymmetric-congestion cell (#216 cell 1): "
+                                 "background rate (e.g. 12Mbps) offered over one of "
+                                 "two equal-length row corridors; needs a torus with "
+                                 "even cols >= 4; empty = cell off", corridorLoad);
+    cmd.AddValue("corridorLoadAt", "Time (s) the corridor background load starts "
+                                   "(after route discovery settles)", corridorLoadAt);
     cmd.Parse(argc, argv);
 
     // Same 1 ms delay bin as anthocnet-compare, so delay99 is comparable.
@@ -518,6 +647,26 @@ int main(int argc, char* argv[]) {
     P.torus = torus;
     P.breakAt = 0.0;
     P.breakA = P.breakB = 0;
+    P.corridorLoad = corridorLoad;
+    P.corridorLoadAt = corridorLoadAt;
+
+    // #216 cell 1: validate the corridor construction before any run.
+    if (!corridorLoad.empty()) {
+        NS_ABORT_MSG_IF(!torus || cols < 4 || cols % 2 != 0,
+                        "--corridorLoad needs a torus with an even number of columns "
+                        ">= 4 (two equal-length row corridors)");
+        NS_ABORT_MSG_IF(corridorLoadAt <= 0.0 || corridorLoadAt >= simTime - 1.0,
+                        "--corridorLoadAt must fall inside the run");
+        // The probe flow is identified in FlowMonitor by destination address +
+        // kDataPort; a standard flow targeting the probe destination would be
+        // counted into the probe's numbers unnoticed.
+        const uint32_t dstIdx = cols / 2;  // Idx(0, cols/2)
+        for (uint32_t i = 0; i < nFlows && i < rows * cols; ++i) {
+            NS_ABORT_MSG_IF(rows * cols - 1 - i == dstIdx,
+                            "--corridorLoad: standard flow " << i << " also targets "
+                            "the probe destination; lower --flows or grow the grid");
+        }
+    }
 
     // #260: parse and validate the scripted break before any run.
     if (!breakLink.empty() || breakAt > 0.0) {
@@ -602,6 +751,23 @@ int main(int argc, char* argv[]) {
                 if (tReconv >= 0.0) std::cout << tReconv;
                 else std::cout << "nan";
                 std::cout << std::endl;
+            }
+            // #216 cell 1: the corridor split (counted from loadStart onward)
+            // plus the probe flow's own whole-run PDR/delay — semantics at the
+            // corridor globals in RunOne's file scope.
+            if (!corridorLoad.empty()) {
+                const double probePdr =
+                    g_probeTx ? 100.0 * g_probeRx / g_probeTx : 0.0;
+                const double probeDelayMs =
+                    g_probeRx ? 1000.0 * g_probeDelay / g_probeRx : 0.0;
+                std::cout << std::fixed << std::setprecision(2)
+                          << "# corridor " << list[i] << " seed=" << s
+                          << " loadStart=" << corridorLoadAt
+                          << " viaLoaded=" << g_viaLoaded
+                          << " viaClean=" << g_viaClean
+                          << " viaOther=" << g_viaOther
+                          << " probePdr=" << probePdr
+                          << " probeDelayMs=" << probeDelayMs << std::endl;
             }
         }
         agg[i].pdr /= runs;
