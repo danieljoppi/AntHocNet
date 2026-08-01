@@ -423,6 +423,35 @@ def _cell_pdr_authoritative():
            f"'# drops' pdr leaked into the row: {levels} vs {base}\n{out}")
 
 
+# --- #230 dedicated diversity cell (cbrBps=4096, pathWindowS=2) --------------
+# Real readings from run 30650903707: at the churn-free 2 s window with the
+# raised rate, the single-path floor sits legitimately above the 1.10 absolute
+# bound (aodv 1.133 — a route break at 8 pkt/s lands packets on both routes
+# within one short window), so the absolute rule must NOT fire there; only the
+# 1.50 sanity ceiling may.
+DIVCELL = """\
+##BENCH## anthocnet 94.8 62.0 900.0 6.10 40.00 95.00 3.5 361.0 47.9
+##BENCH## aodv 90.1 33.0 480.0 5.60 53.00 47.00 4.0 inf 28.2
+# paths anthocnet divUsed=1.229 divMax=7.0 entropyBits=0.163 windowS=2.0 hopsMean=2.77 hopsMax=64.0
+# paths aodv divUsed=1.133 divMax=6.0 entropyBits=0.093 windowS=2.0 hopsMean=2.17 hopsMax=63.0
+"""
+
+
+@case("#230 diversity cell: baseline above 1.10 at windowS<=2 stays quiet")
+def _divcell_floor_allowed():
+    _levels, out = run_cell(DIVCELL)
+    expect("path diversity" not in out, "divcell-quiet",
+           f"absolute 1.10 rule fired inside the diversity cell\n{out}")
+
+
+@case("#230 diversity cell: baseline above the 1.50 sanity ceiling fires")
+def _divcell_sanity_fires():
+    _levels, out = run_cell(DIVCELL.replace("aodv divUsed=1.133",
+                                            "aodv divUsed=1.633"))
+    expect("not churn-free at this offered rate" in out, "divcell-sanity",
+           f"planted 1.633 above the sanity ceiling not flagged\n{out}")
+
+
 # --- #259 satellite (isl-grid) input: CSV schema + human mode + rules --------
 #
 # The CSV fixture is a realistic 4x4 torus at the anchor knobs: 16 satellites,

@@ -353,15 +353,39 @@ not a blank column.
 > dominate. The two bounds cross, which is why the sweep has no solution.
 >
 > `kDefaultPathWindowS` is therefore **left at 10 s** — no other value is
-> better, and moving it would imply the problem was solved. The fix is to raise
-> the offered rate for diversity measurement or to count concurrent next hops
-> per packet-pair rather than per time window;
-> [#230](https://github.com/danieljoppi/AntHocNet/issues/230) tracks it.
-> `scenario_check.py` now flags **every** window at 1 pkt/s — FAIL below the
-> 2-packet floor, WARN at it, WARN/FAIL past the churn bound — and `preflight`
-> refuses the dispatch before a run is spent. Until it closes, read
-> `path_hops_*` and `jain_pkts` (unaffected) and treat the diversity and
-> entropy columns as not yet measuring what they claim.
+> better at the paper's 1 pkt/s, and moving it would imply the problem was
+> solved. A 900 s re-sweep (w ∈ {2,4,6,10}, runs 30649042555/30649049794/
+> 30649059276/30599510462) reproduced the table above point for point.
+>
+> **Resolution (#230, owner-approved): a dedicated diversity-measurement
+> cell.** Raising the offered rate feeds the cells instead of shrinking the
+> window past the churn bound: at `--cbrBps=4096 --pathWindowS=2` (8 pkt/s →
+> 16 packets per cell; run 30650903707, 900 s) AntHocNet separates from every
+> baseline — `divUsed` **1.229** vs aodv 1.133 / olsr 1.090 / dsdv 1.046,
+> `entropyBits` 0.163 vs ≤ 0.093, `divMax` 7 vs ≤ 6. Concurrent spreading is
+> real and was sample-starved at 1 pkt/s.
+>
+> Rules for using the cell:
+>
+> 1. **All `path_div_*`/`path_entropy_bits` claims come from this cell only**
+>    (`cbrBps=4096`, `pathWindowS=2`), which is its own load regime (8× the
+>    paper rate) and must be labeled as such — never mixed into the headline
+>    paper cell, whose diversity columns remain unquotable.
+> 2. **Report diversity as excess over the in-run single-path floor**, not as
+>    an absolute: at 8 pkt/s even a churn-free window catches AODV's route
+>    replacement landing packets on two routes inside one window (measured
+>    floor 1.133), so the honest figure is AntHocNet − AODV in the same run
+>    (today: **+0.096 used-paths, +0.070 entropy bits**). No (rate, window)
+>    pair drives the floor to 1.0 while keeping the cells fed.
+> 3. `scenario_check.py` enforces the split: the absolute 1.10 single-path
+>    bound applies whenever `path_div_window_s > 2`; at the cell's window it
+>    relaxes to a 1.50 sanity ceiling (a baseline above that means the window
+>    is not churn-free at the offered rate and the cell is unreadable).
+>
+> The per-packet-pair concurrency counter remains the clean long-term
+> instrument that would retire the floor comparison; #230 keeps it as the
+> follow-up. `path_hops_*` and `jain_pkts` are unaffected by all of this and
+> readable from any cell.
 
 - **Reactive protocols read one hop high on route-discovery packets.** A
   protocol with no route yet bounces the packet through the loopback device to
