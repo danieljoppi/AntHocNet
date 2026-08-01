@@ -1,7 +1,6 @@
 #include "anthocnet/core/pheromone_engine.h"
 
 #include <cmath>
-#include <set>
 #include <vector>
 
 namespace anthocnet {
@@ -18,13 +17,6 @@ double PheromoneEngine::reinforce(double phValue, double phUpdate) const {
 bool PheromoneEngine::hasRegularDestination(const PheromoneTable& table, NodeAddress dest) const {
     for (NodeAddress neighbor : table.neighbors()) {
         if (table.getPheromoneRegular(dest, neighbor) > config_.minPheromone) return true;
-    }
-    return false;
-}
-
-bool PheromoneEngine::hasVirtualDestination(const PheromoneTable& table, NodeAddress dest) const {
-    for (NodeAddress neighbor : table.neighbors()) {
-        if (table.getPheromoneVirtual(dest, neighbor) > config_.minPheromone) return true;
     }
     return false;
 }
@@ -60,39 +52,36 @@ void PheromoneEngine::evaporateAll(PheromoneTable& table, double dtSeconds) cons
             }
         }
     }
+
+    // Virtual pheromone ages here too, on the identical clock (#262). The
+    // thesis defines no virtual aging at all — per-hello replacement plus
+    // eviction on neighbour loss — so any decay is our extension, and it must
+    // at least be commensurable with the regular table: every virtual-vs-
+    // regular comparison (the #180/#252 emission gate included) assumes the
+    // two are in the same units. The old per-hello whole-table decay aged at
+    // alpha^degree per second, a rate set by topology, not time.
+    const std::vector<NodeAddress> vdests(table.virtualDestinations().begin(),
+                                          table.virtualDestinations().end());
+    for (NodeAddress dest : vdests) {
+        const std::vector<NodeAddress> neighbors(table.neighbors().begin(),
+                                                 table.neighbors().end());
+        for (NodeAddress n : neighbors) {
+            const double ph = table.getPheromoneVirtual(dest, n);
+            if (ph <= 0.0) continue;
+            const double aged = ph * factor;
+            if (aged < config_.minPheromone) {
+                table.removePheromoneVirtual(dest, n);
+            } else {
+                table.setPheromoneVirtual(dest, n, aged);
+            }
+        }
+    }
 }
 
 void PheromoneEngine::updateVirtual(PheromoneTable& table, const AntMessage& hello) const {
     // Diffusion gated off (ADR-0007): keep the virtual table empty so proactive
     // selection degenerates to the regular-only sum.
     if (!config_.enableProactive || !config_.enableDiffusion) return;
-
-    std::set<NodeAddress> destsRem;
-
-    // Evaporate every virtual link; prune those that fall below the floor.
-    const std::vector<NodeAddress> dests(table.virtualDestinations().begin(),
-                                         table.virtualDestinations().end());
-    for (NodeAddress dest : dests) {
-        const std::vector<NodeAddress> neighbors(table.neighbors().begin(),
-                                                 table.neighbors().end());
-        for (NodeAddress neighbor : neighbors) {
-            double phValue = table.getPheromoneVirtual(dest, neighbor);
-            if (phValue < config_.minPheromone) {
-                table.removePheromoneVirtual(dest, neighbor);
-                if (!hasVirtualDestination(table, dest)) destsRem.insert(dest);
-            } else {
-                table.setPheromoneVirtual(dest, neighbor, evaporate(phValue));
-            }
-        }
-    }
-
-    for (NodeAddress dest : destsRem) {
-        const std::vector<NodeAddress> neighbors(table.neighbors().begin(),
-                                                 table.neighbors().end());
-        for (NodeAddress neighbor : neighbors) {
-            table.removePheromoneVirtual(dest, neighbor);
-        }
-    }
 
     // Reinforce the destinations this hello advertised, via its sender. The
     // advert is the neighbour's best pheromone (an inverse cost) to advert.node;
