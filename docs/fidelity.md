@@ -136,8 +136,15 @@ possible". Provenance for each parameter is in
 4. **Proactive ant clocking** — [1] emits one proactive ant per *n* data
    packets; the repo clocks it on a **timer** (`proactiveInterval`). #26 item 04.
    Note the *mechanism* is not a deviation against the **thesis**, which uses a
-   plain periodic timer as we do; what differs there is only the interval, and
-   that number is unsourced (#182) and being swept in **#248**.
+   plain periodic timer as we do; what differs there is only the interval.
+   **The #248 sweep measured it** (7 points, paper field, 900 s, paired seeds):
+   the thesis's §5.3.3 "2 s almost always best" *inverts* on our field — the
+   curve is strictly monotone toward less proactive, with
+   `EnableProactive=false` the measured MANET optimum (97.2 PDR / 31.73 NRL vs
+   94.9/40.51 at the 10 s default; 2 s costs −15.8 pp PDR and ×5.3 NRL). The
+   10 s default is retained cross-regime — the satellite track (#192) is the
+   configuration that needs proactive sampling; MANET benchmark guidance is
+   proactive off.
 4b. **The thesis's proactive emission gate is implemented but shipped OFF**
    (`proactiveVirtualMargin`, default `0`; the thesis states `0.10`). This is a
    deviation *by measurement*, not by omission. At the thesis value the gate
