@@ -137,24 +137,27 @@ struct Config {
     /// Expressed as a **margin** (0.10 = "at least 10% better"), not as a 1.10
     /// ratio, so that `0` reads unambiguously as "no margin required" — i.e. the
     /// gate is off and every considered ant is sent, reproducing pre-#180
-    /// behaviour for the ablation. See `createProactiveAnts()` for the two
+    /// behaviour for the ablation. See `shouldSendProactive()` for the
     /// boundary cases (no virtual pheromone; no regular route at all).
     ///
-    /// **Defaults to 0 (gate OFF), which is NOT the thesis's 0.10 — deliberately.**
-    /// The mechanism is here so it is runnable and so the #180 experiment
-    /// compiles; the thesis value is *not* adopted because it was measured and
-    /// found harmful. At 0.10 the gate suppresses essentially all proactive
-    /// maintenance (measured pass rate: 0 % on a line, 3.8 % on a 4×4 grid),
-    /// because it compares a **bootstrapped** virtual estimate against a
-    /// **directly measured** regular one — for the same path the bootstrapped
-    /// value is systematically worse (~0.65×), so "10 % better" is really
-    /// "10 % better despite a ~35 % handicap". Starving maintenance then triples
-    /// reactive rediscovery, which is what PR #188 measured as +36-68 % NRL and
-    /// -5 to -6.4 pp PDR in ns-3.
+    /// **The comparison is per-link, not the thesis's literal best-vs-best**
+    /// (ADR-0018, the #180 re-derivation): pass iff some neighbour's virtual
+    /// pheromone beats the regular pheromone on that SAME link by the margin,
+    /// with a hint on an unsampled link passing trivially. The scalar
+    /// best-vs-best form compares estimators of different paths; its ratio has
+    /// a structural ceiling tau(h-1)/tau(h) ~ h/(h-1) (measured byte-exact by
+    /// `exp_uniformity_probe`), so any fixed margin m silently disables the
+    /// gate for destinations farther than 1 + 1/m hops — on the old, corrupted
+    /// clocks this was measured as pass rates of 0-3.8 % and, when forced on,
+    /// +36-68 % NRL / -5 to -6.4 pp PDR (PR #188). The per-link ratio is
+    /// degree- and hop-independent (probe: centred 0.97-1.06).
     ///
-    /// So this is not a constant to retune: #180 owns re-deriving what the
-    /// thesis actually compares before any non-zero default is considered.
-    /// `core/tests/exp_gate_cascade.cpp` reproduces the above.
+    /// **Defaults to 0 (gate OFF).** The re-derived shape makes a non-zero
+    /// margin *meaningful* (probe-measured: m in 0.2-0.5 selects the genuine
+    /// anomaly tail rather than a phase/hop artefact); adopting one as default
+    /// is a benchmark decision on the regime that keeps proactive on (#248:
+    /// satellite), owned by #180's A/B record.
+    /// `core/tests/exp_gate_cascade.cpp` reproduces the historical failure.
     double proactiveVirtualMargin = 0.0;
 
     /// Timer intervals (seconds).

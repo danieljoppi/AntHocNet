@@ -157,15 +157,20 @@ int main() {
         CHECK_EQ(d[0].nextHop, 5);
     }
 
-    // --- thesis emission gate (issue #180) ---------------------------------
-    // "only if the best virtual pheromone is significantly better (in our
-    // experiments: at least 10% better) than the best regular pheromone, a
-    // proactive forward ant is sent out" (Ducatelle 2007, lines 4084-4088).
+    // --- thesis emission gate, re-derived per-link (#180, ADR-0018) --------
+    // Thesis mechanism: "only if the best virtual pheromone is significantly
+    // better (in our experiments: at least 10% better) than the best regular
+    // pheromone, a proactive forward ant is sent out" (Ducatelle 2007, lines
+    // 4084-4088). The comparison here is PER LINK — v vs r on the same
+    // neighbour — because the scalar best-vs-best ratio has a structural
+    // ceiling ~h/(h-1) that silently disables the gate beyond 1+1/m hops
+    // (measured byte-exact by exp_uniformity_probe; ADR-0018).
     // Note setPheromoneVirtual() does not register the neighbour (unlike the
     // regular setter), and best*/next-hop selection iterate the neighbour set,
     // so the virtual neighbour is added explicitly below.
 
-    // 10. Gate blocks: virtual is better, but by less than the 10% margin.
+    // 10. Gate blocks: the virtual hint sits on the SAME link as a sampled
+    //     regular entry and beats it by less than the margin.
     {
         FakeClock clock;
         ScriptedRng rng({0.5});
@@ -173,8 +178,7 @@ int main() {
         cfg.proactiveVirtualMargin = 0.10;  // gate under test; default is 0 (off)
         AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
         router.table().setPheromoneRegular(/*dest*/ 5, /*neighbor*/ 1, 1.0);
-        router.table().addNeighbor(2);
-        router.table().setPheromoneVirtual(/*dest*/ 5, /*neighbor*/ 2, 1.05);
+        router.table().setPheromoneVirtual(/*dest*/ 5, /*neighbor*/ 1, 1.05);
         router.noteDataSession(5);
         CHECK(!router.shouldSendProactive(5));
         CHECK(router.createProactiveAnts().empty());
@@ -182,13 +186,14 @@ int main() {
 
         // The session is not consumed by a blocked tick: once diffusion turns
         // up pheromone that does clear the margin, the next tick emits.
-        router.table().setPheromoneVirtual(5, 2, 1.5);
+        router.table().setPheromoneVirtual(5, 1, 1.5);
         std::vector<AntMessage> ants = router.createProactiveAnts();
         CHECK_EQ(ants.size(), static_cast<std::size_t>(1));
         CHECK_EQ(ants[0].dst, 5);
     }
 
-    // 11. Gate passes: exactly 10% better clears it (the thesis's "at least").
+    // 11. Gate passes: exactly (1+m)x on the same link clears it (the
+    //     thesis's "at least").
     {
         FakeClock clock;
         ScriptedRng rng({0.5});
@@ -196,14 +201,54 @@ int main() {
         cfg.proactiveVirtualMargin = 0.10;  // gate under test; default is 0 (off)
         AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
         router.table().setPheromoneRegular(/*dest*/ 5, /*neighbor*/ 1, 1.0);
-        router.table().addNeighbor(2);
-        router.table().setPheromoneVirtual(/*dest*/ 5, /*neighbor*/ 2, 1.10);
+        router.table().setPheromoneVirtual(/*dest*/ 5, /*neighbor*/ 1, 1.10);
         router.noteDataSession(5);
         CHECK(router.shouldSendProactive(5));
         std::vector<AntMessage> ants = router.createProactiveAnts();
         CHECK_EQ(ants.size(), static_cast<std::size_t>(1));
         CHECK(ants[0].type == AntType::Proactive);
         CHECK_EQ(router.antsSent(AntType::Proactive), static_cast<std::uint64_t>(1));
+    }
+
+    // 11b. The unsampled-link pass: a virtual hint on a link whose regular
+    //      entry is at the floor passes REGARDLESS of magnitude — diffusion
+    //      turned up a link the sampling never priced, the strongest reason
+    //      to go and check. (This is the case the old best-vs-best scalar
+    //      form got right only by accident of magnitudes.)
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        Config cfg;
+        cfg.proactiveVirtualMargin = 0.10;
+        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+        router.table().setPheromoneRegular(/*dest*/ 5, /*neighbor*/ 1, 10.0);
+        router.table().addNeighbor(2);
+        // Far below the sampled route's magnitude — the scalar form would
+        // suppress; per-link it passes because link 2 is unsampled.
+        router.table().setPheromoneVirtual(/*dest*/ 5, /*neighbor*/ 2, 0.5);
+        router.noteDataSession(5);
+        CHECK(router.shouldSendProactive(5));
+    }
+
+    // 11c. The hop-ceiling cancellation ADR-0018 exists for: virtual slightly
+    //      above regular on the same link at LARGE magnitudes (a long path's
+    //      tau) — the per-link ratio is what gates, not the cross-path ratio
+    //      to some other, shorter route.
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        Config cfg;
+        cfg.proactiveVirtualMargin = 0.10;
+        AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+        // A short route via neighbour 1 (high tau) and a long one via
+        // neighbour 2 (low tau) whose virtual beats its own regular by 20%.
+        router.table().setPheromoneRegular(/*dest*/ 5, /*neighbor*/ 1, 100.0);
+        router.table().setPheromoneRegular(/*dest*/ 5, /*neighbor*/ 2, 10.0);
+        router.table().setPheromoneVirtual(/*dest*/ 5, /*neighbor*/ 2, 12.0);
+        router.noteDataSession(5);
+        // Best-vs-best would compare 12.0 against 100*1.1 and suppress
+        // forever; per-link passes on neighbour 2's own 20% improvement.
+        CHECK(router.shouldSendProactive(5));
     }
 
     // 12. Margin 0 = gate off = pre-#180 behaviour: emit unconditionally, even
