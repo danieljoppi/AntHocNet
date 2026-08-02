@@ -200,5 +200,36 @@ int main() {
         CHECK(forwarded[0].action == RouteAction::Broadcast);
     }
 
+    // --- #279: receptions refresh the 1-hop entry at the metric's unloaded
+    // 1-hop value, not the legacy constant 1.0. The constant pinned the entry
+    // ~100x below its backward-ant value (corrupting every 1-hop hello
+    // advert); dropping the refresh entirely let 1-hop entries evaporate and
+    // collapsed the ISL field into a reactive storm (A/B on the issue). The
+    // fixed point of repeated receptions must be the same tau a backward ant
+    // would deposit for an unloaded 1-hop path.
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        AntRouterLogic router(/*addr*/ 1, cfg, clock, rng);
+        // tau(1 hop, unloaded) = ((T_hop + 1*T_hop)/2)^-1 = 1/T_hop.
+        const double tau1 = 1.0 / cfg.hopTimeSec;
+
+        // A brand-new neighbour seeds at reinforce(0, tau1) = 0.3*tau1 —
+        // metric-scale from the first packet, not the old 0.3.
+        router.learnNeighbor(5);
+        CHECK_NEAR(router.table().getPheromoneRegular(5, 5), 0.3 * tau1, 1e-6);
+
+        // Repeated receptions converge to tau1 (the old code converged to 1.0,
+        // ~100x low at the default 3 ms T_hop).
+        for (int i = 0; i < 60; ++i) router.learnNeighbor(5);
+        CHECK_NEAR(router.table().getPheromoneRegular(5, 5), tau1, 1e-3);
+
+        // A backward-ant value is gamma-blended toward tau1, never toward 1.0:
+        // one reception moves 2*tau1 to 0.7*2*tau1 + 0.3*tau1 = 1.7*tau1.
+        router.table().setPheromoneRegular(5, 5, 2.0 * tau1);
+        router.learnNeighbor(5);
+        CHECK_NEAR(router.table().getPheromoneRegular(5, 5), 1.7 * tau1, 1e-6);
+    }
+
     return RUN_TESTS();
 }
