@@ -410,10 +410,17 @@ not a blank column.
 
 ## Energy (#209, NS-3 only)
 
-Radio energy comes from an ns-3 `BasicEnergySource` on every node plus a
-`WifiRadioEnergyModel` on every wifi device, installed **identically for all
-four protocols** from the same parameters, so the joule columns are comparable
-across arms exactly the way PDR and NRL are.
+Radio energy is integrated directly from each device's `WifiPhy` **"State"
+trace** — every state interval contributes `duration × I(state) × V`, with the
+TX/RX/idle currents and voltage taken from the same parameters for **all four
+protocols**, so the joule columns are comparable across arms exactly the way
+PDR and NRL are. (This replaced the ns-3 `BasicEnergySource` +
+`WifiRadioEnergyModel` framework in PR #271: `WifiRadioEnergyModel`
+cancel-reschedules its battery-depletion event on every PHY state change, and
+cancelled ns-3 events stay in the scheduler until their timestamp — ~12 MB of
+dead events per simulated second, the #256 OOM. The trace integration
+reproduces the framework's numbers within 0.014 % with zero scheduled events;
+the upstream report is #272.)
 
 - **energy_j** — total energy consumed over the run, summed over all nodes, J.
 - **energy_per_pkt_j** — `energy_j` / data packets delivered, **J per delivered
@@ -432,13 +439,17 @@ across arms exactly the way PDR and NRL are.
 - **energy_init_j** — the initial per-node energy the run was configured with
   (`--energyJ`), carried in the CSV so `residual ≤ initial` is checkable
   downstream (`scenario_check.py results`).
-- **first_death_s** — sim time at which the first node's energy source raised
-  ns-3's depletion event, s. **Sentinel `-1` = no node died.** Note the ns-3
-  semantics: `BasicEnergySource` raises depletion at
-  `BasicEnergyLowBatteryThreshold` (10 % of initial energy remaining), not at
-  literally zero, after which `WifiRadioEnergyModel` draws no further current —
-  so "death" means "battery exhausted for routing purposes". Averaged over the
-  runs that saw a death; `-1` when no run did.
+- **first_death_s** — sim time at which the first node's cumulative
+  consumption reached 90 % of its initial energy, s. **Sentinel `-1` = no node
+  died.** The 10 %-remaining threshold is kept from the old
+  `BasicEnergyLowBatteryThreshold` semantics so the column means the same
+  thing across the PR #271 change — but note the new model records the
+  crossing **without switching the radio off**: accounting continues and
+  routing is unaffected. That is deliberate — the harness sizes `--energyJ`
+  so no death occurs in a normal run (below), making this a reporting marker,
+  not a behavioural event; a run where it fires is telling you the scenario
+  left the energy-neutral regime. Averaged over the runs that saw a death;
+  `-1` when no run did.
 
 ### Parameters and their provenance
 
