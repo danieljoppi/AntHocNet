@@ -88,7 +88,8 @@ The adapters implement these so the core stays I/O-free:
 incoming ant  ->  AntRouterLogic::onReceiveAnt(msg, prevHop)
                     - reactive forward ant (enableMultipath, default on): per-
                       generation acceptance band ([1] §3.1, #96) — a later
-                      (src,seq) copy within antAcceptanceFactor (1.5) of the
+                      (src,seq) copy within antAcceptanceFactor (a1=0.9, or
+                      a2=2.0 for a new first hop; thesis values, #177) of the
                       best seen on BOTH hops and travel time is admitted, so
                       several good paths get laid down; all other ants (and
                       everything when the gate is off): strict (src,seq)

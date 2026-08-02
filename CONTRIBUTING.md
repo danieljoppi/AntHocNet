@@ -135,6 +135,15 @@ release, so a paper reproducing them should cite that release's DOI.
   wire format changed.
 - Picking up work? The backlog lives in GitHub issues (each ticket carries
   evidence, a fix sketch, and acceptance criteria).
+- **A change to protocol behaviour needs an A/B benchmark verdict**, not a
+  plausibility argument — the sweep → A/B → noise-verdict loop is
+  [`docs/configuration.md` §5](docs/configuration.md#5-how-to-calibrate-a-parameter).
+  Record the verdict and run IDs on the relevant issue.
+- **Bugs and findings become GitHub issues** — including partial findings and
+  dead ends. The discipline (and the label taxonomy: one type label, area
+  label(s), a priority) is
+  [ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md); it is what
+  keeps investigations recoverable across sessions.
 
 ## Reporting issues
 

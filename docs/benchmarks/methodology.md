@@ -82,6 +82,38 @@ python3 ns3/tools/make-charts.py     scenarios.csv --outdir docs/benchmarks
 python3 ns3/tools/update-benchmarks.py scenarios.csv docs/benchmarks.md
 ```
 
+### Reproducing via CI (manual dispatch)
+
+No local simulator is needed — the two campaign workflows run inside the
+published GHCR images (Actions → workflow → *Run workflow*):
+
+- **Paper benchmark** ([`paper-benchmark.yml`](../../.github/workflows/paper-benchmark.yml))
+  — one paper-regime scenario with `--diag`. Inputs mirror `anthocnet-compare`
+  flags (`nNodes`, `time`, `runs`, `areaX`/`areaY`, `pause`, `speed`,
+  `propagation`, `range`); `harness=baselines` runs the stock-ns-3 control
+  (no AntHocNet code linked), and `extraArgs` appends verbatim
+  `--ns3::anthocnet::RoutingProtocol::<Attr>=<value>` overrides, so an A/B arm
+  is a dispatch, not a branch.
+- **Scenario matrix + charts** ([`scenario-matrix.yml`](../../.github/workflows/scenario-matrix.yml))
+  — the taxonomy + the area/pause/scale sweeps. A real (non-`quick`) whole
+  sweep does **not** fit the 6 h hosted-runner ceiling
+  ([#121](https://github.com/danieljoppi/AntHocNet/issues/121)) — dispatch it
+  one point per job via `only=<sweep>` + `point=<value>`. With `commit=true`
+  the classified CSV lands in `docs/benchmarks/campaign/` and the regenerated
+  charts in `docs/benchmarks/`; otherwise everything stays in the run's
+  artifacts.
+
+Both take a `version` input naming the ns-3 image tag: `3.42` is the campaign
+pin, `3.42-opt` the optimized profile (see build profiles below), and a
+release-suffixed tag (e.g. `3.42-v1.1.0`) is **immutable** — pin one for a
+citable run and record the run ID with the numbers. The per-merge refresh of
+[`../benchmarks.md`](../benchmarks.md) needs no dispatch (`benchmarks.yml`,
+every merge to the default branch), and its publish step is gated on the
+validation anchors below. Before trusting or comparing dispatched numbers, run
+the validation loop in
+[`configuration.md` §5](../configuration.md#5-how-to-calibrate-a-parameter)
+(`scenario_check.py` preflight/results, `bench_parse.py --ab`).
+
 ## Scenario taxonomy & sweeps
 
 A single scenario is a poor verdict on a MANET protocol — performance swings with

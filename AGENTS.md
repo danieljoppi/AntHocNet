@@ -17,7 +17,7 @@ onto *your* NS-2 / NS-3 tree.
 core/   simulator-agnostic C++ (no NS-2/NS-3 headers) + unit tests
 ns2/    NS-2 Agent adapter + idempotent anchor-based source patch
 ns3/    native ns3::Ipv4RoutingProtocol contrib module
-docs/   architecture.md, porting-notes.md, adr/
+docs/   architecture.md, porting-notes.md, adr/ — full map in docs/README.md
 ```
 
 ## Build & verify
@@ -165,4 +165,4 @@ results.
 | **Understand why satellite ≠ MANET** (before assuming a MANET intuition transfers) | [`docs/network-regimes.md`](docs/network-regimes.md) — the inversion in one line: MANET hides the *topology* and gives you the traffic; a constellation gives you the topology and hides the *traffic*. Diagrams, and a difference table where every row traces to a defect, parameter or control in this repo |
 | Cut a release | run the `Release` workflow (Commitizen); see `CONTRIBUTING.md`. **Post-release the Zenodo DOI is a manual human step** — `zenodo.org` is proxy-blocked (403) and the DOI is minted async after publish, so an agent must ask the maintainer for it (never invent one) then update the README badge + `CITATION.cff` in a `docs:` PR |
 | Tune defaults | `core/include/anthocnet/core/config.h` |
-| **Look up a parameter's default, its provenance, or how to calibrate it** | [`docs/configuration.md`](docs/configuration.md) — all 30 `Config` fields with a `source` column ([1] §/thesis/repo choice/**unknown**), the ns-3 attribute + NS-2 bind for each, the sweep→A/B→noise loop, and the checklist for adding a parameter. The `unknown` rows in §3.2 are the next #88/#169 candidates |
+| **Look up a parameter's default, its provenance, or how to calibrate it** | [`docs/configuration.md`](docs/configuration.md) — all 36 `Config` fields with a `source` column ([1] §/thesis/repo choice/**unknown**), the ns-3 attribute + NS-2 bind for each, the sweep→A/B→noise loop, and the checklist for adding a parameter. The `unknown` rows in §3.2 are the next #88/#169 candidates |
