@@ -58,6 +58,7 @@
 #include "ns3/olsr-module.h"
 #include "ns3/dsdv-module.h"
 #include "ns3/anthocnet-helper.h"
+#include "ns3/anthocnet-routing-protocol.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -180,6 +181,30 @@ uint32_t    g_ifClean = 0;           // src interface entering the west corridor
 uint64_t    g_viaLoaded = 0, g_viaClean = 0, g_viaOther = 0;
 uint64_t    g_probeTx = 0, g_probeRx = 0;
 double      g_probeDelay = 0.0;      // s, summed over delivered probe packets
+
+// #216 mechanism sampler: while the corridor cell is on, print the probe
+// source's regular/virtual pheromone toward each corridor's first hop for the
+// probe destination every 30 s — "# pher" diagnostic lines, invisible to the
+// results parsers like "# corridor". This is the instrument the gate x metric
+// interference investigation needed: on an arm that fails to shift, it shows
+// whether a west (clean-corridor) gradient ever forms at the source, and
+// whether diffusion (the virtual column) feeds it.
+std::string g_pherProto;
+uint32_t    g_pherSeed = 0;
+Ipv4Address g_pherEast, g_pherWest;
+
+void PherSample(Ptr<Node> src) {
+    Ptr<ns3::anthocnet::RoutingProtocol> rp =
+        src->GetObject<ns3::anthocnet::RoutingProtocol>();
+    if (!rp) return;  // baselines carry no pheromone table
+    double er, ev, wr, wv;
+    rp->GetPheromoneDiag(g_corridorDst, g_pherEast, er, ev);
+    rp->GetPheromoneDiag(g_corridorDst, g_pherWest, wr, wv);
+    std::cout << std::fixed << std::setprecision(4) << "# pher " << g_pherProto
+              << " seed=" << g_pherSeed << " t=" << Simulator::Now().GetSeconds()
+              << " eastR=" << er << " eastV=" << ev << " westR=" << wr
+              << " westV=" << wv << std::endl;
+}
 
 void CorridorTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
     if (Simulator::Now().GetSeconds() < g_corridorLoadAt) return;
@@ -455,6 +480,17 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         }
         Ptr<Ipv4L3Protocol> l3 = nodes.Get(Idx(0, 0, P))->GetObject<Ipv4L3Protocol>();
         if (l3) l3->TraceConnectWithoutContext("Tx", MakeCallback(&CorridorTx));
+
+        // #216 mechanism sampler (see the globals above): every 30 s from the
+        // load start, read the source's pheromone toward each corridor. Only
+        // anthocnet has a table — PherSample no-ops on the baselines.
+        g_pherProto = proto;
+        g_pherSeed = seed;
+        g_pherEast = nodeAddr[east];
+        g_pherWest = nodeAddr[west];
+        for (double t = P.corridorLoadAt + 0.5; t < P.simTime - 1.0; t += 30.0) {
+            Simulator::Schedule(Seconds(t), &PherSample, nodes.Get(Idx(0, 0, P)));
+        }
     }
 
     std::ostringstream rate;

@@ -103,7 +103,13 @@ port 10 is excluded from the data metrics and from the NRL control counter.
 `viaLoaded`/`viaClean`/`viaOther` count probe data packets by the interface
 they leave the source on (east / west / off-row), **from `loadStart` onward**;
 `probePdr`/`probeDelayMs` are the probe flow's own whole-run FlowMonitor
-numbers. **Pass criterion:** the congestion-aware arm
+numbers. AntHocNet runs additionally emit a `# pher` line every 30 s from
+`loadStart` — the probe source's regular/virtual pheromone toward each
+corridor's first hop for the probe destination
+(`# pher <proto> seed=<s> t=<t> eastR=<> eastV=<> westR=<> westV=<>`) — the
+mechanism trace for arms that fail to shift: it shows whether a
+clean-corridor gradient ever forms at the source and whether diffusion (the
+`V` columns) feeds it. **Pass criterion:** the congestion-aware arm
 (`--ns3::anthocnet::RoutingProtocol::EnableMacMetric=true`) moves probe
 traffic off the loaded corridor (`viaClean` dominates, or at least the
 loaded share drops materially vs the blind arms) *and* its
