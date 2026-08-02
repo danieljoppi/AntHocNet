@@ -119,10 +119,12 @@ public:
     /// `!config_.enableProactive`), subject to the thesis emission gate
     /// `shouldSendProactive()`. Also prunes expired sessions.
     std::vector<AntMessage> createProactiveAnts();
-    /// The thesis's emission gate (#180): true when the best virtual pheromone
-    /// for `dest` beats the best regular one by `config_.proactiveVirtualMargin`
-    /// (or when the gate does not apply — see the definition for the boundary
-    /// cases). Exposed for tests/observability; `createProactiveAnts()` calls it.
+    /// The thesis's emission gate, re-derived per-link (#180, ADR-0018): true
+    /// when some neighbour's virtual pheromone for `dest` beats the regular
+    /// pheromone ON THE SAME LINK by `config_.proactiveVirtualMargin`, or the
+    /// hint sits on an unsampled link (or the gate does not apply — see the
+    /// definition for the boundary cases). Exposed for tests/observability;
+    /// `createProactiveAnts()` calls it.
     bool shouldSendProactive(NodeAddress dest) const;
 
     // --- ant construction -------------------------------------------------

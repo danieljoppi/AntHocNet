@@ -328,6 +328,15 @@ std::vector<NodeAddress> AntRouterLogic::activeDestinations() const {
 // least 10% better) than the best regular pheromone, a proactive forward ant is
 // sent out" (Ducatelle 2007, lines 4084-4088). This is what makes the 2 s rate
 // affordable: without it, every session emits on every tick.
+//
+// The comparison is PER LINK, not best-vs-best (ADR-0018, the #180
+// re-derivation). The scalar form the thesis literally states compares two
+// estimators of *different paths*, and its ratio has a hard structural ceiling
+// tau(h-1)/tau(h) ~ h/(h-1) — measured byte-exact on the uniformity probe — so
+// a fixed margin m silently disables the gate for every destination farther
+// than 1 + 1/m hops. Comparing v and r on the SAME link cancels that
+// systematic: both describe the same path, and the ratio is degree- and
+// hop-independent (probe: centred 0.97-1.06, p90 1.3-2.2).
 bool AntRouterLogic::shouldSendProactive(NodeAddress dest) const {
     // Margin <= 0 means "no margin required": the gate is off and behaviour is
     // exactly pre-#180 (unconditional emission), so the ablation is runnable.
@@ -340,26 +349,32 @@ bool AntRouterLogic::shouldSendProactive(NodeAddress dest) const {
     // instead of silently turning it into "no proactive ants".
     if (!config_.enableDiffusion) return true;
 
-    const double regular = table_.bestRegular(dest);
-
     // Boundary case A — no regular route at all. Send. The gate is an
-    // *efficiency* filter over an existing good path; with no path, the ratio
-    // test is degenerate (anything beats zero) and, more importantly, this is
-    // the session that needs an ant most: data is actively being sent to a
-    // destination we cannot currently route to. Suppressing here would be the
-    // exact opposite of the thesis's intent. minPheromone is the repo's
-    // "a route exists" threshold, used the same way in selectNextHop.
-    if (regular <= config_.minPheromone) return true;
+    // *efficiency* filter over an existing good path; with no path, the
+    // comparison is degenerate and, more importantly, this is the session that
+    // needs an ant most: data is actively being sent to a destination we
+    // cannot currently route to. Suppressing here would be the exact opposite
+    // of the thesis's intent. minPheromone is the repo's "a route exists"
+    // threshold, used the same way in selectNextHop.
+    if (table_.bestRegular(dest) <= config_.minPheromone) return true;
 
-    // Boundary case B — no (or weak) virtual pheromone for this destination.
-    // bestVirtual() returns 0 when the virtual table holds nothing for `dest`,
-    // so the comparison below fails and the ant is suppressed. That is the
-    // intended reading: "conditional to the availability of good new virtual
-    // pheromone" — no new virtual pheromone, nothing to go and check. Note this
-    // makes the gate a no-op-suppressor when diffusion is off
-    // (enableDiffusion=false keeps the virtual table empty), which is why that
-    // ablation should also set proactiveVirtualMargin=0.
-    return table_.bestVirtual(dest) >= regular * (1.0 + config_.proactiveVirtualMargin);
+    // Pass iff some neighbour's virtual pheromone beats the regular pheromone
+    // ON THAT SAME LINK by the margin. A virtual hint on a link whose regular
+    // entry sits at/below the floor passes trivially — that is the genuine
+    // "diffusion turned up something the sampling never priced" case (an
+    // unsampled or evicted link), the strongest reason to go and check.
+    // No virtual pheromone anywhere for `dest` suppresses: "conditional to the
+    // availability of good new virtual pheromone" — none, nothing to check.
+    // (That makes the gate a no-op-suppressor when diffusion is off, which is
+    // why that ablation should also set proactiveVirtualMargin=0.)
+    for (NodeAddress n : table_.neighbors()) {
+        const double v = table_.getPheromoneVirtual(dest, n);
+        if (v <= config_.minPheromone) continue;  // no usable hint on this link
+        const double r = table_.getPheromoneRegular(dest, n);
+        if (r <= config_.minPheromone) return true;  // hint on an unsampled link
+        if (v >= r * (1.0 + config_.proactiveVirtualMargin)) return true;
+    }
+    return false;
 }
 
 std::vector<AntMessage> AntRouterLogic::createProactiveAnts() {

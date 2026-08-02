@@ -145,19 +145,25 @@ possible". Provenance for each parameter is in
    10 s default is retained cross-regime — the satellite track (#192) is the
    configuration that needs proactive sampling; MANET benchmark guidance is
    proactive off.
-4b. **The thesis's proactive emission gate is implemented but shipped OFF**
-   (`proactiveVirtualMargin`, default `0`; the thesis states `0.10`). This is a
-   deviation *by measurement*, not by omission. At the thesis value the gate
-   suppresses essentially all proactive maintenance — measured pass rate 1.9 %
-   of (node, destination) pairs on a 4×4 grid, 0 % on a line — because it
-   compares a **bootstrapped** virtual estimate against a **directly measured**
-   regular one; for the same path the bootstrapped value is systematically worse
-   (~0.65×), so "10 % better" is really "10 % better despite a ~35 % handicap".
-   Starving maintenance then multiplies reactive rediscovery ~3×, which is what
-   PR #188 measured in ns-3 as **NRL +36-68 %** and **PDR −5 to −6.4 pp**.
-   **#180** owns re-deriving what the thesis actually compares before any
-   non-zero default is considered; `core/tests/exp_gate_cascade.cpp` reproduces
-   the effect.
+4b. **The thesis's proactive emission gate is implemented per-link and
+   shipped OFF** (`proactiveVirtualMargin`, default `0`; the thesis states
+   `0.10` best-vs-best). Two deviations *by measurement*, not by omission:
+   the **value** and the **shape**. At the thesis value the literal scalar
+   gate suppressed essentially all proactive maintenance (pass rate 0–3.8 %;
+   PR #188 measured the damage as **NRL +36-68 %**, **PDR −5 to −6.4 pp**) —
+   originally because two table-hygiene defects depressed virtual pheromone
+   (#262 aging clock, #279 advert magnitude, both since fixed), but the
+   post-fix uniformity probe (`exp_uniformity_probe`, PR #278) showed the
+   scalar form is *structurally* broken regardless: best-vs-best compares
+   estimators of different paths, and its ratio has a hard ceiling
+   τ(h−1)/τ(h) ≈ h/(h−1) (measured byte-exact), so any fixed margin silently
+   disables the gate beyond 1 + 1/m hops. **ADR-0018** re-derives the
+   comparison per-link — v vs r on the *same* neighbour, an unsampled-link
+   hint passing trivially — which cancels the systematic and makes the margin
+   hop-independent (probe: per-link ratio centred 0.97–1.06). The mechanism
+   is the thesis's; the shape is a measured correction; the default stays 0
+   pending the satellite-regime A/B on **#180**.
+   `core/tests/exp_gate_cascade.cpp` reproduces the historical failure.
 5. **Multipath link-failure suppression** — with multipath on, a link break that
    leaves a usable alternate next-hop is absorbed rather than always notified
    (paper §3.4 always notifies). Benchmark-justified (#96): notification floods
