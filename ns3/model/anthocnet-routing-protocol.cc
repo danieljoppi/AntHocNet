@@ -353,6 +353,17 @@ void RoutingProtocol::onRouteChanged(::anthocnet::core::NodeAddress dest,
     m_routeChangedTrace(static_cast<uint32_t>(dest), static_cast<uint32_t>(nb), added);
 }
 
+void RoutingProtocol::GetPheromoneDiag(Ipv4Address dest, Ipv4Address neighbor,
+                                       double& regular, double& virt) const {
+    regular = 0.0;
+    virt = 0.0;
+    if (!m_logic) return;
+    const NodeAddress d = ToCore(dest);
+    const NodeAddress n = ToCore(neighbor);
+    regular = m_logic->table().getPheromoneRegular(d, n);
+    virt = m_logic->table().getPheromoneVirtual(d, n);
+}
+
 // --- item 10/A2: MAC congestion signals (core::ILinkState) ------------------
 
 int RoutingProtocol::macQueueLength(NodeAddress nextHop) const {

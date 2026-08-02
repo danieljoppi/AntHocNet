@@ -81,6 +81,14 @@ public:
     void onRouteChanged(::anthocnet::core::NodeAddress dest,
                         ::anthocnet::core::NodeAddress nb, bool added) override;
 
+    // #216 diagnostic: read the current regular and virtual pheromone for
+    // (dest, neighbour), both given as canonical Ipv4 addresses. Zeroes when
+    // the routing logic is not yet constructed. Read-only — used by the
+    // isl-grid corridor cell's "# pher" sampler to watch whether a gradient
+    // toward the clean corridor ever forms at the probe source.
+    void GetPheromoneDiag(Ipv4Address dest, Ipv4Address neighbor,
+                          double& regular, double& virt) const;
+
     // core::ILinkState (item 10/A2): supply MAC congestion signals for the
     // congestion-aware per-hop metric. Only meaningful when EnableMacMetric is
     // set; the core queries these while stamping a forward ant, naming the
