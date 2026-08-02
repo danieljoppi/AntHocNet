@@ -19,7 +19,7 @@ The living compliance ledger is [issue #91](https://github.com/danieljoppi/AntHo
 | Mechanism | [1] § | Implementation | Status |
 |---|---|---|---|
 | Reactive path setup (forward/backward ants) | 3.1 | `core/ant_router_logic` | ✅ core-tested |
-| **Multipath** setup (1.5× hops+time acceptance filter) | 3.1 | `GenerationTracker`, `enableMultipath` (#96/#97) | ✅ default on |
+| **Multipath** setup (hops+time acceptance filter; [1] states 1.5×) | 3.1 | `GenerationTracker`, `enableMultipath` (#96/#97) | ✅ default on — factors are the thesis's `a1 = 0.9` / `a2 = 2.0` since #177 |
 | MAC-queue-aware per-hop cost `(Q+1)·T̂_mac` (A2) | 3.1 | `enableMacMetric` (#67/#70) | ✅ formula matches; default off (gated) |
 | Pheromone deposit `τ=((T̂+h·T_hop)/2)⁻¹`, running avg γ | 3.1 | `pheromone_engine` | ✅ |
 | Stochastic data routing, pheromone² | 3.2 | `betaData=2` (#70/#100) | ✅ aligned |
@@ -69,11 +69,14 @@ and `heavy-load` 85.0 → 51.4 %, with NRL rising 99.9 → 3071. Cause
 ([#173](https://github.com/danieljoppi/AntHocNet/issues/173)): with
 `enableMultipath` on, a reactive forward ant is admitted by the acceptance band
 *instead of* `(src,seq)` duplicate suppression, so removing the broadcast budget
-left the reactive flood unbounded in dense graphs. `reactiveMaxBroadcasts` is
-now a **per-(node, generation)** broadcast count (default 2) rather than a
-per-path budget — bounding the flood without reintroducing the #169 hop limit.
-Numbers measured between those two fixes carry the flood and are not
-representative either.
+left the reactive flood unbounded in dense graphs. `reactiveMaxBroadcasts`
+became a **per-(node, generation)** broadcast count (default 2 at the time)
+rather than a per-path budget — bounding the flood without reintroducing the
+#169 hop limit. Numbers measured between those two fixes carry the flood and
+are not representative either. ([#177](https://github.com/danieljoppi/AntHocNet/issues/177)
+later retired the count — default now `-1`, unbounded — because the thesis's
+`a1 = 0.9` acceptance band bounds the flood on its own; see
+[`configuration.md`](configuration.md) §4.)
 
 ## Where we ship [1]'s algorithm and the 2007 thesis superseded it
 
@@ -92,9 +95,11 @@ deliberate choices as three defects. Recorded here (audit:
    for first-hop-disjoint ants) and then records dropping the design: reactive
    setup is restricted to a single route, with multiple routes obtained through
    *proactive* maintenance instead.
-   [#177](https://github.com/danieljoppi/AntHocNet/issues/177) is measuring the
-   options; [#178](https://github.com/danieljoppi/AntHocNet/issues/178) records
-   the citation trap.
+   [#177](https://github.com/danieljoppi/AntHocNet/issues/177) measured the
+   options and adopted the thesis's **factors** (`a1 = 0.9`, `a2 = 2.0`) while
+   keeping [1]'s multipath **mechanism** — so this item is now a hybrid, not a
+   pure [1] choice; [#178](https://github.com/danieljoppi/AntHocNet/issues/178)
+   records the citation trap.
 2. **Proactive broadcast probability** (`proactiveBroadcastProb = 0.1`). Our
    exact value appears in the thesis, but in §4.3.4, *"Older versions of
    AntHocNet"*. In the shipped thesis algorithm proactive forward ants are

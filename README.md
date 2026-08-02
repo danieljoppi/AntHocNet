@@ -26,7 +26,7 @@ onto *your own* NS-2 or NS-3 tree:
 core/   simulator-agnostic C++ (no NS-2/NS-3 dependency) + unit tests
 ns2/    thin Agent adapter + anchor-based source patch installer
 ns3/    native Ipv4RoutingProtocol module
-docs/   architecture and porting notes
+docs/   architecture, configuration, benchmarks, fidelity, ADRs — map in docs/README.md
 ```
 
 ## Why one core, two adapters
@@ -156,6 +156,7 @@ History of the work is in the per-phase commits; design rationale is in
 
 | Document | Purpose |
 |----------|---------|
+| [docs/README.md](docs/README.md) | **The docs map** — every page in `docs/`, grouped by what you are trying to do. |
 | [docs/ant-colony-routing.md](docs/ant-colony-routing.md) | Concepts primer: ant foraging → ACO → AntNet → AntHocNet, and how they map to the code. Start here for the *idea*. |
 | [docs/architecture.md](docs/architecture.md) | Design, the core/adapter split, and the decision flow. |
 | [docs/porting-notes.md](docs/porting-notes.md) | Bugs fixed in extraction, NS-2 patch anchors, wire format, version caveats. |
@@ -163,7 +164,9 @@ History of the work is in the per-phase commits; design rationale is in
 | [docs/benchmarks.md](docs/benchmarks.md) | Results index → [metrics](docs/benchmarks/metrics.md), [methodology](docs/benchmarks/methodology.md), per-scenario and per-sweep pages. |
 | [docs/fidelity.md](docs/fidelity.md) | What v1.0 reproduces from the 2004 paper and where it deliberately deviates. |
 | [docs/wire-format.md](docs/wire-format.md) | Canonical on-wire ant layout, version byte, and diff vs. the original and the papers. |
-| [docs/adr/](docs/adr) | Architecture Decision Records — the "why" behind the structure. |
+| [docs/publications/](docs/publications/README.md) | Source-of-truth digests of the 2004 paper and 2007 thesis — what every fidelity claim is checked against. |
+| [docs/network-regimes.md](docs/network-regimes.md) | Why MANET and satellite/ISL routing are different problems (the satellite research track's ground rules). |
+| [docs/adr/](docs/adr/README.md) | Architecture Decision Records 0001–0018, indexed — the "why" behind the structure. |
 | [paper/](paper/) | JOSS software-paper draft (`paper.md`/`paper.bib`), for submission against this repo. |
 | [CONTEXT.md](CONTEXT.md) | Project orientation: domain background, repo map, current state, glossary, open questions. |
 | [AGENTS.md](AGENTS.md) | Build/verify/conventions and invariants for contributors and AI agents. |
@@ -183,8 +186,29 @@ pre-built **Docker images** on GHCR (see [docker/README.md](docker/README.md)).
 To cite this implementation, use the “Cite this repository” button (from
 [CITATION.cff](CITATION.cff)). Once the repo is linked to
 [Zenodo](https://zenodo.org), each release is archived with a DOI, which is then
-added to `CITATION.cff`. Please also cite the original AntHocNet paper
-(Di Caro, Ducatelle & Gambardella, PPSN VIII, 2004) referenced there.
+added to `CITATION.cff`. Please also cite the sources this implements:
+
+- G. Di Caro, F. Ducatelle, L. M. Gambardella, *AntHocNet: an Ant-Based Hybrid
+  Routing Algorithm for Mobile Ad Hoc Networks*, PPSN VIII, LNCS 3242,
+  pp. 461–470, Springer, 2004 — the algorithm ([digest](docs/publications/papers/2004-ppsn-anthocnet.md)).
+- F. Ducatelle, *Adaptive Routing in Ad Hoc Wireless Multi-hop Networks*, PhD
+  thesis, Università della Svizzera Italiana / IDSIA, 2007 — the designated
+  primary source for parameters the paper leaves unspecified
+  ([status](docs/publications/thesis/README.md)).
+
+What this implementation reproduces from those sources — and every deliberate
+deviation — is stated in [docs/fidelity.md](docs/fidelity.md).
+
+## Contributing
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the build/test steps per component, the
+code style, and the Conventional-Commit PR-title rules; [AGENTS.md](AGENTS.md)
+has the golden rules (invariants) and verification workflow. Bugs and findings
+are tracked as GitHub issues with a label taxonomy
+([ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md)); changes to
+protocol behaviour are expected to carry an A/B benchmark verdict
+([docs/configuration.md §5](docs/configuration.md#5-how-to-calibrate-a-parameter)).
+Security reports: [SECURITY.md](SECURITY.md).
 
 ## License
 

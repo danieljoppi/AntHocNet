@@ -15,9 +15,9 @@ One struct, two surfaces:
 
 | Layer | File | What it is |
 |---|---|---|
-| Core | [`core/include/anthocnet/core/config.h`](../core/include/anthocnet/core/config.h) | `anthocnet::core::Config` — **31 fields**, plain C++14 aggregate with default member initializers. The single source of truth; `AntRouterLogic` reads nothing else. |
-| NS-3 | [`ns3/model/anthocnet-routing-protocol.cc`](../ns3/model/anthocnet-routing-protocol.cc) | 25 `AddAttribute` blocks on `ns3::anthocnet::RoutingProtocol`. **19** of them write into `Config`; the other 6 are adapter-side state (queue timeouts, hold caps, the MAC failure detector, the MAC service-time EWMA, the adapter's own reactive-retry timer). |
-| NS-2 | [`ns2/src/ahn_router.cc`](../ns2/src/ahn_router.cc) | 10 `bind()`/`bind_bool()` TCL variables writing into `Config`, plus four compile-time `AHN_*` macros in [`ahn_router.h`](../ns2/src/ahn_router.h) (`AHN_HELLO_INTERVAL`, `AHN_PROACTIVE_INTERVAL`, `AHN_NETWORK_DIAMETER`, `AHN_LIFE_ANT`). |
+| Core | [`core/include/anthocnet/core/config.h`](../core/include/anthocnet/core/config.h) | `anthocnet::core::Config` — **36 fields**, plain C++14 aggregate with default member initializers. The single source of truth; `AntRouterLogic` reads nothing else. |
+| NS-3 | [`ns3/model/anthocnet-routing-protocol.cc`](../ns3/model/anthocnet-routing-protocol.cc) | 30 `AddAttribute` blocks on `ns3::anthocnet::RoutingProtocol`. **24** of them write into `Config`; the other 6 are adapter-side state (queue timeouts, hold caps, the MAC failure detector, the MAC service-time EWMA, the adapter's own reactive-retry timer). |
+| NS-2 | [`ns2/src/ahn_router.cc`](../ns2/src/ahn_router.cc) | 15 `bind()`/`bind_bool()` TCL variables writing into `Config`, plus four compile-time `AHN_*` macros in [`ahn_router.h`](../ns2/src/ahn_router.h) (`AHN_HELLO_INTERVAL`, `AHN_PROACTIVE_INTERVAL`, `AHN_NETWORK_DIAMETER`, `AHN_LIFE_ANT`). |
 
 So a field can be a core default only, or reachable from one adapter, or from
 both — the table in §2 says which. Anything not exposed by your adapter must be
@@ -143,7 +143,7 @@ The `ns-3 attribute` column is the name you pass to
 
 ### 3.2 Parameters with no recorded provenance
 
-**Four** of the thirty defaults have **no traceable justification for the
+**Four** of the thirty-six defaults have **no traceable justification for the
 number**. They are the standing #88/#169 risk, listed here so the next audit has
 a worklist rather than a haystack:
 
@@ -208,7 +208,7 @@ class of defect as a missing one.
 
 ### 3.4 ns-3 attributes that are *not* `Config` fields
 
-Six of the 24 attributes configure the NS-3 adapter, not the algorithm. They are
+Six of the 30 attributes configure the NS-3 adapter, not the algorithm. They are
 listed here so a sweep does not mistake one for a protocol parameter:
 
 | attribute | default | what it does |
@@ -254,20 +254,24 @@ type decides, wifi preferred where both exist.
 ### Reactive setup — `reactiveMaxBroadcasts`, `enableMultipath`, `antAcceptanceFactor`, `reactiveRetryInterval`, `maxPathLength`
 
 How routes are discovered. `reactiveMaxBroadcasts` bounds how often **one
-node** re-broadcasts **one generation** (default 2). Read its history before
-touching it, because the same name has meant two different things:
+node** re-broadcasts **one generation** (default `-1`, unbounded, since #177).
+Read its history before touching it, because the same name has meant two
+different things:
 
 - As a budget *carried on the ant* and decremented at each hop it was a **hop
   limit on discovery** — destinations beyond ~5 hops were never found (#169).
   Never reintroduce that form.
-- As a per-node count it does not limit reach at all, and it is **required**:
-  with multipath on, a reactive forward ant is admitted by the acceptance band
-  *instead of* `(src,seq)` duplicate suppression, and the band admits rather
-  than suppresses. Without the per-node count one discovery on a 7x7 grid cost
-  30,090 ants and ns-3 `large-scale` fell to 21.7% PDR (#173).
+- As a per-node count it does not limit reach at all, and for a while it was
+  **required**: with multipath on, a reactive forward ant is admitted by the
+  acceptance band *instead of* `(src,seq)` duplicate suppression, and the band
+  admits rather than suppresses. Without the per-node count one discovery on a
+  7x7 grid cost 30,090 ants and ns-3 `large-scale` fell to 21.7% PDR (#173).
+  What retired it is the two-factor band ([#177](https://github.com/danieljoppi/AntHocNet/issues/177)):
+  at the thesis's `a1 = 0.9` the band is self-limiting (154 ants on the same
+  grid), and leaving the count on cost delivery in dense graphs.
 
-Setting it to `-1` restores the unbounded behaviour and is a sensitivity
-experiment, not a configuration.
+Setting it to a finite value bounds re-broadcasts per `(node, generation)` and
+is a sensitivity experiment, not a configuration.
 
 `antAcceptanceFactor` is the multipath dial and its direction is
 counter-intuitive: **higher admits more ant copies**, i.e. more paths and more

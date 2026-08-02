@@ -107,7 +107,7 @@ neighbour notification.
 
 | Parameter | Paper value | § | Repo counterpart (`core/.../config.h`) | Status |
 |---|---|---|---|---|
-| Acceptance factor (hops AND time) | **1.5** (empirical) | 3.1 | `antAcceptanceFactor = 1.5`, gated by `enableMultipath` | ✅ matches (#96) |
+| Acceptance factor (hops AND time) | **1.5** (empirical) | 3.1 | `antAcceptanceFactor`, gated by `enableMultipath`; shipped 1.5 until v1.1.0 | ❗ deviation since [#177](https://github.com/danieljoppi/AntHocNet/issues/177): the 2007 thesis's two-factor band (`a1 = 0.9`, `a2 = 2.0` for a new first hop) measured better and is the default |
 | MAC-time running-average weight α | **0.7** | 3.1 | `macServiceAlpha` (ns-3 attr) = 0.7 | ✅ matches (#70) |
 | Pheromone running-average weight γ | **0.7** | 3.1 | `gamma = 0.7` | ✅ matches |
 | Per-hop cost formula | `(Q_mac + 1)·T̂_mac` | 3.1 | `enableMacMetric` path | ✅ formula confirmed (#70); repo default **off** (A2 gated) |

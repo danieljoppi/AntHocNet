@@ -86,6 +86,7 @@ CONTEXT.md                ← this file
 AGENTS.md                 ← build/verify/conventions for AI agents
 Makefile                  ← make test | install-ns2 | install-ns3 | clean
 docs/
+  README.md               ← docs map (every page, grouped by task)
   architecture.md         ← design + decision flow
   configuration.md        ← every tunable, its default's provenance, how to calibrate
   porting-notes.md        ← bugs fixed, NS-2 patch anchors, wire format, caveats
@@ -174,7 +175,8 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   reconvergence holds drop at the cap instead of the 3 s `QueueTimeout`)
   mean delay reaches parity with AODV on two-ray for near-noise PDR cost
   (#103). The residual disk-model gap is the CONTEXT-§8 channel penalty plus
-  the still-unverified `T_hop` (#88), not an algorithmic deviation. NS-3 only;
+  `T_hop` (#88 — since corrected to the thesis's 3 ms; tail impact pending
+  re-measurement), not an algorithmic deviation. NS-3 only;
   the NS-2 adapter has no equivalent cap yet.
 
 ## 9. Glossary
@@ -196,7 +198,7 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 | Forward / backward / hello / repair ant | path collector / pheromone depositor / neighbour-discovery + gossip / link-failure local search. |
 | Neighbour liveness | a neighbour is "gone" via either missed hellos (core timer, primary) or a failed unicast (MAC signal, fast-path); both call `loseNeighbor`. `INeighborProvider` is advisory, never authoritative for removal (ADR-0008). |
 | Stochastic data routing | data is forwarded by a per-packet pheromone-weighted draw, **excluding the prev hop** (loop safety; only-option fallback). Per-flow stickiness (a bounded `(src,dst)→hop` cache) is config-gated, default off (ADR-0010). |
-| Multipath reactive setup | a later reactive forward ant of an already-seen `(src,seq)` generation is still forwarded when both its hops and travel time are within `antAcceptanceFactor` (1.5) of the generation's best, laying down several good paths ([1] §3.1). Requires its **linkfail churn bound**: losing a best hop that leaves a usable alternate is absorbed, not flooded — without it multipath *regressed* PDR on the ns-3 disk-model harness. Config-gated (`enableMultipath`, default on; #96). |
+| Multipath reactive setup | a later reactive forward ant of an already-seen `(src,seq)` generation is still forwarded when both its hops and travel time are within `antAcceptanceFactor` of the generation's best (thesis two-factor band since #177: `a1 = 0.9`, `a2 = 2.0` for a new first hop; [1] §3.1 stated a single 1.5), laying down several good paths. Requires its **linkfail churn bound**: losing a best hop that leaves a usable alternate is absorbed, not flooded — without it multipath *regressed* PDR on the ns-3 disk-model harness. Config-gated (`enableMultipath`, default on; #96). |
 | `NodeAddress` | core address type (`int32_t`), = a node's primary interface IP, treated opaquely; `kInvalidAddress` = -1 = "no route / no specific next hop". Broadcast is a `RouteAction`, **never** a `NodeAddress` (ADR-0011). |
 
 ## 10. Open questions for future work
@@ -241,9 +243,11 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 - Are the `Config` defaults (`alpha`/`betaAnts`/`betaData`/`gamma`, intervals, `maxPathLength`,
   `maxHistory`) the right operating point, or should they be tuned per
   simulator? (See #23 convergence, #26 fidelity.) **Now partly answered:**
-  [`docs/configuration.md`](docs/configuration.md) tabulates all 30 fields with
-  the *provenance* of each default. Eleven have none — §3.2 lists them as the
-  standing worklist, `alpha` first (ADR-0012 changed its meaning and said it
-  "must be re-tuned"; no re-tune is on record). Two defaults have already been
+  [`docs/configuration.md`](docs/configuration.md) tabulates all 36 fields with
+  the *provenance* of each default. Four have none — §3.2 lists them as the
+  standing worklist (the #182 thesis audit shrank it from eleven: five more
+  turned out *positively absent* from the sources, i.e. `repo choice` with
+  nothing to calibrate against — `alpha` among them, still untuned after
+  ADR-0012 said it "must be re-tuned"). Two defaults have already been
   found wrong this way (#88 `T_hop`, #169 `reactiveMaxBroadcasts`), so treat an
   un-sourced number as a suspect rather than a setting.
