@@ -33,6 +33,44 @@ adapters, the benchmark harness, and reproducible CI/packaging.
 [Unreleased]: https://github.com/danieljoppi/AntHocNet/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/danieljoppi/AntHocNet/releases/tag/v0.1.0
 
+## v1.2.0 (2026-08-02)
+
+### Feat
+
+- **bench**: corridor-cell pheromone sampler — the #216 mechanism trace for arms that fail to shift (#288)
+- **core**: the proactive emission gate compares per-link — the #180 re-derivation, ADR-0018 (#284)
+- **bench**: the asymmetric-congestion corridor cell on the ISL torus — #216 cell 1 (#280)
+- **ns3**: per-interface transmit-queue congestion reader for the p2p/ISL regime + ADR-0017 (#206) (#277)
+- **core**: the ILinkState congestion queries name the next hop — the stamp moves to where the interface is known (#206) (#276)
+- **core**: virtual pheromone ages on the regular table's time-proportional clock (#262) (#275)
+- **bench**: adopt the dedicated diversity cell — floor-relative gate at the churn-free window (#273)
+- **ns3**: fast ISL failure detection via interface-down + failcell detect/reconverge split (#266)
+- **skills**: satellite results pipeline — validate, parse and commit isl-grid output (#265)
+- **bench**: split the benchmark surface into MANET and satellite views (#257)
+- **core**: land the proactive emission gate, default OFF, with its experiment (#252)
+- **bench**: add the thesis's eq 5.1 delay jitter alongside the FlowMonitor column (#247)
+- **core**: per-ant-type gates and directed reactive discovery (#243)
+- **ns3**: route next hops per interface and add the isl-grid scenario (#224)
+- **bench**: measure path length, used-path diversity and flow fairness (#217) (#223)
+- **bench**: break the anonymous packet loss down by cause (#215) (#222)
+- **bench**: measure packet reordering, the documented cost of multipath (#212) (#221)
+- **bench**: measure radio energy for all four protocols (#209) (#219)
+
+### Fix
+
+- **core**: receptions refresh the 1-hop pheromone at the metric's unloaded 1-hop value — not the legacy constant 1.0 (#279) (#283)
+- **bench**: the corridor background transmits at constant duty — the OnOff default off-phase zeroed the congestion signal every other second (#282)
+- **bench**: leak-free energy accounting — integrate the PHY State trace, drop BasicEnergySource + WifiRadioEnergyModel (#271)
+- **bench**: let --energyJ=0 disable the energy model — the #256 OOM is its cancelled switchToOff events (#270)
+- **bench**: cap sim address space at 13 GiB so an OOM dies gracefully, not with the runner (#269)
+- **bench**: stream ##RSS## samples from the paper run — forensics that survive runner death (#268)
+- **bench**: keep OOM forensics — print and upload time -v + stderr on a failed benchmark run (#267)
+- **ns2**: add missing ns-default.tcl entries for four tcl-bound parameters (#261)
+- **core**: restore proactiveInterval to 10 s — #252 leaked the 2 s rate it claimed not to ship (#255)
+- **skills**: validate ##BENCH## cells' diagnostic lines, not just the table (#253)
+- **bench**: carry jitter_eq51_ms through the campaign CSV (#249)
+- **benchmarks**: catch the metric defects the campaigns exposed, and the gate starvation that hid them (#242)
+
 ## v1.1.0 (2026-07-26)
 
 ### Feat
