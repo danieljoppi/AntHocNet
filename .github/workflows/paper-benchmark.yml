@@ -233,6 +233,16 @@ jobs:
           # binaries / the baselines harness — means-only block stays valid.
           grep '^##RUN##' "$GITHUB_WORKSPACE/paper-results.txt" \
             >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
+          # #308: the matched-delivery percentile rows. Same reason as ##RUN##
+          # above, and the same omission cost a full re-fetch: the first
+          # matched run (30813020804) emitted 40 ##MATCH## lines that this
+          # step did not re-emit, so they sat above the compact block and
+          # needed tail_lines=215 instead of ~50 — and the top row still
+          # scrolled off, dropping one seed from a 20-seed paired analysis.
+          # Any new ##MARKER## the harness gains has to be added here too;
+          # emitting it is only half of shipping it.
+          grep '^##MATCH##' "$GITHUB_WORKSPACE/paper-results.txt" \
+            >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
           # #230: the '# paths/energy/drops/stddev/reorder' diagnostic lines are
           # the *only* place the #209/#212/#215/#217 metric families appear in a
           # single-point run — the fixed-width table cannot carry them (its field
