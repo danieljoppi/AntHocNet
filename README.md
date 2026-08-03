@@ -134,6 +134,18 @@ The same protocol binary runs in two very different networks. What is *unknown*
 in each regime is what decides which of AntHocNet's mechanisms matter there —
 the full argument is in [docs/network-regimes.md](docs/network-regimes.md).
 
+**The ad-hoc family** first — MANET is one point on an axis of how constrained
+the mobility is, and each sibling changes the evaluation, not the protocol:
+
+| Family | Mobility character | What changes vs plain MANET | Status in this repo |
+|---|---|---|---|
+| **MANET** (ground, generic) | unconstrained random motion (RWP), 1–20 m/s | — the design regime | **supported** — the two fields below |
+| **VANET** (vehicles) | road-constrained (Manhattan grid, SUMO traces), 10–40 m/s, platooning | topology churn is fast but *street-shaped*; density swings block-by-block | not yet — road/trace mobility planned ([#61](https://github.com/danieljoppi/AntHocNet/issues/61), epic [#295](https://github.com/danieljoppi/AntHocNet/issues/295)) |
+| **FANET** (UAVs) | 3D smooth trajectories (Gauss-Markov), 10–30 m/s, sparse | third dimension, high link churn, energy-critical nodes | not yet — Gauss-Markov planned ([#61](https://github.com/danieljoppi/AntHocNet/issues/61), [#295](https://github.com/danieljoppi/AntHocNet/issues/295)); recent surveys rate AntHocNet strongest-in-class here, which is why it's next |
+| **LEO ISL mesh** (satellites) | deterministic orbits — topology computable years ahead | the inversion: topology known, *traffic* unknown ([regimes §3](docs/network-regimes.md)) | **supported** — static +Grid snapshot; dynamics planned (epic [#297](https://github.com/danieljoppi/AntHocNet/issues/297)) |
+
+The two supported regimes in detail:
+
 | | MANET — paper field | MANET — thesis field | Satellite — ISL +Grid |
 |---|---|---|---|
 | Harness | [`anthocnet-compare`](ns3/examples/anthocnet-compare.cc) `--scenario=paper` | [`anthocnet-compare`](ns3/examples/anthocnet-compare.cc) `--scenario=thesis` | [`isl-grid`](ns3/examples/isl-grid.cc) |

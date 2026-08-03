@@ -23,11 +23,12 @@ flowchart LR
     subgraph axis [" topology unpredictable  ──────────▶  computable years ahead "]
     direction LR
     A["<b>MANET</b><br/>random waypoint<br/>shared radio"]
+    F["FANET<br/>3D, smooth<br/>trajectories"]
     B["VANET<br/>road-constrained"]
     C["WSN / IoT<br/>static, energy-bound"]
     D["GEO<br/>one hop, ~119 ms"]
     E["<b>LEO ISL mesh</b><br/>+Grid, 4 links/node"]
-    A ~~~ B ~~~ C ~~~ D ~~~ E
+    A ~~~ F ~~~ B ~~~ C ~~~ D ~~~ E
     end
     style A fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
     style E fill:#e8e6f8,stroke:#5b4fc4,stroke-width:2px
@@ -37,6 +38,19 @@ GEO sits near the deterministic end but is a different shape again: a bent-pipe
 hop to a gateway, with essentially no path to choose. That is why SNS3 — the
 most mature ns-3 satellite module — is the wrong substrate for routing work
 ([#199](https://github.com/danieljoppi/AntHocNet/issues/199)).
+
+The intermediate families change the *evaluation*, not the protocol: the same
+binary runs everywhere, but each family constrains mobility differently, so
+each needs its own mobility model, scenario shape, and — sometimes — metrics
+before a number from it means anything.
+
+| Family | Mobility | What it changes | Status in this repo |
+|---|---|---|---|
+| **MANET** | unconstrained random (RWP), 1–20 m/s, 2D | nothing — the regime the 2004/2007 sources designed and tuned for | supported: the paper and thesis fields ([benchmarks](benchmarks.md)) |
+| **FANET** | 3D smooth trajectories (Gauss-Markov standard), 10–30 m/s, sparse | third dimension (our nodes sit at z = 0 today), faster link churn, energy budgets that matter | not yet: Gauss-Markov + 3D are the [#61](https://github.com/danieljoppi/AntHocNet/issues/61)/[#295](https://github.com/danieljoppi/AntHocNet/issues/295) scope. Priority rationale: 2024–2026 FANET surveys evaluate AntHocNet directly and rate it strongest among the classical protocols they test — the family where the protocol's reputation is currently made |
+| **VANET** | road-constrained (Manhattan, SUMO traces), 10–40 m/s, platooning | churn is fast but street-shaped; density swings block-by-block; RSU/infrastructure hybrids common | not yet: Manhattan / SUMO trace-driven mobility is in [#61](https://github.com/danieljoppi/AntHocNet/issues/61)/[#295](https://github.com/danieljoppi/AntHocNet/issues/295) scope |
+| **WSN / IoT** | static or near-static, energy-bound | routing problem becomes energy/sleep scheduling, not topology discovery | out of scope (energy-aware `ILinkMetric` is the nearest hook, [#145](https://github.com/danieljoppi/AntHocNet/issues/145)) |
+| **LEO ISL mesh** | deterministic orbits | the §3 inversion: topology known, traffic unknown | supported as a static +Grid snapshot; dynamics are epic [#297](https://github.com/danieljoppi/AntHocNet/issues/297) |
 
 ## 2. The two topologies
 
