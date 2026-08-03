@@ -73,7 +73,10 @@
 #include <cmath>
 #include <cstdint>
 #include <iomanip>
+#include <iterator>
 #include <map>
+#include <numeric>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -143,11 +146,30 @@ std::map<Address, std::vector<uint32_t>> g_rxSeq;
 // jitter. Do not sort this by sequence number.
 std::map<Address, std::vector<double>> g_rxArrival;
 
+// --- per-packet delay, keyed by identity rather than by rank (#308) ----------
+// (flow, seq) -> end-to-end delay in seconds, for every delivered data packet.
+//
+// This is what makes a *like-for-like* tail comparison possible. delay99 ranks
+// each protocol's own deliveries, so two protocols with different delivery
+// ratios are ranked over different populations and the comparison silently
+// rewards the one that delivered less (#308's matched-count measurement bounded
+// that effect but could not eliminate it, because truncating by rank still
+// assumes which packets the surplus contains). Keying by identity removes the
+// assumption: intersect the delivered sets and compare the tails over exactly
+// the packets every protocol carried.
+//
+// SeqTsSizeHeader already carries the send timestamp, and the trace below
+// already peeks the header for the sequence number, so this costs one
+// subtraction per delivered packet and no extra instrumentation.
+std::map<Address, std::map<uint32_t, double>> g_rxDelayBySeq;
+
 void RecordRxSeq(Ptr<const Packet> p, const Address& from) {
     SeqTsSizeHeader h;
     p->PeekHeader(h);
     g_rxSeq[from].push_back(h.GetSeq());
-    g_rxArrival[from].push_back(Simulator::Now().GetSeconds());
+    const double now = Simulator::Now().GetSeconds();
+    g_rxArrival[from].push_back(now);
+    g_rxDelayBySeq[from][h.GetSeq()] = now - h.GetTs().GetSeconds();
 }
 
 // --- drop-cause breakdown (#215) --------------------------------------------
@@ -557,6 +579,10 @@ struct Result {
     // count, which is only possible once both exist.
     std::map<uint32_t, uint64_t> delayHist;  // bin index -> delivered count
     double delayBinWidth = 0.0;              // seconds; 0 when no deliveries
+    // #308: (flow, seq) -> delay (s) for every delivered packet, so the tails
+    // can be compared over the packets *every* protocol delivered rather than
+    // over each protocol's own differently-sized delivered set.
+    std::map<Address, std::map<uint32_t, double>> rxDelayBySeq;
     // #209 energy:
     double energyJ = 0.0;        // total consumed over all nodes (J)
     double energyPerPktJ = 0.0;  // energyJ / delivered data packets (J/pkt)
@@ -611,6 +637,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_firstDeathS = -1.0;
     g_rxSeq.clear();
     g_rxArrival.clear();  // #89
+    g_rxDelayBySeq.clear();  // #308
     g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;  // #215
     // #217
     g_hopSum = g_hopCount = 0;
@@ -991,10 +1018,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             }
         }
     }
-    // #308: keep the histogram for the matched-delivery percentile computed
-    // after every protocol has run (see MatchedDelay99Ms below).
+    // #308: keep the histogram for the matched-delivery percentile, and the
+    // per-packet delays for the common-set comparison — both need every
+    // protocol's data, so they are computed after the whole grid exists.
     r.delayHist = delayBins;
     r.delayBinWidth = binWidth;
+    r.rxDelayBySeq = g_rxDelayBySeq;
 
     // #57 offered-load delay percentiles: the q-th percentile over *sent*
     // packets, treating undelivered as infinite delay. Monotone-honest — a
@@ -1592,6 +1621,7 @@ int main(int argc, char* argv[]) {
         double   binWidth = 0.0;
         uint64_t rx = 0;
         double   delay99Ms = 0.0;
+        std::map<Address, std::map<uint32_t, double>> bySeq;  // #308
     };
     std::vector<std::vector<MatchCell>> matchGrid(
         list.size(), std::vector<MatchCell>(runs));
@@ -1603,6 +1633,7 @@ int main(int argc, char* argv[]) {
             mc.binWidth = r.delayBinWidth;
             mc.rx = r.rxPackets;
             mc.delay99Ms = r.delay99Ms;
+            mc.bySeq = r.rxDelayBySeq;
             // #128: per-run (per-seed) row for paired statistics. Every
             // protocol sees the identical RNG realisation per run, so
             // downstream can pair rows by run number (per-seed deltas, sign
@@ -1783,6 +1814,77 @@ int main(int argc, char* argv[]) {
                           << ' ' << std::setprecision(1) << c.delay99Ms << ' ';
                 if (matched < 0) std::cout << "na";
                 else std::cout << std::setprecision(1) << matched;
+                std::cout << "\n";
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // #308 phase 1: like-for-like tail over the packets EVERY protocol carried.
+    //
+    // ##MATCH## above bounds the survivorship confound but cannot remove it: it
+    // truncates by *rank*, which assumes the surplus deliveries are the slowest
+    // ones. Keying by packet identity removes the assumption entirely. Intersect
+    // the delivered (flow, seq) sets across protocols and report each protocol's
+    // tail over that common set — same packets, same seeds, both delivered, so
+    // no population difference remains to confound the comparison.
+    //
+    // The surplus tail is reported beside it, because that is the hypothesis
+    // ##MATCH## could only assume: if a protocol's extra deliveries really are
+    // its slow ones, its surplus tail is far above its common tail.
+    //
+    // Cross-protocol keying relies on the (source IP, source port) of a flow
+    // being identical across protocols in the same run. It is — the topology,
+    // addressing and application construction are identical and seeded
+    // identically, only the routing protocol differs — but it is an assumption
+    // the output makes checkable rather than hidden: nCommon collapsing toward
+    // zero means the keys did not line up, which no real routing difference
+    // could cause.
+    {
+        auto pct = [](std::vector<double>& v, double q) {
+            if (v.empty()) return -1.0;
+            std::sort(v.begin(), v.end());
+            std::size_t i = static_cast<std::size_t>(q * v.size());
+            if (i >= v.size()) i = v.size() - 1;
+            return 1000.0 * v[i];
+        };
+        for (uint32_t s = 1; s <= runs; ++s) {
+            // Keys delivered by every protocol this run.
+            std::set<std::pair<Address, uint32_t>> common;
+            bool first = true;
+            for (std::size_t i = 0; i < list.size(); ++i) {
+                std::set<std::pair<Address, uint32_t>> mine;
+                for (const auto& f : matchGrid[i][s - 1].bySeq)
+                    for (const auto& kv : f.second) mine.insert({f.first, kv.first});
+                if (first) { common = mine; first = false; continue; }
+                std::set<std::pair<Address, uint32_t>> both;
+                std::set_intersection(common.begin(), common.end(),
+                                      mine.begin(), mine.end(),
+                                      std::inserter(both, both.begin()));
+                common.swap(both);
+            }
+            if (common.empty()) continue;
+            for (std::size_t i = 0; i < list.size(); ++i) {
+                std::vector<double> inCommon, surplus;
+                std::size_t nSelf = 0;
+                for (const auto& f : matchGrid[i][s - 1].bySeq) {
+                    for (const auto& kv : f.second) {
+                        ++nSelf;
+                        if (common.count({f.first, kv.first})) inCommon.push_back(kv.second);
+                        else surplus.push_back(kv.second);
+                    }
+                }
+                const double p99c = pct(inCommon, 0.99);
+                const double meanc = inCommon.empty() ? -1.0 :
+                    1000.0 * std::accumulate(inCommon.begin(), inCommon.end(), 0.0)
+                    / inCommon.size();
+                const double p99s = pct(surplus, 0.99);
+                std::cout << std::fixed << "##COMMON## " << s << ' ' << list[i]
+                          << ' ' << nSelf << ' ' << common.size()
+                          << ' ' << std::setprecision(1) << p99c
+                          << ' ' << std::setprecision(1) << meanc << ' ';
+                if (p99s < 0) std::cout << "na";
+                else std::cout << std::setprecision(1) << p99s;
                 std::cout << "\n";
             }
         }
