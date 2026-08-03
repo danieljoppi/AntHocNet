@@ -217,7 +217,7 @@ History of the work is in the per-phase commits; design rationale is in
 | [docs/wire-format.md](docs/wire-format.md) | Canonical on-wire ant layout, version byte, and diff vs. the original and the papers. |
 | [docs/publications/](docs/publications/README.md) | Source-of-truth digests of the 2004 paper and 2007 thesis — what every fidelity claim is checked against. |
 | [docs/network-regimes.md](docs/network-regimes.md) | Why MANET and satellite/ISL routing are different problems (the satellite research track's ground rules), and which AntHocNet mechanism is live/inert in each regime (§6). |
-| [docs/adr/](docs/adr/README.md) | Architecture Decision Records 0001–0018, indexed — the "why" behind the structure. |
+| [docs/adr/](docs/adr/README.md) | Architecture Decision Records 0001–0020, indexed — the "why" behind the structure. |
 | [paper/](paper/) | JOSS software-paper draft (`paper.md`/`paper.bib`), for submission against this repo. |
 | [CONTEXT.md](CONTEXT.md) | Project orientation: domain background, repo map, current state, glossary, open questions. |
 | [AGENTS.md](AGENTS.md) | Build/verify/conventions and invariants for contributors and AI agents. |

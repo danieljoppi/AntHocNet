@@ -46,5 +46,5 @@ golden rules, where-to-look), [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
 | Page | What it is |
 |---|---|
-| [adr/](adr/README.md) | Architecture Decision Records 0001–0018, indexed with one-line summaries. |
+| [adr/](adr/README.md) | Architecture Decision Records 0001–0020, indexed with one-line summaries. |
 | [handoffs/](handoffs/) | Dated cross-session investigation handoffs (see ADR-0013 for the issue-first discipline). |
