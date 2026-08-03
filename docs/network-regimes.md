@@ -160,6 +160,45 @@ matters exactly when that view is stale or unreachable, i.e. under unpredicted
 failure and handover churn rather than under steady-state congestion. See
 [`satellite-routing-prior-art.md`](satellite-routing-prior-art.md) §5.1.
 
+## 6. What runs where — mechanism × regime
+
+Section 5 gives the argument; this table gives the inventory. One attribute set
+(defaults in [`configuration.md`](configuration.md)) serves both regimes — no
+per-regime build, no per-regime preset. What differs is which mechanisms are
+*live*: some bind to the Wi-Fi MAC and physically cannot fire on a
+point-to-point ISL, and some answer a question the regime doesn't ask. The
+harnesses set **no** protocol attributes; every A/B arm goes through explicit
+`--ns3::anthocnet::RoutingProtocol::<Attr>=<v>` overrides
+([#177](https://github.com/danieljoppi/AntHocNet/issues/177)), so a table row
+below describes the *default* run of that regime's harness.
+
+| Mechanism (attribute) | Default | MANET (Wi-Fi broadcast) | Satellite ISL (p2p grid) |
+|---|---|---|---|
+| Reactive forward-ant flood (`EnableReactive`) | on | **live, essential** — the only way to learn a topology nobody knows | live, but steerable-not-blind is the honest framing (§5): the flood re-derives direction the geometry already gives |
+| Proactive ants (`EnableProactive`, `ProactiveInterval` 10 s) + diffusion (`EnableDiffusion`) | on | live — path maintenance and improvement during a session | live — diffusion carries the virtual gradient across the grid; it is what `EnableDirectedReactive` would steer along |
+| Proactive emission gate (`ProactiveVirtualMargin`) | **0 = off** | off deliberately — the thesis's 10% gate measured harmful ([#180](https://github.com/danieljoppi/AntHocNet/issues/180)) | same |
+| Hello beacons (`HelloInterval` 1 Hz) | on | live, essential — sole neighbour-discovery mechanism | live but **redundant**: one fixed, known peer per link; measured cost NRL 12.18 on a churn-free grid ([#204](https://github.com/danieljoppi/AntHocNet/issues/204)) |
+| Multipath acceptance (`EnableMultipath`, a1 `AntAcceptanceFactor` 0.9, a2 `AntAcceptanceFactorNewHop` 2.0) | on | live — disjoint paths when density allows | live — the torus has equal-length corridors by construction; this is the half of the protocol with a real satellite claim (§5) |
+| Local repair ants (`EnableRepair`, `RepairWaitFactor` 5, `RepairTimeout` 1 s) | on | live, constantly exercised — mobility breaks links | live, exercised only by *unscheduled* failure — the `--breakLink` cell ([#260](https://github.com/danieljoppi/AntHocNet/issues/260)); scheduled failure belongs to the control's tables |
+| Link-failure notifications (`EnableLinkFail`, cooldown `LinkfailNotifyInterval` 5 s) | on | live | live |
+| Failure detector A — hello timeout | always on | live | live (and sufficient: `Ipv4::SetDown` on a cut link also raises the interface event) |
+| Failure detector D — Wi-Fi MAC transmit failures (`EnableMacFailureDetector`, `TxFailureThreshold` 3) | on | live — the fast detector ([ADR-0008](adr/0008-neighbour-liveness-two-detectors.md)) | **inert** — subscription requires a `WifiNetDevice`; a p2p ISL has none |
+| A2 congestion metric (`EnableMacMetric`, `MacServiceAlpha` 0.7) | **off** | available — reads `WifiMacQueue` (AC_BE_NQOS) occupancy | **inert even if enabled** — no Wi-Fi MAC queue to read; needs a generalised congestion signal ([#206](https://github.com/danieljoppi/AntHocNet/issues/206)); the corridor experiments ([#216](https://github.com/danieljoppi/AntHocNet/issues/216)) exposed the deeper attribution gap ([#292](https://github.com/danieljoppi/AntHocNet/issues/292)) |
+| Directed reactive discovery (`EnableDirectedReactive`) | **off** | A/B arm — no gradient yet ⇒ degrades to the stock flood | A/B arm — the regime this switch exists to probe (§5, [#245](https://github.com/danieljoppi/AntHocNet/issues/245)) |
+| Pending-queue timing (`QueueTimeout` 3 s, `ReconvHoldCap` 1 s, `RepairHoldCap` 0, `ReactiveRetryInterval` 0.25 s) | #21/#103 frontier values | live — tuned on this regime's delay tail | live but calibrated against 802.11 contention delays, not 5–18 ms propagation floors ([#205](https://github.com/danieljoppi/AntHocNet/issues/205)) |
+| Goodness timing reference (`HopTime` 3 ms) | thesis value ([#88](https://github.com/danieljoppi/AntHocNet/issues/88)) | live — matches an unloaded 802.11 hop | mis-sized — an ISL hop is 5 ms of pure propagation before queueing ([#205](https://github.com/danieljoppi/AntHocNet/issues/205)) |
+| Pheromone dynamics (`Alpha` 0.7, `Gamma` 0.7, `BetaAnts` 1.0, `BetaData` 2.0) | shipped values (thesis says 20 — [#179](https://github.com/danieljoppi/AntHocNet/issues/179)) | live | live — and on a static grid the closed-form orbit of these constants is exactly reproducible ([#216](https://github.com/danieljoppi/AntHocNet/issues/216) derivation) |
+
+Reading the table column-wise gives each regime's honest summary. **MANET:**
+everything live; the protocol is in its design regime. **Satellite ISL:** the
+discovery half runs but answers a solved problem, two Wi-Fi-coupled mechanisms
+(detector D, A2 metric) are inert, hello pays overhead for nothing, and the
+timing constants are calibrated for a medium that isn't there — while the
+multipath/load-response half faces exactly the problem the regime does have.
+That asymmetry is the satellite research programme
+([#192](https://github.com/danieljoppi/AntHocNet/issues/192)), not a defect
+list.
+
 ## Provenance of the numbers
 
 Measurements are from this repository's own CI, not from the literature:

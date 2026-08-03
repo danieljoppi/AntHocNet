@@ -128,6 +128,43 @@ track the default branch; the `-<release>` tier is fixed to a release.
 
 Build them yourself or see the full matrix in [docker/README.md](docker/README.md).
 
+## Supported network regimes
+
+The same protocol binary runs in two very different networks. What is *unknown*
+in each regime is what decides which of AntHocNet's mechanisms matter there —
+the full argument is in [docs/network-regimes.md](docs/network-regimes.md).
+
+| | MANET — paper field | MANET — thesis field | Satellite — ISL +Grid |
+|---|---|---|---|
+| Harness | [`anthocnet-compare`](ns3/examples/anthocnet-compare.cc) `--scenario=paper` | [`anthocnet-compare`](ns3/examples/anthocnet-compare.cc) `--scenario=thesis` | [`isl-grid`](ns3/examples/isl-grid.cc) |
+| Nodes / field | 50 · 1500×300 m (Broch '98 calibration field) | 100 · 2400×800 m (Ducatelle 2007 §5.1.3) | rows×cols torus (default 6×6), static snapshot |
+| Mobility | RandomWaypoint, 1–20 m/s, pause 30 s | RandomWaypoint, 1–10 m/s, pause 30 s | none — topology fixed by construction |
+| Medium | 802.11b @ 2 Mbit/s, shared broadcast channel (disk or two-ray propagation) | same | point-to-point ISLs, 10 Mbit/s, 5 ms/link, one `/30` subnet each, degree 4 |
+| Topology | unknown — discovered by ants | unknown — discovered by ants | deterministic — degree/link count asserted every run |
+| Loss | collisions, retry exhaustion, mobility | same | none on the link; any loss indicts the stack |
+| Traffic | 20 CBR flows × 512 bps | 20 CBR flows × 2048 bps | 4 CBR flows × 4096 bps + adversarial cells (scripted link cut, corridor congestion) |
+| Baselines | AODV / OLSR / DSDV on identical seeds | same | same, plus (planned) precomputed shortest-path control ([#216](https://github.com/danieljoppi/AntHocNet/issues/216)) |
+| Results | [docs/benchmarks.md](docs/benchmarks.md) | [docs/benchmarks.md](docs/benchmarks.md) | [docs/benchmarks/satellite/isl-grid.md](docs/benchmarks/satellite/isl-grid.md) |
+
+**AntHocNet configuration per regime** — one attribute set (defaults below, every
+knob in [docs/configuration.md](docs/configuration.md)); what differs is which
+mechanisms are *live*, because some bind to the Wi-Fi MAC and some answer a
+problem the regime doesn't have:
+
+| Mechanism | Default | MANET (Wi-Fi) | Satellite ISL (p2p) |
+|---|---|---|---|
+| Reactive forward-ant flood (`EnableReactive`) | on | active — the route-discovery workhorse | active, but discovery is answering a question the geometry already answers ([regimes §5](docs/network-regimes.md)) |
+| Proactive ants + diffusion (`EnableProactive`, `EnableDiffusion`, 10 s) | on | active — path maintenance/improvement | active — carries the virtual gradient over the grid |
+| Hello beacons (`HelloInterval`, 1 Hz) | on | active — the only neighbour discovery | active but **redundant**: the peer is fixed and known — NRL 12.18 with nothing to discover ([#204](https://github.com/danieljoppi/AntHocNet/issues/204)) |
+| Multipath acceptance (`EnableMultipath`, a1 = 0.9 / a2 = 2.0) | on | active | active — the torus offers equal-cost corridors by construction |
+| Local repair ants (`EnableRepair`) | on | active — mobility breaks links constantly | active — but only *unscheduled* failure exercises it (scripted-cut cell) |
+| Link-failure notifications (`EnableLinkFail`) | on | active | active |
+| Hello-timeout failure detector (A) | always on | active | active |
+| Wi-Fi MAC transmit-failure detector (D) (`EnableMacFailureDetector`) | on | active | **inert** — binds to `WifiNetDevice`; no Wi-Fi MAC on an ISL |
+| A2 congestion metric (`EnableMacMetric`) | **off** | available — reads the Wi-Fi MAC queue | **inert even when on** — no queue signal on p2p until generalised ([#206](https://github.com/danieljoppi/AntHocNet/issues/206), [#292](https://github.com/danieljoppi/AntHocNet/issues/292)) |
+| Directed reactive discovery (`EnableDirectedReactive`) | **off** | A/B arm — degrades to flooding without a gradient | A/B arm — the regime it was designed to probe ([#245](https://github.com/danieljoppi/AntHocNet/issues/245)) |
+| Timing profile (`HopTime` = 3 ms, hold caps, retry timers) | thesis values | calibrated for 802.11 contention | mis-sized: delay is propagation-dominated, retuning open ([#205](https://github.com/danieljoppi/AntHocNet/issues/205)) |
+
 ## What changed from the original
 
 The original project was a whole vendored `ns-allinone-2.34` snapshot with the
@@ -165,7 +202,7 @@ History of the work is in the per-phase commits; design rationale is in
 | [docs/fidelity.md](docs/fidelity.md) | What v1.0 reproduces from the 2004 paper and where it deliberately deviates. |
 | [docs/wire-format.md](docs/wire-format.md) | Canonical on-wire ant layout, version byte, and diff vs. the original and the papers. |
 | [docs/publications/](docs/publications/README.md) | Source-of-truth digests of the 2004 paper and 2007 thesis — what every fidelity claim is checked against. |
-| [docs/network-regimes.md](docs/network-regimes.md) | Why MANET and satellite/ISL routing are different problems (the satellite research track's ground rules). |
+| [docs/network-regimes.md](docs/network-regimes.md) | Why MANET and satellite/ISL routing are different problems (the satellite research track's ground rules), and which AntHocNet mechanism is live/inert in each regime (§6). |
 | [docs/adr/](docs/adr/README.md) | Architecture Decision Records 0001–0018, indexed — the "why" behind the structure. |
 | [paper/](paper/) | JOSS software-paper draft (`paper.md`/`paper.bib`), for submission against this repo. |
 | [CONTEXT.md](CONTEXT.md) | Project orientation: domain background, repo map, current state, glossary, open questions. |
