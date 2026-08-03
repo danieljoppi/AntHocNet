@@ -32,7 +32,15 @@ jobs:
         run: |
           ruff check ns3/tools docs/tools \
             .claude/skills/benchmark-results/scenario_check.py \
-            .claude/skills/benchmark-results/test_scenario_check.py
+            .claude/skills/benchmark-results/test_scenario_check.py \
+            .claude/skills/benchmark-results/stats_util.py \
+            .claude/skills/benchmark-results/test_stats.py
+      - name: Statistics self-test (#293)
+        # stats_util.py computes the 95% CIs and paired tests every published
+        # number will carry; bench_parse.py's column-mapping check decides
+        # whether a cell's numbers may be trusted at all. Same reasoning as
+        # the gate below: a rule that can't fire isn't a gate.
+        run: python3 .claude/skills/benchmark-results/test_stats.py
       - name: Benchmark-gate self-test
         # scenario_check.py decides whether a campaign's numbers may be read or
         # published, and it was itself untested until #229/#230 showed what that
