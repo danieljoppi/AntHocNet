@@ -7,6 +7,31 @@ than a checked-in diagram. This page exists because the *ordering constraints*
 are the part that is hard to hold in your head, and a graph shows them better
 than prose.
 
+## How this plan is tracked
+
+Each roadmap issue carries a **`release:` label**, so every column of this plan
+is a live query rather than a diagram that drifts:
+
+| Release | Board |
+|---|---|
+| v1.3.0 | [`release:v1.3.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av1.3.0%22) |
+| v1.4.0 | [`release:v1.4.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av1.4.0%22) |
+| v1.5.0 | [`release:v1.5.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av1.5.0%22) |
+| v1.6.0 | [`release:v1.6.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av1.6.0%22) |
+| v2.0.0 | [`release:v2.0.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av2.0.0%22) |
+| v3.0.0 | [`release:v3.0.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av3.0.0%22) |
+| all epics | [`epic`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3Aepic) |
+
+Labels, not milestones or a Projects board, because a label is visible in every
+issue list and search without leaving the issues view, and because it survives
+being edited by anyone with write access rather than needing project-level
+permissions. A Projects v2 board over the same labels is a strict addition if
+one is ever wanted — it would read these labels, not replace them.
+
+Only issues the ladder actually gates are labelled. Most of the ~90 open issues
+are unscheduled work that lands whenever it lands; putting a `release:` on
+everything would make the query useless.
+
 ## Release ladder
 
 ```mermaid
@@ -54,8 +79,13 @@ flowchart TB
 
     SATBUILD["satellite build epics<br/>#192 #193 #194 #195 #196<br/>#208 #210 #211"]
     ENABLE["enablers<br/>#121 affordability · #126 seed-splitting"]
+    I309["<b>#309</b> hold-cap sweep<br/>900 s · 20 seeds · CIs"]
+    E308["<b>#308</b> close the delay tail<br/>#21 confirmed at 12x the interval"]
 
     ENABLE --> E293
+    E293 --> I309
+    I309 --> E308
+    F179 & F180 -.->|"both move which path<br/>data takes"| E308
     F179 & F180 -.->|"change protocol character —<br/>re-baseline once, not twice"| E295
     E293 --> E294 --> E295 --> E296
     E295 --> E300 --> E301
@@ -72,6 +102,7 @@ flowchart TB
     style E302 fill:#f6dede,stroke:#c0392b,stroke-width:2px
     style E307 fill:#eee,stroke:#888,stroke-dasharray:4 3
     style E32 fill:#eaf2fb,stroke:#2c6fbb,stroke-width:2px
+    style E308 fill:#fde9e9,stroke:#c0392b,stroke-width:2px
     style FID fill:#fff8e6,stroke:#c48f00
 ```
 
@@ -84,8 +115,8 @@ otherwise independent of the epic chain.
 
 | Release | Exit criteria |
 |---|---|
-| **v1.3.0** | Every published table carries a 95 % CI; `bench_parse --ab` reports paired-difference verdicts; runs-floor and warm-up policy documented. |
-| **v1.4.0** | Headline grid under ≥2 mobility × ≥2 channel models with a ranking-stability statement; TCP arm; a published 200-node point. |
+| **v1.3.0** | Every published table carries a 95 % CI — headline done ([#110](https://github.com/danieljoppi/AntHocNet/issues/110)), pause/area/scale and the hold-cap sweep ([#309](https://github.com/danieljoppi/AntHocNet/issues/309)) outstanding; `bench_parse --ab` reports paired-difference verdicts; runs-floor and warm-up policy documented. |
+| **v1.4.0** | Headline grid under ≥2 mobility × ≥2 channel models with a ranking-stability statement; TCP arm; a published 200-node point. **Plus a verdict on the delay tail** ([#308](https://github.com/danieljoppi/AntHocNet/issues/308)) — either a measured statement that it is the price of the delivery advantage, or a change that reduces it. |
 | **v1.5.0** | Oracle control in both suites; AOMDV and GPSR spikes resolved (working arm **or** a written infeasibility verdict with threat-to-validity text). |
 | **v1.6.0** | README family table shows ≥4 supported families, each with a results page, plus a cross-family ranking-stability statement. **Plus the OMNeT++/INET adapter** ([#32](https://github.com/danieljoppi/AntHocNet/issues/32)) — VANET evaluation runs on Veins, so the adapter is what makes #301 a real arm rather than an ns-3 approximation of one. |
 | **v2.0.0** | A committed time-varying Walker result: scheduled handovers, failure overlay, oracle + geographic comparators, handover metric family, calibration deltas vs Hypatia/LENS. **Also the NS-2 removal** ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)) — dropping a supported platform is breaking, so it lands with a major. |
