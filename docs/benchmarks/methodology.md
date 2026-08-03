@@ -219,6 +219,108 @@ is always attributable to a profile after the fact.
   comparisons are only meaningful profile-to-profile on the same scenario; the
   sanctioned A/B speed measurement is its own ticket.
 
+## The campaign loop, end to end
+
+Dispatching a run is the easy part; the loop exists so that a number cannot
+reach a document without passing the gates. Scripts do the arithmetic and the
+verdict — never eyeball a table ([ADR-0014](../adr/0014-agent-skills-are-script-first.md)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor R as you / agent
+    participant PF as scenario_check.py<br/>preflight
+    participant GH as GitHub Actions
+    participant LOG as job log
+    participant RC as scenario_check.py<br/>results
+    participant BP as bench_parse.py /<br/>sweep_summary.py
+    participant IS as the issue
+
+    R->>PF: intended knobs (nodes, area, speed, load, windows)
+    alt preflight FAIL
+        PF-->>R: partitioned field / channel saturated /<br/>single-hop degeneracy / window vs link lifetime (#230)
+        Note over R: fix the config — cost so far: zero dispatches
+    else OK or WARN
+        PF-->>R: proceed (record what the WARN wants checked later)
+    end
+    R->>GH: actions_run_trigger (paper-benchmark / scenario-matrix)
+    Note over GH: a real point can exceed an hour —<br/>schedule a check-in, do not spin
+    GH-->>LOG: ##BENCH## · ##RUN## · # stddev · # diag
+    R->>LOG: get_job_logs (tail ~55 lines — cheap by design)
+    LOG-->>R: saved verbatim, one file per run
+    R->>RC: validate the saved cell
+    alt results FAIL
+        RC-->>R: #51-class harness regression —<br/>do not compare, publish, or quote
+    else PASS / scoped FAIL
+        RC-->>R: plausibility + anchors OK<br/>(a scoped FAIL invalidates only its metric family)
+    end
+    R->>BP: deltas, materiality, noise verdict
+    BP-->>R: IMPROVED / WORSE / MIXED / NOISE (+ paired sign test)
+    R->>IS: record verdict + run IDs (ADR-0013)
+```
+
+The two gates are not ceremony. `preflight` is what turns a misconfigured
+scenario into a zero-cost finding instead of a 115-minute one
+([#230](https://github.com/danieljoppi/AntHocNet/issues/230)), and `results` is
+what stops a harness regression from being published as a protocol result
+([#51](https://github.com/danieljoppi/AntHocNet/issues/51)).
+
+## Which check enforces what
+
+Every invariant that can block a merge or a publish, and where it lives. Anchor
+*values* are never duplicated — they are read from
+[`ns3/tools/anchors.yml`](../../ns3/tools/anchors.yml).
+
+```mermaid
+flowchart TB
+    subgraph CI["ci.yml — every push / PR (blocking)"]
+        direction TB
+        C1["core unit tests · ASan+UBSan"]
+        C2["codec fuzz (libFuzzer 60 s)"]
+        C3["NS-2 patch round-trip · adapter e2e + valgrind"]
+        C4["NS-3 build + module tests<br/>3.36 · 3.41 · 3.42 · 3.47 · 3.48"]
+        C5["<b>check-determinism.sh</b><br/>same seed twice ⇒ byte-identical<br/>(wifi + isl-grid, #129)"]
+        C6["<b>check-anchors.sh single-hop</b><br/>single_hop_pdr_min 99.0 (#51 detector)"]
+        C7["<b>check-sat-anchors.sh</b><br/>sat_single_isl_pdr_min 99.0 ·<br/>sat_hop_delay_slack_ms 1.5 (#237)"]
+        C8["core coverage (gcov) — <b>report-only</b>, no threshold (#162)"]
+    end
+
+    subgraph LINT["lint.yml — every PR"]
+        L1["Conventional-Commit PR title"]
+        L2["ruff over ns3/tools + skills"]
+        L3["<b>test_scenario_check.py</b><br/>every gate rule: one must-fire +<br/>one must-not-fire case"]
+    end
+
+    subgraph BENCH["benchmarks.yml — merge to default branch"]
+        B1["<b>Validation-anchor gate (blocks publish, #59)</b><br/>check-anchors.sh single-hop<br/>+ broch-low-mobility (aodv PDR ≥ 85.0)"]
+        B2["run the taxonomy → tables + charts"]
+        B3["auto-commit docs/benchmarks*"]
+        B1 --> B2 --> B3
+    end
+
+    subgraph MANUAL["manual campaigns"]
+        M1["paper-benchmark.yml · scenario-matrix.yml<br/>satellite-benchmark.yml"]
+        M2["gated by scenario_check.py<br/>preflight (before) + results (after)"]
+        M1 --- M2
+    end
+
+    style C5 fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
+    style C6 fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
+    style C7 fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
+    style B1 fill:#fff3d4,stroke:#c48f00,stroke-width:2px
+    style L3 fill:#eef,stroke:#5b4fc4
+    style C8 fill:#eee,stroke:#888,stroke-dasharray:4 3
+```
+
+Two things this map makes obvious that prose kept hiding:
+
+- **The determinism anchor is the quietest and most load-bearing gate.** Nothing
+  else in the matrix would catch a change that makes results seed-dependent, and
+  every A/B verdict in this repo assumes identical seeds produce identical runs.
+- **Coverage is the only non-gate in the picture** (dashed): report-only by
+  decision, until a floor is chosen from measured evidence
+  ([#162](https://github.com/danieljoppi/AntHocNet/issues/162)).
+
 ## Validation anchors (known-expected results)
 
 A benchmark is only trustworthy if it reproduces a *known* result on a reference

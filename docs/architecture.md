@@ -33,6 +33,133 @@ adapters never reimplement routing logic.
 
 ## The core
 
+### Types and how they relate
+
+`AntRouterLogic` is the only stateful entry point; everything else is either a
+value type it moves around, a collaborator it owns, or a port it is handed.
+
+```mermaid
+classDiagram
+    class AntRouterLogic {
+        -NodeAddress address
+        -uint32 seqCounter
+        +onReceiveAnt(msg, prevHop) RouteDecision[]
+        +onDataPacket(dest, prevHop) RouteDecision[]
+        +onMaintenanceTick() RouteDecision[]
+        +reportNeighborLoss(n) RouteDecision[]
+        +reportTxFailure(next, dest) RouteDecision[]
+    }
+
+    class PheromoneTable {
+        -map regularByNeighbourDest
+        -map virtualByNeighbourDest
+        -set neighbours
+        +bestRegular(dest) double
+        +selectNextHop(dest, beta) NodeAddress
+        +setPheromoneRegular(dest, n, v)
+        +removePheromoneRegular(dest, n)
+    }
+
+    class PheromoneEngine {
+        +updateRegular(table, dest, obs)
+        +updateVirtual(table, hello)
+        +evaporateAll(table, dt)
+        +cleanNeighbor(table, n)
+    }
+
+    class AntHistoryTracker {
+        -deque insertionOrder
+        +seen(src, seq) bool
+        +remember(src, seq)
+        +clear()
+    }
+
+    class GenerationTracker {
+        +accept(src, seq, hops, time, firstHop) bool
+        +allowBroadcast(src, seq, max) bool
+        +clear()
+    }
+
+    class AntMessage {
+        +AntType type
+        +AntDirection direction
+        +NodeAddress src
+        +NodeAddress dst
+        +uint32 seqNum
+        +double timeStart
+        +double lifeAnt
+        +int broadcastBudget
+        +VisitedPath visited
+        +VisitedPath history
+        +HelloDest[] helloDests
+        +isForward() bool
+    }
+
+    class VisitedPath { +AntHop[] hops }
+    class AntHop { +NodeAddress node
+                   +double time }
+    class HelloDest { +NodeAddress node
+                      +double pheromone }
+
+    class AntMessageCodec {
+        +encode(msg) bytes
+        +decode(bytes) AntMessage
+    }
+
+    class RouteDecision {
+        +RouteAction action
+        +NodeAddress nextHop
+        +AntMessage message
+    }
+
+    class ILinkMetric {
+        <<interface>>
+        +pheromoneFor(observation) double
+    }
+    class ClassicMetric { +pheromoneFor(observation) double }
+
+    class IClock { <<interface>> +now() double }
+    class IRng { <<interface>> +uniform() double }
+    class ITimerScheduler { <<interface>> +schedule(delay, cb) }
+    class INeighborProvider { <<interface>> +neighbours() list }
+
+    AntRouterLogic *-- PheromoneTable
+    AntRouterLogic *-- PheromoneEngine
+    AntRouterLogic *-- AntHistoryTracker
+    AntRouterLogic *-- GenerationTracker
+    AntRouterLogic ..> RouteDecision : returns
+    AntRouterLogic ..> AntMessage : consumes / builds
+    AntRouterLogic o-- IClock
+    AntRouterLogic o-- IRng
+    AntRouterLogic o-- ITimerScheduler
+    AntRouterLogic o-- INeighborProvider
+    AntRouterLogic o-- ILinkMetric
+
+    PheromoneEngine ..> PheromoneTable : mutates
+    ILinkMetric <|.. ClassicMetric
+    AntMessage *-- VisitedPath
+    AntMessage *-- HelloDest
+    VisitedPath *-- AntHop
+    AntMessageCodec ..> AntMessage : encodes / decodes
+    RouteDecision *-- AntMessage
+```
+
+Three relationships carry the architecture:
+
+- **Composition (`*--`) is owned state**; the tables and trackers live and die
+  with the router logic and are never shared between nodes.
+- **Aggregation (`o--`) is injected** — every port and the link metric are
+  handed in. This is the entire reason the core compiles without a simulator:
+  there is no path from `AntRouterLogic` to a clock, a random number, or a
+  timer except through an interface someone else implements.
+- **`ILinkMetric` is the one open seam.** `ClassicMetric` (the paper's Eq. 2) is
+  the default; energy-aware and fuzzy-composite metrics
+  ([#145](https://github.com/danieljoppi/AntHocNet/issues/145),
+  [#146](https://github.com/danieljoppi/AntHocNet/issues/146)) and the planned
+  trust factor ([#302](https://github.com/danieljoppi/AntHocNet/issues/302))
+  plug in here without the core learning about any of them. Metrics are
+  stateless and const, so one process-lifetime instance is shared by every node.
+
 ### Value types
 
 - **`AntMessage`** — a plain, copyable description of an ant: type, direction,
@@ -84,27 +211,47 @@ The adapters implement these so the core stays I/O-free:
 
 ## Decision flow
 
-```
-incoming ant  ->  AntRouterLogic::onReceiveAnt(msg, prevHop)
-                    - reactive forward ant (enableMultipath, default on): per-
-                      generation acceptance band ([1] §3.1, #96) — a later
-                      (src,seq) copy within antAcceptanceFactor (a1=0.9, or
-                      a2=2.0 for a new first hop; thesis values, #177) of the
-                      best seen on BOTH hops and travel time is admitted, so
-                      several good paths get laid down; all other ants (and
-                      everything when the gate is off): strict (src,seq)
-                      dedup -> Drop on duplicate
-                    - learn prevHop as neighbour
-                    - hello: update virtual table, consume
-                    - forward ant: stamp self; if dst==self spawn back ant;
-                      else select next hop (Unicast) or Broadcast
-                    - back ant: reinforce travelled link; if dst==self Deliver
-                      (flush queue); else advance one hop (Unicast)
-                  -> vector<RouteDecision>
+Two entry points, both pure, both returning `RouteDecision`s the adapter
+executes.
 
-local data    ->  AntRouterLogic::onDataPacket(dst)
-                    - route known -> Unicast
-                    - no route    -> Queue + reactive forward ant (Broadcast)
+```mermaid
+flowchart TB
+    IN(["incoming ant<br/><b>onReceiveAnt(msg, prevHop)</b>"]) --> DEDUP{"duplicate?"}
+
+    DEDUP -->|"reactive fwd ant +<br/>enableMultipath (default on)"| BAND{"within the acceptance band?<br/>a1 = 0.9, or a2 = 2.0 for a new<br/>first hop — on BOTH hops and<br/>travel time ([1] §3.1, #96/#177)"}
+    DEDUP -->|"all other ants,<br/>or gate off"| STRICT{"strict (src,seq)<br/>dedup"}
+
+    BAND -->|no| DROP1["Drop"]
+    STRICT -->|"seen"| DROP1
+    BAND -->|"yes — admit, so several<br/>good paths get laid down"| LEARN
+    STRICT -->|"fresh"| LEARN["learn prevHop as neighbour"]
+
+    LEARN --> KIND{"ant type / direction"}
+
+    KIND -->|hello| HELLO["update <b>virtual</b> table<br/>consume (never re-forwarded)"]
+    KIND -->|linkfail| LFN["apply to regular table,<br/>propagate unless our best survives"]
+
+    KIND -->|"forward ant"| FWD["stamp self"]
+    FWD --> ISDST{"dst == self?"}
+    ISDST -->|yes| SPAWN["spawn <b>back ant</b><br/>(direction = Down)"] --> UNI1["Unicast"]
+    ISDST -->|no| NEXT{"next hop known?"}
+    NEXT -->|yes| UNI2["Unicast"]
+    NEXT -->|no| BC["Broadcast<br/>(bounded per type)"]
+
+    KIND -->|"back ant"| REIN["<b>reinforce</b> the travelled link<br/>— the only pheromone write"]
+    REIN --> BDST{"dst == self?"}
+    BDST -->|yes| DELIV["Deliver<br/>(flush the pending queue)"]
+    BDST -->|no| UNI3["Unicast — advance one hop"]
+
+    DATA(["local data<br/><b>onDataPacket(dst)</b>"]) --> ROUTE{"route known?"}
+    ROUTE -->|yes| UNI4["Unicast"]
+    ROUTE -->|no| QUEUE["Queue<br/>+ reactive forward ant (Broadcast)<br/>≤1 per dest per ReactiveRetryInterval"]
+
+    style REIN fill:#fff3d4,stroke:#c48f00,stroke-width:2px
+    style HELLO fill:#eef,stroke:#5b4fc4
+    style DELIV fill:#e2f0ed,stroke:#0f7f70
+    style IN fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
+    style DATA fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
 ```
 
 `RouteDecision { action, nextHop, message }` with

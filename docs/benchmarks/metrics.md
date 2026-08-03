@@ -71,6 +71,103 @@ same realisations. Metrics come from an NS-3 `FlowMonitor`:
   `maxPathLength` addresses) while an AODV RREQ is small and fixed. The measured
   packet-vs-byte comparison run is tracked in #132.
 
+## The metric families at a glance
+
+Five families, each measuring a different thing, each with its own validity
+rules. What follows the diagram is the per-family detail; this is the map.
+
+```mermaid
+flowchart TB
+    RUN["one run<br/>(seed, protocol, scenario)"]
+
+    RUN --> HEAD["<b>headline</b><br/>pdr · delay · delay99 · thrput<br/>jitter + jitter_eq51 · nrl + nrl_bytes<br/>delay_off50/off90 (#57)"]
+    RUN --> DROP["<b>drop causes</b> (#215)<br/>route · queue · mac · chan · ttl<br/><i>identity: pdr + Σ ≈ 100</i>"]
+    RUN --> ENER["<b>energy</b> (#209)<br/>energy_j · energy_per_pkt_j<br/>energy_res_min/mean/sd_j · first_death_s"]
+    RUN --> REOR["<b>reordering</b> (#212, RFC 4737)<br/>ratio · extent_mean/max · <b>buf_max</b>"]
+    RUN --> ROUTEQ["<b>route quality</b> (#217)<br/>path_hops_mean/max · jain_pkts<br/>path_div_used/max · path_entropy_bits"]
+
+    RUN --> DISP["<b>dispersion</b> (#28)<br/>*_sd over runs · ##RUN## per-seed rows (#128)"]
+    DISP -.->|"feeds"| CI["95% CI · paired tests<br/>(#293, planned)"]
+
+    style HEAD fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
+    style DROP fill:#fff3d4,stroke:#c48f00
+    style ENER fill:#eef,stroke:#5b4fc4
+    style CI fill:#eee,stroke:#888,stroke-dasharray:4 3
+```
+
+**The trap each family carries**, stated once here and in detail below:
+`delay99` is survivorship-confounded across protocols (a protocol that drops
+hard packets looks better); `drop_queue_pct` misses DSDV's silent shedding
+(#229); `energy` absolutes are idle-dominated so only **deltas and spread** are
+readable; `reorder ratio/extent` measure route *flapping* rather than
+multipath, leaving **`buf_max`** as the honest multipath signal; and
+`path_div_*` is unquotable outside the dedicated cell (#230).
+
+## Where the drop-cause identity comes from
+
+Every offered packet lands in exactly one bucket. That is the whole of #215,
+and it is why the identity can be checked rather than trusted — measured
+values below are the 20-seed × 900 s disk arm
+([run 30772704321](https://github.com/danieljoppi/AntHocNet/actions/runs/30772704321)),
+percentages of offered packets:
+
+```mermaid
+sankey-beta
+offered,delivered,95.04
+offered,no route,1.88
+offered,channel loss,2.46
+offered,MAC retry exhaustion,0.52
+offered,TTL expiry,0.08
+```
+
+The five causes plus PDR sum to **99.98 %** here; the residual is data still
+queued when the run stopped, which is why the gate WARNs past 1 pp and FAILs
+past 5 pp rather than demanding exactly 100. Reading the same picture for
+AODV (84.73 delivered, 10.09 MAC) makes the contrast concrete: AntHocNet's
+losses are dominated by *route* state, AODV's by *MAC retry exhaustion*.
+
+A cause that accounts for nothing is the failure mode this instrumentation
+exists to expose — DSDV's routing-layer queue drops land in no bucket at all
+and open an 11.46 pp hole ([#229](https://github.com/danieljoppi/AntHocNet/issues/229)),
+which is why DSDV is excluded from cross-protocol drop comparisons.
+
+## How energy is accounted
+
+Not a battery model — an integration of the radio's own state trace, which is
+why its absolutes must be read carefully.
+
+```mermaid
+flowchart LR
+    PHY["WifiPhy <b>State</b> trace<br/>TX · RX · IDLE · CCA_BUSY · SWITCHING"]
+    PHY -->|"time in state × current × voltage"| INT["integrate per device"]
+    INT --> TOT["<b>energy_j</b><br/>total over all nodes"]
+    INT --> RES["<b>energy_res_*_j</b><br/>residual min / mean / <b>sd</b><br/>= forwarding-load spread"]
+    TOT -->|"÷ delivered data packets"| PER["<b>energy_per_pkt_j</b><br/>the cross-protocol comparable"]
+    RES --> DEATH["<b>first_death_s</b><br/>accounting only — the radio<br/>never actually switches off"]
+
+    style PER fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
+    style RES fill:#eef,stroke:#5b4fc4
+    style DEATH fill:#eee,stroke:#888,stroke-dasharray:4 3
+```
+
+Three caveats that decide what may be claimed:
+
+- **Idle dominates.** At the shipped currents the idle draw is ≈0.82 W, so
+  total energy is mostly "the radio was switched on", not "the protocol worked
+  hard". Absolute joules are near-identical across protocols by construction —
+  compare **deltas** and the **residual spread**, never the totals.
+- **The modelled NIC is 802.11n while the harness runs 802.11b at 2 Mbit/s.**
+  The current values are ns-3's own provenance (Halperin, HotPower'10); they
+  are internally consistent, not a claim about the simulated radio.
+- **`first_death_s` is bookkeeping.** Energy is integrated but never enforced —
+  no node stops transmitting when its budget hits zero, so a "death" marks a
+  threshold crossing, not a topology change.
+
+`energy_per_pkt_j` is the one to quote across protocols, because it divides by
+what each protocol actually delivered; `energy_res_sd_j` is the one to quote
+about *fairness of forwarding load*, since a protocol that funnels traffic
+through a few relays drains them faster and widens the spread.
+
 ## Drop causes (#215, NS-3 only)
 
 PDR says how many packets went missing. These columns say **why**, as a

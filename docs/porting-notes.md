@@ -23,6 +23,58 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 5. **`randomDestination` never randomised.** Integer division `count/size` was
    0 for every entry but the last. Now a proper uniform draw.
 
+## What an adapter actually does (NS-2 vs NS-3)
+
+The same three steps in both: **decode to `AntMessage` → call the core →
+execute the returned `RouteDecision`s**. Only the simulator-facing calls
+differ. This is the contract a third adapter (OMNeT++/INET,
+[#32](https://github.com/danieljoppi/AntHocNet/issues/32)) has to satisfy.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant SIM as simulator
+    participant AD as adapter
+    participant CO as AntRouterLogic (core)
+
+    SIM->>AD: packet arrives
+    Note over AD: NS-2: AntPacketHeader (POD, pooled)<br/>NS-3: AntHeader : ns3::Header
+    AD->>AD: decode via AntMessageCodec<br/>(canonical little-endian, shared)
+    AD->>CO: onReceiveAnt(msg, prevHop)
+    Note over CO: pure — no I/O, no simulator types.<br/>Clock/RNG reached only through ports
+    CO-->>AD: vector&lt;RouteDecision&gt;
+
+    loop each decision
+        alt Unicast / Broadcast
+            AD->>AD: encode AntMessage back to the header
+            Note over AD: NS-2: Scheduler::schedule + send()<br/>NS-3: Simulator::Schedule + Socket::SendTo
+            AD->>SIM: transmit
+        else Queue
+            AD->>AD: hold in the pending queue<br/>(released by a later Deliver)
+        else Deliver
+            AD->>SIM: hand to the local transport,<br/>flush the pending queue for that dest
+        else Drop / None
+            Note over AD: nothing leaves the node
+        end
+    end
+```
+
+Ports the adapter must supply for the core to stay I/O-free — the whole seam,
+and the entire porting checklist:
+
+| Port | NS-2 | NS-3 |
+|---|---|---|
+| `IClock` | `Scheduler::instance().clock()` | `Simulator::Now()` |
+| `IRng` | `Random` | `UniformRandomVariable` |
+| `ITimerScheduler` | `Scheduler::schedule` | `Simulator::Schedule` |
+| `INeighborProvider` | pheromone-table view (**advisory only** — never evicts, [ADR-0008](adr/0008-neighbour-liveness-two-detectors.md)) | same |
+
+The asymmetry that makes NS-2 the harder target is not in this diagram: NS-3
+receives an additive `contrib/` module, while NS-2 needs **edits inside the
+simulator's own tree**, which is why that side ships as an idempotent
+anchor-based patch ([ADR-0005](adr/0005-ns2-idempotent-anchor-patch.md)) rather
+than a drop-in — see the anchors below.
+
 ## NS-2 patch anchors
 
 `ns2/patch/apply-patch.sh` injects by these stable anchors (never line
