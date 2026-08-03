@@ -50,6 +50,7 @@ flowchart TB
     E297["<b>#297</b> satellite credibility<br/>handover metrics · calibration"]
     E302["<b>#302</b> security<br/>default-off profile"]
     E307["<b>#307</b> remove NS-2<br/>v1.2.0 is the last release with it"]
+    E32["<b>#32</b> OMNeT++/INET adapter<br/>the Veins entry ticket"]
 
     SATBUILD["satellite build epics<br/>#192 #193 #194 #195 #196<br/>#208 #210 #211"]
     ENABLE["enablers<br/>#121 affordability · #126 seed-splitting"]
@@ -63,12 +64,14 @@ flowchart TB
     E293 --> E302
     F179 & F180 -.-> E302
     E307 -.->|"lands with the v2.0.0 major —<br/>dropping a platform is breaking"| E297
+    E32 -->|"Veins is the de-facto<br/>VANET stack"| E301
     E300 -.->|"high-churn cell for<br/>trust evidence"| E302
 
     style E293 fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
     style E297 fill:#e8e6f8,stroke:#5b4fc4,stroke-width:2px
     style E302 fill:#f6dede,stroke:#c0392b,stroke-width:2px
     style E307 fill:#eee,stroke:#888,stroke-dasharray:4 3
+    style E32 fill:#eaf2fb,stroke:#2c6fbb,stroke-width:2px
     style FID fill:#fff8e6,stroke:#c48f00
 ```
 
@@ -84,7 +87,7 @@ otherwise independent of the epic chain.
 | **v1.3.0** | Every published table carries a 95 % CI; `bench_parse --ab` reports paired-difference verdicts; runs-floor and warm-up policy documented. |
 | **v1.4.0** | Headline grid under ≥2 mobility × ≥2 channel models with a ranking-stability statement; TCP arm; a published 200-node point. |
 | **v1.5.0** | Oracle control in both suites; AOMDV and GPSR spikes resolved (working arm **or** a written infeasibility verdict with threat-to-validity text). |
-| **v1.6.0** | README family table shows ≥4 supported families, each with a results page, plus a cross-family ranking-stability statement. |
+| **v1.6.0** | README family table shows ≥4 supported families, each with a results page, plus a cross-family ranking-stability statement. **Plus the OMNeT++/INET adapter** ([#32](https://github.com/danieljoppi/AntHocNet/issues/32)) — VANET evaluation runs on Veins, so the adapter is what makes #301 a real arm rather than an ns-3 approximation of one. |
 | **v2.0.0** | A committed time-varying Walker result: scheduled handovers, failure overlay, oracle + geographic comparators, handover metric family, calibration deltas vs Hypatia/LENS. **Also the NS-2 removal** ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)) — dropping a supported platform is breaking, so it lands with a major. |
 | **v3.0.0** | Four-protocol vulnerability table under blackhole/grayhole; defense profile recovering PDR under attack while reading **NOISE** in benign scenarios; `EnableSecurity=false` path proven byte-identical. |
 
@@ -103,10 +106,34 @@ harness (#25), and contemporary reviewers read NS-2 in a 2026 paper as a
 reproducibility red flag rather than a credential.
 
 What this does **not** change: the simulator-agnostic core, the ports seam, and
-the "no NS headers in `core/`" golden rule all stay. With one shipped adapter
-the *claim* of simulator-independence loses its second witness, which is why
-the OMNeT++/INET adapter ([#32](https://github.com/danieljoppi/AntHocNet/issues/32))
-stops being a nice-to-have and becomes the proof obligation.
+the "no NS headers in `core/`" golden rule all stay.
+
+### Why OMNeT++ (#32) is scheduled at v1.6.0, not v2.0.0
+
+The obvious reason to build a second adapter is to keep proving the core is
+simulator-agnostic once NS-2 is gone. That reason is **weaker than it looks**:
+`v1.2.0` is tagged, immutable and DOI-pinned, so the two-adapter demonstration
+stays permanently citable after removal. Nobody can claim the seam was never
+exercised — they can check out the tag and exercise it.
+
+The reason that does hold up is **audience**. VANET evaluation happens on
+Veins (OMNeT++ + SUMO); it is the de-facto stack for the family, and ns-3 has
+no equal-status counterpart. OMNeT++/INET is also co-dominant with ns-3 in
+contemporary MANET protocol comparisons. So the adapter is not overhead paid
+to defend an architectural claim — it is the entry ticket to the VANET epic
+([#301](https://github.com/danieljoppi/AntHocNet/issues/301)), which is why it
+is scheduled with the family axis at **v1.6.0** rather than alongside the NS-2
+removal at v2.0.0.
+
+Satellite is the counter-case and the reason not to schedule it any earlier:
+LEO/constellation work is overwhelmingly ns-3 (Hypatia, ns-3-leo), so #297
+gains nothing from an OMNeT++ adapter.
+
+**Honest caveat on the usage claim.** No bibliometric study we found reports
+2024–2026 simulator shares for this field, so "co-dominant" and "de-facto" are
+judgements from the recent MANET/VANET evaluation literature and from which
+toolchains those papers actually run on — not measured percentages. They
+should not be quoted as statistics in a publication.
 
 ## Deliberate non-goals
 
