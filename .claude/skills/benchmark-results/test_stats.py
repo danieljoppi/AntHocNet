@@ -212,8 +212,8 @@ def _():
     # delay sd reported where delay99's belongs — the plausible-but-wrong
     # positional shift the #110 campaign's 40 checks were guarding against.
     text = _cell("bad", 80.0, 500.0, sd_override=("delay99", 0.30))
-    checks, fails = bp.mapping_check(bp.parse_runs(text),
-                                     bp.parse_stddev(text))
+    _checks, fails = bp.mapping_check(bp.parse_runs(text),
+                                      bp.parse_stddev(text))
     assert any(f[1] == "delay99" for f in fails), fails
 
 
@@ -224,9 +224,9 @@ def _():
                               shift_pdr=2.0, shift_d99=-50.0))["anthocnet"]
     n, stats, v = bp.paired_stats(base, cur)
     assert n == 10 and v == "PAIRED-IMPROVED", (n, v, stats)
-    dmean, lo, hi, p = stats["pdr"]
+    _dmean, lo, _hi, p = stats["pdr"]
     assert lo > 0 and p < 0.01
-    dmean, lo, hi, p = stats["delay99"]
+    _dmean, _lo, hi, _p = stats["delay99"]
     assert hi < 0, "delay99 bootstrap CI must exclude zero here"
 
 
@@ -234,8 +234,8 @@ def _():
 def _():
     base = bp.parse_runs(_cell("off", 80.0, 500.0))["anthocnet"]
     cur = {r: dict(v) for r, v in base.items()}
-    for r in cur:  # ±0.2pp alternating, mean ~0
-        cur[r]["pdr"] += 0.2 if r % 2 else -0.2
+    for r, vals in cur.items():  # ±0.2pp alternating, mean ~0
+        vals["pdr"] += 0.2 if r % 2 else -0.2
     res = bp.paired_stats(base, cur)
     assert res[2] == "PAIRED-NOISE", res[2]
 
