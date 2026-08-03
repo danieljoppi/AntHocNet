@@ -26,6 +26,8 @@ detail.
 | [0016](0016-directed-reactive-discovery-is-gated-and-off.md) | Reactive ants may follow the diffusion gradient (directed discovery), gated and default **off**. |
 | [0017](0017-linkstate-is-per-next-hop-and-regime-selected.md) | The congestion signal (`ILinkState`) is per-next-hop; its implementation is selected by what the build instantiates (wifi vs point-to-point/ISL). |
 | [0018](0018-emission-gate-compares-per-link.md) | The proactive emission gate compares virtual and regular pheromone per link, not best-vs-best — cancels the h/(h−1) hop ceiling. |
+| [0019](0019-network-families-change-the-evaluation-not-the-protocol.md) | A network family (FANET, VANET, …) is a scenario concern: mobility models, presets, preflight rules, anchors and metrics — never family-specific protocol defaults. |
+| [0020](0020-security-is-a-default-off-profile.md) | Security ships inside the same implementation behind attributes, default **off**, with the default path provably byte-identical — no fork, no second binary. |
 
 ## Adding an ADR
 

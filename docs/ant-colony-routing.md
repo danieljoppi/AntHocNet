@@ -171,6 +171,10 @@ goodness of going to destination `d` via next hop `n`. Because each
 `(destination)` can have several `(next hop)` entries, the tables together
 describe a **mesh of paths**, and data is spread over them.
 
+The sections below explain each mechanism in turn. For the five ant types side
+by side — trigger, direction, flood bound, what each writes, which switch gates
+it — see [`ant-types.md`](ant-types.md).
+
 ### Reactive route setup (on demand)
 
 A route is built only when there is traffic for it. When source `s` has data for

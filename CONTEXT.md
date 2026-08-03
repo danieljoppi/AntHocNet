@@ -155,6 +155,22 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 - **Open work is tracked in GitHub issues** — per-area epics #26–#31 and the
   open defects (#20–#23, #51), prioritized via `priority:P1..P3` labels
   (see §10).
+- **A 2026 roadmap exists** ([#298](https://github.com/danieljoppi/AntHocNet/issues/298)):
+  a literature gap analysis (recent MANET routing · satellite/LEO · evaluation
+  methodology, all three survey reports attached to the issue) crossed against
+  this repo's capability, with release goals **v1.3.0 → v3.0.0** and one epic
+  per gap — #293 statistics (95 % CIs, paired tests), #294 metrics (AoI, p95,
+  energy-per-bit, route stability), #295 realism (mobility beyond RWP, fading,
+  TCP, scale), #296 baselines (shortest-path oracle, AOMDV/GPSR), #297 satellite
+  evaluation credibility, #300 FANET, #301 VANET, #302 security. Read the issue
+  rather than this paragraph for status; what belongs here is that the roadmap
+  is the entry point for "what should I work on and why".
+- **Documentation covers the network regimes explicitly.** `docs/network-regimes.md`
+  (why MANET ≠ satellite, plus §6's mechanism × regime table),
+  `docs/software-layers.md` (stack, ant mechanisms × their config switches, and
+  what is live/redundant/inert/planned per regime) and `docs/ant-types.md` (the
+  five ant types compared, with lifecycle diagrams) are the three pages to read
+  before assuming a behaviour transfers between networks.
 
 ## 8. What is missing / caveats
 
@@ -209,6 +225,11 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 > `priority:P1`) and the OMNeT++/INET adapter proposal #32. Each ticket has
 > evidence, a fix sketch, and acceptance criteria; `priority:P1..P3` labels
 > order the backlog (ADR-0013).
+>
+> **For sequencing** — which of those to do first, and which release it serves —
+> read the 2026 roadmap [#298](https://github.com/danieljoppi/AntHocNet/issues/298):
+> it maps every gap to an epic (#293–#297, #300–#302) and a release goal, and
+> records the deliberate non-goals with the reasoning that would reverse each.
 
 - **Do not read a static list of "open" issues from this file.** An earlier
   revision named #51 as the highest-leverage open item and listed #20/#22/#23
