@@ -8,6 +8,17 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## Unreleased
+
+### Deprecated
+- **NS-2 support.** `v1.2.0` is the **last release that ships the NS-2
+  adapter**; it is removed at `v2.0.0`
+  ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)). Nothing already
+  published is withdrawn — pin the `v1.2.0` tag or its immutable images
+  (`ghcr.io/danieljoppi/anthocnet-ns2:2.34-v1.2.0` / `:2.35-v1.2.0`), which stay
+  pullable and citable at that release's DOI. The simulator-agnostic `core/`,
+  its ports seam and the "no NS headers in `core/`" rule are unaffected.
+
 
 First tagged release. Establishes the simulator-agnostic architecture, both
 adapters, the benchmark harness, and reproducible CI/packaging.

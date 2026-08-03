@@ -42,7 +42,7 @@ sequenceDiagram
     AD->>AD: decode via AntMessageCodec<br/>(canonical little-endian, shared)
     AD->>CO: onReceiveAnt(msg, prevHop)
     Note over CO: pure — no I/O, no simulator types.<br/>Clock/RNG reached only through ports
-    CO-->>AD: vector&lt;RouteDecision&gt;
+    CO-->>AD: a list of RouteDecision
 
     loop each decision
         alt Unicast / Broadcast

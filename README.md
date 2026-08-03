@@ -18,7 +18,12 @@ The repository no longer bundles a copy of any simulator. You install AntHocNet
 onto *your own* NS-2 or NS-3 tree:
 
 - **NS-2** — installed as an idempotent, version-independent source patch
-  (`ns-2.34` / `ns-2.35`).
+  (`ns-2.34` / `ns-2.35`). **Deprecated:
+  [v1.2.0](https://github.com/danieljoppi/AntHocNet/releases/tag/v1.2.0) is the
+  last release that ships NS-2 support** — see
+  [#307](https://github.com/danieljoppi/AntHocNet/issues/307). Pin that tag (or
+  its immutable images `ghcr.io/danieljoppi/anthocnet-ns2:2.34-v1.2.0` /
+  `:2.35-v1.2.0`) if you need it; published tags are not withdrawn.
 - **NS-3** — installed as an additive `contrib/` module (ns-3.36+, with a
   `wscript` for older waf builds).
 

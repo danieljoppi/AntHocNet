@@ -317,7 +317,7 @@ but written by different mechanisms and read by different consumers:
 flowchart LR
     subgraph NODE["node i · PheromoneTable"]
         direction TB
-        REG["<b>regular</b> T&#94;i<sub>nd</sub><br/>written only by <b>backward ants</b><br/>= measured path goodness"]
+        REG["<b>regular</b> — the paper's T(n,d)<br/>written only by <b>backward ants</b><br/>= measured path goodness"]
         VIRT["<b>virtual</b><br/>written only by <b>hello adverts</b><br/>= diffused estimate, one hop discounted"]
     end
 
