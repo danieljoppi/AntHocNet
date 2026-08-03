@@ -48,6 +48,49 @@ single `loseNeighbor(n)`:
   proactive/diffusion off suppresses only the hello pheromone payload, not the
   hellos themselves.
 
+## The two detectors on one timeline
+
+Detector A is a timer; detector D is an event. They race, and whichever fires
+first calls the same `loseNeighbor(n)` — so the diagram below is the *fast*
+case (D wins) and the *portable* case (only A exists) drawn together.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant MAC as Wi-Fi MAC (adapter)
+    participant D as Detector D<br/>tx-failure (optional)
+    participant A as Detector A<br/>hello timeout (always)
+    participant C as AntRouterLogic
+    participant N as neighbours
+
+    Note over A: last-seen touched on ANY reception
+    MAC-->>D: unicast to n fails
+    MAC-->>D: ... again
+    MAC-->>D: ... 3rd time (TxFailureThreshold, #19 debounce)
+    D->>C: loseNeighbor(n) — immediately
+    Note over A: (without D, A would wait<br/>helloInterval × allowedHelloLoss)
+    A->>C: loseNeighbor(n) — on timeout
+
+    C->>C: prune pheromone via n
+    alt an alternate next hop survives (#96)
+        Note over C: <b>absorb</b> — keep forwarding,<br/>no repair, no notification
+    else no route to the destination left
+        C->>N: Repair ant (broadcast, lifeAnt budget)
+        Note over C: arm deadline =<br/>RepairWaitFactor × lost-path delay<br/>(else RepairTimeout)
+        alt backward ant returns in time
+            N-->>C: backward ant → route restored,<br/>deadline cancelled, queue flushed
+        else deadline expires
+            C->>N: LinkFail note (dest, 0.0)<br/>= no path left
+        end
+    end
+```
+
+Reading the race is the point of having two: **A alone is correct but slow**
+(it must wait out the hello budget, and on a mobile field that is the
+reconvergence tail), while **D alone is fast but blind** — it only ever fires
+for a neighbour this node is actively transmitting to, so an idle neighbour
+that walks away is invisible to it. Neither is redundant.
+
 ## Alternatives considered
 
 - **Make `INeighborProvider` authoritative** — the core diffs successive

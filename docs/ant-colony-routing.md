@@ -308,6 +308,79 @@ break. In this codebase the liveness side uses **two independent detectors**
 (missed-hello timeout + MAC unicast failure);
 [ADR-0008](adr/0008-neighbour-liveness-two-detectors.md).
 
+### The table, and the life of one pheromone entry
+
+Each node keeps **two** tables keyed the same way — `(neighbour, destination)` —
+but written by different mechanisms and read by different consumers:
+
+```mermaid
+flowchart LR
+    subgraph NODE["node i · PheromoneTable"]
+        direction TB
+        REG["<b>regular</b> T&#94;i<sub>nd</sub><br/>written only by <b>backward ants</b><br/>= measured path goodness"]
+        VIRT["<b>virtual</b><br/>written only by <b>hello adverts</b><br/>= diffused estimate, one hop discounted"]
+    end
+
+    BA["backward ant"] -->|"updateRegular()"| REG
+    HE["hello ant advert"] -->|"updateVirtual()"| VIRT
+
+    REG -->|"BetaData = 2<br/>(greedy)"| DATA["<b>data forwarding</b>"]
+    REG -->|"BetaAnts = 1<br/>(explorative)"| ANTS["ant next-hop choice"]
+    VIRT -->|"proactive ants only"| ANTS
+    VIRT -.->|"never — ADR-0007's<br/>load-bearing invariant"| DATA
+
+    style REG fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
+    style VIRT fill:#eef,stroke:#5b4fc4,stroke-width:2px
+    style DATA fill:#fff3d4,stroke:#c48f00
+```
+
+The asymmetry is the point: an advert says *"I can reach X"*, not *"I have
+measured a good path to X"*. Steering an **ant** by that is a cheap probe;
+steering **data** by it would be a delivery bet on unverified information. That
+is why data never reads the virtual table
+([ADR-0007](adr/0007-proactive-diffusion-gated.md)) — and
+[ADR-0016](adr/0016-directed-reactive-discovery-is-gated-and-off.md) narrowed
+the rule to *ants may be steered by it* without touching the invariant.
+
+One entry's life, on the timeline that actually runs:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as backward ant
+    participant T as PheromoneTable entry (n,d)
+    participant E as evaporation tick
+    participant S as next-hop selection
+
+    B->>T: updateRegular() — deposit from<br/>ILinkMetric(path time, hops)
+    Note over T: entry now exists and competes
+    S->>T: read: P(n) ∝ pheromone^beta
+    loop every evaporationInterval (rides the hello timer)
+        E->>T: age by alpha^(dt / evaporationInterval)<br/>time-proportional retention
+        alt aged >= minPheromone (1e-5)
+            Note over T: survives, weaker
+        else aged < minPheromone
+            E-->>T: <b>evict</b> — entry removed
+        end
+    end
+    B->>T: a later backward ant re-deposits<br/>and the decay is undone
+```
+
+Two properties worth holding onto, because they are easy to get backwards:
+
+- **Reinforcement is the signal; evaporation is a safety net.** The 2004/2007
+  sources have *no* evaporation term at all — competition between paths comes
+  from fresher, better ants depositing more. Evaporation exists here to bound
+  stale state, and is deliberately secondary
+  ([ADR-0012](adr/0012-evaporation-is-a-secondary-safety-net.md); virtual
+  entries age on the same tick and factor as regular ones since
+  [#262](https://github.com/danieljoppi/AntHocNet/issues/262)).
+- **Eviction is quiet.** Falling below `minPheromone` removes the entry with no
+  packet, no notification, no trace — which is exactly why the
+  [#216](https://github.com/danieljoppi/AntHocNet/issues/216) investigation had
+  to reconstruct the decay arithmetic by hand to explain why a route never
+  disappeared.
+
 ### A note on evaporation
 
 The original AntHocNet has **no classic evaporation term**: pheromone is kept
