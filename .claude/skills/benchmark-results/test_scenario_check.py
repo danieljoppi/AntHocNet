@@ -63,7 +63,7 @@ sc = _load_scenario_check()
 CLEAN = {
     "kind": "scenario", "group": "taxonomy", "x": "paper-base",
     "scenario": "paper-base", "class": "sparse / mobile",
-    "protocol": "anthocnet", "runs": "2", "nNodes": "50", "areaX": "1500",
+    "protocol": "anthocnet", "runs": "20", "nNodes": "50", "areaX": "1500",
     "speed": "20", "pause": "30", "flows": "20", "propagation": "range",
     "pdr_pct": "89.4", "delay_ms": "40.0", "delay99_ms": "200.0",
     "throughput_kbps": "9.0", "nrl": "2.0", "jitter_ms": "10.0",
@@ -145,6 +145,33 @@ def expect(cond, name, detail):
 def _clean():
     levels, out = run_results()
     expect(levels == [], "clean", f"expected no reports, got {levels}\n{out}")
+
+
+# --- #293 runs-floor ----------------------------------------------------------
+
+
+@case("#293 a 5-run cell WARNs below the published-point floor")
+def _runs_floor_fires():
+    # 5 was the pre-#110 sweep run count — exactly the data the floor exists
+    # to keep out of publications (DSDV's delay99 dispersion was invisible
+    # at 5 seeds, #293).
+    levels, out = run_results(runs="5")
+    expect("WARN" in levels, "runs-floor-fires",
+           f"runs=5 did not WARN\n{out}")
+    expect("published-point floor" in out, "runs-floor-fires",
+           f"WARN did not name the floor\n{out}")
+
+
+@case("#293 the floor stays quiet at 10 runs and on rows with no run count")
+def _runs_floor_quiet():
+    levels, out = run_results(runs="10")
+    expect(levels == [], "runs-floor-quiet",
+           f"runs=10 (the floor) must not WARN\n{out}")
+    # A bare table row with no ##RUN## rows carries no run count: skip.
+    levels, out = run_cell(
+        "anthocnet 89.4 40.0 200.0 9.0 2.0\n")
+    expect(levels == [], "runs-floor-no-count",
+           f"row without a run count must not WARN\n{out}")
 
 
 # --- #230 path diversity -----------------------------------------------------
@@ -457,9 +484,11 @@ def _divcell_sanity_fires():
 # The CSV fixture is a realistic 4x4 torus at the anchor knobs: 16 satellites,
 # 32 ISLs, islDelayMs=5, 8 flows. delay 10.4 ms is the measured hop-delay
 # identity reading (h=2, d=5 ms: 10.39 ms, CI run 30190452648, anchors.yml).
+# runs sits at the #293 published-point floor so the clean fixture stays
+# clean; the runs-floor WARN has its own must-fire case below.
 
 ISL_CLEAN = {
-    "protocol": "anthocnet", "runs": "3", "rows": "4", "cols": "4",
+    "protocol": "anthocnet", "runs": "20", "rows": "4", "cols": "4",
     "nodes": "16", "links": "32", "isl_delay_ms": "5.0", "flows": "8",
     "pdr_pct": "100.0", "delay_ms": "10.4", "delay99_ms": "10.9",
     "throughput_kbps": "32.28", "nrl": "1.401", "nrl_bytes": "0.988",

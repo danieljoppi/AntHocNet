@@ -145,6 +145,74 @@ PDR / mean+99th-percentile delay / NRL vs. the swept parameter:
 Unlike the paper (AODV only), every baseline (AODV/OLSR/DSDV) is run on identical
 realisations, so the classification covers all of them.
 
+## Statistical policy ([#293](https://github.com/danieljoppi/AntHocNet/issues/293))
+
+Every number published in these pages or in the papers repo carries a **95%
+confidence interval**, or is explicitly marked single-run/diagnostic. The
+computation lives in
+[`.claude/skills/benchmark-results/stats_util.py`](../../.claude/skills/benchmark-results/stats_util.py)
+(consumed by `bench_parse.py` / `sweep_summary.py`; self-tested by
+`test_stats.py` in `lint.yml`) — change the methods there and here together.
+
+### Runs floor
+
+- **Published points: ≥ 10 runs.** `scenario_check.py results` WARNs on any
+  cell below it (a low-run cell is a legitimate cheap probe; it just must not
+  be published or quoted).
+- **Headline cells and tail-quantile claims: 20 runs** (thesis parity —
+  Ducatelle §5.1.3 uses 20 repetitions).
+- The floor is **metric-dependent by design**: tail metrics disperse far more
+  than PDR. The #110 20-seed headline measured DSDV `delay99` half-widths of
+  ±119.90 ms (disk) / ±122.94 ms (two-ray) — an order of magnitude wider,
+  relative to the mean, than any other cell, i.e. per-seed bimodality that
+  five seeds could not expose. A floor derived from PDR stability would have
+  passed that cell at 5 runs. Hence: means may be published at 10; anything
+  quoting `delay99` (or another tail quantile) needs 20.
+
+### CI method per metric
+
+| metric family | interval | why |
+|---|---|---|
+| `pdr`, `delay`, `thrput`, `nrl`, `nrl_bytes` (per-run aggregates, roughly symmetric across seeds) | Student-t, `t_{0.975,n-1} · sd/√n` | standard small-sample CI on a mean |
+| `delay99` (a per-run p99), other tail quantiles | **percentile bootstrap** over the per-run values (10 000 resamples, fixed seed — the interval is reproducible byte-for-byte) | the across-seed distribution of a p99 is skewed; a symmetric t-CI on it is not defensible |
+| paired A/B differences (identical seeds) | CI on the **per-seed difference** (t for `pdr`/`nrl`, bootstrap for `delay99`) **plus a two-sided Wilcoxon signed-rank test** (exact for n ≤ 25 without ties) | overlapping per-arm CIs do **not** imply non-significance; the paired difference is the honest test |
+
+Significance in an A/B is "the difference CI excludes zero" — when per-seed
+`##RUN##` rows are present, this **replaces** `bench_parse.py`'s materiality
+thresholds (which remain the fallback for aggregate-only cells). Sweeps that
+produce many comparisons get a multiple-comparison note (at α = 0.05, expect
+~1 false positive per 20 cells); treat isolated marginal p-values accordingly.
+
+### Warm-up / transient policy
+
+**Nothing is discarded post-hoc, deliberately.** FlowMonitor is installed over
+the whole run and every packet from each flow's application start counts —
+including packets sent before the protocol has converged a route. Route-setup
+and reconvergence cost is part of what this repo measures (the #21/#308 delay
+tail lives exactly there); a warm-up cut would quietly delete the finding.
+The transient is handled by scenario design instead:
+
+- traffic starts are staggered **uniformly over [0, 180] s** in the
+  paper/thesis presets ([0, 5] s elsewhere), so flows do not all pay setup
+  simultaneously;
+- runs last **900 s**, an order of magnitude above observed convergence
+  times, so the steady state dominates every mean;
+- per-flow route-setup latency is reported separately (#23: the
+  `setupMedS=`/`setupMaxS=`/`flowsNoDelivery=` fields, first delivery − flow
+  start), so setup cost is visible rather than averaged away.
+
+The queue-depth sampler starts after a 10% warm-up (diagnostic only, #73); no
+published metric is windowed. Steady-state RWP speed decay (#61) remains an
+open realism item tracked for the v1.4.0 campaigns, not a statistics one.
+
+### RNG scheme
+
+Per the ns-3 manual: **fixed seed, advancing run number** —
+`RngSeedManager::SetSeed(1)`, `SetRun(seed)` with `seed` = 1…N. Every
+protocol in a comparison sees the **identical realisation** per run (same
+topology, mobility, traffic draw), which is what makes the paired analysis
+above valid and is protected by the determinism anchor (#129) below.
+
 ## Build profiles: `default` for CI, `release` for campaigns
 
 ns-3 builds under a *build profile*, and until [#123](https://github.com/danieljoppi/AntHocNet/issues/123)

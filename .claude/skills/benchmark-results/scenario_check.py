@@ -267,7 +267,7 @@ def parse_results(path):
     if first.startswith("protocol,runs,rows,cols,"):
         for r in csv.DictReader(text.splitlines()):
             yield {"where": f"isl-grid {r.get('rows')}x{r.get('cols')}",
-                   "proto": r.get("protocol"),
+                   "proto": r.get("protocol"), "runs": r.get("runs"),
                    "pdr": r.get("pdr_pct"), "delay": r.get("delay_ms"),
                    "delay99": r.get("delay99_ms"), "nrl": r.get("nrl"),
                    "jitter": r.get("jitter_ms"),
@@ -310,7 +310,7 @@ def parse_results(path):
     if first.startswith("kind,") or ",protocol," in first:
         for r in csv.DictReader(text.splitlines()):
             yield {"where": f"{r.get('group')}={r.get('x')}",
-                   "proto": r.get("protocol"),
+                   "proto": r.get("protocol"), "runs": r.get("runs"),
                    "pdr": r.get("pdr_pct"), "delay": r.get("delay_ms"),
                    "delay99": r.get("delay99_ms"), "nrl": r.get("nrl"),
                    "jitter": r.get("jitter_ms"),
@@ -342,6 +342,12 @@ def parse_results(path):
         return
     rows = []          # yielded in table order
     by_proto = {}      # diagnostics merge into the protocol's last row
+    # #293 runs-floor: a saved cell's per-seed ##RUN## rows reveal the run
+    # count the 9-number table/##BENCH## block does not carry.
+    run_counts = {}
+    for proto in re.findall(r"^##RUN##\s+\d+\s+([A-Za-z][\w-]*)", text,
+                            re.MULTILINE):
+        run_counts[proto] = run_counts.get(proto, 0) + 1
     for line in text.splitlines():
         m = ROW.match(line)
         if m:
@@ -350,7 +356,7 @@ def parse_results(path):
                 continue
             row = {"where": os.path.basename(path), "proto": proto,
                    "pdr": nums[0], "delay": nums[1], "delay99": nums[2],
-                   "nrl": nums[4]}
+                   "nrl": nums[4], "runs": run_counts.get(proto)}
             if len(nums) >= 6:
                 row["jitter"] = nums[5]
             if len(nums) >= 11:  # #209: ... nrlBytes, energy(J), J/pkt
@@ -397,6 +403,16 @@ def cmd_results(a):
                     return None
             pdr, delay, d99 = num("pdr"), num("delay"), num("delay99")
             nrl, jit = num("nrl"), num("jitter")
+            # #293 runs-floor: published points need >=10 runs (tail-quantile
+            # claims 20 — see docs/benchmarks/methodology.md "Statistical
+            # policy"). WARN, not FAIL: low-run cells are legitimate cheap
+            # probes, they just must not be published or quoted. Rows without
+            # a run count (a bare table with no ##RUN## rows) skip the rule.
+            runs = num("runs")
+            if runs is not None and runs < 10:
+                report("WARN", f"{tag}: {int(runs)} run(s) — below the #293 "
+                               f"published-point floor (>=10; tail quantiles "
+                               f"need 20). Diagnostic only, do not publish.")
             if pdr is None or not (0.0 <= pdr <= 100.0):
                 report("FAIL", f"{tag}: PDR {r.get('pdr')} outside [0,100]")
             if delay is not None and d99 is not None and d99 < delay:
