@@ -23,6 +23,11 @@ Verdict per point (same materiality thresholds as bench_parse.py): PDR ±1pp,
 delay99 ±10%, NRL ±10%; a material PDR delta inside 2·RSS(pdr_sd) is tagged
 `~sd` (within run-to-run dispersion — treat as noise, bump --runs).
 
+The PDR columns carry a `±95` neighbour (#293): the 95% CI half-width from
+the CSV's `pdr_sd`/`runs` aggregate columns (t-distribution, n-1 df), blank
+for pre-#28 CSVs or runs<2. Per-run bootstrap intervals for tail metrics need
+##RUN## rows and live in bench_parse.py.
+
 `--vs` answers "what did this code change do to the sweep?" rather than "how
 does AntHocNet compare to AODV?" — the loop needed after #88 (T_hop) and #169
 (reactiveMaxBroadcasts) invalidated every published number. It also prints a
@@ -36,8 +41,24 @@ import csv
 import math
 import sys
 
+import stats_util
+
 REQUIRED = ["kind", "group", "x", "protocol", "runs",
             "pdr_pct", "delay_ms", "delay99_ms", "nrl"]
+
+
+def pdr_hw(row):
+    """95% CI half-width for a row's PDR from pdr_sd/runs (t, n-1 df; #293).
+
+    Blank string when the CSV predates #28 stddev columns or runs < 2.
+    Campaign CSVs carry aggregates only (mean + sd), so this is a t-CI;
+    per-run bootstrap intervals for tail metrics need ##RUN## rows and live
+    in bench_parse.py.
+    """
+    sd, runs = f(row, "pdr_sd"), f(row, "runs")
+    if sd is None or runs is None or runs < 2:
+        return ""
+    return f"{stats_util.t_halfwidth(sd, int(runs)):.1f}"
 
 
 def load(path):
@@ -111,8 +132,8 @@ def generation_diff(before, after, proto, baseline):
     Returns the exit status: non-zero if the control failed.
     """
     print(f"{'group':<10}{'x':>8}  {'runs':>4}  "
-          f"{'after':>6}{'before':>7}  {'dPDR':>7}{'d99%':>8}{'dNRL%':>8}  "
-          f"verdict")
+          f"{'after':>6}{'±95':>5}{'before':>7}{'±95':>5}  "
+          f"{'dPDR':>7}{'d99%':>8}{'dNRL%':>8}  verdict")
     shared = sorted(k for k in after if k in before)
     for k in shared:
         kind, group, x = k
@@ -123,7 +144,8 @@ def generation_diff(before, after, proto, baseline):
             continue
         tag, dp, d99, dn = verdict(a, b)
         print(f"{group:<10}{x:>8g}  {f(a,'runs',0):>4.0f}  "
-              f"{f(a,'pdr_pct',0):>6.1f}{f(b,'pdr_pct',0):>7.1f}  "
+              f"{f(a,'pdr_pct',0):>6.1f}{pdr_hw(a):>5}"
+              f"{f(b,'pdr_pct',0):>7.1f}{pdr_hw(b):>5}  "
               f"{dp:>+7.1f}{d99:>+8.1f}{dn:>+8.1f}  {tag}")
 
     only_a = len(after) - len(shared)
@@ -188,7 +210,8 @@ def main():
         sys.exit(generation_diff(before, cells, args.proto, args.baseline))
 
     print(f"{'group':<10}{'x':>8}  {'runs':>4}  "
-          f"{'PDR':>6}{'vs':>7}  {'dPDR':>7}{'d99%':>8}{'dNRL%':>8}  verdict")
+          f"{'PDR':>6}{'±95':>5}{'vs':>7}{'±95':>5}  "
+          f"{'dPDR':>7}{'d99%':>8}{'dNRL%':>8}  verdict")
     for k in sorted(cells):
         kind, group, x = k
         a = cells[k].get(args.proto)
@@ -200,7 +223,8 @@ def main():
             continue
         tag, dp, d99, dn = verdict(a, b)
         print(f"{group:<10}{x:>8g}  {f(a,'runs',0):>4.0f}  "
-              f"{f(a,'pdr_pct',0):>6.1f}{f(b,'pdr_pct',0):>7.1f}  "
+              f"{f(a,'pdr_pct',0):>6.1f}{pdr_hw(a):>5}"
+              f"{f(b,'pdr_pct',0):>7.1f}{pdr_hw(b):>5}  "
               f"{dp:>+7.1f}{d99:>+8.1f}{dn:>+8.1f}  {tag}")
 
     if args.export_sweeps:
