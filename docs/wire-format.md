@@ -23,6 +23,29 @@ we do *not* negotiate alternative layouts.
 
 ## Frame layout (current code)
 
+The fixed 37-byte head, then three length-prefixed variable arrays:
+
+```mermaid
+packet-beta
+0-7: "version (u8)"
+8-15: "type (u8)"
+16-23: "direction (u8)"
+24-55: "src (i32)"
+56-87: "dst (i32)"
+88-119: "seqNum (u32)"
+120-183: "timeStart (f64)"
+184-247: "lifeAnt (f64)"
+248-279: "broadcastBudget (i32)"
+280-295: "nVisited (u16)"
+296-359: "visited[] — 12 bytes per AntHop, then nHistory / history[] / nHello / helloDests[]"
+```
+
+Everything after `nVisited` is variable-length and repeats the same shape:
+a `u16` count followed by that many 12-byte records (`{i32 node; f64 value}`).
+Each count is rejected on decode if it exceeds its cap — `kMaxVisitedOnWire`,
+`kMaxHistoryOnWire`, `kMaxHelloOnWire` — so a malformed or hostile frame cannot
+allocate unboundedly. Byte offsets and semantics per field:
+
 | Offset | Field | Type | Bytes | Meaning |
 |-------:|-------|------|------:|---------|
 | 0  | `version`   | `u8`     | 1 | Wire-format version (`kWireVersion`, currently `0x03`). Checked first; a mismatch is rejected in O(1). |

@@ -106,6 +106,50 @@ than once: later same-generation ants are admitted through the acceptance band
 (a1 = 0.9, a2 = 2.0 for a *new first hop*), so several backward ants deposit
 along several paths.
 
+That band is the protocol's headline claim, so it is worth seeing the copies
+compete rather than taking it on trust. One flood, one generation `(src, seq)`,
+three copies arriving at the destination:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as source S
+    participant P1 as path via A<br/>(first hop A)
+    participant P2 as path via B<br/>(first hop B)
+    participant D as destination D
+
+    S->>P1: reactive ant, generation (S, seq)
+    S->>P2: same generation, different first hop
+
+    P1->>D: copy 1 — 3 hops, 40 ms
+    Note over D: first arrival sets the<br/>generation's best: hops 3, time 40 ms
+    D-->>S: backward ant → deposits path A
+
+    P2->>D: copy 2 — first hop <b>B is new</b>
+    Note over D: new first hop ⇒ a2 = 2.0 applies<br/>4 hops ≤ 3×2.0 and 70 ms ≤ 40×2.0 → <b>admit</b>
+    D-->>S: backward ant → deposits path B<br/><i>this is the disjoint path</i>
+
+    P1->>D: copy 3 — first hop A already seen
+    Note over D: same first hop ⇒ a1 = 0.9 applies<br/>5 hops > 3×0.9 → <b>reject</b>
+    Note over D: no backward ant — the flood<br/>does not become a deposit storm
+
+    Note over S: S now holds pheromone for D via<br/>BOTH A and B — data is spread over them
+```
+
+Two asymmetries in that band do the work, and both are thesis values
+([#177](https://github.com/danieljoppi/AntHocNet/issues/177)):
+
+- **a1 = 0.9 is *below* 1.0**, so for an already-seen first hop the band
+  *suppresses* rather than admits — only ants better than the best so far get
+  through. (The 2004 paper says 1.5; the 2007 thesis reports its authors ran
+  0.9, "in order to only allow the best ants through", and the thesis
+  supersedes.)
+- **a2 = 2.0 is deliberately permissive**, applied only when the first hop is
+  one no accepted ant of this generation used. That is the mechanism actively
+  *rewarding* disjointness rather than merely tolerating it — which is why
+  a2 must stay ≥ a1, or the mechanism penalises exactly what it exists to
+  create.
+
 ## 4. Lifecycle: proactive maintenance and diffusion
 
 Two mechanisms that only exist while a flow is active. Hello adverts build the
