@@ -7,6 +7,18 @@ nothing here ships a copy of NS-2.
 
 Validated targets: **ns-2.34** and **ns-2.35**.
 
+> [!WARNING]
+> **NS-2 support is deprecated.**
+> [v1.2.0](https://github.com/danieljoppi/AntHocNet/releases/tag/v1.2.0) is the
+> **last release that ships this adapter**; it is removed at v2.0.0
+> ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)). Nothing already
+> published is withdrawn — pin the `v1.2.0` tag, or its immutable images
+> `ghcr.io/danieljoppi/anthocnet-ns2:2.34-v1.2.0` / `:2.35-v1.2.0`, and that
+> release stays citable at its own DOI. The simulator-agnostic
+> [`core/`](../core) is unaffected: it is the ns-3 adapter and any future one
+> (OMNeT++/INET, [#32](https://github.com/danieljoppi/AntHocNet/issues/32)) that
+> carry it forward.
+
 ## Install
 
 ```bash
