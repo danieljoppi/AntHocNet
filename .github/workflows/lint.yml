@@ -30,7 +30,7 @@ jobs:
         # sweep_summary.py predate this and carry E701s that are not this
         # change's to fix. Add new skill scripts here as they land.
         run: |
-          ruff check ns3/tools \
+          ruff check ns3/tools docs/tools \
             .claude/skills/benchmark-results/scenario_check.py \
             .claude/skills/benchmark-results/test_scenario_check.py
       - name: Benchmark-gate self-test
@@ -40,6 +40,16 @@ jobs:
         # failing the self-check its own documentation defines. Cheap (no
         # simulator, no network, ~1 s) and it runs on every PR.
         run: python3 .claude/skills/benchmark-results/test_scenario_check.py
+      - name: Mermaid render gate (docs)
+        # A sequenceDiagram message carrying &lt;/&gt; parses as balanced text
+        # locally but is a hard parse error in Mermaid's sequence grammar, so
+        # GitHub renders "Unable to render rich display" for the whole diagram.
+        # It shipped because the pre-commit check verified structure
+        # (subgraph/end, bracket balance) and never asked whether Mermaid could
+        # parse the block. Stdlib-only, <1 s, runs on every PR.
+        run: |
+          python3 docs/tools/check-mermaid.py --self-test
+          python3 docs/tools/check-mermaid.py .
       - name: Config default parity (core vs ns-2 vs ns-3)
         # A Config default that drifts in one tree only is the #252/#254
         # failure mode: proactiveInterval leaked 10 -> 2 in a PR that claimed

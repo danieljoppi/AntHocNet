@@ -16,6 +16,13 @@ license: GPL-2.0-only
 repository-code: "https://github.com/danieljoppi/AntHocNet"
 url: "https://github.com/danieljoppi/AntHocNet"
 doi: "10.5281/zenodo.20981979"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.20981979"
+    description: "Concept DOI — always resolves to the latest released version."
+  - type: doi
+    value: "10.5281/zenodo.21762983"
+    description: "Version DOI — v1.2.0, the release this file describes."
 keywords:
   - MANET
   - ad hoc networks
