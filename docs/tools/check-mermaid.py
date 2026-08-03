@@ -29,7 +29,7 @@ import pathlib
 import re
 import sys
 
-BLOCK = re.compile(r"```mermaid\n(.*?)```", re.S)
+BLOCK = re.compile(r"```mermaid\n(.*?)```", re.DOTALL)
 # Named entities (&lt; &gt; &amp; &quot; &nbsp;) and numeric ones (&#94; &#x5e;).
 ENTITY = re.compile(r"&(?:[a-zA-Z][a-zA-Z0-9]{1,10}|#[0-9]{1,5}|#x[0-9a-fA-F]{1,4});")
 
