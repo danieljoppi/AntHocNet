@@ -243,6 +243,10 @@ jobs:
           # emitting it is only half of shipping it.
           grep '^##MATCH##' "$GITHUB_WORKSPACE/paper-results.txt" \
             >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
+          # #308: common-set rows, added here in the same commit that emits
+          # them — see the ##MATCH## note above for what forgetting costs.
+          grep '^##COMMON##' "$GITHUB_WORKSPACE/paper-results.txt" \
+            >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
           # #230: the '# paths/energy/drops/stddev/reorder' diagnostic lines are
           # the *only* place the #209/#212/#215/#217 metric families appear in a
           # single-point run — the fixed-width table cannot carry them (its field

@@ -140,6 +140,40 @@ columns, because the `##RUN##` field order is consumed **positionally** by
 shift their mapping — the failure mode the `# stddev` cross-check exists to
 catch (#293).
 
+### Common-set delay99 (`##COMMON##`, #308 phase 1)
+
+`##MATCH##` *bounds* the confound; it cannot remove it, because truncating by
+rank still assumes the surplus deliveries are the slowest ones. Keying by
+packet **identity** removes the assumption:
+
+```
+##COMMON## <run> <proto> <nSelf> <nCommon> <p99Common> <meanCommon> <p99Surplus>
+```
+
+`nCommon` is the number of `(flow, seq)` pairs **every** protocol in the run
+delivered. `p99Common` / `meanCommon` are that protocol's tail and mean over
+exactly those packets — same packets, same seeds, all delivered — so no
+population difference remains to confound the comparison. This is the
+assumption-free version of the matched measurement.
+
+`p99Surplus` is the tail over the packets this protocol delivered that some
+other protocol did not. It tests the hypothesis `##MATCH##` could only assume:
+**if a protocol's extra deliveries really are its slow ones, its surplus tail
+sits far above its common tail.** Reading the two together is the point — the
+common tail says who is actually faster, the surplus tail says why the naive
+comparison disagreed.
+
+Per-packet delay comes from `SeqTsSizeHeader`'s send timestamp, which the
+reordering trace (#212) already peeks for the sequence number, so this costs
+one subtraction per delivered packet.
+
+**The one assumption left, and it is checkable.** Cross-protocol keying needs a
+flow's `(source IP, source port)` to be identical across protocols in the same
+run. It is — topology, addressing and application construction are identical
+and identically seeded, only the routing protocol differs — and the output
+makes a violation visible rather than silent: `nCommon` collapsing toward zero
+means the keys did not line up, which no real routing difference could produce.
+
 > **Adding a marker is two changes, not one.** The harness emitting a
 > `##MARKER##` line is only half of shipping it: `paper-benchmark.yml`'s
 > *"Compact result block"* step re-emits a **explicit allow-list** of markers at
