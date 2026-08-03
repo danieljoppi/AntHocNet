@@ -208,6 +208,7 @@ History of the work is in the per-phase commits; design rationale is in
 | [docs/README.md](docs/README.md) | **The docs map** — every page in `docs/`, grouped by what you are trying to do. |
 | [docs/ant-colony-routing.md](docs/ant-colony-routing.md) | Concepts primer: ant foraging → ACO → AntNet → AntHocNet, and how they map to the code. Start here for the *idea*. |
 | [docs/architecture.md](docs/architecture.md) | Design, the core/adapter split, and the decision flow. |
+| [docs/software-layers.md](docs/software-layers.md) | Diagrams: the software stack, ant mechanisms + their config switches, and what runs (live/inert/planned) in each network regime. |
 | [docs/porting-notes.md](docs/porting-notes.md) | Bugs fixed in extraction, NS-2 patch anchors, wire format, version caveats. |
 | [docs/configuration.md](docs/configuration.md) | **Every tunable parameter, its default and where that default came from**, the ns-3 attribute / NS-2 bind for it, and the calibration loop. Read before changing a knob or trusting one. |
 | [docs/benchmarks.md](docs/benchmarks.md) | Results index → [metrics](docs/benchmarks/metrics.md), [methodology](docs/benchmarks/methodology.md), per-scenario and per-sweep pages. |
