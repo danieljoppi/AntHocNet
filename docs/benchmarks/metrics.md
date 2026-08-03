@@ -140,6 +140,16 @@ columns, because the `##RUN##` field order is consumed **positionally** by
 shift their mapping — the failure mode the `# stddev` cross-check exists to
 catch (#293).
 
+> **Adding a marker is two changes, not one.** The harness emitting a
+> `##MARKER##` line is only half of shipping it: `paper-benchmark.yml`'s
+> *"Compact result block"* step re-emits a **explicit allow-list** of markers at
+> the end of the log so one cheap `get_job_logs` tail carries everything. A
+> marker missing from that grep still reaches `paper-results.txt` (and the
+> artifact, which is proxy-blocked) but sits far above the compact block. That
+> is exactly what happened to `##MATCH##` on its first run: `tail_lines=215`
+> instead of ~50, and the top row scrolled off anyway, costing one seed out of
+> twenty in a paired analysis.
+
 ## Where the drop-cause identity comes from
 
 Every offered packet lands in exactly one bucket. That is the whole of #215,
