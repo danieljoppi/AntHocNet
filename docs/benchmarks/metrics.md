@@ -103,6 +103,43 @@ readable; `reorder ratio/extent` measure route *flapping* rather than
 multipath, leaving **`buf_max`** as the honest multipath signal; and
 `path_div_*` is unquotable outside the dedicated cell (#230).
 
+## Matched-delivery delay99 (`##MATCH##`, #308, NS-3 only)
+
+`delay99` takes each protocol's tail over **its own** delivered set, and those
+sets are not the same size. AntHocNet delivers ~10 pp more than AODV at the
+paper base scenario, and some of that surplus is precisely the packets that
+waited through a reconvergence. So an unknown part of AntHocNet's worse tail is
+**packets AODV never delivered at all**, not slower service of the packets both
+carry. That is the survivorship confound named above, and until #308 nothing
+measured it.
+
+Every `anthocnet-compare` run now also emits, per run and per protocol:
+
+```
+##MATCH## <run> <proto> <rxSelf> <rxMin> <delay99Ms> <delay99MatchedMs>
+```
+
+`rxMin` is the smallest delivered count across the protocols **in that run**;
+`delay99Matched` re-reads each protocol's 99th percentile at that *absolute*
+count — the delay below which `0.99 × rxMin` of its packets arrived. For the
+protocol that delivered fewest it equals its own `delay99`; for the others it
+is the tail of their fastest `rxMin` packets. `na` means that protocol did not
+deliver enough packets to reach the target (it cannot happen for the protocol
+that set `rxMin`).
+
+**Read it in one direction only.** If the gap *persists* after truncation, the
+delivery surplus cannot account for it — conclusive. If the gap *closes*, that
+is consistent with the surplus explaining the tail but does not establish it,
+because truncating the slowest packets assumes the surplus is the slow ones
+rather than showing it. A closing gap is grounds for per-packet attribution
+(#308 phase 1), not its answer.
+
+It is emitted on its own `##MATCH##` marker rather than as extra `##RUN##`
+columns, because the `##RUN##` field order is consumed **positionally** by
+`bench_parse.py` and the campaign scripts, and appending to it would silently
+shift their mapping — the failure mode the `# stddev` cross-check exists to
+catch (#293).
+
 ## Where the drop-cause identity comes from
 
 Every offered packet lands in exactly one bucket. That is the whole of #215,
