@@ -11,10 +11,15 @@ Render the classified benchmark CSV (from run-scenarios.py) into figures:
   * discrete-summary.png -- grouped BAR chart of the named scenario taxonomy:
     PDR / mean delay / NRL, scenarios on the x-axis, bars per protocol.
 
+Error bars are 95% confidence-interval half-widths (t-distribution, n-1 df,
+from the *_sd and runs columns) per the statistical policy (#293,
+docs/benchmarks/methodology.md) — not +-1 sd as before.
+
 Re-plotting reads only the CSV, so it never re-runs ns-3. Deterministic output.
 """
 import argparse
 import csv
+import importlib.util
 import os
 from collections import defaultdict
 
@@ -22,6 +27,19 @@ import matplotlib
 
 matplotlib.use("Agg")  # headless: write PNGs, no display
 import matplotlib.pyplot as plt
+
+
+def _load_stats_util():
+    """Load the skill-side stats module (single source for the CI math)."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..",
+                        ".claude", "skills", "benchmark-results", "stats_util.py")
+    spec = importlib.util.spec_from_file_location("stats_util", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+su = _load_stats_util()
 
 # Stable protocol order + colours so every figure is consistent.
 PROTO_ORDER = ["anthocnet", "aodv", "olsr", "dsdv", "dsr"]
@@ -48,12 +66,21 @@ def protos_in(rows):
     return [p for p in PROTO_ORDER if p in seen]
 
 
+def _hw(r, sd_key):
+    """95% CI half-width for one row's metric, or None without sd/runs."""
+    sd, runs = fnum(r.get(sd_key)), fnum(r.get("runs"))
+    if sd is None or runs is None or runs < 2:
+        return None
+    return su.t_halfwidth(sd, int(runs))
+
+
 def plot_sweep(name, rows, outdir):
     """One paper-style line figure for a single sweep group."""
     protos = protos_in(rows)
     xlabel = rows[0].get("class", name) if rows else name
-    # series[proto][metric] -> list of (x, value, stddev) sorted by x; stddev
-    # comes from the matching *_sd column (#28 dispersion) when present.
+    # series[proto][metric] -> list of (x, value, ci_halfwidth) sorted by x;
+    # the half-width is the 95% t-CI from the *_sd (#28) and runs columns
+    # (#293) when both are present.
     sd_col = {"pdr_pct": "pdr_sd", "delay_ms": "delay_sd",
               "delay99_ms": "delay99_sd", "nrl": "nrl_sd"}
     series = defaultdict(lambda: defaultdict(list))
@@ -64,7 +91,7 @@ def plot_sweep(name, rows, outdir):
         for m in ("pdr_pct", "delay_ms", "delay99_ms", "nrl"):
             v = fnum(r.get(m))
             if v is not None:
-                series[r["protocol"]][m].append((x, v, fnum(r.get(sd_col[m]))))
+                series[r["protocol"]][m].append((x, v, _hw(r, sd_col[m])))
     for p in series:
         for m in series[p]:
             series[p][m].sort()
@@ -80,7 +107,8 @@ def plot_sweep(name, rows, outdir):
                     color=color, label=label, capsize=3, elinewidth=0.8)
 
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 4.2))
-    fig.suptitle(f"Sweep: {name}", fontsize=13, fontweight="bold")
+    fig.suptitle(f"Sweep: {name}  (error bars: 95% CI)",
+                 fontsize=13, fontweight="bold")
 
     for p in protos:
         c = PROTO_COLOR.get(p, None)
@@ -122,7 +150,8 @@ def plot_discrete(rows, outdir):
         if r["scenario"] not in scenarios:
             scenarios.append(r["scenario"])
     protos = protos_in(rows)
-    # value[(scenario, proto)][metric]; *_sd columns feed bar error bars (#28).
+    # value[(scenario, proto)][metric]; bar error bars are 95% t-CI
+    # half-widths from the *_sd (#28) and runs columns (#293).
     sd_col = {"pdr_pct": "pdr_sd", "delay_ms": "delay_sd", "nrl": "nrl_sd"}
     val = defaultdict(dict)
     err = defaultdict(dict)
@@ -131,14 +160,15 @@ def plot_discrete(rows, outdir):
             v = fnum(r.get(m))
             if v is not None:
                 val[(r["scenario"], r["protocol"])][m] = v
-            e = fnum(r.get(sd_col[m]))
+            e = _hw(r, sd_col[m])
             if e is not None:
                 err[(r["scenario"], r["protocol"])][m] = e
 
     metrics = [("pdr_pct", "PDR (%)"), ("delay_ms", "mean delay (ms)"),
                ("nrl", "NRL")]
     fig, axes = plt.subplots(len(metrics), 1, figsize=(11, 10))
-    fig.suptitle("Scenario taxonomy (named scenarios)", fontsize=13, fontweight="bold")
+    fig.suptitle("Scenario taxonomy (named scenarios)  (error bars: 95% CI)",
+                 fontsize=13, fontweight="bold")
 
     n = len(protos)
     width = 0.8 / max(1, n)
