@@ -33,6 +33,133 @@ adapters never reimplement routing logic.
 
 ## The core
 
+### Types and how they relate
+
+`AntRouterLogic` is the only stateful entry point; everything else is either a
+value type it moves around, a collaborator it owns, or a port it is handed.
+
+```mermaid
+classDiagram
+    class AntRouterLogic {
+        -NodeAddress address
+        -uint32 seqCounter
+        +onReceiveAnt(msg, prevHop) RouteDecision[]
+        +onDataPacket(dest, prevHop) RouteDecision[]
+        +onMaintenanceTick() RouteDecision[]
+        +reportNeighborLoss(n) RouteDecision[]
+        +reportTxFailure(next, dest) RouteDecision[]
+    }
+
+    class PheromoneTable {
+        -map regularByNeighbourDest
+        -map virtualByNeighbourDest
+        -set neighbours
+        +bestRegular(dest) double
+        +selectNextHop(dest, beta) NodeAddress
+        +setPheromoneRegular(dest, n, v)
+        +removePheromoneRegular(dest, n)
+    }
+
+    class PheromoneEngine {
+        +updateRegular(table, dest, obs)
+        +updateVirtual(table, hello)
+        +evaporateAll(table, dt)
+        +cleanNeighbor(table, n)
+    }
+
+    class AntHistoryTracker {
+        -deque insertionOrder
+        +seen(src, seq) bool
+        +remember(src, seq)
+        +clear()
+    }
+
+    class GenerationTracker {
+        +accept(src, seq, hops, time, firstHop) bool
+        +allowBroadcast(src, seq, max) bool
+        +clear()
+    }
+
+    class AntMessage {
+        +AntType type
+        +AntDirection direction
+        +NodeAddress src
+        +NodeAddress dst
+        +uint32 seqNum
+        +double timeStart
+        +double lifeAnt
+        +int broadcastBudget
+        +VisitedPath visited
+        +VisitedPath history
+        +HelloDest[] helloDests
+        +isForward() bool
+    }
+
+    class VisitedPath { +AntHop[] hops }
+    class AntHop { +NodeAddress node
+                   +double time }
+    class HelloDest { +NodeAddress node
+                      +double pheromone }
+
+    class AntMessageCodec {
+        +encode(msg) bytes
+        +decode(bytes) AntMessage
+    }
+
+    class RouteDecision {
+        +RouteAction action
+        +NodeAddress nextHop
+        +AntMessage message
+    }
+
+    class ILinkMetric {
+        <<interface>>
+        +pheromoneFor(observation) double
+    }
+    class ClassicMetric { +pheromoneFor(observation) double }
+
+    class IClock { <<interface>> +now() double }
+    class IRng { <<interface>> +uniform() double }
+    class ITimerScheduler { <<interface>> +schedule(delay, cb) }
+    class INeighborProvider { <<interface>> +neighbours() list }
+
+    AntRouterLogic *-- PheromoneTable
+    AntRouterLogic *-- PheromoneEngine
+    AntRouterLogic *-- AntHistoryTracker
+    AntRouterLogic *-- GenerationTracker
+    AntRouterLogic ..> RouteDecision : returns
+    AntRouterLogic ..> AntMessage : consumes / builds
+    AntRouterLogic o-- IClock
+    AntRouterLogic o-- IRng
+    AntRouterLogic o-- ITimerScheduler
+    AntRouterLogic o-- INeighborProvider
+    AntRouterLogic o-- ILinkMetric
+
+    PheromoneEngine ..> PheromoneTable : mutates
+    ILinkMetric <|.. ClassicMetric
+    AntMessage *-- VisitedPath
+    AntMessage *-- HelloDest
+    VisitedPath *-- AntHop
+    AntMessageCodec ..> AntMessage : encodes / decodes
+    RouteDecision *-- AntMessage
+```
+
+Three relationships carry the architecture:
+
+- **Composition (`*--`) is owned state**; the tables and trackers live and die
+  with the router logic and are never shared between nodes.
+- **Aggregation (`o--`) is injected** — every port and the link metric are
+  handed in. This is the entire reason the core compiles without a simulator:
+  there is no path from `AntRouterLogic` to a clock, a random number, or a
+  timer except through an interface someone else implements.
+- **`ILinkMetric` is the one open seam.** `ClassicMetric` (the paper's Eq. 2) is
+  the default; energy-aware and fuzzy-composite metrics
+  ([#145](https://github.com/danieljoppi/AntHocNet/issues/145),
+  [#146](https://github.com/danieljoppi/AntHocNet/issues/146)) and the planned
+  trust factor ([#302](https://github.com/danieljoppi/AntHocNet/issues/302))
+  plug in here without the core learning about any of them. Metrics are
+  stateless and const, so one process-lifetime instance is shared by every node.
+
 ### Value types
 
 - **`AntMessage`** — a plain, copyable description of an ant: type, direction,
