@@ -10,6 +10,7 @@ golden rules, where-to-look), [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 | Page | What it is |
 |---|---|
 | [ant-colony-routing.md](ant-colony-routing.md) | Concepts primer: ant foraging → ACO → AntNet → AntHocNet. Start here for the *idea*. |
+| [ant-types.md](ant-types.md) | Reference for the five ant types: comparison table, lifecycle diagrams (setup, maintenance, repair), and how to observe them at runtime. |
 | [architecture.md](architecture.md) | The core/adapter split, ports, and the decision flow. |
 | [software-layers.md](software-layers.md) | Three diagrams: the software stack, the ant mechanisms + the switches that gate them, and what is live/inert/planned per network regime. |
 | [network-regimes.md](network-regimes.md) | Why MANET and satellite/ISL are different routing problems — read before transferring an intuition between them. §6 tables which AntHocNet mechanism is live/inert in each regime. |

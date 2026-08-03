@@ -207,6 +207,7 @@ History of the work is in the per-phase commits; design rationale is in
 |----------|---------|
 | [docs/README.md](docs/README.md) | **The docs map** — every page in `docs/`, grouped by what you are trying to do. |
 | [docs/ant-colony-routing.md](docs/ant-colony-routing.md) | Concepts primer: ant foraging → ACO → AntNet → AntHocNet, and how they map to the code. Start here for the *idea*. |
+| [docs/ant-types.md](docs/ant-types.md) | The five ant types side by side: what triggers each, how it travels, what it writes, which switch gates it — plus lifecycle diagrams. |
 | [docs/architecture.md](docs/architecture.md) | Design, the core/adapter split, and the decision flow. |
 | [docs/software-layers.md](docs/software-layers.md) | Diagrams: the software stack, ant mechanisms + their config switches, and what runs (live/inert/planned) in each network regime. |
 | [docs/porting-notes.md](docs/porting-notes.md) | Bugs fixed in extraction, NS-2 patch anchors, wire format, version caveats. |
