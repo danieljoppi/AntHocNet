@@ -228,9 +228,19 @@ def main():
               f"{dp:>+7.1f}{d99:>+8.1f}{dn:>+8.1f}  {tag}")
 
     if args.export_sweeps:
+        # #293: the papers schema's optional *_ci columns are 95% CI
+        # half-widths (t, n-1 df) from the aggregate *_sd/runs columns —
+        # plot_sweeps.py draws them as yerr. Blank for pre-#28 CSVs.
+        def hw(row, sd_col):
+            sd, runs = f(row, sd_col), f(row, "runs")
+            if sd is None or runs is None or runs < 2:
+                return ""
+            return f"{stats_util.t_halfwidth(sd, int(runs)):.3g}"
+
         with open(args.export_sweeps, "w", newline="") as fh:
             w = csv.writer(fh)
-            w.writerow(["sweep", "x", "proto", "pdr", "delay_ms", "delay99_ms"])
+            w.writerow(["sweep", "x", "proto", "pdr", "delay_ms", "delay99_ms",
+                        "pdr_ci", "delay_ci", "delay99_ci"])
             n = 0
             for k in sorted(cells):
                 kind, group, x = k
@@ -242,7 +252,8 @@ def main():
                         continue
                     w.writerow([group, f"{x:g}", proto,
                                 row["pdr_pct"], row["delay_ms"],
-                                row["delay99_ms"]])
+                                row["delay99_ms"], hw(row, "pdr_sd"),
+                                hw(row, "delay_sd"), hw(row, "delay99_sd")])
                     n += 1
         print(f"exported {n} sweep rows -> {args.export_sweeps}")
 
