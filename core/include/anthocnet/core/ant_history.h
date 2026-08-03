@@ -104,6 +104,10 @@ public:
     /// which is a hop limit on discovery (#169).
     bool allowBroadcast(NodeAddress src, std::uint32_t seqNum, int maxBroadcasts);
 
+    /// Generations currently resident. Mirrors AntHistoryTracker::size(); the
+    /// cap it is checked against is the golden-rule-5 bound (#166).
+    std::size_t size() const { return best_.size(); }
+
     void clear();
 
 private:

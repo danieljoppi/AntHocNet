@@ -548,6 +548,15 @@ struct Result {
     double jitterEq51Ms = 0.0;   // #89: the thesis's eq 5.1, a different quantity
     double dOff50Ms = -1.0;      // delay at the 50th pct of *offered* (sent)
     double dOff90Ms = -1.0;      // packets, undelivered = inf; -1 encodes inf
+    // #308: the delivered-delay histogram this run's percentiles were read
+    // from, retained so a *matched-delivery* percentile can be taken after all
+    // protocols have run. delay99 compares tails over different-sized
+    // delivered sets — AntHocNet delivers ~10 pp more than AODV — so part of
+    // its worse tail may be the packets AODV never delivered at all. Answering
+    // that needs one protocol's distribution queried at another's delivery
+    // count, which is only possible once both exist.
+    std::map<uint32_t, uint64_t> delayHist;  // bin index -> delivered count
+    double delayBinWidth = 0.0;              // seconds; 0 when no deliveries
     // #209 energy:
     double energyJ = 0.0;        // total consumed over all nodes (J)
     double energyPerPktJ = 0.0;  // energyJ / delivered data packets (J/pkt)
@@ -982,6 +991,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             }
         }
     }
+    // #308: keep the histogram for the matched-delivery percentile computed
+    // after every protocol has run (see MatchedDelay99Ms below).
+    r.delayHist = delayBins;
+    r.delayBinWidth = binWidth;
 
     // #57 offered-load delay percentiles: the q-th percentile over *sent*
     // packets, treating undelivered as infinite delay. Monotone-honest — a
@@ -1571,9 +1584,25 @@ int main(int argc, char* argv[]) {
         double divUsed = 0, divMax = 0, divEntropy = 0, jain = 0;
     };
     std::vector<Agg> agg(list.size());
+    // #308: per (protocol, run), enough of the delivered-delay distribution to
+    // re-take a percentile at another protocol's delivery count. Protocols run
+    // outermost, so the comparison is only possible after the whole grid exists.
+    struct MatchCell {
+        std::map<uint32_t, uint64_t> hist;
+        double   binWidth = 0.0;
+        uint64_t rx = 0;
+        double   delay99Ms = 0.0;
+    };
+    std::vector<std::vector<MatchCell>> matchGrid(
+        list.size(), std::vector<MatchCell>(runs));
     for (std::size_t i = 0; i < list.size(); ++i) {
         for (uint32_t s = 1; s <= runs; ++s) {
             Result r = RunOne(list[i], P, s);
+            MatchCell& mc = matchGrid[i][s - 1];
+            mc.hist = r.delayHist;
+            mc.binWidth = r.delayBinWidth;
+            mc.rx = r.rxPackets;
+            mc.delay99Ms = r.delay99Ms;
             // #128: per-run (per-seed) row for paired statistics. Every
             // protocol sees the identical RNG realisation per run, so
             // downstream can pair rows by run number (per-seed deltas, sign
@@ -1697,6 +1726,65 @@ int main(int argc, char* argv[]) {
             agg[i].delay99Sd = sd(agg[i].delay99 * runs, agg[i].delay99Sq);
             agg[i].nrlSd = sd(agg[i].nrl * runs, agg[i].nrlSq);
             agg[i].nrlBytesSd = sd(agg[i].nrlBytes * runs, agg[i].nrlBytesSq);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // #308: matched-delivery 99th-percentile delay.
+    //
+    // delay99 compares tails over delivered sets of different sizes. AntHocNet
+    // delivers ~10 pp more than AODV, and some of that surplus is exactly the
+    // packets that waited through a reconvergence — so part of its worse tail
+    // may be the packets AODV never delivered at all rather than slower
+    // service of the packets both carry.
+    //
+    // Per run, take the smallest delivered count across the protocols
+    // (`rxMin`) and re-read every protocol's 99th percentile at that *absolute*
+    // count: the delay below which 0.99*rxMin of its packets arrived. For the
+    // protocol that delivered fewest this is its own delay99; for the others it
+    // is the tail of their fastest rxMin packets.
+    //
+    // Read it in one direction only. If the gap persists after truncation, the
+    // delivery surplus cannot account for it — that is conclusive. If the gap
+    // closes, it is *consistent with* the surplus explaining the tail but does
+    // not establish it, because truncating the slowest packets assumes the
+    // surplus is the slow ones rather than showing it. Treat a closing gap as
+    // grounds for the per-packet attribution in #308's phase 1, not as its
+    // answer.
+    //
+    // Emitted as ##MATCH## rather than extra ##RUN## columns: the ##RUN##
+    // field order is consumed positionally by bench_parse.py and by the CI
+    // campaign scripts, and appending to it would silently shift their mapping.
+    {
+        auto quantileAt = [](const MatchCell& c, uint64_t targetCount) {
+            if (c.binWidth <= 0.0 || targetCount == 0) return -1.0;
+            uint64_t cum = 0;
+            for (const auto& kv : c.hist) {
+                cum += kv.second;
+                if (cum >= targetCount)
+                    return 1000.0 * (kv.first + 0.5) * c.binWidth;
+            }
+            return -1.0;  // fewer deliveries than the target: undefined here
+        };
+        for (uint32_t s = 1; s <= runs; ++s) {
+            uint64_t rxMin = 0;
+            bool have = false;
+            for (std::size_t i = 0; i < list.size(); ++i) {
+                const uint64_t rx = matchGrid[i][s - 1].rx;
+                if (!have || rx < rxMin) { rxMin = rx; have = true; }
+            }
+            if (!have || rxMin == 0) continue;
+            const uint64_t target = static_cast<uint64_t>(0.99 * rxMin);
+            for (std::size_t i = 0; i < list.size(); ++i) {
+                const MatchCell& c = matchGrid[i][s - 1];
+                const double matched = quantileAt(c, target);
+                std::cout << std::fixed << "##MATCH## " << s << ' ' << list[i]
+                          << ' ' << c.rx << ' ' << rxMin
+                          << ' ' << std::setprecision(1) << c.delay99Ms << ' ';
+                if (matched < 0) std::cout << "na";
+                else std::cout << std::setprecision(1) << matched;
+                std::cout << "\n";
+            }
         }
     }
 
