@@ -98,7 +98,14 @@ published GHCR images (Actions → workflow → *Run workflow*):
   — the taxonomy + the area/pause/scale sweeps. A real (non-`quick`) whole
   sweep does **not** fit the 6 h hosted-runner ceiling
   ([#121](https://github.com/danieljoppi/AntHocNet/issues/121)) — dispatch it
-  one point per job via `only=<sweep>` + `point=<value>`. With `commit=true`
+  one point per job via `only=<sweep>` + `point=<value>`. A single point too
+  big for the ceiling at full seed count (measured: the 98/162/200-node
+  scale points at 20 seeds, [#126](https://github.com/danieljoppi/AntHocNet/issues/126))
+  splits across dispatches with `runFirst` — seeds cover
+  `runFirst..runFirst+runs-1`, and
+  [`pool_runs.py`](../../.claude/skills/benchmark-results/pool_runs.py)
+  merges the split CSVs back into one aggregate row per point, recomputing
+  mean/sd exactly from the pooled #319 per-run rows. With `commit=true`
   the classified CSV lands in `docs/benchmarks/campaign/` and the regenerated
   charts in `docs/benchmarks/`; otherwise everything stays in the run's
   artifacts.

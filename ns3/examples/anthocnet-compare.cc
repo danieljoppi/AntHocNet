@@ -1445,6 +1445,14 @@ int main(int argc, char* argv[]) {
     int32_t  nFlows = 0;
     int32_t  sink = -1;
     uint32_t runs = 0;  // 0 = unset; resolved below (preset-dependent, #58)
+    // #126: first RNG run of this invocation. Runs cover
+    // firstRun..firstRun+runs-1, so one point's 20 seeds can be split across
+    // dispatches that each fit the hosted-runner job ceiling (the 162/200-node
+    // scale points exceed it at 20 seeds even on the -opt image). SetRun(s)
+    // semantics are unchanged — the ##RUN##/##MATCH##/##COMMON## rows carry
+    // the TRUE seed, so downstream per-seed pairing keeps working across
+    // split dispatches. Default 1 keeps every existing invocation identical.
+    uint32_t firstRun = 1;
     bool csv = false;
     std::string protocols = "anthocnet,aodv,olsr,dsdv";
 
@@ -1466,6 +1474,10 @@ int main(int argc, char* argv[]) {
                          "hotspot, #71) instead of i->(n-1-i) pairing", sink);
     cmd.AddValue("runs", "Number of RNG runs to average (seeds 1..runs); unset "
                          "= 1, or 20 for --scenario=thesis (#58)", runs);
+    cmd.AddValue("firstRun", "First RNG run (seed) of this invocation; runs "
+                             "cover firstRun..firstRun+runs-1, so a point's "
+                             "seeds can split across dispatches (#126)",
+                 firstRun);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols", "Comma-separated list", protocols);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies, first delivery)", g_diag);
@@ -1626,9 +1638,9 @@ int main(int argc, char* argv[]) {
     std::vector<std::vector<MatchCell>> matchGrid(
         list.size(), std::vector<MatchCell>(runs));
     for (std::size_t i = 0; i < list.size(); ++i) {
-        for (uint32_t s = 1; s <= runs; ++s) {
+        for (uint32_t s = firstRun; s < firstRun + runs; ++s) {
             Result r = RunOne(list[i], P, s);
-            MatchCell& mc = matchGrid[i][s - 1];
+            MatchCell& mc = matchGrid[i][s - firstRun];
             mc.hist = r.delayHist;
             mc.binWidth = r.delayBinWidth;
             mc.rx = r.rxPackets;
@@ -1797,17 +1809,17 @@ int main(int argc, char* argv[]) {
             }
             return -1.0;  // fewer deliveries than the target: undefined here
         };
-        for (uint32_t s = 1; s <= runs; ++s) {
+        for (uint32_t s = firstRun; s < firstRun + runs; ++s) {
             uint64_t rxMin = 0;
             bool have = false;
             for (std::size_t i = 0; i < list.size(); ++i) {
-                const uint64_t rx = matchGrid[i][s - 1].rx;
+                const uint64_t rx = matchGrid[i][s - firstRun].rx;
                 if (!have || rx < rxMin) { rxMin = rx; have = true; }
             }
             if (!have || rxMin == 0) continue;
             const uint64_t target = static_cast<uint64_t>(0.99 * rxMin);
             for (std::size_t i = 0; i < list.size(); ++i) {
-                const MatchCell& c = matchGrid[i][s - 1];
+                const MatchCell& c = matchGrid[i][s - firstRun];
                 const double matched = quantileAt(c, target);
                 std::cout << std::fixed << "##MATCH## " << s << ' ' << list[i]
                           << ' ' << c.rx << ' ' << rxMin
@@ -1848,13 +1860,13 @@ int main(int argc, char* argv[]) {
             if (i >= v.size()) i = v.size() - 1;
             return 1000.0 * v[i];
         };
-        for (uint32_t s = 1; s <= runs; ++s) {
+        for (uint32_t s = firstRun; s < firstRun + runs; ++s) {
             // Keys delivered by every protocol this run.
             std::set<std::pair<Address, uint32_t>> common;
             bool first = true;
             for (std::size_t i = 0; i < list.size(); ++i) {
                 std::set<std::pair<Address, uint32_t>> mine;
-                for (const auto& f : matchGrid[i][s - 1].bySeq)
+                for (const auto& f : matchGrid[i][s - firstRun].bySeq)
                     for (const auto& kv : f.second) mine.insert({f.first, kv.first});
                 if (first) { common = mine; first = false; continue; }
                 std::set<std::pair<Address, uint32_t>> both;
@@ -1867,7 +1879,7 @@ int main(int argc, char* argv[]) {
             for (std::size_t i = 0; i < list.size(); ++i) {
                 std::vector<double> inCommon, surplus;
                 std::size_t nSelf = 0;
-                for (const auto& f : matchGrid[i][s - 1].bySeq) {
+                for (const auto& f : matchGrid[i][s - firstRun].bySeq) {
                     for (const auto& kv : f.second) {
                         ++nSelf;
                         if (common.count({f.first, kv.first})) inCommon.push_back(kv.second);
