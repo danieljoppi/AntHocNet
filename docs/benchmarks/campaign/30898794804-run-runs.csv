@@ -1,0 +1,5 @@
+kind,group,x,scenario,protocol,run,pdr_pct,delay_ms,delay99_ms,throughput_kbps,nrl,jitter_ms,delay_off50_ms,delay_off90_ms,nrl_bytes
+sweep,scale,2.0,scale=2.0,anthocnet,7,67.0,264.8,2545.5,4.49,473.95,346.86,271.5,-1,752.2234
+sweep,scale,2.0,scale=2.0,aodv,7,56.7,130.9,1649.5,3.71,503.54,180.10,245.5,-1,275.0593
+sweep,scale,2.0,scale=2.0,olsr,7,49.8,80.7,1085.5,3.25,50.57,136.10,-1,-1,248.3701
+sweep,scale,2.0,scale=2.0,dsdv,7,34.7,145.7,2061.5,2.35,781.16,234.17,-1,-1,547.5760
