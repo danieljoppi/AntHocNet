@@ -39,6 +39,7 @@ change (a #51-class finding).
 import argparse
 import csv
 import math
+import os
 import sys
 
 import stats_util
@@ -121,6 +122,26 @@ def collect(paths, group=None):
                 continue
             cells.setdefault(key(row), {})[row["protocol"]] = row
     return cells
+
+
+def collect_runs(paths, metric="delay99_ms"):
+    """#319: per-run values from the sibling <file minus .csv>-runs.csv files
+    (written by run-scenarios.py, rescued alongside the aggregate CSV).
+    Returns {(kind, group, x, protocol): [values]}; empty for inputs whose
+    producing run predates the sibling."""
+    vals = {}
+    for path in paths:
+        sib = (path[:-4] if path.endswith(".csv") else path) + "-runs.csv"
+        if not os.path.exists(sib):
+            continue
+        with open(sib, newline="") as fh:
+            for row in csv.DictReader(fh):
+                v = f(row, metric)
+                if v is None or v < 0:
+                    continue
+                vals.setdefault((row["kind"], row["group"], f(row, "x", 0.0),
+                                 row["protocol"]), []).append(v)
+    return vals
 
 
 CONTROL_COLS = ["pdr_pct", "delay_ms", "delay99_ms", "nrl"]
@@ -229,19 +250,36 @@ def main():
 
     if args.export_sweeps:
         # #293: the papers schema's optional *_ci columns are 95% CI
-        # half-widths (t, n-1 df) from the aggregate *_sd/runs columns —
-        # plot_sweeps.py draws them as yerr. Blank for pre-#28 CSVs.
+        # half-widths — plot_sweeps.py draws them as yerr. pdr/delay use the
+        # t-CI from the aggregate *_sd/runs columns; blank for pre-#28 CSVs.
         def hw(row, sd_col):
             sd, runs = f(row, sd_col), f(row, "runs")
             if sd is None or runs is None or runs < 2:
                 return ""
             return f"{stats_util.t_halfwidth(sd, int(runs)):.3g}"
 
+        # #319: delay99 is a per-run p99, so when the sibling -runs.csv is
+        # present its interval is the percentile BOOTSTRAP over the per-run
+        # values (methodology: a t-CI on a p99 is not defensible), collapsed
+        # to the conservative symmetric envelope max(mean-lo, hi-mean) since
+        # the schema carries one half-width. t-CI remains the fallback for
+        # aggregate-only inputs.
+        run_vals = collect_runs(args.files)
+
+        def hw99(row, k, proto):
+            vals = run_vals.get((k[0], k[1], k[2], proto), ())
+            if len(vals) >= 2:
+                lo, hi = stats_util.bootstrap_ci_mean(list(vals))
+                mean = sum(vals) / len(vals)
+                return f"{max(mean - lo, hi - mean):.3g}"
+            return hw(row, "delay99_sd")
+
         with open(args.export_sweeps, "w", newline="") as fh:
             w = csv.writer(fh)
             w.writerow(["sweep", "x", "proto", "pdr", "delay_ms", "delay99_ms",
                         "pdr_ci", "delay_ci", "delay99_ci"])
             n = 0
+            boot = 0
             for k in sorted(cells):
                 kind, group, x = k
                 if kind != "sweep":
@@ -250,12 +288,15 @@ def main():
                     row = cells[k].get(proto)
                     if row is None:
                         continue
+                    if (kind, group, x, proto) in run_vals:
+                        boot += 1
                     w.writerow([group, f"{x:g}", proto,
                                 row["pdr_pct"], row["delay_ms"],
                                 row["delay99_ms"], hw(row, "pdr_sd"),
-                                hw(row, "delay_sd"), hw(row, "delay99_sd")])
+                                hw(row, "delay_sd"), hw99(row, k, proto)])
                     n += 1
-        print(f"exported {n} sweep rows -> {args.export_sweeps}")
+        print(f"exported {n} sweep rows -> {args.export_sweeps} "
+              f"({boot} with bootstrap delay99_ci, {n - boot} t-fallback)")
 
 
 if __name__ == "__main__":

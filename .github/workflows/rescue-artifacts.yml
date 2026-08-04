@@ -59,6 +59,12 @@ jobs:
             fi
             echo "run $id ($label): $rows data rows"
             cp "$dir/scenarios.csv" "docs/benchmarks/campaign/${id}-${label}.csv"
+            # #319: the per-run sibling rides along when the producing run is
+            # new enough to have written it; absent for older runs.
+            if [ -f "$dir/scenarios-runs.csv" ]; then
+              cp "$dir/scenarios-runs.csv" \
+                 "docs/benchmarks/campaign/${id}-${label}-runs.csv"
+            fi
           done
           rm -rf rescue-tmp
       - name: Download satellite artifacts and stage results (#259)

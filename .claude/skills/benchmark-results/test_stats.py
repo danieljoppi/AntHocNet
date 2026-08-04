@@ -256,6 +256,57 @@ def _():
     assert sw.pdr_hw({"pdr_sd": "1.0", "runs": "1"}) == ""
 
 
+@case("#319 export: bootstrap delay99_ci with the -runs sibling, t without")
+def _():
+    import csv as _csv
+    import tempfile
+    cols = ["kind", "group", "x", "protocol", "runs", "pdr_pct", "delay_ms",
+            "delay99_ms", "nrl", "pdr_sd", "delay_sd", "delay99_sd"]
+    agg = [
+        {"kind": "sweep", "group": "pause", "x": "0", "protocol": p,
+         "runs": "10", "pdr_pct": "80.0", "delay_ms": "50.0",
+         "delay99_ms": "900.0", "nrl": "3.0", "pdr_sd": "1.0",
+         "delay_sd": "5.0", "delay99_sd": "100.0"}
+        for p in ("anthocnet", "aodv")]
+    # skewed per-run p99s for anthocnet ONLY -> bootstrap path fires for it,
+    # aodv (no sibling rows) falls back to the aggregate t-CI.
+    d99 = [850.0] * 9 + [1350.0]
+    with tempfile.TemporaryDirectory() as td:
+        aggp = os.path.join(td, "camp.csv")
+        with open(aggp, "w", newline="") as fh:
+            w = _csv.DictWriter(fh, fieldnames=cols)
+            w.writeheader()
+            w.writerows(agg)
+        with open(os.path.join(td, "camp-runs.csv"), "w", newline="") as fh:
+            w = _csv.DictWriter(fh, fieldnames=["kind", "group", "x",
+                                                "scenario", "protocol", "run",
+                                                "delay99_ms"])
+            w.writeheader()
+            for i, v in enumerate(d99, 1):
+                w.writerow({"kind": "sweep", "group": "pause", "x": "0",
+                            "scenario": "pause=0", "protocol": "anthocnet",
+                            "run": i, "delay99_ms": v})
+        outp = os.path.join(td, "sweeps.csv")
+        argv, sys.argv = sys.argv, ["sweep_summary.py", aggp,
+                                    "--export-sweeps", outp]
+        out = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out):
+                sw.main()
+        finally:
+            sys.argv = argv
+        with open(outp, newline="") as fh:
+            rows = {r["proto"]: r for r in _csv.DictReader(fh)}
+        lo, hi = su.bootstrap_ci_mean(d99)
+        mean = sum(d99) / len(d99)
+        expect_boot = f"{max(mean - lo, hi - mean):.3g}"
+        expect_t = f"{su.t_halfwidth(100.0, 10):.3g}"
+        assert rows["anthocnet"]["delay99_ci"] == expect_boot, rows
+        assert rows["aodv"]["delay99_ci"] == expect_t, rows
+        assert expect_boot != expect_t
+        assert "1 with bootstrap delay99_ci, 1 t-fallback" in out.getvalue()
+
+
 # ---- end-to-end through main() ----------------------------------------------
 
 @case("bench_parse main: paired verdict replaces materiality verdict")

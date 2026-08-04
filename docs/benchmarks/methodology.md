@@ -179,7 +179,12 @@ computation lives in
 
 Significance in an A/B is "the difference CI excludes zero" — when per-seed
 `##RUN##` rows are present, this **replaces** `bench_parse.py`'s materiality
-thresholds (which remain the fallback for aggregate-only cells). Sweeps that
+thresholds (which remain the fallback for aggregate-only cells). Campaigns
+persist the per-run values in a sibling `<out>-runs.csv`
+([#319](https://github.com/danieljoppi/AntHocNet/issues/319), rescued
+alongside the aggregate CSV), so sweep `delay99` intervals use the bootstrap
+once that file exists for a campaign; older aggregate-only CSVs fall back to
+the t-CI, which is then a documented approximation. Sweeps that
 produce many comparisons get a multiple-comparison note (at α = 0.05, expect
 ~1 false positive per 20 cells); treat isolated marginal p-values accordingly.
 

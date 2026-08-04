@@ -146,6 +146,19 @@ OUT_COLUMNS = (["kind", "group", "x", "scenario", "class", "protocol"]
                + ["runs", "nNodes", "areaX", "speed", "pause", "flows", "propagation"]
                + METRICS)
 
+# #319: the sibling per-run CSV (<out minus .csv>-runs.csv). The aggregate CSV
+# above carries mean+sd only, which makes the #293 policy's stronger branches
+# (bootstrap CIs for tail metrics, paired per-seed A/B) unreachable for
+# sweeps; this file persists the harness's ##RUN## rows (#128) by NAME so
+# downstream never depends on the positional ##RUN## contract. Field order of
+# a ##RUN## line: run proto pdr delay delay99 thrput nrl jitter off50 off90
+# nrl_bytes; "inf" offered-load percentiles are written as -1, matching the
+# aggregate CSV's delay_off*_ms encoding.
+RUN_METRICS = ["pdr_pct", "delay_ms", "delay99_ms", "throughput_kbps", "nrl",
+               "jitter_ms", "delay_off50_ms", "delay_off90_ms", "nrl_bytes"]
+RUN_COLUMNS = (["kind", "group", "x", "scenario", "protocol", "run"]
+               + RUN_METRICS)
+
 
 def build_args(flags, runs, time, protocols, propagation, extra_args=""):
     """Turn a flags dict into an anthocnet-compare argument string."""
@@ -174,7 +187,7 @@ def run_compare(ns3dir, arg_str, dry_run, label=""):
     cmd = f'cd "{ns3dir}" && ./ns3 run "anthocnet-compare {arg_str}"'
     if dry_run:
         print(f"[dry-run] {cmd}", file=sys.stderr)
-        return []
+        return [], []
     print(f"[run] anthocnet-compare {arg_str}", file=sys.stderr)
     # #131: sim cost per point — wall clock always; peak RSS via
     # `/usr/bin/time -v` into a temp file when available (getrusage's
@@ -212,7 +225,20 @@ def run_compare(ns3dir, arg_str, dry_run, label=""):
             or ln.split(",", 1)[0] in ("anthocnet", "aodv", "olsr", "dsdv", "dsr")]
     if not keep or not keep[0].startswith("protocol,"):
         raise SystemExit(f"no CSV parsed from anthocnet-compare for: {arg_str}")
-    return list(csv.DictReader(io.StringIO("\n".join(keep))))
+    # #319: the per-run ##RUN## rows ride along, parsed by position here so
+    # every consumer downstream reads them by name from the sibling CSV.
+    run_rows = []
+    for ln in proc.stdout.splitlines():
+        if not ln.startswith("##RUN##"):
+            continue
+        toks = ln.split()
+        if len(toks) < 4:
+            continue
+        vals = {"run": toks[1], "protocol": toks[2]}
+        for name, tok in zip(RUN_METRICS, toks[3:]):
+            vals[name] = "-1" if tok == "inf" else tok
+        run_rows.append(vals)
+    return list(csv.DictReader(io.StringIO("\n".join(keep)))), run_rows
 
 
 def emit(writer, kind, group, x, scenario, klass, pause, propagation, rows):
@@ -228,6 +254,13 @@ def emit(writer, kind, group, x, scenario, klass, pause, propagation, rows):
         for m in METRICS:
             out[m] = r.get(m, "")
         writer.writerow(out)
+
+
+def emit_runs(writer, kind, group, x, scenario, run_rows):
+    """#319: one sibling-CSV row per (protocol, RNG run) of this point."""
+    for r in run_rows:
+        writer.writerow({"kind": kind, "group": group, "x": x,
+                         "scenario": scenario, **r})
 
 
 def main():
@@ -275,21 +308,31 @@ def main():
     want_discrete = args.only in ("all", "discrete") or args.only in DISCRETE
     want_sweeps = args.only in ("all", "sweeps") or args.only in SWEEPS
 
-    with open(args.out, "w", newline="") as f:
+    # #319: per-run rows land in a sibling file, flushed per point like the
+    # aggregate CSV (#119), so a killed job still leaves both consistent.
+    runs_out = args.out.removesuffix(".csv") + "-runs.csv"
+
+    with open(args.out, "w", newline="") as f, \
+         open(runs_out, "w", newline="") as fr:
         w = csv.DictWriter(f, fieldnames=OUT_COLUMNS)
         w.writeheader()
+        wr = csv.DictWriter(fr, fieldnames=RUN_COLUMNS)
+        wr.writeheader()
 
         if want_discrete:
             for name, (klass, flags) in DISCRETE.items():
                 if args.only in DISCRETE and args.only != name:
                     continue
-                rows = run_compare(args.ns3dir,
-                                   build_args(flags, runs, sim_time, args.protocols,
-                                              args.propagation, args.extra_args),
-                                   args.dry_run, label=name)
+                rows, run_rows = run_compare(
+                    args.ns3dir,
+                    build_args(flags, runs, sim_time, args.protocols,
+                               args.propagation, args.extra_args),
+                    args.dry_run, label=name)
                 emit(w, "discrete", name, "", name, klass, flags.get("pause", ""),
                      args.propagation, rows)
+                emit_runs(wr, "discrete", name, "", name, run_rows)
                 f.flush()
+                fr.flush()
 
         if want_sweeps:
             for name, (xlabel, base, points) in sweeps.items():
@@ -306,16 +349,19 @@ def main():
                 for x, extra in points:
                     flags = dict(base)
                     flags.update(extra)
-                    rows = run_compare(args.ns3dir,
-                                       build_args(flags, runs, sim_time, args.protocols,
-                                                  args.propagation, args.extra_args),
-                                       args.dry_run, label=f"{name}={x}")
+                    rows, run_rows = run_compare(
+                        args.ns3dir,
+                        build_args(flags, runs, sim_time, args.protocols,
+                                   args.propagation, args.extra_args),
+                        args.dry_run, label=f"{name}={x}")
                     emit(w, "sweep", name, x, f"{name}={x}", xlabel,
                          flags.get("pause", ""), args.propagation, rows)
+                    emit_runs(wr, "sweep", name, x, f"{name}={x}", run_rows)
                     f.flush()
+                    fr.flush()
 
     if not args.dry_run:
-        print(f"wrote {args.out}", file=sys.stderr)
+        print(f"wrote {args.out} + {runs_out}", file=sys.stderr)
 
 
 if __name__ == "__main__":

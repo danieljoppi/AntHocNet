@@ -99,6 +99,7 @@ jobs:
           name: benchmark-results
           path: |
             scenarios.csv
+            scenarios-runs.csv
             docs/benchmarks/*.png
           retention-days: 7
       - name: Commit refreshed results (if changed)
