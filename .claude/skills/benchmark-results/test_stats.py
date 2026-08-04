@@ -308,6 +308,85 @@ def _():
         assert "1 with bootstrap delay99_ci, 1 t-fallback" in out.getvalue()
 
 
+def _vs_pair(td, pdr_shift, with_siblings):
+    """Write BEFORE/AFTER campaign CSVs for one point, optionally with the
+    per-seed siblings. anthocnet gains `pdr_shift` pp on every seed; the aodv
+    control is identical in both generations. Returns (before, after) paths."""
+    import csv as _csv
+    agg_cols = ["kind", "group", "x", "protocol", "runs", "pdr_pct",
+                "delay_ms", "delay99_ms", "nrl", "pdr_sd"]
+    sib_cols = ["kind", "group", "x", "scenario", "protocol", "run",
+                "pdr_pct", "delay99_ms", "nrl"]
+    # Per-seed noise big enough that the unpaired sd gate cannot resolve a
+    # 0.5 pp shift, but common to both arms so the paired differences are tight
+    # — the exact situation the #179 arms kept landing in.
+    noise = [(-1) ** i * (i % 5) * 0.9 for i in range(10)]
+    paths = []
+    for gen, shift in (("before", 0.0), ("after", pdr_shift)):
+        agg = os.path.join(td, f"{gen}.csv")
+        with open(agg, "w", newline="") as fh:
+            w = _csv.DictWriter(fh, fieldnames=agg_cols)
+            w.writeheader()
+            for proto, base in (("anthocnet", 90.0), ("aodv", 80.0)):
+                w.writerow({"kind": "discrete", "group": "paper-base", "x": "",
+                            "protocol": proto, "runs": "10",
+                            "pdr_pct": f"{base + (shift if proto == 'anthocnet' else 0):.4f}",
+                            "delay_ms": "50.0", "delay99_ms": "900.0",
+                            "nrl": "3.0", "pdr_sd": "1.6"})
+        if with_siblings:
+            with open(os.path.join(td, f"{gen}-runs.csv"), "w", newline="") as fh:
+                w = _csv.DictWriter(fh, fieldnames=sib_cols)
+                w.writeheader()
+                for proto, base in (("anthocnet", 90.0), ("aodv", 80.0)):
+                    s = shift if proto == "anthocnet" else 0.0
+                    for i, nz in enumerate(noise, 1):
+                        w.writerow({"kind": "discrete", "group": "paper-base",
+                                    "x": "", "scenario": "paper-base",
+                                    "protocol": proto, "run": i,
+                                    "pdr_pct": f"{base + s + nz:.4f}",
+                                    "delay99_ms": "900.0", "nrl": "3.0"})
+        paths.append(agg)
+    return paths
+
+
+def _run_vs(before, after):
+    argv, sys.argv = sys.argv, ["sweep_summary.py", after, "--vs", before]
+    out = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(out), \
+             contextlib.suppress(SystemExit):
+            sw.main()
+    finally:
+        sys.argv = argv
+    return out.getvalue()
+
+
+@case("#319 --vs: siblings present -> paired CI + Wilcoxon replace the verdict")
+def _():
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        before, after = _vs_pair(td, 0.5, with_siblings=True)
+        out = _run_vs(before, after)
+    # Unpaired, +0.5 pp is below the 1 pp materiality threshold -> NOISE.
+    # Paired over 10 seeds the difference is exactly +0.5 every time, so its
+    # CI excludes zero and the point reads PAIRED-IMPROVED instead.
+    assert "PAIRED-IMPROVED" in out, out
+    assert "paired 95% CI (n=10)" in out, out
+    assert "dPDR +0.50" in out, out
+    assert "identical across generations" in out, out
+
+
+@case("#319 --vs: no siblings -> materiality verdict, no paired line")
+def _():
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        before, after = _vs_pair(td, 0.5, with_siblings=False)
+        out = _run_vs(before, after)
+    assert "PAIRED" not in out, out
+    assert "paired 95% CI" not in out, out
+    assert "NOISE" in out, out
+
+
 # ---- pool_runs (#126) --------------------------------------------------------
 
 AGG_COLS = ["kind", "group", "x", "scenario", "class", "protocol", "runs",

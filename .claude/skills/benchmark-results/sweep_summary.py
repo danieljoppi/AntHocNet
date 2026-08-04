@@ -35,6 +35,12 @@ does AntHocNet compare to AODV?" — the loop needed after #88 (T_hop) and #169
 their numbers must be byte-identical across the two generations. If they moved,
 the harness moved too and the AntHocNet delta is not attributable to the code
 change (a #51-class finding).
+
+When both generations carry the per-seed sibling `-runs.csv` (#319), `--vs`
+additionally prints a paired-difference line per point — per-seed 95% CIs
+(t for pdr/nrl, bootstrap for the delay99 tail) and a Wilcoxon signed-rank p
+over the seeds common to both arms — and that PAIRED-* verdict replaces the
+materiality one. Inputs without the sibling keep the old behaviour.
 """
 import argparse
 import csv
@@ -42,6 +48,7 @@ import math
 import os
 import sys
 
+import bench_parse
 import stats_util
 
 REQUIRED = ["kind", "group", "x", "protocol", "runs",
@@ -146,9 +153,48 @@ def collect_runs(paths, metric="delay99_ms"):
 
 CONTROL_COLS = ["pdr_pct", "delay_ms", "delay99_ms", "nrl"]
 
+# Campaign-CSV column -> the metric name bench_parse.paired_stats expects.
+PAIRED_COLS = {"pdr_pct": "pdr", "delay99_ms": "delay99", "nrl": "nrl"}
 
-def generation_diff(before, after, proto, baseline):
+
+def collect_paired_runs(paths):
+    """#319: per-seed rows from the sibling -runs.csv files, shaped for
+    bench_parse.paired_stats -> {(kind, group, x, protocol): {run: {metric: v}}}.
+
+    Empty for inputs whose producing run predates the sibling, which is what
+    makes the paired branch degrade to the materiality verdict rather than
+    fail on older campaigns.
+    """
+    out = {}
+    for path in paths:
+        sib = path.removesuffix(".csv") + "-runs.csv"
+        if not os.path.exists(sib):
+            continue
+        with open(sib, newline="") as fh:
+            for row in csv.DictReader(fh):
+                vals = {}
+                for col, metric in PAIRED_COLS.items():
+                    v = f(row, col)
+                    if v is not None and v >= 0:
+                        vals[metric] = v
+                if not vals:
+                    continue
+                k = (row["kind"], row["group"], f(row, "x", 0.0),
+                     row["protocol"])
+                out.setdefault(k, {})[row["run"]] = vals
+    return out
+
+
+def generation_diff(before, after, proto, baseline,
+                    before_runs=None, after_runs=None):
     """Print after-vs-before for `proto`, plus the untouched-baseline control.
+
+    When both generations carry per-seed sibling rows (#319), each point also
+    gets a paired-difference line — per-seed CIs and a Wilcoxon p over the
+    seeds common to both arms — and that PAIRED-* verdict *replaces* the
+    materiality one, exactly as in bench_parse's `--ab`: per-seed evidence
+    beats a fixed threshold, and the pairing removes the between-seed variance
+    that makes a real effect read as `~sd`.
 
     Returns the exit status: non-zero if the control failed.
     """
@@ -164,10 +210,19 @@ def generation_diff(before, after, proto, baseline):
                   f"{'after' if a is None else 'before'}")
             continue
         tag, dp, d99, dn = verdict(a, b)
+        pstats = None
+        if before_runs and after_runs:
+            pstats = bench_parse.paired_stats(
+                before_runs.get((kind, group, x, proto), {}),
+                after_runs.get((kind, group, x, proto), {}))
+        if pstats:
+            tag = pstats[2]
         print(f"{group:<10}{x:>8g}  {f(a,'runs',0):>4.0f}  "
               f"{f(a,'pdr_pct',0):>6.1f}{pdr_hw(a):>5}"
               f"{f(b,'pdr_pct',0):>7.1f}{pdr_hw(b):>5}  "
               f"{dp:>+7.1f}{d99:>+8.1f}{dn:>+8.1f}  {tag}")
+        if pstats:
+            print(f"{'':<19} {bench_parse.fmt_paired(pstats)}")
 
     only_a = len(after) - len(shared)
     only_b = len(before) - len(shared)
@@ -228,7 +283,9 @@ def main():
         before = collect(args.vs, args.group)
         if not before:
             sys.exit("FAIL: no rows matched in the --vs (before) files")
-        sys.exit(generation_diff(before, cells, args.proto, args.baseline))
+        sys.exit(generation_diff(before, cells, args.proto, args.baseline,
+                                 collect_paired_runs(args.vs),
+                                 collect_paired_runs(args.files)))
 
     print(f"{'group':<10}{'x':>8}  {'runs':>4}  "
           f"{'PDR':>6}{'±95':>5}{'vs':>7}{'±95':>5}  "

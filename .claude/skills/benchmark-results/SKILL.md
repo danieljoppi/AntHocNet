@@ -158,6 +158,23 @@ partial re-run still compares cleanly against a full sweep.
 Per-point verdict uses bench_parse's materiality thresholds (PDR ±1pp,
 delay99/NRL ±10%); `~sd` marks a material PDR delta still inside
 2·RSS(`pdr_sd`) — run-to-run dispersion, treat as noise and bump `--runs`.
+
+**When both generations carry the per-run sibling CSV (#319), each point also
+gets a paired line and the `PAIRED-*` verdict replaces the materiality one** —
+same rule as `bench_parse --ab`, for the same reason: per-seed evidence beats a
+fixed threshold, and pairing removes the between-seed variance that makes a
+real effect read as `NOISE` or `~sd`. This is the branch that settled #179,
+where three campaigns of unpaired reads had all landed on "direction is right,
+nothing clears the noise floor":
+
+```
+sparse-static   0  20   97.7 0.6  97.2 0.7   +0.5  -4.1  -9.7  PAIRED-IMPROVED
+        paired 95% CI (n=20): dPDR +0.50 [+0.11,+0.88]pp p=0.0254 ...
+```
+
+The unpaired columns on that same line say `NOISE`. Older CSVs without the
+sibling fall back to the materiality verdict and print no paired line, so
+pre-#319 campaigns still compare exactly as before.
 `--export-sweeps` is the bridge to the papers repo's `figures` skill
 (`plot_sweeps.py` reads that schema directly).
 
