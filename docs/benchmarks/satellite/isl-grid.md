@@ -162,7 +162,12 @@ excess tracked in [#250](https://github.com/danieljoppi/AntHocNet/issues/250)
 **No committed results yet**, but the pipeline that lands and gates them is
 real ([#259](https://github.com/danieljoppi/AntHocNet/issues/259)) — the same
 dispatch → rescue → validate → parse loop the MANET suite runs, so no
-satellite number is ever eyeball-only:
+satellite number is ever eyeball-only. When results do land here they fall
+under the [statistical policy](../methodology.md#statistical-policy-293):
+published points need ≥ 10 runs with 95% CIs, **except** the analytic anchor
+cells (`single-isl`, `hop-delay`), which are derivation checks on
+deterministic point-to-point links — those stay low-run and are read as
+**diagnostic identities, not estimates** (#318 wording pass):
 
 1. **Dispatch** `satellite-benchmark.yml` (above). The results file
    (`satellite-results.txt`: `##RUN##` per-seed rows plus the summary table)

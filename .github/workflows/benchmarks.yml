@@ -6,9 +6,15 @@ name: Benchmarks
 # in docs/benchmarks/scenarios/ AND the taxonomy chart in docs/benchmarks/. So
 # the published numbers + figures always track the code.
 #
-# Scope: this runs the *discrete* named scenarios (quick preset). The heavier
-# parameter sweeps (area/pause/scale) stay in the manual "Scenario matrix +
-# charts" workflow -- too expensive for a per-merge job.
+# Scope: this runs the *discrete* named scenarios at time=120 s but
+# runs=10 -- the #293/#314 published-point floor. It used to be the --quick
+# preset (runs=2), which was a cost choice from when Actions minutes were
+# believed billed; #121's answer (they are not) removed the reason, and #318
+# removed the excuse: at 2 runs the tables now render t(1)-wide intervals
+# their own methodology calls unpublishable. The 120 s duration stays -- the
+# floor is about dispersion, not duration, and absolute plausibility is the
+# anchor gate's job. The heavier parameter sweeps (area/pause/scale) stay in
+# the manual "Scenario matrix + charts" workflow at 900 s / 20 seeds.
 on:
   push:
     branches: [main, master]   # both, so it survives the default-branch rename
@@ -78,10 +84,11 @@ jobs:
         run: |
           bash ns3/tools/check-anchors.sh /opt/ns-3 single-hop
           bash ns3/tools/check-anchors.sh /opt/ns-3 broch-low-mobility
-      - name: Run scenario taxonomy (quick)
+      - name: Run scenario taxonomy (10 runs, 120 s — the #318 floor)
         run: |
           python3 ns3/tools/run-scenarios.py /opt/ns-3 \
-            --out "$GITHUB_WORKSPACE/scenarios.csv" --only discrete --quick
+            --out "$GITHUB_WORKSPACE/scenarios.csv" --only discrete \
+            --runs 10 --time 120
       - name: Render charts
         run: python3 ns3/tools/make-charts.py "$GITHUB_WORKSPACE/scenarios.csv" --outdir docs/benchmarks
       - name: Update results tables (index summary + per-scenario pages)
