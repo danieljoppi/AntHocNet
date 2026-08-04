@@ -11,8 +11,9 @@ which gates packet compatibility independently.
 ## Unreleased
 
 ### Deprecated
-- **NS-2 support.** `v1.2.0` is the **last release that ships the NS-2
-  adapter**; it is removed at `v2.0.0`
+- **NS-2 support.** `v1.2.0` is the **last release in which the NS-2 adapter
+  was actively supported** — it is frozen (no new NS-2 work) but still ships
+  through the rest of the `v1.x` line, and is removed at `v2.0.0`
   ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)). Nothing already
   published is withdrawn — pin the `v1.2.0` tag or its immutable images
   (`ghcr.io/danieljoppi/anthocnet-ns2:2.34-v1.2.0` / `:2.35-v1.2.0`), which stay
