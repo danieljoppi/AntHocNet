@@ -17,15 +17,18 @@ for **NS-2** and **NS-3**.
 The repository no longer bundles a copy of any simulator. You install AntHocNet
 onto *your own* NS-2 or NS-3 tree:
 
-- **NS-2** — installed as an idempotent, version-independent source patch
-  (`ns-2.34` / `ns-2.35`). **Deprecated:
-  [v1.2.0](https://github.com/danieljoppi/AntHocNet/releases/tag/v1.2.0) is the
-  last release that ships NS-2 support** — see
-  [#307](https://github.com/danieljoppi/AntHocNet/issues/307). Pin that tag (or
-  its immutable images `ghcr.io/danieljoppi/anthocnet-ns2:2.34-v1.2.0` /
-  `:2.35-v1.2.0`) if you need it; published tags are not withdrawn.
 - **NS-3** — installed as an additive `contrib/` module (ns-3.36+, with a
   `wscript` for older waf builds).
+- **NS-2** — installed as an idempotent source patch (`ns-2.34` / `ns-2.35`).
+
+> [!NOTE]
+> **NS-2 is deprecated and frozen at
+> [v1.2.0](https://github.com/danieljoppi/AntHocNet/releases/tag/v1.2.0)** — it
+> still ships through the rest of `v1.x` and is removed at v2.0.0
+> ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)). Everything
+> NS-2 — status, install, images, rationale — lives in
+> **[docs/ns2-support.md](docs/ns2-support.md)**. ns-3 is the supported target
+> and is what the rest of this README describes.
 
 ```
 core/   simulator-agnostic C++ (no NS-2/NS-3 dependency) + unit tests
@@ -34,20 +37,15 @@ ns3/    native Ipv4RoutingProtocol module
 docs/   architecture, configuration, benchmarks, fidelity, ADRs — map in docs/README.md
 ```
 
-## Why one core, two adapters
+## Why one core, thin adapters
 
-NS-2 and NS-3 are different architectures, so there is no single universal
-patch. The algorithm (pheromone table, evaporation/reinforcement, ant
-construction, routing decisions) lives in [`core/`](core) and is shared
-verbatim. Each simulator gets only a thin adapter:
-
-| | NS-2 | NS-3 |
-|---|---|---|
-| Integration | OTcl + `Agent`, pooled packet headers, **core-tree edits** | additive module subclassing `Ipv4RoutingProtocol` |
-| Install | patch + recompile | drop-in + build |
-| Packet header | POD `PacketHeaderClass` | `ns3::Header` |
-
-See [docs/architecture.md](docs/architecture.md).
+Simulators differ in architecture, so there is no single universal patch. The
+algorithm (pheromone table, evaporation/reinforcement, ant construction,
+routing decisions) lives in [`core/`](core) and is shared verbatim; each
+simulator gets only a thin adapter that converts packets and executes the
+decisions the core returns. See [docs/architecture.md](docs/architecture.md)
+(and [docs/ns2-support.md](docs/ns2-support.md) for how the NS-2 adapter
+differs).
 
 ## Quick start
 
@@ -58,16 +56,6 @@ make test
 ```
 
 (Builds `core/` with CMake and runs the ctest suite — no simulator needed.)
-
-### Install on NS-2
-
-```bash
-make install-ns2 NS2DIR=/path/to/ns-allinone-2.3x/ns-2.3x
-cd /path/to/ns-allinone-2.3x/ns-2.3x && make
-```
-
-Uninstall: `make uninstall-ns2 NS2DIR=...` (reverts the patch cleanly). Details
-in [ns2/README.md](ns2/README.md).
 
 ### Install on NS-3
 
@@ -108,7 +96,6 @@ clean baseline):
 
 ```bash
 docker run --rm ghcr.io/danieljoppi/anthocnet-ns3:3.42 ./ns3 run anthocnet-example
-docker run --rm -it ghcr.io/danieljoppi/anthocnet-ns2:2.35   # `ns` with the agent
 ```
 
 Each image has three tag tiers: `:<sim-version>` (e.g. `:3.42`, latest build for
@@ -122,16 +109,16 @@ track the default branch; the `-<release>` tier is fixed to a release.
 | Image | Versions | Contents |
 |-------|----------|----------|
 | `ghcr.io/danieljoppi/anthocnet-ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | ns-3 + the AntHocNet module |
-| `ghcr.io/danieljoppi/anthocnet-ns2` | `2.34`, `2.35` | ns-2 + the AntHocNet patch (compiled) |
 
 **Plain images** — a clean simulator (no AntHocNet) for baseline comparisons:
 
 | Image | Versions | Contents |
 |-------|----------|----------|
 | `ghcr.io/danieljoppi/ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | plain ns-3 with the comparison protocols (AODV/OLSR/DSDV/…) |
-| `ghcr.io/danieljoppi/ns2` | `2.34`, `2.35` | plain ns-allinone-2.3x built from source |
 
-Build them yourself or see the full matrix in [docker/README.md](docker/README.md).
+NS-2 images (`anthocnet-ns2`, `ns2`) are listed in
+[docs/ns2-support.md](docs/ns2-support.md). Build them yourself or see the full
+matrix in [docker/README.md](docker/README.md).
 
 ## Supported network regimes
 
@@ -204,7 +191,7 @@ History of the work is in the per-phase commits; design rationale is in
 - [porting-notes.md](docs/porting-notes.md) — bug fixes, NS-2 anchors, caveats
 - [configuration.md](docs/configuration.md) — every parameter, its provenance, how to calibrate
 - [benchmarks.md](docs/benchmarks.md) — AntHocNet vs AODV/OLSR/DSDV (auto-updated)
-- [cross-validation.md](docs/cross-validation.md) — NS-2 vs NS-3 behaviour check
+- [ns2-support.md](docs/ns2-support.md) — the deprecated NS-2 target: status, install, images, rationale
 
 ## Documentation
 
@@ -227,6 +214,7 @@ History of the work is in the per-phase commits; design rationale is in
 | [paper/](paper/) | JOSS software-paper draft (`paper.md`/`paper.bib`), for submission against this repo. |
 | [CONTEXT.md](CONTEXT.md) | Project orientation: domain background, repo map, current state, glossary, open questions. |
 | [AGENTS.md](AGENTS.md) | Build/verify/conventions and invariants for contributors and AI agents. |
+| [docs/ns2-support.md](docs/ns2-support.md) | **The deprecated NS-2 target, end to end** — status and what "frozen" means, install, images, why it is retired. |
 | [ns2/README.md](ns2/README.md) · [ns3/README.md](ns3/README.md) | Per-adapter install/run details. |
 | [docker/README.md](docker/README.md) | Pre-built container images (plain vs. AntHocNet, per simulator version). |
 

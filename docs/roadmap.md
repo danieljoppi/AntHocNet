@@ -74,7 +74,7 @@ flowchart TB
     E301["<b>#301</b> VANET"]
     E297["<b>#297</b> satellite credibility<br/>handover metrics · calibration"]
     E302["<b>#302</b> security<br/>default-off profile"]
-    E307["<b>#307</b> remove NS-2<br/>v1.2.0 is the last release with it"]
+    E307["<b>#307</b> remove NS-2<br/>frozen at v1.2.0, removed at v2.0.0"]
     E32["<b>#32</b> OMNeT++/INET adapter<br/>the Veins entry ticket"]
 
     SATBUILD["satellite build epics<br/>#192 #193 #194 #195 #196<br/>#208 #210 #211"]
@@ -124,9 +124,11 @@ otherwise independent of the epic chain.
 
 ## Platform support
 
-**NS-2 is being retired.** `v1.2.0` is the **last release that ships the NS-2
-adapter** ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)); removal
-lands at v2.0.0. Anyone who needs NS-2 should pin the `v1.2.0` tag or its
+**NS-2 is being retired.** `v1.2.0` is the **last release in which NS-2 was
+actively supported** ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)):
+the adapter is frozen — no new NS-2 work lands — but it still ships through the
+rest of the `v1.x` line, and the **removal itself lands at v2.0.0** (dropping a
+platform is breaking, so it needs a major). Anyone who needs NS-2 should pin the `v1.2.0` tag or its
 immutable images (`ghcr.io/danieljoppi/anthocnet-ns2:2.34-v1.2.0` /
 `:2.35-v1.2.0`) — already-published tags are not withdrawn, and v1.2.0 stays
 citable at its version DOI.
