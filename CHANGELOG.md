@@ -8,42 +8,21 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
-## Unreleased
+## v1.3.0 (2026-08-04)
 
-### Deprecated
-- **NS-2 support.** `v1.2.0` is the **last release in which the NS-2 adapter
-  was actively supported** — it is frozen (no new NS-2 work) but still ships
-  through the rest of the `v1.x` line, and is removed at `v2.0.0`
-  ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)). Nothing already
-  published is withdrawn — pin the `v1.2.0` tag or its immutable images
-  (`ghcr.io/danieljoppi/anthocnet-ns2:2.34-v1.2.0` / `:2.35-v1.2.0`), which stay
-  pullable and citable at that release's DOI. The simulator-agnostic `core/`,
-  its ports seam and the "no NS headers in `core/`" rule are unaffected.
+### Feat
 
+- **bench**: seed-splitting — firstrun offset threaded end-to-end, exact pooling (#322)
+- **bench**: persist per-run rows in a sibling campaign csv (#321)
+- **bench**: emit 95% ci columns from --export-sweeps (#316)
+- **bench**: render 95% cis — chart error bars and ± table columns (#315)
+- **bench**: add 95% CIs, paired tests and a column-mapping gate to the result parsers (#313)
+- **bench**: common-set delay99 — the assumption-free version of #308 (#312)
 
-First tagged release. Establishes the simulator-agnostic architecture, both
-adapters, the benchmark harness, and reproducible CI/packaging.
+### Fix
 
-### Added
-- **Core** (`core/`): simulator-agnostic AntHocNet algorithm (pheromone table +
-  engine, ant state machine, reactive setup, proactive ants, pheromone
-  diffusion, hello-timeout link-failure detection + bounded repair) behind
-  `IClock`/`IRng` ports, returning `RouteDecision`s. Bounds-checked wire codec.
-  Unit + property tests, ASan/UBSan, libFuzzer corpus.
-- **NS-2 adapter** (`ns2/`): idempotent source patch for ns-2.34 / ns-2.35,
-  with a MAC transmit-failure repair hook.
-- **NS-3 adapter** (`ns3/`): additive `contrib/` module (ns-3.36–3.48),
-  `anthocnet-compare` benchmark, and `Tx`/`Rx`/`RouteChanged` trace sources.
-- **Benchmarks**: classified scenario taxonomy + the paper's parameter sweeps,
-  paper-style charts, NRL + 99th-percentile delay + `--diag` ant diagnostics;
-  results auto-published to `docs/benchmarks.md` on every merge.
-- **Reproducibility**: pre-built ns-2 / ns-3 Docker images on GHCR; CI builds
-  against them across the version matrix.
-- **Project**: `CITATION.cff`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
-  security policy, and this changelog.
-
-[Unreleased]: https://github.com/danieljoppi/AntHocNet/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/danieljoppi/AntHocNet/releases/tag/v0.1.0
+- **bench**: re-emit ##MATCH## in the compact result block (#311)
+- **docs**: unrenderable mermaid block + CI gate, Zenodo DOI, NS-2 deprecation, and the roadmap plan (#306)
 
 ## v1.2.0 (2026-08-02)
 
