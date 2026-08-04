@@ -144,7 +144,10 @@ METRICS = ["pdr_pct", "delay_ms", "delay99_ms", "throughput_kbps", "nrl",
 PARAMS = ["runs", "nNodes", "area", "speed", "flows"]
 OUT_COLUMNS = (["kind", "group", "x", "scenario", "class", "protocol"]
                + ["runs", "nNodes", "areaX", "speed", "pause", "flows", "propagation"]
-               + METRICS)
+               + METRICS
+               # #126: first seed of this dispatch (1 unless seed-split);
+               # APPEND ONLY, like every column above.
+               + ["run_first"])
 
 # #319: the sibling per-run CSV (<out minus .csv>-runs.csv). The aggregate CSV
 # above carries mean+sd only, which makes the #293 policy's stronger branches
@@ -160,10 +163,13 @@ RUN_COLUMNS = (["kind", "group", "x", "scenario", "protocol", "run"]
                + RUN_METRICS)
 
 
-def build_args(flags, runs, time, protocols, propagation, extra_args=""):
+def build_args(flags, runs, time, protocols, propagation, extra_args="",
+               run_first=1):
     """Turn a flags dict into an anthocnet-compare argument string."""
     merged = dict(flags)
     merged.setdefault("runs", runs)
+    if run_first != 1:  # #126: default stays byte-identical to pre-#126 lines
+        merged.setdefault("firstRun", run_first)
     if time is not None:
         merged.setdefault("time", time)
     merged.setdefault("protocols", protocols)
@@ -241,7 +247,8 @@ def run_compare(ns3dir, arg_str, dry_run, label=""):
     return list(csv.DictReader(io.StringIO("\n".join(keep)))), run_rows
 
 
-def emit(writer, kind, group, x, scenario, klass, pause, propagation, rows):
+def emit(writer, kind, group, x, scenario, klass, pause, propagation, rows,
+         run_first=1):
     for r in rows:
         out = {
             "kind": kind, "group": group, "x": x, "scenario": scenario,
@@ -250,6 +257,7 @@ def emit(writer, kind, group, x, scenario, klass, pause, propagation, rows):
             "areaX": r.get("area", ""), "speed": r.get("speed", ""),
             "pause": pause, "flows": r.get("flows", ""),
             "propagation": propagation or "range",
+            "run_first": run_first,
         }
         for m in METRICS:
             out[m] = r.get(m, "")
@@ -268,6 +276,12 @@ def main():
     ap.add_argument("ns3dir", help="configured ns-3 tree with the anthocnet module")
     ap.add_argument("--out", default="scenarios.csv", help="output CSV path")
     ap.add_argument("--runs", type=int, default=5, help="RNG runs to average per point")
+    ap.add_argument("--run-first", type=int, default=1,
+                    help="first RNG run (seed) of this invocation; runs cover "
+                         "run-first..run-first+runs-1, so one point's seeds "
+                         "can split across dispatches that each fit the job "
+                         "ceiling (#126). Pool the split CSVs with "
+                         ".claude/skills/benchmark-results/pool_runs.py")
     ap.add_argument("--time", type=int, default=None,
                     help="sim time (s) override; default uses each scenario's own")
     ap.add_argument("--protocols", default="anthocnet,aodv,olsr,dsdv")
@@ -326,10 +340,11 @@ def main():
                 rows, run_rows = run_compare(
                     args.ns3dir,
                     build_args(flags, runs, sim_time, args.protocols,
-                               args.propagation, args.extra_args),
+                               args.propagation, args.extra_args,
+                               args.run_first),
                     args.dry_run, label=name)
                 emit(w, "discrete", name, "", name, klass, flags.get("pause", ""),
-                     args.propagation, rows)
+                     args.propagation, rows, args.run_first)
                 emit_runs(wr, "discrete", name, "", name, run_rows)
                 f.flush()
                 fr.flush()
@@ -352,10 +367,12 @@ def main():
                     rows, run_rows = run_compare(
                         args.ns3dir,
                         build_args(flags, runs, sim_time, args.protocols,
-                                   args.propagation, args.extra_args),
+                                   args.propagation, args.extra_args,
+                                   args.run_first),
                         args.dry_run, label=f"{name}={x}")
                     emit(w, "sweep", name, x, f"{name}={x}", xlabel,
-                         flags.get("pause", ""), args.propagation, rows)
+                         flags.get("pause", ""), args.propagation, rows,
+                         args.run_first)
                     emit_runs(wr, "sweep", name, x, f"{name}={x}", run_rows)
                     f.flush()
                     fr.flush()

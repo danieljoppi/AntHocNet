@@ -34,7 +34,8 @@ jobs:
             .claude/skills/benchmark-results/scenario_check.py \
             .claude/skills/benchmark-results/test_scenario_check.py \
             .claude/skills/benchmark-results/stats_util.py \
-            .claude/skills/benchmark-results/test_stats.py
+            .claude/skills/benchmark-results/test_stats.py \
+            .claude/skills/benchmark-results/pool_runs.py
       - name: Statistics self-test (#293)
         # stats_util.py computes the 95% CIs and paired tests every published
         # number will carry; bench_parse.py's column-mapping check decides

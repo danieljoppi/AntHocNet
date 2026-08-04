@@ -41,6 +41,7 @@ def _load(name):
 su = _load("stats_util")
 bp = _load("bench_parse")
 sw = _load("sweep_summary")
+pr = _load("pool_runs")
 
 CASES = []
 
@@ -305,6 +306,94 @@ def _():
         assert rows["aodv"]["delay99_ci"] == expect_t, rows
         assert expect_boot != expect_t
         assert "1 with bootstrap delay99_ci, 1 t-fallback" in out.getvalue()
+
+
+# ---- pool_runs (#126) --------------------------------------------------------
+
+AGG_COLS = ["kind", "group", "x", "scenario", "class", "protocol", "runs",
+            "pdr_pct", "delay_ms", "delay99_ms", "nrl", "pdr_sd",
+            "delay99_sd", "energy_j", "run_first"]
+RUN_COLS = ["kind", "group", "x", "scenario", "protocol", "run", "pdr_pct",
+            "delay_ms", "delay99_ms", "nrl"]
+
+
+def _write_split(td, name, first, pdrs, energy):
+    """One split: aggregate row + per-run sibling for scale/2.0/anthocnet."""
+    import csv as _csv
+    n = len(pdrs)
+    aggp = os.path.join(td, name)
+    with open(aggp, "w", newline="") as fh:
+        w = _csv.DictWriter(fh, fieldnames=AGG_COLS)
+        w.writeheader()
+        w.writerow({"kind": "sweep", "group": "scale", "x": "2.0",
+                    "scenario": "scale=2.0", "class": "scale factor",
+                    "protocol": "anthocnet", "runs": n,
+                    "pdr_pct": f"{sum(pdrs) / n:.4f}", "delay_ms": "50.0",
+                    "delay99_ms": "900.0", "nrl": "3.0",
+                    "pdr_sd": "9.99", "delay99_sd": "9.99",
+                    "energy_j": energy, "run_first": first})
+    with open(aggp.removesuffix(".csv") + "-runs.csv", "w", newline="") as fh:
+        w = _csv.DictWriter(fh, fieldnames=RUN_COLS)
+        w.writeheader()
+        for i, p in enumerate(pdrs):
+            w.writerow({"kind": "sweep", "group": "scale", "x": "2.0",
+                        "scenario": "scale=2.0", "protocol": "anthocnet",
+                        "run": first + i, "pdr_pct": p, "delay_ms": "50.0",
+                        "delay99_ms": "900.0", "nrl": "3.0"})
+    return aggp
+
+
+def _run_pool(argv):
+    out = io.StringIO()
+    old, sys.argv = sys.argv, ["pool_runs.py"] + argv
+    code = 0
+    try:
+        with contextlib.redirect_stdout(out):
+            try:
+                pr.main()
+            except SystemExit as e:
+                code = e.code if isinstance(e.code, int) else 1
+    finally:
+        sys.argv = old
+    return code, out.getvalue()
+
+
+@case("#126 pooling recomputes mean/sd exactly from the pooled seeds")
+def _():
+    import csv as _csv
+    import tempfile
+    pdrs_a, pdrs_b = [80.0, 82.0, 84.0], [70.0, 72.0]
+    with tempfile.TemporaryDirectory() as td:
+        a = _write_split(td, "a.csv", 1, pdrs_a, "500.0")
+        b = _write_split(td, "b.csv", 4, pdrs_b, "600.0")
+        outp = os.path.join(td, "pooled.csv")
+        code, _txt = _run_pool([a, b, "--out", outp])
+        assert code == 0, _txt
+        with open(outp, newline="") as fh:
+            row = next(iter(_csv.DictReader(fh)))
+        allp = pdrs_a + pdrs_b
+        approx(float(row["pdr_pct"]), sum(allp) / len(allp), tol=1e-3)
+        approx(float(row["pdr_sd"]), su.sample_sd(allp), tol=1e-3)
+        assert row["runs"] == "5" and row["run_first"] == "1"
+        # aggregate-only column: runs-weighted mean (3*500 + 2*600)/5
+        approx(float(row["energy_j"]), 540.0, tol=1e-3)
+        with open(outp.removesuffix(".csv") + "-runs.csv", newline="") as fh:
+            seeds = [r["run"] for r in _csv.DictReader(fh)]
+        assert seeds == ["1", "2", "3", "4", "5"], seeds
+
+
+@case("#126 pooling FAILs on duplicate seeds and on a missing sibling")
+def _():
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        a = _write_split(td, "a.csv", 1, [80.0, 82.0], "500.0")
+        b = _write_split(td, "b.csv", 2, [70.0, 72.0], "600.0")  # seed 2 dup
+        code, _txt = _run_pool([a, b, "--out", os.path.join(td, "p.csv")])
+        assert code != 0, "duplicate seed must FAIL"
+        c = _write_split(td, "c.csv", 1, [80.0], "500.0")
+        os.unlink(c.removesuffix(".csv") + "-runs.csv")
+        code, _txt = _run_pool([c, "--out", os.path.join(td, "p2.csv")])
+        assert code != 0, "missing sibling must FAIL"
 
 
 # ---- end-to-end through main() ----------------------------------------------

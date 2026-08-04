@@ -27,6 +27,9 @@ on:
       point:
         description: 'With only=<sweep name>: run just this one point (e.g. 1500 for area, 900 for pause, 1.4 for scale) instead of the whole sweep. Leave blank for the whole sweep.'
         default: ''
+      runFirst:
+        description: 'First RNG run (seed) of this dispatch (#126): seeds cover runFirst..runFirst+runs-1, so a point too big for the 6 h ceiling at full seed count splits across dispatches (e.g. runs=10 runFirst=1, then runs=10 runFirst=11). Pool the split CSVs with pool_runs.py. Leave blank for 1.'
+        default: ''
       propagation:
         description: 'Propagation model override for every point: range (disk) | tworay. Leave blank for anthocnet-compare''s default (range).'
         default: ''
@@ -129,6 +132,10 @@ jobs:
           if [ -n "${{ github.event.inputs.point }}" ]; then
             point="--point=${{ github.event.inputs.point }}"
           fi
+          runfirst=""
+          if [ -n "${{ github.event.inputs.runFirst }}" ]; then
+            runfirst="--run-first=${{ github.event.inputs.runFirst }}"
+          fi
           # #177: extraArgs must reach anthocnet-compare as ONE argv element
           # here, so it is quoted — unlike $quick/$propagation/$point above,
           # which are single tokens deliberately left unquoted to expand to
@@ -143,7 +150,7 @@ jobs:
             --time "${{ github.event.inputs.time }}" \
             --only "${{ github.event.inputs.only }}" \
             --extra-args "${{ github.event.inputs.extraArgs }}" \
-            $quick $propagation $point
+            $quick $propagation $point $runfirst
       - name: Render charts
         # always(): a mid-sweep failure (one anthocnet-compare invocation
         # raising SystemExit) still leaves a valid, closed CSV for whatever
