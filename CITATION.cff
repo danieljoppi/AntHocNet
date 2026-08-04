@@ -21,8 +21,8 @@ identifiers:
     value: "10.5281/zenodo.20981979"
     description: "Concept DOI — always resolves to the latest released version."
   - type: doi
-    value: "10.5281/zenodo.21762983"
-    description: "Version DOI — v1.2.0, the release this file describes."
+    value: "10.5281/zenodo.21795253"
+    description: "Version DOI — v1.3.0, the release this file describes."
 keywords:
   - MANET
   - ad hoc networks

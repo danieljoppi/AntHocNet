@@ -23,7 +23,8 @@ line, and it is **removed at v2.0.0**
 
 Nothing already published is withdrawn. Pin `v1.2.0` or its immutable images
 for the last actively-supported state; that release stays citable at its own
-version DOI.
+version DOI, [`10.5281/zenodo.21762983`](https://doi.org/10.5281/zenodo.21762983),
+which keeps resolving after the adapter is removed from `main`.
 
 ## Why it is being retired
 
