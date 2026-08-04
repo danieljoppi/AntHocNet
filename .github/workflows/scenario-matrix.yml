@@ -165,6 +165,7 @@ jobs:
           name: scenario-matrix
           path: |
             scenarios.csv
+            scenarios-runs.csv
             docs/benchmarks/*.png
           retention-days: 7
           if-no-files-found: warn
