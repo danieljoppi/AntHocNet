@@ -61,7 +61,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Install AntHocNet module
         run: make install-ns3 NS3DIR=/opt/ns-3
       - name: Resolve ns-3 build profile (#123)
@@ -204,7 +204,7 @@ jobs:
         # exactly when the forensics are needed (#256), and skipping upload on
         # failure discarded them three times.
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: paper-benchmark
           path: |

@@ -1,0 +1,22 @@
+# Dependabot — keeps the supply chain pinned in workflows/images fresh (#330).
+#
+# Scope decisions:
+#   - github-actions: workflow `uses:` lines are pinned to full commit SHAs
+#     (tags can be repointed); Dependabot bumps the SHA and the trailing
+#     `# vX.Y.Z` comment together.
+#   - docker: both images live under docker/ (Dockerfile.ns2, Dockerfile.ns3).
+#   - pip is deliberately absent: there is no requirements manifest in the
+#     repo — the ruff==0.16.0 and gcovr==8.6 pins are inline `pip install`
+#     lines in workflow yaml, which Dependabot cannot see. Those stay manual;
+#     bump them deliberately, fixing new findings in the same PR.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: monthly
