@@ -1,0 +1,32 @@
+# Python tooling used by CI, pinned in one place so Dependabot can see it.
+#
+# Before this file the pins lived as inline `pip install 'tool==x.y'` lines in
+# workflow yaml, which Dependabot cannot parse — .github/dependabot.yml said so
+# and left them to be bumped by hand. In practice that meant they were not
+# bumped, and one (commitizen, which computes the release version bump and
+# rewrites the version strings) was not pinned at all.
+#
+# The workflows consume this as a *constraints* file, not a requirements file:
+#
+#     pip install -c requirements-dev.txt ruff
+#
+# so each job still installs only the tool it needs, at the version pinned
+# here. Adding a tool means adding it here and naming it in the job.
+#
+# Why each pin is deliberate rather than a floating range:
+#   - ruff            an upstream release that tightens default rules turns
+#                     every open PR red on untouched files. That already
+#                     happened once, on 0.16.0 (I001/ISC004/PLW1510/EXE001).
+#   - gcovr           its per-version gcov parsing shifts the reported
+#                     coverage numbers, so an unpinned bump silently moves the
+#                     baseline merges are compared against.
+#   - mkdocs-material the docs build runs --strict; an upstream release turns
+#                     a new warning into a red default-branch run.
+#   - commitizen      it computes the semver bump from commit history and
+#                     rewrites .cz.toml / CITATION.cff during a release. A
+#                     float here can change your release numbering, and
+#                     release.yml is never exercised by PR CI.
+ruff==0.16.0
+gcovr==8.6
+mkdocs-material==9.7.7
+commitizen==4.17.0

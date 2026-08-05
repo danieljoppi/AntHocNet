@@ -29,9 +29,10 @@ jobs:
           python-version: '3.x'
       - name: Install ruff
         # Pinned: an unpinned install broke every PR when ruff 0.16.0 tightened
-        # defaults (I001/ISC004/PLW1510/EXE001 on untouched files). Bump
-        # deliberately, fixing new findings in the same PR.
-        run: pip install 'ruff==0.16.0'
+        # defaults (I001/ISC004/PLW1510/EXE001 on untouched files). The pin
+        # lives in requirements-dev.txt so Dependabot can see it; bump it
+        # there, fixing new findings in the same PR.
+        run: pip install -c requirements-dev.txt ruff
       - name: Lint
         # The whole skill dir is linted: the per-file list this replaces (#336)
         # existed only because bench_parse.py and sweep_summary.py carried

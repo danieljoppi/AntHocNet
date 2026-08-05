@@ -103,9 +103,12 @@ def verdict(a, b):
     dn = ((f(a, "nrl", 0) - f(b, "nrl", 0))
           / f(b, "nrl", 1) * 100 if f(b, "nrl") else 0.0)
     sig = []
-    if abs(dp) >= 1.0:  sig.append(1 if dp > 0 else -1)
-    if abs(d99) >= 10:  sig.append(1 if d99 < 0 else -1)
-    if abs(dn) >= 10:   sig.append(1 if dn < 0 else -1)
+    if abs(dp) >= 1.0:
+        sig.append(1 if dp > 0 else -1)
+    if abs(d99) >= 10:
+        sig.append(1 if d99 < 0 else -1)
+    if abs(dn) >= 10:
+        sig.append(1 if dn < 0 else -1)
     if not sig:
         tag = "NOISE"
     elif all(s > 0 for s in sig):

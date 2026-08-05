@@ -5,10 +5,14 @@
 #     (tags can be repointed); Dependabot bumps the SHA and the trailing
 #     `# vX.Y.Z` comment together.
 #   - docker: both images live under docker/ (Dockerfile.ns2, Dockerfile.ns3).
-#   - pip is deliberately absent: there is no requirements manifest in the
-#     repo — the ruff==0.16.0 and gcovr==8.6 pins are inline `pip install`
-#     lines in workflow yaml, which Dependabot cannot see. Those stay manual;
-#     bump them deliberately, fixing new findings in the same PR.
+#   - pip: the Python tool pins now live in requirements-dev.txt, which the
+#     workflows consume as a constraints file (`pip install -c … ruff`).
+#     This reverses the original decision here — that there was no manifest
+#     to watch, so ruff/gcovr stayed manual. "Manual" meant they were not
+#     bumped at all, and commitizen (which computes the release version bump)
+#     turned out never to have been pinned. One file both fixes that and makes
+#     the pins visible here. Bump them like any other dependency, fixing any
+#     new lint findings in the same PR.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -33,3 +37,8 @@ updates:
       # Dockerfile.ns3's base is an `ARG UBUNTU=`, which Dependabot does not
       # touch, so this ignore costs nothing there.
       - dependency-name: ubuntu
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly

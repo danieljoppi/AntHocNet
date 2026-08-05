@@ -46,8 +46,8 @@ jobs:
       - name: Install mkdocs-material
         # Pinned for the same reason ruff is pinned in lint.yml: an unpinned
         # docs toolchain turns an upstream release into a red main-branch run.
-        # Bump deliberately.
-        run: pip install 'mkdocs-material==9.7.7'
+        # The pin lives in requirements-dev.txt so Dependabot can see it.
+        run: pip install -c requirements-dev.txt mkdocs-material
       - name: Build
         # --strict: warnings (broken internal links, nav pointing at a missing
         # page) fail the build instead of silently shipping a 404. It passes
