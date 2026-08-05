@@ -22,8 +22,8 @@ The living compliance ledger is [issue #91](https://github.com/danieljoppi/AntHo
 | **Multipath** setup (hops+time acceptance filter; [1] states 1.5×) | 3.1 | `GenerationTracker`, `enableMultipath` (#96/#97) | ✅ default on — factors are the thesis's `a1 = 0.9` / `a2 = 2.0` since #177 |
 | MAC-queue-aware per-hop cost `(Q+1)·T̂_mac` (A2) | 3.1 | `enableMacMetric` (#67/#70) | ✅ formula matches; default off (gated) |
 | Pheromone deposit `τ=((T̂+h·T_hop)/2)⁻¹`, running avg γ | 3.1 | `pheromone_engine` | ✅ |
-| Stochastic data routing, pheromone² | 3.2 | `betaData=2` (#70/#100) | ✅ aligned |
-| Proactive ants, unsquared pheromone, broadcast≤2 | 3.3 | `betaAnts=1`, `proactiveMaxBroadcasts=2` (#45/#70) | ✅ |
+| Stochastic data routing, pheromone² | 3.2 | `betaData=20` (#179) | ⚠️ **deliberate deviation** — follows the thesis's β₃ = 20 instead of [1]'s squared rule; measured, see below |
+| Proactive ants, unsquared pheromone, broadcast≤2 | 3.3 | `betaAnts=20`, `proactiveMaxBroadcasts=2` (#45/#179) | ⚠️ **deliberate deviation** on the exponent (thesis β₁=β₂=20); broadcast≤2 ✅ |
 | Pheromone diffusion via hello ants | 3.3 | `enableDiffusion` (ADR-0007) | ✅ |
 | Reactive ant floods when it has no pheromone | 3.1 | default behaviour; `enableDirectedReactive` steers instead (ADR-0016) | ✅ faithful by default — the deviation is **off** |
 | Hello beacons (1 s, 2 missed → remove) | 3.3 fn.1 | `helloInterval`, `allowedHelloLoss` | ✅ |
@@ -114,6 +114,44 @@ So the accurate claim is "faithful to [1]", not "as close to the 2007 thesis as
 possible". Provenance for each parameter is in
 [`configuration.md`](configuration.md) §3.1, where these rows are marked
 `thesis §4.3.4 (superseded version)` rather than a bare `thesis`.
+
+### The exception: the β exponents now follow the thesis (#179)
+
+The three items above are places where the two sources disagree and **we keep
+[1]**. The routing exponents are the one place we deliberately went the other
+way, so the "faithful to [1]" claim needs this carve-out.
+
+The sources disagree on a *ratio*, not just a value:
+
+| | data exponent | ant exponent | relationship |
+|---|---|---|---|
+| **[1] PPSN 2004** | pheromone **squared** (§3.2, "to be more greedy with respect to the better paths") | **unsquared** (§3.3, "not squared, so that they sample the paths more evenly") | asymmetric, 2 : 1 — ants explore wider than data |
+| **2007 thesis** | β₃ = **20** (eq 4.6, "we normally keep β₃ on 20") | β₁ = **20** (eq 4.1), β₂ = **20** (eq 4.5) | symmetric, 1 : 1 |
+
+[1] gives no absolute values, only the squared/unsquared form; the thesis gives
+numbers. That is the same situation as `hopTimeSec` (#88), where the thesis's
+3 ms replaced a value [1] defines but never states — and the same resolution.
+
+What we give up by adopting 20/20 is [1]'s *reason* for the asymmetry: ants no
+longer sample more evenly than data, because they use the identical exponent.
+The thesis does not lose exploration, it relocates it — proactive ants there
+route on `max(regular, virtual)` pheromone (eq 4.5) and carry a per-node
+broadcast probability, so exploration comes from the virtual pheromone rather
+than from a flatter distribution.
+
+Unlike the three items above, this one is **measured, not just sourced**. A
+20-seed × 900 s paired A/B across all six discrete scenarios
+([#179](https://github.com/danieljoppi/AntHocNet/issues/179)) moved five of six
+to `PAIRED-IMPROVED` with none regressing: PDR +0.50 to +3.23 pp and routing
+load −9.7 % to −16.7 % where significant, with the baselines byte-identical
+across arms. It also narrowed the [#21](https://github.com/danieljoppi/AntHocNet/issues/21)
+delay-tail deficit against AODV on five of six scenarios (`heavy-load`
++125.4 % → +82.4 %) without closing it. The one adverse signal is `dense-small`'s
+tail at +9.55 ms, where the bootstrap CI and the Wilcoxon test disagree.
+
+`betaAnts` conflates the thesis's β₁ and β₂. They coincide at 20, so nothing is
+lost today — but the thesis sweeps β₂ separately in chapter 5, so the field must
+be split before anyone deviates per ant type.
 
 ## Known deviations (honest list)
 

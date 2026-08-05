@@ -241,10 +241,15 @@ paths." Crucially, **proactive ants use the *unsquared* values** (β = 1) "so th
 they sample the paths more evenly." That is the origin of this codebase's
 **two-beta** design:
 
-- **`betaAnts`** (≈1) — lower greediness, so exploring ants keep trying
-  alternatives;
-- **`betaData`** (≈2) — higher greediness, so payload concentrates on the
-  best-known paths while ants still explore.
+- **`betaAnts`** — exploration greediness of ants;
+- **`betaData`** — greediness of payload forwarding.
+
+The fields remain separate so the two *can* diverge, but **both ship at 20**
+since [#179](https://github.com/danieljoppi/AntHocNet/issues/179): the 2007
+thesis sets β₁ = β₂ = β₃ = 20, and a 20-seed paired A/B improved 5 of 6
+scenarios with none worse. So the paper's asymmetry above describes [1], not
+what this codebase ships — the thesis reaches exploration through the virtual
+pheromone and the per-node broadcast probability instead.
 
 Spreading data this way gives **automatic load balancing**: a congested path's
 delay rises, its pheromone falls, and traffic shifts off it. (See
@@ -324,8 +329,8 @@ flowchart LR
     BA["backward ant"] -->|"updateRegular()"| REG
     HE["hello ant advert"] -->|"updateVirtual()"| VIRT
 
-    REG -->|"BetaData = 2<br/>(greedy)"| DATA["<b>data forwarding</b>"]
-    REG -->|"BetaAnts = 1<br/>(explorative)"| ANTS["ant next-hop choice"]
+    REG -->|"BetaData = 20"| DATA["<b>data forwarding</b>"]
+    REG -->|"BetaAnts = 20"| ANTS["ant next-hop choice"]
     VIRT -->|"proactive ants only"| ANTS
     VIRT -.->|"never — ADR-0007's<br/>load-bearing invariant"| DATA
 
@@ -431,7 +436,7 @@ The whole conceptual model above lives, simulator-independent, in
 | Pheromone table (per-destination, per-neighbour goodness) | `PheromoneTable` |
 | Deposit / reinforcement (`T ← γ·T + (1−γ)·τ`), evaporation | `PheromoneEngine` |
 | Forward / backward / hello / repair ant | `AntMessage` (type + direction) |
-| Stochastic next-hop choice (`pheromone ^ β`), squared vs not | `PheromoneTable` selection, driven by `betaData` / `betaAnts` |
+| Stochastic next-hop choice (`pheromone ^ β`) | `PheromoneTable` selection, driven by `betaData` / `betaAnts` |
 | The per-node decision-making (the "rules a node follows") | `AntRouterLogic` (pure: returns `RouteDecision`s) |
 | Same-generation duplicate-ant suppression during a flood | `AntHistoryTracker` |
 | Regular vs **virtual** pheromone (diffusion) | two maps in `PheromoneTable`; gated by `enableDiffusion` |

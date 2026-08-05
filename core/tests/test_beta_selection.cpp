@@ -1,6 +1,9 @@
-// Item 01 — the Eq.1 exponent beta is wired through, and data uses a greedier
-// exponent (betaData) than ants (betaAnts). Regression for deviation D1, where
-// selection hard-coded beta = 1 and ignored Config entirely.
+// Item 01 — the Eq.1 exponent beta is wired through, and ants and data read
+// *separate* Config fields (betaAnts / betaData) so they can diverge. Regression
+// for deviation D1, where selection hard-coded beta = 1 and ignored Config
+// entirely. Every case below sets its exponents explicitly: the defaults are
+// both 20 since #179, so the mechanism — not the shipped values — is what this
+// pins.
 #include "anthocnet/core/ant_router_logic.h"
 #include "anthocnet/core/config.h"
 #include "anthocnet/core/pheromone_table.h"

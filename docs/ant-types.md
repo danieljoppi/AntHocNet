@@ -98,7 +98,7 @@ sequenceDiagram
     Note over I: computeBackAntState → reinforceFromBackAnt<br/><b>regular pheromone written here</b>
     I-->>S: Backward ant
     Note over S: deliver() → flush the queued data
-    S->>D: data now routed stochastically (BetaData = 2)
+    S->>D: data now routed stochastically (BetaData = 20)
 ```
 
 Multipath (`EnableMultipath`, on by default) is what makes step 6 happen more

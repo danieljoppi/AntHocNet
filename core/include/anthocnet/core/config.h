@@ -19,16 +19,36 @@ struct Config {
     double alpha = 0.7;  ///< ALFA: evaporation retains alpha of the value.
     double gamma = 0.7;  ///< GAMA: weight of the old value when reinforcing.
 
-    /// Eq.1 exponents for the stochastic next-hop choice. Ants explore with a
-    /// small exponent; data is greedy with a larger one (betaData >= betaAnts).
-    /// [1] uses pheromone^2 for data (§3.2 "the square ... to be more greedy")
-    /// and unsquared pheromone for proactive ants (§3.3) — verified against the
-    /// paper (docs/publications/papers/2004-ppsn-anthocnet.md) and A/B'd on the
-    /// paper regime with multipath on (#70: performance-neutral vs the legacy
-    /// 20/2, slightly better delay/jitter). The legacy constants BETA1=2/
-    /// BETA2=20 had no basis in [1].
-    double betaAnts = 1.0;   ///< exponent for ant next-hop choice ([1] §3.3, unsquared).
-    double betaData = 2.0;   ///< exponent for data next-hop choice ([1] §3.2, squared).
+    /// Eq.1 exponents for the stochastic next-hop choice, from the primary
+    /// source (#179): Ducatelle, *Adaptive Routing in Ad Hoc Wireless Multi-hop
+    /// Networks*, PhD thesis, USI Lugano, 2007 — beta1 (reactive ants, eq 4.1)
+    /// "we keep beta1 relatively high, on 20"; beta2 (proactive ants, eq 4.5)
+    /// "normally kept on 20"; beta3 (data, eq 4.6) "we normally keep beta3
+    /// on 20". All three are 20, so ants and data share one value here.
+    ///
+    /// This is a deliberate departure from [1] (PPSN 2004), which gives no
+    /// absolute values but does state a *ratio*: data uses pheromone squared
+    /// (§3.2 "the square ... to be more greedy") while ants use it unsquared
+    /// (§3.3 "not squared, so that they sample the paths more evenly"). At the
+    /// thesis values that asymmetry disappears. The thesis reaches exploration
+    /// by other means — proactive ants route on max(regular, virtual) pheromone
+    /// and carry a per-node broadcast probability — rather than by a lower
+    /// exponent. Same precedent as hopTimeSec (#88): the thesis supplies numbers
+    /// the paper omits, and its numbers win where the two disagree.
+    ///
+    /// Measured, not merely sourced (#179): a 20-seed x 900 s A/B over the six
+    /// discrete scenarios, paired per seed, moved 5 of 6 to PAIRED-IMPROVED with
+    /// no scenario regressing — PDR +0.50..+3.23 pp and routing load -9.7..-16.7%
+    /// where significant. Only dense-small is neutral. The full table, the
+    /// controls and the one adverse signal are on #179.
+    ///
+    /// betaAnts conflates the thesis's beta1 (reactive) and beta2 (proactive),
+    /// which the thesis parameterises separately. They coincide at 20, so the
+    /// conflation is harmless *here*; it stops being harmless if we ever want a
+    /// value the thesis does not have — the thesis itself sweeps beta2 alone in
+    /// chapter 5. Split the field before deviating per ant type, not after.
+    double betaAnts = 20.0;  ///< exponent for ant next-hop choice (thesis beta1/beta2).
+    double betaData = 20.0;  ///< exponent for data next-hop choice (thesis beta3).
 
     /// Per-hop time estimate used by the back-ant pheromone formula (Eq.2):
     /// the time to take one hop in unloaded conditions. In seconds, matching
