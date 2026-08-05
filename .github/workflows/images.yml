@@ -101,7 +101,7 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Plain ns-3 (no AntHocNet)
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile.ns3
@@ -131,7 +131,7 @@ jobs:
       - name: Mirror plain ns-3 to Docker Hub (non-fatal)
         if: ${{ env.PUSH == 'true' && env.MIRROR_DOCKERHUB == 'true' && env.DOCKERHUB_USERNAME != '' }}
         continue-on-error: true
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile.ns3
@@ -151,7 +151,7 @@ jobs:
         # AntHocNet module inside the job, so a release-profile `anthocnet-ns3` image
         # would cost a second full compile that nothing consumes.
         if: ${{ matrix.version == env.NS_OPT }}
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile.ns3
@@ -166,7 +166,7 @@ jobs:
       - name: Mirror release-profile ns-3 to Docker Hub (non-fatal)
         if: ${{ env.PUSH == 'true' && env.MIRROR_DOCKERHUB == 'true' && env.DOCKERHUB_USERNAME != '' && matrix.version == env.NS_OPT }}
         continue-on-error: true
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile.ns3
@@ -179,7 +179,7 @@ jobs:
             ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/ns3:{1}-opt-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
           push: ${{ env.PUSH == 'true' }}
       - name: ns-3 + AntHocNet
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile.ns3
@@ -193,7 +193,7 @@ jobs:
       - name: Mirror ns-3 + AntHocNet to Docker Hub (non-fatal)
         if: ${{ env.PUSH == 'true' && env.MIRROR_DOCKERHUB == 'true' && env.DOCKERHUB_USERNAME != '' }}
         continue-on-error: true
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile.ns3
@@ -233,7 +233,7 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Plain ns-2 (no AntHocNet)
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile.ns2
@@ -247,7 +247,7 @@ jobs:
       - name: Mirror plain ns-2 to Docker Hub (non-fatal)
         if: ${{ env.PUSH == 'true' && env.MIRROR_DOCKERHUB == 'true' && env.DOCKERHUB_USERNAME != '' }}
         continue-on-error: true
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile.ns2
@@ -258,7 +258,7 @@ jobs:
             ${{ env.DOCKERHUB_USERNAME != '' && (inputs.release || '') != '' && format('docker.io/{0}/ns2:{1}-{2}', env.DOCKERHUB_USERNAME, matrix.version, inputs.release) || '' }}
           push: ${{ env.PUSH == 'true' }}
       - name: ns-2 + AntHocNet
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile.ns2
@@ -272,7 +272,7 @@ jobs:
       - name: Mirror ns-2 + AntHocNet to Docker Hub (non-fatal)
         if: ${{ env.PUSH == 'true' && env.MIRROR_DOCKERHUB == 'true' && env.DOCKERHUB_USERNAME != '' }}
         continue-on-error: true
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile.ns2
