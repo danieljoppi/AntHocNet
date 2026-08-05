@@ -1,0 +1,73 @@
+// AntHocNet devcontainer (#334) — clone to a running simulation in one click,
+// in GitHub Codespaces or local VS Code ("Dev Containers: Reopen in Container").
+//
+// Nothing is built from scratch here: we start from the GHCR image that already
+// carries a configured, built ns-3 tree at /opt/ns-3 (see docker/README.md and
+// docker/Dockerfile.ns3). post-create.sh then reinstalls the AntHocNet module
+// *from this checkout* over the image's baked-in copy and rebuilds it, so the
+// tree matches the branch you opened rather than the commit the image was built
+// from. That delta is the only compile that happens (~seconds-to-minutes, not
+// the ~13 min a fresh ns-3 build costs).
+//
+// devcontainer.json is JSONC: `//` comments are part of the format and are
+// accepted by the Dev Containers spec, Codespaces and the devcontainer CLI.
+{
+  "name": "AntHocNet (ns-3.42 + AntHocNet)",
+
+  // Tag choice — `anthocnet-ns3:3.42-v1.3.0`, deliberately NOT `:latest`:
+  //
+  //   * tier: `:<sim-version>-<release>` is the **immutable** tier
+  //     (docker/README.md "Container images"). The rolling tiers (`:3.42`,
+  //     `:latest`) are rewritten on every merge to the default branch, so a
+  //     Codespace created a month apart from the same commit would get a
+  //     different toolchain. A newcomer's first run should be reproducible.
+  //   * ns-3 version: 3.42 is this repo's reference version — the single matrix
+  //     leg ci.yml runs the validation-anchor, determinism and satellite-anchor
+  //     gates on, and the default `version` input of the scenario-matrix /
+  //     paper-benchmark campaigns. Numbers produced in here are therefore
+  //     comparable to the ones in docs/benchmarks/.
+  //   * release: v1.3.0 = the current VERSION. The full tag list is visible via
+  //     the GHCR API (`ghcr.io/v2/danieljoppi/anthocnet-ns3/tags/list`).
+  //   * size/arch: ~0.62 GiB compressed across 8 layers — comfortably inside a
+  //     Codespaces machine, so no reason to reach for a slimmer variant (and
+  //     there is none to reach for: the `-opt` tier is published for the plain
+  //     `ns3` image only, is a *build profile* not a size reduction, and would
+  //     mean compiling the module against a tree with no AntHocNet in it). The
+  //     manifest is a single-platform one (linux/amd64), so a local VS Code on
+  //     an arm64 Mac runs it under emulation — slow, but functional.
+  //
+  // Bumping this is **manual**. Dependabot's docker ecosystem is configured for
+  // `directory: /docker` only (.github/dependabot.yml, added in #338) and, even
+  // scoped here, that ecosystem parses Dockerfiles / compose files — a
+  // devcontainer image pin is the separate `devcontainers` ecosystem, which the
+  // repo does not enable. So: bump this line by hand alongside a release, in the
+  // same PR that bumps VERSION, or when moving the reference ns-3 version.
+  "image": "ghcr.io/danieljoppi/anthocnet-ns3:3.42-v1.3.0",
+
+  // The image's ns-3 tree. Everything (the Makefile installer, the ns3 wrapper,
+  // the docs) refers to it by path; exporting it means the commands in
+  // ns3/README.md and AGENTS.md can be copy-pasted verbatim inside the container.
+  "containerEnv": {
+    "NS3DIR": "/opt/ns-3"
+  },
+
+  // The image defines no non-root user and /opt/ns-3 is root-owned, so the
+  // rebuild in post-create.sh needs root. Stated explicitly rather than relying
+  // on the implicit "inherit the image's user" default.
+  "remoteUser": "root",
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "vscode": {
+      // Deliberately three: what the repo is actually written in. C/C++ for
+      // core/ + the two adapters, CMake for core/'s build (and ns-3's), Python
+      // for ns3/tools/*.py (the scenario runner and chart/benchmark scripts).
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-python.python"
+      ]
+    }
+  }
+}
