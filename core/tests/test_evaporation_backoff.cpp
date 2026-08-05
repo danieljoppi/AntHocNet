@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Item 06 — time-proportional evaporation is gated and driven by the tick
 // (6.1, ADR-0012), and reactive forward ants are rate-limited per destination
 // (6.3, [1] §4.2).

@@ -72,6 +72,20 @@ jobs:
         run: |
           python3 docs/tools/check-links.py --self-test
           python3 docs/tools/check-links.py .
+      - name: Licence header gate (#332)
+        # Every source file must carry an SPDX identifier. The repo is
+        # GPL-2.0-only but for its whole history the licence lived only in
+        # LICENSE: GPLv2 §1 expects the notice to travel with the file, and
+        # this is a protocol implementation people copy files out of. #332
+        # added the notice to every file under core/, ns3/, ns2/src/ and the
+        # Python tools; this keeps the next new file from landing without one.
+        # ns2/patch/fragments/ is deliberately out of scope — those bytes are
+        # inserted verbatim into a user's NS-2 tree and a comment line would
+        # break the patch round-trip; ns2/patch/NOTICE covers them instead.
+        # Stdlib-only, <1 s, runs on every PR.
+        run: |
+          python3 docs/tools/check-headers.py --self-test
+          python3 docs/tools/check-headers.py .
       - name: Config default parity (core vs ns-2 vs ns-3)
         # A Config default that drifts in one tree only is the #252/#254
         # failure mode: proactiveInterval leaked 10 -> 2 in a PR that claimed

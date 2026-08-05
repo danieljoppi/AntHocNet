@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 """Cross-tree Config default parity check (issue #258).
 
 The same protocol default lives in up to four places:

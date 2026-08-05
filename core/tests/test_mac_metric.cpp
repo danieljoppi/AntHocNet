@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Item 10/A2 (#55) — congestion-aware per-hop cost. With the MAC metric enabled
 // and an ILinkState injected, a forward ant records (Q_mac+1)*T̂_mac at each node
 // instead of its own wall-clock transit delta, so the summed path time T̂_d

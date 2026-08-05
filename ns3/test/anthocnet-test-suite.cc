@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /*
  * NS-3 test suite for AntHocNet:
  *   1. AntHeader serialize/deserialize round-trip (the riskiest adapter seam).

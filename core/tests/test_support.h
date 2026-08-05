@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /**
  * Tiny dependency-free test scaffolding for the core unit tests, plus
  * deterministic fakes for the IClock / IRng / INeighborProvider ports.

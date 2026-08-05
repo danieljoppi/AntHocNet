@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /*
  * Implementation of the thin NS-2 AntHocNet agent. See ahn_router.h.
  */

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /**
  * RouteDecision: the verb the algorithm hands back to an adapter.
  *

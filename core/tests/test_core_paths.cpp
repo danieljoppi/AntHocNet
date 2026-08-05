@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /*
  * Coverage for the proactive-ant, repair-ant and virtual-pheromone paths,
  * complementing the reactive-path coverage in test_router_logic.cpp.

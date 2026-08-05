@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /*
  * End-to-end integration test: drive AntRouterLogic through a real multi-hop
  * route discovery using a tiny in-memory "network", with no simulator.

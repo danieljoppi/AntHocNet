@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 #include "anthocnet-routing-protocol.h"
 #include "anthocnet-packet.h"
 

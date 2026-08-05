@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Per-ant-type gates and directed reactive discovery.
 //
 // Two things are asserted here, and they are different in kind.

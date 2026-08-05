@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // The two-factor reactive acceptance band (#177).
 //
 // `main` implements the 2004 reactive setup with ONE acceptance factor

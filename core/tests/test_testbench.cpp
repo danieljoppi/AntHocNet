@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /*
  * Smoke scenario for the discrete-event testbench (issue #154): two nodes and
  * a link that goes down and comes back.

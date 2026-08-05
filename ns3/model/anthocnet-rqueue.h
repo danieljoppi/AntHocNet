@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /*
  * Pending-packet queue for AntHocNet (NS-3), following the aodv-rqueue
  * pattern: data packets with no known route are held here until a backward

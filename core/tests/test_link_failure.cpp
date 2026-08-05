@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Item 05a — hello-timeout neighbour detection (ADR-0008 detector A): the
 // portable, simulator-agnostic liveness path and the only detector NS-3 has.
 // A neighbour not heard from within helloInterval*allowedHelloLoss is expired

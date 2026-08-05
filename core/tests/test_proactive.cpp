@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Item 04 — proactive ants target active sessions and explore via a per-hop
 // broadcast probability. Regression for deviation D4 (random-destination /
 // fixed-timer proactive ants with no exploratory broadcast), plus the

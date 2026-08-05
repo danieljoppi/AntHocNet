@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // EXPERIMENT (#180 root cause) — not a regression test.
 //
 // The recorded root cause on #180 concluded that in ns-3 "the rate wins", i.e.

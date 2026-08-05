@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Item 01 — the Eq.1 exponent beta is wired through, and ants and data read
 // *separate* Config fields (betaAnts / betaData) so they can diverge. Regression
 // for deviation D1, where selection hard-coded beta = 1 and ignored Config

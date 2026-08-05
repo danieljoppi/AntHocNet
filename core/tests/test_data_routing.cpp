@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Item 10 — data-loop suppression via prev-hop exclusion (A1) and the reactive
 // forward-ant broadcast cap (A3).
 #include "anthocnet/core/ant_router_logic.h"

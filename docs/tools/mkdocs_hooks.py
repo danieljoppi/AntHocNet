@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 """mkdocs hook: render repo-tree links as GitHub URLs (#331).
 
 The site's ``docs_dir`` is ``docs/``, so a relative link that escapes it —

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /*
  * Helper to install the AntHocNet routing protocol on nodes, mirroring
  * AodvHelper.

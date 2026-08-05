@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Issue #143 — the name -> ILinkMetric registry. A known name resolves to the
 // right instance, the same stable non-owning instance every time; an unknown
 // name is a loud error rather than a quiet fall back to classic; and the

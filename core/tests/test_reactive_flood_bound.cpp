@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Reactive discovery must stay bounded in a *dense* graph (#169 follow-up).
 //
 // PR #170 removed the reactive broadcast budget because, implemented as a
