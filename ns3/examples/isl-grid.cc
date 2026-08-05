@@ -421,6 +421,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(dsdvHelper);
     }
     internet.Install(nodes);
+    // Pinned for the same reason as in anthocnet-compare: ArpL3Protocol owns a
+    // RandomVariableStream. Point-to-point links do not use ARP, so this draws
+    // nothing here — but it keeps the two harnesses' stream plumbing identical,
+    // so a future ISL scenario on a broadcast medium is pinned by construction
+    // rather than by someone remembering.
+    TakeStreams(stream, streamBase, internet.AssignStreams(nodes, stream),
+                "internet stack (arp request jitter)");
     if (proto == "anthocnet") {
         TakeStreams(stream, streamBase, ahnHelper.AssignStreams(nodes, stream),
                     "anthocnet routing");

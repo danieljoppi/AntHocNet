@@ -854,9 +854,18 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(dsdvHelper);
     }
     internet.Install(nodes);
+    // The IPv4 stack is NOT stream-free, contrary to the first cut of this fix:
+    // ArpL3Protocol owns m_requestJitter, a RandomVariableStream used to de-sync
+    // ARP requests, and on a wifi MANET every next-hop change resolves through
+    // ARP. Leaving it unpinned is what made the seed-independence gate still
+    // fail after everything else was pinned — small per-run timing shifts that
+    // cascade into route discovery. InternetStackHelper::AssignStreams reaches
+    // it (and Ipv4GlobalRouting, which is inert here); it exists in every ns-3
+    // of the 3.36-3.48 matrix.
+    TakeStreams(stream, streamBase, internet.AssignStreams(nodes, stream),
+                "internet stack (arp request jitter)");
     // Each of these protocols builds a UniformRandomVariable per node (ant/RREQ
-    // jitter, hello jitter) at construction; pin them. The IPv4 stack itself
-    // draws no random numbers in this scenario, so it needs no assignment.
+    // jitter, hello jitter) at construction; pin them.
     if (proto == "anthocnet") {
         TakeStreams(stream, streamBase, ahnHelper.AssignStreams(nodes, stream),
                     "anthocnet routing");

@@ -242,8 +242,8 @@ whatever stream indices runs 1…*N*−1 had left behind: the realisation depend
 the run's **position in the process**, not on its seed
 ([#352](https://github.com/danieljoppi/AntHocNet/issues/352)). So every
 stream-consuming helper — position allocator, mobility, wifi channel + devices,
-the routing helper for the arm, the flow-start variable and the OnOff sources —
-is now pinned with `AssignStreams()` from a **seed-derived base**,
+the IPv4 stack, the routing helper for the arm, the flow-start variable and the
+OnOff sources — is now pinned with `AssignStreams()` from a **seed-derived base**,
 `seed * kStreamStride` (`kStreamStride` = 10⁶ in `ns3/examples/anthocnet-compare.cc`
 and `ns3/examples/isl-grid.cc`, roughly three orders of magnitude above what a
 run actually consumes). The stride is enforced at runtime from the counts
@@ -252,6 +252,16 @@ instead of wrapping into the next seed's block. The regression gate is
 `ns3/tools/check-seed-independence.py` (CI, ns-3.42 leg), which checks the two
 independent halves: same seeds split across invocations, and same seeds with the
 protocol list reversed.
+
+Two of those entries are easy to miss and were both missed on the first attempt,
+which is the argument for the gate existing at all rather than for trusting a
+reading of the code. `DsdvHelper` is the only routing helper with no
+`AssignStreams()` wrapper in any ns-3 from 3.36 to 3.48, so DSDV is pinned by
+walking the nodes and calling `dsdv::RoutingProtocol::AssignStreams()` directly.
+And the IPv4 stack is **not** stream-free: `ArpL3Protocol` owns a
+`RandomVariableStream` that de-syncs ARP requests, and on a wifi MANET every
+next-hop change resolves through ARP, so an unpinned stack alone kept the gate
+red after everything else was pinned.
 
 Scope: the pinning covers the two harnesses that publish per-seed rows —
 `anthocnet-compare` and `isl-grid`. `manet-baselines` (the anchor harness) has
