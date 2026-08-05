@@ -54,7 +54,7 @@ jobs:
       # the repo-wide pinning done in #338 — doubly so here, in a job that holds
       # `security-events: write` and an OIDC token.
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Scorecard only reads the tree. Leaving the token in .git/config
           # would hand it to every later step in the job for no reason (and is

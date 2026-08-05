@@ -84,7 +84,7 @@ jobs:
         # prior pins, 3.47/3.48 = current releases.
         version: ['3.36', '3.41', '3.42', '3.47', '3.48']
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.release || '' }}   # release tag, else the triggering ref
       - name: Log in to GHCR
@@ -216,7 +216,7 @@ jobs:
       matrix:
         version: ['2.34', '2.35']   # supported ns-2 releases
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.release || '' }}   # release tag, else the triggering ref
       - name: Log in to GHCR
