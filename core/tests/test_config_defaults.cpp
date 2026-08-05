@@ -21,8 +21,8 @@ int main() {
 
     CHECK_EQ(c.alpha, 0.7);                     // legacy ALFA; meaning per ADR-0012
     CHECK_EQ(c.gamma, 0.7);                     // legacy GAMA; [1] §3.1
-    CHECK_EQ(c.betaAnts, 1.0);                  // [1] §3.3 unsquared (#70)
-    CHECK_EQ(c.betaData, 2.0);                  // [1] §3.2 squared (#70)
+    CHECK_EQ(c.betaAnts, 20.0);                 // thesis beta1/beta2 (#179)
+    CHECK_EQ(c.betaData, 20.0);                 // thesis beta3 (#179)
     CHECK_EQ(c.hopTimeSec, 0.003);              // #88 thesis 3ms
     CHECK_EQ(c.enableMacMetric, false);         // A2 gate, default off
     CHECK_EQ(c.minPheromone, 0.00001);          // legacy MIN_PHEROMONE

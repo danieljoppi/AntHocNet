@@ -41,9 +41,10 @@ decisions the core returns.
 - **ACO routing**: "forward ants" explore toward a destination recording their
   path; "backward ants" retrace it depositing **pheromone** — a numeric
   goodness value per `(neighbor, destination)` next-hop choice. Data packets are
-  then forwarded **stochastically** in proportion to `pheromone^beta` — data uses
-  a greedier `betaData` than ants' `betaAnts`, concentrating traffic on the best
-  paths while ants still explore. Unused paths **evaporate**.
+  then forwarded **stochastically** in proportion to `pheromone^beta`, via separate
+  `betaData` / `betaAnts` fields. Both ship at the thesis's 20 (#179), which is
+  greedy enough that traffic concentrates on the best paths. Unused paths
+  **evaporate**.
 - **AntHocNet** is *hybrid*: routes are set up **reactively** on demand (a data
   packet with no route triggers a flooded reactive forward ant; the returning
   backward ant lays the route), **maintained proactively** while in use, and
