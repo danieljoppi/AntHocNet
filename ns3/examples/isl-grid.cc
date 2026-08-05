@@ -85,6 +85,27 @@ constexpr uint16_t kDataPort = 9;
 // only) and the control counter below.
 constexpr uint16_t kLoadPort = 10;
 
+// --- RNG stream pinning (#352) ----------------------------------------------
+// Identical mechanism and identical stride to anthocnet-compare (the long
+// comment there explains why): ns-3 takes a RandomVariableStream's index from a
+// global counter at construction, RngSeedManager::SetSeed/SetRun do not reset
+// it, and this harness builds a fresh topology per run inside one process — so
+// without pinning a run's realisation depends on its position in the process
+// (on --runs and on protocol order) instead of on its seed. Each seed gets the
+// stream block [seed*kStreamStride, (seed+1)*kStreamStride); this grid consumes
+// far fewer streams than the wifi field does, so the same 10^6 stride is
+// generous. TakeStreams() aborts if a run ever overruns its block.
+constexpr int64_t kStreamStride = 1000000;
+
+void TakeStreams(int64_t& next, int64_t base, int64_t used, const char* what) {
+    next += used;
+    NS_ABORT_MSG_IF(next - base >= kStreamStride,
+                    "RNG stream budget exhausted after assigning " << what
+                    << ": this run has consumed " << (next - base)
+                    << " streams but kStreamStride is " << kStreamStride
+                    << " — seed blocks would overlap (#352). Raise the stride.");
+}
+
 uint64_t g_controlPkts = 0;
 uint64_t g_controlBytes = 0;
 bool     g_diag = false;
@@ -343,6 +364,10 @@ void CheckTopology(const std::vector<std::pair<uint32_t, uint32_t>>& links,
 Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     RngSeedManager::SetSeed(1);
     RngSeedManager::SetRun(seed);
+    // #352: pin this run's stream indices into the seed's own block, so the
+    // realisation is a function of the seed alone. See kStreamStride.
+    const int64_t streamBase = static_cast<int64_t>(seed) * kStreamStride;
+    int64_t stream = streamBase;
     g_controlPkts = 0;
     g_controlBytes = 0;
     g_antTx.clear();
@@ -360,21 +385,36 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     NodeContainer nodes;
     nodes.Create(nNodes);
 
+    // #352: helpers hoisted out of the branches so AssignStreams() can be called
+    // on them after Install() — see the same block in anthocnet-compare.
     InternetStackHelper internet;
+    AntHocNetHelper ahnHelper;
+    AodvHelper aodvHelper;
+    OlsrHelper olsrHelper;
+    DsdvHelper dsdvHelper;
     if (proto == "anthocnet") {
-        AntHocNetHelper h;
-        internet.SetRoutingHelper(h);
+        internet.SetRoutingHelper(ahnHelper);
     } else if (proto == "aodv") {
-        AodvHelper h;
-        internet.SetRoutingHelper(h);
+        internet.SetRoutingHelper(aodvHelper);
     } else if (proto == "olsr") {
-        OlsrHelper h;
-        internet.SetRoutingHelper(h);
+        internet.SetRoutingHelper(olsrHelper);
     } else if (proto == "dsdv") {
-        DsdvHelper h;
-        internet.SetRoutingHelper(h);
+        internet.SetRoutingHelper(dsdvHelper);
     }
     internet.Install(nodes);
+    if (proto == "anthocnet") {
+        TakeStreams(stream, streamBase, ahnHelper.AssignStreams(nodes, stream),
+                    "anthocnet routing");
+    } else if (proto == "aodv") {
+        TakeStreams(stream, streamBase, aodvHelper.AssignStreams(nodes, stream),
+                    "aodv routing");
+    } else if (proto == "olsr") {
+        TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream),
+                    "olsr routing");
+    } else if (proto == "dsdv") {
+        TakeStreams(stream, streamBase, dsdvHelper.AssignStreams(nodes, stream),
+                    "dsdv routing");
+    }
 
     // One point-to-point link per ISL, each on its own /30 — the addressing a
     // real ISL mesh has, and the shape that exercises #203.
@@ -501,6 +541,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     Ptr<UniformRandomVariable> startVar = CreateObject<UniformRandomVariable>();
     startVar->SetAttribute("Min", DoubleValue(1.0));
     startVar->SetAttribute("Max", DoubleValue(11.0));
+    // #352: pinned before the flow loop reads it (start times are drawn there).
+    // The point-to-point devices and channels configured above carry no error
+    // model and draw no random numbers, so there is nothing to pin below IP.
+    startVar->SetStream(stream);
+    TakeStreams(stream, streamBase, 1, "flow start times");
 
     ApplicationContainer apps, sinks;
     for (uint32_t i = 0; i < P.nFlows && i < nNodes; ++i) {
@@ -559,6 +604,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         loadSinkApp.Start(Seconds(0.0));
     }
     sinks.Start(Seconds(0.0));
+
+    // #352: the OnOff sources' on/off variables (constant here, pinned anyway so
+    // a duty cycle added later cannot reintroduce the position dependence).
+    for (uint32_t i = 0; i < apps.GetN(); ++i) {
+        Ptr<OnOffApplication> onoffApp = DynamicCast<OnOffApplication>(apps.Get(i));
+        if (onoffApp) {
+            TakeStreams(stream, streamBase, onoffApp->AssignStreams(stream),
+                        "onoff application");
+        }
+    }
 
     // #260: per-flow first delivery after the break, for the tReconverge proxy
     // (see the failcell comment above for what the maximum over flows means).

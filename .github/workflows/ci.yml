@@ -363,6 +363,21 @@ jobs:
         # cheap (reuses this job's build).
         if: matrix.version == '3.42'
         run: bash ns3/tools/check-determinism.sh /opt/ns-3
+      - name: Seed-independence gate (a run must depend on its seed alone, #352)
+        # Stronger than the determinism gate above: identical invocations were
+        # already reproducible, but a run's realisation also leaked its
+        # *position* in the process. ns-3 assigns RandomVariableStream indices
+        # from a global counter at construction and SetSeed/SetRun do not reset
+        # it, so before #352 the same seed produced different numbers depending
+        # on --runs, --firstRun and protocol order — i.e. campaign CSVs merged
+        # across differently-shaped invocations silently compared unlike runs.
+        # Checks both halves: the same seeds split across invocations, and the
+        # same seeds with --protocols reversed. 4 seeds x 30 simulated seconds
+        # on the 8-node smoke field, so it costs seconds; same
+        # single-matrix-version placement as the gates above.
+        if: matrix.version == '3.42'
+        run: python3 ns3/tools/check-seed-independence.py /opt/ns-3 --seeds 4 --time 30
+
       - name: Satellite validation anchors (#237, ISL topology)
         # The ISL analogue of the anchor gate above, and stronger in kind: a
         # point-to-point link has no contention and no loss model, so the
