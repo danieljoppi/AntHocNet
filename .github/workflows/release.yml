@@ -4,11 +4,12 @@ name: Release
 # next SemVer from the Conventional-Commit history since the last tag (feat ->
 # minor, fix -> patch, breaking -> minor while 0.x), rewrites the version in
 # VERSION / CITATION.cff / core CMake, regenerates CHANGELOG.md, commits + tags,
-# then this same job builds the lean install bundle and publishes the GitHub
-# Release. Bump + release live in one job on purpose: a tag pushed with the
-# default GITHUB_TOKEN does NOT trigger other workflows, so we don't rely on the
-# tag event (and need no PAT). Once the repo is linked to Zenodo, each published
-# release is archived + gets a DOI; add it to CITATION.cff afterwards.
+# then this same job builds the lean install bundle, checksums it, and publishes
+# the GitHub Release. Bump + release live in one job on purpose: a tag pushed
+# with the default GITHUB_TOKEN does NOT trigger other workflows, so we don't
+# rely on the tag event (and need no PAT). Once the repo is linked to Zenodo,
+# each published release is archived + gets a DOI; add it to CITATION.cff
+# afterwards.
 on:
   workflow_dispatch:
     inputs:
@@ -85,11 +86,26 @@ jobs:
           ( cd dist && zip -qr "${name}.zip" "${name}" )
           ls -lh "dist/${name}.zip"
 
+      - name: Checksum the bundle
+        # Zero-dependency integrity signal (#337). `sha256sum` writes the
+        # canonical "<digest>  <name>" line, so the .sha256 file is directly
+        # consumable by `sha256sum -c` in the directory the zip was downloaded
+        # to — hence the subshell: the recorded name must be bare, not "dist/…".
+        # The digest is *also* inlined in the release body below, so a reader
+        # can check a download against the release page without having to trust
+        # a second downloaded file.
+        run: |
+          ( cd dist && sha256sum "anthocnet-${VER}.zip" > "anthocnet-${VER}.zip.sha256" )
+          cat "dist/anthocnet-${VER}.zip.sha256"
+          echo "SHA256=$(cut -d' ' -f1 < "dist/anthocnet-${VER}.zip.sha256")" >> "$GITHUB_ENV"
+
       - name: Publish release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ env.TAG }}
-          files: dist/anthocnet-${{ env.VER }}.zip
+          files: |
+            dist/anthocnet-${{ env.VER }}.zip
+            dist/anthocnet-${{ env.VER }}.zip.sha256
           generate_release_notes: true
           body: |
             AntHocNet ${{ env.TAG }}. See [CHANGELOG.md](CHANGELOG.md).
@@ -99,6 +115,17 @@ jobs:
             `make install-ns3 NS3DIR=…` or `make install-ns2 NS2DIR=…`.
             Pre-built simulator images are on GHCR (see `docker/README.md`),
             including release-pinned tags `anthocnet-ns{2,3}:<sim-version>-${{ env.TAG }}`.
+
+            **Verify your download.** The SHA-256 digest is published twice — in
+            this body and as the `anthocnet-${{ env.VER }}.zip.sha256` asset:
+
+            ```
+            ${{ env.SHA256 }}  anthocnet-${{ env.VER }}.zip
+            ```
+
+            ```
+            sha256sum -c anthocnet-${{ env.VER }}.zip.sha256   # both files in the same directory
+            ```
 
   # Publish immutable, release-pinned container images (e.g.
   # anthocnet-ns3:3.42-v0.3.0) once the tag exists. Reuses the Images workflow
