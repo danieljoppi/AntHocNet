@@ -10,6 +10,21 @@
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow)](https://www.conventionalcommits.org)
 [![Top language](https://img.shields.io/github/languages/top/danieljoppi/AntHocNet)](#)
 
+**A paper-faithful AntHocNet you can install on a stock ns-3 tree in three
+commands** — a drop-in `contrib/` module, no forked simulator. It is benchmarked
+against AODV / OLSR / DSDV on identical scenarios under a fixed methodology
+(20-seed, 900 s runs; every published number carries a 95% confidence interval —
+[methodology](docs/benchmarks/methodology.md)). The algorithm itself is
+simulator-independent C++ with its own unit-test suite: `make test` runs it with
+no simulator installed. Releases are archived on Zenodo with DOIs, so results
+can cite an exact, immutable version.
+
+![Benchmark summary: PDR, mean delay and NRL for AntHocNet vs AODV, OLSR and DSDV across six named MANET scenarios, with 95% CI error bars](docs/benchmarks/discrete-summary.png)
+
+*AntHocNet vs AODV / OLSR / DSDV across the six named MANET scenarios (error
+bars: 95% CI) — current numbers and per-scenario pages in
+[docs/benchmarks.md](docs/benchmarks.md).*
+
 An ant-colony-optimization routing protocol for mobile ad-hoc networks,
 implemented once as a **simulator-agnostic algorithm core** with thin adapters
 for **NS-2** and **NS-3**.
@@ -46,6 +61,38 @@ simulator gets only a thin adapter that converts packets and executes the
 decisions the core returns. See [docs/architecture.md](docs/architecture.md)
 (and [docs/ns2-support.md](docs/ns2-support.md) for how the NS-2 adapter
 differs).
+
+```mermaid
+flowchart TB
+    H["Benchmark harnesses (ns3/examples)<br/>anthocnet-compare · isl-grid · run-scenarios.py"]
+
+    subgraph NS3["ns3/ — contrib module (supported)"]
+        A3["RoutingProtocol : Ipv4RoutingProtocol<br/>~30 attributes = the config surface"]
+    end
+    subgraph NS2["ns2/ — source patch (frozen at v1.2.0)"]
+        A2["AntHocNetAgent : Agent"]
+    end
+
+    P["Ports: IClock · IRng · INeighborProvider · ITimerScheduler"]
+
+    subgraph CORE["core/ — simulator-agnostic C++, unit-tested (make test)"]
+        C1["AntRouterLogic → RouteDecision"]
+        C2["PheromoneTable · PheromoneEngine"]
+        C3["AntMessage codec (versioned wire format)"]
+    end
+
+    H --> A3
+    A3 --> P
+    A2 --> P
+    P --> C1
+    C1 --- C2 --- C3
+
+    style CORE fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
+```
+
+The full stack — every mechanism, the switch that gates it, and what is
+live/inert per network regime — is diagrammed in
+[docs/software-layers.md](docs/software-layers.md).
 
 ## Quick start
 
