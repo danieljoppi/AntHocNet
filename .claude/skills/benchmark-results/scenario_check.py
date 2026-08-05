@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 """Scenario validation (#134): pre-flight config checks + result plausibility.
 
 Two failure classes this script catches before they cost a dispatch cycle

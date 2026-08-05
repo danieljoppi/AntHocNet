@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /**
  * PheromoneEngine: the reinforcement / evaporation math, lifted out of the
  * NS-2 AntNest class so both simulators share identical routing dynamics.

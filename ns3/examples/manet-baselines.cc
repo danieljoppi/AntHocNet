@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /*
  * Control benchmark for #24 — STOCK ns-3 baselines only (AODV / OLSR / DSDV),
  * with NO AntHocNet code in the binary (this translation unit does not include

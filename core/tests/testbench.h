@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /**
  * A tiny discrete-event testbench for multi-node core tests (issue #154).
  *

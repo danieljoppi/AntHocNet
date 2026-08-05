@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /**
  * ILinkMetric: the strategy that turns a backward ant's path observation into a
  * pheromone value (Eq.2). Extracting it from advanceBackAnt makes the pure core

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Property / invariant tests (item 13, D2): assert algebraic invariants over
 // many randomized inputs, complementing the worked single cases in the other
 // suites. Pure and simulator-free, so they run on every `make test`.

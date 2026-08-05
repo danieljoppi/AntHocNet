@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /*
  * Minimal AntHocNet (NS-3) example: a small wifi ad-hoc network where one node
  * sends UDP traffic to another, routed by AntHocNet. Prints the delivery

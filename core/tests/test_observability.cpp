@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Item 15: ant/route counters and the optional IRouterObserver fire at the
 // expected events, and are zero-cost (unset observer) by construction.
 #include <vector>

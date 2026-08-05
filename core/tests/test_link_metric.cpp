@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Item 16 — the pheromone formula is a pluggable ILinkMetric. The default
 // ClassicMetric reproduces the post-item-02 Eq.2 inline formula exactly, and a
 // custom metric can be injected without editing AntRouterLogic decision code.

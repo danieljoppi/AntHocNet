@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Reactive discovery must not be hop-limited (#169).
 //
 // A reactive forward ant broadcasts at every node that has no pheromone for

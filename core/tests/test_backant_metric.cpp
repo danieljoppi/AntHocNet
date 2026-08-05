@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Item 02 — the backward-ant pheromone (Eq.2) blends a real, correctly-scaled
 // path-time estimate with the hop-count term. Regression for deviation D2,
 // where forward ants stored cumulative time, the back ant summed those

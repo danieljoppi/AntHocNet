@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 """Parse anthocnet-compare output and A/B-compare cells with a noise verdict.
 
 Scripts in this environment cannot download CI logs/artifacts (the proxy blocks

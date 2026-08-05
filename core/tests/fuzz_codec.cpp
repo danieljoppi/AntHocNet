@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // libFuzzer entry point for the untrusted decode path. The codec is the only
 // parser of network bytes, so it must never crash, over-read, or over-allocate
 // on arbitrary input. Build with:

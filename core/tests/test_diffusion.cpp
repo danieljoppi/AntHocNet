@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 // Item 03 — real pheromone diffusion. Hellos advertise the sender's best real
 // pheromone (not a constant 1.0); the receiver bootstraps a one-hop-discounted
 // virtual pheromone that guides proactive ants only (never data). Regression

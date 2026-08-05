@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 """Pool seed-split campaign CSVs into one aggregate CSV (#126).
 
 A point too big for the 6 h hosted-runner ceiling at full seed count runs as

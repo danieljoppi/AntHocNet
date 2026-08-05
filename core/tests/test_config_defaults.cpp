@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
 /**
  * Pins every documented default of anthocnet::core::Config, verbatim and in
  * declaration order, against docs/configuration.md §3.1 (issue #258).
