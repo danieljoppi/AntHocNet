@@ -20,3 +20,16 @@ updates:
     directory: /docker
     schedule:
       interval: monthly
+    ignore:
+      # Dockerfile.ns2 pins ubuntu:18.04 deliberately: ns-2.34/2.35 is a
+      # 2011-era tree that only builds on gcc-7, and the modern-gcc sed fixes
+      # immediately below that FROM (plus the gnu++14 note on the anthocnet
+      # stage) are calibrated to exactly that compiler. A base bump also does
+      # not surface in PR CI — images.yml never runs on PRs, and ci.yml's ns-2
+      # jobs pull the *pre-built* GHCR image — so the breakage would land on
+      # main. #339 proposed 18.04 -> 26.04 on a fully green PR and was closed
+      # for this reason. The pin only has to hold until the adapter is removed
+      # at v2.0.0 (#307); it is frozen at v1.2.0 until then.
+      # Dockerfile.ns3's base is an `ARG UBUNTU=`, which Dependabot does not
+      # touch, so this ignore costs nothing there.
+      - dependency-name: ubuntu
