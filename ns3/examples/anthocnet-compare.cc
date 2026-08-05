@@ -223,6 +223,20 @@ std::map<Address, std::vector<double>> g_rxArrival;
 // subtraction per delivered packet and no extra instrumentation.
 std::map<Address, std::map<uint32_t, double>> g_rxDelayBySeq;
 
+// #308 phase 2: (flow, seq) -> hop count, the same key as the delays above.
+//
+// The phase-2 decomposition needs delay and path length over the SAME packets.
+// `hopsMean` (#217) averages over each protocol's own deliveries while
+// `meanCommon` averages over the intersection, so dividing one by the other
+// mixes two populations — the exact survivorship confound phase 1 was about,
+// reappearing in the denominator. With hops keyed by identity, the common-set
+// per-hop cost is a like-for-like quotient: is AntHocNet's extra delay more
+// hops, or slower hops, on packets both protocols carried?
+//
+// Filled by CountDeliveredHops below rather than here, because the hop count
+// comes from the IP TTL and the sink's Rx trace has no IP header left to read.
+std::map<Address, std::map<uint32_t, uint32_t>> g_rxHopsBySeq;
+
 void RecordRxSeq(Ptr<const Packet> p, const Address& from) {
     SeqTsSizeHeader h;
     p->PeekHeader(h);
@@ -577,6 +591,21 @@ void CountDeliveredHops(const Ipv4Header& ip, Ptr<const Packet> p, uint32_t) {
     g_hopSum += hops;
     ++g_hopCount;
     if (hops > g_hopMax) g_hopMax = hops;
+
+    // #308 phase 2: also record this packet's hop count under the same
+    // (flow, seq) key the delays use, so the common set can be measured in hops
+    // as well as in milliseconds. The flow key must be byte-identical to the one
+    // PacketSink reports to RecordRxSeq, which is an InetSocketAddress built
+    // from the sender's IP and UDP source port — exactly the two fields
+    // available here. If that ever stopped matching, hopsCommon would read zero
+    // while PDR stayed positive, which scenario_check.py results treats as a
+    // FAIL rather than as "no hop data" (the #229/#230 rule).
+    Ptr<Packet> body = p->Copy();
+    body->RemoveHeader(udp);
+    SeqTsSizeHeader seqTs;
+    if (body->PeekHeader(seqTs) == 0) return;
+    const Address flow = InetSocketAddress(ip.GetSource(), udp.GetSourcePort());
+    g_rxHopsBySeq[flow][seqTs.GetSeq()] = hops;
 }
 
 void SampleQueues(NodeContainer nodes, double period, double until) {
@@ -643,6 +672,9 @@ struct Result {
     // can be compared over the packets *every* protocol delivered rather than
     // over each protocol's own differently-sized delivered set.
     std::map<Address, std::map<uint32_t, double>> rxDelayBySeq;
+    // #308 phase 2: the same keys carrying hop counts, so the common set can be
+    // normalised by path length like-for-like.
+    std::map<Address, std::map<uint32_t, uint32_t>> rxHopsBySeq;
     // #209 energy:
     double energyJ = 0.0;        // total consumed over all nodes (J)
     double energyPerPktJ = 0.0;  // energyJ / delivered data packets (J/pkt)
@@ -703,6 +735,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_rxSeq.clear();
     g_rxArrival.clear();  // #89
     g_rxDelayBySeq.clear();  // #308
+    g_rxHopsBySeq.clear();   // #308 phase 2
     g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;  // #215
     // #217
     g_hopSum = g_hopCount = 0;
@@ -1155,6 +1188,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     r.delayHist = delayBins;
     r.delayBinWidth = binWidth;
     r.rxDelayBySeq = g_rxDelayBySeq;
+    r.rxHopsBySeq = g_rxHopsBySeq;
 
     // #57 offered-load delay percentiles: the q-th percentile over *sent*
     // packets, treating undelivered as infinite delay. Monotone-honest — a
@@ -1765,6 +1799,7 @@ int main(int argc, char* argv[]) {
         uint64_t rx = 0;
         double   delay99Ms = 0.0;
         std::map<Address, std::map<uint32_t, double>> bySeq;  // #308
+        std::map<Address, std::map<uint32_t, uint32_t>> hopsBySeq;  // #308 phase 2
     };
     std::vector<std::vector<MatchCell>> matchGrid(
         list.size(), std::vector<MatchCell>(runs));
@@ -1777,6 +1812,7 @@ int main(int argc, char* argv[]) {
             mc.rx = r.rxPackets;
             mc.delay99Ms = r.delay99Ms;
             mc.bySeq = r.rxDelayBySeq;
+            mc.hopsBySeq = r.rxHopsBySeq;
             // #128: per-run (per-seed) row for paired statistics. Every
             // protocol sees the identical RNG realisation per run, so
             // downstream can pair rows by run number (per-seed deltas, sign
@@ -2017,17 +2053,43 @@ int main(int argc, char* argv[]) {
                         else surplus.push_back(kv.second);
                     }
                 }
+                // #308 phase 2: the same split over hop counts. Averaged over
+                // exactly the packets whose delays produced meanCommon, so
+                // meanCommon / hopsCommon is a per-hop cost on one population
+                // instead of a quotient of two differently-sized ones.
+                uint64_t hopSumC = 0, hopNC = 0, hopSumS = 0, hopNS = 0;
+                for (const auto& f : matchGrid[i][s - firstRun].hopsBySeq) {
+                    for (const auto& kv : f.second) {
+                        if (common.count({f.first, kv.first})) {
+                            hopSumC += kv.second;
+                            ++hopNC;
+                        } else {
+                            hopSumS += kv.second;
+                            ++hopNS;
+                        }
+                    }
+                }
                 const double p99c = pct(inCommon, 0.99);
                 const double meanc = inCommon.empty() ? -1.0 :
                     1000.0 * std::accumulate(inCommon.begin(), inCommon.end(), 0.0)
                     / inCommon.size();
                 const double p99s = pct(surplus, 0.99);
+                const double hopsc = hopNC ? static_cast<double>(hopSumC) / hopNC : -1.0;
+                const double hopss = hopNS ? static_cast<double>(hopSumS) / hopNS : -1.0;
                 std::cout << std::fixed << "##COMMON## " << s << ' ' << list[i]
                           << ' ' << nSelf << ' ' << common.size()
                           << ' ' << std::setprecision(1) << p99c
                           << ' ' << std::setprecision(1) << meanc << ' ';
                 if (p99s < 0) std::cout << "na";
                 else std::cout << std::setprecision(1) << p99s;
+                // Appended, never inserted: the fields above are consumed
+                // positionally by the issue-thread tooling and docs/benchmarks.
+                std::cout << ' ';
+                if (hopsc < 0) std::cout << "na";
+                else std::cout << std::setprecision(3) << hopsc;
+                std::cout << ' ';
+                if (hopss < 0) std::cout << "na";
+                else std::cout << std::setprecision(3) << hopss;
                 std::cout << "\n";
             }
         }
