@@ -9,6 +9,8 @@
 [![Simulators](https://img.shields.io/badge/simulators-ns--2%20%C2%B7%20ns--3-informational)](#)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow)](https://www.conventionalcommits.org)
 [![Top language](https://img.shields.io/github/languages/top/danieljoppi/AntHocNet)](#)
+[![Docs](https://img.shields.io/badge/docs-site-blue)](https://danieljoppi.github.io/AntHocNet/)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/danieljoppi/AntHocNet?quickstart=1)
 
 **A paper-faithful AntHocNet you can install on a stock ns-3 tree in three
 commands** — a drop-in `contrib/` module, no forked simulator. It is benchmarked
@@ -95,6 +97,19 @@ live/inert per network regime — is diagrammed in
 [docs/software-layers.md](docs/software-layers.md).
 
 ## Quick start
+
+### Run a simulation with zero setup (Codespaces / VS Code devcontainer)
+
+One click gives you a container with ns-3.42 already built ([`.devcontainer/`](.devcontainer/),
+on the pinned [GHCR image](docker/README.md)); it installs this checkout's AntHocNet module and
+builds it for you. Locally: clone, then VS Code → *Dev Containers: Reopen in Container*. When the
+setup log finishes:
+
+```bash
+cd /opt/ns-3
+./ns3 run anthocnet-example                          # your first simulation
+./ns3 run "anthocnet-compare --nNodes=20 --time=30"  # vs AODV / OLSR / DSDV
+```
 
 ### Run the core unit tests
 
