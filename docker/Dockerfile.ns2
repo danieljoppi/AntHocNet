@@ -13,7 +13,7 @@
 # Ubuntu 18.04 (gcc-7) and apply the well-known modern-gcc fix.
 
 # --- base: plain ns-2, no AntHocNet ----------------------------------------
-FROM ubuntu:18.04 AS base
+FROM ubuntu:26.04 AS base
 
 ARG NS2_VERSION=2.35
 ENV DEBIAN_FRONTEND=noninteractive
