@@ -10,6 +10,21 @@
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow)](https://www.conventionalcommits.org)
 [![Top language](https://img.shields.io/github/languages/top/danieljoppi/AntHocNet)](#)
 
+**A paper-faithful AntHocNet you can install on a stock ns-3 tree in three
+commands** — a drop-in `contrib/` module, no forked simulator. It is benchmarked
+against AODV / OLSR / DSDV on identical scenarios under a fixed methodology
+(20-seed, 900 s runs; every published number carries a 95% confidence interval —
+[methodology](docs/benchmarks/methodology.md)). The algorithm itself is
+simulator-independent C++ with its own unit-test suite: `make test` runs it with
+no simulator installed. Releases are archived on Zenodo with DOIs, so results
+can cite an exact, immutable version.
+
+![Benchmark summary: PDR, mean delay and NRL for AntHocNet vs AODV, OLSR and DSDV across six named MANET scenarios, with 95% CI error bars](docs/benchmarks/discrete-summary.png)
+
+*AntHocNet vs AODV / OLSR / DSDV across the six named MANET scenarios (error
+bars: 95% CI) — current numbers and per-scenario pages in
+[docs/benchmarks.md](docs/benchmarks.md).*
+
 An ant-colony-optimization routing protocol for mobile ad-hoc networks,
 implemented once as a **simulator-agnostic algorithm core** with thin adapters
 for **NS-2** and **NS-3**.
@@ -46,6 +61,38 @@ simulator gets only a thin adapter that converts packets and executes the
 decisions the core returns. See [docs/architecture.md](docs/architecture.md)
 (and [docs/ns2-support.md](docs/ns2-support.md) for how the NS-2 adapter
 differs).
+
+```mermaid
+flowchart TB
+    H["Benchmark harnesses (ns3/examples)<br/>anthocnet-compare · isl-grid · run-scenarios.py"]
+
+    subgraph NS3["ns3/ — contrib module (supported)"]
+        A3["RoutingProtocol : Ipv4RoutingProtocol<br/>~30 attributes = the config surface"]
+    end
+    subgraph NS2["ns2/ — source patch (frozen at v1.2.0)"]
+        A2["AntHocNetAgent : Agent"]
+    end
+
+    P["Ports: IClock · IRng · INeighborProvider · ITimerScheduler"]
+
+    subgraph CORE["core/ — simulator-agnostic C++, unit-tested (make test)"]
+        C1["AntRouterLogic → RouteDecision"]
+        C2["PheromoneTable · PheromoneEngine"]
+        C3["AntMessage codec (versioned wire format)"]
+    end
+
+    H --> A3
+    A3 --> P
+    A2 --> P
+    P --> C1
+    C1 --- C2 --- C3
+
+    style CORE fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
+```
+
+The full stack — every mechanism, the switch that gates it, and what is
+live/inert per network regime — is diagrammed in
+[docs/software-layers.md](docs/software-layers.md).
 
 ## Quick start
 
@@ -122,52 +169,13 @@ matrix in [docker/README.md](docker/README.md).
 
 ## Supported network regimes
 
-The same protocol binary runs in two very different networks. What is *unknown*
-in each regime is what decides which of AntHocNet's mechanisms matter there —
-the full argument is in [docs/network-regimes.md](docs/network-regimes.md).
-
-**The ad-hoc family** first — MANET is one point on an axis of how constrained
-the mobility is, and each sibling changes the evaluation, not the protocol:
-
-| Family | Mobility character | What changes vs plain MANET | Status in this repo |
-|---|---|---|---|
-| **MANET** (ground, generic) | unconstrained random motion (RWP), 1–20 m/s | — the design regime | **supported** — the two fields below |
-| **VANET** (vehicles) | road-constrained (Manhattan grid, SUMO traces), 10–40 m/s, platooning | topology churn is fast but *street-shaped*; density swings block-by-block | not yet — road/trace mobility planned ([#61](https://github.com/danieljoppi/AntHocNet/issues/61), epic [#295](https://github.com/danieljoppi/AntHocNet/issues/295)) |
-| **FANET** (UAVs) | 3D smooth trajectories (Gauss-Markov), 10–30 m/s, sparse | third dimension, high link churn, energy-critical nodes | not yet — Gauss-Markov planned ([#61](https://github.com/danieljoppi/AntHocNet/issues/61), [#295](https://github.com/danieljoppi/AntHocNet/issues/295)); recent surveys rate AntHocNet strongest-in-class here, which is why it's next |
-| **LEO ISL mesh** (satellites) | deterministic orbits — topology computable years ahead | the inversion: topology known, *traffic* unknown ([regimes §3](docs/network-regimes.md)) | **supported** — static +Grid snapshot; dynamics planned (epic [#297](https://github.com/danieljoppi/AntHocNet/issues/297)) |
-
-The two supported regimes in detail:
-
-| | MANET — paper field | MANET — thesis field | Satellite — ISL +Grid |
-|---|---|---|---|
-| Harness | [`anthocnet-compare`](ns3/examples/anthocnet-compare.cc) `--scenario=paper` | [`anthocnet-compare`](ns3/examples/anthocnet-compare.cc) `--scenario=thesis` | [`isl-grid`](ns3/examples/isl-grid.cc) |
-| Nodes / field | 50 · 1500×300 m (Broch '98 calibration field) | 100 · 2400×800 m (Ducatelle 2007 §5.1.3) | rows×cols torus (default 6×6), static snapshot |
-| Mobility | RandomWaypoint, 1–20 m/s, pause 30 s | RandomWaypoint, 1–10 m/s, pause 30 s | none — topology fixed by construction |
-| Medium | 802.11b @ 2 Mbit/s, shared broadcast channel (disk or two-ray propagation) | same | point-to-point ISLs, 10 Mbit/s, 5 ms/link, one `/30` subnet each, degree 4 |
-| Topology | unknown — discovered by ants | unknown — discovered by ants | deterministic — degree/link count asserted every run |
-| Loss | collisions, retry exhaustion, mobility | same | none on the link; any loss indicts the stack |
-| Traffic | 20 CBR flows × 512 bps | 20 CBR flows × 2048 bps | 4 CBR flows × 4096 bps + adversarial cells (scripted link cut, corridor congestion) |
-| Baselines | AODV / OLSR / DSDV on identical seeds | same | same, plus (planned) precomputed shortest-path control ([#216](https://github.com/danieljoppi/AntHocNet/issues/216)) |
-| Results | [docs/benchmarks.md](docs/benchmarks.md) | [docs/benchmarks.md](docs/benchmarks.md) | [docs/benchmarks/satellite/isl-grid.md](docs/benchmarks/satellite/isl-grid.md) |
-
-**AntHocNet configuration per regime** — one attribute set (defaults below, every
-knob in [docs/configuration.md](docs/configuration.md)); what differs is which
-mechanisms are *live*, because some bind to the Wi-Fi MAC and some answer a
-problem the regime doesn't have:
-
-| Mechanism | Default | MANET (Wi-Fi) | Satellite ISL (p2p) |
-|---|---|---|---|
-| Reactive forward-ant flood (`EnableReactive`) | on | active — the route-discovery workhorse | active, but discovery is answering a question the geometry already answers ([regimes §5](docs/network-regimes.md)) |
-| Proactive ants + diffusion (`EnableProactive`, `EnableDiffusion`, 10 s) | on | active — path maintenance/improvement | active — carries the virtual gradient over the grid |
-| Hello beacons (`HelloInterval`, 1 Hz) | on | active — the only neighbour discovery | active but **redundant**: the peer is fixed and known — NRL 12.18 with nothing to discover ([#204](https://github.com/danieljoppi/AntHocNet/issues/204)) |
-| Multipath acceptance (`EnableMultipath`, a1 = 0.9 / a2 = 2.0) | on | active | active — the torus offers equal-cost corridors by construction |
-| Local repair ants (`EnableRepair`) | on | active — mobility breaks links constantly | active — but only *unscheduled* failure exercises it (scripted-cut cell) |
-| Link-failure notifications (`EnableLinkFail`) | on | active | active |
-| Hello-timeout failure detector (A) | always on | active | active |
-| Wi-Fi MAC transmit-failure detector (D) (`EnableMacFailureDetector`) | on | active | **inert** — binds to `WifiNetDevice`; no Wi-Fi MAC on an ISL |
-| A2 congestion metric (`EnableMacMetric`) | **off** | available — reads the Wi-Fi MAC queue | **inert even when on** — no queue signal on p2p until generalised ([#206](https://github.com/danieljoppi/AntHocNet/issues/206), [#292](https://github.com/danieljoppi/AntHocNet/issues/292)) |
-| Directed reactive discovery (`EnableDirectedReactive`) | **off** | A/B arm — degrades to flooding without a gradient | A/B arm — the regime it was designed to probe ([#245](https://github.com/danieljoppi/AntHocNet/issues/245)) |
-| Timing profile (`HopTime` = 3 ms, hold caps, retry timers) | thesis values | calibrated for 802.11 contention | mis-sized: delay is propagation-dominated, retuning open ([#205](https://github.com/danieljoppi/AntHocNet/issues/205)) |
+The same protocol binary runs in two very different networks: the **MANET
+fields** (paper + thesis, via `anthocnet-compare`) and a **satellite ISL +Grid
+snapshot** (via `isl-grid`), with VANET/FANET mobility families planned. What
+is *unknown* in each regime decides which of AntHocNet's mechanisms matter
+there — the family table, the side-by-side harness comparison, and the
+mechanism-by-mechanism live/inert map are all in
+[docs/network-regimes.md](docs/network-regimes.md).
 
 ## What changed from the original
 
