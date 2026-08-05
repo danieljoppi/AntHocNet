@@ -128,6 +128,27 @@ void TakeStreams(int64_t& next, int64_t base, int64_t used, const char* what) {
                     << " — seed blocks would overlap (#352). Raise the stride.");
 }
 
+// #352: DsdvHelper is the one baseline helper with no AssignStreams() wrapper —
+// AodvHelper, OlsrHelper and AntHocNetHelper all have one, DsdvHelper has none
+// anywhere in the 3.36-3.48 CI matrix. dsdv::RoutingProtocol itself does declare
+// AssignStreams(int64_t) in every one of those versions, so reach the installed
+// protocol objects through the nodes and do what the missing wrapper would do.
+// DSDV cannot simply be left unpinned: it is one of the untouched-baseline arms
+// whose numbers must stay byte-identical across generations for a comparison to
+// be attributable at all.
+int64_t AssignDsdvStreams(const NodeContainer& nodes, int64_t stream) {
+    int64_t used = 0;
+    for (auto it = nodes.Begin(); it != nodes.End(); ++it) {
+        Ptr<Ipv4> ipv4 = (*it)->GetObject<Ipv4>();
+        NS_ABORT_MSG_IF(!ipv4, "node has no IPv4 stack; cannot pin dsdv streams");
+        Ptr<dsdv::RoutingProtocol> dsdv =
+            DynamicCast<dsdv::RoutingProtocol>(ipv4->GetRoutingProtocol());
+        NS_ABORT_MSG_IF(!dsdv, "expected dsdv::RoutingProtocol on this node (#352)");
+        used += dsdv->AssignStreams(stream + used);
+    }
+    return used;
+}
+
 uint64_t g_controlPkts = 0;   // routing-control packets transmitted this run
 uint64_t g_controlBytes = 0;  // #132: routing-control bytes transmitted this run
 
@@ -846,7 +867,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream),
                     "olsr routing");
     } else if (proto == "dsdv") {
-        TakeStreams(stream, streamBase, dsdvHelper.AssignStreams(nodes, stream),
+        TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream),
                     "dsdv routing");
     }
 
