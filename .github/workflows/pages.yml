@@ -1,0 +1,70 @@
+name: Pages
+
+# Renders docs/ as a mkdocs-material site and publishes it to GitHub Pages
+# (#331). The repository tree stays canonical — this job only renders it, so a
+# failure here never blocks a merge; ci.yml/lint.yml remain the gates.
+on:
+  push:
+    branches: [main]
+    # docs/ and the site config are the only inputs; a core/ or ns3/ change
+    # cannot alter the rendered output.
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# Least privilege: the build reads the tree, the deploy needs `pages: write`
+# plus the OIDC token (`id-token: write`) that actions/deploy-pages exchanges
+# for the Pages deployment credential. Nothing here writes to the repository.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One live deployment at a time; a superseded run is *not* cancelled
+# (cancel-in-progress: false) so an in-flight publish always finishes and the
+# site never lands half-deployed.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build site
+    runs-on: ubuntu-latest
+    steps:
+      # Every action is SHA-pinned with the tag in a trailing comment, matching
+      # the repo-wide pinning done in #338: a tag is a moving pointer, so an
+      # unpinned action lets a third party change what runs in a job that holds
+      # `pages: write` and an OIDC token. checkout/setup-python reuse the exact
+      # SHAs already pinned in ci.yml and lint.yml.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.x'
+      - name: Install mkdocs-material
+        # Pinned for the same reason ruff is pinned in lint.yml: an unpinned
+        # docs toolchain turns an upstream release into a red main-branch run.
+        # Bump deliberately.
+        run: pip install 'mkdocs-material==9.7.7'
+      - name: Build
+        # --strict: warnings (broken internal links, nav pointing at a missing
+        # page) fail the build instead of silently shipping a 404. It passes
+        # today; keep it passing rather than dropping the flag.
+        run: mkdocs build --strict
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
