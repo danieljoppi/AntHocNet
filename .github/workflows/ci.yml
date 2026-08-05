@@ -9,6 +9,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A force-push to a PR branch obsoletes the in-flight run — cancel it instead
+# of paying for the full matrix twice. Main-branch runs are never cancelled
+# (cancel-in-progress is false there): every merge keeps its own complete run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # packages:read lets the container jobs pull the pre-built simulator images
 # from GHCR; contents:read is for checkout.
 permissions:
