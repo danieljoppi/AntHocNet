@@ -39,9 +39,26 @@ non-first protocol. Hence two cases.
 Compares the harness's per-seed ##RUN## rows (#128), which carry the metrics
 downstream tooling actually consumes, keyed by (seed, protocol).
 
-isl-grid received the same pinning fix but exposes no --firstRun, so the
-structure half cannot be expressed against it; it is covered by the shared
-mechanism plus its own determinism gate (ns3/tools/check-determinism.sh).
+manet-baselines received the same pinning fix and is checked here too, but on
+the order half only: it exposes no --firstRun, so the structure half cannot be
+expressed against it. It has no ##RUN## rows either (it prints per-protocol
+means), so it is compared over its per-seed `[diag <proto> seed=N]` lines,
+which carry exact per-flow tx/rx/lost counts. Gating it matters more than its
+"control harness" status suggests: it is also the anchor harness
+(ns3/tools/check-anchors.sh), and its #24 verdict — "are the low absolute PDRs a
+property of the scenario, or an artefact of our harness?" — is only readable if
+its numbers mean the same thing as anthocnet-compare's for the same seed.
+
+isl-grid is deliberately NOT checked here, and the reason is a finding rather
+than an omission. An order case was written for it and it FAILED — see #362.
+The cause is not RNG and this gate's fix would not address it: both our routing
+protocol and ns-3's own AODV key their per-interface socket tables on
+`std::map<Ptr<Socket>, ...>`, i.e. on heap addresses, and broadcast in that
+iteration order. anthocnet-compare gives every node one wifi interface, so
+those maps hold one entry and the order cannot vary; isl-grid gives every
+satellite four ISLs, so it does vary — with whatever the allocator did earlier
+in the process. Half the exposure is upstream, so this gate cannot be made
+green by any change to ns3/examples/. Re-enable the case when #362 closes.
 
 Needs an ns-3 tree with the AntHocNet module installed, configured and built
 with examples enabled. Runs on stdlib only:
@@ -50,6 +67,7 @@ with examples enabled. Runs on stdlib only:
 """
 
 import argparse
+import re
 import subprocess
 import sys
 
@@ -59,14 +77,20 @@ import sys
 SCENARIO = "--nNodes=8 --area=150 --flows=2"
 PROTOCOLS = ["anthocnet", "aodv"]
 
+# manet-baselines links no AntHocNet code, so its arms are the stock protocols.
+# dsdv is deliberately in this list: it is the one whose streams are pinned by
+# hand (DsdvHelper has no AssignStreams() wrapper in any ns-3 of the matrix),
+# i.e. the entry with no upstream helper backing it up.
+BASELINE_PROTOCOLS = ["aodv", "dsdv"]
 
-def run_compare(ns3dir, protocols, first_run, runs, time_s):
-    """Run anthocnet-compare once; return {(seed, proto): row} from ##RUN##."""
-    cmd = (
-        f"anthocnet-compare {SCENARIO} --time={time_s} "
-        f"--protocols={','.join(protocols)} "
-        f"--firstRun={first_run} --runs={runs}"
-    )
+# manet-baselines prints per-seed diagnostics rather than ##RUN## rows:
+#   "  [diag aodv seed=3] flow 10.1.0.1:49153 -> ... tx=.. rx=.. lost=.."
+#   "  [diag aodv seed=3] TOTALS fmTx=.. fmRx=.. appTx=.. appRx=.."
+DIAG_RE = re.compile(r"^\s*\[diag (\S+) seed=(\d+)\] (.*)$")
+
+
+def run_ns3(ns3dir, cmd):
+    """Run one ./ns3 program invocation; return its stdout, or abort."""
     print(f"[seed-independence] ./ns3 run \"{cmd}\"")
     proc = subprocess.run(
         ["./ns3", "run", cmd],
@@ -79,9 +103,13 @@ def run_compare(ns3dir, protocols, first_run, runs, time_s):
     if proc.returncode != 0:
         print("\n".join(proc.stdout.splitlines()[-40:]), file=sys.stderr)
         raise SystemExit(f"FAIL [seed-independence]: '{cmd}' exited {proc.returncode}")
+    return proc.stdout
 
+
+def parse_run_rows(stdout, cmd):
+    """{(seed, proto): row} from the harness's ##RUN## lines (#128)."""
     rows = {}
-    for line in proc.stdout.splitlines():
+    for line in stdout.splitlines():
         if not line.startswith("##RUN##"):
             continue
         fields = line.split()[1:]  # drop the ##RUN## marker
@@ -93,6 +121,40 @@ def run_compare(ns3dir, protocols, first_run, runs, time_s):
             "(#28-style silent empty result)"
         )
     return rows
+
+
+def parse_diag_rows(stdout, cmd):
+    """{(seed, proto): joined diag lines} for harnesses with no ##RUN## rows."""
+    rows = {}
+    for line in stdout.splitlines():
+        m = DIAG_RE.match(line)
+        if m:
+            rows.setdefault((m.group(2), m.group(1)), []).append(m.group(3))
+    if not rows:
+        raise SystemExit(
+            f"FAIL [seed-independence]: '{cmd}' produced no [diag] lines "
+            "(#28-style silent empty result)"
+        )
+    return {key: " | ".join(lines) for key, lines in rows.items()}
+
+
+def run_compare(ns3dir, protocols, first_run, runs, time_s):
+    """Run anthocnet-compare once; return {(seed, proto): row} from ##RUN##."""
+    cmd = (
+        f"anthocnet-compare {SCENARIO} --time={time_s} "
+        f"--protocols={','.join(protocols)} "
+        f"--firstRun={first_run} --runs={runs}"
+    )
+    return parse_run_rows(run_ns3(ns3dir, cmd), cmd)
+
+
+def run_baselines(ns3dir, protocols, runs, time_s):
+    """Run manet-baselines once; return {(seed, proto): joined diag lines}."""
+    cmd = (
+        f"manet-baselines {SCENARIO} --time={time_s} "
+        f"--protocols={','.join(protocols)} --runs={runs}"
+    )
+    return parse_diag_rows(run_ns3(ns3dir, cmd), cmd)
 
 
 def compare(case, reference, other):
@@ -145,6 +207,18 @@ def main():
     problems = compare("structure", reference, split)
     problems += compare("order", reference, reversed_order)
 
+    # manet-baselines exposes no --firstRun, so only the order half applies, and
+    # it publishes per-seed [diag] lines rather than ##RUN## rows.
+    base_reference = run_baselines(
+        args.ns3dir, BASELINE_PROTOCOLS, args.seeds, args.time
+    )
+    base_reversed = run_baselines(
+        args.ns3dir, list(reversed(BASELINE_PROTOCOLS)), args.seeds, args.time
+    )
+    problems += compare("order/manet-baselines", base_reference, base_reversed)
+
+    checked = len(reference) + len(base_reference)
+
     if problems:
         print(
             f"\nFAIL [seed-independence]: {problems} row(s) depend on something "
@@ -161,8 +235,9 @@ def main():
         return 1
 
     print(
-        f"\nPASS [seed-independence]: {len(reference)} per-seed row(s) identical "
-        "across split structures and across protocol order"
+        f"\nPASS [seed-independence]: {checked} per-seed row(s) identical across "
+        "split structures (anthocnet-compare) and across protocol order "
+        "(anthocnet-compare, manet-baselines)"
     )
     return 0
 

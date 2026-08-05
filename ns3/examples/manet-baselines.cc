@@ -43,6 +43,59 @@ using namespace ns3;
 namespace {
 
 constexpr uint16_t kDataPort = 9;
+
+// --- RNG stream pinning (#352) ----------------------------------------------
+// The same fix, for the same reason, as ns3/examples/anthocnet-compare.cc and
+// ns3/examples/isl-grid.cc: ns-3 hands every RandomVariableStream its stream
+// index from a *global* counter at CONSTRUCTION time, and neither
+// RngSeedManager::SetSeed/SetRun nor Simulator::Destroy resets that counter.
+// This harness has the same shape as the other two — a whole scenario built per
+// run, many runs per process, in a protocol-major loop — so without pinning,
+// run N draws from whatever stream indices runs 1..N-1 left behind and a run's
+// realisation becomes a function of its *position* in the process (--runs, and
+// the --protocols order) rather than of its seed.
+//
+// manet-baselines is the anchor harness (ns3/tools/check-anchors.sh) and the
+// #24 stock-baseline control. Both uses compare across invocations, which is
+// exactly what position dependence breaks: the anchor floors happen to be safe
+// only because check-anchors.sh always passes a fixed --runs, and the #24
+// control is only meaningful if its DSDV/AODV/OLSR numbers mean the same thing
+// as the ones anthocnet-compare reports for the same seed. Leaving one of the
+// three harnesses unpinned would keep exactly that comparison unsound.
+//
+// Same stride and same runtime budget check as the other two — see the longer
+// derivation in anthocnet-compare.cc.
+constexpr int64_t kStreamStride = 1000000;
+
+// Advance `next` by the number of streams a helper's AssignStreams() reported,
+// and abort if this run has overrun its per-seed block.
+void TakeStreams(int64_t& next, int64_t base, int64_t used, const char* what) {
+    next += used;
+    NS_ABORT_MSG_IF(next - base >= kStreamStride,
+                    "RNG stream budget exhausted after assigning " << what
+                    << ": this run has consumed " << (next - base)
+                    << " streams but kStreamStride is " << kStreamStride
+                    << " — seed blocks would overlap (#352). Raise the stride.");
+}
+
+// #352: DsdvHelper is the one baseline helper with no AssignStreams() wrapper —
+// AodvHelper and OlsrHelper both have one, DsdvHelper has none anywhere in the
+// 3.36-3.48 CI matrix. dsdv::RoutingProtocol itself does declare
+// AssignStreams(int64_t) in every one of those versions, so reach the installed
+// protocol objects through the nodes and do what the missing wrapper would do.
+int64_t AssignDsdvStreams(const NodeContainer& nodes, int64_t stream) {
+    int64_t used = 0;
+    for (auto it = nodes.Begin(); it != nodes.End(); ++it) {
+        Ptr<Ipv4> ipv4 = (*it)->GetObject<Ipv4>();
+        NS_ABORT_MSG_IF(!ipv4, "node has no IPv4 stack; cannot pin dsdv streams");
+        Ptr<dsdv::RoutingProtocol> dsdv =
+            DynamicCast<dsdv::RoutingProtocol>(ipv4->GetRoutingProtocol());
+        NS_ABORT_MSG_IF(!dsdv, "expected dsdv::RoutingProtocol on this node (#352)");
+        used += dsdv->AssignStreams(stream + used);
+    }
+    return used;
+}
+
 uint64_t g_controlPkts = 0;
 void CountTx(Ptr<const Packet>, Ptr<Ipv4>, uint32_t) { ++g_controlPkts; }
 
@@ -173,6 +226,11 @@ struct Result {
 Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     RngSeedManager::SetSeed(1);
     RngSeedManager::SetRun(seed);
+    // #352: and pin the stream indices into this seed's own block, so the
+    // realisation depends on the seed alone and not on how many runs (or which
+    // protocols) preceded this one in the process. See kStreamStride.
+    const int64_t streamBase = static_cast<int64_t>(seed) * kStreamStride;
+    int64_t stream = streamBase;
     g_controlPkts = 0;
     g_appTx = 0;
     g_appRx = 0;
@@ -213,10 +271,21 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else {
         channel = YansWifiChannelHelper::Default();
     }
-    phy.SetChannel(channel.Create());
+    Ptr<YansWifiChannel> wifiChannel = channel.Create();
+    phy.SetChannel(wifiChannel);
     WifiMacHelper mac;
     mac.SetType("ns3::AdhocWifiMac");
     NetDeviceContainer devices = wifi.Install(phy, mac, nodes);
+    // #352: the propagation models configured above are all deterministic, so
+    // the channel normally reports 0 streams — pinned anyway so swapping in a
+    // fading model (Nakagami, ...) cannot reintroduce the position dependence.
+    // WifiHelper::AssignStreams covers the PHY's reception-error variable, the
+    // MAC/Txop backoff and the rate manager in one call — and this harness can
+    // select ArfWifiManager or IdealWifiManager via --rateManager, both of which
+    // are stateful, so that last one is not hypothetical here.
+    TakeStreams(stream, streamBase, channel.AssignStreams(wifiChannel, stream),
+                "wifi channel");
+    TakeStreams(stream, streamBase, wifi.AssignStreams(devices, stream), "wifi");
 
     MobilityHelper mobility;
     Ptr<UniformRandomVariable> ux = CreateObject<UniformRandomVariable>();
@@ -237,20 +306,52 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                               "Speed", StringValue(speedStr.str()),
                               "Pause", StringValue(pauseStr.str()),
                               "PositionAllocator", PointerValue(pos));
+    // #352: the initial positions are drawn during Install(), so the allocator
+    // has to be pinned BEFORE it — MobilityHelper::AssignStreams can only reach
+    // the models (and, through RandomWaypoint, the allocator's later waypoint
+    // draws) once they exist. Pinning `pos` covers both `ux` and `uy`.
+    TakeStreams(stream, streamBase, pos->AssignStreams(stream),
+                "position allocator");
     mobility.Install(nodes);
+    TakeStreams(stream, streamBase, mobility.AssignStreams(nodes, stream),
+                "mobility");
 
+    // #352: the three routing helpers are hoisted out of the branches so their
+    // AssignStreams() can run after Install() (SetRoutingHelper stores a Copy(),
+    // but AssignStreams reaches the *installed* protocols through the nodes, so
+    // the local helper is the right handle). Constructing all three is free —
+    // each is an ObjectFactory and instantiates nothing.
     InternetStackHelper internet;
+    AodvHelper aodvHelper;
+    OlsrHelper olsrHelper;
+    DsdvHelper dsdvHelper;
     if (proto == "aodv") {
-        AodvHelper h;
-        internet.SetRoutingHelper(h);
+        internet.SetRoutingHelper(aodvHelper);
     } else if (proto == "olsr") {
-        OlsrHelper h;
-        internet.SetRoutingHelper(h);
+        internet.SetRoutingHelper(olsrHelper);
     } else if (proto == "dsdv") {
-        DsdvHelper h;
-        internet.SetRoutingHelper(h);
+        internet.SetRoutingHelper(dsdvHelper);
     }
     internet.Install(nodes);
+    // The IPv4 stack is not stream-free: ArpL3Protocol owns m_requestJitter, a
+    // RandomVariableStream that de-syncs ARP requests, and on a wifi MANET every
+    // next-hop change resolves through ARP. This is the entry that kept the
+    // seed-independence gate red in anthocnet-compare after everything else was
+    // pinned; the same stack is installed here.
+    TakeStreams(stream, streamBase, internet.AssignStreams(nodes, stream),
+                "internet stack (arp request jitter)");
+    // Each of these protocols builds a UniformRandomVariable per node (RREQ
+    // jitter, hello jitter) at construction; pin them.
+    if (proto == "aodv") {
+        TakeStreams(stream, streamBase, aodvHelper.AssignStreams(nodes, stream),
+                    "aodv routing");
+    } else if (proto == "olsr") {
+        TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream),
+                    "olsr routing");
+    } else if (proto == "dsdv") {
+        TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream),
+                    "dsdv routing");
+    }
 
     for (uint32_t i = 0; i < nodes.GetN(); ++i) {
         Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
@@ -270,6 +371,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     Ptr<UniformRandomVariable> startVar = CreateObject<UniformRandomVariable>();
     startVar->SetAttribute("Min", DoubleValue(0.0));
     startVar->SetAttribute("Max", DoubleValue(std::min(P.startWindow, P.simTime * 0.5)));
+    // #352: pinned before the flow loop below reads it — the start times are
+    // drawn there, not at Simulator::Run().
+    startVar->SetStream(stream);
+    TakeStreams(stream, streamBase, 1, "flow start times");
     std::ostringstream rate;
     rate << static_cast<uint64_t>(P.cbrBps) << "bps";
     ApplicationContainer sinks;
@@ -282,6 +387,17 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         onoff.SetAttribute("StartTime", TimeValue(Seconds(startVar->GetValue())));
         onoff.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
         ApplicationContainer srcApp = onoff.Install(nodes.Get(src));
+        // #352: the OnOff source's on/off variables. They are
+        // ConstantRandomVariable in this harness (a CBR source is always on), so
+        // they consume streams without drawing from them — pinned regardless, so
+        // an on/off duty cycle added later cannot reintroduce the position
+        // dependence. PacketSink draws nothing. The DynamicCast is deliberate:
+        // AssignStreams only reached the Application base class in a later ns-3
+        // than 3.36, but OnOffApplication has declared it throughout the matrix.
+        Ptr<OnOffApplication> onoffApp = DynamicCast<OnOffApplication>(srcApp.Get(0));
+        NS_ABORT_MSG_IF(!onoffApp, "expected an OnOffApplication to pin (#352)");
+        TakeStreams(stream, streamBase, onoffApp->AssignStreams(stream),
+                    "onoff application");
         srcApp.Get(0)->TraceConnectWithoutContext("Tx", MakeCallback(&AppTx));
         PacketSinkHelper sink("ns3::UdpSocketFactory",
                               InetSocketAddress(Ipv4Address::GetAny(), kDataPort));
@@ -413,6 +529,16 @@ int main(int argc, char* argv[]) {
               << " rateManager=" << P.rateManager << "\n\n"
               << "protocol        PDR%  delay(ms)  delay99(ms)     NRL\n"
               << "--------------------------------------------------------\n";
+    // std::fixed / setprecision are STICKY on std::cout, and the summary row
+    // below sets them between one protocol's runs and the next's. RunOne's
+    // per-seed "[diag ...] TOTALS" line prints its packet counts as doubles
+    // (tx/rx are accumulators), so the first protocol printed "fmTx=405" and
+    // every later one "fmTx=405.00" for the identical value — the output, not
+    // the simulation, depended on the protocol's position in --protocols. The
+    // #352 seed-independence gate flagged it correctly on its first run against
+    // this harness. Save the state once and restore it after each row.
+    const std::ios_base::fmtflags coutFlags = std::cout.flags();
+    const std::streamsize coutPrec = std::cout.precision();
     for (const std::string& proto : list) {
         double pdr = 0, d = 0, d99 = 0, nrl = 0;
         for (uint32_t s = 1; s <= runs; ++s) {
@@ -425,6 +551,8 @@ int main(int argc, char* argv[]) {
                   << std::setw(11) << d / runs
                   << std::setw(13) << d99 / runs
                   << std::setw(9) << std::setprecision(2) << nrl / runs << "\n";
+        std::cout.flags(coutFlags);
+        std::cout.precision(coutPrec);
     }
     return 0;
 }
