@@ -1,0 +1,139 @@
+site_name: AntHocNet
+site_description: >-
+  AntHocNet — an ant-colony-optimization MANET routing protocol implemented once
+  as a simulator-agnostic core, with thin NS-2 and NS-3 adapters.
+site_url: https://danieljoppi.github.io/AntHocNet/
+repo_url: https://github.com/danieljoppi/AntHocNet
+repo_name: danieljoppi/AntHocNet
+edit_uri: edit/main/docs/
+copyright: GPL-2.0-or-later — the repository tree is canonical; this site renders it.
+
+docs_dir: docs
+
+# --- Relative links that escape docs/ (#331) --------------------------------
+# docs/*.md link out of the docs tree with `../` — ../AGENTS.md, ../CONTEXT.md,
+# ../CONTRIBUTING.md, ../core/…, ../ns2/…, ../ns3/tools/…, ../.github/… — and
+# with `docs_dir: docs` those targets are outside the site. The options were:
+#
+#   (a) mkdocs-monorepo / same-dir plugins — an extra dependency that still
+#       cannot render ../core/src/*.cpp or ../ns3/tools/*.py as site pages.
+#   (b) `docs_dir: .` plus an exclude list — impossible: mkdocs rejects a
+#       docs_dir that is the config file's own directory ("The 'docs_dir'
+#       should not be the parent directory of the config file"), and it would
+#       otherwise copy the whole repo into the site.
+#   (c) point the escaping links at GitHub  <-- CHOSEN
+#   (d) accept the warnings with `strict: false` and let those links 404 on
+#       the site — ~40 dead links on the discoverability surface this site
+#       exists to provide.
+#
+# (c) is implemented by docs/tools/mkdocs_hooks.py, which rewrites *only* the
+# escaping targets to https://github.com/danieljoppi/AntHocNet/blob|tree/main/…
+# while the markdown is rendered. No .md file is modified: the repo tree stays
+# canonical and every link keeps working when read on GitHub.
+#
+# Tradeoff: on the site those links leave the site — a reader who clicks
+# `../AGENTS.md` lands on GitHub instead of a rendered page. That is deliberate
+# (those files are repo-tree artefacts, not site pages) but it does mean the
+# site is not a self-contained mirror of the documentation, and the hook is one
+# more moving part that a future docs_dir change would have to keep in step.
+hooks:
+  - docs/tools/mkdocs_hooks.py
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  - tables
+  - toc:
+      permalink: true
+  - admonition
+  - attr_list
+  # Mermaid: the docs carry many diagrams and CI already gates that they parse
+  # (docs/tools/check-mermaid.py in lint.yml), so they must render here too.
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+# Nav transcribed from docs/README.md — same groups, same order, same pages.
+# When that map changes, change this with it.
+nav:
+  - README.md
+  - Understand the protocol:
+      - ant-colony-routing.md
+      - ant-types.md
+      - architecture.md
+      - roadmap.md
+      - software-layers.md
+      - network-regimes.md
+  - Build, port, extend:
+      - porting-notes.md
+      - ns2-support.md
+      - wire-format.md
+      - configuration.md
+      - cross-validation.md
+  - Measure & reproduce:
+      - benchmarks.md
+      - benchmarks/metrics.md
+      - benchmarks/methodology.md
+      - benchmarks/README.md
+      - benchmarks/satellite/isl-grid.md
+      - Scenarios:
+          - benchmarks/scenarios/paper-base.md
+          - benchmarks/scenarios/dense-small.md
+          - benchmarks/scenarios/sparse-static.md
+          - benchmarks/scenarios/high-mobility.md
+          - benchmarks/scenarios/heavy-load.md
+          - benchmarks/scenarios/large-scale.md
+      - Sweeps:
+          - benchmarks/sweeps/area.md
+          - benchmarks/sweeps/pause.md
+          - benchmarks/sweeps/scale.md
+  - Research provenance & fidelity:
+      - fidelity.md
+      - publications/README.md
+      - publications/papers/2004-ppsn-anthocnet.md
+      - publications/thesis/README.md
+      - satellite-routing-prior-art.md
+  - Decisions & process:
+      - adr/README.md
+      - Architecture Decision Records:
+          - adr/0001-record-architecture-decisions.md
+          - adr/0002-one-core-two-adapters.md
+          - adr/0003-pure-core-returns-route-decisions.md
+          - adr/0004-pod-ant-messages-and-codec.md
+          - adr/0005-ns2-idempotent-anchor-patch.md
+          - adr/0006-on-wire-protocol-version.md
+          - adr/0007-proactive-diffusion-gated.md
+          - adr/0008-neighbour-liveness-two-detectors.md
+          - adr/0009-backward-ants-carry-path-not-state.md
+          - adr/0010-data-forwarding-prevhop-excluded-stochastic.md
+          - adr/0011-nodeaddress-is-ip-broadcast-is-an-action.md
+          - adr/0012-evaporation-is-a-secondary-safety-net.md
+          - adr/0013-track-bugs-and-findings-as-issues.md
+          - adr/0014-agent-skills-are-script-first.md
+          - adr/0015-satellite-substrate-lives-in-the-image.md
+          - adr/0016-directed-reactive-discovery-is-gated-and-off.md
+          - adr/0017-linkstate-is-per-next-hop-and-regime-selected.md
+          - adr/0018-emission-gate-compares-per-link.md
+          - adr/0019-network-families-change-the-evaluation-not-the-protocol.md
+          - adr/0020-security-is-a-default-off-profile.md
+      - Handoffs:
+          - handoffs/2026-06-28-detector-d-link-failure.md
