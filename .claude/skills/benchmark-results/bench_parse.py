@@ -306,9 +306,12 @@ def verdict(base, cur):
     # PDR up is good; delay99 and NRL down are good. A flat-PDR run whose tail and
     # overhead both drop is an IMPROVEMENT, not "MIXED" (the A2 hotspot case).
     sig = []
-    if abs(dp) >= 1.0:  sig.append(1 if dp > 0 else -1)
-    if abs(dd99) >= 10: sig.append(1 if dd99 < 0 else -1)
-    if abs(dn) >= 10:   sig.append(1 if dn < 0 else -1)
+    if abs(dp) >= 1.0:
+        sig.append(1 if dp > 0 else -1)
+    if abs(dd99) >= 10:
+        sig.append(1 if dd99 < 0 else -1)
+    if abs(dn) >= 10:
+        sig.append(1 if dn < 0 else -1)
     if not sig:
         v = "NOISE"
     elif all(s > 0 for s in sig):

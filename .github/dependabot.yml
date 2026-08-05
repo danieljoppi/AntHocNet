@@ -5,10 +5,14 @@
 #     (tags can be repointed); Dependabot bumps the SHA and the trailing
 #     `# vX.Y.Z` comment together.
 #   - docker: both images live under docker/ (Dockerfile.ns2, Dockerfile.ns3).
-#   - pip is deliberately absent: there is no requirements manifest in the
-#     repo — the ruff==0.16.0 and gcovr==8.6 pins are inline `pip install`
-#     lines in workflow yaml, which Dependabot cannot see. Those stay manual;
-#     bump them deliberately, fixing new findings in the same PR.
+#   - pip: the Python tool pins now live in requirements-dev.txt, which the
+#     workflows consume as a constraints file (`pip install -c … ruff`).
+#     This reverses the original decision here — that there was no manifest
+#     to watch, so ruff/gcovr stayed manual. "Manual" meant they were not
+#     bumped at all, and commitizen (which computes the release version bump)
+#     turned out never to have been pinned. One file both fixes that and makes
+#     the pins visible here. Bump them like any other dependency, fixing any
+#     new lint findings in the same PR.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -18,5 +22,23 @@ updates:
 
   - package-ecosystem: docker
     directory: /docker
+    schedule:
+      interval: monthly
+    ignore:
+      # Dockerfile.ns2 pins ubuntu:18.04 deliberately: ns-2.34/2.35 is a
+      # 2011-era tree that only builds on gcc-7, and the modern-gcc sed fixes
+      # immediately below that FROM (plus the gnu++14 note on the anthocnet
+      # stage) are calibrated to exactly that compiler. A base bump also does
+      # not surface in PR CI — images.yml never runs on PRs, and ci.yml's ns-2
+      # jobs pull the *pre-built* GHCR image — so the breakage would land on
+      # main. #339 proposed 18.04 -> 26.04 on a fully green PR and was closed
+      # for this reason. The pin only has to hold until the adapter is removed
+      # at v2.0.0 (#307); it is frozen at v1.2.0 until then.
+      # Dockerfile.ns3's base is an `ARG UBUNTU=`, which Dependabot does not
+      # touch, so this ignore costs nothing there.
+      - dependency-name: ubuntu
+
+  - package-ecosystem: pip
+    directory: /
     schedule:
       interval: monthly

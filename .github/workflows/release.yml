@@ -36,8 +36,12 @@ jobs:
         with:
           python-version: '3.x'
       - name: Install tools
+        # commitizen is pinned in requirements-dev.txt: it computes the semver
+        # bump from commit history and rewrites the version strings, and this
+        # workflow is never exercised by PR CI, so a float would first be
+        # noticed as a wrong release number.
         run: |
-          pip install commitizen
+          pip install -c requirements-dev.txt commitizen
           sudo apt-get update && sudo apt-get install -y cmake g++
 
       - name: Configure git

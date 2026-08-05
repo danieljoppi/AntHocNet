@@ -71,11 +71,12 @@ jobs:
           python-version: '3.x'
       - name: Install toolchain
         # gcovr is pinned so the reported baseline stays comparable across
-        # merges — its per-version gcov parsing shifts the numbers. Bump
-        # deliberately, noting the step change in the PR.
+        # merges — its per-version gcov parsing shifts the numbers. The pin
+        # lives in requirements-dev.txt so Dependabot can see it; bump it
+        # there, noting the step change in the PR.
         run: |
           sudo apt-get update && sudo apt-get install -y cmake g++
-          pip install 'gcovr==8.6'
+          pip install -c requirements-dev.txt gcovr
       - name: Build core with gcov instrumentation
         run: |
           cmake -S core -B core/build-coverage -DCMAKE_BUILD_TYPE=Debug \
