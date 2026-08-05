@@ -38,3 +38,6 @@ These are inherent to vanilla AntHocNet, not implementation bugs:
 This is a research / educational codebase. If you find a memory-safety or
 resource-exhaustion issue in the parser (the in-scope surface above), please
 open an issue describing the malformed input and the observed behaviour.
+Where enabled, GitHub's private vulnerability reporting (**Security → Report a
+vulnerability** on the repo) is the preferred channel; the open-issue route
+remains available.

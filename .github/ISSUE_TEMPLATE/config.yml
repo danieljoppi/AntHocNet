@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
+  - name: Documentation map
+    url: https://github.com/danieljoppi/AntHocNet/blob/main/docs/README.md
+    about: Check the docs index first — it likely answers your question.
   - name: Issue-tracking policy (ADR-0013)
     url: https://github.com/danieljoppi/AntHocNet/blob/main/docs/adr/0013-track-bugs-and-findings-as-issues.md
     about: How findings, evidence, and labels are recorded in this repo.
