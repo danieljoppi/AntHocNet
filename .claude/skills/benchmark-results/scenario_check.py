@@ -89,6 +89,17 @@ ISL_RUN = re.compile(r"^\s*##RUN##\s+(\d+)\s+([a-z][\w-]*)"
 # family here: no results-mode rule reads dispersion, so parsing it would be
 # dead weight.
 DIAG_LINE = re.compile(r"^\s*#\s+(paths|energy|drops|reorder)\s+([a-z][\w-]*)\s+(.+)$")
+# #308 phase 2: the per-run common-set rows. Unlike the diagnostic lines above
+# there is one per (run, protocol), so they are folded into the protocol's row
+# as an extremum rather than merged field-by-field — the rules below ask "did
+# ANY run produce an impossible hopsCommon", which is what a broken flow key or
+# an unconnected TTL hook would show up as.
+#   ##COMMON## <run> <proto> <nSelf> <nCommon> <p99C> <meanC> <p99S> [<hopsC> <hopsS>]
+# The two hop fields are absent on inputs predating the instrumentation; those
+# skip, exactly like an absent CSV column.
+COMMON_LINE = re.compile(
+    r"^\s*##COMMON##\s+\d+\s+([a-z][\w-]*)\s+\d+\s+(\d+)\s+\S+\s+\S+\s+\S+"
+    r"(?:\s+(\S+)\s+\S+)?\s*$")
 DIAG_KEYS = {
     "paths":   {"hopsMean": "hops", "hopsMax": "hops_max", "divUsed": "div",
                 "divMax": "div_max", "entropyBits": "entropy",
@@ -370,6 +381,23 @@ def parse_results(path):
             rows.append(row)
             by_proto[proto] = row
             continue
+        c = COMMON_LINE.match(line)
+        if c:
+            row = by_proto.get(c.group(1))
+            if row is None:
+                continue  # ##COMMON## with no table row above it
+            n_common, hops_c = int(c.group(2)), c.group(3)
+            if hops_c is None:
+                continue  # predates the hop instrumentation
+            if hops_c == "na" or float(hops_c) == 0.0:
+                if n_common:
+                    row["hops_common_missing"] = \
+                        row.get("hops_common_missing", 0) + 1
+                continue
+            v = float(hops_c)
+            row["hops_common_min"] = min(row.get("hops_common_min", v), v)
+            row["hops_common_max"] = max(row.get("hops_common_max", v), v)
+            continue
         d = DIAG_LINE.match(line)
         if not d:
             continue
@@ -638,6 +666,31 @@ def cmd_results(a):
             if div_max is not None and div is not None and div_max and div_max < div:
                 report("FAIL", f"{tag}: max path diversity {div_max} < mean "
                                f"path diversity {div}")
+            # #308 phase 2 hopsCommon. Same three a-priori facts as `hops`
+            # above — a delivered packet crosses at least one transmission and
+            # at most maxPathLength — plus the one that only this metric can
+            # get wrong: it is derived from the IP TTL under a flow key rebuilt
+            # from (source IP, UDP source port), which must match the key
+            # PacketSink reports for the delays. If that ever diverges, every
+            # hop lands under a key the common set does not contain and
+            # hopsCommon reads absent while nCommon stays large. Without this
+            # rule that failure is silent and the per-hop decomposition is
+            # simply wrong; with it the run FAILs.
+            missing = r.get("hops_common_missing")
+            if missing:
+                report("FAIL", f"{tag}: {missing} run(s) report a non-empty "
+                               "common set with no hopsCommon — the TTL hook "
+                               "did not fire, or the (source IP, source port) "
+                               "flow key no longer matches the one the delays "
+                               "use (#308 phase 2)")
+            hc_min, hc_max = r.get("hops_common_min"), r.get("hops_common_max")
+            if hc_min is not None and hc_min < 1.0:
+                report("FAIL", f"{tag}: hopsCommon {hc_min} < 1 hop — a "
+                               "delivered packet traverses at least one "
+                               "transmission")
+            if hc_max is not None and hc_max > MAX_PATH_LENGTH:
+                report("FAIL", f"{tag}: hopsCommon {hc_max} exceeds "
+                               f"maxPathLength ({MAX_PATH_LENGTH})")
             if entropy is not None:
                 if entropy < 0.0:
                     report("FAIL", f"{tag}: negative path entropy ({entropy})")

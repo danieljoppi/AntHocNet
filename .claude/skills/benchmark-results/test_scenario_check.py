@@ -411,6 +411,64 @@ def _cell_div_fires():
            f"planted divUsed=9.999 not flagged\n{out}")
 
 
+# --- #308 phase 2: hopsCommon on the ##COMMON## rows -------------------------
+#
+# The a-priori control: a delivered packet crosses at least one transmission
+# and at most maxPathLength, so hopsCommon is in [1, 100] on any real run. The
+# value that matters most is the one only this metric can get wrong — hops are
+# keyed by a flow address rebuilt from (source IP, UDP source port), and if that
+# ever stops matching the key the delays use, hopsCommon vanishes while nCommon
+# stays large. Fixture values are the real phase-2 re-measure (run 31042812548):
+# nCommon 6605, hopsCommon 2.73 for anthocnet against 2.19 for aodv.
+COMMON_CELL = """anthocnet 95.8 54.3 862.1 6.32 36.08
+##COMMON## 1 anthocnet 7775 6605 784.5 37.0 1008.9 2.730 3.410
+##COMMON## 2 anthocnet 7859 6584 944.0 59.5 1146.0 2.744 3.502
+"""
+
+
+@case("#308p2 hopsCommon stays quiet on real phase-2 values")
+def _hops_common_quiet():
+    levels, out = run_cell(COMMON_CELL)
+    expect(levels == [], "hops-common-quiet",
+           f"real hopsCommon values must not report, got {levels}\n{out}")
+
+
+@case("#308p2 a missing hopsCommon with a non-empty common set FAILs")
+def _hops_common_missing_fires():
+    # The flow-key divergence this rule exists for: nCommon large, no hops.
+    _levels, out = run_cell(COMMON_CELL.replace("1008.9 2.730 3.410",
+                                                "1008.9 na na"))
+    expect("no hopsCommon" in out, "hops-common-missing",
+           f"absent hopsCommon on a non-empty common set was not flagged\n{out}")
+
+
+@case("#308p2 hopsCommon below one hop, and above maxPathLength, FAIL")
+def _hops_common_bounds_fire():
+    _levels, out = run_cell(COMMON_CELL.replace("2.730", "0.500"))
+    expect("hopsCommon 0.5 < 1 hop" in out, "hops-common-low",
+           f"hopsCommon below one hop was not flagged\n{out}")
+    _levels, out = run_cell(COMMON_CELL.replace("2.730", "101.000"))
+    expect("exceeds maxPathLength" in out, "hops-common-high",
+           f"hopsCommon above maxPathLength was not flagged\n{out}")
+
+
+@case("#308p2 rows predating the hop fields, and an empty common set, skip")
+def _hops_common_skips():
+    # Seven-field ##COMMON## lines are what every run before this metric
+    # emitted; they must parse and report nothing rather than read as missing.
+    old = """anthocnet 95.8 54.3 862.1 6.32 36.08
+##COMMON## 1 anthocnet 7775 6605 784.5 37.0 1008.9
+"""
+    levels, out = run_cell(old)
+    expect(levels == [], "hops-common-old",
+           f"pre-instrumentation ##COMMON## row must skip, got {levels}\n{out}")
+    # nCommon 0 with no hop data is arithmetic, not a harness failure.
+    levels, out = run_cell(COMMON_CELL.replace(
+        "7775 6605 784.5 37.0 1008.9 2.730 3.410", "7775 0 -1.0 -1.0 na na na"))
+    expect(levels == [], "hops-common-empty",
+           f"empty common set must not FAIL, got {levels}\n{out}")
+
+
 @case("cell: broken drop identity on a '# drops' line fires")
 def _cell_drops_fire():
     _levels, out = run_cell(CELL.replace("chan=24.01", "chan=90.00"))

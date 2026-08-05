@@ -147,7 +147,7 @@ rank still assumes the surplus deliveries are the slowest ones. Keying by
 packet **identity** removes the assumption:
 
 ```
-##COMMON## <run> <proto> <nSelf> <nCommon> <p99Common> <meanCommon> <p99Surplus>
+##COMMON## <run> <proto> <nSelf> <nCommon> <p99Common> <meanCommon> <p99Surplus> <hopsCommon> <hopsSurplus>
 ```
 
 `nCommon` is the number of `(flow, seq)` pairs **every** protocol in the run
@@ -166,6 +166,35 @@ comparison disagreed.
 Per-packet delay comes from `SeqTsSizeHeader`'s send timestamp, which the
 reordering trace (#212) already peeks for the sequence number, so this costs
 one subtraction per delivered packet.
+
+**`hopsCommon` / `hopsSurplus` (#308 phase 2)** are the same two splits measured
+in hops instead of milliseconds, from the IP TTL each delivered packet carried.
+They exist because the obvious decomposition of the delay deficit — *is it more
+hops, or slower hops?* — was not expressible without them. `hopsMean` (#217)
+averages over each protocol's **own** deliveries while `meanCommon` averages
+over the **intersection**, so `meanCommon / hopsMean` silently divides one
+population by another: the same survivorship confound phase 1 was about,
+reappearing in the denominator. `meanCommon / hopsCommon` is a genuine per-hop
+cost over one population.
+
+Both are appended at the end of the line, never inserted: the earlier fields are
+read positionally.
+
+Worked example, from the phase-2 re-measure ([run
+31042812548](https://github.com/danieljoppi/AntHocNet/actions/runs/31042812548),
+paper base, disk, 20 seeds) — using the all-delivered basis, which was the only
+one available then:
+
+| factor | AntHocNet ÷ AODV |
+|---|---|
+| hop count | 1.247× |
+| ms per hop | 1.35× |
+| product | 1.68× (observed mean-delay ratio: 1.68×) |
+
+The decomposition is internally consistent there because both terms use the same
+all-delivered basis. What it cannot say is how the split looks on the packets
+both protocols carried, where the delay ratio is 1.44× rather than 1.68×. That
+is the question `hopsCommon` answers.
 
 **The one assumption left, and it is checkable.** Cross-protocol keying needs a
 flow's `(source IP, source port)` to be identical across protocols in the same
