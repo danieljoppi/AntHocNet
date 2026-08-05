@@ -1,0 +1,17 @@
+kind,group,x,scenario,protocol,run,pdr_pct,delay_ms,delay99_ms,throughput_kbps,nrl,jitter_ms,delay_off50_ms,delay_off90_ms,nrl_bytes
+discrete,large-scale,,large-scale,anthocnet,9,93.4,100.4,1345.5,6.13,87.12,149.21,12.5,644.5,113.1493
+discrete,large-scale,,large-scale,anthocnet,10,92.6,98.8,1291.5,6.21,91.59,143.46,12.5,812.5,120.7981
+discrete,large-scale,,large-scale,anthocnet,11,93.2,104.9,1211.5,6.18,89.59,157.49,15.5,703.5,116.7348
+discrete,large-scale,,large-scale,anthocnet,12,94.3,84.8,1111.5,6.13,88.49,126.08,10.5,444.5,114.9389
+discrete,large-scale,,large-scale,aodv,9,69.8,65.8,1003.5,4.63,152.26,94.65,51.5,-1,82.2010
+discrete,large-scale,,large-scale,aodv,10,71.4,68.6,1014.5,4.69,151.12,96.28,48.5,-1,81.6360
+discrete,large-scale,,large-scale,aodv,11,72.7,61.4,1005.5,4.74,147.77,92.07,37.5,-1,79.7354
+discrete,large-scale,,large-scale,aodv,12,72.4,53.3,880.5,4.74,144.54,74.87,37.5,-1,78.0421
+discrete,large-scale,,large-scale,olsr,9,61.9,32.4,1013.5,4.10,15.99,53.74,14.5,-1,48.8569
+discrete,large-scale,,large-scale,olsr,10,61.7,23.0,1010.5,3.98,16.33,36.47,13.5,-1,49.6318
+discrete,large-scale,,large-scale,olsr,11,63.1,35.5,1014.5,4.15,15.81,57.60,13.5,-1,49.4554
+discrete,large-scale,,large-scale,olsr,12,63.9,20.9,1007.5,4.23,15.45,32.79,11.5,-1,47.2531
+discrete,large-scale,,large-scale,dsdv,9,58.5,46.6,1045.5,4.05,119.87,82.73,15.5,-1,83.3766
+discrete,large-scale,,large-scale,dsdv,10,62.1,48.2,1036.5,4.16,118.09,84.06,9.5,-1,81.9472
+discrete,large-scale,,large-scale,dsdv,11,56.7,41.6,1025.5,3.76,128.91,73.11,20.5,-1,89.6787
+discrete,large-scale,,large-scale,dsdv,12,58.7,40.4,1034.5,3.91,123.84,70.37,14.5,-1,86.1905
