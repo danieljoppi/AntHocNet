@@ -220,10 +220,68 @@ open realism item tracked for the v1.4.0 campaigns, not a statistics one.
 ### RNG scheme
 
 Per the ns-3 manual: **fixed seed, advancing run number** —
-`RngSeedManager::SetSeed(1)`, `SetRun(seed)` with `seed` = 1…N. Every
-protocol in a comparison sees the **identical realisation** per run (same
-topology, mobility, traffic draw), which is what makes the paired analysis
-above valid and is protected by the determinism anchor (#129) below.
+`RngSeedManager::SetSeed(1)`, `SetRun(seed)` with `seed` = 1…N, set at the top
+of each `RunOne()`. Every protocol in a comparison sees the **identical
+realisation** per run (same topology, mobility, traffic draw), which is what
+makes the paired analysis above valid and is protected by the determinism
+anchor (#129) below.
+
+**The guarantee: a run's realisation is a function of its seed alone.**
+Not of `--runs`, not of `--firstRun`, not of the order of `--protocols`, not of
+how a campaign was split across dispatches. Rows for the same seed can therefore
+be merged, paired and compared across invocations — which is exactly what the
+campaign CSVs, the per-seed A/B pairing and `run-scenarios.py`'s split dispatches
+all do.
+
+`SetSeed`/`SetRun` alone do **not** deliver that. ns-3 gives each
+`RandomVariableStream` its stream index from a *global* counter at
+**construction** time, and neither `SetSeed`, `SetRun` nor `Simulator::Destroy`
+resets that counter. Both harnesses build a fresh scenario per run inside one
+process (the protocol-major loop in `main`), so run *N* used to draw from
+whatever stream indices runs 1…*N*−1 had left behind: the realisation depended on
+the run's **position in the process**, not on its seed
+([#352](https://github.com/danieljoppi/AntHocNet/issues/352)). So every
+stream-consuming helper — position allocator, mobility, wifi channel + devices,
+the IPv4 stack, the routing helper for the arm, the flow-start variable and the
+OnOff sources — is now pinned with `AssignStreams()` from a **seed-derived base**,
+`seed * kStreamStride` (`kStreamStride` = 10⁶ in `ns3/examples/anthocnet-compare.cc`
+and `ns3/examples/isl-grid.cc`, roughly three orders of magnitude above what a
+run actually consumes). The stride is enforced at runtime from the counts
+`AssignStreams()` returns, so a scenario that one day adds streams aborts loudly
+instead of wrapping into the next seed's block. The regression gate is
+`ns3/tools/check-seed-independence.py` (CI, ns-3.42 leg), which checks the two
+independent halves: same seeds split across invocations, and same seeds with the
+protocol list reversed.
+
+Two of those entries are easy to miss and were both missed on the first attempt,
+which is the argument for the gate existing at all rather than for trusting a
+reading of the code. `DsdvHelper` is the only routing helper with no
+`AssignStreams()` wrapper in any ns-3 from 3.36 to 3.48, so DSDV is pinned by
+walking the nodes and calling `dsdv::RoutingProtocol::AssignStreams()` directly.
+And the IPv4 stack is **not** stream-free: `ArpL3Protocol` owns a
+`RandomVariableStream` that de-syncs ARP requests, and on a wifi MANET every
+next-hop change resolves through ARP, so an unpinned stack alone kept the gate
+red after everything else was pinned.
+
+Scope: the pinning covers the two harnesses that publish per-seed rows —
+`anthocnet-compare` and `isl-grid`. `manet-baselines` (the anchor harness) has
+the same multi-run-in-one-process shape and is **not** pinned yet; it is invoked
+only with a fixed `--runs` per anchor (`ns3/tools/check-anchors.sh`), so every
+anchor comparison is between identically-shaped invocations and the anchor
+floors are unaffected — but do not merge its rows across differing `--runs`
+until it is pinned too.
+
+> **Campaign data produced before #352 carries a structure dependence.** Within
+> one invocation it is internally consistent (and per-seed pairing across
+> protocols inside it is still valid — every arm of a given run saw the same
+> realisation), but **comparing pre-fix rows across differently-shaped
+> invocations is invalid**: differing `--runs`/`--firstRun` splits or a differing
+> `--protocols` order silently changed the realisation behind a given seed. The
+> empirical fingerprint, from two controls differing *only* in split structure
+> (7+7+6 vs 4+4+4+4+4, same 20 seeds, same config): the first protocol in the
+> list matched on seeds 1–4 and differed on 5–20, and every later protocol
+> differed from seed 1 on. Treat any pre-fix cross-structure comparison as
+> unsupported and re-run it rather than re-interpreting it.
 
 ## Build profiles: `default` for CI, `release` for campaigns
 
@@ -360,6 +418,7 @@ flowchart TB
         C3["NS-2 patch round-trip · adapter e2e + valgrind"]
         C4["NS-3 build + module tests<br/>3.36 · 3.41 · 3.42 · 3.47 · 3.48"]
         C5["<b>check-determinism.sh</b><br/>same seed twice ⇒ byte-identical<br/>(wifi + isl-grid, #129)"]
+        C9["<b>check-seed-independence.py</b><br/>same seed ⇒ same row across split<br/>structures and protocol order (#352)"]
         C6["<b>check-anchors.sh single-hop</b><br/>single_hop_pdr_min 99.0 (#51 detector)"]
         C7["<b>check-sat-anchors.sh</b><br/>sat_single_isl_pdr_min 99.0 ·<br/>sat_hop_delay_slack_ms 1.5 (#237)"]
         C8["core coverage (gcov) — <b>report-only</b>, no threshold (#162)"]
@@ -385,6 +444,7 @@ flowchart TB
     end
 
     style C5 fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
+    style C9 fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
     style C6 fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
     style C7 fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
     style B1 fill:#fff3d4,stroke:#c48f00,stroke-width:2px
@@ -397,6 +457,10 @@ Two things this map makes obvious that prose kept hiding:
 - **The determinism anchor is the quietest and most load-bearing gate.** Nothing
   else in the matrix would catch a change that makes results seed-dependent, and
   every A/B verdict in this repo assumes identical seeds produce identical runs.
+  Its companion (#352) is strictly stronger and covers the case determinism
+  cannot see: identical invocations were always reproducible, but the same seed
+  had to give the same row under a *different* split structure and protocol
+  order too, or merged campaign CSVs compare unlike runs.
 - **Coverage is the only non-gate in the picture** (dashed): report-only by
   decision, until a floor is chosen from measured evidence
   ([#162](https://github.com/danieljoppi/AntHocNet/issues/162)).
