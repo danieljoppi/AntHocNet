@@ -373,8 +373,11 @@ jobs:
         # on --runs, --firstRun and protocol order — i.e. campaign CSVs merged
         # across differently-shaped invocations silently compared unlike runs.
         # Checks both halves: the same seeds split across invocations, and the
-        # same seeds with --protocols reversed. 4 seeds x 30 simulated seconds
-        # on the 8-node smoke field, so it costs seconds; same
+        # same seeds with --protocols reversed. Covers anthocnet-compare (both
+        # halves) and manet-baselines (order half only — it exposes no
+        # --firstRun). isl-grid is excluded on purpose: its order case fails for
+        # a non-RNG reason no change here can fix (#362). 4 seeds x 30 simulated
+        # seconds on the 8-node smoke field, so it costs seconds; same
         # single-matrix-version placement as the gates above.
         if: matrix.version == '3.42'
         run: python3 ns3/tools/check-seed-independence.py /opt/ns-3 --seeds 4 --time 30

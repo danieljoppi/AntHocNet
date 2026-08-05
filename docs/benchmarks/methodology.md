@@ -244,8 +244,9 @@ the run's **position in the process**, not on its seed
 stream-consuming helper — position allocator, mobility, wifi channel + devices,
 the IPv4 stack, the routing helper for the arm, the flow-start variable and the
 OnOff sources — is now pinned with `AssignStreams()` from a **seed-derived base**,
-`seed * kStreamStride` (`kStreamStride` = 10⁶ in `ns3/examples/anthocnet-compare.cc`
-and `ns3/examples/isl-grid.cc`, roughly three orders of magnitude above what a
+`seed * kStreamStride` (`kStreamStride` = 10⁶ in each of
+`ns3/examples/anthocnet-compare.cc`, `ns3/examples/isl-grid.cc` and
+`ns3/examples/manet-baselines.cc`, roughly three orders of magnitude above what a
 run actually consumes). The stride is enforced at runtime from the counts
 `AssignStreams()` returns, so a scenario that one day adds streams aborts loudly
 instead of wrapping into the next seed's block. The regression gate is
@@ -263,13 +264,50 @@ And the IPv4 stack is **not** stream-free: `ArpL3Protocol` owns a
 next-hop change resolves through ARP, so an unpinned stack alone kept the gate
 red after everything else was pinned.
 
-Scope: the pinning covers the two harnesses that publish per-seed rows —
-`anthocnet-compare` and `isl-grid`. `manet-baselines` (the anchor harness) has
-the same multi-run-in-one-process shape and is **not** pinned yet; it is invoked
-only with a fixed `--runs` per anchor (`ns3/tools/check-anchors.sh`), so every
-anchor comparison is between identically-shaped invocations and the anchor
-floors are unaffected — but do not merge its rows across differing `--runs`
-until it is pinned too.
+Scope: **all three ns-3 harnesses are pinned** — `anthocnet-compare`, `isl-grid`
+and `manet-baselines`. The last of these was the follow-up gap left open when
+#352 first landed; it is closed now, so its rows may be merged across differing
+`--runs` and `--protocols` orders like `anthocnet-compare`'s (`isl-grid` is
+pinned but has a separate, non-RNG order dependence — see the box below). That
+matters beyond tidiness:
+`manet-baselines` is both the anchor harness
+([`check-anchors.sh`](../../ns3/tools/check-anchors.sh)) and the #24
+stock-baseline control that links no AntHocNet code, and its whole purpose —
+deciding whether a low absolute PDR is a property of the scenario or an artefact
+of our harness — rests on its numbers meaning the same thing as
+`anthocnet-compare`'s for the same seed.
+
+How much of that the gate can actually check differs per harness, and the
+difference is worth stating rather than implying:
+
+| Harness | structure half | order half | compared over |
+|---|---|---|---|
+| `anthocnet-compare` | ✅ (`--firstRun`) | ✅ | `##RUN##` rows |
+| `manet-baselines` | ✗ — no `--firstRun` | ✅ | per-seed `[diag]` lines |
+| `isl-grid` | ✗ — no `--firstRun` | ❌ **fails** ([#362](https://github.com/danieljoppi/AntHocNet/issues/362)) | — |
+
+Neither of the last two exposes a first-run offset, so the structure half cannot
+be expressed against them.
+
+> **`isl-grid` rows are not safe to merge across differently-ordered
+> invocations.** An order case *was* written for `isl-grid` and it failed, on
+> ground the RNG pinning does not cover: both AntHocNet's routing protocol and
+> ns-3's own AODV key their per-interface socket tables on
+> `std::map<Ptr<Socket>, …>` — i.e. on **heap addresses** — and broadcast in
+> that iteration order. On `anthocnet-compare` every node has one wifi
+> interface, so those maps hold a single entry and the order cannot vary; on
+> `isl-grid` every satellite holds four ISLs, so it varies with whatever the
+> allocator did earlier in the process. Half the exposure is upstream, so no
+> change under `ns3/examples/` can close it. Measured effect at 4 seeds on a
+> 3×3 torus: AODV PDR 98.03 → 99.51 and mean delay 7.47 → 9.65 ms for the same
+> seed, purely from reversing `--protocols`. Until
+> [#362](https://github.com/danieljoppi/AntHocNet/issues/362) closes, keep every
+> satellite comparison inside one invocation with a fixed protocol order —
+> which is what `run-scenarios.py` and `check-sat-anchors.sh` already do, so no
+> published satellite number is affected. `isl-grid` keeps its own determinism
+> gate ([`check-determinism.sh`](../../ns3/tools/check-determinism.sh)), which
+> passes: identical invocations *are* reproducible, and that is precisely the
+> weaker property.
 
 > **Campaign data produced before #352 carries a structure dependence.** Within
 > one invocation it is internally consistent (and per-seed pairing across
@@ -418,7 +456,7 @@ flowchart TB
         C3["NS-2 patch round-trip · adapter e2e + valgrind"]
         C4["NS-3 build + module tests<br/>3.36 · 3.41 · 3.42 · 3.47 · 3.48"]
         C5["<b>check-determinism.sh</b><br/>same seed twice ⇒ byte-identical<br/>(wifi + isl-grid, #129)"]
-        C9["<b>check-seed-independence.py</b><br/>same seed ⇒ same row across split<br/>structures and protocol order (#352)"]
+        C9["<b>check-seed-independence.py</b><br/>same seed ⇒ same row across split<br/>structures and protocol order (#352)<br/>compare · manet-baselines"]
         C6["<b>check-anchors.sh single-hop</b><br/>single_hop_pdr_min 99.0 (#51 detector)"]
         C7["<b>check-sat-anchors.sh</b><br/>sat_single_isl_pdr_min 99.0 ·<br/>sat_hop_delay_slack_ms 1.5 (#237)"]
         C8["core coverage (gcov) — <b>report-only</b>, no threshold (#162)"]
