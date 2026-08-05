@@ -1,0 +1,30 @@
+name: Question
+description: A usage or behaviour question — how to run, configure, or interpret something.
+title: "[question] "
+labels: ["question"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do
+      description: >
+        The end goal, and — if something surprised you — what you expected
+        versus what you got.
+    validations:
+      required: true
+  - type: textarea
+    id: read
+    attributes:
+      label: What did you already read / try
+      description: >
+        Docs pages (the map is `docs/README.md`), issues you searched, commands
+        you ran. This keeps answers from repeating what you already know.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: >
+        Simulator and version (ns-3.x / ns-2.3x), OS, and the AntHocNet release
+        or commit — if the question involves running anything.

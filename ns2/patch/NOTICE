@@ -1,0 +1,10 @@
+The files under fragments/ are original code from this project (GPL-2.0, see
+../../LICENSE), not copies of NS-2 source. apply-patch.sh inserts them
+additively into a user-supplied NS-2 tree at stable text anchors, wrapped in
+ANTHOCNET-BEGIN/END markers (or grep-guarded where a marker comment would be
+illegal); revert-patch.sh removes everything the patch added. The single
+in-place edit is in common/packet.h, where the value of NS-2's existing
+PT_NTYPE constant is bumped by one so PT_ANT can take its previous value —
+those generated lines are emitted by apply-patch.sh itself, and
+packet.h.fragment only documents them. No NS-2 source code is vendored in this
+repository; NS-2 itself remains under its own licenses.

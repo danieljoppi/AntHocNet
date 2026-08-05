@@ -20,20 +20,6 @@ body:
         - packaging / CI
     validations:
       required: true
-  - type: dropdown
-    id: model
-    attributes:
-      label: Recommended model
-      description: >
-        Which Claude model class should implement this (see the labelling
-        convention in ADR-0013). Apply the matching `model:*` label too.
-      options:
-        - "model:haiku-4.5 — mechanical / chore"
-        - "model:sonnet-5 — well-specified plumbing, tooling, docs"
-        - "model:opus-4.8 — protocol semantics, root-cause work, CI-validated adapter changes"
-        - "model:fable-5 — architectural / greenfield"
-    validations:
-      required: false
   - type: textarea
     id: symptom
     attributes:
