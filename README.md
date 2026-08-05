@@ -1,6 +1,7 @@
 # AntHocNet
 
 [![CI](https://github.com/danieljoppi/AntHocNet/actions/workflows/ci.yml/badge.svg)](https://github.com/danieljoppi/AntHocNet/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/danieljoppi/AntHocNet/badge)](https://scorecard.dev/viewer/?uri=github.com/danieljoppi/AntHocNet)
 [![Release](https://img.shields.io/github/v/release/danieljoppi/AntHocNet?sort=semver&cacheSeconds=1800)](https://github.com/danieljoppi/AntHocNet/releases)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20981979.svg)](https://doi.org/10.5281/zenodo.20981979) 
 [![Cite](https://img.shields.io/badge/cite-CITATION.cff-blue)](CITATION.cff)

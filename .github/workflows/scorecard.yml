@@ -1,0 +1,77 @@
+name: Scorecard
+
+# OpenSSF Scorecard (#337) — the automated half of this repo's trust signals.
+# It re-scores the repository's supply-chain posture (pinned dependencies, token
+# permissions, branch protection, dangerous workflow patterns, released
+# artefacts, …) and publishes the result three ways: the README badge, GitHub's
+# code-scanning dashboard, and the public OpenSSF API.
+#
+# This workflow is a *report*, never a gate: a low score is a finding to triage
+# on an issue (ADR-0013), not a build break. ci.yml/lint.yml remain the gates.
+#
+# It is deliberately the last piece of the packaging epic (#328): #338 already
+# pinned every action to a commit SHA and added Dependabot, which is exactly
+# what Scorecard's two heaviest deductions (Pinned-Dependencies,
+# Dangerous-Workflow) measure. Turning the check on afterwards reports a posture
+# that is already in place instead of announcing an aspiration.
+on:
+  # Weekly. The score moves when the repository changes *and* when Scorecard
+  # itself adds or retunes a check — and the second kind of change produces no
+  # push event, so the schedule is not redundant with the push trigger.
+  schedule:
+    - cron: '23 6 * * 1'   # Mondays 06:23 UTC
+  # Re-score on merge so the badge reflects main rather than last Monday.
+  push:
+    branches: [main]
+  # The badge reads "unknown" until a run has published results, so the
+  # maintainer needs a way to trigger the first run without waiting for Monday.
+  workflow_dispatch:
+
+# Least privilege, Scorecard's own recommendation: read-all is the workflow-wide
+# default and the single job that must write widens it explicitly below.
+permissions: read-all
+
+# One analysis at a time per ref. A superseded run is *not* cancelled
+# (cancel-in-progress: false, as in pages.yml): the badge and the public API
+# record come from whichever run completes, and a cancelled publish is worse
+# than a duplicated one. There is no pull_request trigger here, so the
+# cancel-on-force-push case that ci.yml/lint.yml optimise for cannot arise.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # upload the SARIF to the code-scanning dashboard
+      id-token: write          # OIDC token -> publish_results (badge + public API)
+      contents: read           # checkout
+      actions: read            # read workflow definitions for the workflow checks
+    steps:
+      # Every action is SHA-pinned with the tag in a trailing comment, matching
+      # the repo-wide pinning done in #338 — doubly so here, in a job that holds
+      # `security-events: write` and an OIDC token.
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Scorecard only reads the tree. Leaving the token in .git/config
+          # would hand it to every later step in the job for no reason (and is
+          # itself one of the things Scorecard flags).
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # Publishes the result to the public OpenSSF API. This is what makes
+          # the README badge resolve; without it the badge stays "unknown".
+          # It is also why the job needs `id-token: write`.
+          publish_results: true
+
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+        with:
+          sarif_file: results.sarif
