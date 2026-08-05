@@ -20,7 +20,7 @@ jobs:
     name: core library + unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Install toolchain
         run: sudo apt-get update && sudo apt-get install -y cmake g++
       - name: Build and test core
@@ -30,7 +30,7 @@ jobs:
     name: core under ASan + UBSan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Install toolchain
         run: sudo apt-get update && sudo apt-get install -y cmake g++
       - name: Build core with sanitizers and run tests
@@ -58,8 +58,8 @@ jobs:
     # Adapter coverage would mean instrumenting a containerized ns-3 build and is
     # out of scope.
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.x'
       - name: Install toolchain
@@ -91,7 +91,7 @@ jobs:
             --html-details coverage/index.html \
             --xml-pretty --xml coverage/coverage.xml
       - name: Upload the detailed report (HTML + Cobertura XML)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: core-coverage-report
           path: coverage/
@@ -104,7 +104,7 @@ jobs:
     # its decode path against a small seed corpus. ubuntu-latest's clang ships
     # the libFuzzer/ASan runtimes; a crash/UB/over-read fails the job.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Build the codec fuzz target (clang + libFuzzer/ASan)
         run: |
           cmake -S core -B core/build-fuzz -DANTHOCNET_FUZZ=ON -DCMAKE_CXX_COMPILER=clang++
@@ -118,7 +118,7 @@ jobs:
     name: NS-2 patch round-trip (synthetic tree)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Validate apply/revert against a synthetic ns-2 tree
         run: bash ns2/patch/selftest.sh
 
@@ -141,9 +141,9 @@ jobs:
       matrix:
         version: ['2.34', '2.35']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -225,7 +225,7 @@ jobs:
         # API drift across the whole supported range.
         version: ['3.36', '3.41', '3.42', '3.47', '3.48']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Install AntHocNet module
         run: make install-ns3 NS3DIR=/opt/ns-3
       - name: Configure (scope examples/tests to AntHocNet)
@@ -353,7 +353,7 @@ jobs:
       # runner/docker update.
       options: --cap-add=SYS_PTRACE
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Install AntHocNet module
         run: make install-ns3 NS3DIR=/opt/ns-3
       - name: Configure with ASan/LSan

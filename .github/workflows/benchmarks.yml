@@ -62,7 +62,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Install AntHocNet module
         run: make install-ns3 NS3DIR=/opt/ns-3
       - name: Configure + build
@@ -94,7 +94,7 @@ jobs:
       - name: Update results tables (index summary + per-scenario pages)
         run: python3 ns3/tools/update-benchmarks.py "$GITHUB_WORKSPACE/scenarios.csv" docs/benchmarks.md
       - name: Upload CSV + charts artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: benchmark-results
           path: |
