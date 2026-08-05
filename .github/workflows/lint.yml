@@ -8,6 +8,13 @@ on:
     branches: [main, master]
   pull_request:
 
+# A force-push to a PR branch obsoletes the in-flight run — cancel it instead
+# of paying for it twice. Main-branch runs are never cancelled
+# (cancel-in-progress is false there): every merge keeps its own complete run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -26,16 +33,12 @@ jobs:
         # deliberately, fixing new findings in the same PR.
         run: pip install 'ruff==0.16.0'
       - name: Lint
-        # The skill dir is listed file-by-file on purpose: bench_parse.py and
-        # sweep_summary.py predate this and carry E701s that are not this
-        # change's to fix. Add new skill scripts here as they land.
-        run: |
-          ruff check ns3/tools docs/tools \
-            .claude/skills/benchmark-results/scenario_check.py \
-            .claude/skills/benchmark-results/test_scenario_check.py \
-            .claude/skills/benchmark-results/stats_util.py \
-            .claude/skills/benchmark-results/test_stats.py \
-            .claude/skills/benchmark-results/pool_runs.py
+        # The whole skill dir is linted: the per-file list this replaces (#336)
+        # existed only because bench_parse.py and sweep_summary.py carried
+        # pre-existing findings, and a list that must be extended by hand is
+        # how a new script ships unlinted. Those findings are fixed; new skill
+        # scripts are covered the moment they land.
+        run: ruff check ns3/tools docs/tools .claude/skills/benchmark-results/
       - name: Statistics self-test (#293)
         # stats_util.py computes the 95% CIs and paired tests every published
         # number will carry; bench_parse.py's column-mapping check decides
@@ -59,6 +62,16 @@ jobs:
         run: |
           python3 docs/tools/check-mermaid.py --self-test
           python3 docs/tools/check-mermaid.py .
+      - name: Relative-link gate (docs)
+        # The docs lean on relative links — ADRs cite source files, benchmark
+        # pages cite campaign CSVs — and a rename silently strands every
+        # inbound link: the page still renders, the link just 404s when a
+        # reader follows the cross-session trail (ADR-0013). External and
+        # pure-#anchor targets are skipped so the gate cannot flake (#336).
+        # Stdlib-only, <1 s, runs on every PR.
+        run: |
+          python3 docs/tools/check-links.py --self-test
+          python3 docs/tools/check-links.py .
       - name: Config default parity (core vs ns-2 vs ns-3)
         # A Config default that drifts in one tree only is the #252/#254
         # failure mode: proactiveInterval leaked 10 -> 2 in a PR that claimed

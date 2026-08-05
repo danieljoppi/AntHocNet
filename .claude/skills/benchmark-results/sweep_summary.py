@@ -114,9 +114,13 @@ def verdict(a, b):
         tag = "MIXED"
     # stddev gate on the PDR delta: material but within joint dispersion?
     sda, sdb = f(a, "pdr_sd"), f(b, "pdr_sd")
-    if abs(dp) >= 1.0 and sda is not None and sdb is not None:
-        if abs(dp) < 2 * math.hypot(sda, sdb):
-            tag += " ~sd"
+    if (
+        abs(dp) >= 1.0
+        and sda is not None
+        and sdb is not None
+        and abs(dp) < 2 * math.hypot(sda, sdb)
+    ):
+        tag += " ~sd"
     return tag, dp, d99, dn
 
 
@@ -138,7 +142,7 @@ def collect_runs(paths, metric="delay99_ms"):
     producing run predates the sibling."""
     vals = {}
     for path in paths:
-        sib = (path[:-4] if path.endswith(".csv") else path) + "-runs.csv"
+        sib = path.removesuffix(".csv") + "-runs.csv"
         if not os.path.exists(sib):
             continue
         with open(sib, newline="") as fh:
