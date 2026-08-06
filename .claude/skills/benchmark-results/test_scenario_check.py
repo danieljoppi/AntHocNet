@@ -411,6 +411,53 @@ def _cell_div_fires():
            f"planted divUsed=9.999 not flagged\n{out}")
 
 
+# --- #308 phase 2 step 3: channel occupancy on the ##AIR## rows --------------
+#
+# Two a-priori bounds (occupancy is non-negative; a node cannot see the medium
+# busy for more than the whole run) plus the harness-failure detector: an ##AIR##
+# row is only printed when the PHY State trace is connected, so a row that IS
+# present while reporting zero occupancy in a run that delivered packets means
+# the trace fired without recording. --energyJ=0 prints no row at all, and that
+# absence must skip every rule rather than read as a failure.
+AIR_CELL = """anthocnet 95.8 54.3 862.1 6.32 36.08
+##AIR## 1 anthocnet 1204.500 8931.250 3310.750 29.8811
+##AIR## 2 anthocnet 1198.125 8902.500 3288.375 29.7532
+"""
+
+
+@case("#308p2 channel occupancy stays quiet on plausible values")
+def _air_quiet():
+    levels, out = run_cell(AIR_CELL)
+    expect(levels == [], "air-quiet",
+           f"plausible ##AIR## rows must not report, got {levels}\n{out}")
+
+
+@case("#308p2 busy above 100% of node-time FAILs")
+def _air_over_hundred():
+    _levels, out = run_cell(AIR_CELL.replace("29.8811", "100.4000"))
+    expect("cannot see the medium occupied" in out, "air-over",
+           f"busyPct above 100 was not flagged\n{out}")
+
+
+@case("#308p2 a present-but-zero occupancy row with non-zero PDR FAILs")
+def _air_zero():
+    _levels, out = run_cell(AIR_CELL.replace(
+        "1204.500 8931.250 3310.750 29.8811", "0.000 0.000 0.000 0.0000"))
+    expect("medium cannot have been idle" in out, "air-zero",
+           f"zero occupancy with PDR 95.8 was not flagged\n{out}")
+
+
+@case("#308p2 negative occupancy FAILs, and an absent ##AIR## block skips")
+def _air_negative_and_absent():
+    _levels, out = run_cell(AIR_CELL.replace("8931.250", "-1.000"))
+    expect("negative channel-occupancy" in out, "air-negative",
+           f"negative component was not flagged\n{out}")
+    # --energyJ=0 emits no ##AIR## row at all; that must report nothing.
+    levels, out = run_cell("anthocnet 95.8 54.3 862.1 6.32 36.08\n")
+    expect(levels == [], "air-absent",
+           f"a cell with no ##AIR## rows must skip, got {levels}\n{out}")
+
+
 # --- #308 phase 2: hopsCommon on the ##COMMON## rows -------------------------
 #
 # The a-priori control: a delivered packet crosses at least one transmission

@@ -100,6 +100,14 @@ DIAG_LINE = re.compile(r"^\s*#\s+(paths|energy|drops|reorder)\s+([a-z][\w-]*)\s+
 COMMON_LINE = re.compile(
     r"^\s*##COMMON##\s+\d+\s+([a-z][\w-]*)\s+\d+\s+(\d+)\s+\S+\s+\S+\s+\S+"
     r"(?:\s+(\S+)\s+\S+)?\s*$")
+# #308 phase 2 step 3: per-run channel occupancy.
+#   ##AIR## <run> <proto> <txS> <rxS> <ccaBusyS> <busyPct>
+# Absent entirely when --energyJ=0 leaves the PHY State trace unconnected, which
+# is why "row present but all-zero" is a failure rather than a configuration:
+# the harness prints no row at all in that case (see docs/benchmarks/metrics.md).
+AIR_LINE = re.compile(
+    r"^\s*##AIR##\s+\d+\s+([a-z][\w-]*)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"
+    r"\s+([-\d.]+)\s*$")
 DIAG_KEYS = {
     "paths":   {"hopsMean": "hops", "hopsMax": "hops_max", "divUsed": "div",
                 "divMax": "div_max", "entropyBits": "entropy",
@@ -398,6 +406,21 @@ def parse_results(path):
             row["hops_common_min"] = min(row.get("hops_common_min", v), v)
             row["hops_common_max"] = max(row.get("hops_common_max", v), v)
             continue
+        a = AIR_LINE.match(line)
+        if a:
+            row = by_proto.get(a.group(1))
+            if row is None:
+                continue  # ##AIR## with no table row above it
+            tx, rx, cca = (float(a.group(2)), float(a.group(3)),
+                           float(a.group(4)))
+            busy_pct = float(a.group(5))
+            if min(tx, rx, cca) < 0.0:
+                row["air_negative"] = row.get("air_negative", 0) + 1
+            if tx + rx + cca == 0.0:
+                row["air_zero_runs"] = row.get("air_zero_runs", 0) + 1
+            row["air_busy_max"] = max(row.get("air_busy_max", busy_pct),
+                                      busy_pct)
+            continue
         d = DIAG_LINE.match(line)
         if not d:
             continue
@@ -683,6 +706,27 @@ def cmd_results(a):
                                "did not fire, or the (source IP, source port) "
                                "flow key no longer matches the one the delays "
                                "use (#308 phase 2)")
+            # #308 phase 2 step 3 channel occupancy. Two a-priori facts: a node
+            # cannot see the medium busy for more than the whole run, and no
+            # component of the occupancy can be negative. The third rule is the
+            # harness-failure detector — a ##AIR## row is only printed when the
+            # PHY State trace is connected, so a row that IS present while
+            # reporting zero occupancy, in a run where packets were delivered,
+            # means the trace fired without recording. (--energyJ=0 prints no
+            # row at all; absence skips every rule here, as it should.)
+            if r.get("air_negative"):
+                report("FAIL", f"{tag}: {r['air_negative']} run(s) report a "
+                               "negative channel-occupancy component")
+            if r.get("air_zero_runs") and pdr:
+                report("FAIL", f"{tag}: {r['air_zero_runs']} run(s) report zero "
+                               f"channel occupancy with PDR {pdr} — packets "
+                               "were delivered, so the medium cannot have been "
+                               "idle throughout (#308 phase 2)")
+            busy_max = r.get("air_busy_max")
+            if busy_max is not None and busy_max > 100.0:
+                report("FAIL", f"{tag}: channel busy {busy_max}% of node-time — "
+                               "a node cannot see the medium occupied for more "
+                               "than the whole run")
             hc_min, hc_max = r.get("hops_common_min"), r.get("hops_common_max")
             if hc_min is not None and hc_min < 1.0:
                 report("FAIL", f"{tag}: hopsCommon {hc_min} < 1 hop — a "
