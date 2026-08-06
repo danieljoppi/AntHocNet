@@ -399,7 +399,30 @@ double g_energyInitJ = 0.0;             // this run's --energyJ
 double g_energyVoltV = 0.0;
 double g_energyTxA = 0.0, g_energyRxA = 0.0, g_energyIdleA = 0.0;
 
+// #308 phase 2 step 3: channel-occupancy totals, summed over nodes (seconds).
+//
+// Step 2 measured the deficit as 36% extra path length and 64% extra cost per
+// hop, and left one hypothesis standing for the per-hop half: AntHocNet sends
+// fewer control PACKETS than AODV (NRL 36.08 vs 55.39) but substantially more
+// control BYTES (nrl_bytes 42.607 vs 29.133), so it may simply be putting more
+// airtime on a shared 2 Mbit/s medium that data then queues behind. That would
+// raise per-hop delay while causing neither MAC drops (0.44% vs AODV's 10.43%)
+// nor queue overflow (drop_queue 0.00 for both) — which is exactly the observed
+// signature, and exactly why it needs measuring rather than believing.
+//
+// The PHY "State" trace is already connected for the energy accounting and
+// already carries the duration of each state, so the occupancy totals are free:
+// no new hook, no extra simulated work. TX is what this node put on the air;
+// RX plus CCA_BUSY is what it saw others put there.
+double g_airTxS = 0.0, g_airRxS = 0.0, g_airCcaS = 0.0;
+
 void OnPhyState(uint32_t node, Time, Time duration, WifiPhyState state) {
+    switch (state) {
+        case WifiPhyState::TX: g_airTxS += duration.GetSeconds(); break;
+        case WifiPhyState::RX: g_airRxS += duration.GetSeconds(); break;
+        case WifiPhyState::CCA_BUSY: g_airCcaS += duration.GetSeconds(); break;
+        default: break;
+    }
     double currentA;
     switch (state) {
         case WifiPhyState::TX: currentA = g_energyTxA; break;
@@ -676,6 +699,10 @@ struct Result {
     // normalised by path length like-for-like.
     std::map<Address, std::map<uint32_t, uint32_t>> rxHopsBySeq;
     // #209 energy:
+    // #308 phase 2 step 3: channel occupancy summed over nodes (node-seconds).
+    // -1 = not measured (the PHY State trace is only connected when the energy
+    // model is on), which suppresses the ##AIR## row entirely.
+    double airTxS = -1.0, airRxS = -1.0, airCcaS = -1.0;
     double energyJ = 0.0;        // total consumed over all nodes (J)
     double energyPerPktJ = 0.0;  // energyJ / delivered data packets (J/pkt)
     double resMinJ = 0.0;        // residual energy across nodes: min / mean /
@@ -732,6 +759,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_qCount = g_qNonzero = g_qMax = 0;
     g_qSum = 0.0;
     g_firstDeathS = -1.0;
+    g_airTxS = g_airRxS = g_airCcaS = 0.0;  // #308 phase 2 step 3
     g_rxSeq.clear();
     g_rxArrival.clear();  // #89
     g_rxDelayBySeq.clear();  // #308
@@ -1227,6 +1255,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             }
         }
         r.energyJ = consumed;
+        // #308 phase 2 step 3: the occupancy totals are only meaningful when the
+        // PHY "State" trace is connected, which is the same condition the energy
+        // accounting uses — --energyJ=0 turns both off (#270). The -1 default
+        // survives in that case so no ##AIR## row is printed at all, rather than
+        // an all-zero one that would read as "the medium was never busy".
+        if (energyOn) {
+            r.airTxS = g_airTxS;
+            r.airRxS = g_airRxS;
+            r.airCcaS = g_airCcaS;
+        }
         // Efficiency figure: joules spent per data packet actually delivered.
         // Comparable across protocols sitting at different PDRs, which total
         // joules alone is not (every node's radio is on for the same wall time
@@ -1835,6 +1873,26 @@ int main(int argc, char* argv[]) {
             // paired per-seed statistics cover nrl_bytes too.
             std::cout << ' ' << std::setprecision(4) << r.nrlBytes;
             std::cout << "\n";
+            // #308 phase 2 step 3: channel occupancy, per run so it pairs on
+            // identical seeds like every other per-seed row. Its own marker
+            // rather than extra ##RUN## columns, for the reason ##MATCH## and
+            // ##COMMON## have their own: the ##RUN## field order is consumed
+            // positionally, so appending there would shift downstream mappings.
+            // Reported as a fraction of node-time rather than raw seconds so
+            // the number does not silently depend on --nNodes or --time:
+            // busyPct is what one node saw the medium occupied, on average.
+            if (r.airTxS >= 0.0) {
+                const double nodeSeconds =
+                    static_cast<double>(P.nNodes) * P.simTime;
+                const double busy = r.airTxS + r.airRxS + r.airCcaS;
+                std::cout << std::fixed << "##AIR## " << s << ' ' << list[i]
+                          << ' ' << std::setprecision(3) << r.airTxS
+                          << ' ' << std::setprecision(3) << r.airRxS
+                          << ' ' << std::setprecision(3) << r.airCcaS
+                          << ' ' << std::setprecision(4)
+                          << (nodeSeconds > 0.0 ? 100.0 * busy / nodeSeconds : 0.0)
+                          << "\n";
+            }
             agg[i].pdr += r.pdr;
             agg[i].delay += r.meanDelayMs;
             agg[i].delay99 += r.delay99Ms;

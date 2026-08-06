@@ -196,6 +196,46 @@ all-delivered basis. What it cannot say is how the split looks on the packets
 both protocols carried, where the delay ratio is 1.44× rather than 1.68×. That
 is the question `hopsCommon` answers.
 
+### Channel occupancy (`##AIR##`, #308 phase 2 step 3)
+
+```
+##AIR## <run> <proto> <txS> <rxS> <ccaBusyS> <busyPct>
+```
+
+The step-2 decomposition split the delay deficit into **36 % extra path length
+and 64 % extra cost per hop**, and left one hypothesis standing for the per-hop
+half: AntHocNet sends *fewer* control packets than AODV (NRL 36.08 vs 55.39) but
+substantially *more* control **bytes** (`nrl_bytes` 42.607 vs 29.133), so it may
+simply be putting more airtime on a shared 2 Mbit/s medium that data then queues
+behind. That would raise per-hop delay while causing neither MAC drops (0.44 %
+vs AODV's 10.43 %) nor queue overflow (`drop_queue` 0.00 for both) — which is
+exactly the observed signature, and exactly why it has to be measured rather
+than believed.
+
+`txS` / `rxS` / `ccaBusyS` are node-seconds summed over every node: what this
+network put on the air, what it decoded, and what it saw as busy-but-not-for-me.
+`busyPct` is their sum as a percentage of node-time (`nNodes × time`), i.e. the
+fraction of the run an average node saw the medium occupied — normalised so the
+number does not silently depend on `--nNodes` or `--time`.
+
+The PHY `"State"` trace is already connected for the energy accounting (#209)
+and already carries each state's duration, so this costs no new hook and no
+extra simulated work.
+
+**Coupled to the energy model, deliberately visible.** That trace is only
+connected when the energy model is on, so `--energyJ=0` (#270) leaves the
+occupancy unmeasured. In that case **no `##AIR##` row is printed at all**,
+rather than an all-zero row that would read as "the medium was never busy" — the
+absence is the signal. `scenario_check.py results` therefore treats a *present*
+row with all-zero occupancy and non-zero PDR as a FAIL: packets flew, so the
+medium cannot have been idle throughout.
+
+**Distinguishing what this can and cannot show.** It measures whether the
+airtime premise is true — is AntHocNet occupying more of the medium? It does
+**not** establish that the extra airtime *causes* the per-hop delay. A negative
+result kills the hypothesis; a positive one licenses the next measurement, not a
+conclusion.
+
 **The one assumption left, and it is checkable.** Cross-protocol keying needs a
 flow's `(source IP, source port)` to be identical across protocols in the same
 run. It is — topology, addressing and application construction are identical
