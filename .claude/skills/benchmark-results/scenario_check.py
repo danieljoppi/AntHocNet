@@ -46,6 +46,10 @@ ANCHOR_KEY = {"single-hop": "single_hop_pdr_min",
 # and therefore on any path the protocol can lay. A delivered data packet
 # reported above it is an instrumentation error, not a long route.
 MAX_PATH_LENGTH = 100
+# #308 phase 2: a pending-queue hold is bounded by QueueTimeout (3 s default);
+# 5 s leaves headroom for a raised attribute while still catching an accounting
+# error, which is what this rule is for.
+HOLD_CEILING_MS = 5000.0
 
 # #230: the baselines all install exactly one route per destination at a time,
 # so their path_div_used is 1.0 by construction. Anything materially above that
@@ -105,6 +109,12 @@ COMMON_LINE = re.compile(
 # Absent entirely when --energyJ=0 leaves the PHY State trace unconnected, which
 # is why "row present but all-zero" is a failure rather than a configuration:
 # the harness prints no row at all in that case (see docs/benchmarks/metrics.md).
+# #308 phase 2 step 4: per-run pending-queue hold rows, AntHocNet only.
+#   ##HOLD## <run> <proto> <setupN> <setupMean> <setupMax> <reconvN> ... <repairMax>
+# Absent for every protocol without the instrumentation, deliberately: a zero row
+# would assert "never held a packet" where the truth is "nobody looked".
+HOLD_LINE = re.compile(
+    r"^\s*##HOLD##\s+\d+\s+([a-z][\w-]*)((?:\s+[-\d.]+){9})\s*$")
 AIR_LINE = re.compile(
     r"^\s*##AIR##\s+\d+\s+([a-z][\w-]*)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"
     r"\s+([-\d.]+)\s*$")
@@ -406,6 +416,22 @@ def parse_results(path):
             row["hops_common_min"] = min(row.get("hops_common_min", v), v)
             row["hops_common_max"] = max(row.get("hops_common_max", v), v)
             continue
+        h = HOLD_LINE.match(line)
+        if h:
+            row = by_proto.get(h.group(1))
+            if row is None:
+                continue
+            f = [float(x) for x in h.group(2).split()]
+            # (count, mean, max) x (setup, reconv, repair)
+            if min(f) < 0.0:
+                row["hold_negative"] = row.get("hold_negative", 0) + 1
+            worst = max(f[2], f[5], f[8])          # the three max fields
+            row["hold_max_ms"] = max(row.get("hold_max_ms", worst), worst)
+            for base in (0, 3, 6):
+                if f[base] == 0.0 and f[base + 1] > 0.0:
+                    row["hold_mean_no_count"] = \
+                        row.get("hold_mean_no_count", 0) + 1
+            continue
         a = AIR_LINE.match(line)
         if a:
             row = by_proto.get(a.group(1))
@@ -699,6 +725,25 @@ def cmd_results(a):
             # hopsCommon reads absent while nCommon stays large. Without this
             # rule that failure is silent and the per-hop decomposition is
             # simply wrong; with it the run FAILs.
+            # #308 phase 2 step 4 pending-queue hold time. Three a-priori
+            # facts: no component is negative; a hold cannot outlast the
+            # QueueTimeout that bounds it (3 s by default, so a generous 5 s
+            # ceiling catches an accounting error without policing the
+            # attribute); and a non-zero mean with a zero count is arithmetic
+            # that cannot happen, which is what a mis-ordered field mapping
+            # would look like.
+            if r.get("hold_negative"):
+                report("FAIL", f"{tag}: {r['hold_negative']} ##HOLD## row(s) "
+                               "with a negative hold count/mean/max")
+            if r.get("hold_mean_no_count"):
+                report("FAIL", f"{tag}: {r['hold_mean_no_count']} ##HOLD## "
+                               "reason(s) report a non-zero mean hold with a "
+                               "zero hold count — the fields are mis-mapped")
+            hold_max = r.get("hold_max_ms")
+            if hold_max is not None and hold_max > HOLD_CEILING_MS:
+                report("FAIL", f"{tag}: max hold {hold_max} ms exceeds "
+                               f"{HOLD_CEILING_MS} ms — a pending-queue hold is "
+                               "bounded by QueueTimeout (#308 phase 2)")
             missing = r.get("hops_common_missing")
             if missing:
                 report("FAIL", f"{tag}: {missing} run(s) report a non-empty "

@@ -196,6 +196,48 @@ all-delivered basis. What it cannot say is how the split looks on the packets
 both protocols carried, where the delay ratio is 1.44× rather than 1.68×. That
 is the question `hopsCommon` answers.
 
+### Pending-queue hold time (`##HOLD##`, #308 phase 2 step 4)
+
+```
+##HOLD## <run> <proto> <setupN> <setupMeanMs> <setupMaxMs> \
+                       <reconvN> <reconvMeanMs> <reconvMaxMs> \
+                       <repairN> <repairMeanMs> <repairMaxMs>
+```
+
+How long delivered data packets waited in AntHocNet's pending queue, split by
+why they were waiting: `setup` (first discovery for a destination), `reconv`
+(re-discovery after a known route was lost) and `repair` (re-injected after a
+MAC transmit failure while a local repair runs). Summed over nodes, per run.
+
+**The measurement is not new — reaching it is.** `HoldStats` has recorded these
+since #21/#104, but they were printed only inside the `--diag` line, which the
+workflow's compact re-emit never carried. Reading them for the phase-2
+decomposition therefore cost a 900-line log tail and still lost three of twenty
+seeds. Emitting a number and being able to reach it are different things; this
+marker closes the second half.
+
+Measured at the paper base scenario (disk, 900 s, 20 seeds): `reconv` holds
+1703 events per run at 93.0 ms mean, `repair` 1959 at 24.0 ms, `setup` 18 at
+406.5 ms — together **27.61 ± 1.72 ms per delivered packet**, against an
+all-delivered mean-delay gap to AODV of 21.9 ms.
+
+**Two limits, both load-bearing.**
+
+*Counts are hold **events**, not packets.* The pending queue is per node, so a
+packet crossing several hops can be held more than once. `setupN + reconvN +
+repairN` divided by delivered packets gives **hold events per delivered
+packet** (0.476 at the paper base), which is *either* ~48 % of packets held
+once *or* fewer packets held repeatedly. These counters cannot tell the two
+apart, and the distinction matters for the protocol story.
+
+*Rows appear for AntHocNet only.* AODV also queues during route discovery
+(`aodv::RequestQueue`) and OLSR/DSDV do not queue at all, but **none of them is
+instrumented**, so no row is printed for them. A row of zeros would assert
+"this protocol never held a packet" when the truth is "nobody looked" — the
+same reason `##AIR##` prints nothing under `--energyJ=0`. Consequently
+`##HOLD##` supports statements about AntHocNet's own delay composition, and
+**not** cross-protocol hold comparisons, until the AODV side is measured.
+
 ### Channel occupancy (`##AIR##`, #308 phase 2 step 3)
 
 ```

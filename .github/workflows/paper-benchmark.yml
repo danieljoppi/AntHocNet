@@ -251,6 +251,15 @@ jobs:
           # commit that emits them — same rule, same reason as the two above.
           grep '^##AIR##' "$GITHUB_WORKSPACE/paper-results.txt" \
             >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
+          # #308 phase 2 step 4: pending-queue hold rows. Added in the same
+          # commit that emits them — and this marker exists BECAUSE the rule was
+          # only half-followed before: the hold numbers were measured from #104
+          # and printed inside the '# diag' line, which this block never
+          # re-emitted, so the step-4 read cost a 900-line tail and still lost
+          # three of twenty seeds. Emitting a number and being able to reach it
+          # are different things.
+          grep '^##HOLD##' "$GITHUB_WORKSPACE/paper-results.txt" \
+            >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
           # #230: the '# paths/energy/drops/stddev/reorder' diagnostic lines are
           # the *only* place the #209/#212/#215/#217 metric families appear in a
           # single-point run — the fixed-width table cannot carry them (its field
