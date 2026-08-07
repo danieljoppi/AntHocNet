@@ -321,6 +321,54 @@ be expressed against them.
 > differed from seed 1 on. Treat any pre-fix cross-structure comparison as
 > unsupported and re-run it rather than re-interpreting it.
 
+## Provenance: which version a number was measured at
+
+A benchmark number without a version is not reproducible, however many seeds
+stand behind it. Two merges made that concrete
+([#365](https://github.com/danieljoppi/AntHocNet/issues/365)):
+[#327](https://github.com/danieljoppi/AntHocNet/issues/327) (`ca4deb7`) changed
+the protocol — `betaAnts`/`betaData` 2.0 → 20 — and
+[#352](https://github.com/danieljoppi/AntHocNet/issues/352) (`e39252f`) changed
+the realisation, pinning RNG streams per seed so that "seed 7" no longer denotes
+the run it used to. Neither number is wrong; they are simply not the same
+experiment.
+
+### The rule
+
+**A merge that changes protocol behaviour or stream assignment invalidates the
+published corpus, and the PR that makes it says so.** #327 and #352 both warned
+about this in their own commit messages — the warning just had nowhere to land.
+It lands here.
+
+Concretely, such a PR must state which published pages its change invalidates,
+and either re-measure them or mark them superseded in the same release cycle.
+
+### The current pin: `v1.3.0`
+
+Every number published in `docs/benchmarks/` and in the paper today was measured
+**at or before the `v1.3.0` tag** (`19009be`, 2026-08-04), and both invalidating
+merges above landed **after** it. Two facts make `v1.3.0` a faithful pin for the
+entire corpus rather than a convenient label:
+
+- `git log v1.2.0..v1.3.0 -- core/ ns3/` contains **no routing-behaviour
+  change** — the range is benchmark instrumentation, statistics tooling and
+  documentation. So although the campaigns were dispatched at several different
+  commits (the headline at `8ed44c1`, the sweeps later), they all describe one
+  protocol configuration and are mutually comparable.
+- `v1.3.0` therefore reproduces every published number. A reader who checks out
+  the **default branch** instead will not, and that is expected, not a defect.
+
+The papers repo's Artifact Availability statement pins to `v1.3.0` for exactly
+this reason (`danieljoppi/papers#23`).
+
+### What this does not cover
+
+Pages measured before `v1.3.0` still need a per-page statement of the commit
+behind their numbers; that work is tracked on
+[#365](https://github.com/danieljoppi/AntHocNet/issues/365). The pin above makes
+it cheaper — a page needs to name a *tag*, not carry a re-measurement — but it
+does not do it.
+
 ## Build profiles: `default` for CI, `release` for campaigns
 
 ns-3 builds under a *build profile*, and until [#123](https://github.com/danieljoppi/AntHocNet/issues/123)
