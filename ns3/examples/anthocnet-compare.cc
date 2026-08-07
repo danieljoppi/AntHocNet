@@ -698,6 +698,12 @@ struct Result {
     // #308 phase 2: the same keys carrying hop counts, so the common set can be
     // normalised by path length like-for-like.
     std::map<Address, std::map<uint32_t, uint32_t>> rxHopsBySeq;
+    // #308 phase 2 step 4: pending-queue hold-time attribution, summed over
+    // nodes. `holdValid` is false for every protocol that is not AntHocNet —
+    // see the ##HOLD## emission for why absence, not zero, is the right
+    // representation there.
+    ns3::anthocnet::HoldStats hold;
+    bool holdValid = false;
     // #209 energy:
     // #308 phase 2 step 3: channel occupancy summed over nodes (node-seconds).
     // -1 = not measured (the PHY State trace is only connected when the energy
@@ -1477,6 +1483,30 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             ? (sum * sum) / (static_cast<double>(x.size()) * sumSq) : 0.0;
     }
 
+    // #308 phase 2 step 4: gather the pending-queue hold-time attribution
+    // UNCONDITIONALLY, not just under --diag. It has been measured since #104
+    // but only ever printed inside the --diag line, where it sat outside the
+    // workflow's compact re-emit — so reading it for the phase-2 decomposition
+    // needed a 900-line log tail and still lost three of twenty seeds. The
+    // measurement was never the missing piece; reaching it was.
+    for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+        Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
+        if (!ip) continue;
+        Ptr<ns3::anthocnet::RoutingProtocol> ahn =
+            DynamicCast<ns3::anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
+        if (!ahn) continue;
+        r.holdValid = true;
+        const ns3::anthocnet::HoldStats& s = ahn->HoldTimeStats();
+        for (uint8_t hr = 0; hr < ns3::anthocnet::kHoldReasons; ++hr) {
+            r.hold.deliveredCount[hr] += s.deliveredCount[hr];
+            r.hold.deliveredSumS[hr] += s.deliveredSumS[hr];
+            if (s.deliveredMaxS[hr] > r.hold.deliveredMaxS[hr])
+                r.hold.deliveredMaxS[hr] = s.deliveredMaxS[hr];
+            r.hold.droppedCount[hr] += s.droppedCount[hr];
+            r.hold.droppedSumS[hr] += s.droppedSumS[hr];
+        }
+    }
+
     // Diagnostics line (prefixed "# " so CSV consumers ignore it). Shows whether
     // routes form (reactive ants sent vs received elsewhere; back-ant arrivals)
     // and when the first packet is delivered.
@@ -1575,7 +1605,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             // packets; this splits the delivered hold time (and the aged-out
             // drops) across the setup / reconvergence / repair hold paths so
             // the dominant one can be attacked. Summed across nodes.
-            ns3::anthocnet::HoldStats hs;
+            const ns3::anthocnet::HoldStats& hs = r.hold;  // gathered above (#308)
             // #215: the repair-discard cause from both sides — the core's
             // simulator-agnostic event count (how many local repairs expired)
             // and the adapter's packet count (how much data each released).
@@ -1589,15 +1619,6 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 repairEvents += ahn->RepairDiscards();
                 repairPkts += ahn->RepairDiscardedPackets();
                 macReinjected += ahn->MacReinjectedPackets();
-                const ns3::anthocnet::HoldStats& s = ahn->HoldTimeStats();
-                for (uint8_t r = 0; r < ns3::anthocnet::kHoldReasons; ++r) {
-                    hs.deliveredCount[r] += s.deliveredCount[r];
-                    hs.deliveredSumS[r] += s.deliveredSumS[r];
-                    if (s.deliveredMaxS[r] > hs.deliveredMaxS[r])
-                        hs.deliveredMaxS[r] = s.deliveredMaxS[r];
-                    hs.droppedCount[r] += s.droppedCount[r];
-                    hs.droppedSumS[r] += s.droppedSumS[r];
-                }
             }
             static const char* kReasonName[3] = {"setup", "reconv", "repair"};
             std::cout << " hold[";
@@ -1881,6 +1902,27 @@ int main(int argc, char* argv[]) {
             // Reported as a fraction of node-time rather than raw seconds so
             // the number does not silently depend on --nNodes or --time:
             // busyPct is what one node saw the medium occupied, on average.
+            // #308 phase 2 step 4: pending-queue hold time, per run so it pairs
+            // on identical seeds. Emitted ONLY for a protocol that actually has
+            // the instrumentation — i.e. AntHocNet. AODV also queues packets
+            // during route discovery (aodv::RequestQueue) and OLSR/DSDV do not
+            // queue at all, but none of them is measured here, so printing a row
+            // of zeros for them would assert "this protocol never held a packet"
+            // when the truth is "nobody looked". Absence is the honest encoding,
+            // and it is the same rule ##AIR## follows for --energyJ=0.
+            if (r.holdValid) {
+                std::cout << std::fixed << "##HOLD## " << s << ' ' << list[i];
+                for (uint8_t hr = 0; hr < ns3::anthocnet::kHoldReasons; ++hr) {
+                    const double meanMs = r.hold.deliveredCount[hr]
+                        ? 1000.0 * r.hold.deliveredSumS[hr] / r.hold.deliveredCount[hr]
+                        : 0.0;
+                    std::cout << ' ' << r.hold.deliveredCount[hr]
+                              << ' ' << std::setprecision(2) << meanMs
+                              << ' ' << std::setprecision(2)
+                              << 1000.0 * r.hold.deliveredMaxS[hr];
+                }
+                std::cout << "\n";
+            }
             if (r.airTxS >= 0.0) {
                 const double nodeSeconds =
                     static_cast<double>(P.nNodes) * P.simTime;

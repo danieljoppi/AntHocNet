@@ -411,6 +411,52 @@ def _cell_div_fires():
            f"planted divUsed=9.999 not flagged\n{out}")
 
 
+# --- #308 phase 2 step 4: pending-queue hold on the ##HOLD## rows -------------
+#
+# Fixture values are the real step-4 readings (run 31069667952): setup
+# 21/428.7ms/max2752.9ms, reconv 1677/87.3ms, repair ~1959/24.0ms. The rules are
+# arithmetic impossibilities, not thresholds: negative components, a mean with
+# no count behind it, and a hold outlasting the QueueTimeout that bounds it.
+HOLD_CELL = """anthocnet 95.8 54.3 862.1 6.32 36.08
+##HOLD## 1 anthocnet 21 428.70 2752.90 1677 87.30 994.50 1959 24.00 1945.90
+##HOLD## 2 anthocnet 27 331.40 2074.80 1849 104.90 981.20 1902 23.10 1877.40
+"""
+
+
+@case("#308p2 hold rows stay quiet on real step-4 values")
+def _hold_quiet():
+    levels, out = run_cell(HOLD_CELL)
+    expect(levels == [], "hold-quiet",
+           f"real ##HOLD## values must not report, got {levels}\n{out}")
+
+
+@case("#308p2 a hold outlasting QueueTimeout FAILs")
+def _hold_ceiling():
+    _levels, out = run_cell(HOLD_CELL.replace("2752.90", "5200.00"))
+    expect("exceeds 5000.0 ms" in out, "hold-ceiling",
+           f"a 5.2 s hold was not flagged\n{out}")
+
+
+@case("#308p2 a non-zero mean hold with a zero count FAILs")
+def _hold_mean_no_count():
+    # What a mis-ordered field mapping looks like: a mean with nothing behind it.
+    _levels, out = run_cell(HOLD_CELL.replace("21 428.70", "0 428.70"))
+    expect("zero hold count" in out, "hold-mean-no-count",
+           f"mean-without-count was not flagged\n{out}")
+
+
+@case("#308p2 negative hold FAILs, and a cell with no ##HOLD## rows skips")
+def _hold_negative_and_absent():
+    _levels, out = run_cell(HOLD_CELL.replace("1677 87.30", "1677 -87.30"))
+    expect("negative hold" in out, "hold-negative",
+           f"negative mean hold was not flagged\n{out}")
+    # AODV/OLSR/DSDV emit no ##HOLD## row at all — absence must report nothing,
+    # never "this protocol never held a packet".
+    levels, out = run_cell("aodv 83.9 32.4 472.6 5.54 55.39\n")
+    expect(levels == [], "hold-absent",
+           f"a protocol with no ##HOLD## rows must skip, got {levels}\n{out}")
+
+
 # --- #308 phase 2 step 3: channel occupancy on the ##AIR## rows --------------
 #
 # Two a-priori bounds (occupancy is non-negative; a node cannot see the medium
