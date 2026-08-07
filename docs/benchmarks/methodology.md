@@ -152,6 +152,38 @@ PDR / mean+99th-percentile delay / NRL vs. the swept parameter:
 Unlike the paper (AODV only), every baseline (AODV/OLSR/DSDV) is run on identical
 realisations, so the classification covers all of them.
 
+## Mobility models (`--mobility`, [#61](https://github.com/danieljoppi/AntHocNet/issues/61))
+
+`anthocnet-compare` takes `--mobility=rwp|ssrwp|gaussmarkov`. `paper-benchmark.yml`
+exposes it as a dispatch input.
+
+| value | model | why it exists |
+|---|---|---|
+| **`rwp`** (default) | `RandomWaypointMobilityModel` | The original evaluation's model, and **the model every published number in this repo was measured under.** The default does not change. |
+| `ssrwp` | `SteadyStateRandomWaypointMobilityModel` | Draws initial speed and position from RWP's *stationary* distribution, removing the speed-decay and density transients that make long RWP runs slower than their nominal speed (Yoon et al., INFOCOM 2003). The closest honest comparison to `rwp`. |
+| `gaussmarkov` | `GaussMarkovMobilityModel` (α = 0.85) | Temporally correlated velocity/direction, so tracks are smooth rather than sharp waypoint turns. The qualitatively different model, and the one aerial/FANET claims require. |
+
+Three things worth knowing before dispatching a non-default arm:
+
+- **`--pause` is inert under `gaussmarkov`** — a Gauss-Markov node never stops.
+  `scenario_check.py preflight` **FAILs** the combination rather than letting a
+  pause sweep produce N identical cells and read as "pause has no effect".
+  Pass `--pause=0` to state it explicitly.
+- **A non-`rwp` arm leaves the published corpus.** Preflight WARNs, because the
+  [validation anchors](#validation-anchors-known-expected-results) are
+  RWP-specific (the Broch floor especially) and the results are not comparable
+  to the published cells. New arms need their own anchor entry or a documented
+  reason there isn't one.
+- **The `manet-baselines` control harness has no `--mobility`** and is RWP-only.
+  The flag is passed to `anthocnet-compare` alone; ns-3 treats an unknown
+  command-line argument as fatal, so adding it to the shared argument string
+  would kill the [#24](https://github.com/danieljoppi/AntHocNet/issues/24)
+  baselines arm outright.
+
+`gaussmarkov` is deliberately two-dimensional — the bounding box has zero
+z extent and pitch is fixed at 0 — so nodes stay in the plane the propagation
+models and the field geometry assume.
+
 ## Statistical policy ([#293](https://github.com/danieljoppi/AntHocNet/issues/293))
 
 Every number published in these pages or in the papers repo carries a **95%
