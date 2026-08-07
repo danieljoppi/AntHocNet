@@ -1860,6 +1860,53 @@ int main(int argc, char* argv[]) {
         std::map<Address, std::map<uint32_t, double>> bySeq;  // #308
         std::map<Address, std::map<uint32_t, uint32_t>> hopsBySeq;  // #308 phase 2
     };
+    // #308/#369: record what this invocation actually ran, in the compact
+    // block, before any result row. A benchmark number is only reproducible if
+    // the configuration behind it is recoverable, and until now it was not:
+    // the effective knobs lived solely in the workflow's command echo, which
+    // sits ~900 lines above the cheap tail and vanishes entirely if the run is
+    // cancelled before it finishes. Three hold-cap ablation arms were lost
+    // exactly that way -- cancelled before pickup, logs since expired, and the
+    // `--ns3::...::ReconvHoldCap=` values they were dispatched with are simply
+    // gone. Emitting them here makes the run self-describing.
+    //
+    // Deliberately `key=value` rather than positional fields, unlike ##RUN##:
+    // a mis-read position in a provenance row would misattribute a whole
+    // campaign, and there is no `# stddev` cross-check to catch it the way
+    // there is for the metric columns.
+    std::cout << "##CONFIG## scenario=" << scenario
+              << " nNodes=" << P.nNodes << " time=" << P.simTime
+              << " runs=" << runs << " firstRun=" << firstRun
+              << " areaX=" << P.areaX << " areaY=" << P.areaY
+              << " speed=" << P.speed << " pause=" << P.pause
+              << " range=" << P.range << " propagation=" << P.propagation
+              << " flows=" << P.nFlows << " cbrBps=" << P.cbrBps
+              << " rateManager=" << P.rateManager
+              << " protocols=" << protocols << '\n';
+    // Every AntHocNet attribute at its *effective* value. ns-3 routes
+    // `--ns3::anthocnet::RoutingProtocol::X=Y` through Config::SetDefault,
+    // which rewrites the TypeId's stored initial value -- so reading it back
+    // here reports overrides and compiled defaults alike, and any lever a
+    // future sweep adds is carried without touching this code. Baseline
+    // protocols' attributes are not dumped: nothing in this repo sweeps them,
+    // and the row is provenance for our own knobs.
+    {
+        TypeId tid;
+        if (TypeId::LookupByNameFailSafe("ns3::anthocnet::RoutingProtocol", &tid)) {
+            // std::size_t rather than decltype(GetAttributeN()): the return
+            // type changed from uint32_t to std::size_t across the ns-3
+            // versions in the matrix, and both convert to std::size_t without
+            // a sign-compare warning.
+            const std::size_t nAttr = tid.GetAttributeN();
+            for (std::size_t a = 0; a < nAttr; ++a) {
+                const TypeId::AttributeInformation info = tid.GetAttribute(a);
+                if (!info.initialValue || !info.checker) continue;
+                std::cout << "##CONFIG## attr " << info.name << '='
+                          << info.initialValue->SerializeToString(info.checker)
+                          << '\n';
+            }
+        }
+    }
     std::vector<std::vector<MatchCell>> matchGrid(
         list.size(), std::vector<MatchCell>(runs));
     for (std::size_t i = 0; i < list.size(); ++i) {

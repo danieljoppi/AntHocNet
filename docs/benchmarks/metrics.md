@@ -196,6 +196,43 @@ all-delivered basis. What it cannot say is how the split looks on the packets
 both protocols carried, where the delay ratio is 1.44× rather than 1.68×. That
 is the question `hopsCommon` answers.
 
+### Run provenance (`##CONFIG##`, #369)
+
+```
+##CONFIG## scenario=<name> nNodes=.. time=.. runs=.. firstRun=.. areaX=.. \
+           areaY=.. speed=.. pause=.. range=.. propagation=.. flows=.. \
+           cbrBps=.. rateManager=.. protocols=..
+##CONFIG## attr <AttributeName>=<value>          # one line per AntHocNet attribute
+```
+
+Not a metric — the configuration the numbers were produced under, emitted into
+the compact block ahead of every result row.
+
+It exists because the alternative was tried and failed. The effective knobs
+used to live only in the workflow's command echo, which sits roughly 900 lines
+above the reachable log tail and disappears with the run: three hold-cap
+ablation arms ([#308](https://github.com/danieljoppi/AntHocNet/issues/308))
+were cancelled before producing output, their logs expired, and the
+`ReconvHoldCap`/`RepairHoldCap` values they were dispatched with are
+unrecoverable. A run that cannot state its own configuration is not
+reproducible, however many seeds stand behind it.
+
+The `attr` lines report each AntHocNet attribute at its **effective** value.
+ns-3 routes `--ns3::anthocnet::RoutingProtocol::X=Y` through
+`Config::SetDefault`, which rewrites the TypeId's stored initial value, so
+reading it back reports overrides and compiled defaults alike — and a lever
+added by a future sweep is carried automatically, with no change here.
+
+Two limits worth stating:
+
+- **Fields are `key=value`, not positional** — unlike `##RUN##`. A misread
+  position in a provenance row would misattribute an entire campaign, and
+  there is no `# stddev` cross-check to catch it the way there is for the
+  metric columns.
+- **Baseline protocols' attributes are not dumped.** Nothing in this repo
+  sweeps AODV/OLSR/DSDV attributes, so a `--ns3::aodv::…` override would *not*
+  be recorded. If that ever becomes a swept lever, this is the place to extend.
+
 ### Pending-queue hold time (`##HOLD##`, #308 phase 2 step 4)
 
 ```
