@@ -665,6 +665,10 @@ struct Params {
     // #217: window over which "distinct next hops used for a destination" is
     // counted (s). See the path-diversity block above main().
     double   pathWindowS;
+    // #61: mobility model. "rwp" (Random Waypoint, the default and the model
+    // every published number was measured under) | "ssrwp" (steady-state RWP,
+    // no speed-decay transient) | "gaussmarkov" (smooth correlated tracks).
+    std::string mobility;
 };
 
 struct Result {
@@ -887,10 +891,65 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     std::ostringstream speedStr, pauseStr;
     speedStr << "ns3::UniformRandomVariable[Min=1.0|Max=" << P.speed << "]";
     pauseStr << "ns3::ConstantRandomVariable[Constant=" << P.pause << "]";
-    mobility.SetMobilityModel("ns3::RandomWaypointMobilityModel",
-                              "Speed", StringValue(speedStr.str()),
-                              "Pause", StringValue(pauseStr.str()),
-                              "PositionAllocator", PointerValue(pos));
+    // #61: mobility model selection. `rwp` is the default and is left exactly
+    // as it was — every published number was measured under it, and the
+    // steady-state/Gauss-Markov arms are additions, not replacements.
+    if (P.mobility == "ssrwp") {
+        // Steady-state RWP (Navidi & Camp): initial speed/position are drawn
+        // from RWP's *stationary* distribution, so the run starts where plain
+        // RWP only arrives asymptotically. This removes the speed-decay
+        // transient that makes long RWP runs slower than their nominal speed
+        // (Yoon et al., INFOCOM 2003) and the matching density transient.
+        //
+        // It takes its own field bounds instead of a PositionAllocator: the
+        // stationary position distribution is not uniform, so it must place
+        // nodes itself. MinSpeed must be > 0 — the stationary distribution
+        // divides by speed — which the 1.0 m/s floor above already satisfies.
+        mobility.SetMobilityModel("ns3::SteadyStateRandomWaypointMobilityModel",
+                                  "MinSpeed", DoubleValue(1.0),
+                                  "MaxSpeed", DoubleValue(P.speed),
+                                  "MinPause", DoubleValue(P.pause),
+                                  "MaxPause", DoubleValue(P.pause),
+                                  "MinX", DoubleValue(0.0),
+                                  "MaxX", DoubleValue(P.areaX),
+                                  "MinY", DoubleValue(0.0),
+                                  "MaxY", DoubleValue(P.areaY));
+    } else if (P.mobility == "gaussmarkov") {
+        // Gauss-Markov: velocity and direction are temporally correlated
+        // (alpha = 0.85), so tracks are smooth rather than the sharp
+        // waypoint-to-waypoint turns of RWP. This is the qualitatively
+        // different model #295 asks for, and the one aerial/FANET claims
+        // require.
+        //
+        // Two-dimensional on purpose: the Box's z extent is zero and the pitch
+        // is fixed at 0, so nodes stay in the plane the propagation models and
+        // the 2-D field geometry assume.
+        //
+        // There is no pause concept here -- a Gauss-Markov node never stops.
+        // `--pause` is therefore inert under this model, which is why
+        // scenario_check.py's preflight refuses the combination rather than
+        // letting a sweep believe it varied something.
+        mobility.SetMobilityModel(
+            "ns3::GaussMarkovMobilityModel",
+            "Bounds", BoxValue(Box(0.0, P.areaX, 0.0, P.areaY, 0.0, 0.0)),
+            "TimeStep", TimeValue(Seconds(1.0)),
+            "Alpha", DoubleValue(0.85),
+            "MeanVelocity", StringValue(speedStr.str()),
+            "MeanDirection",
+            StringValue("ns3::UniformRandomVariable[Min=0.0|Max=6.283185307]"),
+            "MeanPitch", StringValue("ns3::ConstantRandomVariable[Constant=0.0]"),
+            "NormalVelocity",
+            StringValue("ns3::NormalRandomVariable[Mean=0.0|Variance=1.0|Bound=1.0]"),
+            "NormalDirection",
+            StringValue("ns3::NormalRandomVariable[Mean=0.0|Variance=0.2|Bound=0.4]"),
+            "NormalPitch",
+            StringValue("ns3::ConstantRandomVariable[Constant=0.0]"));
+    } else {
+        mobility.SetMobilityModel("ns3::RandomWaypointMobilityModel",
+                                  "Speed", StringValue(speedStr.str()),
+                                  "Pause", StringValue(pauseStr.str()),
+                                  "PositionAllocator", PointerValue(pos));
+    }
     // #352: the initial positions are drawn during Install(), so the allocator
     // has to be pinned BEFORE it — MobilityHelper::AssignStreams can only reach
     // the models (and, through RandomWaypoint, the allocator's later waypoint
@@ -1708,7 +1767,14 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("qdiag", "Emit per-run '# qdiag' lines: per-node MAC queue depth "
                           "distribution (meanQ/maxQ/pctNonzero) — does A2 have a "
                           "signal? (#73)", g_qdiag);
+    std::string mobilityModel = "rwp";
     std::string propagation = "range";
+    cmd.AddValue("mobility",
+                 "Mobility model (#61): 'rwp' (Random Waypoint, default — the "
+                 "model every published number was measured under) | 'ssrwp' "
+                 "(steady-state RWP, no speed-decay transient) | 'gaussmarkov' "
+                 "(smooth correlated tracks; --pause is inert under it)",
+                 mobilityModel);
     cmd.AddValue("propagation", "Propagation loss model: 'range' (disk) or 'tworay'", propagation);
     std::string rateManager = "constant2";
     cmd.AddValue("rateManager",
@@ -1794,6 +1860,14 @@ int main(int argc, char* argv[]) {
     P.cbrBps  = cbrBps >= 0 ? cbrBps : (thesis ? 2048.0 : paper ? 512.0 : 8000.0);
     P.startWindow = paper ? 180.0 : 5.0;
     P.propagation = propagation;
+    P.mobility = mobilityModel;
+    NS_ABORT_MSG_UNLESS(mobilityModel == "rwp" || mobilityModel == "ssrwp" ||
+                            mobilityModel == "gaussmarkov",
+                        "unknown --mobility='" << mobilityModel
+                        << "' (expected rwp|ssrwp|gaussmarkov). Refusing rather "
+                           "than silently falling back to rwp: a typo would "
+                           "otherwise produce a plausible run of the wrong "
+                           "model (#61).");
     P.rateManager = rateManager;
     P.sink = sink;
     P.energyJ = energyJ;
@@ -1880,6 +1954,7 @@ int main(int argc, char* argv[]) {
               << " areaX=" << P.areaX << " areaY=" << P.areaY
               << " speed=" << P.speed << " pause=" << P.pause
               << " range=" << P.range << " propagation=" << P.propagation
+              << " mobility=" << P.mobility
               << " flows=" << P.nFlows << " cbrBps=" << P.cbrBps
               << " rateManager=" << P.rateManager
               << " protocols=" << protocols << '\n';

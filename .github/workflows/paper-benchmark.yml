@@ -37,6 +37,9 @@ on:
       propagation:
         description: 'Propagation model: range (disk) | tworay (#24)'
         default: 'range'
+      mobility:
+        description: 'Mobility model (#61): rwp (Random Waypoint — the model every published number was measured under) | ssrwp (steady-state RWP, no speed-decay transient) | gaussmarkov (smooth correlated tracks; pause is inert under it, so pass pause=0)'
+        default: 'rwp'
       range:
         description: 'Transmission range (m) for the disk model (#24 disentangler)'
         default: '300'
@@ -132,7 +135,11 @@ jobs:
             # #24 control: stock ns-3 baselines only, no AntHocNet in the binary.
             cmd="manet-baselines $common --protocols=aodv,olsr,dsdv"
           else
-            cmd="anthocnet-compare $common --diag --protocols=${{ github.event.inputs.protocols }}"
+            # --mobility is deliberately NOT in $common: manet-baselines has no
+            # such option (#61), and ns-3's CommandLine treats an unknown
+            # argument as fatal — it would kill the #24 baselines control arm
+            # instantly, which is the #28 empty-table failure mode.
+            cmd="anthocnet-compare $common --diag --mobility=${{ github.event.inputs.mobility }} --protocols=${{ github.event.inputs.protocols }}"
           fi
           echo "$cmd"
           # #28 hardening: stderr used to be discarded wholesale and the

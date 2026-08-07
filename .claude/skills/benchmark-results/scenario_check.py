@@ -199,6 +199,24 @@ def cmd_preflight(a):
         report("WARN", "pause >= sim time — the field is static; that is "
                        "the sparse-static regime (a known AntHocNet weak "
                        "spot), not the paper's mobile one")
+    # #61 mobility-model coherence. Same shape as the #230 pathWindowS rule:
+    # a knob that the selected model ignores costs nothing to check here and,
+    # unchecked, produces a sweep that believes it varied something it did not.
+    if a.mobility == "gaussmarkov" and a.pause != 0:
+        report("FAIL", f"--pause={a.pause}s with --mobility=gaussmarkov: "
+                       "Gauss-Markov nodes never stop, so pause is inert. A "
+                       "pause sweep under this model would produce N identical "
+                       "cells and read as 'pause has no effect' (#61); pass "
+                       "--pause=0 to state that explicitly")
+    if a.mobility == "ssrwp" and a.speed <= 0:
+        report("FAIL", "--mobility=ssrwp needs a positive speed: the "
+                       "steady-state distribution divides by speed and is "
+                       "undefined at zero (#61)")
+    if a.mobility != "rwp":
+        report("WARN", f"--mobility={a.mobility} is not the model the "
+                       "published corpus was measured under (rwp); its "
+                       "anchor floors do not apply and results are not "
+                       "comparable to the published cells (#59, #61)")
     # #230: the diversity window must be short relative to how fast the
     # topology changes, or a route being *replaced* inside one window reads as
     # two concurrent paths and path_div_used stops meaning multipath. Two nodes
@@ -880,6 +898,8 @@ def main():
     p.add_argument("--rateMbps", type=float, default=2)
     # kDefaultPathWindowS in ns3/examples/anthocnet-compare.cc (#217).
     p.add_argument("--pathWindowS", type=float, default=10)
+    p.add_argument("--mobility", choices=("rwp", "ssrwp", "gaussmarkov"),
+                   default="rwp")
     r = sub.add_parser("results")
     r.add_argument("files", nargs="+")
     r.add_argument("--anchor", choices=sorted(ANCHOR_KEY))

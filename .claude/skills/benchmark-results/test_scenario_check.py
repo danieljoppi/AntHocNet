@@ -114,7 +114,7 @@ def run_preflight(**overrides):
     kw = {"nodes": 50, "areaX": 1500.0, "areaY": 300.0, "range": 300.0,
           "time": 300.0, "pause": 30.0, "speed": 20.0, "flows": 20,
           "pktBytes": 64, "pktPerSec": 1.0, "rateMbps": 2.0,
-          "pathWindowS": 10.0}
+          "pathWindowS": 10.0, "mobility": "rwp"}
     kw.update(overrides)
     sc.issues = []
     with contextlib.redirect_stdout(io.StringIO()) as out:
@@ -287,6 +287,53 @@ def _absent_columns():
     levels, out = run_results(**blank)
     expect(levels == [], "absent-columns",
            f"a rule fired on a pre-instrumentation row\n{out}")
+
+
+# --- #61 mobility-model preflight --------------------------------------------
+
+@case("#61 preflight FAILs pause>0 under gaussmarkov (inert knob)")
+def _mobility_pause_fires():
+    levels, out = run_preflight(mobility="gaussmarkov", pathWindowS=2.0)
+    expect("FAIL" in levels, "mobility-pause-fires",
+           f"pause=30 under gaussmarkov did not FAIL\n{out}")
+    expect("inert" in out, "mobility-pause-fires", out)
+
+
+@case("#61 preflight stays quiet on pause=0 under gaussmarkov")
+def _mobility_pause_quiet():
+    # The knob is stated explicitly, so the coherence rule has nothing to say.
+    # A WARN about non-rwp comparability is expected and correct here; what
+    # must not happen is a FAIL.
+    levels, out = run_preflight(mobility="gaussmarkov", pause=0.0,
+                                pathWindowS=2.0)
+    expect("FAIL" not in levels, "mobility-pause-quiet",
+           f"pause=0 under gaussmarkov should not FAIL\n{out}")
+
+
+@case("#61 preflight FAILs ssrwp at zero speed")
+def _mobility_ssrwp_fires():
+    levels, out = run_preflight(mobility="ssrwp", speed=0.0, pathWindowS=2.0)
+    expect("FAIL" in levels, "mobility-ssrwp-fires",
+           f"ssrwp at speed=0 did not FAIL\n{out}")
+    expect("undefined at zero" in out, "mobility-ssrwp-fires", out)
+
+
+@case("#61 preflight WARNs that a non-rwp model leaves the published corpus")
+def _mobility_corpus_warn():
+    levels, out = run_preflight(mobility="ssrwp", pathWindowS=2.0)
+    expect("WARN" in levels, "mobility-corpus-warn",
+           f"a non-rwp model did not WARN about comparability\n{out}")
+    expect("published corpus" in out, "mobility-corpus-warn", out)
+
+
+@case("#61 preflight says nothing about mobility on the default rwp")
+def _mobility_default_silent():
+    # The must-not-fire half: the model every published number was measured
+    # under must not acquire a new warning, or the gate cries wolf on the
+    # scenario it is most often run against.
+    _, out = run_preflight(pathWindowS=2.0)
+    expect("published corpus" not in out, "mobility-default-silent", out)
+    expect("inert" not in out, "mobility-default-silent", out)
 
 
 # --- #230 preflight ----------------------------------------------------------
