@@ -98,6 +98,11 @@ ISL_RUN = re.compile(r"^\s*##RUN##\s+(\d+)\s+([a-z][\w-]*)"
 # family here: no results-mode rule reads dispersion, so parsing it would be
 # dead weight.
 DIAG_LINE = re.compile(r"^\s*#\s+(paths|energy|drops|reorder)\s+([a-z][\w-]*)\s+(.+)$")
+# #365: the workflow-emitted provenance line, last in the compact block.
+#   ##PROV## commit=<sha> ref=.. run_id=.. attempt=.. image=.. profile=..
+# Only the commit is matched here — it is the field whose absence makes a cell
+# unreproducible, and the rest are context a human reads off the same line.
+PROV_LINE = re.compile(r"^\s*##PROV##\s+commit=([0-9a-fA-F]{7,40})\b")
 # #308 phase 2: the per-run common-set rows. Unlike the diagnostic lines above
 # there is one per (run, protocol), so they are folded into the protocol's row
 # as an extremum rather than merged field-by-field — the rules below ask "did
@@ -520,10 +525,44 @@ def parse_results(path):
     yield from rows
 
 
+def check_provenance(path):
+    """#365: a saved log cell must say which commit produced it.
+
+    Scoped to inputs carrying ##BENCH##/##RUN## rows — i.e. a fetched job-log
+    tail. Campaign CSVs are deliberately exempt: their provenance is the run ID
+    in the filename plus the ledger rule in methodology.md, not a line in the
+    data, and warning on them would train the reader to ignore this warning.
+
+    WARN rather than FAIL. A cell measured before the marker existed
+    (everything up to `v1.3.0`) legitimately has no line, and those numbers are
+    still readable — they are just pinned by release rather than by SHA. What
+    the warning catches is the case that actually costs something: a *recent*
+    run whose tail was cut above the line, or a workflow that stopped emitting
+    it, where the reader would otherwise assume provenance was recorded.
+    """
+    with open(path) as fh:
+        text = fh.read()
+    if "##BENCH##" not in text and "##RUN##" not in text:
+        return
+    base = os.path.basename(path)
+    for line in text.splitlines():
+        m = PROV_LINE.match(line)
+        if m:
+            print(f"ok: {base}: measured at {m.group(1)[:7]}")
+            return
+    report("WARN", f"{base}: no ##PROV## line — this cell does not record the "
+                   "commit it was measured at (#365). Expected last in the "
+                   "compact block: either the run predates the marker "
+                   "(<= v1.3.0, pinned by release instead) or the log tail was "
+                   "cut above it. Do not publish a number whose version is "
+                   "unknown.")
+
+
 def cmd_results(a):
     floor = anchor_floor(a.anchor) if a.anchor else None
     n = 0
     for path in a.files:
+        check_provenance(path)
         for r in parse_results(path):
             n += 1
             tag = f"{r['where']}/{r['proto']}"

@@ -455,13 +455,44 @@ entire corpus rather than a convenient label:
 The papers repo's Artifact Availability statement pins to `v1.3.0` for exactly
 this reason (`danieljoppi/papers#23`).
 
+### Run ID → commit
+
+Every campaign CSV under `docs/benchmarks/campaign/` is named after the Actions
+run that produced it, so the run ID is never in doubt. The commit behind that
+run ID is answered in two different ways depending on when the run happened, and
+the boundary is worth stating plainly rather than blurring.
+
+**From #365 onward: the run says so itself.** The three campaign workflows emit a
+[`##PROV##`](metrics.md#measuring-commit-prov-365) line carrying
+`commit=`, `run_id=`, `attempt=`, the image tag and the build profile —
+`paper-benchmark.yml` and `satellite-benchmark.yml` as the last line of their
+compact block, `scenario-matrix.yml` as a step of its own. The mapping therefore
+lives in the same artefact as the numbers and survives whatever happens to the
+Actions API.
+
+**Before #365: the release pin, not a per-run stamp.** Those runs never recorded
+their commit, and the Actions API answers only while a run's logs live. What
+*is* certain is the pin established above — the entire pre-`v1.4.0` corpus was
+measured at or before `v1.3.0` (`19009be`), and `v1.2.0..v1.3.0` contains no
+routing-behaviour change — so `v1.3.0` reproduces any of those cells. That is a
+weaker guarantee than a per-run SHA and it is the honest one: reconstructing
+per-run commits now would mean guessing from timestamps, and a guessed
+provenance that reads like a measured one is exactly the failure this section
+exists to prevent.
+
+The per-merge scenario pages are a third case: `benchmarks.yml` regenerates them
+on every merge and stamps the measuring commit into the generated block itself
+(`update-benchmarks.py --commit`), so those tables name their own SHA. This also
+makes staleness visible — when the refresh is starved (eight merges on
+2026-07-26 produced none, each push cancelling the run in flight), the stamped
+commit visibly lags `main` instead of the page silently claiming to track it.
+
 ### What this does not cover
 
-Pages measured before `v1.3.0` still need a per-page statement of the commit
-behind their numbers; that work is tracked on
-[#365](https://github.com/danieljoppi/AntHocNet/issues/365). The pin above makes
-it cheaper — a page needs to name a *tag*, not carry a re-measurement — but it
-does not do it.
+Nothing here decides *which* numbers the paper should quote — that is
+[#109](https://github.com/danieljoppi/AntHocNet/issues/109)/[#110](https://github.com/danieljoppi/AntHocNet/issues/110)'s
+call. And a stamp is not a re-measurement: a page marked with a superseded
+commit stays superseded until someone re-runs it.
 
 ## Build profiles: `default` for CI, `release` for campaigns
 

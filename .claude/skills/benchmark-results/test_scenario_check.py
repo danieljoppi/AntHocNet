@@ -543,8 +543,25 @@ CELL = """\
 """
 
 
-def run_cell(text):
-    """Check a ##BENCH## cell text; return (levels, printed output)."""
+PROV = ("##PROV## commit=0b42c896b8969081a7b0ba160a9a7f4082461803 ref=main "
+        "run_id=31284265709 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt "
+        "profile=release harness=compare\n")
+
+
+def run_cell(text, prov=True):
+    """Check a ##BENCH## cell text; return (levels, printed output).
+
+    A ##PROV## line (#365) is appended by default, because every cell fetched
+    from a campaign workflow now carries one — a fixture without it would make
+    "clean" mean something no real input is. Pass prov=False for the cases that
+    are specifically about provenance being absent.
+    """
+    # Appended only to log-shaped inputs — the same scope check_provenance
+    # applies. Some fixtures routed through here are CSVs, where an extra line
+    # is a data row, not a comment.
+    if prov and ("##BENCH##" in text or "##RUN##" in text):
+        text = text if text.endswith("\n") else text + "\n"
+        text += PROV
     fd, path = tempfile.mkstemp(suffix=".txt")
     try:
         with os.fdopen(fd, "w") as fh:
@@ -927,6 +944,43 @@ def _isl_cell_jitter_position():
         "aodv             100.0       10.3         10.6         32.28    0.60       0.35       -0.10"))
     expect("negative jitter" in out, "isl-cell-jitter",
            f"negative jitter in the last table column not flagged\n{out}")
+
+
+# --- #365 provenance ---------------------------------------------------------
+# The marker is emitted by the workflow, so nothing in the harness can prove it
+# arrives. This pair is the only thing that can fail: one case that the warning
+# fires when a cell has no commit, one that it stays quiet when it has.
+
+@case("#365 a ##BENCH## cell with no ##PROV## line WARNs")
+def _prov_missing_fires():
+    _levels, out = run_cell(ISL_CELL, prov=False)
+    expect("no ##PROV## line" in out, "prov-missing",
+           f"cell without provenance not flagged\n{out}")
+
+
+@case("#365 a ##PROV## line silences the warning and echoes the commit")
+def _prov_present_quiet():
+    _levels, out = run_cell(ISL_CELL)
+    expect("no ##PROV## line" not in out, "prov-present",
+           f"provenance present but still warned\n{out}")
+    expect("measured at 0b42c89" in out, "prov-present-echo",
+           f"commit not echoed for the reader\n{out}")
+
+
+@case("#365 a truncated commit field is not accepted as provenance")
+def _prov_short_sha_fires():
+    # A tail cut mid-line leaves a stub that still starts with ##PROV##.
+    # Matching the marker alone would read that as provenance recorded.
+    _levels, out = run_cell(ISL_CELL + "##PROV## commit=0b4\n", prov=False)
+    expect("no ##PROV## line" in out, "prov-short-sha",
+           f"a 3-char commit stub was accepted as provenance\n{out}")
+
+
+@case("#365 a campaign CSV is exempt — provenance is the run ID, not a line")
+def _prov_csv_exempt():
+    _levels, out = run_results()
+    expect("no ##PROV## line" not in out, "prov-csv-exempt",
+           f"CSV input warned about a marker it is not supposed to carry\n{out}")
 
 
 def main():
