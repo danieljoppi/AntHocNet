@@ -114,7 +114,8 @@ def run_preflight(**overrides):
     kw = {"nodes": 50, "areaX": 1500.0, "areaY": 300.0, "range": 300.0,
           "time": 300.0, "pause": 30.0, "speed": 20.0, "flows": 20,
           "pktBytes": 64, "pktPerSec": 1.0, "rateMbps": 2.0,
-          "pathWindowS": 10.0, "mobility": "rwp", "propagation": "range"}
+          "pathWindowS": 10.0, "mobility": "rwp", "propagation": "range",
+          "transport": "udp"}
     kw.update(overrides)
     sc.issues = []
     with contextlib.redirect_stdout(io.StringIO()) as out:
@@ -287,6 +288,26 @@ def _absent_columns():
     levels, out = run_results(**blank)
     expect(levels == [], "absent-columns",
            f"a rule fired on a pre-instrumentation row\n{out}")
+
+
+# --- #63 TCP transport preflight ----------------------------------------------
+
+@case("#63 preflight WARNs that a TCP arm is saturating")
+def _transport_tcp_fires():
+    levels, out = run_preflight(transport="tcp", pathWindowS=2.0)
+    expect("WARN" in levels, "transport-tcp-fires",
+           f"a saturating TCP arm did not WARN\n{out}")
+    expect("SATURATING" in out, "transport-tcp-fires", out)
+    expect("##GOODPUT##" in out, "transport-tcp-fires",
+           f"the WARN did not name the metric to read instead\n{out}")
+
+
+@case("#63 preflight says nothing about transport on the udp default")
+def _transport_udp_silent():
+    # Must-not-fire: udp is what every published number used, so it must not
+    # acquire a new warning.
+    _, out = run_preflight(pathWindowS=2.0)
+    expect("SATURATING" not in out, "transport-udp-silent", out)
 
 
 # --- #61/#60 grid regression floors ------------------------------------------

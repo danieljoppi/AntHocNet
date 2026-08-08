@@ -40,6 +40,9 @@ on:
       mobility:
         description: 'Mobility model (#61): rwp (Random Waypoint — the model every published number was measured under) | ssrwp (steady-state RWP, no speed-decay transient) | gaussmarkov (smooth correlated tracks; pause is inert under it, so pass pause=0)'
         default: 'rwp'
+      transport:
+        description: 'Transport (#63): udp (CBR OnOff — what every published number was measured under) | tcp (saturating BulkSend). A TCP cell is its own regime, not a variant of the base scenario: pdr/thrput/nrl change meaning and the reorder columns go absent. Read ##GOODPUT##.'
+        default: 'udp'
       range:
         description: 'Transmission range (m) for the disk model (#24 disentangler)'
         default: '300'
@@ -139,7 +142,7 @@ jobs:
             # such option (#61), and ns-3's CommandLine treats an unknown
             # argument as fatal — it would kill the #24 baselines control arm
             # instantly, which is the #28 empty-table failure mode.
-            cmd="anthocnet-compare $common --diag --mobility=${{ github.event.inputs.mobility }} --protocols=${{ github.event.inputs.protocols }}"
+            cmd="anthocnet-compare $common --diag --mobility=${{ github.event.inputs.mobility }} --transport=${{ github.event.inputs.transport }} --protocols=${{ github.event.inputs.protocols }}"
           fi
           echo "$cmd"
           # #28 hardening: stderr used to be discarded wholesale and the
@@ -276,6 +279,13 @@ jobs:
           # were dispatched with are unrecoverable — the command echo lives
           # ~900 lines above the cheap tail and dies with the run.
           grep '^##CONFIG##' "$GITHUB_WORKSPACE/paper-results.txt" \
+            >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
+          # #63: application-level goodput. Added in the same commit that emits
+          # it, per the rule above. This is the TCP arm's *headline* -- under
+          # TCP the pdr and thrput columns change meaning (retransmissions
+          # inflate both), so a TCP cell whose ##GOODPUT## rows were unreachable
+          # would be a cell with no readable primary metric at all.
+          grep '^##GOODPUT##' "$GITHUB_WORKSPACE/paper-results.txt" \
             >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
           # #230: the '# paths/energy/drops/stddev/reorder' diagnostic lines are
           # the *only* place the #209/#212/#215/#217 metric families appear in a

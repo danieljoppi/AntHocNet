@@ -229,6 +229,17 @@ def cmd_preflight(a):
                        "hard cutoff), so the node-degree and connectivity "
                        "figures above are a disk-model estimate and do not "
                        "bound this channel's links (#24, #60)")
+    # #63: a saturating TCP arm invalidates the offered-load arithmetic above.
+    # BulkSend sends as fast as the window allows, so `cbrBps`, `pktPerSec` and
+    # the channel-saturation check are all computed from a load the run does
+    # not actually offer.
+    if a.transport == "tcp":
+        report("WARN", "--transport=tcp is a SATURATING arm: BulkSend ignores "
+                       "cbrBps/pktPerSec, so the offered-load and "
+                       "channel-saturation figures above do not describe this "
+                       "run. It is its own regime, not a variant of the base "
+                       "scenario — do not compare its cells to UDP ones, and "
+                       "read ##GOODPUT## rather than pdr/thrput (#63)")
     if a.propagation == "nakagami":
         report("WARN", "nakagami is the harness's first stochastic channel: "
                        "link existence is a random draw, so per-seed "
@@ -929,6 +940,7 @@ def main():
                    default="rwp")
     p.add_argument("--propagation", choices=("range", "tworay", "nakagami"),
                    default="range")
+    p.add_argument("--transport", choices=("udp", "tcp"), default="udp")
     r = sub.add_parser("results")
     r.add_argument("files", nargs="+")
     r.add_argument("--anchor", choices=sorted(ANCHOR_KEY))
