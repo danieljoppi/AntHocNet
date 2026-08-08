@@ -114,7 +114,7 @@ def run_preflight(**overrides):
     kw = {"nodes": 50, "areaX": 1500.0, "areaY": 300.0, "range": 300.0,
           "time": 300.0, "pause": 30.0, "speed": 20.0, "flows": 20,
           "pktBytes": 64, "pktPerSec": 1.0, "rateMbps": 2.0,
-          "pathWindowS": 10.0, "mobility": "rwp"}
+          "pathWindowS": 10.0, "mobility": "rwp", "propagation": "range"}
     kw.update(overrides)
     sc.issues = []
     with contextlib.redirect_stdout(io.StringIO()) as out:
@@ -334,6 +334,33 @@ def _mobility_default_silent():
     _, out = run_preflight(pathWindowS=2.0)
     expect("published corpus" not in out, "mobility-default-silent", out)
     expect("inert" not in out, "mobility-default-silent", out)
+
+
+# --- #60 channel-model preflight ---------------------------------------------
+
+@case("#60 preflight WARNs that --range is inert off the disk model")
+def _channel_range_inert_fires():
+    levels, out = run_preflight(propagation="tworay", pathWindowS=2.0)
+    expect("WARN" in levels, "channel-range-inert-fires",
+           f"tworay did not WARN that range is inert\n{out}")
+    expect("inert" in out, "channel-range-inert-fires", out)
+
+
+@case("#60 preflight WARNs that nakagami is stochastic")
+def _channel_nakagami_fires():
+    levels, out = run_preflight(propagation="nakagami", pathWindowS=2.0)
+    expect("WARN" in levels, "channel-nakagami-fires",
+           f"nakagami did not WARN about dispersion\n{out}")
+    expect("stochastic channel" in out, "channel-nakagami-fires", out)
+
+
+@case("#60 preflight says nothing about the channel on the disk default")
+def _channel_default_silent():
+    # Must-not-fire half: the disk model is what the published corpus used and
+    # what most dispatches pass, so it must not acquire a new warning.
+    _, out = run_preflight(pathWindowS=2.0)
+    expect("inert" not in out, "channel-default-silent", out)
+    expect("stochastic channel" not in out, "channel-default-silent", out)
 
 
 # --- #230 preflight ----------------------------------------------------------
