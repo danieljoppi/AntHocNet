@@ -680,6 +680,46 @@ enforced locally by
 [`.claude/skills/benchmark-results/scenario_check.py`](../../.claude/skills/benchmark-results/scenario_check.py)
 (#134), which reads `anchors.yml` rather than duplicating it.
 
+### Grid-arm regression floors — a third kind, and not an anchor
+([#61](https://github.com/danieljoppi/AntHocNet/issues/61) / [#60](https://github.com/danieljoppi/AntHocNet/issues/60))
+
+`anchors.yml` also carries `grid_tworay_aodv_pdr_min` and
+`grid_nakagami_aodv_pdr_min`, reachable as `--anchor grid-tworay` /
+`--anchor grid-nakagami`. **They are not validation anchors, and the difference
+is worth keeping straight.**
+
+The wifi anchors above are *literature-derived* (Broch et al.); the satellite
+ones are *analytic identities* on a lossless p2p link. Both are external: they
+can tell you the number is **wrong**. For AODV under steady-state RWP,
+Gauss-Markov or Nakagami fading at the paper base scenario there is **no
+published reference value and no analytic identity** — so there is nothing
+external to check against, and inventing a figure would be exactly the kind of
+unsourced constant [#88](https://github.com/danieljoppi/AntHocNet/issues/88) and
+[#173](https://github.com/danieljoppi/AntHocNet/issues/173) turned out to be.
+
+What these two floors do instead is catch a
+[#51](https://github.com/danieljoppi/AntHocNet/issues/51)-class harness or
+channel regression on arms **CI never runs** — a 4-hour campaign cell is not a
+per-merge gate, so without them a broken substrate would be discovered only by
+reading the results. They are derived from our own 20-seed measurement
+([grid](grid.md)), so they validate that the substrate still works, **not** that
+the number is right. Recalibrate them against a re-measurement, never against a
+literature claim.
+
+Two consequences of that provenance:
+
+- **They are keyed by channel, not by cell.** AODV moves only 2.7 pp across the
+  three mobility models on two-ray and 6.3 pp on Nakagami, so one floor per
+  channel covers the worst mobility case without six near-duplicate thresholds.
+- **The margins are deliberately generous** (~11 % below the worst measured
+  two-ray cell, ~18 % below the worst fading one — wider there because link
+  existence includes a random draw). A floor that false-fires gets ignored, and
+  then it is not a gate ([#229](https://github.com/danieljoppi/AntHocNet/issues/229)).
+
+Picking the wrong one is a loud error rather than a quiet pass: a healthy
+Nakagami reading checked against `grid-tworay` FAILs, and there is a test case
+pinning that.
+
 ### Satellite validation anchors ([#237](https://github.com/danieljoppi/AntHocNet/issues/237))
 
 The anchors above are **literature-derived and approximate** ("AODV ≈ 90–100%")

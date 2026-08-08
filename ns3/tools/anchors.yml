@@ -32,3 +32,35 @@ sat_hop_delay_slack_ms: 1.5
 # (time=300, runs=3). 85.0 leaves margin for the gate's 2-run average and
 # random node placement — tighten once more gate runs accumulate.
 broch_low_mobility_aodv_pdr_min: 85.0
+
+# --- v1.4.0 grid arms (#61/#60) — regression floors, NOT validation anchors --
+# These differ in kind from everything above, and the distinction matters.
+# The wifi anchors are literature-derived (Broch et al.) and the satellite ones
+# are analytic identities on a lossless p2p link. For AODV under steady-state
+# RWP, Gauss-Markov or Nakagami fading at the paper base scenario there is
+# **no published reference value and no analytic identity** — so there is
+# nothing external to anchor against, and inventing one would be the kind of
+# unsourced constant #88 and #173 turned out to be.
+#
+# What these are instead: floors derived from our own 20-seed measurement, to
+# catch a #51-class harness/channel regression on an arm that CI never runs.
+# They validate that the substrate still works, not that the number is right.
+# Recalibrate them against a re-measurement, never against a literature claim.
+#
+# Keyed by channel rather than per cell: across the three mobility models AODV
+# moves only 2.7 pp on two-ray and 6.3 pp on Nakagami, so one floor per channel
+# covers the worst mobility case without six near-duplicate thresholds.
+# A floor that false-fires gets ignored (#229), so the margins are generous.
+
+# Measured AODV PDR on two-ray, v1.4.0 grid (runs 31239953345 / 31239962932 /
+# 31239973590): 85.92 / 86.56 / 83.90 %. Worst case 83.90 (Gauss-Markov).
+# 75.0 is ~11 % below it — wide enough for placement variation, tight enough
+# that a rate-manager or propagation regression (which reads ~50 %) still fires.
+grid_tworay_aodv_pdr_min: 75.0
+
+# Measured AODV PDR on Nakagami, v1.4.0 grid (runs 31239958344 / 31239968258 /
+# 31239979624): 73.49 / 73.02 / 67.23 %. Worst case 67.23 (Gauss-Markov).
+# 55.0 is ~18 % below it: a wider margin than the two-ray floor on purpose,
+# because link existence here includes a random draw and per-seed dispersion is
+# correspondingly higher (#60).
+grid_nakagami_aodv_pdr_min: 55.0

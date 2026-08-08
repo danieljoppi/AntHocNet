@@ -289,6 +289,79 @@ def _absent_columns():
            f"a rule fired on a pre-instrumentation row\n{out}")
 
 
+# --- #61/#60 grid regression floors ------------------------------------------
+#
+# These floors are derived from our own measurement, not from literature, so
+# the must-not-fire half matters more than usual: if they fire on the very
+# numbers they were calibrated from, they are wrong by construction.
+
+def run_results_anchor(anchor, **overrides):
+    """Check one row against an --anchor floor; return (levels, stdout)."""
+    row = dict(CLEAN, **overrides)
+    text = ",".join(row) + "\n" + ",".join(str(v) for v in row.values()) + "\n"
+    fd, path = tempfile.mkstemp(suffix=".csv")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(text)
+        sc.issues = []
+        args = argparse.Namespace(files=[path], anchor=anchor)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            try:
+                sc.cmd_results(args)
+            except SystemExit:
+                pass
+        return list(sc.issues), out.getvalue()
+    finally:
+        os.unlink(path)
+
+
+@case("#60 grid-tworay floor stays quiet at the measured AODV PDR")
+def _grid_tworay_quiet():
+    # 83.90 is the worst measured two-ray cell (gaussmarkov, run 31239973590).
+    # Assert on the anchor's own verdict, not on the global level list: the
+    # shared CLEAN fixture trips unrelated rules once pdr_pct is overridden,
+    # and a test that keys on "any FAIL" would be testing those instead.
+    _, out = run_results_anchor("grid-tworay", protocol="aodv",
+                                pdr_pct="83.90")
+    expect("floor 75.0 met" in out, "grid-tworay-quiet",
+           f"the floor fired on the number it was calibrated from\n{out}")
+    expect("'grid-tworay' floor 75.0 violated" not in out,
+           "grid-tworay-quiet", out)
+
+
+@case("#60 grid-tworay floor fires on a #51-class collapse")
+def _grid_tworay_fires():
+    _, out = run_results_anchor("grid-tworay", protocol="aodv",
+                                pdr_pct="50.0")
+    expect("'grid-tworay' floor 75.0 violated" in out, "grid-tworay-fires",
+           f"a ~50% rate-manager regression did not fire\n{out}")
+
+
+@case("#60 grid-nakagami floor stays quiet at the measured AODV PDR")
+def _grid_nakagami_quiet():
+    # 67.23 is the worst measured fading cell (gaussmarkov, run 31239979624)
+    # and sits well below the two-ray floor — which is exactly why the fading
+    # arm needs its own threshold rather than reusing grid-tworay.
+    _, out = run_results_anchor("grid-nakagami", protocol="aodv",
+                                pdr_pct="67.23")
+    expect("floor 55.0 met" in out, "grid-nakagami-quiet",
+           f"the floor fired on the number it was calibrated from\n{out}")
+    expect("'grid-nakagami' floor 55.0 violated" not in out,
+           "grid-nakagami-quiet", out)
+
+
+@case("#60 grid-tworay floor would reject a healthy fading cell")
+def _grid_wrong_anchor_fires():
+    # The reason there are two floors: a legitimate Nakagami reading checked
+    # against the two-ray floor must FAIL, so picking the wrong --anchor is a
+    # loud error rather than a silently-passing one.
+    _, out = run_results_anchor("grid-tworay", protocol="aodv",
+                                pdr_pct="67.23")
+    expect("'grid-tworay' floor 75.0 violated" in out,
+           "grid-wrong-anchor-fires",
+           f"a fading cell passed the two-ray floor\n{out}")
+
+
 # --- #61 mobility-model preflight --------------------------------------------
 
 @case("#61 preflight FAILs pause>0 under gaussmarkov (inert knob)")
