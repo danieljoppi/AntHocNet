@@ -4,6 +4,20 @@
 
 [← Benchmark index](../../benchmarks.md) · [Metrics](../metrics.md) · [Methodology](../methodology.md)
 
+> **Provenance — regenerated on every merge.** Unlike the
+> [sweep pages](../sweeps/area.md), this table is **not** pinned to a release:
+> `benchmarks.yml` re-runs the discrete taxonomy on every merge to the default
+> branch and rewrites the generated block below, so these numbers track the
+> **current tip of `main`** and already include the pheromone-weighting change
+> ([#327](https://github.com/danieljoppi/AntHocNet/issues/327)) and the
+> per-seed RNG stream assignment
+> ([#352](https://github.com/danieljoppi/AntHocNet/issues/352)). They are a
+> per-merge regression signal at the 10-run publication floor
+> ([#318](https://github.com/danieljoppi/AntHocNet/issues/318)); the
+> release-pinned, 20-seed numbers live on the sweep and headline pages. See
+> [Provenance](../methodology.md#provenance-which-version-a-number-was-measured-at)
+> and [#365](https://github.com/danieljoppi/AntHocNet/issues/365).
+
 ## What it stresses
 
 Constant motion (pause=0). The paper base field with nodes never resting, so
