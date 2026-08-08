@@ -821,6 +821,33 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         channel.AddPropagationLoss("ns3::TwoRayGroundPropagationLossModel",
                                    "Frequency", DoubleValue(2.4e9),
                                    "HeightAboveZ", DoubleValue(1.5));
+    } else if (P.propagation == "nakagami") {
+        // #60: the fading arm. Two-ray path loss with Nakagami-m fast fading
+        // stacked on top -- YansWifiChannelHelper chains loss models, and
+        // Nakagami models *only* the fading envelope, so it needs a
+        // distance-dependent model underneath it or there is no path loss at
+        // all.
+        //
+        // Deliberately the same two-ray path loss as the `tworay` arm, with
+        // identical Frequency/HeightAboveZ. That makes {tworay, nakagami} a
+        // controlled contrast isolating fading alone, rather than two
+        // unrelated channels -- which is what a channel-sensitivity axis
+        // actually needs to say anything.
+        //
+        // ns-3's defaults (Distance1 80 m, Distance2 200 m, m0 1.5, m1 0.75,
+        // m2 0.75) are the ns-2 model's: near-Rician close in, Rayleigh-ish
+        // (m < 1) further out. Left at the defaults on purpose -- an
+        // unsourced m-profile is exactly the kind of invented constant #88 and
+        // #173 were.
+        //
+        // This is the first *stochastic* channel in the harness. Its RNG draws
+        // are pinned by the existing channel.AssignStreams call below, which
+        // was written for precisely this case.
+        channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
+        channel.AddPropagationLoss("ns3::TwoRayGroundPropagationLossModel",
+                                   "Frequency", DoubleValue(2.4e9),
+                                   "HeightAboveZ", DoubleValue(1.5));
+        channel.AddPropagationLoss("ns3::NakagamiPropagationLossModel");
     } else if (P.range > 0.0) {
         // A clean disk model at the paper's transmission range (reproducible
         // connectivity, independent of tx-power/sensitivity defaults).
@@ -1775,7 +1802,12 @@ int main(int argc, char* argv[]) {
                  "(steady-state RWP, no speed-decay transient) | 'gaussmarkov' "
                  "(smooth correlated tracks; --pause is inert under it)",
                  mobilityModel);
-    cmd.AddValue("propagation", "Propagation loss model: 'range' (disk) or 'tworay'", propagation);
+    cmd.AddValue("propagation",
+                 "Propagation loss model: 'range' (disk) | 'tworay' (#24) | "
+                 "'nakagami' (#60: the same two-ray path loss plus Nakagami-m "
+                 "fading, so tworay-vs-nakagami isolates fading alone). "
+                 "--range is inert under tworay and nakagami.",
+                 propagation);
     std::string rateManager = "constant2";
     cmd.AddValue("rateManager",
                  "Rate control: constant1|constant2|constant5|constant11 (fixed "
@@ -1859,7 +1891,18 @@ int main(int argc, char* argv[]) {
     P.nFlows  = nFlows > 0 ? static_cast<uint32_t>(nFlows) : (paper ? 20 : 5);
     P.cbrBps  = cbrBps >= 0 ? cbrBps : (thesis ? 2048.0 : paper ? 512.0 : 8000.0);
     P.startWindow = paper ? 180.0 : 5.0;
+    // An explicitly empty --propagation= has always meant "the default", and
+    // scenario-matrix.yml documents its blank input that way; normalise it
+    // rather than letting the guard below reject a working dispatch.
+    if (propagation.empty()) propagation = "range";
     P.propagation = propagation;
+    NS_ABORT_MSG_UNLESS(propagation == "range" || propagation == "tworay" ||
+                            propagation == "nakagami",
+                        "unknown --propagation='" << propagation
+                        << "' (expected range|tworay|nakagami). Refusing rather "
+                           "than falling through to a default channel: the "
+                           "silent fallback would produce a plausible run of "
+                           "the wrong channel (#60).");
     P.mobility = mobilityModel;
     NS_ABORT_MSG_UNLESS(mobilityModel == "rwp" || mobilityModel == "ssrwp" ||
                             mobilityModel == "gaussmarkov",

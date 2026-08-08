@@ -184,6 +184,41 @@ Three things worth knowing before dispatching a non-default arm:
 z extent and pitch is fixed at 0 — so nodes stay in the plane the propagation
 models and the field geometry assume.
 
+## Channel models (`--propagation`, [#24](https://github.com/danieljoppi/AntHocNet/issues/24) / [#60](https://github.com/danieljoppi/AntHocNet/issues/60))
+
+| value | model | why |
+|---|---|---|
+| **`range`** (default) | `RangePropagationLossModel` | A hard disk cutoff at `--range`. Reproducible connectivity independent of tx-power/sensitivity defaults — the #24 calibration disentangler. **The model the published corpus was measured under.** |
+| `tworay` | `TwoRayGroundPropagationLossModel` | The original evaluation's model: Friis below the crossover distance, 1/d⁴ beyond, so capture and edge losses vary with distance. |
+| `nakagami` | two-ray **+** `NakagamiPropagationLossModel` | The fading arm. Nakagami models only the fading envelope, so it is stacked on a distance-dependent model. |
+
+**`nakagami` deliberately reuses `tworay`'s exact path loss** (same `Frequency`,
+same `HeightAboveZ`), so the pair `{tworay, nakagami}` is a **controlled
+contrast isolating fading alone** rather than two unrelated channels. A
+channel-sensitivity axis built from two models that differ in several ways at
+once cannot attribute what it finds.
+
+The Nakagami *m*-profile is left at ns-3's defaults (`Distance1` 80 m,
+`Distance2` 200 m, `m0` 1.5, `m1` 0.75, `m2` 0.75) — near-Rician close in,
+Rayleigh-like further out. Not tuned: an unsourced *m*-profile would be exactly
+the kind of invented constant [#88](https://github.com/danieljoppi/AntHocNet/issues/88)
+and [#173](https://github.com/danieljoppi/AntHocNet/issues/173) were.
+
+Two consequences the preflight now states at dispatch time rather than leaving
+to be discovered:
+
+- **`--range` is inert under `tworay` and `nakagami`.** There is no hard
+  cutoff; link existence is governed by tx power against receiver sensitivity.
+  The preflight's node-degree and connectivity arithmetic is a *disk-model*
+  calculation and is indicative only on these channels.
+- **`nakagami` is the harness's first stochastic channel.** Link existence
+  includes a random draw, so per-seed dispersion is higher than on the
+  deterministic channels and the [runs floor](#runs-floor) should be treated as
+  a minimum rather than a target — check interval widths before quoting a tail
+  metric. Its RNG draws are pinned per seed by the existing channel
+  `AssignStreams` call, so runs stay reproducible
+  ([#352](https://github.com/danieljoppi/AntHocNet/issues/352)).
+
 ## Statistical policy ([#293](https://github.com/danieljoppi/AntHocNet/issues/293))
 
 Every number published in these pages or in the papers repo carries a **95%

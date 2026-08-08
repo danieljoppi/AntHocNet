@@ -35,7 +35,7 @@ on:
         description: 'Comma-separated protocol list'
         default: 'anthocnet,aodv,olsr,dsdv'
       propagation:
-        description: 'Propagation model: range (disk) | tworay (#24)'
+        description: 'Propagation model: range (disk) | tworay (#24) | nakagami (#60 — the same two-ray path loss plus Nakagami-m fading, so tworay-vs-nakagami isolates fading alone). range is inert under the latter two.'
         default: 'range'
       mobility:
         description: 'Mobility model (#61): rwp (Random Waypoint — the model every published number was measured under) | ssrwp (steady-state RWP, no speed-decay transient) | gaussmarkov (smooth correlated tracks; pause is inert under it, so pass pause=0)'

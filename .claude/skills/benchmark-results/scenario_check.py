@@ -212,6 +212,25 @@ def cmd_preflight(a):
         report("FAIL", "--mobility=ssrwp needs a positive speed: the "
                        "steady-state distribution divides by speed and is "
                        "undefined at zero (#61)")
+    # #60 channel-model coherence. The degree/connectivity arithmetic above is
+    # a *disk-model* calculation: it treats `range` as a hard link cutoff. Under
+    # tworay and nakagami there is no cutoff — links are governed by tx power
+    # vs receiver sensitivity, and under nakagami by a random draw on top of
+    # that — so `range` bounds nothing and the estimate is indicative only.
+    # Pre-existing for tworay; stated now rather than left for the fading arm
+    # to discover.
+    if a.propagation != "range":
+        report("WARN", f"--propagation={a.propagation}: --range is inert (no "
+                       "hard cutoff), so the node-degree and connectivity "
+                       "figures above are a disk-model estimate and do not "
+                       "bound this channel's links (#24, #60)")
+    if a.propagation == "nakagami":
+        report("WARN", "nakagami is the harness's first stochastic channel: "
+                       "link existence is a random draw, so per-seed "
+                       "dispersion is higher than on the deterministic "
+                       "channels and the #293 runs floor should be treated as "
+                       "a minimum, not a target — check the interval widths "
+                       "before quoting a tail metric (#60)")
     if a.mobility != "rwp":
         report("WARN", f"--mobility={a.mobility} is not the model the "
                        "published corpus was measured under (rwp); its "
@@ -900,6 +919,8 @@ def main():
     p.add_argument("--pathWindowS", type=float, default=10)
     p.add_argument("--mobility", choices=("rwp", "ssrwp", "gaussmarkov"),
                    default="rwp")
+    p.add_argument("--propagation", choices=("range", "tworay", "nakagami"),
+                   default="range")
     r = sub.add_parser("results")
     r.add_argument("files", nargs="+")
     r.add_argument("--anchor", choices=sorted(ANCHOR_KEY))
