@@ -669,6 +669,10 @@ struct Params {
     // every published number was measured under) | "ssrwp" (steady-state RWP,
     // no speed-decay transient) | "gaussmarkov" (smooth correlated tracks).
     std::string mobility;
+    // #63: transport. "udp" (CBR OnOff, the default and what every published
+    // number was measured under) | "tcp" (saturating BulkSend). Read the
+    // metric-semantics warning above the flow loop before quoting a TCP cell.
+    std::string transport;
 };
 
 struct Result {
@@ -713,6 +717,12 @@ struct Result {
     // -1 = not measured (the PHY State trace is only connected when the energy
     // model is on), which suppresses the ##AIR## row entirely.
     double airTxS = -1.0, airRxS = -1.0, airCcaS = -1.0;
+    // #63: application bytes actually delivered, per second, summed over the
+    // PacketSinks. Distinct from throughputKbps, which is FlowMonitor's
+    // delivered *IP* bytes and therefore counts TCP retransmissions. On UDP the
+    // two agree; on TCP their gap is the retransmission overhead, which is why
+    // this is the TCP arm's headline rather than PDR.
+    double goodputKbps = 0.0;
     double energyJ = 0.0;        // total consumed over all nodes (J)
     double energyPerPktJ = 0.0;  // energyJ / delivered data packets (J/pkt)
     double resMinJ = 0.0;        // residual energy across nodes: min / mean /
@@ -1105,6 +1115,36 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         uint32_t src = i;
         uint32_t dst = converge ? static_cast<uint32_t>(P.sink) : (P.nNodes - 1 - i);
         if (src == dst) continue;  // source coincides with the gateway: skip
+        // #63: the TCP arm. A saturating BulkSend, not a rate-limited OnOff
+        // over TCP: at the paper's 512 bps / 1 packet-per-second the congestion
+        // window never leaves 1-2 segments, so reordering — the entire reason
+        // this arm exists — could not affect it. The trade is that 20
+        // saturating flows congest a pinned 2 Mbit/s channel, so this is its
+        // own regime and NOT a drop-in variant of the UDP base scenario.
+        //
+        // READ THE METRICS DIFFERENTLY HERE. TCP retransmits until it succeeds,
+        // so FlowMonitor's txPackets inflates and `pdr` stops being a delivery
+        // ratio; `thrput` counts retransmitted IP bytes rather than goodput;
+        // and NRL's per-delivered-packet denominator inflates with them, which
+        // *flatters* whichever protocol reorders most — the opposite of what
+        // this arm is measuring. The headline for a TCP cell is ##GOODPUT##
+        // (application bytes delivered), emitted below.
+        if (P.transport == "tcp") {
+            BulkSendHelper bulk("ns3::TcpSocketFactory",
+                                InetSocketAddress(ifs.GetAddress(dst), port));
+            bulk.SetAttribute("MaxBytes", UintegerValue(0));  // unbounded
+            const double startS = startVar->GetValue();
+            bulk.SetAttribute("StartTime", TimeValue(Seconds(startS)));
+            bulk.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
+            apps.Add(bulk.Install(nodes.Get(src)));
+            if (!converge) {
+                g_flowStart.push_back(startS);
+                PacketSinkHelper sink("ns3::TcpSocketFactory",
+                                      InetSocketAddress(Ipv4Address::GetAny(), port));
+                sinks.Add(sink.Install(nodes.Get(dst)));
+            }
+            continue;
+        }
         OnOffHelper onoff("ns3::UdpSocketFactory",
                           InetSocketAddress(ifs.GetAddress(dst), port));
         onoff.SetAttribute("DataRate", StringValue(rate.str()));
@@ -1135,7 +1175,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         }
     }
     if (converge && P.sink >= 0 && static_cast<uint32_t>(P.sink) < P.nNodes) {
-        PacketSinkHelper sink("ns3::UdpSocketFactory",
+        PacketSinkHelper sink(P.transport == "tcp" ? "ns3::TcpSocketFactory"
+                                                   : "ns3::UdpSocketFactory",
                               InetSocketAddress(Ipv4Address::GetAny(), port));
         sinks.Add(sink.Install(nodes.Get(P.sink)));
     }
@@ -1162,8 +1203,20 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // sequence number is read here rather than through PacketSink's own
     // EnableSeqTsSizeHeader path (that one runs a TCP-oriented reassembly buffer
     // we have no use for on UDP).
-    for (uint32_t i = 0; i < sinks.GetN(); ++i) {
-        sinks.Get(i)->TraceConnectWithoutContext("Rx", MakeCallback(&RecordRxSeq));
+    // #63: NOT connected under TCP. RecordRxSeq reads a SeqTsSizeHeader off the
+    // sink's "Rx" trace, which hands over whole datagrams on UDP but byte-stream
+    // chunks on TCP — the parse would be garbage rather than absent, i.e. a
+    // wrong number instead of no number. The reorder columns therefore read as
+    // absent on a TCP cell, following the ##HOLD##/##AIR## rule.
+    //
+    // The irony is worth stating: TCP is the arm where reordering matters most
+    // (it is what collapses the congestion window, and the reason #63 exists)
+    // and it is the arm our reordering instrumentation cannot measure. Read the
+    // mechanism from ##GOODPUT## against the UDP arm instead.
+    if (P.transport != "tcp") {
+        for (uint32_t i = 0; i < sinks.GetN(); ++i) {
+            sinks.Get(i)->TraceConnectWithoutContext("Rx", MakeCallback(&RecordRxSeq));
+        }
     }
 
     if (g_diag) {
@@ -1212,6 +1265,21 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     FlushDiversityWindow();
     Result r;
     r.proto = proto;
+    // #63: application-level goodput, summed over the PacketSinks. Measured
+    // rather than derived, and independent of FlowMonitor — so on the UDP arm
+    // it should track throughputKbps closely, and that agreement is a free
+    // cross-check on the new metric. On TCP the two diverge by exactly the
+    // retransmitted bytes.
+    {
+        uint64_t rxBytes = 0;
+        for (uint32_t i = 0; i < sinks.GetN(); ++i) {
+            Ptr<PacketSink> ps = DynamicCast<PacketSink>(sinks.Get(i));
+            if (ps) rxBytes += ps->GetTotalRx();
+        }
+        r.goodputKbps = P.simTime > 0.0
+                            ? 8.0 * static_cast<double>(rxBytes) / P.simTime / 1000.0
+                            : 0.0;
+    }
     double totalDelay = 0.0;
     uint64_t rxForDelay = 0;
     double totalRxBytes = 0.0;
@@ -1803,7 +1871,15 @@ int main(int argc, char* argv[]) {
                           "distribution (meanQ/maxQ/pctNonzero) — does A2 have a "
                           "signal? (#73)", g_qdiag);
     std::string mobilityModel = "rwp";
+    std::string transport = "udp";
     std::string propagation = "range";
+    cmd.AddValue("transport",
+                 "Transport (#63): 'udp' (CBR OnOff, default — what every "
+                 "published number was measured under) | 'tcp' (saturating "
+                 "BulkSend). A TCP cell is its own regime: pdr/thrput/nrl "
+                 "change meaning and the reorder columns go absent; read "
+                 "##GOODPUT##.",
+                 transport);
     cmd.AddValue("mobility",
                  "Mobility model (#61): 'rwp' (Random Waypoint, default — the "
                  "model every published number was measured under) | 'ssrwp' "
@@ -1912,6 +1988,12 @@ int main(int argc, char* argv[]) {
                            "silent fallback would produce a plausible run of "
                            "the wrong channel (#60).");
     P.mobility = mobilityModel;
+    P.transport = transport;
+    NS_ABORT_MSG_UNLESS(transport == "udp" || transport == "tcp",
+                        "unknown --transport='" << transport
+                        << "' (expected udp|tcp). Refusing rather than "
+                           "defaulting to udp: a typo would silently produce a "
+                           "UDP run labelled as a TCP one (#63).");
     NS_ABORT_MSG_UNLESS(mobilityModel == "rwp" || mobilityModel == "ssrwp" ||
                             mobilityModel == "gaussmarkov",
                         "unknown --mobility='" << mobilityModel
@@ -2006,6 +2088,7 @@ int main(int argc, char* argv[]) {
               << " speed=" << P.speed << " pause=" << P.pause
               << " range=" << P.range << " propagation=" << P.propagation
               << " mobility=" << P.mobility
+              << " transport=" << P.transport
               << " flows=" << P.nFlows << " cbrBps=" << P.cbrBps
               << " rateManager=" << P.rateManager
               << " protocols=" << protocols << '\n';
@@ -2030,6 +2113,24 @@ int main(int argc, char* argv[]) {
                 std::cout << "##CONFIG## attr " << info.name << '='
                           << info.initialValue->SerializeToString(info.checker)
                           << '\n';
+            }
+        }
+    }
+    // #63: on a TCP run, the congestion-control variant IS part of the
+    // configuration -- ns-3's default has changed across releases, so a cell
+    // that does not record it is not reproducible against a future image.
+    if (P.transport == "tcp") {
+        TypeId tcpTid;
+        if (TypeId::LookupByNameFailSafe("ns3::TcpL4Protocol", &tcpTid)) {
+            const std::size_t nT = tcpTid.GetAttributeN();
+            for (std::size_t a = 0; a < nT; ++a) {
+                const TypeId::AttributeInformation info = tcpTid.GetAttribute(a);
+                if (info.name != "SocketType") continue;
+                if (!info.initialValue || !info.checker) break;
+                std::cout << "##CONFIG## attr ns3::TcpL4Protocol::SocketType="
+                          << info.initialValue->SerializeToString(info.checker)
+                          << '\n';
+                break;
             }
         }
     }
@@ -2108,6 +2209,14 @@ int main(int argc, char* argv[]) {
                           << (nodeSeconds > 0.0 ? 100.0 * busy / nodeSeconds : 0.0)
                           << "\n";
             }
+            // #63: application bytes delivered per second, from the
+            // PacketSinks. Emitted on every run, not only TCP ones: on UDP it
+            // should track the thrput column, and that agreement is the
+            // cross-check that the metric is wired correctly. On TCP the gap
+            // between the two is the retransmission overhead, and ##GOODPUT##
+            // -- not pdr, not thrput -- is the cell's headline.
+            std::cout << std::fixed << "##GOODPUT## " << s << ' ' << list[i]
+                      << ' ' << std::setprecision(3) << r.goodputKbps << "\n";
             agg[i].pdr += r.pdr;
             agg[i].delay += r.meanDelayMs;
             agg[i].delay99 += r.delay99Ms;

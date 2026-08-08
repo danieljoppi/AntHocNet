@@ -196,6 +196,37 @@ all-delivered basis. What it cannot say is how the split looks on the packets
 both protocols carried, where the delay ratio is 1.44× rather than 1.68×. That
 is the question `hopsCommon` answers.
 
+### Application goodput (`##GOODPUT##`, #63)
+
+```
+##GOODPUT## <run> <proto> <kbps>
+```
+
+Application bytes delivered per second, summed over the `PacketSink`s —
+**measured at the application, not derived from FlowMonitor.**
+
+Emitted on **every** run, not only TCP ones, and that is deliberate: on the UDP
+arm it should track the `thrput` column closely, and the agreement is a free
+cross-check that the metric is wired correctly. On TCP the two diverge, and the
+gap between them *is* the retransmission overhead.
+
+**On a TCP cell this is the headline, and `pdr` is not.** TCP retransmits until
+it succeeds, so FlowMonitor's `txPackets` inflates while `rxPackets` counts each
+delivery once: the ratio stops being a delivery fraction. Three columns change
+meaning on a TCP cell and must not be compared with a UDP one:
+
+| column | why it breaks under TCP |
+|---|---|
+| `pdr` | retransmissions inflate the denominator; it is no longer "fraction of offered data delivered" |
+| `thrput` | FlowMonitor counts delivered *IP* bytes, so retransmitted segments count as throughput |
+| `nrl` | control packets per *delivered data packet* — retransmissions inflate the denominator, which **flatters** whichever protocol reorders most, inverting the metric exactly where it matters |
+
+The reorder columns are **absent** on a TCP cell rather than zero: `RecordRxSeq`
+reads a `SeqTsSizeHeader` off the sink's `Rx` trace, which carries whole
+datagrams on UDP but byte-stream chunks on TCP, so the hook is not connected at
+all. Worth stating plainly — TCP is the arm where reordering matters most, and
+it is the arm this instrumentation cannot measure.
+
 ### Run provenance (`##CONFIG##`, #369)
 
 ```

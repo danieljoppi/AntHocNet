@@ -219,6 +219,33 @@ to be discovered:
   `AssignStreams` call, so runs stay reproducible
   ([#352](https://github.com/danieljoppi/AntHocNet/issues/352)).
 
+## Transport (`--transport`, [#63](https://github.com/danieljoppi/AntHocNet/issues/63))
+
+`udp` (default) is the paper's CBR/OnOff traffic and what **every published
+number was measured under**. `tcp` installs a saturating `BulkSendApplication`
+over `TcpSocketFactory`.
+
+**A TCP cell is its own regime, not a variant of the base scenario.** Twenty
+saturating flows congest the pinned 2 Mbit/s channel, so its delay and delivery
+columns are not comparable with a UDP cell's, and `scenario_check.py preflight`
+WARNs to that effect: `BulkSend` ignores `cbrBps`/`pktPerSec`, so the
+offered-load and channel-saturation arithmetic does not describe the run.
+
+Saturating rather than rate-matched is a deliberate choice. At the paper's
+512 bps (1 packet/s) a TCP congestion window never leaves 1–2 segments, so
+reordering — the entire mechanism this arm exists to expose — could not affect
+it. A load-matched TCP arm would be comparable to the UDP cells and would have
+the finding designed out of it.
+
+Read [`##GOODPUT##`](metrics.md#application-goodput-goodput-63), not `pdr`: the
+table there lists the three columns that change meaning under TCP, and why the
+reorder columns are absent rather than zero.
+
+The congestion-control variant is recorded in the run's `##CONFIG##` block
+(`ns3::TcpL4Protocol::SocketType`), because ns-3's default has changed across
+releases and a cell that does not state it is not reproducible against a future
+image.
+
 ## Statistical policy ([#293](https://github.com/danieljoppi/AntHocNet/issues/293))
 
 Every number published in these pages or in the papers repo carries a **95%
