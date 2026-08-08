@@ -4,6 +4,19 @@
 
 [← Benchmark index](../../benchmarks.md) · [Metrics](../metrics.md) · [Methodology](../methodology.md)
 
+> **Provenance — measured at `v1.3.0`.** Every number on this page was
+> produced by the campaign runs named below, all of which predate the
+> [`v1.3.0`](https://github.com/danieljoppi/AntHocNet/releases/tag/v1.3.0) tag
+> (`19009be`). No commit between `v1.2.0` and that tag changes routing
+> behaviour, so **checking out `v1.3.0` reproduces these cells.** The default
+> branch will not: it has since changed the pheromone weighting
+> ([#327](https://github.com/danieljoppi/AntHocNet/issues/327), `betaAnts`/
+> `betaData` 2.0 → 20) and the per-seed RNG stream assignment
+> ([#352](https://github.com/danieljoppi/AntHocNet/issues/352)), either of
+> which moves measured values. See
+> [Provenance](../methodology.md#provenance-which-version-a-number-was-measured-at)
+> and [#365](https://github.com/danieljoppi/AntHocNet/issues/365).
+
 ## What it varies
 
 Reproduces **Fig. 1** of the AntHocNet paper (Di Caro/Ducatelle/Gambardella,
