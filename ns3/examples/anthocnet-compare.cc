@@ -969,8 +969,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             StringValue("ns3::NormalRandomVariable[Mean=0.0|Variance=1.0|Bound=1.0]"),
             "NormalDirection",
             StringValue("ns3::NormalRandomVariable[Mean=0.0|Variance=0.2|Bound=0.4]"),
+            // Zero-variance *Normal*, not a ConstantRandomVariable: ns-3 types
+            // the three Normal* attributes with
+            // MakePointerChecker<NormalRandomVariable>, so a constant is
+            // rejected outright ("Invalid value for attribute set
+            // (NormalPitch)", SIGABRT). MeanPitch above takes the plain
+            // RandomVariableStream checker and does accept a constant, which
+            // is why only this one tripped. Variance 0 keeps the pitch pinned
+            // at 0 and the model two-dimensional.
             "NormalPitch",
-            StringValue("ns3::ConstantRandomVariable[Constant=0.0]"));
+            StringValue("ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"));
     } else {
         mobility.SetMobilityModel("ns3::RandomWaypointMobilityModel",
                                   "Speed", StringValue(speedStr.str()),
