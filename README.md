@@ -253,9 +253,17 @@ is distributed as **source** (`make install-ns3` / `make install-ns2`) plus the
 pre-built **Docker images** on GHCR (see [docker/README.md](docker/README.md)).
 
 To cite this implementation, use the “Cite this repository” button (from
-[CITATION.cff](CITATION.cff)). Once the repo is linked to
-[Zenodo](https://zenodo.org), each release is archived with a DOI, which is then
-added to `CITATION.cff`. Please also cite the sources this implements:
+[CITATION.cff](CITATION.cff)). Each release is archived on
+[Zenodo](https://zenodo.org) with its own DOI:
+
+| DOI | resolves to |
+|---|---|
+| [`10.5281/zenodo.20981979`](https://doi.org/10.5281/zenodo.20981979) | **concept DOI** — always the latest release. This is the badge above, and the right citation when you mean "this project". |
+| [`10.5281/zenodo.21795253`](https://doi.org/10.5281/zenodo.21795253) | **version DOI — `v1.3.0`.** Cite this when reproducing a published number: every benchmark result in `docs/benchmarks/` was measured at or before that tag, and `main` has since moved (see [Provenance](docs/benchmarks/methodology.md#provenance-which-version-a-number-was-measured-at)). |
+
+Both are recorded in `CITATION.cff`; the version DOI for a future release is
+added there when that release is archived. Please also cite the sources this
+implements:
 
 - G. Di Caro, F. Ducatelle, L. M. Gambardella, *AntHocNet: an Ant-Based Hybrid
   Routing Algorithm for Mobile Ad Hoc Networks*, PPSN VIII, LNCS 3242,

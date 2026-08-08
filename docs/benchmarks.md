@@ -33,6 +33,8 @@ index: the headline cross-scenario summary, plus a link to every detail page.
 | [area](benchmarks/sweeps/area.md) | Paper Fig. 1 — long edge 1500→2500 m. |
 | [pause](benchmarks/sweeps/pause.md) | Paper Fig. 2 — pause time 0→900 s. |
 | [scale](benchmarks/sweeps/scale.md) | Paper Fig. 3 — terrain ×f, nodes ×f² (50→200 nodes). |
+| **Grid** | |
+| [mobility × channel](benchmarks/grid.md) | v1.4.0's six-cell grid — {rwp, ssrwp, gaussmarkov} × {tworay, nakagami}, and the **scoped** ranking-stability statement: delivery and overhead stable everywhere, the tail ranking inverts with the channel. Measured *after* `v1.3.0`, so not comparable with the pages above. |
 | **Satellite suite** | |
 | [satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) | The ISL-grid regime: harness, analytic anchors, how to dispatch, and what it is waiting on (#216). |
 | [benchmarks/README.md](benchmarks/README.md) | How the figures and this folder are generated. |
