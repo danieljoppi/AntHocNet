@@ -40,7 +40,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ANCHORS_YML = os.path.normpath(
     os.path.join(HERE, "..", "..", "..", "ns3", "tools", "anchors.yml"))
 ANCHOR_KEY = {"single-hop": "single_hop_pdr_min",
-              "broch-low-mobility": "broch_low_mobility_aodv_pdr_min"}
+              "broch-low-mobility": "broch_low_mobility_aodv_pdr_min",
+              # #61/#60 grid arms. Regression floors from our own 20-seed
+              # measurement, not literature values — see anchors.yml for why
+              # there is nothing external to anchor these against.
+              "grid-tworay": "grid_tworay_aodv_pdr_min",
+              "grid-nakagami": "grid_nakagami_aodv_pdr_min"}
 
 # #217: core Config::maxPathLength — the cap on the visited path an ant carries
 # and therefore on any path the protocol can lay. A delivered data packet
@@ -233,9 +238,12 @@ def cmd_preflight(a):
                        "before quoting a tail metric (#60)")
     if a.mobility != "rwp":
         report("WARN", f"--mobility={a.mobility} is not the model the "
-                       "published corpus was measured under (rwp); its "
-                       "anchor floors do not apply and results are not "
-                       "comparable to the published cells (#59, #61)")
+                       "published corpus was measured under (rwp), so its "
+                       "results are not comparable to the published cells. "
+                       "The Broch floor is RWP-specific and does not apply; "
+                       "validate with --anchor grid-tworay / grid-nakagami "
+                       "instead, which are regression floors from the v1.4.0 "
+                       "grid rather than literature values (#59, #61, #60)")
     # #230: the diversity window must be short relative to how fast the
     # topology changes, or a route being *replaced* inside one window reads as
     # two concurrent paths and path_div_used stops meaning multipath. Two nodes
