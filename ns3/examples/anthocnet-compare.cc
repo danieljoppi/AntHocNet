@@ -2693,13 +2693,24 @@ int main(int argc, char* argv[]) {
     // five columns by name. Expect ~0 for AODV/OLSR/DSDV and for AntHocNet with
     // EnableMultipath=false; a non-zero AntHocNet figure is the stochastic
     // multipath working as designed, not a fault (docs/benchmarks/metrics.md).
-    for (std::size_t i = 0; i < list.size(); ++i) {
-        std::cout << std::fixed << "# reorder " << list[i]
-                  << " ratio=" << std::setprecision(4) << agg[i].reordRatio
-                  << " ratioWorstFlow=" << std::setprecision(4) << agg[i].reordRatioMax
-                  << " extentMean=" << std::setprecision(2) << agg[i].reordExtMean
-                  << " extentMax=" << std::setprecision(2) << agg[i].reordExtMax
-                  << " bufMax=" << std::setprecision(2) << agg[i].reordBufMax << "\n";
+    //
+    // #63: NOT emitted at all under TCP. RecordRxSeq is deliberately not
+    // connected there (a SeqTsSizeHeader cannot be parsed off a byte stream),
+    // so these accumulators never receive a sample and the line would print
+    // all-zeros — asserting "no reordering occurred" when the truth is "nobody
+    // measured". That is precisely the claim ##HOLD## and ##AIR## refuse to
+    // make, and a probe caught this printing 0.0000 on a TCP cell after the
+    // hook was already correctly skipped: disconnecting the source is only
+    // half of encoding absence, the emission has to go too.
+    if (P.transport != "tcp") {
+        for (std::size_t i = 0; i < list.size(); ++i) {
+            std::cout << std::fixed << "# reorder " << list[i]
+                      << " ratio=" << std::setprecision(4) << agg[i].reordRatio
+                      << " ratioWorstFlow=" << std::setprecision(4) << agg[i].reordRatioMax
+                      << " extentMean=" << std::setprecision(2) << agg[i].reordExtMean
+                      << " extentMax=" << std::setprecision(2) << agg[i].reordExtMax
+                      << " bufMax=" << std::setprecision(2) << agg[i].reordBufMax << "\n";
+        }
     }
     return 0;
 }
