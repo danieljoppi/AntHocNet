@@ -106,6 +106,7 @@ nav:
           - benchmarks/sweeps/area.md
           - benchmarks/sweeps/pause.md
           - benchmarks/sweeps/scale.md
+      - benchmarks/grid.md
   - Research provenance & fidelity:
       - fidelity.md
       - publications/README.md
