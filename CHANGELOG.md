@@ -8,6 +8,33 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v1.4.0 (2026-08-09)
+
+### Feat
+
+- **bench**: widen the data-packet predicate to accept tcp on the data port (#393)
+- **bench**: emit the raw drop-identity counters to test #377's mechanism (#384)
+- **bench**: record the commit every published number was measured at (#383)
+- **bench**: add a TCP arm — saturating BulkSend, with ##GOODPUT## as its headline (#381)
+- **bench**: regression floors for the grid arms — and why they are not anchors (#380)
+- **bench**: add a Nakagami fading channel — the other half of the v1.4.0 grid (#374)
+- **bench**: add a mobility-model knob — steady-state RWP and Gauss-Markov (#373)
+- **bench**: emit ##CONFIG## so a run records the configuration it ran with (#370)
+- **bench**: emit ##HOLD## so pending-queue hold time is reachable, not just measured (#367)
+- **bench**: measure channel occupancy per run for the #308 per-hop hypothesis (#364)
+- **bench**: emit hopsCommon/hopsSurplus for the #308 phase-2 decomposition (#363)
+- **core**: adopt the thesis's pheromone exponents, betaAnts = betaData = 20 (#327)
+- **bench**: paired per-seed verdicts in sweep_summary --vs (#326)
+
+### Fix
+
+- **bench**: carve genuine losses out of the drop residual, not raw MAC drops (#388)
+- **bench**: the drop-identity overlap must use macDrops, not macTerminal (#385)
+- **bench**: reorder columns must be absent under TCP, not zero (#382)
+- **bench**: gauss-markov aborted on NormalPitch — a constant where ns-3 demands a normal (#375)
+- **bench**: pin manet-baselines rng streams and extend the seed-independence gate (#361)
+- **bench**: pin rng streams per seed so results do not depend on split structure (#355)
+
 ## v1.3.0 (2026-08-04)
 
 ### Feat
