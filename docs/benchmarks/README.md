@@ -14,6 +14,8 @@ docs/benchmarks/
                               configuration, full metric table (generated block)
   sweeps/<name>.md            one page per parameter sweep: what it varies, the paper
                               figure it reproduces, chart + per-point table (generated block)
+  tcp.md                      the transport arm: TCP goodput + paired tests + UDP control
+                              (hand-written tables; data in campaign/tcp-goodput.csv)
   campaign/*.csv              raw campaign sweep CSVs rescued from expiring artifacts
   *.png                       the figures, written here by make-charts.py
 ```

@@ -35,6 +35,8 @@ index: the headline cross-scenario summary, plus a link to every detail page.
 | [scale](benchmarks/sweeps/scale.md) | Paper Fig. 3 — terrain ×f, nodes ×f² (50→200 nodes). |
 | **Grid** | |
 | [mobility × channel](benchmarks/grid.md) | v1.4.0's six-cell grid — {rwp, ssrwp, gaussmarkov} × {tworay, nakagami}, and the **scoped** ranking-stability statement: delivery and overhead stable everywhere, the tail ranking inverts with the channel. Measured *after* `v1.3.0`, so not comparable with the pages above. |
+| **Transport** | |
+| [tcp](benchmarks/tcp.md) | v1.4.0's TCP arm — goodput over `TcpCubic` at the paper base scenario, 20 seeds + a 20-seed UDP control. The delivery ranking **reorders** under TCP (AODV 3rd → last, DSDV rises, anthocnet–olsr a statistical tie): a transport-layer claim that does not name its transport is unsupported. Measured *after* `v1.3.0`. |
 | **Satellite suite** | |
 | [satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) | The ISL-grid regime: harness, analytic anchors, how to dispatch, and what it is waiting on (#216). |
 | [benchmarks/README.md](benchmarks/README.md) | How the figures and this folder are generated. |
