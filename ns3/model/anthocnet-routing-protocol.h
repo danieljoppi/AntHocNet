@@ -75,6 +75,13 @@ public:
     typedef void (*AntTxCallback)(uint8_t type, uint8_t direction, bool broadcast);
     typedef void (*AntRxCallback)(uint8_t type, uint8_t direction);
     typedef void (*RouteChangedCallback)(uint32_t dest, uint32_t neighbor, bool added);
+    // #386: a MAC retry-limit-dropped data packet was re-injected into the
+    // pending queue (#46). `header` is the packet's Ipv4 header as captured off
+    // the failed MPDU; `packet` is the queued form (UDP header + payload, no IP
+    // header — RouteInput's convention). Fired once per re-injection, at the
+    // same site that increments MacReinjectedPackets(), so a listener's event
+    // count and that counter agree by construction.
+    typedef void (*MacReinjectCallback)(const Ipv4Header& header, Ptr<const Packet> packet);
 
     // core::IRouterObserver
     void onAntSent(::anthocnet::core::AntType type,
@@ -376,6 +383,8 @@ private:
     TracedCallback<uint8_t, uint8_t, bool> m_txAntTrace;
     TracedCallback<uint8_t, uint8_t> m_rxAntTrace;
     TracedCallback<uint32_t, uint32_t, bool> m_routeChangedTrace;
+    // #386: MAC-failure re-injection (see MacReinjectCallback above).
+    TracedCallback<const Ipv4Header&, Ptr<const Packet>> m_macReinjectTrace;
 };
 
 } // namespace anthocnet

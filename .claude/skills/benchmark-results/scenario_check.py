@@ -110,6 +110,30 @@ PROV_LINE = re.compile(r"^\s*##PROV##\s+commit=([0-9a-fA-F]{7,40})\b")
 DROPID_LINE = re.compile(
     r"^\s*##DROPID##\s+(\d+)\s+([a-z][\w-]*)\s+.*\boverlap=(-?\d+)\b"
     r".*\bunackedRx=(-?\d+)\b")
+# #386: the same ##DROPID## row read for the re-injection cross-checks — the
+# fields check_reinj needs (macDrops/reinjected for the events identity and the
+# inclusion-exclusion floor). Separate from DROPID_LINE so the #377 rule's
+# match groups stay untouched.
+DROPID_REINJ_FIELDS = re.compile(
+    r"^\s*##DROPID##\s+(\d+)\s+([a-z][\w-]*)\s+.*\bmacDrops=(\d+)\b"
+    r".*\breinjected=(\d+)\b.*\bunackedRx=(-?\d+)\b")
+# #386: re-injection identity/fate, one row per (seed, anthocnet) on UDP cells.
+#   ##REINJ## <seed> <proto> events=.. parsed=.. ofDelivered=.. pkts=..
+#     pktsDelivBefore=.. pktsDelivAfterOnly=.. pktsNever=.. pktsDupDeliv=..
+#     dupRx=.. postTx=.. postRx=.. l3DropRoute=.. l3DropTtl=.. l3DropOther=..
+# Absent for the baselines and on TCP cells (absence encoding, #382); a
+# detector-off anthocnet arm emits it with all fields zero. Only the fields the
+# rules read are matched; the l3Drop* tail is the cuttable stage and is not.
+REINJ_LINE = re.compile(
+    r"^\s*##REINJ##\s+(\d+)\s+([a-z][\w-]*)\s+events=(\d+)\s+parsed=(\d+)"
+    r"\s+ofDelivered=(\d+)\s+pkts=(\d+)\s+pktsDelivBefore=(\d+)"
+    r"\s+pktsDelivAfterOnly=(\d+)\s+pktsNever=(\d+)\b")
+# #386: the knob the coherence rule reads. Preflight cannot see extraArgs (it
+# takes numeric scenario args only), so detector-off coherence is enforced
+# results-side from the ##CONFIG## attr dump of effective attribute values.
+CONFIG_MACDET_OFF = re.compile(
+    r"^\s*##CONFIG##\s+attr\s+EnableMacFailureDetector=(?:false|0)\s*$",
+    re.MULTILINE)
 # #308 phase 2: the per-run common-set rows. Unlike the diagnostic lines above
 # there is one per (run, protocol), so they are folded into the protocol's row
 # as an extremum rather than merged field-by-field — the rules below ask "did
@@ -621,12 +645,103 @@ def check_drop_identity(path):
                        "refutes it and the cause is something else.")
 
 
+def check_reinj(path):
+    """#386: the re-injection identity/fate books must be internally coherent.
+
+    ##REINJ## is the direct counter behind the #386 inclusion-exclusion floor
+    (>=59% of re-injections are of already-delivered packets). Its trace fires
+    at the SAME adapter site that increments MacReinjectedPackets(), so
+    `events` and ##DROPID##'s `reinjected` are two readings of one increment —
+    a mismatch is an instrumentation bug, never a protocol behaviour. The same
+    holds for `parsed`: on a UDP cell every non-ant data packet is a SeqTs CBR
+    datagram, so the (flow, seq) parse must be total.
+
+    Controls (the #229/#230 rule, a-priori values):
+      - baselines emit NO row at all (absence encoding, #382) — a row with a
+        non-anthocnet protocol is a harness regression, FAIL;
+      - an EnableMacFailureDetector=false arm emits the row with events=0 (a
+        measured zero; the ##CONFIG## attr dump carries the effective knob
+        value, so the coherence is checkable results-side — preflight cannot
+        see extraArgs), FAIL otherwise.
+
+    The floor comparison is WARN, not FAIL: ofDelivered counts sink deliveries
+    strictly before re-injection time, while the ##DROPID## floor is built from
+    next-hop arrivals (unackedRx), so the two sit on slightly different events
+    and a small shortfall can be timing, not books. A large one means the
+    direct counter and the bound disagree and #386's premise needs re-checking.
+    """
+    with open(path) as fh:
+        text = fh.read()
+    if "##REINJ##" not in text:
+        return
+    base = os.path.basename(path)
+    detector_off = bool(CONFIG_MACDET_OFF.search(text))
+    # seed -> (macDrops, reinjected, unackedRx) from the anthocnet ##DROPID##
+    # rows, for the cross-book identity and the floor.
+    dropid = {}
+    for line in text.splitlines():
+        dm = DROPID_REINJ_FIELDS.match(line)
+        if dm and dm.group(2) == "anthocnet":
+            dropid[dm.group(1)] = (int(dm.group(3)), int(dm.group(4)),
+                                   int(dm.group(5)))
+    for line in text.splitlines():
+        m = REINJ_LINE.match(line)
+        if not m:
+            continue
+        seed, proto = m.group(1), m.group(2)
+        events, parsed, of_deliv, pkts = (int(m.group(3)), int(m.group(4)),
+                                          int(m.group(5)), int(m.group(6)))
+        before, after_only, never = (int(m.group(7)), int(m.group(8)),
+                                     int(m.group(9)))
+        tag = f"{base}/{proto}"
+        if proto != "anthocnet":
+            report("FAIL", f"{tag}: ##REINJ## row for a protocol with no "
+                           f"detector at seed {seed} — the baselines must stay "
+                           "absent, not zero (#386 control); the harness "
+                           "emission gate has regressed")
+            continue
+        if seed in dropid and events != dropid[seed][1]:
+            report("FAIL", f"{tag}: events={events} != reinjected="
+                           f"{dropid[seed][1]} at seed {seed} — one increment "
+                           "site, two readings; the ##REINJ## trace or the "
+                           "adapter counter is broken (#386)")
+        if parsed != events:
+            report("FAIL", f"{tag}: parsed={parsed} != events={events} at "
+                           f"seed {seed} — the (flow, seq) parse must be total "
+                           "on a UDP cell; a re-injected data packet the "
+                           "identity cannot name means the books are partial "
+                           "(#386)")
+        if of_deliv > events or before + after_only + never != pkts:
+            report("FAIL", f"{tag}: fate buckets incoherent at seed {seed} "
+                           f"(ofDelivered={of_deliv}/events={events}, "
+                           f"{before}+{after_only}+{never} != pkts={pkts}) — "
+                           "the partition must be exact (#386)")
+        if detector_off and events > 0:
+            report("FAIL", f"{tag}: events={events} at seed {seed} with "
+                           "EnableMacFailureDetector=false in ##CONFIG## — "
+                           "the detector-off control must read 0; either the "
+                           "gate or the config dump is wrong (#386)")
+        if seed in dropid:
+            mac_drops, reinjected, unacked = dropid[seed]
+            floor = reinjected + unacked - mac_drops
+            if floor > 0 and of_deliv < floor:
+                report("WARN", f"{tag}: ofDelivered={of_deliv} below the "
+                               f"inclusion-exclusion floor {floor} "
+                               f"(reinjected={reinjected}+unackedRx={unacked}"
+                               f"-macDrops={mac_drops}) at seed {seed} — the "
+                               "direct counter sits under the bound it was "
+                               "built to confirm. A small shortfall can be "
+                               "sink-vs-next-hop timing; a large one says the "
+                               "#386 books disagree (#386)")
+
+
 def cmd_results(a):
     floor = anchor_floor(a.anchor) if a.anchor else None
     n = 0
     for path in a.files:
         check_provenance(path)
         check_drop_identity(path)
+        check_reinj(path)
         for r in parse_results(path):
             n += 1
             tag = f"{r['where']}/{r['proto']}"

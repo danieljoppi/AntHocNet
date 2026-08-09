@@ -1070,6 +1070,59 @@ def _dropid_absent_quiet():
            f"absent counters were treated as a defect\n{out}")
 
 
+# --- #386 re-injection identity ------------------------------------------------
+# The clean fixture is shaped from the real 900 s gaussmarkov x nakagami cell
+# (run 31288485211 seed 1): reinjected=2698, unackedRx=1567, macDrops=2738, so
+# the inclusion-exclusion floor is 2698+1567-2738 = 1527 and the direct counter
+# must read at least that. The ##DROPID## row is the same one the #377
+# corrected-residual case uses, so it is known quiet under check_drop_identity.
+
+DROPID_REINJ_ARM = (
+    "##DROPID## 1 anthocnet hopTx=20571 hopRx=18761 ackedHops=17194 "
+    "macDrops=2738 reinjected=2698 macTerminal=40 macLost=1171 queue=0 "
+    "hopLoss=1810 overlap=-639 unackedRx=1567\n")
+REINJ_CLEAN = (
+    "##REINJ## 1 anthocnet events=2698 parsed=2698 ofDelivered=1608 pkts=2100 "
+    "pktsDelivBefore=1300 pktsDelivAfterOnly=520 pktsNever=280 "
+    "pktsDupDeliv=900 dupRx=940 postTx=5200 postRx=4600 "
+    "l3DropRoute=120 l3DropTtl=3 l3DropOther=0\n")
+
+
+@case("#386 a coherent ##REINJ## row against its ##DROPID## row stays quiet")
+def _reinj_clean_quiet():
+    # events == reinjected, parsed == events, buckets partition pkts, and
+    # ofDelivered=1608 sits above the 1527 floor: every #386 rule must hold its
+    # fire, or correct books become unreadable noise.
+    _levels, out = run_cell(ISL_CELL + DROPID_REINJ_ARM + REINJ_CLEAN)
+    expect("#386" not in out, "reinj-clean",
+           f"a coherent re-injection book was flagged\n{out}")
+
+
+@case("#386 events != reinjected FAILs, and a baseline ##REINJ## row FAILs")
+def _reinj_incoherent_fires():
+    # The one-increment-site identity: the ##REINJ## trace fires exactly where
+    # the adapter counter increments, so 460 vs 466 can only be a broken hook.
+    # The aodv row violates the absence control — baselines have no detector
+    # and must emit nothing, not zeros. ofDelivered=310 keeps the (separate)
+    # floor WARN out of this case: 466+317-475 = 308.
+    row = ("##DROPID## 1 anthocnet hopTx=4584 hopRx=4106 ackedHops=3789 "
+           "macDrops=475 reinjected=466 macTerminal=9 macLost=158 queue=0 "
+           "hopLoss=151 overlap=7 unackedRx=317\n"
+           "##REINJ## 1 anthocnet events=460 parsed=460 ofDelivered=310 "
+           "pkts=400 pktsDelivBefore=250 pktsDelivAfterOnly=90 pktsNever=60 "
+           "pktsDupDeliv=40 dupRx=41 postTx=800 postRx=700 "
+           "l3DropRoute=20 l3DropTtl=1 l3DropOther=0\n"
+           "##REINJ## 1 aodv events=0 parsed=0 ofDelivered=0 pkts=0 "
+           "pktsDelivBefore=0 pktsDelivAfterOnly=0 pktsNever=0 "
+           "pktsDupDeliv=0 dupRx=0 postTx=0 postRx=0 "
+           "l3DropRoute=0 l3DropTtl=0 l3DropOther=0\n")
+    _levels, out = run_cell(ISL_CELL + row)
+    expect("events=460 != reinjected=466" in out, "reinj-mismatch",
+           f"the events/reinjected identity break was not flagged\n{out}")
+    expect("protocol with no detector" in out, "reinj-baseline-row",
+           f"a baseline ##REINJ## row was accepted\n{out}")
+
+
 def main():
     for name, fn in CASES:
         fn()

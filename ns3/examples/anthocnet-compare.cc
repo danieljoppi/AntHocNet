@@ -238,6 +238,11 @@ std::map<Address, std::map<uint32_t, double>> g_rxDelayBySeq;
 // comes from the IP TTL and the sink's Rx trace has no IP header left to read.
 std::map<Address, std::map<uint32_t, uint32_t>> g_rxHopsBySeq;
 
+// #386: (flow, seq) -> number of sink deliveries seen so far. Same key as the
+// two maps above; filled by RecordRxSeq, read by the re-injection identity
+// block further down (see "re-injection identity & fate").
+std::map<Address, std::map<uint32_t, uint32_t>> g_rxCount;
+
 void RecordRxSeq(Ptr<const Packet> p, const Address& from) {
     SeqTsSizeHeader h;
     p->PeekHeader(h);
@@ -245,6 +250,12 @@ void RecordRxSeq(Ptr<const Packet> p, const Address& from) {
     const double now = Simulator::Now().GetSeconds();
     g_rxArrival[from].push_back(now);
     g_rxDelayBySeq[from][h.GetSeq()] = now - h.GetTs().GetSeconds();
+    // #386: per-key delivery count, so the re-injection instrumentation can ask
+    // "was this packet already delivered?" at trace-fire time and count
+    // duplicate deliveries at end of run. Kept for ALL protocols (this callback
+    // has no protocol knowledge): one uint32 per delivered (flow, seq), the
+    // same growth order as g_rxDelayBySeq's double above — accepted.
+    g_rxCount[from][h.GetSeq()] += 1;
 }
 
 // --- drop-cause breakdown (#215) --------------------------------------------
@@ -295,11 +306,150 @@ bool IsDataIp(Ptr<const Packet> p) {
     return udp.GetDestinationPort() == kDataPort;
 }
 
+// --- re-injection identity & fate (#386) -------------------------------------
+// The #46 detector-D re-injection path puts a MAC retry-limit-dropped data
+// packet back into the pending queue. The #377/#386 inclusion-exclusion bound
+// says >=59% of those re-injections are of packets that had ALREADY arrived at
+// the destination (unackedRx vs reinjected, a floor); this block measures it
+// directly, per packet, and follows what re-injected packets then DO.
+//
+// Identity is the (flow, seq) key the sink-side maps already use: flow =
+// InetSocketAddress(source IP, source UDP port) — byte-identical to the
+// PacketSink "Rx" trace's `from` (see CountDeliveredHops's key construction) —
+// and seq = the SeqTsSizeHeader sequence number. ns-3 Packet::GetUid() would
+// also survive the re-inject Copy() (uid lives in the copied metadata), but
+// (flow, seq) is what the delivered set is already keyed by, is readable in
+// logs, and survives any future packet re-creation.
+//
+// "Already delivered AT RE-INJECTION TIME" needs no timestamps: traces fire in
+// simulation-event order, so if the key is in g_rxCount when the MacReinject
+// trace fires, the delivery happened strictly earlier. A copy that has passed
+// the failing hop but not yet reached the sink counts as not-yet-delivered
+// here, so ofDelivered is a conservative direct count and the end-of-run fate
+// buckets bound the same quantity from the other side.
+
+// Per re-injected (flow, seq) key. `rxAtFirstReinj` snapshots the delivered
+// count when the key was FIRST re-injected (>=1 = the "already delivered"
+// class); postTx/postRx count this key's IP-layer hop transmissions/arrivals
+// AFTER that moment (membership in g_reinj starts at first re-injection, so
+// pre-re-injection hops are excluded by construction). The l3Drop* fields are
+// the isolated, cuttable drop-cause stage (see CountReinjL3Drop).
+struct ReinjInfo {
+    uint32_t events = 0;          // re-injection events for this key
+    uint32_t rxAtFirstReinj = 0;  // sink deliveries seen at first re-injection
+    uint64_t postTx = 0;          // hop transmissions after first re-injection
+    uint64_t postRx = 0;          // hop arrivals after first re-injection
+    uint32_t l3DropRoute = 0;     // L3 drops: route error / no route
+    uint32_t l3DropTtl = 0;       // L3 drops: TTL expired
+    uint32_t l3DropOther = 0;     // L3 drops: any other reason
+};
+std::map<std::pair<Address, uint32_t>, ReinjInfo> g_reinj;
+uint64_t g_reinjEvents = 0;       // MacReinject trace fires (== reinjected)
+uint64_t g_reinjParsed = 0;       // fires where the (flow, seq) parse succeeded
+uint64_t g_reinjOfDelivered = 0;  // fires with the key already delivered
+
+// (flow, seq) off a packet whose front is the UDP header (the form the
+// MacReinject trace and the Ipv4L3Protocol traces hand over — IP header
+// separate). False on anything that is not a SeqTs CBR datagram; on the UDP
+// arm every non-ant data packet is one, so parsed != events is an
+// instrumentation bug and scenario_check FAILs it.
+bool ReinjKeyFromUdp(const Ipv4Header& ip, Ptr<const Packet> p,
+                     Address& flow, uint32_t& seq) {
+    if (ip.GetProtocol() != 17) return false;
+    Ptr<Packet> c = p->Copy();
+    UdpHeader udp;
+    if (c->RemoveHeader(udp) == 0) return false;
+    if (udp.GetDestinationPort() != kDataPort) return false;
+    SeqTsSizeHeader h;
+    if (c->PeekHeader(h) == 0) return false;
+    flow = InetSocketAddress(ip.GetSource(), udp.GetSourcePort());
+    seq = h.GetSeq();
+    return true;
+}
+
+// Same key off a full IP packet (the Ipv4L3Protocol "Tx"/"Rx" trace form).
+bool ReinjKeyFromIp(Ptr<const Packet> p, Address& flow, uint32_t& seq) {
+    Ptr<Packet> c = p->Copy();
+    Ipv4Header ip;
+    if (c->RemoveHeader(ip) == 0) return false;
+    return ReinjKeyFromUdp(ip, c, flow, seq);
+}
+
+// Connected to the adapter's "MacReinject" trace (anthocnet + UDP arm only).
+// Read-only: the packet is peeked via a Copy, never mutated — the pre-merge
+// A/B relies on this whole block being behaviour-invariant.
+void CountMacReinject(const Ipv4Header& ip, Ptr<const Packet> p) {
+    ++g_reinjEvents;
+    Address flow;
+    uint32_t seq = 0;
+    if (!ReinjKeyFromUdp(ip, p, flow, seq)) return;
+    ++g_reinjParsed;
+    uint32_t rxNow = 0;
+    const auto f = g_rxCount.find(flow);
+    if (f != g_rxCount.end()) {
+        const auto s = f->second.find(seq);
+        if (s != f->second.end()) rxNow = s->second;
+    }
+    if (rxNow > 0) ++g_reinjOfDelivered;
+    auto ins = g_reinj.emplace(std::make_pair(flow, seq), ReinjInfo{});
+    if (ins.second) ins.first->second.rxAtFirstReinj = rxNow;
+    ++ins.first->second.events;
+}
+
+// #386 l3Drop stage — deliberately isolated (own callback, own connect line,
+// fields grouped at the END of the ##REINJ## line) so that if any CI ns-3
+// version rejects the "Drop" trace signature the whole stage is cut from the
+// change rather than version-gated. Attributes the L3-visible drops of
+// re-injected keys: the pending-queue ageout's error callback lands in
+// DROP_ROUTE_ERROR, TTL exhaustion in DROP_TTL_EXPIRED. A re-injected key that
+// ends undelivered with NO L3 drop died in the medium/MAC — the residue the
+// #377/#388 drop identity is sensitive to.
+void CountReinjL3Drop(const Ipv4Header& ip, Ptr<const Packet> p,
+                      Ipv4L3Protocol::DropReason reason, Ptr<Ipv4>, uint32_t) {
+    if (g_reinj.empty()) return;
+    Address flow;
+    uint32_t seq = 0;
+    if (!ReinjKeyFromUdp(ip, p, flow, seq)) return;
+    const auto it = g_reinj.find(std::make_pair(flow, seq));
+    if (it == g_reinj.end()) return;
+    if (reason == Ipv4L3Protocol::DROP_ROUTE_ERROR ||
+        reason == Ipv4L3Protocol::DROP_NO_ROUTE) {
+        ++it->second.l3DropRoute;
+    } else if (reason == Ipv4L3Protocol::DROP_TTL_EXPIRED) {
+        ++it->second.l3DropTtl;
+    } else {
+        ++it->second.l3DropOther;
+    }
+}
+
 void CountDataHopTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
-    if (iface != 0 && IsDataIp(p)) ++g_dataHopTx;
+    if (iface != 0 && IsDataIp(p)) {
+        ++g_dataHopTx;
+        // #386: subsequent hops of re-injected packets. g_reinj only fills on
+        // the anthocnet arm (the trace is connected nowhere else), so the
+        // emptiness gate keeps the extra parse off every other arm.
+        if (!g_reinj.empty()) {
+            Address flow;
+            uint32_t seq = 0;
+            if (ReinjKeyFromIp(p, flow, seq)) {
+                const auto it = g_reinj.find(std::make_pair(flow, seq));
+                if (it != g_reinj.end()) ++it->second.postTx;
+            }
+        }
+    }
 }
 void CountDataHopRx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
-    if (iface != 0 && IsDataIp(p)) ++g_dataHopRx;
+    if (iface != 0 && IsDataIp(p)) {
+        ++g_dataHopRx;
+        if (!g_reinj.empty()) {  // #386: see CountDataHopTx
+            Address flow;
+            uint32_t seq = 0;
+            if (ReinjKeyFromIp(p, flow, seq)) {
+                const auto it = g_reinj.find(std::make_pair(flow, seq));
+                if (it != g_reinj.end()) ++it->second.postRx;
+            }
+        }
+    }
 }
 
 // WifiMac "DroppedMpdu": a retry-limit drop is the MAC giving up on a unicast,
@@ -820,6 +970,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_rxArrival.clear();  // #89
     g_rxDelayBySeq.clear();  // #308
     g_rxHopsBySeq.clear();   // #308 phase 2
+    g_rxCount.clear();       // #386
+    g_reinj.clear();         // #386
+    g_reinjEvents = g_reinjParsed = g_reinjOfDelivered = 0;  // #386
     g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;  // #215
     g_ackedDataHops = 0;  // #377
     // #217
@@ -1103,6 +1256,29 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             // #217 path length: TTL of every locally delivered data packet.
             l3->TraceConnectWithoutContext("LocalDeliver",
                                            MakeCallback(&CountDeliveredHops));
+        }
+    }
+    // #386: re-injection identity & fate. anthocnet + UDP only: the baselines
+    // have no detector (their arms emit NO ##REINJ## line — absence, not zero,
+    // per the #382 rule), and under TCP the SeqTs identity does not exist. The
+    // EnableMacFailureDetector=false arm keeps the hooks: its trace never
+    // fires, so every field reads a *measured* zero, which is what lets
+    // scenario_check assert the detector-off control as a number.
+    if (proto == "anthocnet" && P.transport != "tcp") {
+        for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+            Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
+            Ptr<Ipv4RoutingProtocol> rp = ip ? ip->GetRoutingProtocol() : nullptr;
+            if (rp) {
+                rp->TraceConnectWithoutContext("MacReinject",
+                                               MakeCallback(&CountMacReinject));
+            }
+            // l3Drop stage — isolated connect, cuttable with CountReinjL3Drop
+            // if a CI ns-3 version rejects the "Drop" signature (#386).
+            Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
+            if (l3) {
+                l3->TraceConnectWithoutContext("Drop",
+                                               MakeCallback(&CountReinjL3Drop));
+            }
         }
     }
     for (uint32_t i = 0; i < devices.GetN(); ++i) {
@@ -1737,6 +1913,66 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                       << " hopLoss=" << hopLossN
                       << " overlap=" << overlap
                       << " unackedRx=" << unackedRx << '\n';
+        }
+
+        // #386: the direct re-injection counter behind the >=59% inclusion-
+        // exclusion floor above (unackedRx vs reinjected), plus what re-injected
+        // packets then DO. Event view: `events` MUST equal `reinjected` (the
+        // trace fires at the same site that increments the adapter counter —
+        // scenario_check FAILs a mismatch), `parsed` must equal `events` on the
+        // UDP arm, `ofDelivered` counts re-injections of packets already at the
+        // destination AT RE-INJECTION TIME (the floor's direct counterpart).
+        // Packet view (distinct keys): pktsDelivBefore (delivered before first
+        // re-injection) / pktsDelivAfterOnly (delivered late, only after) /
+        // pktsNever (dropped) partition `pkts`; pktsDupDeliv/dupRx count sink
+        // duplicates; postTx/postRx are the hops re-injected packets traversed
+        // afterwards (attempts / arrivals — the wasted-work number). The
+        // l3Drop* tail is the isolated cuttable drop-cause stage.
+        //
+        // Emitted for anthocnet+UDP only — baselines and TCP stay ABSENT (no
+        // detector / no SeqTs identity; #382 absence rule). A detector-off
+        // anthocnet arm still emits, all fields measured zeros, so the
+        // EnableMacFailureDetector=false control is a number, not an absence.
+        if (proto == "anthocnet" && P.transport != "tcp") {
+            uint64_t pkts = 0, delivBefore = 0, delivAfterOnly = 0, never = 0;
+            uint64_t dupDeliv = 0, dupRx = 0, postTx = 0, postRx = 0;
+            uint64_t l3Route = 0, l3Ttl = 0, l3Other = 0;
+            for (const auto& kv : g_reinj) {
+                ++pkts;
+                uint32_t endCount = 0;
+                const auto f = g_rxCount.find(kv.first.first);
+                if (f != g_rxCount.end()) {
+                    const auto s = f->second.find(kv.first.second);
+                    if (s != f->second.end()) endCount = s->second;
+                }
+                if (kv.second.rxAtFirstReinj >= 1) ++delivBefore;
+                else if (endCount >= 1) ++delivAfterOnly;
+                else ++never;
+                if (endCount >= 2) {
+                    ++dupDeliv;
+                    dupRx += endCount - 1;
+                }
+                postTx += kv.second.postTx;
+                postRx += kv.second.postRx;
+                l3Route += kv.second.l3DropRoute;
+                l3Ttl += kv.second.l3DropTtl;
+                l3Other += kv.second.l3DropOther;
+            }
+            std::cout << "##REINJ## " << seed << ' ' << proto
+                      << " events=" << g_reinjEvents
+                      << " parsed=" << g_reinjParsed
+                      << " ofDelivered=" << g_reinjOfDelivered
+                      << " pkts=" << pkts
+                      << " pktsDelivBefore=" << delivBefore
+                      << " pktsDelivAfterOnly=" << delivAfterOnly
+                      << " pktsNever=" << never
+                      << " pktsDupDeliv=" << dupDeliv
+                      << " dupRx=" << dupRx
+                      << " postTx=" << postTx
+                      << " postRx=" << postRx
+                      << " l3DropRoute=" << l3Route
+                      << " l3DropTtl=" << l3Ttl
+                      << " l3DropOther=" << l3Other << '\n';
         }
     }
 
