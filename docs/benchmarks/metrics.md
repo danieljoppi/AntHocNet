@@ -335,13 +335,18 @@ a property of independent per-frame fading, so on two-ray — where reception is
 a deterministic function of distance — the correction is a no-op, exactly as it
 should be.
 
-**Not closed for AntHocNet.** Its arm lands at `sum` **101.41**, over by 1.41
-pp. `hopLoss` is a per-hop tally while the identity is end-to-end, and a packet
-whose hop failed, was re-injected by #46 and then arrived by another route
-contributes to the first but is not an end-to-end loss. Tracked on
-[#386](https://github.com/danieljoppi/AntHocNet/issues/386), which also reads
-`unackedRx` against `reinjected` to bound how many re-injections are of packets
-that had already arrived (≥ 58.8 % per run under fading).
+**Closed for AntHocNet — the residue was re-injection (#377 → #386).** Its
+fading arm lands at `sum` ~**101–103** (1.41 pp over on the #377 probe): the
+per-hop books count a re-injected packet's *extra copies* — a packet whose hop
+failed, was re-injected by #46 and then travelled on contributes additional
+`hopTx`/`macDrops` entries while the identity is end-to-end and counts it once.
+That straddle is **expected and documented, not a books error**: the #386
+detector A/B measured the identity closing at **exactly 100.00** on both
+900 s Nakagami cells with `EnableMacFailureDetector=false` on identical seeds
+([#386 comment 5234323092](https://github.com/danieljoppi/AntHocNet/issues/386#issuecomment-5234323092)),
+so the whole overshoot is the detector's re-injection traffic. `##REINJ##`
+below is the per-packet accounting of the same mechanism; the hop-level bound
+(`unackedRx` vs `reinjected`, ≥ 58.8 % per run under fading) was its floor.
 
 **Absent under TCP, not zero.** Every counter is gated on `IsDataIp`, which
 tests for UDP on the data port, so a TCP cell would print all zeros — reading
@@ -412,6 +417,20 @@ WARNs when `ofDelivered` falls below the same-seed inclusion–exclusion floor
 `reinjected + unackedRx − macDrops` (WARN, not FAIL: the floor is built from
 *next-hop arrivals* while `ofDelivered` counts *sink deliveries*, so a small
 shortfall can be timing rather than broken books).
+
+**Measured reference (reading 2,
+[#386 comment 5234323092](https://github.com/danieljoppi/AntHocNet/issues/386#issuecomment-5234323092)).**
+On the 900 s Nakagami cells, both mobility models, 5 seeds each:
+`ofDelivered/events` ≈ **0.62–0.63** — the direct rate, above the hop-level
+inclusion–exclusion floor on **10/10** seeds; `dupRx` ≈ **0.5 per event**
+(duplicate deliveries are not suppressed); `pktsNever` ≈ **2–5 %** of
+re-injected keys. n=5 per cell is below the
+[#293](https://github.com/danieljoppi/AntHocNet/issues/293) publishable floor —
+treat these as the diagnostic reference the checks calibrate against, not as
+publishable points. The same reading measured the detector as an *operating
+point*: switching it off cost **−6.4 pp PDR** on 5/5 seeds in both cells, so
+the re-injection waste these fields expose is currently paid for delivery, not
+a free defect.
 
 The trailing `l3DropRoute`/`l3DropTtl`/`l3DropOther` fields attribute the
 L3-visible drops of re-injected keys (the pending-queue ageout's error callback
@@ -748,6 +767,16 @@ regression, in the same class as the #51 anchor floors:
   misattribution (tens of pp).
 - A negative share in any cause also FAILs: it means two causes are counting
   the same packet.
+- **One documented overshoot: the AntHocNet re-injection straddle on fading
+  cells.** An AntHocNet fading-cell sum of ~**101–103** is expected, not a
+  books error ([#377](https://github.com/danieljoppi/AntHocNet/issues/377)'s
+  closure): the per-hop books count a #46-re-injected packet's extra copies
+  while the identity is end-to-end. The #386 detector A/B pinned it — on
+  identical seeds the same cells read **exactly 100.00** with
+  `EnableMacFailureDetector=false`
+  ([#386 comment 5234323092](https://github.com/danieljoppi/AntHocNet/issues/386#issuecomment-5234323092)).
+  Read the overshoot against `##REINJ##`'s `postTx`/`dupRx`; it scales with
+  re-injection volume, not with any misattribution.
 
 If the check fails, **do not read the breakdown** — one of the three books is
 wrong (a drop path that fires no error callback, a trace hook that did not
@@ -1093,6 +1122,22 @@ matters is whether the reordering an application would feel is worth those
 gains — which is exactly the question [#179](https://github.com/danieljoppi/AntHocNet/issues/179) (`betaData` 2 → the thesis's 20)
 has to answer, and could not before this metric existed.
 
+> **Correction for fading cells (#386).** The gloss above holds on the
+> deterministic channels only. Under a fading channel AntHocNet's
+> `reorder_ratio` (measured **0.1788** rwp / **0.2408** gaussmarkov on the
+> 900 s Nakagami cells) is dominated by the
+> [#46](https://github.com/danieljoppi/AntHocNet/issues/46) MAC-failure
+> re-injection's **duplicate deliveries**, not by multipath spreading: the
+> #386 detector A/B on identical seeds collapses it to **0.0008** (rwp) /
+> **0.0007** (gaussmarkov) with
+> `EnableMacFailureDetector=false`, a ~250x drop from switching off a
+> mechanism that is not multipath
+> ([#386 comment 5234323092](https://github.com/danieljoppi/AntHocNet/issues/386#issuecomment-5234323092)).
+> The multipath reading stays valid off-fading — the matched two-ray cell
+> reads 0.0004, genuinely multipath-scale. On a fading cell, read
+> `reorder_ratio` as a re-injection-duplicate gauge (cross-check `##REINJ##`'s
+> `dupRx`) and use `reorder_buf_max` with the same caution.
+
 `FlowMonitor` reports per-flow counts and delays, never per-packet order, so
 these come from an application-level sequence number instead: the ns-3
 `OnOffApplication` sources set `EnableSeqTsSizeHeader`, and every `PacketSink`
@@ -1152,8 +1197,14 @@ Metrics*), applied to the receive stream of one flow at the sink:
    PDRs it would measure loss rather than reordering.
 
 Duplicates are not handled specially: `OnOffApplication` emits each sequence
-number once and IP-layer unicast forwarding does not duplicate, so a flow's
-received sequence numbers are unique.
+number once and IP-layer unicast forwarding does not duplicate. **On a fading
+cell that premise fails**: the #46 re-injection path retransmits packets whose
+first copy already arrived (delivered-but-ACK-lost), so the sink can receive
+the same `(flow, seq)` more than once — measured at `dupRx` ≈ 1500–2400 per
+900 s Nakagami run (#386 comment 5234323092). A duplicate arrives with
+`s < NextExp` and is therefore counted as reordered, which is the mechanism
+behind the fading correction above. Off-fading the uniqueness assumption holds
+and the columns read as documented.
 
 ### Instrumentation self-check
 
