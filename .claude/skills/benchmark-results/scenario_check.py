@@ -574,6 +574,13 @@ def check_drop_identity(path):
     `drop_*` family for that cell is then an attribution of packets to causes
     that double-count each other.
 
+    Since the residual carves out `macLost` (retry-limit drops minus the
+    delivered-but-ACK-lost ones) rather than the raw MAC-drop count, `overlap`
+    can no longer go positive for the reason #377 reported — `macLost` is a
+    subset of hopLoss by construction. The rule is kept anyway, and that is
+    deliberate: a positive value now means the books have overlapped for some
+    *other* reason, which is exactly the case nobody is watching for.
+
     The existing rule catches this from the other side (drop_chan_pct outside
     [0,100]), but only in aggregate and only once the percentages exist. Here
     it is per seed, in counts, and it also reports `unackedRx` — the
