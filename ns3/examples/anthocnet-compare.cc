@@ -1606,11 +1606,38 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             g_macDataDrops > reinjected ? g_macDataDrops - reinjected : 0;
         const double hopLoss = static_cast<double>(g_dataHopTx)
                              - static_cast<double>(g_dataHopRx);
+        // #377: a retry-limit drop is not necessarily a lost packet. 802.11
+        // unicast is data then ACK, two independent chances to fail, and under
+        // fading the data frame can arrive while its ACK does not: the peer
+        // has the packet (so it is NOT in hopLoss) while the sender exhausts
+        // its retries (so it IS in g_macDataDrops). Subtracting the raw count
+        // from hopLoss therefore removes packets that were never in it, and
+        // the residual runs negative — measured at -13.10 % on a Nakagami cell
+        // (run 31288485211) against +1.88 % on the matched two-ray control.
+        //
+        // macLost is the genuinely-lost subset. It is a subset of hopLoss by
+        // construction — a frame that hit the retry limit and did not arrive
+        // is, definitionally, a hop that was sent and not received — so the
+        // residual below cannot go negative for the reason #377 reports.
+        // Verified against both probe cells: the identity closes to 99.87 /
+        // 100.00 / 100.22 for the three baselines and is a near no-op on
+        // two-ray, where unackedRx is 0-13 packets per run.
+        const uint64_t unackedRx = g_dataHopRx > g_ackedDataHops
+            ? g_dataHopRx - g_ackedDataHops : 0;
+        const uint64_t macLost =
+            g_macDataDrops > unackedRx ? g_macDataDrops - unackedRx : 0;
         r.dropRoutePct = 100.0 * dropRoute / tx;
         r.dropTtlPct   = 100.0 * dropTtl / tx;
         r.dropQueuePct = 100.0 * dropQueue / tx;
-        r.dropMacPct   = 100.0 * macTerminal / tx;
-        r.dropChanPct  = 100.0 * (hopLoss - static_cast<double>(g_macDataDrops)
+        // The correction applies to dropMacPct only where that column is
+        // macDrops-based, i.e. where nothing was re-injected. AntHocNet's is
+        // already macTerminal — #46 has removed the re-injected packets from
+        // it — and subtracting unackedRx again would correct it twice. Its
+        // arm keeps the hop-vs-terminal residue tracked on #386; the three
+        // baselines never re-inject, so macTerminal == g_macDataDrops there
+        // and macLost is the right replacement.
+        r.dropMacPct   = 100.0 * (reinjected ? macTerminal : macLost) / tx;
+        r.dropChanPct  = 100.0 * (hopLoss - static_cast<double>(macLost)
                                           - static_cast<double>(dropQueue)) / tx;
         // L3 drops in none of the buckets above (bad checksum, interface down,
         // fragment timeout — all structurally zero in this harness). Diagnostic
@@ -1618,55 +1645,47 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         const uint64_t other = dropL3Total > dropRoute + dropTtl + dropQueue
             ? dropL3Total - dropRoute - dropTtl - dropQueue : 0;
         r.dropOtherPct = 100.0 * other / tx;
-        // #377: the raw counters behind the residual above, plus the two
-        // derived quantities that test *why* it goes negative under fading.
+        // #377: the raw counters behind the residual above, so the attribution
+        // can be audited in counts rather than in percentages.
         //
-        // dropChanPct is a residual, so it is only non-negative while the
-        // subtracted causes are a subset of hopLoss. On every Nakagami cell
-        // they are not, by up to 20 pp. Percentages cannot say which book is
-        // wrong, so the counters ship raw:
-        //
-        //   overlap    = macDrops + queue - hopLoss
+        //   overlap    = macLost + queue - hopLoss
         //                the amount by which the subtracted causes exceed the
-        //                pool they are carved from. Positive == the books
-        //                provably overlap; this is exactly -dropChanPct*tx/100.
+        //                pool they are carved from. Exactly -dropChanPct*tx/100,
+        //                so it MUST track whatever that residual subtracts --
+        //                it has been wrong twice for failing to. It read
+        //                macTerminal first (24x off on the AntHocNet arm, whose
+        //                #46 detector re-injects nearly every MAC failure), then
+        //                the raw macDrops; both are superseded now that the
+        //                residual carves out only the genuinely-lost subset.
         //
-        // `macDrops`, NOT `macTerminal`. The two are the same for the stock
-        // baselines and differ by two orders of magnitude for AntHocNet, whose
-        // #46 detector re-injects most MAC failures (probe run 31286508174:
-        // macDrops=475, reinjected=466, macTerminal=9). dropChanPct subtracts
-        // the *raw* g_macDataDrops -- a re-injected packet is not a terminal
-        // drop, but its hop transmission did fail, so it belongs in the hop
-        // accounting -- and this line has to mirror that or it is not the
-        // residual it claims to be. The first cut used macTerminal and read
-        // -469 where the true figure is -3, which would have left the gate
-        // below blind to the AntHocNet arm: the very arm with the worst
-        // reported drop_chan_pct (-13.77) on #377.
+        //                With macLost a subset of hopLoss by construction, this
+        //                can no longer go positive for the #377 reason. The gate
+        //                on it is kept precisely so that if it ever does, the
+        //                books have overlapped for some *other* reason and that
+        //                is worth hearing about.
+        //
         //   unackedRx  = hopRx - ackedHops
-        //                frames that reached the next hop's IP layer without
-        //                the sender ever recording an ACK. Under 802.11 that
-        //                is the delivered-but-ACK-lost case: the receiver has
-        //                the packet (so it is NOT in hopLoss) while the sender
-        //                retries and eventually reports a retry-limit drop (so
-        //                it IS in macTerminal). Counted once each way, it
-        //                drives the residual negative by one per occurrence.
+        //                frames that reached the next hop's IP layer without the
+        //                sender ever recording an ACK -- the delivered-but-ACK-
+        //                lost case the correction above removes. Kept in the
+        //                line because it is the quantity that explains the
+        //                correction's size, and because #386 reads it against
+        //                `reinjected` to bound how many re-injections are of
+        //                packets that had already arrived (>=58.8% per run on
+        //                a Nakagami cell).
         //
-        // The hypothesis under test is that these two track each other on a
-        // fading channel and are both ~0 on two-ray, where reception is a
-        // deterministic function of distance and data-received-but-ACK-lost is
-        // near unreachable. If unackedRx is ~0 while overlap is large, the
-        // hypothesis is refuted and something else double-counts — which is
-        // the outcome this line exists to be able to see.
+        // Measured, both probe cells at 900 s: unackedRx is 1028-1719 per run
+        // under Nakagami and 0.2-8.8 under two-ray, three orders of magnitude
+        // apart on cells differing only in the fading model.
+        //
         // Signed integers, not doubles: every field is a difference of exact
         // counters, and printing them through the shared std::cout would
         // otherwise need a precision change that leaks into every line after
         // it.
         const int64_t hopLossN = static_cast<int64_t>(g_dataHopTx)
                                - static_cast<int64_t>(g_dataHopRx);
-        const int64_t overlap = static_cast<int64_t>(g_macDataDrops)
+        const int64_t overlap = static_cast<int64_t>(macLost)
                               + static_cast<int64_t>(dropQueue) - hopLossN;
-        const int64_t unackedRx = static_cast<int64_t>(g_dataHopRx)
-                                - static_cast<int64_t>(g_ackedDataHops);
         // Not emitted under TCP. Every counter above is gated on IsDataIp,
         // which tests for UDP on the data port, so on a TCP cell they are all
         // structurally zero — and a zero here would read as "hopTx=0, no
@@ -1682,6 +1701,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                       << " macDrops=" << g_macDataDrops
                       << " reinjected=" << reinjected
                       << " macTerminal=" << macTerminal
+                      << " macLost=" << macLost
                       << " queue=" << dropQueue
                       << " hopLoss=" << hopLossN
                       << " overlap=" << overlap

@@ -1024,19 +1024,41 @@ def _dropid_worst_per_proto():
            f"{out.count('drop-cause books overlap')}\n{out}")
 
 
-@case("#377 an AntHocNet row is judged on macDrops, not macTerminal")
+@case("#377 an AntHocNet row is judged on the same term the residual uses")
 def _dropid_reinject_arm():
-    # Verbatim from probe run 31286508174 (rwp x nakagami), except hopLoss is
-    # lowered by 10 so the true residual goes negative. The re-injection gap is
-    # what matters: macDrops=475 against macTerminal=9. Reading macTerminal
-    # would report overlap -459 and stay silent on the very arm #377 reports
-    # the worst drop_chan_pct for; reading macDrops reports +7 and fires.
+    # Shaped from probe run 31286508174 (rwp x nakagami) with hopLoss lowered
+    # so the residual goes negative. The re-injection gap is what matters:
+    # macDrops=475 against macTerminal=9. A rule keyed on macTerminal would
+    # report a large negative overlap and stay silent on the very arm #377
+    # reports the worst drop_chan_pct for.
     row = ("##DROPID## 1 anthocnet hopTx=4584 hopRx=4106 ackedHops=3789 "
-           "macDrops=475 reinjected=466 macTerminal=9 queue=0 hopLoss=468 "
-           "overlap=7 unackedRx=317\n")
+           "macDrops=475 reinjected=466 macTerminal=9 macLost=158 queue=0 "
+           "hopLoss=151 overlap=7 unackedRx=317\n")
     _levels, out = run_cell(ISL_CELL + row)
     expect("drop-cause books overlap by 7" in out, "dropid-reinject",
-           f"the re-injecting arm was not judged on the raw MAC-drop count\n{out}")
+           f"the re-injecting arm was not flagged\n{out}")
+
+
+@case("#377 the real 900 s Nakagami rows read clean once macLost is subtracted")
+def _dropid_corrected_residual_quiet():
+    # Verbatim counters from run 31288485211 seeds 1-2, the cell that reported
+    # drop_chan_pct -13.10 before the correction. overlap is recomputed as
+    # macLost + queue - hopLoss, which is <= 0 by construction because macLost
+    # is a subset of hopLoss. If a future change reverts the residual to the
+    # raw MAC-drop count these rows go positive again and this case fails.
+    rows = (
+        "##DROPID## 1 anthocnet hopTx=20571 hopRx=18761 ackedHops=17194 "
+        "macDrops=2738 reinjected=2698 macTerminal=40 macLost=1171 queue=0 "
+        "hopLoss=1810 overlap=-639 unackedRx=1567\n"
+        "##DROPID## 1 aodv hopTx=12721 hopRx=11387 ackedHops=10433 "
+        "macDrops=1899 reinjected=0 macTerminal=1899 macLost=945 queue=0 "
+        "hopLoss=1334 overlap=-389 unackedRx=954\n"
+        "##DROPID## 1 olsr hopTx=11762 hopRx=10862 ackedHops=9738 "
+        "macDrops=1554 reinjected=0 macTerminal=1554 macLost=430 queue=0 "
+        "hopLoss=900 overlap=-470 unackedRx=1124\n")
+    _levels, out = run_cell(ISL_CELL + rows)
+    expect("drop-cause books overlap" not in out, "dropid-corrected",
+           f"the corrected residual was still flagged as overlapping\n{out}")
 
 
 @case("#377 a cell with no ##DROPID## rows is not flagged")

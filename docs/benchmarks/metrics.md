@@ -270,7 +270,8 @@ Two limits worth stating:
 
 ```
 ##DROPID## <seed> <proto> hopTx=.. hopRx=.. ackedHops=.. macDrops=.. \
-           reinjected=.. macTerminal=.. queue=.. hopLoss=.. overlap=.. unackedRx=..
+           reinjected=.. macTerminal=.. macLost=.. queue=.. hopLoss=.. \
+           overlap=.. unackedRx=..
 ```
 
 Not a metric — the **raw counters behind the drop-cause residual**, one row per
@@ -278,41 +279,69 @@ seed per protocol, so the identity in
 [Where the drop-cause identity comes from](#where-the-drop-cause-identity-comes-from)
 can be audited in counts rather than in percentages.
 
-It exists because `drop_chan_pct` is *inferred, not measured*: it is
-`hopLoss − macDrops − queue`, which is only non-negative while the subtracted
-causes are a subset of `hopLoss`. On every Nakagami cell they are not, by up to
-20 pp ([#377](https://github.com/danieljoppi/AntHocNet/issues/377)). Percentages
-cannot say which of the three books is wrong; counts can.
+`drop_chan_pct` is *inferred, not measured* — it is what is left of `hopLoss`
+after the counted causes are removed — so it is only non-negative while those
+causes are genuinely a subset of `hopLoss`. They were not, and the failure was
+large: on every Nakagami cell the residual ran negative, to −13.10 % with 19.85
+pp unaccounted ([#377](https://github.com/danieljoppi/AntHocNet/issues/377)).
 
-Two of the fields are derived and are the ones to read first:
+### Why a retry-limit drop is not a lost packet
 
-| field | definition | what a non-zero value means |
+802.11 unicast is data → ACK: two transmissions, two independent chances to
+fail. The joint outcome that breaks the subset property is **data delivered,
+ACK lost**:
+
+| event | `hopTx` | `hopRx` | `macDrops` |
+|---|---|---|---|
+| data arrives, surfaces at the peer's IP layer | +1 | +1 | — |
+| ACK lost; sender retries; peer discards the duplicate | — | — | — |
+| retries exhausted, sender gives up | — | — | **+1** |
+
+Contribution to `hopLoss`: **zero**. Contribution to `macDrops`: **one**. Each
+occurrence drives the residual negative by one packet — and the packet was
+*delivered*, so it is not a drop at all.
+
+That is why the fields below exist, and why `macLost` rather than `macDrops` is
+what the residual subtracts:
+
+| field | definition | reads as |
 |---|---|---|
-| `overlap` | `macDrops + queue − hopLoss` | the subtracted causes exceed the pool they are carved from — the books provably overlap. Identically `−drop_chan_pct · tx / 100`. |
-| `unackedRx` | `hopRx − ackedHops` | frames that reached the next hop's IP layer without the sender recording an ACK — under 802.11, the delivered-but-ACK-lost case |
+| `unackedRx` | `hopRx − ackedHops` | frames that reached the next hop's IP layer with no ACK recorded at the sender — the delivered-but-ACK-lost count |
+| `macLost` | `macDrops − unackedRx` | retry-limit drops where the frame genuinely did **not** arrive. A subset of `hopLoss` **by construction**, so the residual cannot go negative for this reason |
+| `overlap` | `macLost + queue − hopLoss` | Identically `−drop_chan_pct · tx / 100`. Now ≤ 0 by construction; a positive value means the books overlap for some *other* reason, which is why the gate on it is kept |
 
-**`macDrops`, not `macTerminal`, in `overlap`** — and the distinction is not
-pedantic. They are equal for the stock baselines, which never re-inject, and
-differ by two orders of magnitude for AntHocNet, whose
-[#46](https://github.com/danieljoppi/AntHocNet/issues/46) detector re-injects
-most MAC failures: probe run
-[31286508174](https://github.com/danieljoppi/AntHocNet/actions/runs/31286508174)
-reads `macDrops=475 reinjected=466 macTerminal=9`. `drop_chan_pct` subtracts the
-*raw* count — a re-injected packet is not a terminal drop, but its hop
-transmission did fail, so it belongs in the hop accounting — so `overlap` must
-mirror that or it is not the residual it claims to be. The first cut of this
-marker used `macTerminal` and reported `-469` for a cell whose true figure is
-`-3`, which left the gate blind to the AntHocNet arm.
+**Which columns the correction touches.** `drop_chan_pct` always subtracts
+`macLost`. `drop_mac_pct` subtracts it **only where that column is
+`macDrops`-based** — i.e. where nothing was re-injected. AntHocNet's
+`drop_mac_pct` already reports `macTerminal`, with
+[#46](https://github.com/danieljoppi/AntHocNet/issues/46) re-injection removed,
+and correcting it a second time would double-count.
 
-The reason both are printed is that they test a specific hypothesis against each
-other. A delivered-but-ACK-lost frame is counted in `hopRx` (so it is *not* in
-`hopLoss`) and also in `macDrops` (the sender exhausts its retries), so each
-occurrence drives the residual negative by one. If that is the mechanism,
-`overlap` and `unackedRx` track each other on a fading channel and are both ≈ 0
-on two-ray, where reception is a deterministic function of distance and the
-joint event is near unreachable. **If `overlap` is large while `unackedRx` ≈ 0,
-the hypothesis is refuted** and something else double-counts — which is what
-the line is for.
+Measured at 900 s, 5 seeds, runs
+[31288485211](https://github.com/danieljoppi/AntHocNet/actions/runs/31288485211)
+(Nakagami) and
+[31288489422](https://github.com/danieljoppi/AntHocNet/actions/runs/31288489422)
+(two-ray):
+
+| cell | `unackedRx` per run | `drop_chan_pct` before → after | identity `sum` after |
+|---|---|---|---|
+| nakagami / aodv | 1028 | −6.04 → **+6.72** | 99.87 |
+| nakagami / olsr | 1155 | −7.95 → **+6.69** | 100.00 |
+| nakagami / dsdv | 1112 | +3.62 → +17.50 | 100.22 |
+| two-ray (all) | 0.2 – 8.8 | unchanged to ~0.1 pp | 99.91 – 100.02 |
+
+The three orders of magnitude between the channels is the point: `unackedRx` is
+a property of independent per-frame fading, so on two-ray — where reception is
+a deterministic function of distance — the correction is a no-op, exactly as it
+should be.
+
+**Not closed for AntHocNet.** Its arm lands at `sum` **101.41**, over by 1.41
+pp. `hopLoss` is a per-hop tally while the identity is end-to-end, and a packet
+whose hop failed, was re-injected by #46 and then arrived by another route
+contributes to the first but is not an end-to-end loss. Tracked on
+[#386](https://github.com/danieljoppi/AntHocNet/issues/386), which also reads
+`unackedRx` against `reinjected` to bound how many re-injections are of packets
+that had already arrived (≥ 58.8 % per run under fading).
 
 **Absent under TCP, not zero.** Every counter is gated on `IsDataIp`, which
 tests for UDP on the data port, so a TCP cell would print all zeros — reading
