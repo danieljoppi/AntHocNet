@@ -263,6 +263,54 @@ Two limits worth stating:
 - **Baseline protocols' attributes are not dumped.** Nothing in this repo
   sweeps AODV/OLSR/DSDV attributes, so a `--ns3::aodv::…` override would *not*
   be recorded. If that ever becomes a swept lever, this is the place to extend.
+- **It does not record the commit.** That is `##PROV##` below, and the split is
+  not an oversight — see there.
+
+### Measuring commit (`##PROV##`, #365)
+
+```
+##PROV## commit=<sha> ref=<branch> run_id=<id> attempt=<n> image=<ghcr tag> \
+         profile=<default|release> harness=<compare|baselines|isl-grid|scenario-matrix>
+```
+
+The other half of provenance: `##CONFIG##` says *how* the run was configured,
+`##PROV##` says *which version of the code* was configured that way. A number
+carrying only one of the two is not reproducible — the same knobs against a
+different protocol build are a different experiment, which is the whole content
+of [#365](https://github.com/danieljoppi/AntHocNet/issues/365).
+
+**Emitted by the workflow, not by the harness.** This is the one marker in the
+compact block that does not come from `anthocnet-compare`'s stdout, and it
+cannot: a simulation binary has no way to know the commit it was built from
+short of baking one in at configure time, which would then be wrong for anyone
+running it from a dirty tree. The workflow knows it for certain, so the workflow
+says it. Three campaign workflows emit the same line:
+[`paper-benchmark.yml`](../../.github/workflows/paper-benchmark.yml) and
+[`satellite-benchmark.yml`](../../.github/workflows/satellite-benchmark.yml)
+append it to their compact blocks; `scenario-matrix.yml` has no compact block —
+its numbers travel as a CSV artifact — so it emits the line from a step of its
+own, under `if: always()` so a sweep that dies mid-way still stamps the points
+that completed.
+
+**Position matters.** It is the *last* line of the block, after `##PERF##`. A
+cheap `get_job_logs` tail loses lines from the top, and losing the provenance of
+a campaign is worse than losing its wall-clock.
+
+Two limits:
+
+- **`key=value`, not positional**, for the same reason as `##CONFIG##`: a
+  misread field here would misattribute a whole campaign, and no `# stddev`
+  cross-check exists to catch it.
+- **It records the commit the *workflow* checked out**, which is the commit the
+  binary was built from in every workflow here because each builds from its own
+  checkout. A future workflow that ran a pre-built binary would make the line
+  a lie; if one is ever added, it has to stamp the binary's provenance instead.
+
+Runs from before this marker existed (everything up to `v1.3.0`) have no
+`##PROV##` line. Their provenance is the release pin documented in
+[methodology.md](methodology.md#run-id--commit), not a per-run stamp — the
+mapping was never recorded, and inventing one now would be fabrication rather
+than recovery.
 
 ### Pending-queue hold time (`##HOLD##`, #308 phase 2 step 4)
 

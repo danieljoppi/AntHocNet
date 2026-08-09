@@ -92,7 +92,25 @@ jobs:
       - name: Render charts
         run: python3 ns3/tools/make-charts.py "$GITHUB_WORKSPACE/scenarios.csv" --outdir docs/benchmarks
       - name: Update results tables (index summary + per-scenario pages)
-        run: python3 ns3/tools/update-benchmarks.py "$GITHUB_WORKSPACE/scenarios.csv" docs/benchmarks.md
+        # --commit/--run-url (#365): every regenerated block states the commit
+        # it was measured at. Two things this buys that the page banners alone
+        # do not. (1) The banners claim these numbers "track the current tip of
+        # main" -- true only while this job keeps up, and it demonstrably does
+        # not: eight merges on 2026-07-26 produced no refresh at all because
+        # each push cancelled the run in flight, and nothing on the page said
+        # so. A stamped commit that lags main makes that staleness readable.
+        # (2) A reader who wants to reproduce a cell now has the SHA to check
+        # out, which is the acceptance criterion of #365.
+        #
+        # The cost is churn: because the stamp changes on every merge, the
+        # commit step below now fires on every merge instead of only when a
+        # number moves. That is the intended trade -- an unchanged table
+        # measured at a new commit is new information, not an empty commit.
+        run: |
+          python3 ns3/tools/update-benchmarks.py "$GITHUB_WORKSPACE/scenarios.csv" \
+            docs/benchmarks.md \
+            --commit "$GITHUB_SHA" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
       - name: Upload CSV + charts artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

@@ -159,6 +159,20 @@ jobs:
         run: |
           python3 ns3/tools/make-charts.py "$GITHUB_WORKSPACE/scenarios.csv" \
             --outdir "$GITHUB_WORKSPACE/docs/benchmarks"
+      - name: Provenance line (#365)
+        # always(): a sweep that died mid-way still produced numbers for the
+        # points that completed, and those numbers need their commit just as
+        # much as a clean run's do.
+        #
+        # This workflow has no compact result block — its numbers travel as a
+        # CSV artifact, not as log rows — so ##PROV## is its own step here
+        # rather than a tail line. Same contract as paper-benchmark.yml: the
+        # commit is knowable only to the workflow, and the run-ID-to-commit
+        # mapping the Actions API would otherwise supply disappears when the
+        # run's logs expire.
+        if: always()
+        run: |
+          echo "##PROV## commit=$GITHUB_SHA ref=$GITHUB_REF_NAME run_id=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT image=ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }} profile=$NS3_PROFILE harness=scenario-matrix only=${{ github.event.inputs.only }}"
       - name: Upload CSV + charts
         # always(): upload whatever CSV/charts exist even if an earlier step
         # failed, so a mid-sweep abort doesn't lose the completed points —

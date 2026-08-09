@@ -19,6 +19,9 @@ fetch cheap:
 - **Preferred:** the `paper-benchmark` workflow's last step prints a compact
   `##BENCH## <proto> <pdr> <delay> <delay99> <thrput> <nrl>` block *after* the
   upload step, so `get_job_logs` with `tail_lines: 8` captures just the numbers.
+  The very last line of that block is `##PROV## commit=…` (#365) — the commit
+  the cell was measured at. Keep it in whatever you save: it is what makes the
+  saved file self-describing after the run's logs expire.
 - Otherwise fetch ~55 tail lines (the human table sits just above the
   upload/cleanup noise) and save it.
 
@@ -108,7 +111,10 @@ The cross-session procedure (formerly buried in issue #91's session notes):
    cell/CSV — plausibility invariants (PDR bounds, delay99 ≥ mean, negative
    metrics) and, for anchor-shaped scenarios, the `ns3/tools/anchors.yml`
    floors (#59). A FAIL here means harness/channel regression (#51-class):
-   do not compare, publish, or quote the numbers.
+   do not compare, publish, or quote the numbers. It also echoes the cell's
+   `##PROV##` commit (#365) and WARNs when a log cell has none — a number whose
+   version is unknown is not publishable, and the usual cause is a tail cut
+   above the line rather than a workflow that failed to emit it.
 5. **Parse by script, never by eye**: `bench_parse.py` for `##BENCH##` cells,
    `sweep_summary.py` for campaign CSVs (below).
 6. **Record** the verdict + run IDs on the relevant issue (ADR-0013).

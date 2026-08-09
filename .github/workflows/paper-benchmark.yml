@@ -316,3 +316,12 @@ jobs:
                          printf "##PERF## paper all %.1f %d\n", wall, rss }' \
               "$GITHUB_WORKSPACE/time-v.log"
           fi
+          # #365: which *version* produced these numbers. ##CONFIG## (#369)
+          # records the configuration, but the harness cannot know its own
+          # commit -- only the workflow can, so the line is emitted here rather
+          # than by the binary. Without it a run ID maps to a commit only via
+          # the Actions API, which stops answering when the run's logs expire;
+          # that is how three cancelled ablation arms became unrecoverable.
+          # Emitted LAST, after ##PERF##, so it is the line a cheap log tail is
+          # least likely to lose.
+          echo "##PROV## commit=$GITHUB_SHA ref=$GITHUB_REF_NAME run_id=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT image=ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }} profile=$NS3_PROFILE harness=${{ github.event.inputs.harness }}"

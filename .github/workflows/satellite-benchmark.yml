@@ -163,3 +163,8 @@ jobs:
             rss=$(grep -oP 'Maximum resident set size \(kbytes\): \K\d+' "$GITHUB_WORKSPACE/time-v.log" || true)
             echo "##PERF## isl-grid all ${wall:-?} ${rss:-?}"
           fi
+          # #365: the commit these numbers were measured at. Same contract and
+          # same reason as paper-benchmark's ##PROV## — the harness cannot know
+          # its own commit, and a run ID stops resolving to one once the run's
+          # logs expire. Emitted last so a cheap tail keeps it.
+          echo "##PROV## commit=$GITHUB_SHA ref=$GITHUB_REF_NAME run_id=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT image=ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }} profile=$NS3_PROFILE harness=isl-grid"
