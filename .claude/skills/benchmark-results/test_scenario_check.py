@@ -983,6 +983,56 @@ def _prov_csv_exempt():
            f"CSV input warned about a marker it is not supposed to carry\n{out}")
 
 
+# --- #377 drop-identity overlap ----------------------------------------------
+# Numbers taken from the shape of the reported failure: the rwp x nakagami
+# anthocnet cell reads drop_chan_pct -13.77 on ~20 000 offered packets, i.e. an
+# overlap of a couple of thousand packets, against a clean two-ray cell.
+
+DROPID_CLEAN = ("##DROPID## 1 aodv hopTx=52000 hopRx=50000 ackedHops=50000 "
+                "macDrops=1800 reinjected=0 macTerminal=1800 queue=200 "
+                "hopLoss=2000 overlap=0 unackedRx=0\n")
+DROPID_OVERLAP = ("##DROPID## 3 anthocnet hopTx=52000 hopRx=51000 "
+                  "ackedHops=48250 macDrops=3750 reinjected=0 "
+                  "macTerminal=3750 queue=0 hopLoss=1000 overlap=2750 "
+                  "unackedRx=2750\n")
+
+
+@case("#377 a ##DROPID## row with overlap>0 WARNs and names both figures")
+def _dropid_overlap_fires():
+    _levels, out = run_cell(ISL_CELL + DROPID_OVERLAP)
+    expect("drop-cause books overlap by 2750" in out, "dropid-overlap",
+           f"positive overlap not flagged\n{out}")
+    expect("unackedRx=2750" in out, "dropid-unacked",
+           f"the discriminating figure was not reported alongside it\n{out}")
+
+
+@case("#377 a ##DROPID## row with overlap=0 stays quiet")
+def _dropid_clean_quiet():
+    _levels, out = run_cell(ISL_CELL + DROPID_CLEAN)
+    expect("drop-cause books overlap" not in out, "dropid-clean",
+           f"a clean drop identity was flagged\n{out}")
+
+
+@case("#377 one warning per protocol, not per seed")
+def _dropid_worst_per_proto():
+    # Twenty seeds of the same broken cell must not bury every other finding.
+    rows = "".join(DROPID_OVERLAP.replace("##DROPID## 3 ", f"##DROPID## {s} ")
+                   for s in range(1, 21))
+    _levels, out = run_cell(ISL_CELL + rows)
+    expect(out.count("drop-cause books overlap") == 1, "dropid-once",
+           f"expected one warning for the protocol, got "
+           f"{out.count('drop-cause books overlap')}\n{out}")
+
+
+@case("#377 a cell with no ##DROPID## rows is not flagged")
+def _dropid_absent_quiet():
+    # TCP cells and every pre-#377 run carry no such row; absence is not a
+    # failure, it is the marker not existing yet.
+    _levels, out = run_cell(ISL_CELL)
+    expect("drop-cause books overlap" not in out, "dropid-absent",
+           f"absent counters were treated as a defect\n{out}")
+
+
 def main():
     for name, fn in CASES:
         fn()

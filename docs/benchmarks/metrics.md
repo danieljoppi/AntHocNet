@@ -266,6 +266,53 @@ Two limits worth stating:
 - **It does not record the commit.** That is `##PROV##` below, and the split is
   not an oversight — see there.
 
+### Drop-identity counters (`##DROPID##`, #377, NS-3 only, UDP only)
+
+```
+##DROPID## <seed> <proto> hopTx=.. hopRx=.. ackedHops=.. macDrops=.. \
+           reinjected=.. macTerminal=.. queue=.. hopLoss=.. overlap=.. unackedRx=..
+```
+
+Not a metric — the **raw counters behind the drop-cause residual**, one row per
+seed per protocol, so the identity in
+[Where the drop-cause identity comes from](#where-the-drop-cause-identity-comes-from)
+can be audited in counts rather than in percentages.
+
+It exists because `drop_chan_pct` is *inferred, not measured*: it is
+`hopLoss − macDrops − queue`, which is only non-negative while the subtracted
+causes are a subset of `hopLoss`. On every Nakagami cell they are not, by up to
+20 pp ([#377](https://github.com/danieljoppi/AntHocNet/issues/377)). Percentages
+cannot say which of the three books is wrong; counts can.
+
+Two of the fields are derived and are the ones to read first:
+
+| field | definition | what a non-zero value means |
+|---|---|---|
+| `overlap` | `macTerminal + queue − hopLoss` | the subtracted causes exceed the pool they are carved from — the books provably overlap. Identically `−drop_chan_pct · tx / 100`. |
+| `unackedRx` | `hopRx − ackedHops` | frames that reached the next hop's IP layer without the sender recording an ACK — under 802.11, the delivered-but-ACK-lost case |
+
+The reason both are printed is that they test a specific hypothesis against each
+other. A delivered-but-ACK-lost frame is counted in `hopRx` (so it is *not* in
+`hopLoss`) and also in `macDrops` (the sender exhausts its retries), so each
+occurrence drives the residual negative by one. If that is the mechanism,
+`overlap` and `unackedRx` track each other on a fading channel and are both ≈ 0
+on two-ray, where reception is a deterministic function of distance and the
+joint event is near unreachable. **If `overlap` is large while `unackedRx` ≈ 0,
+the hypothesis is refuted** and something else double-counts — which is what
+the line is for.
+
+**Absent under TCP, not zero.** Every counter is gated on `IsDataIp`, which
+tests for UDP on the data port, so a TCP cell would print all zeros — reading
+as "no hops, no overlap, identity clean" when nothing was counted at all. Same
+rule as `##HOLD##`/`##AIR##`, and the same mistake #382 fixed for the reorder
+columns. (Note that `drop_mac_pct` and `drop_chan_pct` are structurally zero on
+a TCP cell for this same reason; that is a separate pre-existing gap, tracked
+on #63, not something this marker introduces.)
+
+`scenario_check.py results` WARNs when a cell carries `##DROPID##` rows with
+`overlap > 0`, naming both figures, so the condition is caught by the gate
+rather than by a human noticing a negative percentage.
+
 ### Measuring commit (`##PROV##`, #365)
 
 ```
