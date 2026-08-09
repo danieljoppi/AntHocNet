@@ -132,7 +132,7 @@ REINJ_LINE = re.compile(
     r"^\s*##REINJ##\s+(\d+)\s+([a-z][\w-]*)\s+events=(\d+)\s+parsed=(\d+)"
     r"\s+unparsedIcmp=(\d+)\s+unparsedOther=(\d+)"
     r"\s+ofDelivered=(\d+)\s+pkts=(\d+)\s+pktsDelivBefore=(\d+)"
-    r"\s+pktsDelivAfterOnly=(\d+)\s+pktsNever=(\d+)\b")
+    r"\s+pktsDelivAfterOnly=(\d+)\s+pktsNever=(\d+)\s+pktsDupDeliv=(\d+)\b")
 # #386: the knob the coherence rule reads. Preflight cannot see extraArgs (it
 # takes numeric scenario args only), so detector-off coherence is enforced
 # results-side from the ##CONFIG## attr dump of effective attribute values.
@@ -677,6 +677,14 @@ def check_reinj(path):
     next-hop arrivals (unackedRx), so the two sit on slightly different events
     and a small shortfall can be timing, not books. A large one means the
     direct counter and the bound disagree and #386's premise needs re-checking.
+
+    Two further identities were promoted to FAILs after reading 2, per the
+    amended pre-registration (#386 comment 5233754808): ofDelivered >=
+    pktsDelivBefore (a key delivered before its first re-injection contributes
+    at least one delivered-at-fire-time event) and pktsDupDeliv <=
+    pktsDelivBefore + pktsDelivAfterOnly (a duplicate-delivered key is a
+    delivered key). Both hold by construction of the (flow, seq) keying, so a
+    violation means the keying itself is unsound.
     """
     with open(path) as fh:
         text = fh.read()
@@ -702,6 +710,7 @@ def check_reinj(path):
         of_deliv, pkts = int(m.group(7)), int(m.group(8))
         before, after_only, never = (int(m.group(9)), int(m.group(10)),
                                      int(m.group(11)))
+        dup_deliv = int(m.group(12))
         tag = f"{base}/{proto}"
         if proto != "anthocnet":
             report("FAIL", f"{tag}: ##REINJ## row for a protocol with no "
@@ -736,6 +745,21 @@ def check_reinj(path):
                            f"(ofDelivered={of_deliv}/events={events}, "
                            f"{before}+{after_only}+{never} != pkts={pkts}) — "
                            "the partition must be exact (#386)")
+        # #386 reading-2 promotions (comment 5233754808): two identities the
+        # event and packet views must satisfy by construction; a violation is
+        # unsound keying, not noise.
+        if of_deliv < before:
+            report("FAIL", f"{tag}: ofDelivered={of_deliv} < "
+                           f"pktsDelivBefore={before} at seed {seed} — every "
+                           "already-delivered key contributes at least one "
+                           "delivered-at-fire-time event; the (flow,seq) "
+                           "keying is unsound (#386)")
+        if dup_deliv > before + after_only:
+            report("FAIL", f"{tag}: pktsDupDeliv={dup_deliv} > "
+                           f"pktsDelivBefore={before} + "
+                           f"pktsDelivAfterOnly={after_only} at seed {seed} — "
+                           "a duplicate-delivered key must be a delivered key "
+                           "(#386)")
         if detector_off and events > 0:
             report("FAIL", f"{tag}: events={events} at seed {seed} with "
                            "EnableMacFailureDetector=false in ##CONFIG## — "
