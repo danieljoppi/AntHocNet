@@ -335,7 +335,15 @@ TypeId RoutingProtocol::GetTypeId() {
                             "A neighbour/route entry was added or removed "
                             "(dest, neighbour, added).",
                             MakeTraceSourceAccessor(&RoutingProtocol::m_routeChangedTrace),
-                            "ns3::anthocnet::RoutingProtocol::RouteChangedCallback");
+                            "ns3::anthocnet::RoutingProtocol::RouteChangedCallback")
+            .AddTraceSource("MacReinject",
+                            "A MAC retry-limit-dropped data packet was "
+                            "re-injected into the pending queue (#46/#386). "
+                            "Fired once per re-injection, immediately before "
+                            "Enqueue; the packet is the queued form (UDP "
+                            "header + payload, no IP header).",
+                            MakeTraceSourceAccessor(&RoutingProtocol::m_macReinjectTrace),
+                            "ns3::anthocnet::RoutingProtocol::MacReinjectCallback");
     return tid;
 }
 
@@ -1203,6 +1211,10 @@ void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI
         entry.ecb = m_cachedEcb;
         entry.holdReason = HOLD_REPAIR;  // #21: held during local repair (#46)
         ++m_macReinjectedPackets;        // #215: this MAC failure was not terminal
+        // #386: same site as the counter, so a listener's event count and
+        // MacReinjectedPackets() agree by construction (scenario_check asserts
+        // events == reinjected on exactly that ground).
+        m_macReinjectTrace(ipHeader, pkt);
         m_queue.Enqueue(entry);
         FlushQueue(dataDest);
     }

@@ -355,6 +355,89 @@ on #63, not something this marker introduces.)
 `overlap > 0`, naming both figures, so the condition is caught by the gate
 rather than by a human noticing a negative percentage.
 
+### Re-injection identity & fate (`##REINJ##`, #386, NS-3 only, AntHocNet + UDP only)
+
+```
+##REINJ## <seed> anthocnet events=.. parsed=.. unparsedIcmp=.. \
+          unparsedOther=.. ofDelivered=.. pkts=.. \
+          pktsDelivBefore=.. pktsDelivAfterOnly=.. pktsNever=.. \
+          pktsDupDeliv=.. dupRx=.. postTx=.. postRx=.. \
+          l3DropRoute=.. l3DropTtl=.. l3DropOther=..
+```
+
+The **direct counter** behind the `##DROPID##` inclusion–exclusion floor: under
+fading, ≥ 58.8 % of the [#46](https://github.com/danieljoppi/AntHocNet/issues/46)
+detector-D re-injections are of packets that had *already arrived* at the
+destination (`unackedRx` vs `reinjected`, a lower bound). This row measures
+that overlap per packet instead of bounding it, and follows what re-injected
+packets then do. One row per seed, AntHocNet arm only.
+
+Packet identity is the `(flow, seq)` key the sink-side maps already use:
+`flow = (source IP, source UDP port)` — byte-identical to the PacketSink `Rx`
+trace's sender address — and `seq` from the `SeqTsSizeHeader`. The adapter's
+`MacReinject` trace source fires **at the same statement that increments
+`MacReinjectedPackets()`**, so `events` and `##DROPID##`'s `reinjected` are two
+readings of one increment; the harness parses the key off the re-injected
+packet (UDP header + SeqTs, the queued form) and off each IP hop transmission.
+
+**Event view** (one count per re-injection):
+
+| field | definition | reads as |
+|---|---|---|
+| `events` | `MacReinject` trace fires | must equal `##DROPID##` `reinjected` — a mismatch is an instrumentation bug (FAIL) |
+| `parsed` | fires where the `(flow, seq)` parse succeeded | `parsed + unparsedIcmp + unparsedOther` must equal `events` — every re-injection is either named or classified (FAIL when the books do not close) |
+| `unparsedIcmp` / `unparsedOther` | parse failures, split by IP protocol 1 vs anything else | **a finding, not an error** (WARN when non-zero): `NotifyTxError` re-injects *any* non-ant IP payload, so ICMP (e.g. TTL-exceeded) rides the detector too. Measured on the invariance probe: 2 events at one seed the SeqTs identity could not name ([#386](https://github.com/danieljoppi/AntHocNet/issues/386) comment 5233656930). The fate buckets below cover only the parsed events |
+| `ofDelivered` | fires where the key was already in the sink's delivered set **at trace-fire time** | re-injections of already-delivered packets. No timestamps needed: traces fire in simulation-event order, so presence in the delivered map means "delivered strictly earlier" |
+
+`ofDelivered` is deliberately **"already delivered AT RE-INJECTION TIME"**, not
+"eventually delivered anyway" — a copy that passed the failing hop but had not
+yet reached the sink counts as not-yet-delivered here, so it is conservative
+against the floor. The eventual-fate buckets below carry the other quantity.
+
+**Packet view** (distinct re-injected `(flow, seq)` keys, classified at end of
+run):
+
+| field | definition |
+|---|---|
+| `pkts` | distinct keys ever re-injected |
+| `pktsDelivBefore` | delivered before their **first** re-injection (the waste-certain class) |
+| `pktsDelivAfterOnly` | never delivered before first re-injection, delivered by end of run (delivered late — the re-injection plausibly saved them) |
+| `pktsNever` | never delivered at all (dropped) |
+| `pktsDupDeliv` / `dupRx` | keys the sink delivered ≥ 2 times / total surplus deliveries (how much duplicate delivery inflates FlowMonitor's rx) |
+| `postTx` / `postRx` | IP-layer hop transmissions / arrivals of re-injected keys **after** their first re-injection — the hops re-injected packets go on to consume (the wasted-work number); `postTx − postRx` is their post-re-injection in-medium loss |
+
+`pktsDelivBefore + pktsDelivAfterOnly + pktsNever = pkts` exactly;
+`scenario_check.py results` FAILs a row where the partition does not sum, and
+WARNs when `ofDelivered` falls below the same-seed inclusion–exclusion floor
+`reinjected + unackedRx − macDrops` (WARN, not FAIL: the floor is built from
+*next-hop arrivals* while `ofDelivered` counts *sink deliveries*, so a small
+shortfall can be timing rather than broken books).
+
+The trailing `l3DropRoute`/`l3DropTtl`/`l3DropOther` fields attribute the
+L3-visible drops of re-injected keys (the pending-queue ageout's error callback
+lands in `DROP_ROUTE_ERROR`; TTL exhaustion in `DROP_TTL_EXPIRED`). A key that
+ends in `pktsNever` with no L3 drop died in the medium/MAC — the residue the
+#377/[#388](https://github.com/danieljoppi/AntHocNet/issues/388) drop identity
+is sensitive to. This stage is deliberately isolated (own callback, own trace
+connect, fields grouped last) so it can be cut cleanly if an ns-3 version in
+the CI matrix rejects the `Ipv4L3Protocol` `Drop` trace signature.
+
+**Absence encoding** (the #382 rule, with the #229/#230 controls stated as
+numbers):
+
+- **Baselines (AODV/OLSR/DSDV): no row at all.** They have no failure detector
+  and no re-injection; a `0` would read as "measured, nothing happened".
+  `scenario_check.py results` FAILs any `##REINJ##` row naming a non-AntHocNet
+  protocol.
+- **TCP cells: no row.** The SeqTs identity does not exist on a byte stream
+  (same reason the reorder columns are absent there).
+- **`EnableMacFailureDetector=false`: row present, every field `= 0`.** The
+  hooks stay connected and the trace simply never fires, so the zeros are
+  *measured*. The knob's effective value is in the `##CONFIG## attr` dump, and
+  `scenario_check.py results` FAILs `events > 0` alongside
+  `EnableMacFailureDetector=false` — preflight cannot enforce this (it never
+  sees `extraArgs`), so the coherence check is results-side by design.
+
 ### Measuring commit (`##PROV##`, #365)
 
 ```

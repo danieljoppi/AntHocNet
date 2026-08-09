@@ -329,6 +329,14 @@ jobs:
           # Absent on a TCP cell by design (the counters are UDP-gated).
           grep '^##DROPID##' "$GITHUB_WORKSPACE/paper-results.txt" \
             >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
+          # #386: re-injection identity/fate rows — the direct counter behind
+          # the ##DROPID## unackedRx-vs-reinjected floor. Added in the same
+          # commit that emits them, per the ##MATCH## rule above. Present for
+          # the anthocnet arm on UDP cells only (a detector-off arm emits it
+          # with all-zero fields); absent for the baselines and on TCP cells
+          # by design.
+          grep '^##REINJ##' "$GITHUB_WORKSPACE/paper-results.txt" \
+            >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
           # #230: the '# paths/energy/drops/stddev/reorder' diagnostic lines are
           # the *only* place the #209/#212/#215/#217 metric families appear in a
           # single-point run — the fixed-width table cannot carry them (its field
