@@ -1626,10 +1626,22 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // they are not, by up to 20 pp. Percentages cannot say which book is
         // wrong, so the counters ship raw:
         //
-        //   overlap    = macTerminal + queue - hopLoss
+        //   overlap    = macDrops + queue - hopLoss
         //                the amount by which the subtracted causes exceed the
         //                pool they are carved from. Positive == the books
         //                provably overlap; this is exactly -dropChanPct*tx/100.
+        //
+        // `macDrops`, NOT `macTerminal`. The two are the same for the stock
+        // baselines and differ by two orders of magnitude for AntHocNet, whose
+        // #46 detector re-injects most MAC failures (probe run 31286508174:
+        // macDrops=475, reinjected=466, macTerminal=9). dropChanPct subtracts
+        // the *raw* g_macDataDrops -- a re-injected packet is not a terminal
+        // drop, but its hop transmission did fail, so it belongs in the hop
+        // accounting -- and this line has to mirror that or it is not the
+        // residual it claims to be. The first cut used macTerminal and read
+        // -469 where the true figure is -3, which would have left the gate
+        // below blind to the AntHocNet arm: the very arm with the worst
+        // reported drop_chan_pct (-13.77) on #377.
         //   unackedRx  = hopRx - ackedHops
         //                frames that reached the next hop's IP layer without
         //                the sender ever recording an ACK. Under 802.11 that
@@ -1651,7 +1663,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // it.
         const int64_t hopLossN = static_cast<int64_t>(g_dataHopTx)
                                - static_cast<int64_t>(g_dataHopRx);
-        const int64_t overlap = static_cast<int64_t>(macTerminal)
+        const int64_t overlap = static_cast<int64_t>(g_macDataDrops)
                               + static_cast<int64_t>(dropQueue) - hopLossN;
         const int64_t unackedRx = static_cast<int64_t>(g_dataHopRx)
                                 - static_cast<int64_t>(g_ackedDataHops);
