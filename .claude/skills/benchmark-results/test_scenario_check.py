@@ -1133,6 +1133,30 @@ def _reinj_incoherent_fires():
            f"a baseline ##REINJ## row was accepted\n{out}")
 
 
+@case("#386 ofDelivered below pktsDelivBefore FAILs — unsound keying")
+def _reinj_ofdeliv_floor_fires():
+    # Reading-2 promotion (comment 5233754808): a key delivered before its
+    # FIRST re-injection contributes >= 1 delivered-at-fire-time event, so
+    # ofDelivered >= pktsDelivBefore by construction. 1290 < 1300 can only be
+    # the event and packet views keyed differently. (The inclusion-exclusion
+    # floor WARN also fires here — 1290 < 1527 — which is correct and ignored.)
+    row = REINJ_CLEAN.replace("ofDelivered=1608", "ofDelivered=1290")
+    _levels, out = run_cell(ISL_CELL + DROPID_REINJ_ARM + row)
+    expect("keying is unsound" in out, "reinj-ofdeliv-floor",
+           f"ofDelivered < pktsDelivBefore was not flagged\n{out}")
+
+
+@case("#386 pktsDupDeliv above the delivered keys FAILs")
+def _reinj_dup_bound_fires():
+    # The other reading-2 promotion: a duplicate-delivered key must be a
+    # delivered key, so pktsDupDeliv <= pktsDelivBefore + pktsDelivAfterOnly.
+    # 1900 > 1300 + 520 counts duplicates on keys that were never delivered.
+    row = REINJ_CLEAN.replace("pktsDupDeliv=900", "pktsDupDeliv=1900")
+    _levels, out = run_cell(ISL_CELL + DROPID_REINJ_ARM + row)
+    expect("must be a delivered key" in out, "reinj-dup-bound",
+           f"pktsDupDeliv beyond the delivered keys was not flagged\n{out}")
+
+
 @case("#386 non-data re-injections with closing books WARN, never FAIL")
 def _reinj_unparsed_warns():
     # The invariance probe's actual finding (comment 5233656930): 2 events the
