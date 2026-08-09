@@ -52,6 +52,7 @@
 #include "ns3/flow-monitor-module.h"
 #include "ns3/ipv4-flow-classifier.h"
 #include "ns3/ipv4-l3-protocol.h"
+#include "ns3/tcp-header.h"
 #include "ns3/udp-header.h"
 // #212: the application-level sequence number the reordering metrics key on.
 // Part of the applications module (already included above) since ns-3.31, so it
@@ -280,6 +281,14 @@ bool IsDataIp(Ptr<const Packet> p) {
     Ptr<Packet> c = p->Copy();
     Ipv4Header ip;
     if (c->RemoveHeader(ip) == 0) return false;
+    if (ip.GetProtocol() == 6) {  // TCP (#389)
+        // Pure TCP ACKs are excluded naturally: on the reverse path the
+        // destination port is the sender's ephemeral port, so only forward
+        // data segments count — matching what the UDP arm counts.
+        TcpHeader tcp;
+        if (c->PeekHeader(tcp) == 0) return false;
+        return tcp.GetDestinationPort() == kDataPort;
+    }
     if (ip.GetProtocol() != 17) return false;  // not UDP
     UdpHeader udp;
     if (c->PeekHeader(udp) == 0) return false;
@@ -586,11 +595,20 @@ void CountAckedDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
     if (llc.GetType() != 0x0800) return;  // not IPv4
     Ipv4Header ip;
     if (pkt->RemoveHeader(ip) == 0) return;
-    if (ip.GetProtocol() != 17) return;  // not UDP; routing control here is UDP
-    UdpHeader udp;
-    if (pkt->PeekHeader(udp) == 0) return;
     // Data only: routing control is exactly what must NOT count as a used path.
-    if (udp.GetDestinationPort() != kDataPort) return;
+    // Routing control here is UDP, so a data-port TCP segment is by
+    // construction never control (#389).
+    if (ip.GetProtocol() == 6) {  // TCP
+        TcpHeader tcp;
+        if (pkt->PeekHeader(tcp) == 0) return;
+        if (tcp.GetDestinationPort() != kDataPort) return;
+    } else if (ip.GetProtocol() == 17) {  // UDP
+        UdpHeader udp;
+        if (pkt->PeekHeader(udp) == 0) return;
+        if (udp.GetDestinationPort() != kDataPort) return;
+    } else {
+        return;  // neither UDP nor TCP
+    }
     ++g_ackedDataHops;  // #377
     const uint64_t window =
         static_cast<uint64_t>(Simulator::Now().GetSeconds() / g_pathWindowS);
@@ -609,16 +627,29 @@ void CountAckedDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
 // transport, i.e. exactly the delivered packets PDR counts. The header arrives
 // with the TTL the packet carried on the wire.
 void CountDeliveredHops(const Ipv4Header& ip, Ptr<const Packet> p, uint32_t) {
-    if (ip.GetProtocol() != 17) return;
+    const bool isTcp = ip.GetProtocol() == 6;  // #389: TCP data counts here too
     UdpHeader udp;
-    if (p->PeekHeader(udp) == 0) return;
-    if (udp.GetDestinationPort() != kDataPort) return;
+    if (isTcp) {
+        TcpHeader tcp;
+        if (p->PeekHeader(tcp) == 0) return;
+        if (tcp.GetDestinationPort() != kDataPort) return;
+    } else {
+        if (ip.GetProtocol() != 17) return;
+        if (p->PeekHeader(udp) == 0) return;
+        if (udp.GetDestinationPort() != kDataPort) return;
+    }
     const uint8_t ttl = ip.GetTtl();
     const uint32_t hops =
         ttl < kIpDefaultTtl ? static_cast<uint32_t>(kIpDefaultTtl - ttl) + 1u : 1u;
     g_hopSum += hops;
     ++g_hopCount;
     if (hops > g_hopMax) g_hopMax = hops;
+
+    // #389: stop here under TCP. SeqTsSizeHeader only exists in UDP datagrams;
+    // under TCP the common-set key cannot be parsed off a byte stream (and the
+    // flow key below needs udp.GetSourcePort()), so g_rxHopsBySeq stays empty
+    // by design — absence is the encoding, same principle as #382.
+    if (isTcp) return;
 
     // #308 phase 2: also record this packet's hop count under the same
     // (flow, seq) key the delays use, so the common set can be measured in hops
@@ -1686,13 +1717,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                                - static_cast<int64_t>(g_dataHopRx);
         const int64_t overlap = static_cast<int64_t>(macLost)
                               + static_cast<int64_t>(dropQueue) - hopLossN;
-        // Not emitted under TCP. Every counter above is gated on IsDataIp,
-        // which tests for UDP on the data port, so on a TCP cell they are all
-        // structurally zero — and a zero here would read as "hopTx=0, no
-        // overlap, identity clean" when the truth is that nothing was counted.
-        // Same rule as ##HOLD##/##AIR## and the same mistake #382 fixed for the
-        // reorder columns: suppressing the source is only half of encoding
-        // absence, the emission has to go too.
+        // Not emitted under TCP. Since #389 the counters above DO count TCP
+        // data segments, but the drop-cause identity itself is unvalidated
+        // under TCP — it was closed on per-packet UDP books, and TCP counts
+        // segments and retransmits them, so the arithmetic has not been shown
+        // to close there. The emission stays suppressed until it is (#389
+        // follow-up); same rule as ##HOLD##/##AIR## and #382 — an unvalidated
+        // line would read as clean books, so absence is the encoding.
         if (P.transport != "tcp") {
             std::cout << "##DROPID## " << seed << ' ' << proto
                       << " hopTx=" << g_dataHopTx
