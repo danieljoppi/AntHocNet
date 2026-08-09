@@ -1024,6 +1024,21 @@ def _dropid_worst_per_proto():
            f"{out.count('drop-cause books overlap')}\n{out}")
 
 
+@case("#377 an AntHocNet row is judged on macDrops, not macTerminal")
+def _dropid_reinject_arm():
+    # Verbatim from probe run 31286508174 (rwp x nakagami), except hopLoss is
+    # lowered by 10 so the true residual goes negative. The re-injection gap is
+    # what matters: macDrops=475 against macTerminal=9. Reading macTerminal
+    # would report overlap -459 and stay silent on the very arm #377 reports
+    # the worst drop_chan_pct for; reading macDrops reports +7 and fires.
+    row = ("##DROPID## 1 anthocnet hopTx=4584 hopRx=4106 ackedHops=3789 "
+           "macDrops=475 reinjected=466 macTerminal=9 queue=0 hopLoss=468 "
+           "overlap=7 unackedRx=317\n")
+    _levels, out = run_cell(ISL_CELL + row)
+    expect("drop-cause books overlap by 7" in out, "dropid-reinject",
+           f"the re-injecting arm was not judged on the raw MAC-drop count\n{out}")
+
+
 @case("#377 a cell with no ##DROPID## rows is not flagged")
 def _dropid_absent_quiet():
     # TCP cells and every pre-#377 run carry no such row; absence is not a

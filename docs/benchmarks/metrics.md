@@ -288,8 +288,21 @@ Two of the fields are derived and are the ones to read first:
 
 | field | definition | what a non-zero value means |
 |---|---|---|
-| `overlap` | `macTerminal + queue − hopLoss` | the subtracted causes exceed the pool they are carved from — the books provably overlap. Identically `−drop_chan_pct · tx / 100`. |
+| `overlap` | `macDrops + queue − hopLoss` | the subtracted causes exceed the pool they are carved from — the books provably overlap. Identically `−drop_chan_pct · tx / 100`. |
 | `unackedRx` | `hopRx − ackedHops` | frames that reached the next hop's IP layer without the sender recording an ACK — under 802.11, the delivered-but-ACK-lost case |
+
+**`macDrops`, not `macTerminal`, in `overlap`** — and the distinction is not
+pedantic. They are equal for the stock baselines, which never re-inject, and
+differ by two orders of magnitude for AntHocNet, whose
+[#46](https://github.com/danieljoppi/AntHocNet/issues/46) detector re-injects
+most MAC failures: probe run
+[31286508174](https://github.com/danieljoppi/AntHocNet/actions/runs/31286508174)
+reads `macDrops=475 reinjected=466 macTerminal=9`. `drop_chan_pct` subtracts the
+*raw* count — a re-injected packet is not a terminal drop, but its hop
+transmission did fail, so it belongs in the hop accounting — so `overlap` must
+mirror that or it is not the residual it claims to be. The first cut of this
+marker used `macTerminal` and reported `-469` for a cell whose true figure is
+`-3`, which left the gate blind to the AntHocNet arm.
 
 The reason both are printed is that they test a specific hypothesis against each
 other. A delivered-but-ACK-lost frame is counted in `hopRx` (so it is *not* in
