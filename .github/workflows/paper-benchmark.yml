@@ -61,6 +61,12 @@ jobs:
   paper:
     name: paper scenario + diagnostics
     runs-on: ubuntu-latest
+    # 6 h is a HARD platform ceiling on GitHub-hosted runners: every job is
+    # killed at 360 min and jobs.<id>.timeout-minutes can only *shorten* it,
+    # never extend it (#121). Stated explicitly rather than left implicit, so
+    # the relationship to the step cap below is visible in one place —
+    # scenario-matrix.yml carries the same pair for the same reason.
+    timeout-minutes: 360
     container:
       image: ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }}
       credentials:
@@ -112,6 +118,25 @@ jobs:
         # (#131) is always attributable to a build profile after the fact.
         run: cd /opt/ns-3 && ./ns3 build && ./ns3 show profile
       - name: Run paper scenario
+        # 340 min, deliberately below the job's 360 (#121). A *job*-level kill
+        # runs no further steps at all: the compact block never prints and the
+        # if:always() artifact upload never fires, so a run that overshoots
+        # loses its numbers AND the #256 forensics — everything, including the
+        # partial results the `tee` below has already written. A *step* timeout
+        # fails only this step, and the upload still runs, so an overshoot
+        # costs the run but keeps the evidence for why it overshot.
+        #
+        # Not hypothetical. The #63 UDP control (run 31284366759, 20 seeds x
+        # 900 s) took 4 h 00 m against a 3 h 35 m projection from the published
+        # grid cell — the same scenario, slower only because five other
+        # campaign jobs shared the infrastructure. It finished with ~1 h 37 m
+        # of margin, but nothing in this file was keeping it on the safe side
+        # of the ceiling, and a 20-seed Nakagami cell (4 h 25 m measured, #295)
+        # dispatched under the same contention would have had ~35 min.
+        #
+        # scenario-matrix.yml has carried this pair since #119; paper-benchmark
+        # never got it.
+        timeout-minutes: 340
         # Container jobs default to plain `sh`, where `set -o pipefail` is an
         # illegal option (run 29664072922 died instantly on it). The image is
         # Ubuntu, so bash is present — declare it explicitly.
@@ -223,6 +248,14 @@ jobs:
             time-v.log
           retention-days: 7
       - name: Compact result block (cheap to fetch via get_job_logs tail)
+        # if: always() — required for the step cap above to actually buy
+        # anything here. CI artifacts are proxy-blocked in the environment that
+        # reads these campaigns, so the compact block in the *log* is the only
+        # reachable evidence; an upload that survives a timeout while this step
+        # is skipped preserves the numbers somewhere nobody can get at them.
+        # On a genuine mid-run failure the #28 empty-table gate below still
+        # fires, which is the outcome that gate is for.
+        if: always()
         # Re-emit each protocol row as a single greppable line as the LAST log
         # output, so the benchmark-results skill can read just the numbers with a
         # small tail_lines instead of scraping the whole table+cleanup noise.
