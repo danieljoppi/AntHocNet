@@ -1082,7 +1082,8 @@ DROPID_REINJ_ARM = (
     "macDrops=2738 reinjected=2698 macTerminal=40 macLost=1171 queue=0 "
     "hopLoss=1810 overlap=-639 unackedRx=1567\n")
 REINJ_CLEAN = (
-    "##REINJ## 1 anthocnet events=2698 parsed=2698 ofDelivered=1608 pkts=2100 "
+    "##REINJ## 1 anthocnet events=2698 parsed=2698 unparsedIcmp=0 "
+    "unparsedOther=0 ofDelivered=1608 pkts=2100 "
     "pktsDelivBefore=1300 pktsDelivAfterOnly=520 pktsNever=280 "
     "pktsDupDeliv=900 dupRx=940 postTx=5200 postRx=4600 "
     "l3DropRoute=120 l3DropTtl=3 l3DropOther=0\n")
@@ -1098,29 +1099,53 @@ def _reinj_clean_quiet():
            f"a coherent re-injection book was flagged\n{out}")
 
 
-@case("#386 events != reinjected FAILs, and a baseline ##REINJ## row FAILs")
+@case("#386 events != reinjected FAILs, non-closing parse books FAIL, "
+      "and a baseline ##REINJ## row FAILs")
 def _reinj_incoherent_fires():
     # The one-increment-site identity: the ##REINJ## trace fires exactly where
     # the adapter counter increments, so 460 vs 466 can only be a broken hook.
-    # The aodv row violates the absence control — baselines have no detector
-    # and must emit nothing, not zeros. ofDelivered=310 keeps the (separate)
-    # floor WARN out of this case: 466+317-475 = 308.
+    # parsed=456 + unparsedIcmp=2 + unparsedOther=0 = 458 != events=460: two
+    # re-injections neither named nor classified — partial books, FAIL (the
+    # shape of the invariance probe's seed-2 reading, 617 vs 619, before the
+    # unparsed counters existed). The aodv row violates the absence control —
+    # baselines have no detector and must emit nothing, not zeros.
+    # ofDelivered=310 keeps the (separate) floor WARN out of this case:
+    # 466+317-475 = 308.
     row = ("##DROPID## 1 anthocnet hopTx=4584 hopRx=4106 ackedHops=3789 "
            "macDrops=475 reinjected=466 macTerminal=9 macLost=158 queue=0 "
            "hopLoss=151 overlap=7 unackedRx=317\n"
-           "##REINJ## 1 anthocnet events=460 parsed=460 ofDelivered=310 "
+           "##REINJ## 1 anthocnet events=460 parsed=456 unparsedIcmp=2 "
+           "unparsedOther=0 ofDelivered=310 "
            "pkts=400 pktsDelivBefore=250 pktsDelivAfterOnly=90 pktsNever=60 "
            "pktsDupDeliv=40 dupRx=41 postTx=800 postRx=700 "
            "l3DropRoute=20 l3DropTtl=1 l3DropOther=0\n"
-           "##REINJ## 1 aodv events=0 parsed=0 ofDelivered=0 pkts=0 "
+           "##REINJ## 1 aodv events=0 parsed=0 unparsedIcmp=0 "
+           "unparsedOther=0 ofDelivered=0 pkts=0 "
            "pktsDelivBefore=0 pktsDelivAfterOnly=0 pktsNever=0 "
            "pktsDupDeliv=0 dupRx=0 postTx=0 postRx=0 "
            "l3DropRoute=0 l3DropTtl=0 l3DropOther=0\n")
     _levels, out = run_cell(ISL_CELL + row)
     expect("events=460 != reinjected=466" in out, "reinj-mismatch",
            f"the events/reinjected identity break was not flagged\n{out}")
+    expect("unparsedOther=0 != events=460" in out, "reinj-books-open",
+           f"non-closing parse books were not flagged\n{out}")
     expect("protocol with no detector" in out, "reinj-baseline-row",
            f"a baseline ##REINJ## row was accepted\n{out}")
+
+
+@case("#386 non-data re-injections with closing books WARN, never FAIL")
+def _reinj_unparsed_warns():
+    # The invariance probe's actual finding (comment 5233656930): 2 events the
+    # SeqTs identity could not name, books otherwise perfect. That is a fact
+    # about what NotifyTxError re-injects (any non-ant IP payload, ICMP
+    # included) — the gate must surface it without blocking the cell.
+    row = REINJ_CLEAN.replace("parsed=2698 unparsedIcmp=0",
+                              "parsed=2696 unparsedIcmp=2")
+    _levels, out = run_cell(ISL_CELL + DROPID_REINJ_ARM + row)
+    expect("non-data re-injection(s)" in out, "reinj-unparsed-warn",
+           f"the non-data finding was not surfaced\n{out}")
+    expect("FAIL" not in out, "reinj-unparsed-no-fail",
+           f"a coherent book with a non-data finding was FAILed\n{out}")
 
 
 def main():

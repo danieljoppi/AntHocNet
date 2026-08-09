@@ -118,14 +118,19 @@ DROPID_REINJ_FIELDS = re.compile(
     r"^\s*##DROPID##\s+(\d+)\s+([a-z][\w-]*)\s+.*\bmacDrops=(\d+)\b"
     r".*\breinjected=(\d+)\b.*\bunackedRx=(-?\d+)\b")
 # #386: re-injection identity/fate, one row per (seed, anthocnet) on UDP cells.
-#   ##REINJ## <seed> <proto> events=.. parsed=.. ofDelivered=.. pkts=..
-#     pktsDelivBefore=.. pktsDelivAfterOnly=.. pktsNever=.. pktsDupDeliv=..
-#     dupRx=.. postTx=.. postRx=.. l3DropRoute=.. l3DropTtl=.. l3DropOther=..
+#   ##REINJ## <seed> <proto> events=.. parsed=.. unparsedIcmp=..
+#     unparsedOther=.. ofDelivered=.. pkts=.. pktsDelivBefore=..
+#     pktsDelivAfterOnly=.. pktsNever=.. pktsDupDeliv=.. dupRx=.. postTx=..
+#     postRx=.. l3DropRoute=.. l3DropTtl=.. l3DropOther=..
 # Absent for the baselines and on TCP cells (absence encoding, #382); a
-# detector-off anthocnet arm emits it with all fields zero. Only the fields the
-# rules read are matched; the l3Drop* tail is the cuttable stage and is not.
+# detector-off anthocnet arm emits it with all fields zero. The unparsed*
+# fields classify re-injections the (flow, seq) identity could not name — the
+# invariance probe's non-data (ICMP) finding, #386 comment 5233656930. Only
+# the fields the rules read are matched; the l3Drop* tail is the cuttable
+# stage and is not.
 REINJ_LINE = re.compile(
     r"^\s*##REINJ##\s+(\d+)\s+([a-z][\w-]*)\s+events=(\d+)\s+parsed=(\d+)"
+    r"\s+unparsedIcmp=(\d+)\s+unparsedOther=(\d+)"
     r"\s+ofDelivered=(\d+)\s+pkts=(\d+)\s+pktsDelivBefore=(\d+)"
     r"\s+pktsDelivAfterOnly=(\d+)\s+pktsNever=(\d+)\b")
 # #386: the knob the coherence rule reads. Preflight cannot see extraArgs (it
@@ -652,9 +657,12 @@ def check_reinj(path):
     (>=59% of re-injections are of already-delivered packets). Its trace fires
     at the SAME adapter site that increments MacReinjectedPackets(), so
     `events` and ##DROPID##'s `reinjected` are two readings of one increment —
-    a mismatch is an instrumentation bug, never a protocol behaviour. The same
-    holds for `parsed`: on a UDP cell every non-ant data packet is a SeqTs CBR
-    datagram, so the (flow, seq) parse must be total.
+    a mismatch is an instrumentation bug, never a protocol behaviour. The
+    parse books must close the same way: parsed + unparsedIcmp + unparsedOther
+    == events. A non-zero unparsed count itself is a FINDING, not an error —
+    the invariance probe measured 2 events at seed 2 the SeqTs identity could
+    not name (#386 comment 5233656930): the detector re-injects any non-ant IP
+    payload, ICMP included — so it WARNs with the counts rather than FAILing.
 
     Controls (the #229/#230 rule, a-priori values):
       - baselines emit NO row at all (absence encoding, #382) — a row with a
@@ -689,10 +697,11 @@ def check_reinj(path):
         if not m:
             continue
         seed, proto = m.group(1), m.group(2)
-        events, parsed, of_deliv, pkts = (int(m.group(3)), int(m.group(4)),
-                                          int(m.group(5)), int(m.group(6)))
-        before, after_only, never = (int(m.group(7)), int(m.group(8)),
-                                     int(m.group(9)))
+        events, parsed = int(m.group(3)), int(m.group(4))
+        unp_icmp, unp_other = int(m.group(5)), int(m.group(6))
+        of_deliv, pkts = int(m.group(7)), int(m.group(8))
+        before, after_only, never = (int(m.group(9)), int(m.group(10)),
+                                     int(m.group(11)))
         tag = f"{base}/{proto}"
         if proto != "anthocnet":
             report("FAIL", f"{tag}: ##REINJ## row for a protocol with no "
@@ -705,12 +714,23 @@ def check_reinj(path):
                            f"{dropid[seed][1]} at seed {seed} — one increment "
                            "site, two readings; the ##REINJ## trace or the "
                            "adapter counter is broken (#386)")
-        if parsed != events:
-            report("FAIL", f"{tag}: parsed={parsed} != events={events} at "
-                           f"seed {seed} — the (flow, seq) parse must be total "
-                           "on a UDP cell; a re-injected data packet the "
-                           "identity cannot name means the books are partial "
+        if parsed + unp_icmp + unp_other != events:
+            report("FAIL", f"{tag}: parsed={parsed} + unparsedIcmp={unp_icmp} "
+                           f"+ unparsedOther={unp_other} != events={events} at "
+                           f"seed {seed} — every re-injection is either named "
+                           "by the (flow, seq) identity or classified "
+                           "unparsed; a gap means the books are partial "
                            "(#386)")
+        elif unp_icmp + unp_other > 0:
+            report("WARN", f"{tag}: {unp_icmp + unp_other} non-data "
+                           f"re-injection(s) at seed {seed} "
+                           f"(unparsedIcmp={unp_icmp}, "
+                           f"unparsedOther={unp_other}) — the detector's "
+                           "books include re-injected traffic the SeqTs "
+                           "identity cannot name (ICMP etc., #386 comment "
+                           "5233656930). A finding about what NotifyTxError "
+                           "re-injects, not an error; the fate buckets cover "
+                           "only the parsed events")
         if of_deliv > events or before + after_only + never != pkts:
             report("FAIL", f"{tag}: fate buckets incoherent at seed {seed} "
                            f"(ofDelivered={of_deliv}/events={events}, "

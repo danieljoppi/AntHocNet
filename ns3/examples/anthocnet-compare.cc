@@ -347,12 +347,22 @@ std::map<std::pair<Address, uint32_t>, ReinjInfo> g_reinj;
 uint64_t g_reinjEvents = 0;       // MacReinject trace fires (== reinjected)
 uint64_t g_reinjParsed = 0;       // fires where the (flow, seq) parse succeeded
 uint64_t g_reinjOfDelivered = 0;  // fires with the key already delivered
+// #386 probe finding (comment 5233656930): the detector re-injects any non-ant
+// IP payload, and seed 2 of the invariance probe carried 2 events the SeqTs
+// identity could not name — most plausibly ICMP (TTL-exceeded travels the same
+// unicast hops as data). Classify the parse failures instead of failing the
+// books: protocol 1 vs everything else. Recorded, not "fixed" — changing what
+// NotifyTxError re-injects would be a protocol-behaviour change, not
+// instrumentation.
+uint64_t g_reinjUnparsedIcmp = 0;   // parse failures with ip.protocol == 1
+uint64_t g_reinjUnparsedOther = 0;  // any other parse failure
 
 // (flow, seq) off a packet whose front is the UDP header (the form the
 // MacReinject trace and the Ipv4L3Protocol traces hand over — IP header
-// separate). False on anything that is not a SeqTs CBR datagram; on the UDP
-// arm every non-ant data packet is one, so parsed != events is an
-// instrumentation bug and scenario_check FAILs it.
+// separate). False on anything that is not a SeqTs CBR datagram; the
+// MacReinject listener classifies those (unparsedIcmp/unparsedOther), and
+// scenario_check FAILs only when parsed + unparsed != events — the books must
+// close, but a non-data re-injection is a finding, not an error.
 bool ReinjKeyFromUdp(const Ipv4Header& ip, Ptr<const Packet> p,
                      Address& flow, uint32_t& seq) {
     if (ip.GetProtocol() != 17) return false;
@@ -382,7 +392,13 @@ void CountMacReinject(const Ipv4Header& ip, Ptr<const Packet> p) {
     ++g_reinjEvents;
     Address flow;
     uint32_t seq = 0;
-    if (!ReinjKeyFromUdp(ip, p, flow, seq)) return;
+    if (!ReinjKeyFromUdp(ip, p, flow, seq)) {
+        // Classify, don't drop on the floor: parsed + unparsed must equal
+        // events or the books don't close (scenario_check FAILs that).
+        if (ip.GetProtocol() == 1) ++g_reinjUnparsedIcmp;
+        else ++g_reinjUnparsedOther;
+        return;
+    }
     ++g_reinjParsed;
     uint32_t rxNow = 0;
     const auto f = g_rxCount.find(flow);
@@ -973,6 +989,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_rxCount.clear();       // #386
     g_reinj.clear();         // #386
     g_reinjEvents = g_reinjParsed = g_reinjOfDelivered = 0;  // #386
+    g_reinjUnparsedIcmp = g_reinjUnparsedOther = 0;          // #386
     g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;  // #215
     g_ackedDataHops = 0;  // #377
     // #217
@@ -1919,8 +1936,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // exclusion floor above (unackedRx vs reinjected), plus what re-injected
         // packets then DO. Event view: `events` MUST equal `reinjected` (the
         // trace fires at the same site that increments the adapter counter —
-        // scenario_check FAILs a mismatch), `parsed` must equal `events` on the
-        // UDP arm, `ofDelivered` counts re-injections of packets already at the
+        // scenario_check FAILs a mismatch); parsed + unparsedIcmp +
+        // unparsedOther must equal `events` (the books close; the unparsed
+        // counts are the probe's non-data-re-injection finding, WARNed not
+        // FAILed); `ofDelivered` counts re-injections of packets already at the
         // destination AT RE-INJECTION TIME (the floor's direct counterpart).
         // Packet view (distinct keys): pktsDelivBefore (delivered before first
         // re-injection) / pktsDelivAfterOnly (delivered late, only after) /
@@ -1961,6 +1980,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             std::cout << "##REINJ## " << seed << ' ' << proto
                       << " events=" << g_reinjEvents
                       << " parsed=" << g_reinjParsed
+                      << " unparsedIcmp=" << g_reinjUnparsedIcmp
+                      << " unparsedOther=" << g_reinjUnparsedOther
                       << " ofDelivered=" << g_reinjOfDelivered
                       << " pkts=" << pkts
                       << " pktsDelivBefore=" << delivBefore

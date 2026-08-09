@@ -358,7 +358,8 @@ rather than by a human noticing a negative percentage.
 ### Re-injection identity & fate (`##REINJ##`, #386, NS-3 only, AntHocNet + UDP only)
 
 ```
-##REINJ## <seed> anthocnet events=.. parsed=.. ofDelivered=.. pkts=.. \
+##REINJ## <seed> anthocnet events=.. parsed=.. unparsedIcmp=.. \
+          unparsedOther=.. ofDelivered=.. pkts=.. \
           pktsDelivBefore=.. pktsDelivAfterOnly=.. pktsNever=.. \
           pktsDupDeliv=.. dupRx=.. postTx=.. postRx=.. \
           l3DropRoute=.. l3DropTtl=.. l3DropOther=..
@@ -384,7 +385,8 @@ packet (UDP header + SeqTs, the queued form) and off each IP hop transmission.
 | field | definition | reads as |
 |---|---|---|
 | `events` | `MacReinject` trace fires | must equal `##DROPID##` `reinjected` — a mismatch is an instrumentation bug (FAIL) |
-| `parsed` | fires where the `(flow, seq)` parse succeeded | must equal `events` on a UDP cell — every non-ant data packet is a SeqTs CBR datagram (FAIL) |
+| `parsed` | fires where the `(flow, seq)` parse succeeded | `parsed + unparsedIcmp + unparsedOther` must equal `events` — every re-injection is either named or classified (FAIL when the books do not close) |
+| `unparsedIcmp` / `unparsedOther` | parse failures, split by IP protocol 1 vs anything else | **a finding, not an error** (WARN when non-zero): `NotifyTxError` re-injects *any* non-ant IP payload, so ICMP (e.g. TTL-exceeded) rides the detector too. Measured on the invariance probe: 2 events at one seed the SeqTs identity could not name ([#386](https://github.com/danieljoppi/AntHocNet/issues/386) comment 5233656930). The fate buckets below cover only the parsed events |
 | `ofDelivered` | fires where the key was already in the sink's delivered set **at trace-fire time** | re-injections of already-delivered packets. No timestamps needed: traces fire in simulation-event order, so presence in the delivered map means "delivered strictly earlier" |
 
 `ofDelivered` is deliberately **"already delivered AT RE-INJECTION TIME"**, not
