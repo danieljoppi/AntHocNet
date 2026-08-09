@@ -287,6 +287,15 @@ jobs:
           # would be a cell with no readable primary metric at all.
           grep '^##GOODPUT##' "$GITHUB_WORKSPACE/paper-results.txt" \
             >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
+          # #377: the raw counters behind the drop-cause residual, per seed.
+          # Added in the same commit that emits them, per the rule above. This
+          # marker exists to test one hypothesis about why drop_chan_pct goes
+          # negative on every fading cell, and a hypothesis that cannot be
+          # reached from the cheap tail cannot be tested at all — the whole
+          # point is a two-cell probe read from a log tail, not a campaign.
+          # Absent on a TCP cell by design (the counters are UDP-gated).
+          grep '^##DROPID##' "$GITHUB_WORKSPACE/paper-results.txt" \
+            >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
           # #230: the '# paths/energy/drops/stddev/reorder' diagnostic lines are
           # the *only* place the #209/#212/#215/#217 metric families appear in a
           # single-point run — the fixed-width table cannot carry them (its field

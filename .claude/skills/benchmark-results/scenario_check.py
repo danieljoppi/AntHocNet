@@ -103,6 +103,13 @@ DIAG_LINE = re.compile(r"^\s*#\s+(paths|energy|drops|reorder)\s+([a-z][\w-]*)\s+
 # Only the commit is matched here — it is the field whose absence makes a cell
 # unreproducible, and the rest are context a human reads off the same line.
 PROV_LINE = re.compile(r"^\s*##PROV##\s+commit=([0-9a-fA-F]{7,40})\b")
+# #377: raw drop-identity counters, one row per (seed, protocol).
+#   ##DROPID## <seed> <proto> hopTx=.. ... overlap=.. unackedRx=..
+# Only the two derived fields are matched: `overlap > 0` is the defect
+# condition, and `unackedRx` is what discriminates its cause.
+DROPID_LINE = re.compile(
+    r"^\s*##DROPID##\s+(\d+)\s+([a-z][\w-]*)\s+.*\boverlap=(-?\d+)\b"
+    r".*\bunackedRx=(-?\d+)\b")
 # #308 phase 2: the per-run common-set rows. Unlike the diagnostic lines above
 # there is one per (run, protocol), so they are folded into the protocol's row
 # as an extremum rather than merged field-by-field — the rules below ask "did
@@ -558,11 +565,61 @@ def check_provenance(path):
                    "unknown.")
 
 
+def check_drop_identity(path):
+    """#377: the drop-cause books must not overlap.
+
+    `drop_chan_pct` is a residual — hopLoss minus the counted causes — so it is
+    only non-negative while those causes are a subset of hopLoss. `overlap > 0`
+    on a ##DROPID## row means they are not, and every percentage in the
+    `drop_*` family for that cell is then an attribution of packets to causes
+    that double-count each other.
+
+    The existing rule catches this from the other side (drop_chan_pct outside
+    [0,100]), but only in aggregate and only once the percentages exist. Here
+    it is per seed, in counts, and it also reports `unackedRx` — the
+    delivered-but-ACK-lost count — because that is what says whether the
+    overlap has the hypothesised cause or another one.
+
+    WARN, not FAIL: the headline metrics (pdr/delay/delay99/thrput/nrl) come
+    from FlowMonitor and never touch these counters, so a cell with an overlap
+    is still readable for everything except the drop family. Failing it would
+    block reads that are perfectly sound.
+    """
+    with open(path) as fh:
+        text = fh.read()
+    if "##DROPID##" not in text:
+        return
+    worst = {}
+    for line in text.splitlines():
+        m = DROPID_LINE.match(line)
+        if not m:
+            continue
+        seed, proto, overlap, unacked = m.group(1), m.group(2), int(m.group(3)), int(m.group(4))
+        if overlap <= 0:
+            continue
+        # Report the worst seed per protocol rather than one line per seed: a
+        # 20-seed fading cell would otherwise emit 80 identical warnings and
+        # bury every other finding in the run.
+        if proto not in worst or overlap > worst[proto][1]:
+            worst[proto] = (seed, overlap, unacked)
+    base = os.path.basename(path)
+    for proto, (seed, overlap, unacked) in sorted(worst.items()):
+        report("WARN", f"{base}/{proto}: drop-cause books overlap by {overlap} "
+                       f"packets at seed {seed} (unackedRx={unacked}) — "
+                       "drop_chan_pct is a residual and goes negative here, so "
+                       "the whole drop_* family is unreadable for this cell "
+                       "(#377). pdr/delay/delay99/thrput/nrl are unaffected. "
+                       "unackedRx of the same order supports the "
+                       "delivered-but-ACK-lost mechanism; unackedRx near zero "
+                       "refutes it and the cause is something else.")
+
+
 def cmd_results(a):
     floor = anchor_floor(a.anchor) if a.anchor else None
     n = 0
     for path in a.files:
         check_provenance(path)
+        check_drop_identity(path)
         for r in parse_results(path):
             n += 1
             tag = f"{r['where']}/{r['proto']}"

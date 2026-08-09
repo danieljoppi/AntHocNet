@@ -269,6 +269,10 @@ void RecordRxSeq(Ptr<const Packet> p, const Address& from) {
 uint64_t g_dataHopTx = 0;
 uint64_t g_dataHopRx = 0;
 uint64_t g_macDataDrops = 0;  // data frames dropped at the MAC retry limit
+// #377: data frames the sender got an ACK for. Already counted for the #217
+// diversity windows; kept as a scalar too because the drop-cause identity
+// needs it. See the ##DROPID## emission for what it is used to test.
+uint64_t g_ackedDataHops = 0;
 
 // Is this a CBR *data* IP packet (as opposed to routing control)? Same test as
 // CountControlTx, from the other side.
@@ -587,6 +591,7 @@ void CountAckedDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
     if (pkt->PeekHeader(udp) == 0) return;
     // Data only: routing control is exactly what must NOT count as a used path.
     if (udp.GetDestinationPort() != kDataPort) return;
+    ++g_ackedDataHops;  // #377
     const uint64_t window =
         static_cast<uint64_t>(Simulator::Now().GetSeconds() / g_pathWindowS);
     if (window != g_divWindow) {
@@ -785,6 +790,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_rxDelayBySeq.clear();  // #308
     g_rxHopsBySeq.clear();   // #308 phase 2
     g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;  // #215
+    g_ackedDataHops = 0;  // #377
     // #217
     g_hopSum = g_hopCount = 0;
     g_hopMax = 0;
@@ -1612,6 +1618,63 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         const uint64_t other = dropL3Total > dropRoute + dropTtl + dropQueue
             ? dropL3Total - dropRoute - dropTtl - dropQueue : 0;
         r.dropOtherPct = 100.0 * other / tx;
+        // #377: the raw counters behind the residual above, plus the two
+        // derived quantities that test *why* it goes negative under fading.
+        //
+        // dropChanPct is a residual, so it is only non-negative while the
+        // subtracted causes are a subset of hopLoss. On every Nakagami cell
+        // they are not, by up to 20 pp. Percentages cannot say which book is
+        // wrong, so the counters ship raw:
+        //
+        //   overlap    = macTerminal + queue - hopLoss
+        //                the amount by which the subtracted causes exceed the
+        //                pool they are carved from. Positive == the books
+        //                provably overlap; this is exactly -dropChanPct*tx/100.
+        //   unackedRx  = hopRx - ackedHops
+        //                frames that reached the next hop's IP layer without
+        //                the sender ever recording an ACK. Under 802.11 that
+        //                is the delivered-but-ACK-lost case: the receiver has
+        //                the packet (so it is NOT in hopLoss) while the sender
+        //                retries and eventually reports a retry-limit drop (so
+        //                it IS in macTerminal). Counted once each way, it
+        //                drives the residual negative by one per occurrence.
+        //
+        // The hypothesis under test is that these two track each other on a
+        // fading channel and are both ~0 on two-ray, where reception is a
+        // deterministic function of distance and data-received-but-ACK-lost is
+        // near unreachable. If unackedRx is ~0 while overlap is large, the
+        // hypothesis is refuted and something else double-counts — which is
+        // the outcome this line exists to be able to see.
+        // Signed integers, not doubles: every field is a difference of exact
+        // counters, and printing them through the shared std::cout would
+        // otherwise need a precision change that leaks into every line after
+        // it.
+        const int64_t hopLossN = static_cast<int64_t>(g_dataHopTx)
+                               - static_cast<int64_t>(g_dataHopRx);
+        const int64_t overlap = static_cast<int64_t>(macTerminal)
+                              + static_cast<int64_t>(dropQueue) - hopLossN;
+        const int64_t unackedRx = static_cast<int64_t>(g_dataHopRx)
+                                - static_cast<int64_t>(g_ackedDataHops);
+        // Not emitted under TCP. Every counter above is gated on IsDataIp,
+        // which tests for UDP on the data port, so on a TCP cell they are all
+        // structurally zero — and a zero here would read as "hopTx=0, no
+        // overlap, identity clean" when the truth is that nothing was counted.
+        // Same rule as ##HOLD##/##AIR## and the same mistake #382 fixed for the
+        // reorder columns: suppressing the source is only half of encoding
+        // absence, the emission has to go too.
+        if (P.transport != "tcp") {
+            std::cout << "##DROPID## " << seed << ' ' << proto
+                      << " hopTx=" << g_dataHopTx
+                      << " hopRx=" << g_dataHopRx
+                      << " ackedHops=" << g_ackedDataHops
+                      << " macDrops=" << g_macDataDrops
+                      << " reinjected=" << reinjected
+                      << " macTerminal=" << macTerminal
+                      << " queue=" << dropQueue
+                      << " hopLoss=" << hopLossN
+                      << " overlap=" << overlap
+                      << " unackedRx=" << unackedRx << '\n';
+        }
     }
 
     // #217 route quality.
