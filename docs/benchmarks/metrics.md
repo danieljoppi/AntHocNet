@@ -408,7 +408,7 @@ run):
 | `pktsDelivBefore` | delivered before their **first** re-injection (the waste-certain class) |
 | `pktsDelivAfterOnly` | never delivered before first re-injection, delivered by end of run (delivered late — the re-injection plausibly saved them) |
 | `pktsNever` | never delivered at all (dropped) |
-| `pktsDupDeliv` / `dupRx` | keys the sink delivered ≥ 2 times / total surplus deliveries (how much duplicate delivery inflates FlowMonitor's rx) |
+| `pktsDupDeliv` / `dupRx` | keys the sink delivered ≥ 2 times / total surplus deliveries — duplicate arrivals at the **application layer**, counted by the sink-side `(flow, seq)` books. The [#386 A/B arithmetic](https://github.com/danieljoppi/AntHocNet/issues/386#issuecomment-5235242703) shows FlowMonitor's `rxPackets` does **not** count them materially (a counted `dupRx` would have moved the ON−OFF PDR contrast by ~27 pp; measured +6.4), so FlowMonitor PDR reads unique delivery and `dupRx` measures real duplicate traffic, not metric inflation |
 | `postTx` / `postRx` | IP-layer hop transmissions / arrivals of re-injected keys **after** their first re-injection — the hops re-injected packets go on to consume (the wasted-work number); `postTx − postRx` is their post-re-injection in-medium loss |
 
 `pktsDelivBefore + pktsDelivAfterOnly + pktsNever = pkts` exactly;
