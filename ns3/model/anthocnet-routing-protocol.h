@@ -320,6 +320,7 @@ private:
     double m_sessionTtl;
     uint32_t m_txFailureThreshold;
     bool m_enableMacFailureDetector;
+    uint32_t m_maxReinjectPerPacket;  ///< #386 remedy: path-global re-injection cap (0 = unlimited)
     double m_repairWaitFactor;
     double m_repairTimeout;
     double m_hopTime;                 ///< T_hop unloaded-hop reference (s), #88
