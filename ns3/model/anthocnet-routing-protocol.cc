@@ -359,6 +359,15 @@ TypeId RoutingProtocol::GetTypeId() {
                             "Enqueue; the packet is the queued form (UDP "
                             "header + payload, no IP header).",
                             MakeTraceSourceAccessor(&RoutingProtocol::m_macReinjectTrace),
+                            "ns3::anthocnet::RoutingProtocol::MacReinjectCallback")
+            .AddTraceSource("MacReinjectSkip",
+                            "A MAC retry-limit-dropped data packet hit the "
+                            "MaxReinjectPerPacket cap and was NOT re-injected "
+                            "(#402): the MAC drop is terminal. Fired at the "
+                            "cap early-return; same packet form as "
+                            "MacReinject (UDP header + payload, no IP "
+                            "header). Never fires at the default cap 0.",
+                            MakeTraceSourceAccessor(&RoutingProtocol::m_macReinjectSkipTrace),
                             "ns3::anthocnet::RoutingProtocol::MacReinjectCallback");
     return tid;
 }
@@ -1258,9 +1267,15 @@ void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI
             if (count >= m_maxReinjectPerPacket) {
                 // Cap reached: skip the re-injection exactly as if the detector
                 // had not matched (the prune + repair ant above still ran). No
-                // counter, no trace, no enqueue — the #386 books count actual
-                // re-injections only, so the sweep reads a capped skip through
-                // events, macTerminal and the standard metrics.
+                // counter, no enqueue — the #386 books count actual
+                // re-injections only. The #402 skip trace is the one thing
+                // fired here: without it the harness cannot see capped skips
+                // at all, and the #388 drop attribution double-counts every
+                // capped-terminal drop of a delivered packet (+8.50 pp residue
+                // on the cap=1 probe cell). Same (header, packet) form as the
+                // MacReinject trace, so the listener reuses the (flow, seq)
+                // parse unchanged.
+                m_macReinjectSkipTrace(ipHeader, pkt);
                 return;
             }
             // count < cap <= 2^32-1, so count+1 wraps uint16_t only for caps

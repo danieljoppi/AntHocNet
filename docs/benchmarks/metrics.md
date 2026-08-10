@@ -367,7 +367,9 @@ rather than by a human noticing a negative percentage.
           unparsedOther=.. ofDelivered=.. pkts=.. \
           pktsDelivBefore=.. pktsDelivAfterOnly=.. pktsNever=.. \
           pktsDupDeliv=.. dupRx=.. postTx=.. postRx=.. \
-          l3DropRoute=.. l3DropTtl=.. l3DropOther=..
+          l3DropRoute=.. l3DropTtl=.. l3DropOther=.. \
+          skips=.. skipsPkts=.. skipsDelivBefore=.. \
+          skipsDelivAfterOnly=.. skipsNever=..
 ```
 
 The **direct counter** behind the `##DROPID##` inclusion–exclusion floor: under
@@ -440,6 +442,41 @@ ends in `pktsNever` with no L3 drop died in the medium/MAC — the residue the
 is sensitive to. This stage is deliberately isolated (own callback, own trace
 connect, fields grouped last) so it can be cut cleanly if an ns-3 version in
 the CI matrix rejects the `Ipv4L3Protocol` `Drop` trace signature.
+
+**Capped skips (`skips*` tail, [#402](https://github.com/danieljoppi/AntHocNet/issues/402)).**
+These count the `MaxReinjectPerPacket` cap's early-return — a MAC
+retry-limit drop the detector matched but the cap refused to re-inject, so the
+drop stays **terminal**:
+
+| field | definition |
+|---|---|
+| `skips` | capped-skip **events** (adapter `MacReinjectSkip` trace fires; includes the unparsed non-data ones) |
+| `skipsPkts` | distinct skipped `(flow, seq)` keys. `skips > skipsPkts` is possible under a cap and is not an error: the `ReinjCountTag` budget is **per packet copy**, so duplicated copies at different nodes each carry their own budget and one key can be skipped repeatedly (measured 387 events vs 370 keys on the cap=1 probe cell) |
+| `skipsDelivBefore` / `skipsDelivAfterOnly` / `skipsNever` | fate partition of `skipsPkts`, same construction as the `pkts` partition (delivered before the first skip / only by end of run / never). Must sum exactly (`scenario_check` FAILs otherwise) |
+
+The tail exists because the uncapped #388 attribution **breaks under a cap**
+(the #402 finding, +8.50 pp residue on the cap=1 probe cell vs +3.32 pp
+uncapped): a packet can accumulate re-injections — inflating the per-hop books
+— and *then* hit the cap, so its final MAC drop lands in
+`macTerminal = macDrops − reinjected` while the same packet's earlier hop
+inflation is still in `hopLoss`; when that packet was in fact delivered (the
+#377 delivered-but-ACK-lost class, ~3/4 of skip events on the probe cell) the
+identity double-counts it. **Cap-aware rule:** the harness's `mac` column
+subtracts the delivered-key skip events from the terminal numerator —
+`mac = 100·(macDrops − reinjected − (skips − skipsNever))/tx`, with
+`skips − skipsNever` evaluated in *event* units (skip events on keys delivered
+at any point) — so only never-delivered capped drops count as terminal MAC
+loss and delivered-packet skips join the documented #377-class straddle. A
+small residual remains and is documented, not hidden: `skipsNever` frames that
+*arrived* but were never ACKed (unACKed-but-arrived, bounded by the same #377
+mechanism at roughly 0.16 of the never class on the probe cell) are still
+counted terminal. Uncapped arms are **structurally unchanged**: the adapter's
+`MacReinjectSkip` trace lives inside the `MaxReinjectPerPacket != 0` branch
+and can never fire at the default 0, so every `skips*` field reads 0 and the
+subtraction vanishes arithmetically — `scenario_check` FAILs `skips > 0` on
+any arm whose `##CONFIG##` lacks a non-zero cap. `##DROPID##`'s `macTerminal`
+field stays the raw `macDrops − reinjected` so the books remain auditable;
+only the `# drops` attribution applies the correction.
 
 **Absence encoding** (the #382 rule, with the #229/#230 controls stated as
 numbers):

@@ -122,23 +122,35 @@ DROPID_REINJ_FIELDS = re.compile(
 #     unparsedOther=.. ofDelivered=.. pkts=.. pktsDelivBefore=..
 #     pktsDelivAfterOnly=.. pktsNever=.. pktsDupDeliv=.. dupRx=.. postTx=..
 #     postRx=.. l3DropRoute=.. l3DropTtl=.. l3DropOther=..
+#     skips=.. skipsPkts=.. skipsDelivBefore=.. skipsDelivAfterOnly=..
+#     skipsNever=..
 # Absent for the baselines and on TCP cells (absence encoding, #382); a
 # detector-off anthocnet arm emits it with all fields zero. The unparsed*
 # fields classify re-injections the (flow, seq) identity could not name — the
 # invariance probe's non-data (ICMP) finding, #386 comment 5233656930. Only
 # the fields the rules read are matched; the l3Drop* tail is the cuttable
-# stage and is not.
+# stage and is not. The #402 skips* tail (capped-skip events, distinct skipped
+# keys and their fate partition) is optional so pre-#402 rows still parse;
+# rows without it simply skip the #402 rules.
 REINJ_LINE = re.compile(
     r"^\s*##REINJ##\s+(\d+)\s+([a-z][\w-]*)\s+events=(\d+)\s+parsed=(\d+)"
     r"\s+unparsedIcmp=(\d+)\s+unparsedOther=(\d+)"
     r"\s+ofDelivered=(\d+)\s+pkts=(\d+)\s+pktsDelivBefore=(\d+)"
-    r"\s+pktsDelivAfterOnly=(\d+)\s+pktsNever=(\d+)\s+pktsDupDeliv=(\d+)\b")
+    r"\s+pktsDelivAfterOnly=(\d+)\s+pktsNever=(\d+)\s+pktsDupDeliv=(\d+)\b"
+    r"(?:.*\bskips=(\d+)\s+skipsPkts=(\d+)\s+skipsDelivBefore=(\d+)"
+    r"\s+skipsDelivAfterOnly=(\d+)\s+skipsNever=(\d+)\b)?")
 # #386: the knob the coherence rule reads. Preflight cannot see extraArgs (it
 # takes numeric scenario args only), so detector-off coherence is enforced
 # results-side from the ##CONFIG## attr dump of effective attribute values.
 CONFIG_MACDET_OFF = re.compile(
     r"^\s*##CONFIG##\s+attr\s+EnableMacFailureDetector=(?:false|0)\s*$",
     re.MULTILINE)
+# #402: the re-injection cap knob, from the same ##CONFIG## attr dump. Absent
+# (pre-#369 or pre-#386 logs) and =0 both mean uncapped, where the adapter's
+# MacReinjectSkip trace structurally never fires — so skips > 0 there is an
+# instrumentation regression, never a measurement.
+CONFIG_REINJ_CAP = re.compile(
+    r"^\s*##CONFIG##\s+attr\s+MaxReinjectPerPacket=(\d+)\s*$", re.MULTILINE)
 # #308 phase 2: the per-run common-set rows. Unlike the diagnostic lines above
 # there is one per (run, protocol), so they are folded into the protocol's row
 # as an extremum rather than merged field-by-field — the rules below ask "did
@@ -685,6 +697,25 @@ def check_reinj(path):
     pktsDelivBefore + pktsDelivAfterOnly (a duplicate-delivered key is a
     delivered key). Both hold by construction of the (flow, seq) keying, so a
     violation means the keying itself is unsound.
+
+    #402 capped-skip books (the skips* tail; absent on pre-#402 rows, which
+    skip these rules). Under a MaxReinjectPerPacket cap a packet can
+    accumulate re-injections — inflating the per-hop books — and THEN hit the
+    cap, so its final MAC drop is terminal; the uncapped #388 attribution
+    never saw "was re-injected" and "ended terminal" on the same packet and
+    double-counted every capped-terminal drop of a delivered packet (+8.50 pp
+    residue on the cap=1 probe cell, vs +3.32 uncapped). The harness now
+    subtracts delivered-key skip events from the terminal-MAC numerator, so
+    the drop-cause identity closes inside the existing tolerance on capped
+    arms — which is why the identity rule itself needs no cap-aware special
+    case. Checked here:
+      - skips > 0 on an arm whose ##CONFIG## has MaxReinjectPerPacket=0 (or
+        absent) is FAIL: the adapter's MacReinjectSkip trace fires only
+        inside the cap != 0 branch, so an uncapped skip count is an
+        instrumentation regression, never a measurement;
+      - skipsDelivBefore + skipsDelivAfterOnly + skipsNever must equal
+        skipsPkts (the partition is exact, same rule as the pkts partition),
+        FAIL otherwise.
     """
     with open(path) as fh:
         text = fh.read()
@@ -692,6 +723,8 @@ def check_reinj(path):
         return
     base = os.path.basename(path)
     detector_off = bool(CONFIG_MACDET_OFF.search(text))
+    cap_m = CONFIG_REINJ_CAP.search(text)
+    reinj_cap = int(cap_m.group(1)) if cap_m else 0
     # seed -> (macDrops, reinjected, unackedRx) from the anthocnet ##DROPID##
     # rows, for the cross-book identity and the floor.
     dropid = {}
@@ -711,6 +744,8 @@ def check_reinj(path):
         before, after_only, never = (int(m.group(9)), int(m.group(10)),
                                      int(m.group(11)))
         dup_deliv = int(m.group(12))
+        # #402 skips* tail — None on pre-#402 rows (optional group).
+        skips = int(m.group(13)) if m.group(13) is not None else None
         tag = f"{base}/{proto}"
         if proto != "anthocnet":
             report("FAIL", f"{tag}: ##REINJ## row for a protocol with no "
@@ -765,6 +800,24 @@ def check_reinj(path):
                            "EnableMacFailureDetector=false in ##CONFIG## — "
                            "the detector-off control must read 0; either the "
                            "gate or the config dump is wrong (#386)")
+        # #402 capped-skip rules (see docstring); rows without the skips*
+        # tail are pre-#402 and skip both.
+        if skips is not None:
+            skips_pkts = int(m.group(14))
+            s_before, s_after, s_never = (int(m.group(15)), int(m.group(16)),
+                                          int(m.group(17)))
+            if skips > 0 and reinj_cap == 0:
+                report("FAIL", f"{tag}: skips={skips} at seed {seed} on an "
+                               "uncapped arm (MaxReinjectPerPacket=0 or "
+                               "absent in ##CONFIG##) — the MacReinjectSkip "
+                               "trace fires only under a non-zero cap, so an "
+                               "uncapped skip count is an instrumentation "
+                               "regression (#402)")
+            if s_before + s_after + s_never != skips_pkts:
+                report("FAIL", f"{tag}: skip fate buckets incoherent at seed "
+                               f"{seed} ({s_before}+{s_after}+{s_never} != "
+                               f"skipsPkts={skips_pkts}) — the partition must "
+                               "be exact (#402)")
         if seed in dropid:
             mac_drops, reinjected, unacked = dropid[seed]
             floor = reinjected + unacked - mac_drops
