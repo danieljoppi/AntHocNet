@@ -20,8 +20,8 @@ on:
   workflow_dispatch:
     inputs:
       run_ids:
-        description: 'Comma-separated workflow run IDs whose scenario-matrix artifact to rescue'
-        default: '30031902395,30031904151'
+        description: 'Comma-separated workflow run IDs whose scenario-matrix artifact to rescue (the June #110 campaign was 30031902395,30031904151 — long expired; kept as labels in the step)'
+        default: ''
       sat_run_ids:
         description: 'Comma-separated workflow run IDs whose satellite-benchmark artifact to rescue (#259); clear run_ids when rescuing only satellite runs'
         default: ''
