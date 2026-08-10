@@ -1086,7 +1086,19 @@ REINJ_CLEAN = (
     "unparsedOther=0 ofDelivered=1608 pkts=2100 "
     "pktsDelivBefore=1300 pktsDelivAfterOnly=520 pktsNever=280 "
     "pktsDupDeliv=900 dupRx=940 postTx=5200 postRx=4600 "
-    "l3DropRoute=120 l3DropTtl=3 l3DropOther=0\n")
+    "l3DropRoute=120 l3DropTtl=3 l3DropOther=0 "
+    "skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 "
+    "skipsNever=0\n")
+# #402: the same row on a capped arm — skip fields shaped from the cap=1 probe
+# cell (events > pkts because the ReinjCountTag budget is per packet COPY;
+# 190+112+68 partitions skipsPkts=370 exactly) — plus the ##CONFIG## line that
+# makes the cap visible results-side.
+REINJ_CAP_CONFIG = "##CONFIG## attr MaxReinjectPerPacket=1\n"
+REINJ_CAPPED = REINJ_CLEAN.replace(
+    "skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 "
+    "skipsNever=0",
+    "skips=387 skipsPkts=370 skipsDelivBefore=190 skipsDelivAfterOnly=112 "
+    "skipsNever=68")
 
 
 @case("#386 a coherent ##REINJ## row against its ##DROPID## row stays quiet")
@@ -1097,6 +1109,8 @@ def _reinj_clean_quiet():
     _levels, out = run_cell(ISL_CELL + DROPID_REINJ_ARM + REINJ_CLEAN)
     expect("#386" not in out, "reinj-clean",
            f"a coherent re-injection book was flagged\n{out}")
+    expect("#402" not in out, "reinj-clean-skips",
+           f"an all-zero skips tail on an uncapped arm was flagged\n{out}")
 
 
 @case("#386 events != reinjected FAILs, non-closing parse books FAIL, "
@@ -1118,12 +1132,16 @@ def _reinj_incoherent_fires():
            "unparsedOther=0 ofDelivered=310 "
            "pkts=400 pktsDelivBefore=250 pktsDelivAfterOnly=90 pktsNever=60 "
            "pktsDupDeliv=40 dupRx=41 postTx=800 postRx=700 "
-           "l3DropRoute=20 l3DropTtl=1 l3DropOther=0\n"
+           "l3DropRoute=20 l3DropTtl=1 l3DropOther=0 "
+           "skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 "
+           "skipsNever=0\n"
            "##REINJ## 1 aodv events=0 parsed=0 unparsedIcmp=0 "
            "unparsedOther=0 ofDelivered=0 pkts=0 "
            "pktsDelivBefore=0 pktsDelivAfterOnly=0 pktsNever=0 "
            "pktsDupDeliv=0 dupRx=0 postTx=0 postRx=0 "
-           "l3DropRoute=0 l3DropTtl=0 l3DropOther=0\n")
+           "l3DropRoute=0 l3DropTtl=0 l3DropOther=0 "
+           "skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 "
+           "skipsNever=0\n")
     _levels, out = run_cell(ISL_CELL + row)
     expect("events=460 != reinjected=466" in out, "reinj-mismatch",
            f"the events/reinjected identity break was not flagged\n{out}")
@@ -1170,6 +1188,38 @@ def _reinj_unparsed_warns():
            f"the non-data finding was not surfaced\n{out}")
     expect("FAIL" not in out, "reinj-unparsed-no-fail",
            f"a coherent book with a non-data finding was FAILed\n{out}")
+
+
+@case("#402 a coherent capped-skip tail with the cap in ##CONFIG## stays quiet")
+def _reinj_skips_capped_quiet():
+    # The whole point of the #402 fields: a capped arm with coherent books
+    # must be readable, not blanket-FAILed. skips=387 > skipsPkts=370 is the
+    # measured per-COPY semantics, not an error.
+    _levels, out = run_cell(REINJ_CAP_CONFIG + ISL_CELL + DROPID_REINJ_ARM
+                            + REINJ_CAPPED)
+    expect("#402" not in out, "reinj-skips-capped-quiet",
+           f"coherent capped-skip books were flagged\n{out}")
+
+
+@case("#402 skips>0 on an uncapped arm FAILs — the trace cannot fire there")
+def _reinj_skips_uncapped_fires():
+    # No MaxReinjectPerPacket in ##CONFIG## (== 0, uncapped): the adapter's
+    # MacReinjectSkip trace lives inside the cap != 0 branch, so any skip
+    # count here is an instrumentation regression, never a measurement.
+    _levels, out = run_cell(ISL_CELL + DROPID_REINJ_ARM + REINJ_CAPPED)
+    expect("uncapped arm" in out, "reinj-skips-uncapped",
+           f"skips on an uncapped arm were not flagged\n{out}")
+
+
+@case("#402 a non-summing skip fate partition FAILs")
+def _reinj_skip_partition_fires():
+    # 190+112+68 = 370; dropping skipsNever to 30 opens the partition by 38
+    # keys — the same exactness rule the pkts partition already carries.
+    row = REINJ_CAPPED.replace("skipsNever=68", "skipsNever=30")
+    _levels, out = run_cell(REINJ_CAP_CONFIG + ISL_CELL + DROPID_REINJ_ARM
+                            + row)
+    expect("skip fate buckets incoherent" in out, "reinj-skip-partition",
+           f"a non-summing skip partition was not flagged\n{out}")
 
 
 def main():

@@ -357,6 +357,22 @@ uint64_t g_reinjOfDelivered = 0;  // fires with the key already delivered
 uint64_t g_reinjUnparsedIcmp = 0;   // parse failures with ip.protocol == 1
 uint64_t g_reinjUnparsedOther = 0;  // any other parse failure
 
+// #402: capped skips — the adapter's MaxReinjectPerPacket early-return, where
+// a MAC retry-limit drop stays TERMINAL because the cap refused the
+// re-injection. The skip happens inside the adapter (no counter, no enqueue),
+// so without the MacReinjectSkip trace the harness cannot see it; the #388
+// attribution then counts a capped-terminal drop of a delivered packet in
+// macTerminal while its earlier copies' hop inflation is still in hopLoss —
+// the double-count the cap=1 probe measured as +8.50 pp. Per skipped key the
+// fate logic mirrors ReinjInfo: at-fire-time delivered count on FIRST skip,
+// end-of-run partition against g_rxCount.
+struct ReinjSkipInfo {
+    uint32_t events = 0;         // capped-skip events for this key
+    uint32_t rxAtFirstSkip = 0;  // sink deliveries seen at first skip
+};
+std::map<std::pair<Address, uint32_t>, ReinjSkipInfo> g_reinjSkip;
+uint64_t g_reinjSkips = 0;  // MacReinjectSkip trace fires (incl. unparsed)
+
 // (flow, seq) off a packet whose front is the UDP header (the form the
 // MacReinject trace and the Ipv4L3Protocol traces hand over — IP header
 // separate). False on anything that is not a SeqTs CBR datagram; the
@@ -409,6 +425,28 @@ void CountMacReinject(const Ipv4Header& ip, Ptr<const Packet> p) {
     if (rxNow > 0) ++g_reinjOfDelivered;
     auto ins = g_reinj.emplace(std::make_pair(flow, seq), ReinjInfo{});
     if (ins.second) ins.first->second.rxAtFirstReinj = rxNow;
+    ++ins.first->second.events;
+}
+
+// #402: the capped-skip counterpart of CountMacReinject, connected to the
+// adapter's "MacReinjectSkip" trace (same anthocnet + UDP gate). Same
+// read-only discipline. An unparseable skip (non-data payload, ICMP etc.)
+// counts in the event total only: it has no (flow, seq) key, so it stays
+// conservatively terminal in the #402 mac attribution — correct, since it is
+// not a delivered data packet.
+void CountMacReinjectSkip(const Ipv4Header& ip, Ptr<const Packet> p) {
+    ++g_reinjSkips;
+    Address flow;
+    uint32_t seq = 0;
+    if (!ReinjKeyFromUdp(ip, p, flow, seq)) return;
+    uint32_t rxNow = 0;
+    const auto f = g_rxCount.find(flow);
+    if (f != g_rxCount.end()) {
+        const auto s = f->second.find(seq);
+        if (s != f->second.end()) rxNow = s->second;
+    }
+    auto ins = g_reinjSkip.emplace(std::make_pair(flow, seq), ReinjSkipInfo{});
+    if (ins.second) ins.first->second.rxAtFirstSkip = rxNow;
     ++ins.first->second.events;
 }
 
@@ -990,6 +1028,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_reinj.clear();         // #386
     g_reinjEvents = g_reinjParsed = g_reinjOfDelivered = 0;  // #386
     g_reinjUnparsedIcmp = g_reinjUnparsedOther = 0;          // #386
+    g_reinjSkip.clear();  // #402
+    g_reinjSkips = 0;     // #402
     g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;  // #215
     g_ackedDataHops = 0;  // #377
     // #217
@@ -1288,6 +1328,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             if (rp) {
                 rp->TraceConnectWithoutContext("MacReinject",
                                                MakeCallback(&CountMacReinject));
+                // #402: the capped-skip trace, same gate. Fires only when
+                // MaxReinjectPerPacket != 0, so every field it feeds is a
+                // measured zero on uncapped arms.
+                rp->TraceConnectWithoutContext(
+                    "MacReinjectSkip", MakeCallback(&CountMacReinjectSkip));
             }
             // l3Drop stage — isolated connect, cuttable with CountReinjL3Drop
             // if a CI ns-3 version rejects the "Drop" signature (#386).
@@ -1828,6 +1873,35 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // adding them to the identity would double-count.
         const uint64_t macTerminal =
             g_macDataDrops > reinjected ? g_macDataDrops - reinjected : 0;
+        // #402: capped-skip aggregates, in BOTH units. The ##REINJ## fields
+        // partition distinct skipped keys (parallel to the pkts partition);
+        // the mac attribution below needs EVENTS, because g_macDataDrops
+        // counts frame-drop events and each skip event is exactly one MAC
+        // drop the cap left terminal — a key can be skipped more than once
+        // (the ReinjCountTag budget is per packet COPY, so duplicated copies
+        // each carry their own; events > pkts measured under cap=1), and
+        // each of those frames sits in g_macDataDrops individually.
+        // skipsDelivEvents is therefore "skips − skipsNever" evaluated in
+        // event units: skip events on keys delivered at ANY point (before
+        // the first skip or by end of run). Empty map on every uncapped arm
+        // (the adapter trace only fires under MaxReinjectPerPacket != 0), so
+        // all of this is an arithmetic no-op there.
+        uint64_t skipsPkts = 0, skipsDelivBefore = 0, skipsDelivAfterOnly = 0,
+                 skipsNever = 0, skipsDelivEvents = 0;
+        for (const auto& kv : g_reinjSkip) {
+            ++skipsPkts;
+            uint32_t endCount = 0;
+            const auto f = g_rxCount.find(kv.first.first);
+            if (f != g_rxCount.end()) {
+                const auto s = f->second.find(kv.first.second);
+                if (s != f->second.end()) endCount = s->second;
+            }
+            if (kv.second.rxAtFirstSkip >= 1) ++skipsDelivBefore;
+            else if (endCount >= 1) ++skipsDelivAfterOnly;
+            else ++skipsNever;
+            if (kv.second.rxAtFirstSkip >= 1 || endCount >= 1)
+                skipsDelivEvents += kv.second.events;
+        }
         const double hopLoss = static_cast<double>(g_dataHopTx)
                              - static_cast<double>(g_dataHopRx);
         // #377: a retry-limit drop is not necessarily a lost packet. 802.11
@@ -1860,7 +1934,25 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // arm keeps the hop-vs-terminal residue tracked on #386; the three
         // baselines never re-inject, so macTerminal == g_macDataDrops there
         // and macLost is the right replacement.
-        r.dropMacPct   = 100.0 * (reinjected ? macTerminal : macLost) / tx;
+        //
+        // #402: under a MaxReinjectPerPacket cap, macTerminal alone
+        // double-counts. A packet can accumulate re-injections (inflating the
+        // per-hop books) and THEN hit the cap, so its final MAC drop is
+        // terminal and lands in macTerminal — while the same packet's earlier
+        // hop inflation is still in hopLoss, and in ~3/4 of skip events the
+        // packet was in fact delivered (the #377 delivered-but-ACK-lost
+        // class). The uncapped #388 derivation never saw that combination and
+        // measured +8.50 pp of residue on the cap=1 probe cell. Cap-aware
+        // numerator: subtract the skip events whose key was delivered —
+        // macDrops − reinjected − (skips − skipsNever) in event units — so
+        // only never-delivered capped drops count as terminal MAC loss;
+        // delivered-packet skips move into the documented #377-class
+        // straddle. skipsDelivEvents == 0 on every uncapped arm, so the
+        // attribution there is arithmetically identical to pre-#402. The
+        // ##DROPID## macTerminal field stays the RAW macDrops − reinjected.
+        const uint64_t macTerminalCapAware =
+            macTerminal > skipsDelivEvents ? macTerminal - skipsDelivEvents : 0;
+        r.dropMacPct   = 100.0 * (reinjected ? macTerminalCapAware : macLost) / tx;
         r.dropChanPct  = 100.0 * (hopLoss - static_cast<double>(macLost)
                                           - static_cast<double>(dropQueue)) / tx;
         // L3 drops in none of the buckets above (bad checksum, interface down,
@@ -1946,7 +2038,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // pktsNever (dropped) partition `pkts`; pktsDupDeliv/dupRx count sink
         // duplicates; postTx/postRx are the hops re-injected packets traversed
         // afterwards (attempts / arrivals — the wasted-work number). The
-        // l3Drop* tail is the isolated cuttable drop-cause stage.
+        // l3Drop* tail is the isolated cuttable drop-cause stage. The #402
+        // skips* tail after it: capped-skip events (skips), distinct skipped
+        // keys (skipsPkts) and their fate partition (skipsDelivBefore +
+        // skipsDelivAfterOnly + skipsNever == skipsPkts, same rule as the
+        // pkts partition) — all zero on uncapped arms, where the adapter's
+        // MacReinjectSkip trace structurally never fires.
         //
         // Emitted for anthocnet+UDP only — baselines and TCP stay ABSENT (no
         // detector / no SeqTs identity; #382 absence rule). A detector-off
@@ -1993,7 +2090,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                       << " postRx=" << postRx
                       << " l3DropRoute=" << l3Route
                       << " l3DropTtl=" << l3Ttl
-                      << " l3DropOther=" << l3Other << '\n';
+                      << " l3DropOther=" << l3Other
+                      << " skips=" << g_reinjSkips
+                      << " skipsPkts=" << skipsPkts
+                      << " skipsDelivBefore=" << skipsDelivBefore
+                      << " skipsDelivAfterOnly=" << skipsDelivAfterOnly
+                      << " skipsNever=" << skipsNever << '\n';
         }
     }
 

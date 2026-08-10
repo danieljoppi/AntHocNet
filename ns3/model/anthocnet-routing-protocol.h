@@ -386,6 +386,12 @@ private:
     TracedCallback<uint32_t, uint32_t, bool> m_routeChangedTrace;
     // #386: MAC-failure re-injection (see MacReinjectCallback above).
     TracedCallback<const Ipv4Header&, Ptr<const Packet>> m_macReinjectTrace;
+    // #402: the cap counterpart — a MAC retry-limit-dropped data packet hit
+    // MaxReinjectPerPacket and was NOT re-injected, so its MAC drop stays
+    // terminal. Same signature and packet form as MacReinject (it reuses
+    // MacReinjectCallback); fired only inside the m_maxReinjectPerPacket != 0
+    // branch of NotifyTxError, so it can never fire at the default cap 0.
+    TracedCallback<const Ipv4Header&, Ptr<const Packet>> m_macReinjectSkipTrace;
 };
 
 } // namespace anthocnet
