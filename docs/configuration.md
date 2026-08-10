@@ -208,12 +208,13 @@ class of defect as a missing one.
 
 ### 3.4 ns-3 attributes that are *not* `Config` fields
 
-Six of the 30 attributes configure the NS-3 adapter, not the algorithm. They are
+Seven of the 31 attributes configure the NS-3 adapter, not the algorithm. They are
 listed here so a sweep does not mistake one for a protocol parameter:
 
 | attribute | default | what it does |
 |---|---|---|
 | `EnableMacFailureDetector` | `true` | Enables the WifiMac transmit-failure detector (ADR-0008 detector D). The hello-timeout detector (A) always runs. |
+| `MaxReinjectPerPacket` | `0` (unlimited) | Issue [#386](https://github.com/danieljoppi/AntHocNet/issues/386) remedy: caps how many times a single data packet may be re-injected by the #46 MAC-failure detector across its whole path (a packet tag carries the count between hops — ns-3 metadata, never on the wire). Motivation: the #386 direct measurement found packets are re-injected ~2.1–2.3 times on average, with ~62 % of re-injections being of already-delivered packets, while the mechanism as a whole still rescues +6.4 pp PDR under fading — the cap aims to keep the rescue and cut the waste. **The default is decided by the v1.5.0 sweep** (cap ∈ {1, 2, ∞} × detector-off arms, 20 seeds); until then `0` = unlimited preserves the historical behaviour behind every published number, and the cap logic is unreachable at that default. |
 | `QueueTimeout` | `3 s` | How long a data packet may wait for a route before being dropped (#21 deliver-late vs discard trade). |
 | `ReconvHoldCap` | `1 s` | Caps how long a reconvergence-held packet may wait (issue #21 lever L2, #103/#104). Bounded by `QueueTimeout`. **This is an operating-point choice, not a neutral default**: the [#308 ablation](https://github.com/danieljoppi/AntHocNet/issues/308#issuecomment-5211529535) showed causally that the hold converts would-be drops into late deliveries, so the cap trades the `delay99` tail against the PDR advantage — and the [#309 sweep](https://github.com/danieljoppi/AntHocNet/issues/309) found `200 ms` beats AODV on every published metric with a far smaller tail, i.e. the 1 s default is delivery-biased and off the measured efficient frontier ([#371](https://github.com/danieljoppi/AntHocNet/issues/371)). Every published number was measured at 1 s; set `200 ms` if your workload prices the tail above the last points of PDR. The default itself changes no earlier than the v1.5.0 re-baseline. |
 | `RepairHoldCap` | `0 s` (disabled) | The same cap for repair-held packets. |

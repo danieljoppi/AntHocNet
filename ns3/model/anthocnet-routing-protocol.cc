@@ -22,6 +22,7 @@
 #include "ns3/arp-cache.h"
 #include "ns3/llc-snap-header.h"
 #include "ns3/udp-header.h"
+#include "ns3/tag.h"
 
 namespace ns3 {
 
@@ -60,6 +61,7 @@ RoutingProtocol::RoutingProtocol()
       m_sessionTtl(5.0),
       m_txFailureThreshold(3),
       m_enableMacFailureDetector(true),
+      m_maxReinjectPerPacket(0),
       m_repairWaitFactor(5.0),
       m_repairTimeout(1.0),
       m_hopTime(0.003),
@@ -186,6 +188,20 @@ TypeId RoutingProtocol::GetTypeId() {
                           BooleanValue(true),
                           MakeBooleanAccessor(&RoutingProtocol::m_enableMacFailureDetector),
                           MakeBooleanChecker())
+            .AddAttribute("MaxReinjectPerPacket",
+                          "Issue #386 remedy: caps how many times a single data "
+                          "packet may be re-injected by the #46 MAC-failure "
+                          "detector across its whole path (a packet tag carries "
+                          "the count with the packet, so the cap is path-global, "
+                          "not per-node). 0 = unlimited, the historical "
+                          "behaviour, and the cap logic is unreachable. "
+                          "Motivation: the #386 direct measurement — packets "
+                          "are re-injected ~2.1-2.3 times on average and ~62% "
+                          "of re-injections are of already-delivered packets. "
+                          "The default is decided by the v1.5.0 sweep.",
+                          UintegerValue(0),
+                          MakeUintegerAccessor(&RoutingProtocol::m_maxReinjectPerPacket),
+                          MakeUintegerChecker<uint32_t>())
             .AddAttribute("RepairWaitFactor",
                           "Local-repair wait as a multiple of the lost path's "
                           "estimated end-to-end delay ([1] section 3.5, D6).",
@@ -1144,6 +1160,32 @@ void RoutingProtocol::ReactiveRetryTimerExpire() {
 
 // --- MAC transmit-failure hook (ADR-0008 detector D) ------------------------
 
+// #386 remedy: counts how many times the #46 detector has re-injected this data
+// packet, across its whole path — a PacketTag travels with the packet between
+// hops inside the simulation, so the count is path-global, not per-node. Pure
+// ns-3 metadata: never serialized to the medium, invisible to Packet::GetSize()
+// and to every header parse. Consulted and stamped only when
+// MaxReinjectPerPacket != 0; at the default 0 the tag never exists.
+class ReinjCountTag : public Tag {
+public:
+    static TypeId GetTypeId() {
+        static TypeId tid = TypeId("ns3::anthocnet::ReinjCountTag")
+                                .SetParent<Tag>()
+                                .SetGroupName("AntHocNet")
+                                .AddConstructor<ReinjCountTag>();
+        return tid;
+    }
+    TypeId GetInstanceTypeId() const override { return GetTypeId(); }
+    uint32_t GetSerializedSize() const override { return 2; }
+    void Serialize(TagBuffer i) const override { i.WriteU16(m_count); }
+    void Deserialize(TagBuffer i) override { m_count = i.ReadU16(); }
+    void Print(std::ostream& os) const override { os << "reinjCount=" << m_count; }
+
+    uint16_t m_count = 0;
+};
+
+NS_OBJECT_ENSURE_REGISTERED(ReinjCountTag);
+
 void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu) {
     // Detector D is a latency optimisation over the mandatory hello-timeout
     // detector A (ADR-0008); it can be gated off for ablation (issue #46).
@@ -1204,6 +1246,30 @@ void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI
     // route survived the prune (FlushQueue re-queues if none did). The retry
     // costs one extra TTL decrement, like any real retransmission path.
     if (haveData && ipHeader.GetTtl() > 1 && !m_cachedUcb.IsNull()) {
+        // #386 remedy: per-packet re-injection cap. Deliberately a split, not a
+        // merged path: at the default 0 (= unlimited, the historical behaviour)
+        // the packet is neither peeked for nor stamped with ReinjCountTag, so
+        // the hot path — and the packet's metadata — stays byte-identical to
+        // pre-#386 code. Only a non-zero cap ever touches the tag.
+        if (m_maxReinjectPerPacket != 0) {
+            ReinjCountTag tag;
+            const bool tagged = pkt->PeekPacketTag(tag);
+            const uint32_t count = tagged ? tag.m_count : 0u;
+            if (count >= m_maxReinjectPerPacket) {
+                // Cap reached: skip the re-injection exactly as if the detector
+                // had not matched (the prune + repair ant above still ran). No
+                // counter, no trace, no enqueue — the #386 books count actual
+                // re-injections only, so the sweep reads a capped skip through
+                // events, macTerminal and the standard metrics.
+                return;
+            }
+            // count < cap <= 2^32-1, so count+1 wraps uint16_t only for caps
+            // above 65535; saturate rather than wrap (the cap then never fires
+            // again for this packet, degrading to unlimited — harmless).
+            if (count < 0xffff) tag.m_count = static_cast<uint16_t>(count + 1);
+            if (tagged) pkt->ReplacePacketTag(tag);
+            else pkt->AddPacketTag(tag);
+        }
         QueueEntry entry;
         entry.packet = pkt;
         entry.header = ipHeader;
