@@ -271,13 +271,20 @@ Two limits worth stating:
 ```
 ##DROPID## <seed> <proto> hopTx=.. hopRx=.. ackedHops=.. macDrops=.. \
            reinjected=.. macTerminal=.. macLost=.. queue=.. hopLoss=.. \
-           overlap=.. unackedRx=..
+           overlap=.. unackedRx=.. [pqSilent=.. pqEcb=..]
 ```
 
 Not a metric — the **raw counters behind the drop-cause residual**, one row per
 seed per protocol, so the identity in
 [Where the drop-cause identity comes from](#where-the-drop-cause-identity-comes-from)
 can be audited in counts rather than in percentages.
+
+The two bracketed tail fields appear **only on the dsdv and aodv rows**, where
+the [#229](https://github.com/danieljoppi/AntHocNet/issues/229) pending-queue
+conservation hook is connected (`pqSilent` = keys the protocol queue swallowed
+with no observable signal; `pqEcb` = aodv queue drops re-attributed from the
+route to the queue column). On the other arms the quantity is unmeasured, and
+per the #382 rule absence — not zero — is the encoding.
 
 `drop_chan_pct` is *inferred, not measured* — it is what is left of `hopLoss`
 after the counted causes are removed — so it is only non-negative while those
@@ -663,9 +670,13 @@ AODV (84.73 delivered, 10.09 MAC) makes the contrast concrete: AntHocNet's
 losses are dominated by *route* state, AODV's by *MAC retry exhaustion*.
 
 A cause that accounts for nothing is the failure mode this instrumentation
-exists to expose — DSDV's routing-layer queue drops land in no bucket at all
-and open an 11.46 pp hole ([#229](https://github.com/danieljoppi/AntHocNet/issues/229)),
-which is why DSDV is excluded from cross-protocol drop comparisons.
+exists to expose — DSDV's routing-layer queue drops used to land in no bucket
+at all and open an 11.46 pp hole (−21.8 pp once #388's honest MAC accounting
+stopped masking part of it,
+[#229](https://github.com/danieljoppi/AntHocNet/issues/229)). Since the #229
+fix the harness measures those sheds itself (the pending-queue conservation
+hook below) and folds them into `drop_queue_pct`, which is what re-admits DSDV
+into cross-protocol drop comparisons.
 
 ## How energy is accounted
 
@@ -832,25 +843,45 @@ separately (WARN if the three do not reconstruct their parent within 1 pp).
 
 #### What is measurable, per protocol
 
-`drop_queue_pct` comes from `Ipv4FlowProbe`'s `DROP_QUEUE` / `DROP_QUEUE_DISC`
+`drop_queue_pct` starts from `Ipv4FlowProbe`'s `DROP_QUEUE` / `DROP_QUEUE_DISC`
 reasons, which observe the **interface and qdisc queues only**. A routing
 protocol's own pending queue — the buffer holding packets awaiting a route — is
 invisible to them unless the protocol reports its discards through an L3 error
-callback.
+callback. ns-3's stock `dsdv::PacketQueue` reports **nothing**: its `Drop()`
+has the error callback commented out (identical ns-3.36 through ns-3.48), its
+`Enqueue()` overflow returns `false` into a caller that ignores it, and the
+protocol registers no TraceSource — every one of its shed paths is silent.
+
+The [#229](https://github.com/danieljoppi/AntHocNet/issues/229) fix closes
+this from the harness alone (the baselines run stock ns-3 code, so nothing in
+`src/dsdv` is patched): a **pending-queue conservation hook** in
+`anthocnet-compare.cc` (`PqTrackTx`/`PqTrackDrop`, dsdv + aodv arms, UDP
+only). Both protocols defer a route-less packet by looping it through the
+loopback interface, so the hook records each data `(flow, seq)` key at the L3
+`Tx` trace on interface 0 and clears it when the key crosses `Tx` on a real
+interface. Keys never seen again are the queue's silent losses (`pqSilent` on
+the `##DROPID##` line — DSDV's sheds, plus packets still queued at run end);
+pending keys that surface at the L3 `Drop` trace are AODV queue drops that
+fired the entry's error callback (`pqEcb`) and were sitting misattributed in
+`drop_route_pct`. Both are folded into `drop_queue_pct` (and `pqEcb` removed
+from `drop_route_pct` — a queue timeout is congestion, not a route failure).
 
 | Protocol | Routing-layer pending-queue drops |
 |---|---|
-| **anthocnet** | **Counted.** They run through the error callback, so they land in `DROP_NO_ROUTE` and hence in `drop_route_pct` (further split by the three sub-columns above). This is why AntHocNet's identity closes to within 0.06 pp on every scenario. |
-| **aodv** | Counted, same mechanism. |
+| **anthocnet** | **Counted by the protocol.** They run through the error callback, so they land in `DROP_NO_ROUTE` and hence in `drop_route_pct` (further split by the three sub-columns above). This is why AntHocNet's identity closes to within 0.06 pp on every scenario. |
+| **aodv** | **Counted.** Timeout/overflow/RERR sheds fire the error callback (`aodv::RequestQueue::Drop` is stock-instrumented); since #229 the conservation hook re-attributes them from `drop_route_pct` to `drop_queue_pct`, and packets still queued at run end (the former −2.4 pp dense-small residue) are added to `drop_queue_pct`. |
 | **olsr** | Not applicable — OLSR is proactive and does not buffer awaiting a route. |
-| **dsdv** | **Not counted.** ns-3's `dsdv::PacketQueue` sheds on `MaxQueueLen` / `MaxQueueTime` without an error callback, so those packets are offered, never delivered, and attributed to no cause. `drop_queue_pct` reads a confident `0.00` on all six scenarios. |
+| **dsdv** | **Counted by the harness** (#229 conservation hook). Stock `dsdv::PacketQueue` sheds on `MaxQueuedPacketsPerDst` / `MaxQueueLen` overflow and `MaxQueueTime` purge with no observable signal; the hook measures those sheds by conservation and they appear in `drop_queue_pct` — 21.8 pp at `dense-small`, ≤ 0.73 pp elsewhere. |
 
-The consequence is bounded but real: it costs **11.46 pp** of the DSDV identity
-at `dense-small` (the most congested scenario, so the most buffering) and
-≤ 0.73 pp elsewhere. **Do not include DSDV in a cross-protocol drop-cause
-comparison** until [#229](https://github.com/danieljoppi/AntHocNet/issues/229)
-closes. DSDV's aggregate metrics — PDR, delay, NRL — never depended on the
-breakdown and are unaffected.
+Before the hook, the silence cost **11.46 pp** of the DSDV identity at
+`dense-small` as filed (−21.8 pp measured post-#388, when honest MAC
+accounting stopped masking part of the hole) and ≤ 0.73 pp elsewhere, and
+DSDV had to be excluded from cross-protocol drop-cause comparisons. One
+residual imprecision is accepted and documented in the hook's block comment: a
+packet that exits the queue and dies to TTL expiry before reaching a real
+interface is double-counted (ttl + queue); TTL starts at 64, so the path is
+structurally negligible. DSDV's aggregate metrics — PDR, delay, NRL — never
+depended on the breakdown and are unaffected either way.
 
 ### Caveats
 

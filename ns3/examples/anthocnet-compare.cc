@@ -521,6 +521,77 @@ void CountMacDataDrop(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu) {
     if (IsDataIp(pkt)) ++g_macDataDrops;
 }
 
+// --- #229: routing-layer pending-queue conservation (dsdv + aodv arms only) --
+// ns-3's dsdv::PacketQueue sheds packets with NO observable signal: its
+// Drop() has the error callback commented out (stock dsdv-packet-queue.cc,
+// identical ns-3.36 through ns-3.48), Enqueue() overflow returns false into a
+// caller that ignores it, and the protocol registers no TraceSource. Those
+// packets are offered, never delivered, and attributed to no cause — the
+// -21.8 pp identity shortfall at dense-small (#229 comment 5252059859). The
+// baselines run STOCK ns-3 code, so the hook lives entirely here, on traces
+// stock Ipv4L3Protocol already fires.
+//
+// Conservation argument. Both dsdv and aodv defer a routed-less packet the
+// same way: RouteOutput tags it and returns the loopback route, so it crosses
+// the L3 "Tx" trace on interface 0 exactly once (Ipv4L3Protocol::SendRealOut
+// treats loopback as a normal interface), loops back into RouteInput, and is
+// enqueued. Deferral happens only at the source (the RouteInput branch
+// requires idev == lo), and a queued packet exists nowhere else in the stack,
+// so from that moment exactly one of three things can happen to its
+// (flow, seq) key:
+//   1. it exits the queue via SendPacketFromQueue -> ucb -> IpForward and
+//      crosses "Tx" on a REAL interface (any later hop also erases — no-op);
+//   2. aodv only: the queue drops it (timeout purge, overflow eviction,
+//      RERR flush) through the entry's error callback ->
+//      Ipv4L3Protocol::RouteInputError -> the "Drop" trace with
+//      DROP_ROUTE_ERROR — while its key is still pending, which is what
+//      distinguishes a queue drop from an ordinary forwarding route error;
+//   3. nothing further is ever observed: dsdv's silent sheds (purge, Enqueue
+//      overflow, SendPacketFromQueue's oif-mismatch discard) and, for both
+//      protocols, packets still sitting in the queue when the run stops.
+// Keys still pending at teardown are therefore the protocol queue's invisible
+// losses (class 3), and pending keys seen at "Drop" are aodv queue drops that
+// FlowMonitor has already counted — under DROP_ROUTE_ERROR, i.e. in the
+// route column, where they are misattributed (a queue timeout is congestion,
+// not a route failure). The report step adds class 3 to drop_queue_pct and
+// moves class 2 from drop_route_pct to drop_queue_pct.
+//
+// Known imprecision, accepted: a packet that exits the queue and then dies to
+// DROP_TTL_EXPIRED inside IpForward (before the real-interface "Tx") stays
+// pending and is double-counted (ttl + queue). TTL starts at 64 on cells a
+// handful of hops wide, so this path is structurally negligible.
+//
+// Byte-identity: connected only on the dsdv/aodv arms (and never under TCP,
+// where the SeqTs key does not exist — same rule as ##DROPID##). The
+// anthocnet and olsr arms never traverse these callbacks, both counters stay
+// zero there, and the report arithmetic degenerates to the pre-#229 values.
+std::set<std::pair<Address, uint32_t>> g_pqPending;
+uint64_t g_pqEcbDrops = 0;
+
+void PqTrackTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
+    Address flow;
+    uint32_t seq = 0;
+    if (!ReinjKeyFromIp(p, flow, seq)) return;
+    if (iface == 0) {
+        g_pqPending.insert(std::make_pair(flow, seq));
+    } else {
+        g_pqPending.erase(std::make_pair(flow, seq));
+    }
+}
+
+void PqTrackDrop(const Ipv4Header& ip, Ptr<const Packet> p,
+                 Ipv4L3Protocol::DropReason, Ptr<Ipv4>, uint32_t) {
+    if (g_pqPending.empty()) return;
+    Address flow;
+    uint32_t seq = 0;
+    if (!ReinjKeyFromUdp(ip, p, flow, seq)) return;
+    // A pending key can only be dropped by the protocol queue's own error
+    // callback (see conservation argument above), so no reason filter: any
+    // L3 drop of a pending key IS a queue drop, and the reason it arrives
+    // under (DROP_ROUTE_ERROR) is the misattribution being corrected.
+    if (g_pqPending.erase(std::make_pair(flow, seq)) > 0) ++g_pqEcbDrops;
+}
+
 // --- diagnostics (--diag): ant-level introspection for AntHocNet -----------
 // Answers "are routes forming and when?": per-type ant send/receive tallies
 // (from the protocol's own item-15 Tx/Rx trace sources) and the time of the
@@ -981,7 +1052,9 @@ struct Result {
     // "this protocol has no such cause" stays distinguishable from "measured
     // zero"); the three AntHocNet-only causes use it for every other arm.
     double dropRoutePct = 0.0;   // L3 route failure (no route / route error)
-    double dropQueuePct = 0.0;   // interface or qdisc queue overflow
+    double dropQueuePct = 0.0;   // interface/qdisc queue overflow; on the
+                                 // dsdv/aodv arms also the protocol's own
+                                 // pending-queue losses (#229, PqTrackTx)
     double dropMacPct   = 0.0;   // MAC retry limit, terminal (not re-injected)
     double dropChanPct  = 0.0;   // sent on the medium, never received
     double dropTtlPct   = 0.0;   // IP TTL exhausted
@@ -1030,6 +1103,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_reinjUnparsedIcmp = g_reinjUnparsedOther = 0;          // #386
     g_reinjSkip.clear();  // #402
     g_reinjSkips = 0;     // #402
+    g_pqPending.clear();  // #229
+    g_pqEcbDrops = 0;     // #229
     g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;  // #215
     g_ackedDataHops = 0;  // #377
     // #217
@@ -1340,6 +1415,19 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             if (l3) {
                 l3->TraceConnectWithoutContext("Drop",
                                                MakeCallback(&CountReinjL3Drop));
+            }
+        }
+    }
+    // #229: pending-queue conservation, dsdv + aodv + UDP only (see the
+    // PqTrackTx block comment). The other arms never connect these, so their
+    // books are byte-identical to pre-#229.
+    if ((proto == "dsdv" || proto == "aodv") && P.transport != "tcp") {
+        for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+            Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
+            if (l3) {
+                l3->TraceConnectWithoutContext("Tx", MakeCallback(&PqTrackTx));
+                l3->TraceConnectWithoutContext("Drop",
+                                               MakeCallback(&PqTrackDrop));
             }
         }
     }
@@ -1924,9 +2012,27 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             ? g_dataHopRx - g_ackedDataHops : 0;
         const uint64_t macLost =
             g_macDataDrops > unackedRx ? g_macDataDrops - unackedRx : 0;
-        r.dropRoutePct = 100.0 * dropRoute / tx;
+        // #229: the pending-queue conservation counters (dsdv/aodv arms; zero
+        // everywhere else, making the two assignments below arithmetically
+        // identical to their pre-#229 form on the anthocnet/olsr arms).
+        //   pqSilent — keys deferred into the protocol queue and never seen
+        //              again: dsdv's silent sheds plus, for both protocols,
+        //              packets still queued at teardown. In no FlowMonitor
+        //              bucket and never in hopLoss (they never crossed a real
+        //              interface), so they ADD to the queue column and must
+        //              NOT join the raw dropQueue that the chan residual and
+        //              overlap diagnostic carve out of hopLoss below.
+        //   pqEcb   — aodv queue drops that fired the entry's error callback;
+        //              FlowMonitor already counted them under
+        //              DROP_ROUTE_ERROR, so they MOVE from the route column
+        //              to the queue column (sum unchanged). The raw dropRoute
+        //              stays untouched for the `other` diagnostic.
+        const uint64_t pqSilent = g_pqPending.size();
+        const uint64_t pqEcb = g_pqEcbDrops;
+        r.dropRoutePct = 100.0 * (dropRoute > pqEcb ? dropRoute - pqEcb : 0)
+                       / tx;
         r.dropTtlPct   = 100.0 * dropTtl / tx;
-        r.dropQueuePct = 100.0 * dropQueue / tx;
+        r.dropQueuePct = 100.0 * (dropQueue + pqSilent + pqEcb) / tx;
         // The correction applies to dropMacPct only where that column is
         // macDrops-based, i.e. where nothing was re-injected. AntHocNet's is
         // already macTerminal — #46 has removed the re-injected packets from
@@ -2021,7 +2127,15 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                       << " queue=" << dropQueue
                       << " hopLoss=" << hopLossN
                       << " overlap=" << overlap
-                      << " unackedRx=" << unackedRx << '\n';
+                      << " unackedRx=" << unackedRx;
+            // #229: the pending-queue conservation counters, appended at the
+            // END and only on the arms whose hook is connected — on the other
+            // arms the quantity is unmeasured, and per the #382 rule absence
+            // must stay distinguishable from a measured zero.
+            if (proto == "dsdv" || proto == "aodv") {
+                std::cout << " pqSilent=" << pqSilent << " pqEcb=" << pqEcb;
+            }
+            std::cout << '\n';
         }
 
         // #386: the direct re-injection counter behind the >=59% inclusion-

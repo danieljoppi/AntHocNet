@@ -260,6 +260,23 @@ def _drop_quiet_when_balanced():
            f"fired on a correctly-accounted row: {levels}\n{out}")
 
 
+@case("#229 post-fix dsdv row: queue counted, identity closes, no findings")
+def _drop_quiet_post_fix():
+    # The expected dense-small dsdv reading once the harness's pending-queue
+    # conservation hook (anthocnet-compare.cc PqTrackTx, #229) folds the
+    # silent PacketQueue sheds into drop_queue_pct: the former −21.8 pp
+    # shortfall is now the queue column and the identity closes.
+    # 21.2 + 0.23 + 21.85 + 45.63 + 10.97 + 0.15 = 100.03.
+    levels, out = run_results(
+        protocol="dsdv", pdr_pct="21.2", path_div_used="1.05",
+        drop_route_pct="0.23", drop_queue_pct="21.85", drop_mac_pct="45.63",
+        drop_chan_pct="10.97", drop_ttl_pct="0.15",
+        drop_setup_pct="", drop_reconv_pct="", drop_repair_pct="",
+        reorder_extent_mean="0.0", reorder_buf_max="0.6")
+    expect(levels == [], "drop-quiet-post-fix",
+           f"fired on a closing post-#229 dsdv row: {levels}\n{out}")
+
+
 @case("#229 sub-breakdown is checked against its parent, not added to it")
 def _sub_breakdown():
     # setup+reconv+repair must reconstruct drop_route_pct. Breaking one term
