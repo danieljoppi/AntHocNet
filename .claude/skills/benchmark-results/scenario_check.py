@@ -996,7 +996,16 @@ def cmd_results(a):
                 # (those see the interface and qdisc queues, nothing else).
                 # ns-3's dsdv::PacketQueue sheds on MaxQueueLen / MaxQueueTime
                 # silently, so its packets are offered, never delivered, and
-                # attributed nowhere — the 11.46 pp shortfall at dense-small.
+                # attributed nowhere — the 11.46 pp shortfall at dense-small
+                # (−21.8 pp post-#388, once honest MAC accounting stopped
+                # masking part of the hole).
+                # Since the #229 fix, anthocnet-compare.cc measures those
+                # sheds itself (the PqTrackTx pending-queue conservation hook,
+                # dsdv/aodv arms) and folds them into drop_queue_pct, so a
+                # closing identity with a non-zero dsdv queue column is the
+                # expected reading. This rule stays as the regression
+                # tripwire: zero queue + a shortfall on dsdv/aodv now means
+                # the hook did not connect or parse on that ns-3 release.
                 # Gated on a real shortfall: AntHocNet and AODV also report
                 # queue 0.00 there, but their identities close, so a bare
                 # "queue is zero" heuristic would fire on protocols that are
@@ -1006,7 +1015,11 @@ def cmd_results(a):
                                    f"{-gap:.2f} pp is unaccounted — the likely "
                                    "cause is a routing-layer pending queue that "
                                    "sheds without an L3 error callback and so "
-                                   "is invisible to the drop probes (#229)")
+                                   "is invisible to the drop probes; since the "
+                                   "#229 fix those sheds are measured by the "
+                                   "harness's pending-queue conservation hook, "
+                                   "so on dsdv/aodv this reading means the "
+                                   "hook did not connect or parse (#229)")
             # The AntHocNet-only causes are a *sub-breakdown* of drop_route_pct
             # (all three end in the same L3 error callback), never causes on top
             # of it. A mismatch means one pending-queue exit path is unaccounted
