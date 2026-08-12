@@ -116,8 +116,10 @@ channel, here it reorders with the transport.
 
 A transport contrast is only attributable to the transport if nothing else
 moved. The 20-seed UDP control ran at `0b42c89` — a **different commit** from
-the grid's `4cdfb96` — with the grid's `rwp × tworay` knobs, and reproduced
-that cell exactly:
+the v1.4.0 grid's `4cdfb96`, both at the then-shipped `ReconvHoldCap = 1 s`
+(this whole page predates the [#411](https://github.com/danieljoppi/AntHocNet/pull/411)
+flip and the [grid re-baseline](grid.md); its numbers are 1 s-vintage) — with
+the grid's `rwp × tworay` knobs, and reproduced that cell exactly:
 
 - **Per-seed, field-for-field:** all 80 `##RUN##` rows (20 seeds × 4
   protocols) match the committed
@@ -126,7 +128,9 @@ that cell exactly:
   NRL, jitter, dOff50, dOff90) — zero mismatches, the only textual difference
   being the undefined-quantile sentinel (`inf` in the log, `−1` in the CSV).
 - **Pooled, to printed precision:** mean PDR 97.43 / 85.92 / 90.59 / 84.99
-  for anthocnet / aodv / olsr / dsdv — the grid page's row verbatim. (The
+  for anthocnet / aodv / olsr / dsdv — the v1.4.0 grid page's row verbatim
+  (`git show v1.4.0:docs/benchmarks/grid.md`; the re-baselined page's
+  baseline rows are unchanged, its anthocnet row is the 200 ms one). (The
   packet-pooled `# drops` aggregate reads 97.43 / 85.93 / 90.59 / 84.99; the
   0.01 on AODV is mean-of-seeds vs pooled-packets, not a reproduction gap.)
 

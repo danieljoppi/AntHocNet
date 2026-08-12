@@ -455,16 +455,26 @@ entire corpus rather than a convenient label:
 The papers repo's Artifact Availability statement pins to `v1.3.0` for exactly
 this reason (`danieljoppi/papers#23`).
 
-### The #371 flip: the corpus is superseded
+### The #371 flip: the corpus is re-established at `a1daa7a`
 
 The merge flipping the shipped `ReconvHoldCap` default from `1 s` to `200 ms`
-([#371](https://github.com/danieljoppi/AntHocNet/issues/371), phase 1 of the
-[v1.5.0 campaign](v1.5.0-campaign.md)) is a protocol-behaviour change under the
-rule above, and this is it saying so: **every number published in
-`docs/benchmarks/` and the paper — the `v1.4.0` grid included — was measured at
-`ReconvHoldCap = 1 s` and is superseded** until the campaign's phase-1 grid
-re-baseline re-measures it at the new default. Until then, `v1.3.0`/`v1.4.0`
-reproduce the published numbers; the default branch deliberately does not.
+([#371](https://github.com/danieljoppi/AntHocNet/issues/371) /
+[#411](https://github.com/danieljoppi/AntHocNet/pull/411), phase 1 of the
+[v1.5.0 campaign](v1.5.0-campaign.md)) was a protocol-behaviour change under
+the rule above, and it superseded the entire published corpus — the `v1.4.0`
+grid included — the day it merged. **The phase-1 re-baseline has since
+landed**: the six-cell × 20-seed grid was re-measured on `main` at the merge
+commit `a1daa7a` and republished on [grid.md](grid.md), with the baselines
+proven byte-identical to the `v1.4.0` corpus (0/18 rows moved — the
+attribution control on that page). The headline grid therefore reproduces at
+`a1daa7a` (or any later commit until the next invalidating merge, which this
+section will name). The `v1.4.0` numbers were measured at
+`ReconvHoldCap = 1 s` and remain valid only as historical evidence of that
+operating point (`git show v1.4.0:docs/benchmarks/grid.md`). The sweep pages
+keep their `v1.3.0` pin per
+[#365](https://github.com/danieljoppi/AntHocNet/issues/365)'s disposition, and
+the [TCP arm](tcp.md) keeps its `0b42c89` / 1 s vintage — each is re-measured
+only when a claim needs its shape at the new default.
 
 ### Run ID → commit
 
