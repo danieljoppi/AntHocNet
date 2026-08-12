@@ -42,6 +42,10 @@ build_lib_example(
     ${libaodv}
     ${libolsr}
     ${libdsdv}
+    # #296: the vendored GPSR baseline module (contrib/gpsr, installed by the
+    # same `make install-ns3`). Like the stock baselines above, listing it here
+    # means the example is skipped when the module is not enabled.
+    ${libgpsr}
 )
 
 # ISL-grid scenario (#214): a static +Grid torus of point-to-point links — the

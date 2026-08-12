@@ -49,9 +49,9 @@ and **normalized routing load** (NRL = routing-control packets transmitted /
 data packets delivered, counted uniformly at the IP layer):
 
 ```bash
-# requires aodv, olsr, dsdv and flow-monitor enabled
+# requires aodv, olsr, dsdv, gpsr (the vendored #296 baseline) and flow-monitor enabled
 ./ns3 configure --enable-examples \
-  --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+  --enable-modules='anthocnet;gpsr;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
 ./ns3 build
 
 # the paper's base scenario (50 nodes, 1500x300 m, RWP 20 m/s / 30 s pause,

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Daniel Henrique Joppi
 
 /*
- * AntHocNet vs. AODV / OLSR / DSDV comparison.
+ * AntHocNet vs. AODV / OLSR / DSDV / GPSR comparison.
  *
  * Runs the SAME mobile-ad-hoc scenario (identical node layout, mobility and
  * CBR traffic, driven from the same RNG run) under each routing protocol and
@@ -39,8 +39,8 @@
  * [1] Di Caro, Ducatelle, Gambardella, "AntHocNet: an ant-based hybrid routing
  *     algorithm for mobile ad hoc networks", PPSN VIII, 2004.
  *
- * Requires the aodv, olsr, dsdv and flow-monitor modules. Build with those
- * enabled, then e.g.:
+ * Requires the aodv, olsr, dsdv, gpsr (the #296 vendored baseline module) and
+ * flow-monitor modules. Build with those enabled, then e.g.:
  *   ./ns3 run "anthocnet-compare --scenario=paper --runs=5"
  */
 #include "ns3/core-module.h"
@@ -70,6 +70,9 @@
 #include "ns3/aodv-module.h"
 #include "ns3/olsr-module.h"
 #include "ns3/dsdv-module.h"
+// #296: the vendored GPSR baseline (contrib/gpsr). Geographic — position
+// knowledge comes from the mobility models via its GOD location service.
+#include "ns3/gpsr-module.h"
 #include "ns3/anthocnet-helper.h"
 #include "ns3/anthocnet-routing-protocol.h"
 
@@ -1327,16 +1330,17 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     TakeStreams(stream, streamBase, mobility.AssignStreams(nodes, stream),
                 "mobility");
 
-    // #352: the four routing helpers are hoisted out of the branches so their
+    // #352: the routing helpers are hoisted out of the branches so their
     // AssignStreams() can run after Install() (SetRoutingHelper stores a Copy(),
     // but AssignStreams reaches the *installed* protocols through the nodes, so
-    // the local helper is the right handle). Constructing all four is free —
+    // the local helper is the right handle). Constructing all of them is free —
     // each is an ObjectFactory and instantiates nothing.
     InternetStackHelper internet;
     AntHocNetHelper ahnHelper;
     AodvHelper aodvHelper;
     OlsrHelper olsrHelper;
     DsdvHelper dsdvHelper;
+    GpsrHelper gpsrHelper;
     if (proto == "anthocnet") {
         internet.SetRoutingHelper(ahnHelper);
     } else if (proto == "aodv") {
@@ -1345,8 +1349,17 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(olsrHelper);
     } else if (proto == "dsdv") {
         internet.SetRoutingHelper(dsdvHelper);
+    } else if (proto == "gpsr") {
+        internet.SetRoutingHelper(gpsrHelper);
     }
     internet.Install(nodes);
+    // #296: gpsr's data packets carry a position header, injected by
+    // re-pointing the UDP down target — the helper wires that after the stack
+    // exists, exactly as the dwosion examples do (scoped to this run's nodes,
+    // not the global container, so repeated RunOne calls can't cross-wire).
+    if (proto == "gpsr") {
+        gpsrHelper.Install(nodes);
+    }
     // The IPv4 stack is NOT stream-free, contrary to the first cut of this fix:
     // ArpL3Protocol owns m_requestJitter, a RandomVariableStream used to de-sync
     // ARP requests, and on a wifi MANET every next-hop change resolves through
@@ -1371,6 +1384,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else if (proto == "dsdv") {
         TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream),
                     "dsdv routing");
+    } else if (proto == "gpsr") {
+        TakeStreams(stream, streamBase, gpsrHelper.AssignStreams(nodes, stream),
+                    "gpsr routing");
     }
 
     // Count routing-control transmissions uniformly at the IP layer. Connect to
@@ -2464,7 +2480,9 @@ int main(int argc, char* argv[]) {
                              "seeds can split across dispatches (#126)",
                  firstRun);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
-    cmd.AddValue("protocols", "Comma-separated list", protocols);
+    cmd.AddValue("protocols",
+                 "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr)",
+                 protocols);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies, first delivery)", g_diag);
     cmd.AddValue("qdiag", "Emit per-run '# qdiag' lines: per-node MAC queue depth "
                           "distribution (meanQ/maxQ/pctNonzero) — does A2 have a "
