@@ -70,7 +70,7 @@ RoutingProtocol::RoutingProtocol()
       m_antAcceptanceFactorNewHop(2.0),
       m_linkfailNotifyInterval(5.0),
       m_queueTimeout(Seconds(3)),
-      m_reconvHoldCap(Seconds(1.0)),
+      m_reconvHoldCap(Seconds(0.2)),
       m_repairHoldCap(Seconds(0)),
       m_reactiveRetryInterval(Seconds(0.25)),
       m_macServiceAlpha(0.7),
@@ -293,12 +293,14 @@ TypeId RoutingProtocol::GetTypeId() {
                           "holds carry 60-71% of the delay-tail mass (#21 "
                           "attribution); capping them below the 3 s timeout "
                           "truncates delay99/jitter at a PDR cost (aged-out "
-                          "packets become drops). Default 1 s from the #103 A/B: "
-                          "delay99 -37% / jitter -26% on the disk model and "
-                          "delay/jitter near-parity with AODV on two-ray (the "
-                          "paper PHY), for PDR cost within run-to-run noise. "
+                          "packets become drops). Default 200 ms from the #309 "
+                          "20-seed sweep, adopted by #371 for the v1.5.0 "
+                          "re-baseline: beats AODV on every published metric "
+                          "with a far smaller tail. The earlier 1 s (#103 A/B; "
+                          "shipped v1.3.0-v1.4.0) was delivery-biased and off "
+                          "the measured frontier. "
                           "0 = disabled (revert to QueueTimeout, pre-#103).",
-                          TimeValue(Seconds(1.0)),
+                          TimeValue(Seconds(0.2)),
                           MakeTimeAccessor(&RoutingProtocol::m_reconvHoldCap),
                           MakeTimeChecker())
             .AddAttribute("RepairHoldCap",

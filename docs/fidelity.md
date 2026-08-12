@@ -42,7 +42,7 @@ choice / **unknown**) and how to calibrate one are in
 |---|---|---|
 | **PDR ≥ AODV**, gap grows with difficulty | ✅ | 92.1 vs 81.4 (disk); 92.9 vs 83.4 (two-ray). #22 (mobility), taxonomy |
 | **Overhead (NRL) below AODV** | ✅ | 45 vs 61 (disk); 44 vs 75 (two-ray) |
-| **Delay/jitter QoS advantage** (bounded tail) | 🟡 partial | **two-ray (paper PHY): mean-delay parity** with AODV (52.8 vs 52.6 ms), jitter within 11 %, after the #21 reconv hold cap (#104). **Disk model**: tail narrowed (delay99 −37 %, jitter −26 % via `ReconvHoldCap`) but still above AODV |
+| **Delay/jitter QoS advantage** (bounded tail) | 🟡 partial | **two-ray (paper PHY): mean-delay parity** with AODV (52.8 vs 52.6 ms), jitter within 11 %, after the #21 reconv hold cap (#104). **Disk model**: tail narrowed (delay99 −37 %, jitter −26 % via `ReconvHoldCap`, measured at the then-default 1 s; 200 ms since [#371](https://github.com/danieljoppi/AntHocNet/issues/371)) but still above AODV |
 
 ## Correction pending re-measurement (#169, 2026-07-25)
 
@@ -160,8 +160,10 @@ be split before anyone deviates per ant type.
    after the multipath (#96), backward-ant flush (#101) and reconv hold-cap
    (#104) work. On **two-ray** — the paper's actual PHY — the gap closes to
    parity on mean delay. The residual is a **channel-model artefact**
-   (CONTEXT.md §8), not an algorithmic gap. Mitigated by `ReconvHoldCap=1.0 s`
-   (default). **Note (2026-07-25):** the `T_hop` co-lever named in item 2 has
+   (CONTEXT.md §8), not an algorithmic gap. Mitigated by `ReconvHoldCap`
+   (measured at the then-default `1.0 s`; the shipped default is `200 ms`
+   since the [#371](https://github.com/danieljoppi/AntHocNet/issues/371)
+   flip for the v1.5.0 re-baseline). **Note (2026-07-25):** the `T_hop` co-lever named in item 2 has
    now been corrected to the thesis value; the benchmark impact on this tail is
    pending a re-run (#88).
 2. **`T_hop` — resolved from the primary source (#88, 2026-07-25).** [1] defines

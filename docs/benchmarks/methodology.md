@@ -455,6 +455,17 @@ entire corpus rather than a convenient label:
 The papers repo's Artifact Availability statement pins to `v1.3.0` for exactly
 this reason (`danieljoppi/papers#23`).
 
+### The #371 flip: the corpus is superseded
+
+The merge flipping the shipped `ReconvHoldCap` default from `1 s` to `200 ms`
+([#371](https://github.com/danieljoppi/AntHocNet/issues/371), phase 1 of the
+[v1.5.0 campaign](v1.5.0-campaign.md)) is a protocol-behaviour change under the
+rule above, and this is it saying so: **every number published in
+`docs/benchmarks/` and the paper — the `v1.4.0` grid included — was measured at
+`ReconvHoldCap = 1 s` and is superseded** until the campaign's phase-1 grid
+re-baseline re-measures it at the new default. Until then, `v1.3.0`/`v1.4.0`
+reproduce the published numbers; the default branch deliberately does not.
+
 ### Run ID → commit
 
 Every campaign CSV under `docs/benchmarks/campaign/` is named after the Actions
