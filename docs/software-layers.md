@@ -102,7 +102,7 @@ flowchart LR
     subgraph COST["Cost / congestion metric"]
         K1["ClassicMetric — delay+hops (default)"]
         K2["A2 congestion metric<br/>(MAC-queue+1)·hop-time<br/>gate: EnableMacMetric (off)"]
-        K3["timing: HopTime 3 ms · QueueTimeout 3 s<br/>ReconvHoldCap 1 s · ReactiveRetryInterval 0.25 s"]
+        K3["timing: HopTime 3 ms · QueueTimeout 3 s<br/>ReconvHoldCap 200 ms · ReactiveRetryInterval 0.25 s"]
     end
 
     R1 --> M1 --> N1
