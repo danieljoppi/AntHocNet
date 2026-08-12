@@ -13,6 +13,10 @@ HERE   := $(abspath $(CURDIR))
 ROOT   := $(abspath $(CURDIR)/..)
 CORE   := $(ROOT)/core
 DEST    = $(NS3DIR)/contrib/anthocnet
+# #296: the vendored GPSR baseline is a second, self-contained contrib module
+# (provenance: gpsr/README.md). Installed alongside so the comparison
+# harness's gpsr arm builds; the anthocnet module itself does not depend on it.
+GPSRDEST = $(NS3DIR)/contrib/gpsr
 
 .PHONY: install uninstall require-ns3dir
 
@@ -37,6 +41,11 @@ install: require-ns3dir
 	mkdir -p "$(DEST)/core/include/anthocnet/core" "$(DEST)/core/src"
 	cp $(CORE)/include/anthocnet/core/*.h "$(DEST)/core/include/anthocnet/core/"
 	cp $(CORE)/src/*.cpp "$(DEST)/core/src/"
+	@echo ">> Installing GPSR baseline module into $(GPSRDEST)"
+	mkdir -p "$(GPSRDEST)/model" "$(GPSRDEST)/helper"
+	cp $(HERE)/gpsr/model/*.h  $(HERE)/gpsr/model/*.cc  "$(GPSRDEST)/model/"
+	cp $(HERE)/gpsr/helper/*.h $(HERE)/gpsr/helper/*.cc "$(GPSRDEST)/helper/"
+	cp $(HERE)/gpsr/CMakeLists.txt "$(GPSRDEST)/"
 	@echo ""
 	@echo ">> Done. Reconfigure and build ns-3:"
 	@echo "     cd $(NS3DIR) && ./ns3 configure --enable-examples --enable-tests && ./ns3 build"
@@ -46,4 +55,6 @@ install: require-ns3dir
 uninstall: require-ns3dir
 	@echo ">> Removing $(DEST)"
 	rm -rf "$(DEST)"
-	@echo ">> Done. Reconfigure/build ns-3 to drop the module."
+	@echo ">> Removing $(GPSRDEST)"
+	rm -rf "$(GPSRDEST)"
+	@echo ">> Done. Reconfigure/build ns-3 to drop the modules."

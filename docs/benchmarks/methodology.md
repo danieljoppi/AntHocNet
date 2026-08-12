@@ -18,7 +18,7 @@ use the `paper` preset — it is heavy, so it is a manual run, not part of CI:
 make install-ns3 NS3DIR=/path/to/ns-3-dev
 cd /path/to/ns-3-dev
 ./ns3 configure --enable-examples \
-  --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+  --enable-modules='anthocnet;gpsr;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
 ./ns3 build
 ./ns3 run "anthocnet-compare --scenario=paper --runs=5"               # base scenario
 ./ns3 run "anthocnet-compare --scenario=paper --areaX=2500 --runs=5"  # area sweep

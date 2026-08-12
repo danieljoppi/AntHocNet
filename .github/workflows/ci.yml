@@ -296,7 +296,7 @@ jobs:
           # (their cross-module deps drift by release). The filter flag scopes
           # that to our module; it was added after ns-3.36, so older trees just
           # build + smoke.
-          mods='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          mods='anthocnet;gpsr;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
           if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
             ./ns3 configure --enable-tests --enable-examples \
               --filter-module-examples-and-tests=anthocnet \
@@ -442,7 +442,7 @@ jobs:
           # static-initializer allocations (see the file header for how to
           # extend it). $GITHUB_WORKSPACE is the in-container checkout path.
           echo "LSAN_OPTIONS=suppressions=$GITHUB_WORKSPACE/ns3/tools/lsan.supp" >> "$GITHUB_ENV"
-          mods='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          mods='anthocnet;gpsr;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
           # ns-3's CMake build has first-class sanitizer support (NS3_SANITIZE),
           # exposed by the ./ns3 wrapper as --enable-sanitizers
           # (address + leak + undefined). Prefer it when the wrapper advertises
