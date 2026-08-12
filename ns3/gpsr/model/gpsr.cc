@@ -152,11 +152,11 @@ RoutingProtocol::GetGodPosition (Ipv4Address adr) const
     {
       Ptr<Node> node = *i;
       Ptr<Ipv4> ipv4 = node->GetObject<Ipv4> ();
-      if (ipv4 != 0 && ipv4->GetNInterfaces () > 1
+      if (ipv4 && ipv4->GetNInterfaces () > 1
           && ipv4->GetAddress (1, 0).GetLocal () == adr)
         {
           Ptr<MobilityModel> mm = node->GetObject<MobilityModel> ();
-          if (mm != 0)
+          if (mm)
             {
               return mm->GetPosition ();
             }
@@ -206,8 +206,8 @@ NS_LOG_FUNCTION (this << p->GetUid () << header.GetDestination () << idev->GetAd
       NS_LOG_LOGIC ("No gpsr interfaces");
       return false;
     }
-  NS_ASSERT (m_ipv4 != 0);
-  NS_ASSERT (p != 0);
+  NS_ASSERT (m_ipv4);
+  NS_ASSERT (p);
   // Check if input device supports IP
   NS_ASSERT (m_ipv4->GetInterfaceForDevice (idev) >= 0);
   int32_t iif = m_ipv4->GetInterfaceForDevice (idev);
@@ -279,7 +279,7 @@ RoutingProtocol::DeferredRouteOutput (Ptr<const Packet> p, const Ipv4Header & he
                                       UnicastForwardCallback ucb, ErrorCallback ecb)
 {
   NS_LOG_FUNCTION (this << p << header);
-  NS_ASSERT (p != 0 && p != Ptr<Packet> ());
+  NS_ASSERT (p && p != Ptr<Packet> ());
 
   if (m_queue.GetSize () == 0)
     {
@@ -539,7 +539,7 @@ RoutingProtocol::NotifyInterfaceUp (uint32_t interface)
   // Create a socket to listen only on this interface
   Ptr<Socket> socket = Socket::CreateSocket (GetObject<Node> (),
                                              UdpSocketFactory::GetTypeId ());
-  NS_ASSERT (socket != 0);
+  NS_ASSERT (socket);
   socket->SetRecvCallback (MakeCallback (&RoutingProtocol::RecvGPSR, this));
   socket->Bind (InetSocketAddress (Ipv4Address::GetAny (), GPSR_PORT));
   socket->BindToNetDevice (l3->GetNetDevice (interface));
@@ -555,12 +555,12 @@ RoutingProtocol::NotifyInterfaceUp (uint32_t interface)
   // liveness then rests on the hello-lifetime purge alone.
   Ptr<NetDevice> dev = m_ipv4->GetNetDevice (m_ipv4->GetInterfaceForAddress (iface.GetLocal ()));
   Ptr<WifiNetDevice> wifi = dev->GetObject<WifiNetDevice> ();
-  if (wifi == 0)
+  if (!wifi)
     {
       return;
     }
   Ptr<WifiMac> mac = wifi->GetMac ();
-  if (mac == 0)
+  if (!mac)
     {
       return;
     }
@@ -574,7 +574,7 @@ RoutingProtocol::NotifyInterfaceUp (uint32_t interface)
 void
 RoutingProtocol::NotifyTxError (WifiMacDropReason reason, Ptr<const GPSR_WIFI_MPDU> mpdu)
 {
-  if (m_ipv4 == 0 || m_socketAddresses.empty () || mpdu == 0)
+  if (!m_ipv4 || m_socketAddresses.empty () || !mpdu)
     {
       return;
     }
@@ -590,7 +590,7 @@ RoutingProtocol::NotifyTxError (WifiMacDropReason reason, Ptr<const GPSR_WIFI_MP
       return;   // no single next hop failed
     }
   Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol> ();
-  if (l3 == 0)
+  if (!l3)
     {
       return;
     }
@@ -601,7 +601,7 @@ RoutingProtocol::NotifyTxError (WifiMacDropReason reason, Ptr<const GPSR_WIFI_MP
   for (uint32_t i = 0; i < l3->GetNInterfaces (); ++i)
     {
       Ptr<ArpCache> cache = l3->GetInterface (i)->GetArpCache ();
-      if (cache == 0)
+      if (!cache)
         {
           continue;
         }
@@ -675,10 +675,10 @@ RoutingProtocol::NotifyInterfaceDown (uint32_t interface)
   Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol> ();
   Ptr<NetDevice> dev = l3->GetNetDevice (interface);
   Ptr<WifiNetDevice> wifi = dev->GetObject<WifiNetDevice> ();
-  if (wifi != 0)
+  if (wifi)
     {
       Ptr<WifiMac> mac = wifi->GetMac ();
-      if (mac != 0)
+      if (mac)
         {
           mac->TraceDisconnectWithoutContext ("DroppedMpdu",
                                               MakeCallback (&RoutingProtocol::NotifyTxError, this));
@@ -740,7 +740,7 @@ void RoutingProtocol::NotifyAddAddress (uint32_t interface, Ipv4InterfaceAddress
           // Create a socket to listen only on this interface
           Ptr<Socket> socket = Socket::CreateSocket (GetObject<Node> (),
                                                      UdpSocketFactory::GetTypeId ());
-          NS_ASSERT (socket != 0);
+          NS_ASSERT (socket);
           socket->SetRecvCallback (MakeCallback (&RoutingProtocol::RecvGPSR,this));
           socket->BindToNetDevice (l3->GetNetDevice (interface));
           // Bind to any IP address so that broadcasts can be received
@@ -773,7 +773,7 @@ RoutingProtocol::NotifyRemoveAddress (uint32_t i, Ipv4InterfaceAddress address)
           // Create a socket to listen only on this interface
           Ptr<Socket> socket = Socket::CreateSocket (GetObject<Node> (),
                                                      UdpSocketFactory::GetTypeId ());
-          NS_ASSERT (socket != 0);
+          NS_ASSERT (socket);
           socket->SetRecvCallback (MakeCallback (&RoutingProtocol::RecvGPSR, this));
           // Bind to any IP address so that broadcasts can be received
           socket->Bind (InetSocketAddress (Ipv4Address::GetAny (), GPSR_PORT));
@@ -800,8 +800,8 @@ RoutingProtocol::NotifyRemoveAddress (uint32_t i, Ipv4InterfaceAddress address)
 void
 RoutingProtocol::SetIpv4 (Ptr<Ipv4> ipv4)
 {
-  NS_ASSERT (ipv4 != 0);
-  NS_ASSERT (m_ipv4 == 0);
+  NS_ASSERT (ipv4);
+  NS_ASSERT (!m_ipv4);
 
   m_ipv4 = ipv4;
 
@@ -899,7 +899,7 @@ RoutingProtocol::LoopbackRoute (const Ipv4Header & hdr, Ptr<NetDevice> oif)
 {
   NS_LOG_FUNCTION (this << hdr);
   m_lo = m_ipv4->GetNetDevice (0);
-  NS_ASSERT (m_lo != 0);
+  NS_ASSERT (m_lo);
   Ptr<Ipv4Route> rt = Create<Ipv4Route> ();
   rt->SetDestination (hdr.GetDestination ());
 
@@ -1102,7 +1102,7 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
           // FIXME: Does not work for multiple interfaces
           route->SetOutputDevice (m_ipv4->GetNetDevice (1));
           route->SetDestination (header.GetDestination ());
-          NS_ASSERT (route != 0);
+          NS_ASSERT (route);
           NS_LOG_DEBUG ("Exist route to " << route->GetDestination () << " from interface " << route->GetOutputDevice ());
 
 
@@ -1219,9 +1219,9 @@ RoutingProtocol::RouteOutput (Ptr<Packet> p, const Ipv4Header &header,
       route->SetGateway (nextHop);
       route->SetOutputDevice (m_ipv4->GetNetDevice (m_ipv4->GetInterfaceForAddress (route->GetSource ())));
       route->SetDestination (header.GetDestination ());
-      NS_ASSERT (route != 0);
+      NS_ASSERT (route);
       NS_LOG_DEBUG ("Exist route to " << route->GetDestination () << " from interface " << route->GetSource ());
-      if (oif != 0 && route->GetOutputDevice () != oif)
+      if (oif && route->GetOutputDevice () != oif)
         {
           NS_LOG_DEBUG ("Output device doesn't match. Dropped.");
           sockerr = Socket::ERROR_NOROUTETOHOST;

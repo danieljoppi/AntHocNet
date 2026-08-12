@@ -48,9 +48,13 @@
 // ns-3 renamed WifiMacQueueItem -> WifiMpdu (and wifi-mac-queue-item.h ->
 // wifi-mpdu.h) in ns-3.37; the WifiMac "DroppedMpdu" trace carries this type.
 // GPSR_NS3_WIFI_QUEUE_ITEM is defined by the module's CMakeLists for
-// ns-3 <= 3.36; default to the modern name. Same pattern as the anthocnet
-// module's ANTHOCNET_NS3_WIFI_QUEUE_ITEM gate.
-#ifdef GPSR_NS3_WIFI_QUEUE_ITEM
+// ns-3 <= 3.36 (same pattern as the anthocnet module's
+// ANTHOCNET_NS3_WIFI_QUEUE_ITEM gate) — but that definition is
+// directory-scoped, so translation units OUTSIDE contrib/gpsr that include
+// this header (e.g. contrib/anthocnet's anthocnet-compare example) never see
+// it. Fall back to probing for the modern header itself: gpsr links wifi, so
+// ns3/wifi-mpdu.h is present exactly on ns-3.37+.
+#if defined(GPSR_NS3_WIFI_QUEUE_ITEM) || !__has_include("ns3/wifi-mpdu.h")
 #include "ns3/wifi-mac-queue-item.h"
 #define GPSR_WIFI_MPDU ns3::WifiMacQueueItem
 #else
@@ -61,8 +65,10 @@
 // ns-3 changed Ipv4RoutingProtocol::RouteInput's forwarding-callback parameters
 // from by-value (<= ns-3.36) to const-reference (ns-3.37+). The override must
 // match exactly or the class stays abstract. GPSR_NS3_ROUTEINPUT_BYVALUE is
-// defined by the module's CMakeLists for ns-3 <= 3.36; default to const-ref.
-#ifdef GPSR_NS3_ROUTEINPUT_BYVALUE
+// defined by the module's CMakeLists for ns-3 <= 3.36; like the gate above it
+// is directory-scoped, so out-of-module includers fall back to the same
+// ns3/wifi-mpdu.h probe — both APIs changed in the same release (ns-3.37).
+#if defined(GPSR_NS3_ROUTEINPUT_BYVALUE) || !__has_include("ns3/wifi-mpdu.h")
 #define GPSR_RI_CB(T) T
 #else
 #define GPSR_RI_CB(T) const T&

@@ -1,4 +1,5 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2009 IITP RAS
  *
@@ -17,7 +18,6 @@
  *
  * Authors: António Fonseca <afonseca@tagus.inesc-id.pt>, written after OlsrHelper by Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  */
-// SPDX-License-Identifier: GPL-2.0-only
 // Copyright (C) 2026 Daniel Henrique Joppi (ns-3.36–3.48 port for AntHocNet #296)
 /*
  * Vendored from https://github.com/dwosion/ns3.29-with-gpsr
