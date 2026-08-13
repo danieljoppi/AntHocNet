@@ -35,7 +35,8 @@ golden rules, where-to-look), [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 | [benchmarks/methodology.md](benchmarks/methodology.md) | Reproduce commands (local and CI dispatch), build profiles, validation anchors, determinism gate. |
 | [benchmarks/README.md](benchmarks/README.md) | How the figures/tables are generated and regenerated. |
 | [benchmarks/satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) | The satellite/ISL suite: harness, analytic anchors, dispatch. |
-| [benchmarks/grid.md](benchmarks/grid.md) | v1.4.0's mobility × channel grid and its scoped ranking-stability statement. |
+| [benchmarks/grid.md](benchmarks/grid.md) | The mobility × channel grid and its scoped ranking-stability statement. |
+| [benchmarks/reinjection.md](benchmarks/reinjection.md) | The #46 MAC-failure detector arm: the 20-seed detector A/B, the duplicate-re-injection measurement, and the cap frontier. |
 
 ## Research provenance & fidelity
 

@@ -16,6 +16,8 @@ docs/benchmarks/
                               figure it reproduces, chart + per-point table (generated block)
   tcp.md                      the transport arm: TCP goodput + paired tests + UDP control
                               (hand-written tables; data in campaign/tcp-goodput.csv)
+  reinjection.md              the #46 detector arm: 20-seed detector A/B, the duplicate
+                              measurement and the re-injection cap frontier
   campaign/*.csv              raw campaign sweep CSVs rescued from expiring artifacts
   *.png                       the figures, written here by make-charts.py
 ```
