@@ -34,11 +34,11 @@ index: the headline cross-scenario summary, plus a link to every detail page.
 | [pause](benchmarks/sweeps/pause.md) | Paper Fig. 2 — pause time 0→900 s. |
 | [scale](benchmarks/sweeps/scale.md) | Paper Fig. 3 — terrain ×f, nodes ×f² (50→200 nodes). |
 | **Grid** | |
-| [mobility × channel](benchmarks/grid.md) | v1.4.0's six-cell grid — {rwp, ssrwp, gaussmarkov} × {tworay, nakagami}, and the **scoped** ranking-stability statement: delivery and overhead stable everywhere, the tail ranking inverts with the channel. Measured *after* `v1.3.0`, so not comparable with the pages above. |
+| [mobility × channel](benchmarks/grid.md) | The six-cell grid — {rwp, ssrwp, gaussmarkov} × {tworay, nakagami} — re-baselined at `a1daa7a` (v1.5.0 phase 1, `ReconvHoldCap = 200 ms`), baselines byte-identical to the v1.4.0 corpus. **Scoped** ranking-stability statement: delivery and overhead orderings stable everywhere (the OLSR delivery gap narrowed to +1.70…+4.16 pp); the tail's invariant is OLSR — best under two-ray, worst under fading — while AntHocNet is now 2nd-or-tied under two-ray and the fading tail is aodv-or-tie. Not comparable with the pages above. |
 | **Transport** | |
 | [tcp](benchmarks/tcp.md) | v1.4.0's TCP arm — goodput over `TcpCubic` at the paper base scenario, 20 seeds + a 20-seed UDP control. The delivery ranking **reorders** under TCP (AODV 3rd → last, DSDV rises, anthocnet–olsr a statistical tie): a transport-layer claim that does not name its transport is unsupported. Measured *after* `v1.3.0`. |
 | **Campaign plans** | |
-| [v1.5.0 re-baseline](benchmarks/v1.5.0-campaign.md) | The plan for the next campaign — how the hold-cap flip, the re-injection cap sweep, the publishable detector A/B and the oracle control fold into **one** ordered set of dispatches instead of three overlapping ones. Phase 0 complete; no campaign cell dispatched. |
+| [v1.5.0 re-baseline](benchmarks/v1.5.0-campaign.md) | The running campaign — how the hold-cap flip, the re-injection cap sweep, the publishable detector A/B and the oracle control fold into **one** ordered set of dispatches instead of three overlapping ones. Phases 0–1 complete (flip merged as #411, grid re-baselined at `a1daa7a`); phase 2 (cap × detector) is next. |
 | **Satellite suite** | |
 | [satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) | The ISL-grid regime: harness, analytic anchors, how to dispatch, and what it is waiting on (#216). |
 | [benchmarks/README.md](benchmarks/README.md) | How the figures and this folder are generated. |
