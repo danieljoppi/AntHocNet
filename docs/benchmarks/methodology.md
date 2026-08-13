@@ -1,7 +1,8 @@
 # Benchmark methodology
 
 How the numbers are produced: how to reproduce a run, the scenario taxonomy and
-sweeps the harness drives, the ns-3 build profile they run under, and the
+sweeps the harness drives, [what each baseline arm is for](#baselines-what-each-arm-is-for-296)
+and what its provenance is worth, the ns-3 build profile they run under, and the
 validation anchors that gate publishing them. Part of the
 [benchmark index](../benchmarks.md); the metric definitions are in
 [metrics.md](metrics.md).
@@ -150,7 +151,282 @@ PDR / mean+99th-percentile delay / NRL vs. the swept parameter:
 - **[scale](sweeps/scale.md)** (Fig. 3): terrain ×f, nodes ×f² (50→200 nodes).
 
 Unlike the paper (AODV only), every baseline (AODV/OLSR/DSDV) is run on identical
-realisations, so the classification covers all of them.
+realisations, so the classification covers all of them. What each of those arms
+is *for* — and which comparisons the baseline set does and does not support — is
+[the next section](#baselines-what-each-arm-is-for-296).
+
+## Baselines: what each arm is for ([#296](https://github.com/danieljoppi/AntHocNet/issues/296))
+
+The arms in this harness are not all the same kind of thing, and reading them as
+one undifferentiated "comparison set" gets the conclusions wrong in both
+directions. Three of them exist to show that this implementation reproduces a
+published result; one exists to check the protocol against a class of competitor
+the original work never faced; one will exist to bound what any protocol could
+achieve; one was attempted and is a documented gap. Provenance differs the same
+way — stock upstream code, third-party code this project repaired, and code
+written here — and each provenance carries its own quality risk.
+
+| arm | category | provenance | measurement status |
+|---|---|---|---|
+| `anthocnet` | subject under test | this repo (`core/` + `ns3/`) | measured everywhere |
+| `aodv`, `olsr`, `dsdv` | **replication anchors** | stock ns-3 modules, never vendored | the published corpus |
+| `gpsr` | **competitive frontier** | vendored third-party port, repaired here ([#412](https://github.com/danieljoppi/AntHocNet/pull/412)) | builds + ASan green; **unmeasured** until [campaign phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control) |
+| oracle | **upper bound** | to be written here ([#415](https://github.com/danieljoppi/AntHocNet/issues/415)) | in progress |
+| `aomdv` | **attempted → documented gap** | vendored third-party port, repaired here ([#414](https://github.com/danieljoppi/AntHocNet/pull/414)) | builds on all five ns-3 versions; **does not route multi-hop** |
+| RL / DRL baseline | **deferred by design** | — | out of scope until [#293](https://github.com/danieljoppi/AntHocNet/issues/293) + [#295](https://github.com/danieljoppi/AntHocNet/issues/295) land |
+| Babel · BATMAN-adv · OLSRv2 | **decided against, for now** | — | [surveyed and declined](#modern-deployed-baseline--decided-not-skipped-item-4) |
+
+### Replication anchors — AODV / OLSR / DSDV
+
+**What they are for: fidelity, not competition.** The repo's canonical reference
+[1] (Di Caro, Ducatelle & Gambardella, PPSN VIII 2004; see
+[`docs/publications/`](../publications/README.md)) evaluated AntHocNet in Qualnet
+against **AODV with local route repair, and nothing else**. AODV is therefore the
+only arm that literally replicates the original comparison. OLSR and DSDV are
+this project's additions, chosen to cover the proactive link-state and proactive
+distance-vector classes that [1] §2 names as the alternatives to AODV's reactive
+class. A claim that this implementation reproduces the published AntHocNet
+result can only be made against the protocols the publication used — that is the
+whole job of these three arms.
+
+**Provenance: stock ns-3, deliberately untouched.** `src/aodv`, `src/olsr` and
+`src/dsdv` come from the prebuilt simulator image; nothing in this repository
+vendors, patches or wraps them. That is a reproducibility choice: nobody has to
+trust *our* port of a baseline, and anyone with the same image tag gets the same
+baseline code.
+
+**Quality risk.** Two kinds, and the second is the larger one.
+
+1. *Stock is well-tested, but stock is not the protocol on paper.* ns-3's OLSR
+   implements RFC 3626 and its own documentation states it "is *not* compliant
+   with OLSR Version 2 (RFC 7181) or any of the Version 2 extensions"; its scope
+   list further records that it does not respond to interface up/down
+   notifications and, unlike the NS-2 model it was ported from, "does not yet
+   support MAC layer feedback as described in RFC 3626" — a mechanism this
+   project's own protocol uses (ADR-0008's second detector). ns-3's DSDV sheds
+   packets from its routing queue with no observable signal at all, which this
+   harness had to reason around before its drop-conservation check could mean
+   anything ([#229](https://github.com/danieljoppi/AntHocNet/issues/229); see the
+   `ns3/examples/anthocnet-compare.cc` conservation block). Baselines inherit
+   their simulator's model gaps, and those gaps are not symmetric across arms.
+2. *They are the comparison set of 2004–2005, and 2026 reviewers increasingly
+   read them as strawmen.* That criticism is correct and is not answered by
+   adding seeds or confidence intervals to the same three arms. It is answered —
+   partially — by the categories below, and where it is **not** answered the gap
+   is stated in [the threat to validity](#the-resulting-threat-to-validity)
+   rather than papered over. These arms stay because the fidelity story requires
+   them, not because they are evidence of competitiveness.
+
+### Competitive frontier — GPSR
+
+**What it is for.** Geographic/greedy forwarding is the dominant baseline class
+in FANET and DRL routing papers, and the closest competitor class for the
+satellite/ISL suite (the grid-greedy family, [#296](https://github.com/danieljoppi/AntHocNet/issues/296)'s
+second premise). It is the one arm here that AntHocNet's own literature never
+faced.
+
+**Provenance.** Vendored from
+[`dwosion/ns3.29-with-gpsr`](https://github.com/dwosion/ns3.29-with-gpsr) at
+commit `15241ef`, itself the ns-3.29 refresh of António Fonseca's 2011–12 port;
+GPLv2 verified end to end. Ported here to the ns-3.36–3.48 matrix with the three
+faults the spike named fixed: the dead `TxErrHeader` trace re-pointed at
+`DroppedMpdu`, per-call RNG objects replaced by an `AssignStreams`-pinned member
+(the [#352](https://github.com/danieljoppi/AntHocNet/issues/352) requirement),
+and the position-header layering reordered to `IP|UDP|GPSR` so FlowMonitor
+classifies data flows correctly. Full detail and per-file port notes:
+[`ns3/gpsr/README.md`](../../ns3/gpsr/README.md).
+
+**Quality risk — this is a repaired third-party port, not a reference
+implementation.**
+
+- There is no upstream to diff against and no independent validation of the
+  numbers it will produce. Its acceptance evidence has to be its own measured
+  behaviour in phase 3, not its pedigree. [#414](https://github.com/danieljoppi/AntHocNet/pull/414)
+  is the standing reminder of what "it builds" is worth.
+- [PA-GPSR](https://github.com/CSVNetLab/PA-GPSR) (IEEE Access 2019) fixed real
+  bugs in this lineage, but publishes no licence anywhere and so was not copied
+  from — not one line. Where this port needed the same fix it was re-derived
+  from the paper. **Defects PA-GPSR found that this port did not independently
+  encounter may still be present.**
+- The arm is configured *favourably to itself*: position knowledge comes from a
+  GOD location service reading each node's `MobilityModel` directly — perfect,
+  instantaneous, zero-overhead location. Real GPSR pays for a location service
+  in both traffic and staleness. A GPSR result here is therefore an **upper
+  bound on GPSR**, and a GPSR win reads as "geographic routing *with free
+  location information* beats us", not "GPSR beats us".
+
+### Upper bound — the oracle control ([#415](https://github.com/danieljoppi/AntHocNet/issues/415))
+
+Global-knowledge Dijkstra over the ground-truth topology, replayed as an
+`Ipv4RoutingProtocol`. **Not a protocol — a control**, and the only arm that can
+answer "how much of the gap between AntHocNet and perfect is protocol overhead?"
+In progress; it is [phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control) of
+the v1.5.0 campaign.
+
+**What it will be exact for.** On the `range` disk model adjacency is crisp, so
+the path it takes *is* the shortest path; it emits no control traffic (NRL
+exactly 0, an assertable property rather than an expectation) and performs no
+discovery, so its delay is queueing plus propagation only.
+
+**What it will not be exact for**, stated now so no reader over-reads it later:
+
+- **Fading channels have no crisp adjacency.** Under `nakagami` — and at the
+  margin under `tworay` — link existence is a probabilistic event, so "the
+  ground-truth graph" needs a stated rule and remains an approximation whichever
+  rule is chosen. #415 requires that rule to be documented rather than silently
+  assumed.
+- **It bounds routing, not delivery.** It runs on the same MAC/PHY as every
+  other arm, so contention and collision losses remain. An oracle PDR below
+  100 % is expected and is not a defect.
+- **Shortest-path is not the throughput optimum.** Under congestion a
+  load-spreading multipath protocol can beat a shortest-hop oracle. The oracle
+  upper-bounds *path quality by hop count*, which is why #415's falsifiable
+  assertions are "hop count ≤ every other arm" generally, and "PDR ≥ every other
+  arm" only on a static lossless topology.
+- Consequently the AntHocNet-to-oracle gap is an **upper bound on how much of
+  the shortfall is protocol overhead** — it does not decompose that shortfall
+  into discovery cost, suboptimal path choice and reconvergence loss.
+
+### Attempted and documented as a gap — AOMDV (multipath)
+
+AntHocNet is a multipath protocol (`enableMultipath`, default on). The standard
+classical multipath on-demand baseline is **AOMDV** (Marina & Das, 2001), and a
+reviewer is entitled to ask why a multipath protocol is not compared against
+one. The honest answer, with its evidence:
+
+- **AOMDV is not in stock ns-3** — `src/aomdv` is absent from `ns-3-dev`
+  (probed 2026-08-13; see the
+  [availability survey](modern-baseline-survey.md#what-stock-ns-3-ships)).
+- **The best available third-party port was vendored and repaired here**
+  ([#414](https://github.com/danieljoppi/AntHocNet/pull/414)): stock ns-3.36
+  `src/aodv` rebased with the AOMDV delta from the CharithaS fork, licence
+  verified GPLv2, cross-version gated for the whole CI matrix, with **nine
+  defects in the fork fixed** — two of them compiler-proved undefined behaviour,
+  four of them hard aborts or segfaults found only by *running* the arm.
+- **It compiles clean — zero errors, zero warnings — on all five ns-3 versions,
+  and it does not route.** On 25 nodes / 300 m / 4 flows / 40 s (ns-3.48, single
+  run) it delivers **0.0 % PDR with 86 % of drops charged to "route"**, against
+  **16.0 % PDR / 0.09 % route drops for stock `aodv` on the identical
+  scenario**. On a trivial 5-node / 100 m field it *does* deliver (PDR 10 %,
+  `hopsMean = 1.00`). One-hop discovery works; multi-hop discovery does not.
+- **The likely cause is diagnosed, not guessed**: the fork's value-semantics
+  translation of ns-2's *pointer-aliased* routing table. In ns-2 a `Path*`
+  obtained from a route entry aliases the live entry; in the fork it aliases
+  whichever *copy* produced it, so a mutation survives only if an
+  `m_routingTable.Update()` follows on that same copy. The sites fixed are
+  exactly those a run reached; the remaining RREQ/RREP paths are unaudited for
+  the same pattern. Finishing it is an open-ended protocol-level audit of a
+  vendored fork, not port mechanics.
+- **The arm therefore ships as a build-matrix citizen only** — off by default,
+  with a "Runtime status" section in
+  [`ns3/aomdv/README.md`](../../ns3/aomdv/README.md) that says so, and it must
+  not be scheduled into a campaign in this state. It was landed rather than
+  dropped so the failure stays reproducible and the next audit starts from the
+  diagnosis instead of from scratch.
+
+**Publishing its numbers is not an alternative.** 0 % PDR is not the finding
+"AOMDV performs poorly"; it is the finding "this port does not route". Reporting
+it as a protocol result would be a fabricated comparison, and would be the more
+damaging outcome precisely because the number looks like a measurement.
+
+The paragraph this produces, in the form the paper will use it:
+
+> Our baseline set contains no multipath on-demand protocol. AOMDV, the standard
+> such baseline, has no implementation in ns-3: the protocol is absent upstream,
+> and the only available third-party port — which we vendored, hardened across
+> five ns-3 releases and repaired to the point of compiling cleanly — fails to
+> establish multi-hop routes at all, delivering 0 % of offered traffic against
+> 16 % for stock AODV on an identical scenario while one-hop delivery works. We
+> traced the failure to the port's value-semantics translation of the original
+> ns-2 implementation's pointer-aliased routing table, and judged completing the
+> audit out of scope for this work. Rather than publish numbers from a baseline
+> we know to be broken, we state the gap: AntHocNet's multipath behaviour is
+> evaluated against single-path reactive and proactive baselines and a
+> geographic one, and any claim about its multipath advantage is relative to
+> those, not to a multipath competitor.
+
+### Deferred by design — the RL / DRL baseline
+
+An ACO-versus-RL comparison under one rigorous harness is uncommon and would be
+publishable ([#296](https://github.com/danieljoppi/AntHocNet/issues/296)'s third
+premise). It is nonetheless **out of scope until the statistics
+([#293](https://github.com/danieljoppi/AntHocNet/issues/293)) and realism
+([#295](https://github.com/danieljoppi/AntHocNet/issues/295)) epics land**, and
+the reason is not effort but validity: a learned baseline evaluated on the
+topologies, densities and speeds it trained on leaks, and a leaked comparison
+produces a number that survives review and is wrong — the generalisation of the
+Trustee critique (ACM CCS 2022). A leaky RL arm would be worse than no RL arm,
+because it would make a claim rather than leave a gap.
+
+What has to be true before it starts: multi-seed confidence intervals and paired
+tests in place (so a difference can be *called* rather than eyeballed), and the
+realism axes in place (so there are held-out scenario families to hold out).
+
+### Modern deployed baseline — decided, not skipped (item 4)
+
+Testbed-era mesh comparisons centre on OLSR vs BATMAN-adv vs Babel; OLSRv2 is
+RFC 7181 and Babel is RFC 8966. The epic's acceptance bar for this item is
+*deciding deliberately and recording why*, and the full survey — per protocol,
+with sources, probe dates and the questions it could not answer — is
+[**modern-baseline-survey.md**](modern-baseline-survey.md).
+
+| candidate | ns-3 availability (2026-08-13) | verdict |
+|---|---|---|
+| **Babel** (RFC 8966) | Not upstream; no upstream MR or issue; one 2022 TUM seminar-paper implementation with **no located public code** | no candidate arm exists |
+| **BATMAN-adv** | Not upstream; the ns-3 wiki's 2020 batman-adv project is paused/incomplete; the only port ([BATSEN](https://github.com/npowell3/BATSEN)) is ns-3.25, last commit **2018-05-11**, and implements the *pre-adv 2008 daemon*, a different protocol. batman-adv itself is layer 2 and so is not an `Ipv4RoutingProtocol` at all | wrong protocol, wrong layer, unmaintained |
+| **OLSRv2** (RFC 7181) | Not upstream (ns-3's `olsr` documents itself as RFC 3626 and explicitly not RFC 7181). A complete-looking ~7.3k-line `olsrv2` + ~1.9k-line `nhdp` pair exists on an ns-3.43 **archival** NIST branch, GPLv2, with `AssignStreams` | the near miss — real code, no maintainer |
+| *(found by the survey)* **802.11s HWMP** | **In stock ns-3** (`src/mesh`), maintained, mac80211-compatible message formats — and deployed in the Linux kernel | not a drop-in: layer-2 install path, IP-layer overhead counters would read zero, and the model omits path maintenance |
+
+**Decision: write the threat-to-validity paragraph, do not write the code — and
+record the trigger that reverses it.** The reasoning, in the order that decided
+it: nothing available today is both maintained and buildable on this matrix;
+[#414](https://github.com/danieljoppi/AntHocNet/pull/414) is direct, recent
+evidence that a third-party port which compiles is not a baseline that works,
+and a *subtly* broken modern arm would be worse than an absent one; and upstream
+ns-3 has an open draft `manet` module (MR
+[!2887](https://gitlab.com/nsnam/ns-3-dev/-/merge_requests/2887), 2026-06-03)
+whose stated plan includes **an OLSRv2 model and a B.A.T.M.A.N. model**, so
+adopting an archival port now would take on maximum maintenance at the moment it
+is most likely to be superseded.
+
+That last point is the part that differs from the epic's expectation, and it
+changes the character of the decision: the answer is **not yet**, not
+**unavailable**. The survey's
+[reversal triggers](modern-baseline-survey.md#what-would-reverse-this-decision)
+are concrete and cheap to re-check — two directory probes and one API query — and
+are worth re-running before any campaign that will publish a baseline
+comparison.
+
+### The resulting threat to validity
+
+Stated once, plainly, so it can be quoted into a paper and weighed by a reader:
+
+> The comparison set is the one the original AntHocNet publications used
+> (2004–2005: AODV, extended here with OLSR and DSDV to cover the proactive
+> link-state and distance-vector classes), plus one geographic protocol. AODV,
+> OLSR and DSDV are stock ns-3 implementations, which makes them reproducible
+> but also inherits their documented model gaps. GPSR is a third-party port
+> vendored and repaired for this work, and it runs with a perfect location
+> service, so its numbers bound geographic routing from above rather than
+> reproducing a deployed system. **No modern deployed link-state or
+> distance-vector protocol — Babel, BATMAN-adv, OLSRv2 — is compared**, because
+> none had a maintained, buildable ns-3 implementation when this work was done
+> (surveyed August 2026). **No multipath protocol is compared**, because the
+> only available AOMDV port does not route. Results should therefore be read as
+> AntHocNet measured against the protocols its own literature compares against,
+> plus a geographic check and a global-knowledge upper bound — not as a
+> positioning against the current state of practice in deployed mesh routing.
+
+Each clause of that paragraph has a retirement condition, and they are tracked
+rather than assumed permanent:
+
+| clause | retired by |
+|---|---|
+| no modern deployed protocol | ns-3 MR [!2887](https://gitlab.com/nsnam/ns-3-dev/-/merge_requests/2887) merging with an OLSRv2 or B.A.T.M.A.N. model, or any other [reversal trigger](modern-baseline-survey.md#what-would-reverse-this-decision) |
+| no multipath protocol | the `Path*` aliasing audit in [`ns3/aomdv/README.md`](../../ns3/aomdv/README.md) being completed and the arm passing a multi-hop smoke run |
+| geographic arm is unvalidated | phase 3 measuring `gpsr` and its results being checked against published GPSR behaviour |
+| no upper bound | [#415](https://github.com/danieljoppi/AntHocNet/issues/415) landing the oracle control |
+| no learned baseline | [#293](https://github.com/danieljoppi/AntHocNet/issues/293) + [#295](https://github.com/danieljoppi/AntHocNet/issues/295) landing, then #296 item 5 |
 
 ## Mobility models (`--mobility`, [#61](https://github.com/danieljoppi/AntHocNet/issues/61))
 
