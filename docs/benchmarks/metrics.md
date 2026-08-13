@@ -15,7 +15,10 @@ same realisations. Metrics come from an NS-3 `FlowMonitor`:
   Caveat (#57/#54): across protocols with very different PDR this is
   survivorship-confounded — the extra packets a protocol delivers are precisely
   the hard/late ones — so prefer the offered-load percentiles for cross-protocol
-  tail claims.
+  tail claims. The same confound appears **within one protocol** whenever an arm
+  changes what gets delivered, and it is not always labelled as a delivery
+  change — see
+  [Survivorship within one protocol: capped arms](#survivorship-within-one-protocol-capped-arms-386).
 - **jitter** (`jitter_ms`) — mean delay jitter over delivered packets
   (FlowMonitor `jitterSum` / (rx−1)), ms. Accumulates
   `|delay_i − delay_{i−1}|`, where `delay = arrival − send`.
@@ -64,6 +67,25 @@ same realisations. Metrics come from an NS-3 `FlowMonitor`:
 - **throughput** — application bytes delivered per second, kbps.
 - **NRL** — normalized routing load: routing-control packets transmitted (each
   hop) per data packet delivered, counted uniformly at the IP layer.
+
+  **What it counts is *control* traffic only — re-injected data frames are not
+  in it.** A packet the [#46](https://github.com/danieljoppi/AntHocNet/issues/46)
+  MAC-failure detector re-injects is a data packet; it consumes airtime, hops
+  and retries exactly like any other data transmission, and NRL's numerator
+  never sees it (its denominator, deliveries, is where it shows up — and only
+  if it arrives). Ants, hellos, repair and link-failure traffic are the
+  numerator; nothing else is.
+
+  This is a reader trap with a measured size. On the
+  [re-injection arm](reinjection.md), capping re-injection cut `postTx`
+  — IP-layer hop transmissions of re-injected packets — by **48.20 % (rwp) /
+  49.61 % (gaussmarkov)**, and NRL moved by only **−2.4 % / −4.8 %**, with
+  channel occupancy down **−1.4 / −2.0 pp** (20.6 → 19.2 rwp, 21.0 → 19.0 gm).
+  Nothing is wrong with either number: roughly half the protocol's re-transmitted
+  *data* traffic disappeared and the *routing-load* column barely moved, because
+  that traffic was never in the column. Read a large `postTx` change against
+  `##AIR##` (airtime, which does see it) rather than against NRL, and do not
+  infer "the overhead saving did not happen" from a flat NRL.
 - **nrl_bytes** — byte-normalized routing load: routing-control *bytes*
   transmitted (each hop, same IP-layer counting point as NRL) per data byte
   delivered. Complements packet-count NRL, which flatters protocols that send
@@ -195,6 +217,36 @@ The decomposition is internally consistent there because both terms use the same
 all-delivered basis. What it cannot say is how the split looks on the packets
 both protocols carried, where the delay ratio is 1.44× rather than 1.68×. That
 is the question `hopsCommon` answers.
+
+### Survivorship within one protocol: capped arms (#386)
+
+`##MATCH##`/`##COMMON##` exist for the *cross-protocol* form of the confound.
+The [re-injection cap sweep](reinjection.md) produced the *within-protocol*
+form, and it is easier to miss because both arms are the same protocol at the
+same commit, differing in one integer.
+
+Capping `MaxReinjectPerPacket` improves every delay column — on rwp, mean delay
+59.64 → 52.70 ms (**−11.6 %**) and delay99 920.0 → 853.5 ms at cap=1. It also
+raises `pktsNever`, the share of re-injected keys never delivered at all, from
+**2.66 % to 13.41 %**. Those two facts are the same fact: the packets the cap
+removes from the delay distribution are **exactly the slow ones** that unlimited
+re-injection eventually delivers, because what a cap discards is the
+`pktsDelivAfterOnly` class (see the `##REINJ##` packet view below).
+
+**A −11.6 % mean delay bought that way is not a latency improvement.** Nothing
+got faster; a slow tenth of the population stopped being measured. The rule
+that follows is narrow and mechanical:
+
+- Never quote a capped arm's `delay` or `delay99` without its `pktsNever`
+  alongside — the same way a cross-protocol tail claim is not quoted without
+  the PDRs.
+- Prefer the offered-load percentiles (`dOff50`/`dOff90`), which count an
+  undelivered packet as infinite and therefore cannot be improved by dropping
+  it. They are monotone-honest across arms for the same reason they are across
+  protocols.
+- The rule generalises past this sweep: **any** knob whose effect includes "and
+  it delivers less" moves the delay columns for free, in the flattering
+  direction.
 
 ### Application goodput (`##GOODPUT##`, #63)
 
@@ -386,6 +438,13 @@ destination (`unackedRx` vs `reinjected`, a lower bound). This row measures
 that overlap per packet instead of bounding it, and follows what re-injected
 packets then do. One row per seed, AntHocNet arm only.
 
+**The bound has since been superseded by this counter.** At 20 seeds the direct
+rate is `ofDelivered/events` = **0.6519 [0.6405, 0.6633]** (rwp) and **0.6683
+[0.6536, 0.6830]** (gaussmarkov) — both CIs entirely above the 0.59 floor, so
+the floor's standing caveat (a downstream `(src,seq)` suppression could have
+made "re-sent into the network" too strong) is retired. Tables and provenance:
+[reinjection.md](reinjection.md).
+
 Packet identity is the `(flow, seq)` key the sink-side maps already use:
 `flow = (source IP, source UDP port)` — byte-identical to the PacketSink `Rx`
 trace's sender address — and `seq` from the `SeqTsSizeHeader`. The adapter's
@@ -440,6 +499,13 @@ publishable points. The same reading measured the detector as an *operating
 point*: switching it off cost **−6.4 pp PDR** on 5/5 seeds in both cells, so
 the re-injection waste these fields expose is currently paid for delivery, not
 a free defect.
+
+**The publishable version of both readings is [reinjection.md](reinjection.md)**
+(20 seeds per arm, post-flip defaults, `7471447`): the duplicate rate is
+0.6519 / 0.6683, `pktsNever` is 2.66 % on the shipped unlimited arm, and the
+detector A/B is ΔPDR +5.55 [+4.78, +6.32] pp (rwp) / +6.54 [+5.79, +7.29] pp
+(gaussmarkov), 20/20 sign-consistent in both. Quote that page, not the n=5
+figures above.
 
 The trailing `l3DropRoute`/`l3DropTtl`/`l3DropOther` fields attribute the
 L3-visible drops of re-injected keys (the pending-queue ageout's error callback
@@ -1183,24 +1249,37 @@ across several paths of differing delay, so a packet sent later on a shorter
 path can overtake one sent earlier on a longer one.
 [configuration.md](../configuration.md) already names this as the cost of a low
 `betaData` ("lower = more spread — and more reordering"); these columns measure
-it. **Read a non-zero AntHocNet figure as the mechanism working as designed, not
-as a fault.** It is a trade, not a defect: what it buys is the load spreading and
+it. **On a deterministic channel, read a non-zero AntHocNet figure as the
+mechanism working as designed, not as a fault** — under fading the dominant
+cause is a different mechanism entirely, and the correction below is the
+measurement that established which. It is a trade, not a defect: what it buys is the load spreading and
 the route redundancy that the PDR and NRL columns report. The number that
 matters is whether the reordering an application would feel is worth those
 gains — which is exactly the question [#179](https://github.com/danieljoppi/AntHocNet/issues/179) (`betaData` 2 → the thesis's 20)
 has to answer, and could not before this metric existed.
 
-> **Correction for fading cells (#386).** The gloss above holds on the
-> deterministic channels only. Under a fading channel AntHocNet's
-> `reorder_ratio` (measured **0.1788** rwp / **0.2408** gaussmarkov on the
-> 900 s Nakagami cells) is dominated by the
+> **Correction for fading cells ([#399](https://github.com/danieljoppi/AntHocNet/issues/399),
+> #386).** The gloss above holds on the deterministic channels only. Under a
+> fading channel AntHocNet's `reorder_ratio` is dominated by the
 > [#46](https://github.com/danieljoppi/AntHocNet/issues/46) MAC-failure
-> re-injection's **duplicate deliveries**, not by multipath spreading: the
-> #386 detector A/B on identical seeds collapses it to **0.0008** (rwp) /
-> **0.0007** (gaussmarkov) with
-> `EnableMacFailureDetector=false`, a ~250x drop from switching off a
-> mechanism that is not multipath
-> ([#386 comment 5234323092](https://github.com/danieljoppi/AntHocNet/issues/386#issuecomment-5234323092)).
+> re-injection's **duplicate deliveries**, not by multipath spreading — and
+> that attribution rests on a direct ablation, not on an inference from the
+> mechanism's plausibility.
+>
+> **The evidence.** Turning the detector off on identical seeds collapses the
+> ratio from **0.1745** (rwp) / **0.2301** (gaussmarkov) to **0.0010** /
+> **0.0009** — **175× / 256×**, from the single knob that creates duplicates,
+> with all three baselines byte-identical across the arms. 0.001 is two-ray and
+> AODV scale (0.0004 / 0.0003). The intermediate cap arms interpolate
+> monotonically (rwp 0.1745 unlimited → 0.1320 at cap=2 → 0.0939 at cap=1), so
+> the ratio tracks the amount of duplication rather than jumping with the
+> knob's presence. Measured at 20 seeds per arm, 900 s Nakagami, `7471447` —
+> the [re-injection arm page](reinjection.md) carries the full tables and
+> provenance. (The earlier 5-seed reading of the same ablation, at the pre-flip
+> 1 s hold cap, is
+> [#386 comment 5234323092](https://github.com/danieljoppi/AntHocNet/issues/386#issuecomment-5234323092):
+> 0.1788 / 0.2408 → 0.0008 / 0.0007.)
+>
 > The multipath reading stays valid off-fading — the matched two-ray cell
 > reads 0.0004, genuinely multipath-scale. On a fading cell, read
 > `reorder_ratio` as a re-injection-duplicate gauge (cross-check `##REINJ##`'s
