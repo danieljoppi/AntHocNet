@@ -32,7 +32,8 @@ golden rules, where-to-look), [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 |---|---|
 | [benchmarks.md](benchmarks.md) | Results index: per-merge taxonomy table + links to every scenario/sweep page. |
 | [benchmarks/metrics.md](benchmarks/metrics.md) | What PDR, delay99, NRL etc. mean, and their caveats. |
-| [benchmarks/methodology.md](benchmarks/methodology.md) | Reproduce commands (local and CI dispatch), build profiles, validation anchors, determinism gate. |
+| [benchmarks/methodology.md](benchmarks/methodology.md) | Reproduce commands (local and CI dispatch), build profiles, validation anchors, determinism gate, and what each baseline arm is for. |
+| [benchmarks/modern-baseline-survey.md](benchmarks/modern-baseline-survey.md) | Dated survey of ns-3 support for Babel / BATMAN-adv / OLSRv2, and the decision it drove. |
 | [benchmarks/README.md](benchmarks/README.md) | How the figures/tables are generated and regenerated. |
 | [benchmarks/satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) | The satellite/ISL suite: harness, analytic anchors, dispatch. |
 | [benchmarks/grid.md](benchmarks/grid.md) | The mobility × channel grid and its scoped ranking-stability statement. |

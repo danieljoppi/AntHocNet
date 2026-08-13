@@ -61,7 +61,32 @@ HOLD_CEILING_MS = 5000.0
 # is the diversity *window* counting route replacement as concurrent multipath —
 # it calibrates the window, and it is the only external check on whether an
 # AntHocNet diversity figure means anything.
+#
+# That excess is NOT correctable by moving this number, and the rule is
+# deliberately no longer a FAIL. Two measured facts decide it:
+#
+#   - The floor is a function of the scenario knobs, not a constant. The #230
+#     window sweep at 900 s (paper knobs, one binary, one seed) reads
+#     olsr/aodv 1.000/1.000 at windowS=2, 1.116/1.109 at 4, 1.198/1.190 at 6,
+#     1.322/1.311 at 10; the dedicated 8 pkt/s cell reads aodv 1.133 at
+#     windowS=2. So it also rises with offered rate, and no absolute threshold
+#     is simultaneously satisfiable (windowS<=2 pins every protocol, AntHocNet
+#     included, at ~1.00 — the sample-starvation floor) and informative.
+#   - The excess never invalidates a cell. divUsed is accumulated in its own
+#     (node, dest, window) map off the WifiMac AckedMpdu trace
+#     (anthocnet-compare.cc CountAckedDataHop / FlushDiversityWindow); PDR,
+#     delay, delay99, throughput, NRL and jitter come from FlowMonitor and the
+#     energy columns from the energy model. A churn-inflated divUsed cannot
+#     move a single published number.
+#
+# So a contaminated floor makes exactly the diversity columns unquotable and is
+# reported once per cell as a WARN naming the floor, not as three per-row FAILs
+# that condemn the whole cell (14/14 campaign cells FAILed on nothing else, and
+# every one was waved through — the cry-wolf failure SKILL.md warns about).
+# The readable quantity is AntHocNet's EXCESS over the in-run floor, so that is
+# what gets printed whether the cell is contaminated or clean.
 SINGLE_PATH_PROTOS = ("aodv", "olsr", "dsdv")
+MULTI_PATH_PROTO = "anthocnet"
 SINGLE_PATH_DIV_MAX = 1.10
 # The dedicated diversity-measurement cell (#230, run 30650903707): window
 # <= DIV_CELL_WINDOW_S is the calibrated churn-free window, where a raised
@@ -832,6 +857,80 @@ def check_reinj(path):
                                "#386 books disagree (#386)")
 
 
+def _fnum(row, key):
+    try:
+        return float(row.get(key))
+    except (TypeError, ValueError):
+        return None
+
+
+def check_path_diversity(rows):
+    """#230: read path diversity as excess over the in-run single-path floor.
+
+    `path_div_used` counts distinct next hops that carried data for a
+    destination inside one `pathWindowS` window. A protocol that installs one
+    route per destination can only exceed 1.0 by having that route *replaced*
+    inside the window, so whatever the baselines read above 1.0 is the churn
+    floor of that scenario — measured, in-run, by three protocols at once. The
+    only claim the metric can support is AntHocNet's excess over that floor,
+    and that is what this prints; the absolute value is uninterpretable on its
+    own (see the sweep in the SINGLE_PATH_DIV_MAX comment).
+
+    One report per cell, not per row. Contamination is a property of the
+    window, so three baselines breaching one threshold is one finding stated
+    three times, and it was the whole content of 14/14 campaign FAILs.
+
+    Rows are grouped by `where` — one saved cell is one group; a campaign CSV
+    groups per scenario, which is the level the floor is a constant at.
+    Inputs without diversity columns, and cells with no single-path row to
+    measure a floor against, produce nothing.
+    """
+    groups = {}
+    for r in rows:
+        div = _fnum(r, "div")
+        if div is None:
+            continue
+        groups.setdefault(r["where"], []).append((r["proto"], div, r))
+    for where, grp in groups.items():
+        floors = [(d, p) for p, d, _ in grp if p in SINGLE_PATH_PROTOS]
+        if not floors:
+            continue
+        floor, floor_proto = max(floors)
+        multi = next((d for p, d, _ in grp if p == MULTI_PATH_PROTO), None)
+        windows = [w for w in (_fnum(r, "div_window") for _, _, r in grp)
+                   if w is not None]
+        window = max(windows) if windows else None
+        churn_free = window is not None and window <= DIV_CELL_WINDOW_S
+        excess = None if multi is None else multi - floor
+        reading = ("no anthocnet row in this cell" if excess is None else
+                   f"anthocnet {multi} = {excess:+.3f} vs the floor")
+        wtxt = "unknown" if window is None else f"{window:g}"
+        if not churn_free and floor > SINGLE_PATH_DIV_MAX:
+            report("WARN", f"{where}: path diversity is churn-dominated — the "
+                           f"single-path floor is {floor} ({floor_proto}) at "
+                           f"windowS={wtxt}, i.e. route replacement inside the "
+                           f"window is being counted as concurrent multipath; "
+                           f"{reading}. Do not quote path_div_*/"
+                           f"path_entropy_bits from this cell. Nothing else is "
+                           f"affected: PDR/delay/NRL/jitter come from "
+                           f"FlowMonitor, not from the diversity window (#230)")
+        elif excess is None:
+            print(f"ok: {where}: single-path diversity floor {floor} "
+                  f"({floor_proto}) at windowS={wtxt} — churn-free")
+        elif excess > 0.0:
+            print(f"ok: {where}: path diversity readable — anthocnet {multi} "
+                  f"vs single-path floor {floor} ({floor_proto}) at "
+                  f"windowS={wtxt}: excess {excess:+.3f}")
+        else:
+            report("WARN", f"{where}: anthocnet path diversity {multi} does "
+                           f"not exceed the single-path floor {floor} "
+                           f"({floor_proto}) at windowS={wtxt} (excess "
+                           f"{excess:+.3f}) — the multipath protocol shows no "
+                           f"concurrent spreading the baselines do not also "
+                           f"show, in a cell where the floor is clean enough "
+                           f"to say so (#230)")
+
+
 def cmd_results(a):
     floor = anchor_floor(a.anchor) if a.anchor else None
     n = 0
@@ -839,7 +938,9 @@ def cmd_results(a):
         check_provenance(path)
         check_drop_identity(path)
         check_reinj(path)
-        for r in parse_results(path):
+        rows = list(parse_results(path))
+        check_path_diversity(rows)
+        for r in rows:
             n += 1
             tag = f"{r['where']}/{r['proto']}"
 
@@ -1083,19 +1184,9 @@ def cmd_results(a):
                                    "is not churn-free at this offered rate, "
                                    "so the diversity cell is unreadable "
                                    "(#230)")
-                elif (r["proto"] in SINGLE_PATH_PROTOS
-                        and (div_window is None
-                             or div_window > DIV_CELL_WINDOW_S)
-                        and div > SINGLE_PATH_DIV_MAX):
-                    report("FAIL", f"{tag}: path diversity {div} > "
-                                   f"{SINGLE_PATH_DIV_MAX} for a single-path "
-                                   "protocol — path_div_window_s is longer than "
-                                   "the route lifetime, so route replacement is "
-                                   "being counted as concurrent multipath; "
-                                   "diversity is only readable from the "
-                                   "dedicated cell (cbrBps=4096, "
-                                   "pathWindowS=2), as excess over the "
-                                   "single-path floor (#230)")
+                # A churn-inflated single-path reading is not judged per row:
+                # it is a property of the cell and is read against the other
+                # protocols measured beside it, in check_path_diversity().
             if div_max is not None and div is not None and div_max and div_max < div:
                 report("FAIL", f"{tag}: max path diversity {div_max} < mean "
                                f"path diversity {div}")

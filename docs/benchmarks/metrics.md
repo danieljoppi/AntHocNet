@@ -1117,15 +1117,43 @@ not a blank column.
 >    floor 1.133), so the honest figure is AntHocNet − AODV in the same run
 >    (today: **+0.096 used-paths, +0.070 entropy bits**). No (rate, window)
 >    pair drives the floor to 1.0 while keeping the cells fed.
-> 3. `scenario_check.py` enforces the split: the absolute 1.10 single-path
->    bound applies whenever `path_div_window_s > 2`; at the cell's window it
->    relaxes to a 1.50 sanity ceiling (a baseline above that means the window
->    is not churn-free at the offered rate and the cell is unreadable).
+> 3. `scenario_check.py` reads rule 2 rather than an absolute bound. Per cell
+>    it measures the single-path floor *in that run* as the largest `divUsed`
+>    over aodv/olsr/dsdv, reports AntHocNet's excess over it once, and **WARNs**
+>    — it does not FAIL — when the floor is itself churn-dominated (> 1.10) or
+>    when AntHocNet fails to exceed a clean floor. The severity is deliberate:
+>    `divUsed` is accumulated off the WifiMac `AckedMpdu` trace into its own
+>    counter and shares no accumulator with any published metric, so a
+>    churn-inflated diversity figure cannot move PDR, delay, delay99, NRL or
+>    energy. What still FAILs: a baseline above 1.50 at a churn-free window,
+>    and every arithmetic invariant (`div < 1`, `div > divMax`, `div == 0` at
+>    non-zero PDR, `entropy > log2(divMax)`).
+>
+>    *An absolute threshold was tried and refuted.* The floor is a function of
+>    the scenario knobs, not a constant: aodv/olsr read 1.000/1.000 at
+>    `windowS=2`, 1.190/1.198 at 6 and 1.311/1.322 at 10, and 1.133 at
+>    `windowS=2` once the rate goes to 8 pkt/s. No constant is both satisfiable
+>    and informative — the old 1.10 rule FAILed the three control rows in
+>    **14 of 14** v1.5.0 campaign cells while passing the one row least worth
+>    trusting.
+>
+> **What the v1.5.0 campaign's 14 cells say (all `windowS=10`): no diversity
+> claim survives at the paper window, and the sign is the wrong way round.**
+> AntHocNet's excess over the in-run floor is **negative in 14/14 cells**,
+> −0.061 to −0.144 (anthocnet 1.236–1.306 against floors 1.339–1.405). A
+> multipath protocol scoring *below* three protocols that install one route per
+> destination is not a calibration problem; at this window the column is
+> measuring route churn, and the baselines simply churn more. This strengthens
+> the "not publishable" verdict above rather than softening it.
 >
 > The per-packet-pair concurrency counter remains the clean long-term
 > instrument that would retire the floor comparison; #230 keeps it as the
-> follow-up. `path_hops_*` and `jain_pkts` are unaffected by all of this and
-> readable from any cell.
+> follow-up. Its shape is now specific: count **interleaving** (a next-hop
+> sequence that returns to a previously-used hop, a→b→a) instead of distinct
+> hops per window. Route replacement is monotone and never returns, so that
+> counter has an a-priori control of exactly **0** for aodv/olsr/dsdv — the
+> falsifiable control `path_div_used` never had. `path_hops_*` and `jain_pkts`
+> are unaffected by all of this and readable from any cell.
 
 - **Reactive protocols read one hop high on route-discovery packets.** A
   protocol with no route yet bounces the packet through the loopback device to
