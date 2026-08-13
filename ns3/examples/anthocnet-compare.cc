@@ -68,6 +68,9 @@
 
 
 #include "ns3/aodv-module.h"
+// #296: the vendored AOMDV baseline module (contrib/aomdv, installed together
+// with anthocnet by `make install-ns3`).
+#include "ns3/aomdv-module.h"
 #include "ns3/olsr-module.h"
 #include "ns3/dsdv-module.h"
 // #296: the vendored GPSR baseline (contrib/gpsr). Geographic — position
@@ -1338,6 +1341,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     InternetStackHelper internet;
     AntHocNetHelper ahnHelper;
     AodvHelper aodvHelper;
+    AomdvHelper aomdvHelper;
     OlsrHelper olsrHelper;
     DsdvHelper dsdvHelper;
     GpsrHelper gpsrHelper;
@@ -1345,6 +1349,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(ahnHelper);
     } else if (proto == "aodv") {
         internet.SetRoutingHelper(aodvHelper);
+    } else if (proto == "aomdv") {
+        // #296: vendored multipath baseline. Not in the default protocol list —
+        // it joins campaign dispatches explicitly (phase 3); the harness
+        // attaches to it exactly what it attaches to the other baselines.
+        internet.SetRoutingHelper(aomdvHelper);
     } else if (proto == "olsr") {
         internet.SetRoutingHelper(olsrHelper);
     } else if (proto == "dsdv") {
@@ -1378,6 +1387,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else if (proto == "aodv") {
         TakeStreams(stream, streamBase, aodvHelper.AssignStreams(nodes, stream),
                     "aodv routing");
+    } else if (proto == "aomdv") {
+        TakeStreams(stream, streamBase, aomdvHelper.AssignStreams(nodes, stream),
+                    "aomdv routing");
     } else if (proto == "olsr") {
         TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream),
                     "olsr routing");

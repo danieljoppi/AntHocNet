@@ -40,6 +40,9 @@ build_lib_example(
     # just makes the direct dependency explicit.
     ${libenergy}
     ${libaodv}
+    # aomdv (#296): the vendored multipath baseline, installed to contrib/
+    # alongside anthocnet by `make install-ns3` (see ../aomdv/README.md).
+    ${libaomdv}
     ${libolsr}
     ${libdsdv}
     # #296: the vendored GPSR baseline module (contrib/gpsr, installed by the

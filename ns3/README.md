@@ -49,9 +49,9 @@ and **normalized routing load** (NRL = routing-control packets transmitted /
 data packets delivered, counted uniformly at the IP layer):
 
 ```bash
-# requires aodv, olsr, dsdv, gpsr (the vendored #296 baseline) and flow-monitor enabled
+# requires aodv, aomdv, olsr, dsdv, gpsr (the vendored #296 baselines) and flow-monitor enabled
 ./ns3 configure --enable-examples \
-  --enable-modules='anthocnet;gpsr;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+  --enable-modules='anthocnet;aomdv;gpsr;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
 ./ns3 build
 
 # the paper's base scenario (50 nodes, 1500x300 m, RWP 20 m/s / 30 s pause,
@@ -161,11 +161,14 @@ ns3/
     anthocnet-adapters.{h,cc}          IClock/IRng ports over Simulator/RNG
   helper/anthocnet-helper.{h,cc}       Ipv4RoutingHelper
   examples/anthocnet-example.cc        minimal wifi adhoc demo
-  examples/anthocnet-compare.cc        vs AODV/OLSR/DSDV (FlowMonitor metrics)
+  examples/anthocnet-compare.cc        vs AODV/AOMDV/OLSR/DSDV (FlowMonitor metrics;
+                                       aomdv is opt-in via --protocols, #296)
   examples/isl-grid.cc                 +Grid torus of point-to-point ISLs (#214)
   test/anthocnet-test-suite.cc         header round-trip + multi-hop delivery
   CMakeLists.txt                       ns-3.36+ build
   wscript                              ns-3 < 3.36 build
+  aomdv/                               vendored AOMDV baseline module (#296;
+                                       provenance + license in aomdv/README.md)
 ```
 
 ## Notes

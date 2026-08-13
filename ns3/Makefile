@@ -17,6 +17,9 @@ DEST    = $(NS3DIR)/contrib/anthocnet
 # (provenance: gpsr/README.md). Installed alongside so the comparison
 # harness's gpsr arm builds; the anthocnet module itself does not depend on it.
 GPSRDEST = $(NS3DIR)/contrib/gpsr
+# Vendored AOMDV baseline module (#296) — installed alongside anthocnet so the
+# comparison harness can link it. See aomdv/README.md for provenance.
+AOMDV_DEST = $(NS3DIR)/contrib/aomdv
 
 .PHONY: install uninstall require-ns3dir
 
@@ -46,6 +49,12 @@ install: require-ns3dir
 	cp $(HERE)/gpsr/model/*.h  $(HERE)/gpsr/model/*.cc  "$(GPSRDEST)/model/"
 	cp $(HERE)/gpsr/helper/*.h $(HERE)/gpsr/helper/*.cc "$(GPSRDEST)/helper/"
 	cp $(HERE)/gpsr/CMakeLists.txt "$(GPSRDEST)/"
+	@echo ">> Installing AOMDV baseline module into $(AOMDV_DEST)"
+	mkdir -p "$(AOMDV_DEST)/model" "$(AOMDV_DEST)/helper" "$(AOMDV_DEST)/test"
+	cp $(HERE)/aomdv/model/*.h  $(HERE)/aomdv/model/*.cc  "$(AOMDV_DEST)/model/"
+	cp $(HERE)/aomdv/helper/*.h $(HERE)/aomdv/helper/*.cc "$(AOMDV_DEST)/helper/"
+	cp $(HERE)/aomdv/test/*.cc "$(AOMDV_DEST)/test/"
+	cp $(HERE)/aomdv/CMakeLists.txt $(HERE)/aomdv/README.md "$(AOMDV_DEST)/"
 	@echo ""
 	@echo ">> Done. Reconfigure and build ns-3:"
 	@echo "     cd $(NS3DIR) && ./ns3 configure --enable-examples --enable-tests && ./ns3 build"
@@ -57,4 +66,6 @@ uninstall: require-ns3dir
 	rm -rf "$(DEST)"
 	@echo ">> Removing $(GPSRDEST)"
 	rm -rf "$(GPSRDEST)"
+	@echo ">> Removing $(AOMDV_DEST)"
+	rm -rf "$(AOMDV_DEST)"
 	@echo ">> Done. Reconfigure/build ns-3 to drop the modules."
