@@ -179,16 +179,21 @@ def _runs_floor_quiet():
 
 # --- #230 path diversity -----------------------------------------------------
 
-@case("#230 single-path baseline above 1.10 FAILs")
+@case("#230 single-path floor above 1.10 WARNs — and does not FAIL the cell")
 def _div_fires():
-    # olsr / heavy-load, the worst real reading of the campaign.
+    # olsr / heavy-load, the worst real reading of the campaign. It must still
+    # be said out loud (the diversity columns are unquotable), but it must not
+    # condemn the cell: divUsed is accumulated off the WifiMac AckedMpdu trace
+    # and cannot move a FlowMonitor number. 14 consecutive campaign cells
+    # FAILed on exactly this and nothing else, and all 14 were waved through.
     levels, out = run_results(protocol="olsr", path_div_used="1.428")
-    expect("FAIL" in levels, "div-fires", f"no FAIL for olsr div 1.428\n{out}")
-    expect("single-path protocol" in out, "div-fires",
-           f"FAIL did not name the cause\n{out}")
+    expect(levels == ["WARN"], "div-fires",
+           f"expected exactly one WARN for olsr div 1.428, got {levels}\n{out}")
+    expect("churn-dominated" in out and "1.428" in out, "div-fires",
+           f"WARN did not name the mechanism and the floor\n{out}")
 
 
-@case("#230 single-path baseline at 1.004 passes")
+@case("#230 single-path floor at 1.004 passes")
 def _div_quiet_baseline():
     # olsr / sparse-static — the churn-free control, the one row that already
     # reads correctly. If the threshold ever creeps below this the calibration
@@ -199,7 +204,8 @@ def _div_quiet_baseline():
 
 @case("#230 rule does not apply to anthocnet")
 def _div_quiet_anthocnet():
-    # AntHocNet is *supposed* to exceed 1; flagging it would invert the rule.
+    # AntHocNet is *supposed* to exceed 1, and with no single-path row beside
+    # it there is no floor to read it against, so there is nothing to say.
     levels, out = run_results(protocol="anthocnet", path_div_used="1.512")
     expect(levels == [], "div-anthocnet", f"fired on anthocnet\n{out}")
 
@@ -595,22 +601,33 @@ def run_cell(text, prov=True):
         os.unlink(path)
 
 
-@case("cell: real run 30379320885 FAILs on its own out-of-band baselines")
+@case("cell: real run 30379320885 WARNs once on its churn-dominated floor")
 def _cell_real():
+    # Every baseline here is out of band (aodv 1.112, olsr 1.117 at windowS=4)
+    # and AntHocNet reads *below* both (1.104). That is one finding about the
+    # window, not three about three protocols, and it invalidates nothing but
+    # the diversity columns — so: no FAIL, one WARN, naming the floor and the
+    # excess that is the only readable quantity.
     levels, out = run_cell(CELL)
-    expect(levels.count("FAIL") == 2, "cell-real",
-           f"expected exactly the aodv+olsr diversity FAILs, got {levels}\n{out}")
-    expect("aodv: path diversity 1.112" in out and
-           "olsr: path diversity 1.117" in out, "cell-real",
-           f"wrong rows flagged\n{out}")
+    expect("FAIL" not in levels, "cell-real",
+           f"a churn-dominated floor must not FAIL the cell, got {levels}\n{out}")
+    expect(out.count("churn-dominated") == 1, "cell-real",
+           f"expected exactly one diversity WARN\n{out}")
+    expect("1.117 (olsr)" in out and "anthocnet 1.104 = -0.013" in out,
+           "cell-real", f"WARN did not carry floor and excess\n{out}")
 
 
-@case("cell: impossible divUsed on a '# paths' line fires (the 9.999 probe)")
+@case("cell: impossible divUsed on a '# paths' line still FAILs (9.999 probe)")
 def _cell_div_fires():
-    _levels, out = run_cell(CELL.replace("aodv divUsed=1.112",
+    # The instrument-broken half of the rule stays a FAIL: 9.999 mean distinct
+    # next hops against a measured maximum of 2.5 is arithmetically impossible,
+    # so no threshold judgement is involved.
+    levels, out = run_cell(CELL.replace("aodv divUsed=1.112",
                                         "aodv divUsed=9.999"))
-    expect("path diversity 9.999" in out, "cell-div",
-           f"planted divUsed=9.999 not flagged\n{out}")
+    expect("FAIL" in levels, "cell-div",
+           f"planted divUsed=9.999 did not FAIL, got {levels}\n{out}")
+    expect("max path diversity 2.5 < mean path diversity 9.999" in out,
+           "cell-div", f"FAIL did not name the broken invariant\n{out}")
 
 
 # --- #308 phase 2 step 4: pending-queue hold on the ##HOLD## rows -------------
@@ -821,9 +838,25 @@ DIVCELL = """\
 
 @case("#230 diversity cell: baseline above 1.10 at windowS<=2 stays quiet")
 def _divcell_floor_allowed():
-    _levels, out = run_cell(DIVCELL)
-    expect("path diversity" not in out, "divcell-quiet",
-           f"absolute 1.10 rule fired inside the diversity cell\n{out}")
+    levels, out = run_cell(DIVCELL)
+    expect(levels == [], "divcell-quiet",
+           f"the readable diversity cell must be quiet, got {levels}\n{out}")
+    expect("path diversity readable" in out and "excess +0.096" in out,
+           "divcell-quiet",
+           f"the one readable diversity claim was not printed\n{out}")
+
+
+@case("#230 diversity cell: anthocnet at the floor WARNs — no spreading")
+def _divcell_no_separation():
+    # The other half of the same reading. If the multipath protocol matches the
+    # churn floor in a cell clean enough to measure one, the defining claim
+    # fails — and that is worth saying precisely because this cell can say it.
+    levels, out = run_cell(DIVCELL.replace("anthocnet divUsed=1.229",
+                                           "anthocnet divUsed=1.133"))
+    expect(levels == ["WARN"], "divcell-nosep",
+           f"expected one WARN for a zero excess, got {levels}\n{out}")
+    expect("does not exceed the single-path floor" in out, "divcell-nosep",
+           f"WARN did not name the finding\n{out}")
 
 
 @case("#230 diversity cell: baseline above the 1.50 sanity ceiling fires")
@@ -832,6 +865,52 @@ def _divcell_sanity_fires():
                                             "aodv divUsed=1.633"))
     expect("not churn-free at this offered rate" in out, "divcell-sanity",
            f"planted 1.633 above the sanity ceiling not flagged\n{out}")
+
+
+# --- the shape the v1.5.0 campaign actually produced (#230) ------------------
+# grid-v150/rwp-tworay, one of the 14 cells (6 grid re-baseline + 8 phase-2)
+# that every returned `verdict: FAIL` on the diversity rule and nothing else,
+# and that were every one waved through as "known #230, non-blocking". All four
+# protocols, windowS=10, drop identity closing to within 0.07 pp, energy and
+# reordering sane: the cell is publication-grade on every metric the campaign
+# publishes, and the only thing wrong with it is a metric no document quotes.
+# It is the regression fixture for over-firing — if this cell ever FAILs again,
+# the gate has gone back to crying wolf.
+GRIDCELL = """\
+##BENCH## anthocnet 92.6 29.3 420.8 6.11 34.92 46.15 1.8 301.7 40.674
+##BENCH## aodv 85.9 42.4 584.6 5.67 64.64 67.01 3.5 inf 34.056
+##BENCH## olsr 90.6 7.4 23.2 5.83 4.02 10.89 1.1 inf 10.431
+##BENCH## dsdv 85.0 15.2 419.8 5.61 23.01 26.72 1.4 inf 15.744
+# paths anthocnet divUsed=1.275 divMax=4.9 entropyBits=0.221 windowS=10.0 hopsMean=1.97 hopsMax=13.4
+# paths aodv divUsed=1.346 divMax=5.0 entropyBits=0.259 windowS=10.0 hopsMean=1.75 hopsMax=16.9
+# paths olsr divUsed=1.326 divMax=5.0 entropyBits=0.243 windowS=10.0 hopsMean=1.53 hopsMax=9.7
+# paths dsdv divUsed=1.169 divMax=3.8 entropyBits=0.141 windowS=10.0 hopsMean=1.55 hopsMax=6.0
+# drops anthocnet pdr=92.59 route=5.45 queue=0.00 mac=0.18 chan=1.76 ttl=0.03 sum=100.01 other=0.00 [route: setup=0.00 reconv=5.30 repair=0.14]
+# drops aodv pdr=85.93 route=3.02 queue=0.01 mac=8.50 chan=2.45 ttl=0.02 sum=99.93 other=0.00 [route: setup=- reconv=- repair=-]
+# drops olsr pdr=90.59 route=0.09 queue=0.00 mac=7.55 chan=1.76 ttl=0.01 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# drops dsdv pdr=84.99 route=0.00 queue=0.00 mac=12.36 chan=2.65 ttl=0.00 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+"""
+
+
+@case("#230 a real v1.5.0 campaign cell WARNs once and exits 0")
+def _gridcell_quiet():
+    levels, out = run_cell(GRIDCELL)
+    expect(levels == ["WARN"], "gridcell",
+           f"the 14-cell campaign shape must be one WARN, got {levels}\n{out}")
+    expect("1.346 (aodv)" in out and "anthocnet 1.275 = -0.071" in out,
+           "gridcell", f"WARN did not carry floor and excess\n{out}")
+
+
+@case("#230 the same cell with a real defect still FAILs loudly")
+def _gridcell_defect_fires():
+    # dsdv losing 12.36 pp at the MAC retry limit, unaccounted: the #229 class
+    # where the identity breaks and the numbers genuinely cannot be trusted.
+    # Demoting diversity to WARN must not have demoted this with it.
+    levels, out = run_cell(GRIDCELL.replace("mac=12.36 chan=2.65", "mac=0.00 chan=2.65"))
+    expect("FAIL" in levels, "gridcell-defect",
+           f"a broken drop identity must still FAIL, got {levels}\n{out}")
+    expect("drop causes" in out, "gridcell-defect",
+           f"FAIL did not name the identity\n{out}")
 
 
 # --- #259 satellite (isl-grid) input: CSV schema + human mode + rules --------

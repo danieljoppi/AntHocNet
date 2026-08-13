@@ -225,6 +225,48 @@ inputs predating route-quality instrumentation), and — with `--anchor` — the
 `ns3/tools/anchors.yml` (never duplicated). A `results` FAIL is a #51-class
 harness regression: fix the harness before trusting any number from that run.
 
+#### Path diversity is read as excess over the in-run churn floor (#230)
+
+`path_div_used` counts distinct next hops that carried data for one
+destination inside one `pathWindowS` window. A protocol that installs one route
+per destination can only exceed 1.0 by having that route *replaced* inside the
+window, so **whatever `aodv`/`olsr`/`dsdv` read above 1.0 is that scenario's
+churn floor**, measured in-run by three protocols at once. `results` therefore
+prints, once per cell (not once per protocol):
+
+- floor ≤ 1.10 → `ok: … path diversity readable — anthocnet 1.229 vs
+  single-path floor 1.133 (aodv) at windowS=2: excess +0.096`. That excess is
+  the only quotable diversity claim.
+- floor > 1.10 at a window above 2 s → one **WARN**: the diversity columns are
+  churn-dominated and unquotable, with the floor, the protocol that set it and
+  AntHocNet's excess in the message.
+- AntHocNet at or below a *clean* floor → **WARN**: no concurrent spreading in
+  a cell able to show it.
+- a single-path baseline above 1.50 at a churn-free window (≤ 2 s), or any
+  arithmetic break (diversity < 1, above its own maximum, zero at non-zero PDR,
+  entropy above log2(max)) → **FAIL**, unchanged: those are broken
+  instrumentation, not a mis-set threshold.
+
+The absolute `> 1.10 ⇒ FAIL` rule this replaces was **not** calibratable. The
+#230 sweeps show the floor is a function of the scenario knobs — olsr/aodv read
+1.000/1.000 at `windowS=2`, 1.116/1.109 at 4, 1.198/1.190 at 6, 1.322/1.311 at
+10, and 1.133 at `windowS=2` once the rate is raised to 8 pkt/s — while
+`windowS ≤ 2` at paper traffic pins *every* protocol, AntHocNet included, at
+~1.00 by sample starvation. No constant is both satisfiable and informative.
+Worse, the rule passed the row least worth trusting: across the 14 cells of the
+v1.5.0 campaign AntHocNet reads **below** the single-path floor every time
+(excess −0.061 to −0.144), so the threshold failed the three controls and
+cleared the arm they were controlling.
+
+And the excess never invalidates a cell: `divUsed` is accumulated in its own
+(node, dest, window) map off the WifiMac `AckedMpdu` trace
+(`anthocnet-compare.cc` `CountAckedDataHop`), while PDR/delay/delay99/
+throughput/NRL/jitter come from FlowMonitor and the energy columns from the
+energy model. A churn-inflated diversity figure cannot move a published number,
+so it is a WARN about three columns, not a FAIL about the cell. It was a FAIL
+for 14 consecutive campaign cells, every one of which was correctly waved
+through — which is how a gate stops being read.
+
 ### Testing the gate itself (`test_scenario_check.py`)
 
 ```bash
