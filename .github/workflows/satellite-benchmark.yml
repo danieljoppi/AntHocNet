@@ -47,8 +47,8 @@ on:
         description: 'Per-flow CBR rate (bits/s)'
         default: '4096'
       protocols:
-        description: 'Comma-separated protocol list. anthocnet,aodv is the #250 hop-delay discriminator pair.'
-        default: 'anthocnet,aodv,olsr,dsdv'
+        description: 'Comma-separated protocol list. anthocnet,aodv is the #250 hop-delay discriminator pair. dsdv is NOT available here — ns-3''s DSDV is single-interface-only and cannot route on a multi-ISL satellite (#420).'
+        default: 'anthocnet,aodv,olsr,oracle'
       extraArgs:
         description: 'Extra isl-grid args appended verbatim (e.g. --ns3::anthocnet::RoutingProtocol::EnableDirectedReactive=true for the #244 satellite arm)'
         default: ''

@@ -400,6 +400,24 @@ jobs:
         run: |
           bash ns3/tools/check-sat-anchors.sh /opt/ns-3 single-isl
           bash ns3/tools/check-sat-anchors.sh /opt/ns-3 hop-delay
+      - name: Satellite protocol-arm smoke (#420, every arm must run)
+        # The gate that #420 was missing. Everything above this line asks what
+        # *values* a run produces, and all of it on a single arm — so nothing
+        # per-PR ever asked the cheaper question underneath: can each of the
+        # suite's other arms run at all? They could not. DSDV aborted on every
+        # multi-ISL grid from the day the arm was written and no CI leg noticed,
+        # because the satellite legs run anchors and determinism, not the
+        # protocol list. It took a 20-seed campaign dispatch to find out, and
+        # the -opt profile reported it as a SIGSEGV with an empty stderr.
+        #
+        # Runs every supported arm on a 3x3 torus for 20 simulated seconds — the
+        # smallest grid where every satellite still holds more than one ISL,
+        # which is the precondition of the defect — and asserts each completes
+        # and delivers something. Also asserts dsdv is *refused* up front rather
+        # than crashing mid-run. Seconds in total; same single-matrix-version
+        # placement as the gates above.
+        if: matrix.version == '3.42'
+        run: bash ns3/tools/check-sat-arms.sh /opt/ns-3
       - name: Determinism gate on the ISL topology (#237 S5)
         # Run separately from the wifi determinism gate rather than assuming it
         # follows: the ISL grid exercises a different device and channel, plus
