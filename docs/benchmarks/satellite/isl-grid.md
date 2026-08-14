@@ -68,9 +68,48 @@ gap measures re-convergence.
 | `islDelayMs` | 5 | one-way ISL propagation delay (LEO ISLs are ~3–13 ms) |
 | `islRate` | 10Mbps | ISL data rate |
 | `flows` / `cbrBps` | 8 / 4096 | CBR load |
-| `protocols` | anthocnet,aodv,olsr,dsdv | `anthocnet,aodv` is the [#250](https://github.com/danieljoppi/AntHocNet/issues/250) hop-delay discriminator pair |
+| `protocols` | anthocnet,aodv,olsr,oracle | `anthocnet,aodv` is the [#250](https://github.com/danieljoppi/AntHocNet/issues/250) hop-delay discriminator pair. **`dsdv` is not available in this suite** — see below |
 | `breakLink` / `breakAt` | off | [#260](https://github.com/danieljoppi/AntHocNet/issues/260) scripted single-ISL break: endpoints `r1,c1,r2,c2` + cut time (s); emits `# failcell` detect/reconverge lines |
 | `corridorLoad` / `corridorLoadAt` | off / 15 | [#216](https://github.com/danieljoppi/AntHocNet/issues/216) cell 1: background rate (e.g. `12Mbps`) loading one of two equal-length corridors, switched on at `corridorLoadAt` (s); emits `# corridor` path-shift lines. Needs `torus=true` and even `cols` ≥ 4 |
+
+### Why `dsdv` is not one of the arms ([#420](https://github.com/danieljoppi/AntHocNet/issues/420))
+
+**This table used to list `anthocnet,aodv,olsr,dsdv` as the default protocol
+list. That list never ran.** DSDV has been an arm of `isl-grid.cc` since the
+file was added, and it has aborted on every multi-ISL grid since — the
+suite's own documented default was never once exercised end to end. It
+surfaced only when the [#415](https://github.com/danieljoppi/AntHocNet/issues/415)
+campaign asked for all five arms and the process died, with an empty stderr,
+straight after the `olsr` rows. This is a **latent defect, not a regression**;
+the narrowing above is a correction of the documentation to what the harness
+can actually measure, not a quiet retreat from a working configuration.
+
+The cause is in ns-3's `dsdv::RoutingProtocol`, and it is structural rather
+than a tuning problem. DSDV there is written for a node with exactly one
+non-loopback interface: when it advertises itself it hardcodes
+`m_ipv4->GetAddress(1, 0)`, so a satellite holding four ISLs announces only
+the address of the first one. Its peers, however, learn next hops from the
+*source address of the update*, which is the address of the `/30` the update
+arrived on — three of the four are addresses DSDV never advertised. The
+next-hop lookup in `LookForQueuedPackets()` therefore misses, its return value
+is not checked, and the packet is forwarded on a default-constructed
+`Ipv4Route` whose output device is null. `Ipv4L3Protocol::SendRealOut` asserts
+on that in a debug build (`cond="interface >= 0"`) and indexes the interface
+list with `-1` in the optimised profile the campaign runs — hence a SIGSEGV
+with nothing on stderr.
+
+There is no fix on this side of the boundary. One interface per link *is* the
+ISL mesh (it is the shape [#203](https://github.com/danieljoppi/AntHocNet/issues/203)
+exists for), so the harness rejects the combination up front with an
+explanatory message instead of dying mid-campaign. The rejection is keyed on
+the **topology**, not on the arm: the 1×2 single-ISL grid used by the
+[#237](https://github.com/danieljoppi/AntHocNet/issues/237) anchors gives every
+node one interface, and DSDV is correct there. DSDV remains a full baseline in
+the MANET suite, where every node has a single wifi interface and the
+assumption holds.
+
+`ns3/tools/check-sat-arms.sh` runs every supported arm on a small torus per PR
+so a defect of this class cannot reach a campaign dispatch again.
 
 ### The congestion cell (#216 cell 1)
 

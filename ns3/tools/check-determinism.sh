@@ -59,8 +59,12 @@ esac
 # build chatter, '# diag'/'# stddev' lines, and anything timing-dependent
 # (timestamps, build durations), so the diff compares simulation results, not
 # wall-clock artefacts.
+# #421: keep this arm list in step with paper-benchmark.yml's ##BENCH## awk.
+# An arm missing here is not "not compared" loudly — it is dropped from BOTH
+# sides of the diff, so a non-deterministic oracle/gpsr/aomdv would pass this
+# gate silently. That is how the three post-v1.4.0 arms went unchecked.
 filter_rows() {
-    awk '$1 ~ /^(anthocnet|aodv|olsr|dsdv)$/ && $2 ~ /^[0-9.]+$/'
+    awk '$1 ~ /^(anthocnet|aodv|olsr|dsdv|oracle|gpsr|aomdv)$/ && $2 ~ /^[0-9.]+$/'
 }
 
 echo "[determinism:$HARNESS] ./ns3 run \"$cmd\"  (twice; gate: identical metric rows)"

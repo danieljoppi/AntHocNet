@@ -783,9 +783,11 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("cbrBps", "Per-flow CBR rate (bits/s)", cbrBps);
     cmd.AddValue("runs", "Number of RNG runs to average (seeds 1..runs)", runs);
     cmd.AddValue("protocols",
-                 "Comma-separated list (anthocnet,aodv,olsr,dsdv,oracle). "
+                 "Comma-separated list (anthocnet,aodv,olsr,oracle). "
                  "`oracle` is the #296/#216 global-knowledge shortest-path "
-                 "CONTROL — exact on this static torus, zero control traffic.",
+                 "CONTROL — exact on this static torus, zero control traffic. "
+                 "`dsdv` is rejected on any grid where a satellite holds more "
+                 "than one ISL: ns-3's DSDV is single-interface-only (#420).",
                  protocols);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies)", g_diag);
@@ -869,6 +871,39 @@ int main(int argc, char* argv[]) {
         if (!item.empty()) list.push_back(item);
     }
     NS_ABORT_MSG_IF(list.empty(), "--protocols selected nothing");
+
+    // #420: ns-3's dsdv::RoutingProtocol is written for a node with exactly one
+    // non-loopback interface. It advertises only m_ipv4->GetAddress(1, 0) as its
+    // own address, so on a satellite holding several ISLs the addresses of the
+    // other interfaces are never announced. Peers still record *those* addresses
+    // as next hops — a DSDV update's source address is the address of the /30 it
+    // arrived on — so LookForQueuedPackets() cannot resolve the next hop, ignores
+    // the failed LookupRoute(), and forwards on a default-constructed entry whose
+    // Ipv4Route has a null output device. Ipv4L3Protocol::SendRealOut asserts on
+    // that in a debug build and indexes the interface list with -1 in the -opt
+    // profile the campaign runs, which is the empty-stderr SIGSEGV of #420.
+    //
+    // Nothing on this side fixes it: a point-to-point ISL mesh has one interface
+    // per link by construction, which is the very shape #203 exists for. Reject
+    // the combination up front instead of dying 15 s into the second arm. Gate on
+    // the topology, not on the arm — the 1x2 single-ISL grid the #237 anchors use
+    // gives every node one interface, and DSDV is genuinely correct there.
+    if (std::find(list.begin(), list.end(), "dsdv") != list.end()) {
+        std::vector<uint32_t> degree(rows * cols, 0);
+        uint32_t maxDegree = 0;
+        for (const auto& l : GridLinks(P)) {
+            maxDegree = std::max(maxDegree, ++degree[l.first]);
+            maxDegree = std::max(maxDegree, ++degree[l.second]);
+        }
+        NS_ABORT_MSG_IF(maxDegree > 1,
+                        "dsdv cannot run on this ISL topology: ns-3's DSDV assumes one "
+                        "non-loopback interface per node, but this " << rows << "x" << cols
+                        << (torus ? " torus" : " open grid") << " gives a satellite up to "
+                        << maxDegree << " ISLs, each on its own /30 — next hops learned on "
+                        "the other interfaces are unresolvable and DSDV forwards on a null "
+                        "output device (#420). Drop dsdv from --protocols; see "
+                        "docs/benchmarks/satellite/isl-grid.md.");
+    }
 
     std::vector<Result> agg(list.size());
     for (std::size_t i = 0; i < list.size(); ++i) {
