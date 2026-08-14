@@ -20,6 +20,11 @@ GPSRDEST = $(NS3DIR)/contrib/gpsr
 # Vendored AOMDV baseline module (#296) — installed alongside anthocnet so the
 # comparison harness can link it. See aomdv/README.md for provenance.
 AOMDV_DEST = $(NS3DIR)/contrib/aomdv
+# #296 item 1: the oracle shortest-path control (provenance + design:
+# oracle/README.md). Also self-contained, and it carries the one core/ source
+# it needs (the Dijkstra layer) the same way the anthocnet module carries the
+# algorithm core.
+ORACLEDEST = $(NS3DIR)/contrib/oracle
 
 .PHONY: install uninstall require-ns3dir
 
@@ -55,6 +60,15 @@ install: require-ns3dir
 	cp $(HERE)/aomdv/helper/*.h $(HERE)/aomdv/helper/*.cc "$(AOMDV_DEST)/helper/"
 	cp $(HERE)/aomdv/test/*.cc "$(AOMDV_DEST)/test/"
 	cp $(HERE)/aomdv/CMakeLists.txt $(HERE)/aomdv/README.md "$(AOMDV_DEST)/"
+	@echo ">> Installing oracle control module into $(ORACLEDEST)"
+	mkdir -p "$(ORACLEDEST)/model" "$(ORACLEDEST)/helper" \
+	         "$(ORACLEDEST)/core/include/anthocnet/core" "$(ORACLEDEST)/core/src"
+	cp $(HERE)/oracle/model/*.h  $(HERE)/oracle/model/*.cc  "$(ORACLEDEST)/model/"
+	cp $(HERE)/oracle/helper/*.h $(HERE)/oracle/helper/*.cc "$(ORACLEDEST)/helper/"
+	cp $(HERE)/oracle/CMakeLists.txt "$(ORACLEDEST)/"
+	cp $(CORE)/include/anthocnet/core/shortest_path.h \
+	   "$(ORACLEDEST)/core/include/anthocnet/core/"
+	cp $(CORE)/src/shortest_path.cpp "$(ORACLEDEST)/core/src/"
 	@echo ""
 	@echo ">> Done. Reconfigure and build ns-3:"
 	@echo "     cd $(NS3DIR) && ./ns3 configure --enable-examples --enable-tests && ./ns3 build"
@@ -68,4 +82,6 @@ uninstall: require-ns3dir
 	rm -rf "$(GPSRDEST)"
 	@echo ">> Removing $(AOMDV_DEST)"
 	rm -rf "$(AOMDV_DEST)"
+	@echo ">> Removing $(ORACLEDEST)"
+	rm -rf "$(ORACLEDEST)"
 	@echo ">> Done. Reconfigure/build ns-3 to drop the modules."

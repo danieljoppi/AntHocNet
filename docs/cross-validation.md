@@ -21,7 +21,7 @@ simulators, then compare packet-delivery ratio and mean delay.
 make install-ns3 NS3DIR=/path/to/ns-3-dev
 cd /path/to/ns-3-dev
 ./ns3 configure --enable-examples \
-  --enable-modules='anthocnet;gpsr;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+  --enable-modules='anthocnet;gpsr;oracle;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
 ./ns3 build
 
 # AntHocNet only, averaged over 10 seeds (PDR %, delay ms, throughput kbps):

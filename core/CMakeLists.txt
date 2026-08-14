@@ -35,6 +35,10 @@ add_library(anthocnet_core STATIC
   src/ant_message_codec.cpp
   src/ant_router_logic.cpp
   src/link_metric_registry.cpp
+  # #296 item 1: the oracle control arm's Dijkstra layer. Not protocol code —
+  # see the header for why it lives in core/ (simulator-agnostic + AGENTS.md
+  # rule 7 wants a core test on it).
+  src/shortest_path.cpp
 )
 target_include_directories(anthocnet_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 

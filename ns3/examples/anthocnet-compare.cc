@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Daniel Henrique Joppi
 
 /*
- * AntHocNet vs. AODV / OLSR / DSDV / GPSR comparison.
+ * AntHocNet vs. AODV / OLSR / DSDV / GPSR / oracle comparison.
  *
  * Runs the SAME mobile-ad-hoc scenario (identical node layout, mobility and
  * CBR traffic, driven from the same RNG run) under each routing protocol and
@@ -39,7 +39,14 @@
  * [1] Di Caro, Ducatelle, Gambardella, "AntHocNet: an ant-based hybrid routing
  *     algorithm for mobile ad hoc networks", PPSN VIII, 2004.
  *
- * Requires the aodv, olsr, dsdv, gpsr (the #296 vendored baseline module) and
+ * The `oracle` arm (#296 item 1, #216) is the global-knowledge shortest-path
+ * CONTROL: Dijkstra over the ground-truth topology, zero control traffic, zero
+ * discovery latency. It is off by default and only runs when it is named in
+ * --protocols; it is an upper bound, not a competitor. See ns3/oracle/README.md
+ * for what "ground truth" means per propagation model.
+ *
+ * Requires the aodv, olsr, dsdv, gpsr (the #296 vendored baseline module),
+ * oracle (the #296 control module) and
  * flow-monitor modules. Build with those enabled, then e.g.:
  *   ./ns3 run "anthocnet-compare --scenario=paper --runs=5"
  */
@@ -76,6 +83,9 @@
 // #296: the vendored GPSR baseline (contrib/gpsr). Geographic — position
 // knowledge comes from the mobility models via its GOD location service.
 #include "ns3/gpsr-module.h"
+// #296 item 1: the oracle shortest-path control (contrib/oracle). Global
+// knowledge, no packets — see the note at the top and ns3/oracle/README.md.
+#include "ns3/oracle-module.h"
 #include "ns3/anthocnet-helper.h"
 #include "ns3/anthocnet-routing-protocol.h"
 
@@ -1345,6 +1355,18 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     OlsrHelper olsrHelper;
     DsdvHelper dsdvHelper;
     GpsrHelper gpsrHelper;
+    // #296: constructed per RunOne, like every other helper here — the oracle
+    // helper owns this run's ground-truth graph, so a fresh one per run is what
+    // stops run N inheriting run N-1's nodes.
+    OracleHelper oracleHelper;
+    // #296: on a shared medium the oracle can read a crisp adjacency only off a
+    // disk channel (the `range` arm). `tworay`/`nakagami` have no radius at
+    // which the link stops existing, so the oracle is told which radius to hold
+    // the control to — the scenario's own nominal --range — and flags itself
+    // approximate for those cells. Without this it aborts rather than guessing,
+    // which is the behaviour we want if a future channel is added and nobody
+    // thinks about what "ground truth" means on it.
+    oracleHelper.Set("LinkRangeM", DoubleValue(P.range));
     if (proto == "anthocnet") {
         internet.SetRoutingHelper(ahnHelper);
     } else if (proto == "aodv") {
@@ -1360,6 +1382,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(dsdvHelper);
     } else if (proto == "gpsr") {
         internet.SetRoutingHelper(gpsrHelper);
+    } else if (proto == "oracle") {
+        internet.SetRoutingHelper(oracleHelper);
     }
     internet.Install(nodes);
     // #296: gpsr's data packets carry a position header, injected by
@@ -1399,6 +1423,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else if (proto == "gpsr") {
         TakeStreams(stream, streamBase, gpsrHelper.AssignStreams(nodes, stream),
                     "gpsr routing");
+    } else if (proto == "oracle") {
+        // Pinned through the same path as every other arm even though the
+        // oracle draws nothing: the count it returns is 0, and taking it here
+        // makes that a measured zero rather than a gap in the #352 coverage.
+        TakeStreams(stream, streamBase, oracleHelper.AssignStreams(nodes, stream),
+                    "oracle routing");
     }
 
     // Count routing-control transmissions uniformly at the IP layer. Connect to
@@ -2443,6 +2473,37 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                   << " pctNonzero=" << pct << " samples=" << g_qCount << "\n";
     }
 
+    // #296 item 1: the two things that make this arm a CONTROL rather than a
+    // protocol, asserted rather than assumed.
+    //
+    // (a) Zero control traffic. The oracle opens no socket and sends nothing;
+    //     if this ever fires, something in the arm started talking and its NRL
+    //     stopped being an upper-bound reference point. NS_ABORT, not
+    //     NS_ASSERT, so it holds in the optimized builds the campaign uses.
+    // (b) The topology it routed on is reported, not guessed at afterwards:
+    //     which adjacency rule was in force, whether that rule is exact for
+    //     this channel, and how often it was re-solved. `approx=1` marks a
+    //     cell whose oracle is an approximation (fading), which is what
+    //     scenario_check reads to refuse to treat it as exact.
+    if (proto == "oracle") {
+        NS_ABORT_MSG_IF(g_controlPkts != 0 || g_controlBytes != 0,
+                        "oracle arm transmitted " << g_controlPkts << " control packets ("
+                        << g_controlBytes << " B): the control is supposed to put NOTHING on "
+                        "the wire, so its NRL is no longer an upper-bound reference (#296)");
+        Ptr<oracle::Topology> topo = oracleHelper.GetTopology();
+        std::cout << "##ORACLE## " << seed << ' ' << proto
+                  << " mode=" << topo->GetMode()
+                  << " approx=" << (topo->IsApproximate() ? 1 : 0)
+                  << " nodes=" << topo->GetNodeCount()
+                  << " edges=" << topo->GetEdgeCount()
+                  << " recomputes=" << topo->GetRecomputeCount()
+                  << " changes=" << topo->GetTopologyChanges()
+                  << " range=" << std::fixed << std::setprecision(1) << topo->GetLinkRange()
+                  << " noRoute=" << topo->GetNoRouteCount()
+                  << " nrl=" << std::fixed << std::setprecision(2) << r.nrl
+                  << "\n";
+    }
+
     Simulator::Destroy();
     return r;
 }
@@ -2493,7 +2554,9 @@ int main(int argc, char* argv[]) {
                  firstRun);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols",
-                 "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr)",
+                 "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,oracle). "
+                 "`oracle` is the #296 global-knowledge shortest-path CONTROL "
+                 "(upper bound, zero control traffic), off unless named.",
                  protocols);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies, first delivery)", g_diag);
     cmd.AddValue("qdiag", "Emit per-run '# qdiag' lines: per-node MAC queue depth "

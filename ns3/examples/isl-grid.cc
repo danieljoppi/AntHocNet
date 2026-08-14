@@ -45,7 +45,7 @@
  * measurement.
  *
  * Requires the aodv, olsr, dsdv, point-to-point and flow-monitor modules:
- *   ./ns3 run "isl-grid --rows=10 --cols=10 --protocols=anthocnet,aodv"
+ *   ./ns3 run "isl-grid --rows=10 --cols=10 --protocols=anthocnet,aodv,oracle"
  */
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
@@ -60,6 +60,11 @@
 #include "ns3/aodv-module.h"
 #include "ns3/olsr-module.h"
 #include "ns3/dsdv-module.h"
+// #296 item 1 / #216: the global-knowledge shortest-path CONTROL. On a static
+// ISL torus its adjacency is EXACT — the graph is the wiring, read straight off
+// the point-to-point channels — which is why the satellite suite is where the
+// oracle is first proved correct. Off unless named in --protocols.
+#include "ns3/oracle-module.h"
 #include "ns3/anthocnet-helper.h"
 #include "ns3/anthocnet-routing-protocol.h"
 
@@ -411,6 +416,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     AodvHelper aodvHelper;
     OlsrHelper olsrHelper;
     DsdvHelper dsdvHelper;
+    OracleHelper oracleHelper;
     if (proto == "anthocnet") {
         internet.SetRoutingHelper(ahnHelper);
     } else if (proto == "aodv") {
@@ -419,6 +425,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(olsrHelper);
     } else if (proto == "dsdv") {
         internet.SetRoutingHelper(dsdvHelper);
+    } else if (proto == "oracle") {
+        internet.SetRoutingHelper(oracleHelper);
     }
     internet.Install(nodes);
     // Pinned for the same reason as in anthocnet-compare: ArpL3Protocol owns a
@@ -440,6 +448,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else if (proto == "dsdv") {
         TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream),
                     "dsdv routing");
+    } else if (proto == "oracle") {
+        // Returns 0 — the oracle draws nothing. Taken through the same path so
+        // the zero is measured, not merely unwritten (#352).
+        TakeStreams(stream, streamBase, oracleHelper.AssignStreams(nodes, stream),
+                    "oracle routing");
     }
 
     // One point-to-point link per ISL, each on its own /30 — the addressing a
@@ -718,6 +731,29 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         }
     }
 
+    // #296 item 1: the control's defining property, asserted rather than
+    // expected — zero packets on the wire, therefore NRL exactly 0. The
+    // ##ORACLE## line records which adjacency rule was in force; on this
+    // topology it must read mode=wired approx=0, i.e. exact.
+    if (proto == "oracle") {
+        NS_ABORT_MSG_IF(g_controlPkts != 0 || g_controlBytes != 0,
+                        "oracle arm transmitted " << g_controlPkts << " control packets ("
+                        << g_controlBytes << " B): the control is supposed to put NOTHING on "
+                        "the wire, so its NRL is no longer an upper-bound reference (#296)");
+        Ptr<oracle::Topology> topo = oracleHelper.GetTopology();
+        std::cout << "##ORACLE## " << seed << ' ' << proto
+                  << " mode=" << topo->GetMode()
+                  << " approx=" << (topo->IsApproximate() ? 1 : 0)
+                  << " nodes=" << topo->GetNodeCount()
+                  << " edges=" << topo->GetEdgeCount()
+                  << " recomputes=" << topo->GetRecomputeCount()
+                  << " changes=" << topo->GetTopologyChanges()
+                  << " range=" << std::fixed << std::setprecision(1) << topo->GetLinkRange()
+                  << " noRoute=" << topo->GetNoRouteCount()
+                  << " nrl=" << std::fixed << std::setprecision(2) << r.nrl
+                  << "\n";
+    }
+
     Simulator::Destroy();
     return r;
 }
@@ -746,7 +782,11 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("flows", "Number of CBR flows", nFlows);
     cmd.AddValue("cbrBps", "Per-flow CBR rate (bits/s)", cbrBps);
     cmd.AddValue("runs", "Number of RNG runs to average (seeds 1..runs)", runs);
-    cmd.AddValue("protocols", "Comma-separated list", protocols);
+    cmd.AddValue("protocols",
+                 "Comma-separated list (anthocnet,aodv,olsr,dsdv,oracle). "
+                 "`oracle` is the #296/#216 global-knowledge shortest-path "
+                 "CONTROL — exact on this static torus, zero control traffic.",
+                 protocols);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies)", g_diag);
     cmd.AddValue("breakLink", "Scripted ISL break (#260): endpoints as r1,c1,r2,c2 "
