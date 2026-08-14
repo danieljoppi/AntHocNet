@@ -19,7 +19,7 @@ use the `paper` preset — it is heavy, so it is a manual run, not part of CI:
 make install-ns3 NS3DIR=/path/to/ns-3-dev
 cd /path/to/ns-3-dev
 ./ns3 configure --enable-examples \
-  --enable-modules='anthocnet;gpsr;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+  --enable-modules='anthocnet;gpsr;oracle;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
 ./ns3 build
 ./ns3 run "anthocnet-compare --scenario=paper --runs=5"               # base scenario
 ./ns3 run "anthocnet-compare --scenario=paper --areaX=2500 --runs=5"  # area sweep
@@ -171,7 +171,7 @@ written here — and each provenance carries its own quality risk.
 | `anthocnet` | subject under test | this repo (`core/` + `ns3/`) | measured everywhere |
 | `aodv`, `olsr`, `dsdv` | **replication anchors** | stock ns-3 modules, never vendored | the published corpus |
 | `gpsr` | **competitive frontier** | vendored third-party port, repaired here ([#412](https://github.com/danieljoppi/AntHocNet/pull/412)) | builds + ASan green; **unmeasured** until [campaign phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control) |
-| oracle | **upper bound** | to be written here ([#415](https://github.com/danieljoppi/AntHocNet/issues/415)) | in progress |
+| `oracle` | **upper bound** | written here ([`ns3/oracle/`](../../ns3/oracle/README.md), [#415](https://github.com/danieljoppi/AntHocNet/issues/415)) | arm built, smoke-verified on both suites; **unmeasured** until [campaign phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control) |
 | `aomdv` | **attempted → documented gap** | vendored third-party port, repaired here ([#414](https://github.com/danieljoppi/AntHocNet/pull/414)) | builds on all five ns-3 versions; **does not route multi-hop** |
 | RL / DRL baseline | **deferred by design** | — | out of scope until [#293](https://github.com/danieljoppi/AntHocNet/issues/293) + [#295](https://github.com/danieljoppi/AntHocNet/issues/295) land |
 | Babel · BATMAN-adv · OLSRv2 | **decided against, for now** | — | [surveyed and declined](#modern-deployed-baseline--decided-not-skipped-item-4) |
@@ -260,29 +260,60 @@ implementation.**
 Global-knowledge Dijkstra over the ground-truth topology, replayed as an
 `Ipv4RoutingProtocol`. **Not a protocol — a control**, and the only arm that can
 answer "how much of the gap between AntHocNet and perfect is protocol overhead?"
-In progress; it is [phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control) of
-the v1.5.0 campaign.
+The arm exists (`contrib/oracle`, off unless `--protocols` names it) and runs in
+both suites; its cells are [phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control)
+of the v1.5.0 campaign. Design, evidence and the recompute-cadence tradeoff:
+[`ns3/oracle/README.md`](../../ns3/oracle/README.md).
 
-**What it will be exact for.** On the `range` disk model adjacency is crisp, so
-the path it takes *is* the shortest path; it emits no control traffic (NRL
-exactly 0, an assertable property rather than an expectation) and performs no
-discovery, so its delay is queueing plus propagation only.
+It emits **no control traffic at all** — NRL is exactly 0, asserted by
+`NS_ABORT` in both harnesses and by `scenario_check.py`, not merely expected —
+and performs no discovery, so its delay is queueing plus propagation only.
 
-**What it will not be exact for**, stated now so no reader over-reads it later:
+**What it is exact for**, now measured rather than anticipated. Adjacency is
+derived per interface from the simulator's own objects; every oracle row carries
+`##ORACLE## … mode=… approx=0|1` so the distinction lives in the data:
 
-- **Fading channels have no crisp adjacency.** Under `nakagami` — and at the
-  margin under `tworay` — link existence is a probabilistic event, so "the
-  ground-truth graph" needs a stated rule and remains an approximation whichever
-  rule is chosen. #415 requires that rule to be documented rather than silently
-  assumed.
+| topology / channel | adjacency rule | exact? |
+|---|---|---|
+| satellite +Grid ISL torus, and any non-wifi channel | co-membership of the point-to-point channel | **yes** — the graph *is* the wiring |
+| MANET, `--propagation=range` | the channel's own `RangePropagationLossModel` cutoff | **yes** — a disk has a crisp cutoff |
+| MANET, `--propagation=tworay` / `nakagami` | the scenario's `--range`, as an explicit radius | **no** — flagged `approx=1`, WARNed on every read |
+
+**What it is not exact for**, stated so no reader over-reads it later:
+
+- **Neither fading *nor* two-ray has a crisp adjacency.** The pre-registration
+  above expected `tworay` to be exact or near-exact because it is
+  deterministic. It is not, and the attempt is instructive: deriving links from
+  ns-3's own two-ray budget (`Prx >= RxSensitivity`) made 2440 of 2450 possible
+  edges adjacent — a near-complete graph — and the resulting "oracle" delivered
+  **30.4 %**, below every protocol it exists to bound. That rule was withdrawn,
+  not shipped; both fading and two-ray cells are held to the scenario's
+  `--range` and flagged approximate. The error has a known direction (the disk
+  is conservative under two-ray, so the control uses a *subset* of the links
+  that work), which is why these cells stay readable as reference points.
+- **`--range` is inert under `tworay`/`nakagami` for every arm *except*
+  `oracle`**, where it pins the control's adjacency. `scenario_check.py
+  preflight --protocols=…,oracle` says so, and FAILs the combination that would
+  abort the run.
 - **It bounds routing, not delivery.** It runs on the same MAC/PHY as every
   other arm, so contention and collision losses remain. An oracle PDR below
-  100 % is expected and is not a defect.
+  100 % is expected and is not a defect (measured at paper-base/range: 3.06 %
+  lost to MAC retry exhaustion, 1.00 % to channel loss, **0.00 %** to route
+  failure).
 - **Shortest-path is not the throughput optimum.** Under congestion a
   load-spreading multipath protocol can beat a shortest-hop oracle. The oracle
-  upper-bounds *path quality by hop count*, which is why #415's falsifiable
-  assertions are "hop count ≤ every other arm" generally, and "PDR ≥ every other
-  arm" only on a static lossless topology.
+  upper-bounds *path quality by hop count*, which is why the falsifiable
+  assertions are "hop count ≤ every other arm" generally, and "PDR ≥ every
+  other arm" only on a static lossless topology — and not on the
+  [#216](https://github.com/danieljoppi/AntHocNet/issues/216) adversarial cells,
+  which exist precisely so the control loses.
+- **The hop-count assertion carries a survivorship guard**, and it had to.
+  `path_hops_mean` is a mean over *delivered* packets, so a low-PDR arm skims
+  the short flows and scores a lower mean without routing anything better —
+  measured at paper-base/range, 300 s: olsr **1.90** hops at **75.4 %** PDR
+  against the oracle's **2.09** at **95.9 %**. The rule therefore fires only
+  when the other arm delivered at least as much as the oracle and *still* shows
+  a shorter mean path.
 - Consequently the AntHocNet-to-oracle gap is an **upper bound on how much of
   the shortfall is protocol overhead** — it does not decompose that shortfall
   into discovery cost, suboptimal path choice and reconvergence loss.

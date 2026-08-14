@@ -25,6 +25,7 @@ set(ANTHOCNET_TESTS
   test_reactive_flood_bound
   test_reactive_source_band
   test_ant_type_gates
+  test_shortest_path
 )
 
 foreach(test ${ANTHOCNET_TESTS})

@@ -49,6 +49,10 @@ build_lib_example(
     # same `make install-ns3`). Like the stock baselines above, listing it here
     # means the example is skipped when the module is not enabled.
     ${libgpsr}
+    # #296 item 1: the oracle shortest-path control module (contrib/oracle,
+    # installed by the same `make install-ns3`). Same rule as the baselines —
+    # not enabled, example skipped.
+    ${liboracle}
 )
 
 # ISL-grid scenario (#214): a static +Grid torus of point-to-point links — the
@@ -68,6 +72,8 @@ build_lib_example(
     ${libaodv}
     ${libolsr}
     ${libdsdv}
+    # #296 item 1 / #216: the oracle control, exact on this static torus.
+    ${liboracle}
 )
 
 # #24 control: STOCK baselines only (AODV/OLSR/DSDV) on the identical scenario,

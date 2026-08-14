@@ -115,7 +115,7 @@ def run_preflight(**overrides):
           "time": 300.0, "pause": 30.0, "speed": 20.0, "flows": 20,
           "pktBytes": 64, "pktPerSec": 1.0, "rateMbps": 2.0,
           "pathWindowS": 10.0, "mobility": "rwp", "propagation": "range",
-          "transport": "udp"}
+          "transport": "udp", "protocols": "anthocnet,aodv,olsr,dsdv"}
     kw.update(overrides)
     sc.issues = []
     with contextlib.redirect_stdout(io.StringIO()) as out:
@@ -1316,6 +1316,212 @@ def _reinj_skip_partition_fires():
                             + row)
     expect("skip fate buckets incoherent" in out, "reinj-skip-partition",
            f"a non-summing skip partition was not flagged\n{out}")
+
+
+# --- #296 item 1 / #216: the oracle control ----------------------------------
+#
+# Every fixture below is the real measured shape, from the smoke cells run when
+# the arm was built (paper base, 300 s / 60 s, ns-3.36):
+#   paper-base/range   oracle 95.9% PDR, 2.09 hops, NRL 0 | olsr 75.4%, 1.90 hops
+#   4x4 ISL torus      oracle 100% PDR, NRL 0, mode=wired, 64 directed edges
+# The olsr row is the one that matters: its mean hop count is BELOW the
+# oracle's because it delivers 20 pp less traffic and therefore only the short
+# flows. A naive "the oracle must have the fewest hops" rule fails on correct
+# data, which is why the rule carries the survivorship guard and why this
+# fixture is in the suite.
+
+ORACLE_LINE_OK = ("##ORACLE## 1 oracle mode=disk approx=0 nodes=50 edges=914 "
+                  "recomputes=300 changes=150 range=300.0 noRoute=0 nrl=0.00\n")
+
+MANET_ORACLE_CELL = """\
+##RUN## 1 oracle 95.90 4.8 24.0 4.97 0.00 4.60 2.0 14.5 0.0000
+##RUN## 1 olsr 75.40 10.2 32.0 4.08 6.12 13.90 3.5 inf 13.0630
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes
+oracle          95.9        4.8         24.0         4.97    0.00        4.60         2.0        14.5       0.000
+olsr            75.4       10.2         32.0         4.08    6.12       13.90         3.5         inf      13.063
+# paths oracle divUsed=1.000 divMax=1.0 entropyBits=0.000 windowS=2.0 hopsMean=2.09 hopsMax=5.0
+# paths olsr divUsed=1.000 divMax=1.5 entropyBits=0.000 windowS=2.0 hopsMean=1.90 hopsMax=6.5
+"""
+
+ISL_ORACLE_CELL = """\
+##ORACLE## 1 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=60 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 1 oracle 100.00 10.15 11.00 10.44 0.00 0.00 0.00
+##RUN## 1 aodv 98.61 10.15 11.00 10.48 4.89 2.56 0.00
++Grid torus 4x4 = 16 satellites, 32 ISLs (mean degree 4.00) @ 5.00 ms 10Mbps, 4 flows, 60.00 s, mean of 1 run(s)
+
+protocol          PDR%  delay(ms)  delay99(ms)  thrput(kbps)     NRL   NRLbytes  jitter(ms)
+-------------------------------------------------------------------------------------------
+oracle           100.0       10.2         11.0         10.44    0.00       0.00        0.00
+aodv              98.6       10.2         11.0         10.48    4.89       2.56        0.00
+"""
+
+
+@case("#296 a correct oracle cell reports nothing about the oracle")
+def _oracle_clean():
+    _levels, out = run_cell(ORACLE_LINE_OK + MANET_ORACLE_CELL)
+    expect("#296" not in out and "#216" not in out, "oracle-clean",
+           f"a correct oracle cell was flagged\n{out}")
+
+
+@case("#296 the survivorship case stays quiet: olsr 1.90 hops at 75.4% PDR")
+def _oracle_hops_survivorship_quiet():
+    # The measured cell. olsr's mean hop count is lower than the oracle's and
+    # that is CORRECT — it delivered 20 pp less, so its mean is taken over the
+    # short flows only. Firing here would make the rule untrustworthy on every
+    # real cell, which is exactly how a check gets ignored.
+    _levels, out = run_cell(ORACLE_LINE_OK + MANET_ORACLE_CELL)
+    expect("exceeds" not in out, "oracle-hops-quiet",
+           f"the survivorship-biased hop comparison fired\n{out}")
+
+
+@case("#296 a shorter path at EQUAL delivery FAILs — survivorship cannot explain it")
+def _oracle_hops_fires():
+    # Same cell with olsr's delivery raised to the oracle's: now olsr delivered
+    # as much AND on shorter paths, which no shortest-path oracle permits.
+    text = (ORACLE_LINE_OK + MANET_ORACLE_CELL
+            .replace("olsr            75.4", "olsr            96.4"))
+    _levels, out = run_cell(text)
+    expect("survivorship cannot explain" in out, "oracle-hops-fires",
+           f"an impossible hop count was not flagged\n{out}")
+
+
+@case("#296 non-zero NRL on the oracle arm FAILs")
+def _oracle_nrl_fires():
+    text = (ORACLE_LINE_OK + MANET_ORACLE_CELL
+            .replace("oracle          95.9        4.8         24.0         4.97    0.00",
+                     "oracle          95.9        4.8         24.0         4.97    0.31"))
+    _levels, out = run_cell(text)
+    expect("must be exactly 0" in out, "oracle-nrl",
+           f"a talking control was not flagged\n{out}")
+
+
+@case("#296 non-zero NRL on the ##ORACLE## row FAILs")
+def _oracle_row_nrl_fires():
+    _levels, out = run_cell(ORACLE_LINE_OK.replace("nrl=0.00", "nrl=0.04")
+                            + MANET_ORACLE_CELL)
+    expect("puts NOTHING on the wire" in out, "oracle-row-nrl",
+           f"a non-zero ##ORACLE## nrl was not flagged\n{out}")
+
+
+@case("#296 a never-solved topology FAILs")
+def _oracle_changes_fires():
+    _levels, out = run_cell(ORACLE_LINE_OK.replace("changes=150", "changes=0")
+                            + MANET_ORACLE_CELL)
+    expect("never solved" in out, "oracle-changes",
+           f"an unsolved graph was not flagged\n{out}")
+
+
+@case("#296 an empty ground-truth graph FAILs")
+def _oracle_edges_fires():
+    _levels, out = run_cell(ORACLE_LINE_OK.replace("edges=914", "edges=0")
+                            + MANET_ORACLE_CELL)
+    expect("came out empty" in out, "oracle-edges",
+           f"a 0-edge topology was not flagged\n{out}")
+
+
+@case("#296 an approx flag contradicting the mode tag FAILs")
+def _oracle_flag_mismatch_fires():
+    _levels, out = run_cell(ORACLE_LINE_OK.replace("approx=0", "approx=1")
+                            + MANET_ORACLE_CELL)
+    expect("contradicts mode" in out, "oracle-flag-mismatch",
+           f"an incoherent exactness flag was not flagged\n{out}")
+
+
+@case("#296 a fading cell's oracle WARNs as approximate; a disk cell does not")
+def _oracle_approx_warns():
+    approx = ORACLE_LINE_OK.replace("mode=disk ", "mode=disk-approx ") \
+                           .replace("approx=0", "approx=1")
+    _levels, out = run_cell(approx + MANET_ORACLE_CELL)
+    expect("APPROXIMATE here" in out, "oracle-approx-warn",
+           f"an approximate oracle was not flagged\n{out}")
+    _levels, out = run_cell(ORACLE_LINE_OK + MANET_ORACLE_CELL)
+    expect("APPROXIMATE here" not in out, "oracle-approx-quiet",
+           f"an exact disk oracle was called approximate\n{out}")
+
+
+@case("#296 a ##ORACLE## row for another protocol FAILs")
+def _oracle_wrong_proto_fires():
+    _levels, out = run_cell(ORACLE_LINE_OK.replace("1 oracle mode", "1 aodv mode")
+                            + MANET_ORACLE_CELL)
+    expect("only the oracle arm" in out, "oracle-wrong-proto",
+           f"a foreign ##ORACLE## row was not flagged\n{out}")
+
+
+@case("#296 partitioned lookups WARN rather than pass silently")
+def _oracle_noroute_warns():
+    _levels, out = run_cell(ORACLE_LINE_OK.replace("noRoute=0", "noRoute=412")
+                            + MANET_ORACLE_CELL)
+    expect("found no path" in out, "oracle-noroute",
+           f"a partitioned oracle field was not flagged\n{out}")
+
+
+@case("#216 beating the oracle on a static lossless torus FAILs")
+def _oracle_static_pdr_fires():
+    # aodv above the oracle on a topology with full knowledge, no setup cost
+    # and no churn: impossible, therefore an instrumentation or wiring defect.
+    text = ISL_ORACLE_CELL.replace("aodv              98.6", "aodv             100.0") \
+                          .replace("oracle           100.0", "oracle            99.2")
+    _levels, out = run_cell(text)
+    expect("nothing can beat full knowledge" in out, "oracle-static-pdr",
+           f"a beaten oracle was not flagged on a static torus\n{out}")
+
+
+@case("#216 the real torus cell (oracle 100%, aodv 98.6%) stays quiet")
+def _oracle_static_pdr_quiet():
+    _levels, out = run_cell(ISL_ORACLE_CELL)
+    expect("#216" not in out, "oracle-static-quiet",
+           f"a correct torus cell was flagged\n{out}")
+
+
+@case("#216 the delivery bound is NOT asserted on an adversarial cell")
+def _oracle_static_pdr_skips_corridor():
+    # The congestion cell exists precisely so the control loses (#216): it
+    # cannot see offered load on an equal-length corridor. Asserting the bound
+    # there would fail the experiment the cell was built to run.
+    text = (ISL_ORACLE_CELL.replace("aodv              98.6", "aodv             100.0")
+                           .replace("oracle           100.0", "oracle            99.2")
+            + "# corridor probe pdr=99.2 split=0.51/0.49\n")
+    _levels, out = run_cell(text)
+    expect("nothing can beat full knowledge" not in out,
+           "oracle-static-corridor",
+           f"the bound was asserted on a cell designed to break it\n{out}")
+
+
+@case("#296 preflight: the oracle alone WARNs")
+def _oracle_preflight_alone():
+    _levels, out = run_preflight(protocols="oracle")
+    expect("measures nothing" in out, "oracle-preflight-alone",
+           f"a lone oracle arm was not flagged\n{out}")
+
+
+@case("#296 preflight: the oracle on a fading channel WARNs, on the disk it does not")
+def _oracle_preflight_channel():
+    _levels, out = run_preflight(protocols="anthocnet,oracle",
+                                 propagation="nakagami")
+    expect("pins the oracle's adjacency" in out, "oracle-preflight-fading",
+           f"an approximate oracle cell was not flagged at preflight\n{out}")
+    _levels, out = run_preflight(protocols="anthocnet,oracle")
+    expect("#296" not in out, "oracle-preflight-disk",
+           f"an exact disk oracle cell was flagged at preflight\n{out}")
+
+
+@case("#296 preflight: the oracle on a fading channel with no range FAILs")
+def _oracle_preflight_no_range():
+    levels, out = run_preflight(protocols="anthocnet,oracle",
+                                propagation="tworay", range=0.0)
+    expect("will ABORT at t=0" in out, "oracle-preflight-no-range",
+           f"a run that cannot start was not flagged\n{out}")
+    expect("FAIL" in levels, "oracle-preflight-no-range-level",
+           f"expected a FAIL, got {levels}")
+
+
+@case("#296 preflight is silent about the oracle when the arm is not named")
+def _oracle_preflight_absent():
+    _levels, out = run_preflight(propagation="nakagami")
+    expect("#296" not in out, "oracle-preflight-absent",
+           f"oracle rules fired without an oracle arm\n{out}")
+
 
 
 def main():

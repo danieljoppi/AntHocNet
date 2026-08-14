@@ -99,6 +99,30 @@ SINGLE_PATH_DIV_MAX = 1.10
 DIV_CELL_WINDOW_S = 2.0
 DIV_CELL_SANITY_MAX = 1.50
 
+# --- #296 item 1 / #216: the oracle shortest-path CONTROL ---------------------
+# A control is only worth its runtime if its value is known a priori and
+# asserted. Three things are known before the oracle runs:
+#
+#   1. NRL is exactly 0. It opens no socket and sends nothing, so any non-zero
+#      routing load means the arm started talking and is no longer a control.
+#   2. Its path to a destination is a shortest path, so no protocol can route
+#      the SAME packet in fewer hops.
+#   3. On a static, lossless topology with no congestion cell, nothing can
+#      deliver more than it: full knowledge, zero setup, zero churn.
+#
+# (2) needs care, and the care is the rule. `path_hops_mean` is a mean over
+# DELIVERED packets, so it is survivorship-biased: an arm that delivers less
+# skims the short flows and scores a LOWER mean hop count without routing
+# anything better. Measured at paper-base/range, 300 s, 2 seeds: olsr 1.90 hops
+# at 75.4 % PDR against the oracle's 2.09 at 95.9 %. So the hop rule fires only
+# where survivorship cannot explain it — the other arm delivered at least as
+# much as the oracle and still shows a shorter mean path.
+ORACLE_PROTO = "oracle"
+# Mean hops print to 2 dp; 0.01 is one printed unit, so a fire is a real gap.
+ORACLE_HOP_TOL = 0.01
+# "delivered at least as much": within a rounding unit of the oracle's PDR.
+ORACLE_PDR_TIE = 0.05
+
 ROW = re.compile(r"^\s*(?:##BENCH##\s+)?([a-z][\w-]*)((?:\s+[-\d.]+|\s+inf)+)\s*$")
 
 # #259: isl-grid human-mode output. The '+Grid' summary line carries the
@@ -157,6 +181,17 @@ DROPID_REINJ_FIELDS = re.compile(
 # stage and is not. The #402 skips* tail (capped-skip events, distinct skipped
 # keys and their fate partition) is optional so pre-#402 rows still parse;
 # rows without it simply skip the #402 rules.
+# #296: the oracle arm's self-description, one row per (seed, oracle):
+#   ##ORACLE## <seed> oracle mode=.. approx=0|1 nodes=.. edges=.. recomputes=..
+#     changes=.. range=.. noRoute=.. nrl=..
+# Absent for every other arm (absence encoding, #382) — the oracle is the only
+# protocol that can describe the ground truth, because it is the only one that
+# is handed it.
+ORACLE_LINE = re.compile(
+    r"^\s*##ORACLE##\s+(\d+)\s+([a-z][\w-]*)\s+mode=(\S+)\s+approx=([01])"
+    r"\s+nodes=(\d+)\s+edges=(\d+)\s+recomputes=(\d+)\s+changes=(\d+)"
+    r"\s+range=(-?[\d.]+)\s+noRoute=(\d+)\s+nrl=([\d.]+)")
+
 REINJ_LINE = re.compile(
     r"^\s*##REINJ##\s+(\d+)\s+([a-z][\w-]*)\s+events=(\d+)\s+parsed=(\d+)"
     r"\s+unparsedIcmp=(\d+)\s+unparsedOther=(\d+)"
@@ -325,6 +360,32 @@ def cmd_preflight(a):
                        "channels and the #293 runs floor should be treated as "
                        "a minimum, not a target — check the interval widths "
                        "before quoting a tail metric (#60)")
+    # #296 item 1 / #216: the oracle control's coherence, checked before the
+    # dispatch rather than after it. Two ways to spend runtime on a meaningless
+    # oracle cell, and one way to abort mid-run.
+    if ORACLE_PROTO in a.protocols.split(","):
+        arms = [x for x in a.protocols.split(",") if x]
+        if len(arms) == 1:
+            report("WARN", "--protocols=oracle alone: an upper bound with "
+                           "nothing under it measures nothing. The oracle is "
+                           "read as a GAP against the protocols in the same "
+                           "cell, so run it alongside them (#296)")
+        if a.propagation != "range":
+            if a.range <= 0:
+                report("FAIL", f"--propagation={a.propagation} with the "
+                               "oracle arm and no --range: this channel has "
+                               "no crisp adjacency for the oracle to derive, "
+                               "so the run will ABORT at t=0 rather than "
+                               "guess a radius. Set --range to the radius the "
+                               "control should be held to (#296)")
+            else:
+                report("WARN", f"--propagation={a.propagation} with the "
+                               "oracle arm: --range is inert for every OTHER "
+                               f"arm here, but it is what pins the oracle's "
+                               f"adjacency ({a.range} m) and the arm is "
+                               "flagged approx=1. Its delivery is a reference "
+                               "point, not a proven upper bound — see "
+                               "ns3/oracle/README.md (#296)")
     if a.mobility != "rwp":
         report("WARN", f"--mobility={a.mobility} is not the model the "
                        "published corpus was measured under (rwp), so its "
@@ -931,6 +992,112 @@ def check_path_diversity(rows):
                            f"to say so (#230)")
 
 
+def check_oracle(path, rows):
+    """#296 item 1 / #216: the oracle control's a-priori values, asserted.
+
+    Two halves. The first reads the ##ORACLE## self-description — which
+    adjacency rule was in force, whether it is exact for this channel, and
+    whether the graph was ever solved. The second is cross-row and is the part
+    that makes the control falsifiable: an upper bound a competitor beats is
+    not an upper bound, and the point of shipping this arm is that we find out
+    mechanically rather than in review.
+
+    Deliberately silent when no oracle row is present: the arm is off by
+    default and most cells will never have one.
+    """
+    with open(path) as fh:
+        text = fh.read()
+
+    # --- the ##ORACLE## rows ------------------------------------------------
+    for line in text.splitlines():
+        m = ORACLE_LINE.match(line)
+        if not m:
+            continue
+        (seed, proto, mode, approx, nodes, edges,
+         recomputes, changes, rng, no_route, nrl) = m.groups()
+        tag = f"{os.path.basename(path)} seed{seed}/{proto}"
+        if proto != ORACLE_PROTO:
+            report("FAIL", f"{tag}: a ##ORACLE## row for '{proto}' — only the "
+                           "oracle arm can emit one, so this is a harness "
+                           "regression (#382 absence encoding)")
+        if float(nrl) != 0.0:
+            report("FAIL", f"{tag}: NRL {nrl} on the oracle arm — the control "
+                           "puts NOTHING on the wire, so a non-zero routing "
+                           "load means it is no longer a control (#296)")
+        if int(changes) == 0:
+            report("FAIL", f"{tag}: the topology was never solved "
+                           f"(changes=0 over {recomputes} recomputes) — every "
+                           "lookup would have failed, so the arm routed on an "
+                           "empty graph")
+        if int(nodes) > 1 and int(edges) == 0:
+            report("FAIL", f"{tag}: {nodes} nodes and 0 edges — the ground-"
+                           "truth topology came out empty, so this arm is "
+                           "measuring a partitioned field, not routing")
+        # approx and the mode tag are two readings of one fact; a disagreement
+        # means the exactness flag cannot be trusted, which is worse than
+        # either value being wrong.
+        if (approx == "1") != ("approx" in mode):
+            report("FAIL", f"{tag}: approx={approx} contradicts mode={mode} — "
+                           "the exactness flag and the rule tag disagree")
+        if approx == "1":
+            report("WARN", f"{tag}: the oracle is APPROXIMATE here "
+                           f"(mode={mode}, radius {rng} m). A fading or "
+                           "two-ray channel has no crisp adjacency, so this "
+                           "arm is a reference point, not a proven upper "
+                           "bound — see ns3/oracle/README.md before quoting "
+                           "it as one")
+        if int(no_route) > 0:
+            report("WARN", f"{tag}: {no_route} lookup(s) found no path — the "
+                           "field partitioned under the oracle's own topology, "
+                           "so its PDR is bounded by connectivity here, not by "
+                           "routing")
+
+    # --- cross-row: the bounds ---------------------------------------------
+    groups = {}
+    for r in rows:
+        groups.setdefault(r.get("where"), []).append(r)
+    # #216 builds cells where the control is SUPPOSED to lose: background load
+    # over an equal-length corridor it cannot see, and a scripted ISL break.
+    # The delivery bound does not hold there and must not be asserted.
+    adversarial = "# corridor" in text or "# failcell" in text
+    static_lossless = any(r.get("sat_nodes") for r in rows) and not adversarial
+
+    for where, group in groups.items():
+        oracles = [r for r in group if r.get("proto") == ORACLE_PROTO]
+        if not oracles:
+            continue
+        orc = oracles[0]
+        o_pdr, o_hops = _fnum(orc, "pdr"), _fnum(orc, "hops")
+        for k in ("nrl", "nrl_bytes"):
+            v = _fnum(orc, k)
+            if v is not None and v != 0.0:
+                report("FAIL", f"{where}/oracle: {k} {v} — the control sends "
+                               "no packets, so this must be exactly 0 (#296)")
+        for other in group:
+            if other.get("proto") in (ORACLE_PROTO, None):
+                continue
+            p_pdr, p_hops = _fnum(other, "pdr"), _fnum(other, "hops")
+            name = other["proto"]
+            if (o_hops is not None and p_hops is not None
+                    and o_hops > p_hops + ORACLE_HOP_TOL
+                    and o_pdr is not None and p_pdr is not None
+                    and p_pdr >= o_pdr - ORACLE_PDR_TIE):
+                report("FAIL", f"{where}: oracle mean hops {o_hops} exceeds "
+                               f"{name}'s {p_hops} while {name} delivered "
+                               f"{p_pdr}% against the oracle's {o_pdr}% — "
+                               "survivorship cannot explain that, so either "
+                               "the shortest-path solve is wrong or the "
+                               "recompute cadence is too coarse for this cell "
+                               "(#296)")
+            if (static_lossless and o_pdr is not None and p_pdr is not None
+                    and p_pdr > o_pdr + ORACLE_PDR_TIE):
+                report("FAIL", f"{where}: {name} delivered {p_pdr}% against "
+                               f"the oracle's {o_pdr}% on a static, lossless "
+                               "topology with no congestion or failure cell — "
+                               "nothing can beat full knowledge there, so the "
+                               "control is broken (#216)")
+
+
 def cmd_results(a):
     floor = anchor_floor(a.anchor) if a.anchor else None
     n = 0
@@ -940,6 +1107,7 @@ def cmd_results(a):
         check_reinj(path)
         rows = list(parse_results(path))
         check_path_diversity(rows)
+        check_oracle(path, rows)
         for r in rows:
             n += 1
             tag = f"{r['where']}/{r['proto']}"
@@ -1360,6 +1528,9 @@ def main():
     p.add_argument("--propagation", choices=("range", "tworay", "nakagami"),
                    default="range")
     p.add_argument("--transport", choices=("udp", "tcp"), default="udp")
+    # #296: which arms the dispatch names. Only the oracle rules read it — the
+    # rest of preflight is arm-independent.
+    p.add_argument("--protocols", default="anthocnet,aodv,olsr,dsdv")
     r = sub.add_parser("results")
     r.add_argument("files", nargs="+")
     r.add_argument("--anchor", choices=sorted(ANCHOR_KEY))
