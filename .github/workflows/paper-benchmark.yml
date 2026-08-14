@@ -262,7 +262,14 @@ jobs:
         # Empty-table gate (#28): zero rows means the run produced no results
         # (e.g. an instant ns-3 exit) — fail hard instead of passing silently.
         run: |
-          awk '$1 ~ /^(anthocnet|aodv|olsr|dsdv)$/ && $2 ~ /^[0-9.]+$/ \
+          # #421: this alternation is an arm allowlist, and it silently
+          # narrows the published block — an arm missing here is dropped with
+          # no warning, because the #28 empty-table gate only fires when ZERO
+          # rows match and the four originals always match. oracle (#419),
+          # gpsr (#412) and aomdv (#414) were each added with green CI and
+          # each vanished from ##BENCH## until this was noticed. Same rule as
+          # the ##MARKER## note below: any new ARM has to be added here too.
+          awk '$1 ~ /^(anthocnet|aodv|olsr|dsdv|oracle|gpsr|aomdv)$/ && $2 ~ /^[0-9.]+$/ \
                {print "##BENCH##", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10}' \
             "$GITHUB_WORKSPACE/paper-results.txt" > "$GITHUB_WORKSPACE/bench-rows.txt"
           if ! [ -s "$GITHUB_WORKSPACE/bench-rows.txt" ]; then
