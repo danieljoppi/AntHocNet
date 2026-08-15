@@ -5,8 +5,8 @@ Two regimes, two suites, one protocol build ([ADR-0015](adr/0015-satellite-subst
 
 | Regime | Suite | Baselines | Status |
 |---|---|---|---|
-| **MANET** (original) | this page — discrete taxonomy + sweeps, wifi field | AODV / OLSR / DSDV | per-merge refresh + manual campaigns |
-| **Satellite** (ISL) | [satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) — +Grid torus, point-to-point ISLs | same, until [#216](https://github.com/danieljoppi/AntHocNet/issues/216)'s precomputed-shortest-path control lands | manual dispatch + per-PR analytic anchor/determinism gates; no committed results yet |
+| **MANET** (original) | this page — discrete taxonomy + sweeps, wifi field | AODV / OLSR / DSDV, plus the **oracle** upper bound ([#415](https://github.com/danieljoppi/AntHocNet/issues/415)) on the [grid](benchmarks/grid.md#the-oracle-control--how-much-of-the-shortfall-is-routing) | per-merge refresh + manual campaigns |
+| **Satellite** (ISL) | [satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) — +Grid torus, point-to-point ISLs | same, plus the **exact** (`approx=0`) oracle control — the [#216](https://github.com/danieljoppi/AntHocNet/issues/216) gap, now closed by v1.5.0 phase 3 | manual dispatch + per-PR analytic anchor/determinism gates; results published on that page |
 
 A number is only comparable **within** its regime — the regimes differ in what
 routing even has to solve ([network-regimes.md](network-regimes.md)). Everything
@@ -20,7 +20,7 @@ index: the headline cross-scenario summary, plus a link to every detail page.
 
 | Page | What is on it |
 |---|---|
-| [metrics.md](benchmarks/metrics.md) | What PDR, mean delay, delay99, jitter, dOff50/dOff90, throughput, NRL and `nrl_bytes` mean — and their caveats (#57/#54 survivorship, #132). |
+| [metrics.md](benchmarks/metrics.md) | What PDR, mean delay, delay99, jitter, dOff50/dOff90, throughput, NRL and `nrl_bytes` mean — and their caveats (#57/#54 survivorship, #132), including the phase-3 rule that **`delay99` must not be compared across arms whose PDR differs materially** (use `##COMMON##` `p99C`) and how to read the oracle arm's asserted-zero NRL. |
 | [methodology.md](benchmarks/methodology.md) | Reproduce commands, the scenario taxonomy & sweeps, ns-3 build profiles (`default` vs `release`/`-opt`, #123), and the validation anchors + #59 enforcement / #129 determinism gate. |
 | **Scenarios** | |
 | [dense-small](benchmarks/scenarios/dense-small.md) | dense / low-mobility — the fast CI regime; AntHocNet's hard case. |
@@ -34,15 +34,15 @@ index: the headline cross-scenario summary, plus a link to every detail page.
 | [pause](benchmarks/sweeps/pause.md) | Paper Fig. 2 — pause time 0→900 s. |
 | [scale](benchmarks/sweeps/scale.md) | Paper Fig. 3 — terrain ×f, nodes ×f² (50→200 nodes). |
 | **Grid** | |
-| [mobility × channel](benchmarks/grid.md) | The six-cell grid — {rwp, ssrwp, gaussmarkov} × {tworay, nakagami} — re-baselined at `a1daa7a` (v1.5.0 phase 1, `ReconvHoldCap = 200 ms`), baselines byte-identical to the v1.4.0 corpus. **Scoped** ranking-stability statement: delivery and overhead orderings stable everywhere (the OLSR delivery gap narrowed to +1.70…+4.16 pp); the tail's invariant is OLSR — best under two-ray, worst under fading — while AntHocNet is now 2nd-or-tied under two-ray and the fading tail is aodv-or-tie. Not comparable with the pages above. |
+| [mobility × channel](benchmarks/grid.md) | The six-cell grid — {rwp, ssrwp, gaussmarkov} × {tworay, nakagami} — re-baselined at `a1daa7a` (v1.5.0 phase 1, `ReconvHoldCap = 200 ms`), baselines byte-identical to the v1.4.0 corpus. **Scoped** ranking-stability statement: delivery and overhead orderings stable everywhere (the OLSR delivery gap narrowed to +1.70…+4.16 pp); the tail's invariant is OLSR — best under two-ray, worst under fading — while AntHocNet is now 2nd-or-tied under two-ray and the fading tail is aodv-or-tie. **Now also carries the v1.5.0 phase-3 oracle arm** (`40b434d`, composed onto these cells by a 480-row baseline byte-identity control): the **gap decomposition** — on two-ray the channel costs *nothing*, so 100 % of AntHocNet's 7.0–9.9 pp shortfall is protocol overhead; under fading the channel costs 0.45–0.59 pp and routing is still 95.5–95.8 % (AODV 98.2–100 %) — with the `approx=1` quoting rule that travels with it: **a delivery bound in all six cells, a latency bound only on the two-ray ones.** Not comparable with the pages above. |
 | **Transport** | |
 | [tcp](benchmarks/tcp.md) | v1.4.0's TCP arm — goodput over `TcpCubic` at the paper base scenario, 20 seeds + a 20-seed UDP control. The delivery ranking **reorders** under TCP (AODV 3rd → last, DSDV rises, anthocnet–olsr a statistical tie): a transport-layer claim that does not name its transport is unsupported. Measured *after* `v1.3.0`. |
 | **Protocol arms** | |
 | [reinjection](benchmarks/reinjection.md) | v1.5.0 phase 2 — the [#46](https://github.com/danieljoppi/AntHocNet/issues/46) MAC-failure detector's first 20-seed publishable A/B (ΔPDR **+5.55 / +6.54 pp**, 20/20 sign-consistent), the direct measurement that **~65–67 %** of its re-injections are of already-delivered packets, the detector-off reorder collapse (0.1745/0.2301 → 0.0010/0.0009) that pins AntHocNet's fading reordering on duplicates, and the `MaxReinjectPerPacket` cap frontier — measured at `7471447`, shipped default unchanged. |
 | **Campaign plans** | |
-| [v1.5.0 re-baseline](benchmarks/v1.5.0-campaign.md) | The running campaign — how the hold-cap flip, the re-injection cap sweep, the publishable detector A/B and the oracle control fold into **one** ordered set of dispatches instead of three overlapping ones. Phases 0–2 complete (flip merged as #411, grid re-baselined at `a1daa7a`, cap × detector measured at `7471447` and published on [reinjection.md](benchmarks/reinjection.md) with no default change); phase 3 (oracle control) is next. |
+| [v1.5.0 re-baseline](benchmarks/v1.5.0-campaign.md) | The campaign — how the hold-cap flip, the re-injection cap sweep, the publishable detector A/B and the oracle control folded into **one** ordered set of dispatches instead of three overlapping ones. **Complete (2026-08-14): all three measurement phases published.** Flip merged as #411, grid re-baselined at `a1daa7a`, cap × detector measured at `7471447` with no default change ([reinjection.md](benchmarks/reinjection.md)), and [phase 3](benchmarks/v1.5.0-campaign.md#phase-3--the-oracle-control) — the oracle control at `40b434d`, six grid cells plus the satellite torus, three a-priori assertions passing at 20 seeds, the hop rule passing *vacuously* where a naive version would have failed. |
 | **Satellite suite** | |
-| [satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) | The ISL-grid regime: harness, analytic anchors, how to dispatch, and what it is waiting on (#216). |
+| [satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) | The ISL-grid regime: harness, analytic anchors, how to dispatch — and the [#216](https://github.com/danieljoppi/AntHocNet/issues/216) result, including the **only cell where the oracle is exact** (`mode=wired approx=0`: the graph *is* the wiring, so the bound is proven rather than approximate). The MANET grid's oracle numbers are `approx=1` and cannot be read that strongly. |
 | [benchmarks/README.md](benchmarks/README.md) | How the figures and this folder are generated. |
 
 ## Results
