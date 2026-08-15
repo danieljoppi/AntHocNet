@@ -8,6 +8,25 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v1.5.0 (2026-08-15)
+
+### Feat
+
+- **bench**: add the oracle shortest-path control arm (#419)
+- **bench**: vendor aomdv baseline port for the oracle-phase comparison (#296) — builds, does not yet route (#414)
+- **bench**: vendor gpsr baseline port for the oracle-phase comparison (#296) (#412)
+- **routing**: flip ReconvHoldCap default 1 s -> 200 ms (#411)
+- **protocol**: cap per-packet mac re-injections behind MaxReinjectPerPacket (#401)
+- **bench**: promote the #386 soundness identities and correct the reorder gloss (#399)
+- **bench**: measure re-injection identity and fate directly — the #386 counter (#398)
+
+### Fix
+
+- **bench**: dsdv cannot run on multi-ISL grids (#420), and two arm allowlists silently dropped the new arms (#421)
+- **bench**: stop the #230 diversity gate crying wolf, and frame the baseline set (#418)
+- **bench**: count the baselines' pending-queue sheds — dsdv drops a fifth of dense traffic in silence (#409)
+- **bench**: cap-aware drop-cause attribution — capped-terminal drops of delivered packets are straddle, not loss (#407)
+
 ## v1.4.0 (2026-08-09)
 
 ### Feat
