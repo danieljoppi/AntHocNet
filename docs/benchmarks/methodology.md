@@ -170,7 +170,7 @@ written here — and each provenance carries its own quality risk.
 |---|---|---|---|
 | `anthocnet` | subject under test | this repo (`core/` + `ns3/`) | measured everywhere |
 | `aodv`, `olsr`, `dsdv` | **replication anchors** | stock ns-3 modules, never vendored | the published corpus |
-| `gpsr` | **competitive frontier** | vendored third-party port, repaired here ([#412](https://github.com/danieljoppi/AntHocNet/pull/412)) | builds + ASan green; **unmeasured** until [campaign phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control) |
+| `gpsr` | **attempted → documented gap** (was: competitive frontier) | vendored third-party port, repaired here ([#412](https://github.com/danieljoppi/AntHocNet/pull/412)) | builds + ASan green, beacons correctly — and **delivers zero packets on 40/40 seeds** ([#425](https://github.com/danieljoppi/AntHocNet/issues/425)). Not a usable arm |
 | `oracle` | **upper bound** | written here ([`ns3/oracle/`](../../ns3/oracle/README.md), [#415](https://github.com/danieljoppi/AntHocNet/issues/415)) | **measured** in [phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control) — six grid cells (`approx=1`) and the exact `approx=0` [ISL torus](satellite/isl-grid.md) |
 | `aomdv` | **attempted → documented gap** | vendored third-party port, repaired here ([#414](https://github.com/danieljoppi/AntHocNet/pull/414)) | builds on all five ns-3 versions; **does not route multi-hop** |
 | RL / DRL baseline | **deferred by design** | — | out of scope until [#293](https://github.com/danieljoppi/AntHocNet/issues/293) + [#295](https://github.com/danieljoppi/AntHocNet/issues/295) land |
@@ -243,6 +243,30 @@ implementation.**
   numbers it will produce. Its acceptance evidence has to be its own measured
   behaviour in phase 3, not its pedigree. [#414](https://github.com/danieljoppi/AntHocNet/pull/414)
   is the standing reminder of what "it builds" is worth.
+
+> **Measured, and it does not route ([#425](https://github.com/danieljoppi/AntHocNet/issues/425)).**
+> The paragraph above says the acceptance evidence has to be measured behaviour
+> rather than pedigree. It was measured — after the arm had already been
+> merged — and the arm **delivers 0.00 % on 40/40 seeds** across `rwp × tworay`
+> and `rwp × nakagami` at 20 seeds each (`flowsNoDelivery=20/20`,
+> `firstDeliveryS=-1.00`, `hopTx=0`, and zero airtime and radio energy despite
+> ~45 000 hellos per run counted at L3, so even the beacons never reach the
+> air). The `aodv` control in those same cells is SHA-256-identical to the
+> published corpus, so the fault is inside the module. `scenario_check` FAILs
+> both cells: the drop-cause book is off by −100.00 pp.
+>
+> **`gpsr` is therefore not a competitive-frontier arm and its numbers must not
+> be published.** A 0.00 row beside AntHocNet's 92.58 and DSDV's 84.99 would
+> assert that GPSR *with a GOD location service* — a strict upper bound on
+> GPSR, handed free perfect position knowledge — delivers nothing where plain
+> DSDV delivers 85 %. That is false about GPSR and would read as a straw man.
+>
+> This is [#414](https://github.com/danieljoppi/AntHocNet/pull/414)'s lesson
+> recurring in the arm whose own risk note cited it. The rule it should have
+> produced, stated here so the next vendored arm inherits it: **no baseline
+> merges without a smoke run showing non-zero delivery and a drop book that
+> closes** — one `runs=2 time=300` dispatch, which would have caught both
+> #414 and #425 at merge time rather than at campaign time.
 - [PA-GPSR](https://github.com/CSVNetLab/PA-GPSR) (IEEE Access 2019) fixed real
   bugs in this lineage, but publishes no licence anywhere and so was not copied
   from — not one line. Where this port needed the same fix it was re-derived
@@ -468,7 +492,7 @@ rather than assumed permanent:
 |---|---|
 | no modern deployed protocol | ns-3 MR [!2887](https://gitlab.com/nsnam/ns-3-dev/-/merge_requests/2887) merging with an OLSRv2 or B.A.T.M.A.N. model, or any other [reversal trigger](modern-baseline-survey.md#what-would-reverse-this-decision) |
 | no multipath protocol | the `Path*` aliasing audit in [`ns3/aomdv/README.md`](../../ns3/aomdv/README.md) being completed and the arm passing a multi-hop smoke run |
-| geographic arm is unvalidated | phase 3 measuring `gpsr` and its results being checked against published GPSR behaviour |
+| geographic arm is **non-functional** ([#425](https://github.com/danieljoppi/AntHocNet/issues/425)) | `gpsr` delivering a non-zero PDR with a drop book that closes, *then* its results being checked against published GPSR behaviour. Measured at 0.00 % on 40/40 seeds, so the clause is now "no geographic protocol is compared", not "the geographic arm is unvalidated" |
 | no upper bound | [#415](https://github.com/danieljoppi/AntHocNet/issues/415) landing the oracle control |
 | no learned baseline | [#293](https://github.com/danieljoppi/AntHocNet/issues/293) + [#295](https://github.com/danieljoppi/AntHocNet/issues/295) landing, then #296 item 5 |
 
