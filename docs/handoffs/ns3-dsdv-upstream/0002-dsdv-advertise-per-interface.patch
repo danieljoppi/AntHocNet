@@ -1,0 +1,26 @@
+--- a/src/dsdv/model/dsdv-routing-protocol.cc
++++ b/src/dsdv/model/dsdv-routing-protocol.cc
+@@ -858,8 +858,8 @@
+         if (packet->GetSize() >= 12)
+         {
+             RoutingTableEntry temp2;
+-            m_routingTable.LookupRoute(m_ipv4->GetAddress(1, 0).GetBroadcast(), temp2);
+-            dsdvHeader.SetDst(m_ipv4->GetAddress(1, 0).GetLocal());
++            m_routingTable.LookupRoute(iface.GetBroadcast(), temp2);
++            dsdvHeader.SetDst(iface.GetLocal());
+             dsdvHeader.SetDstSeqno(temp2.GetSeqNo());
+             dsdvHeader.SetHopCount(temp2.GetHop() + 1);
+             NS_LOG_DEBUG("Adding my update as well to the packet");
+@@ -910,10 +910,10 @@
+             if (i->second.GetHop() == 0)
+             {
+                 RoutingTableEntry ownEntry;
+-                dsdvHeader.SetDst(m_ipv4->GetAddress(1, 0).GetLocal());
++                dsdvHeader.SetDst(iface.GetLocal());
+                 dsdvHeader.SetDstSeqno(i->second.GetSeqNo() + 2);
+                 dsdvHeader.SetHopCount(i->second.GetHop() + 1);
+-                m_routingTable.LookupRoute(m_ipv4->GetAddress(1, 0).GetBroadcast(), ownEntry);
++                m_routingTable.LookupRoute(iface.GetBroadcast(), ownEntry);
+                 ownEntry.SetSeqNo(dsdvHeader.GetDstSeqno());
+                 m_routingTable.Update(ownEntry);
+                 packet->AddHeader(dsdvHeader);

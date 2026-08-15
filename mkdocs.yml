@@ -138,3 +138,4 @@ nav:
           - adr/0020-security-is-a-default-off-profile.md
       - Handoffs:
           - handoffs/2026-06-28-detector-d-link-failure.md
+          - handoffs/2026-08-15-ns3-dsdv-null-route-upstream.md
