@@ -471,19 +471,25 @@ Stated once, plainly, so it can be quoted into a paper and weighed by a reader:
 
 > The comparison set is the one the original AntHocNet publications used
 > (2004–2005: AODV, extended here with OLSR and DSDV to cover the proactive
-> link-state and distance-vector classes), plus one geographic protocol. AODV,
-> OLSR and DSDV are stock ns-3 implementations, which makes them reproducible
-> but also inherits their documented model gaps. GPSR is a third-party port
-> vendored and repaired for this work, and it runs with a perfect location
-> service, so its numbers bound geographic routing from above rather than
-> reproducing a deployed system. **No modern deployed link-state or
+> link-state and distance-vector classes), plus a global-knowledge upper bound.
+> AODV, OLSR and DSDV are stock ns-3 implementations, which makes them
+> reproducible but also inherits their documented model gaps. **No geographic
+> protocol is compared**: a GPSR port was vendored and repaired for this work,
+> but it delivers zero packets on every seed of every scenario measured, so it
+> produces no publishable number — and because it runs with a perfect location
+> service, which bounds geographic routing from *above*, that failure cannot be
+> read as a property of geographic routing. **No modern deployed link-state or
 > distance-vector protocol — Babel, BATMAN-adv, OLSRv2 — is compared**, because
 > none had a maintained, buildable ns-3 implementation when this work was done
 > (surveyed August 2026). **No multipath protocol is compared**, because the
-> only available AOMDV port does not route. Results should therefore be read as
-> AntHocNet measured against the protocols its own literature compares against,
-> plus a geographic check and a global-knowledge upper bound — not as a
-> positioning against the current state of practice in deployed mesh routing.
+> only available AOMDV port does not route either. Two of the three
+> non-reference arms attempted here were third-party ports that compiled and
+> did not forward, which is itself the finding: outside the stock ns-3 set,
+> a routing implementation's existence is not evidence that it works. Results
+> should therefore be read as AntHocNet measured against the protocols its own
+> literature compares against, plus a global-knowledge upper bound — not as a
+> positioning against the current state of practice in deployed mesh routing,
+> and not as a comparison against the geographic or multipath families at all.
 
 Each clause of that paragraph has a retirement condition, and they are tracked
 rather than assumed permanent:
