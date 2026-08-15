@@ -171,7 +171,7 @@ written here — and each provenance carries its own quality risk.
 | `anthocnet` | subject under test | this repo (`core/` + `ns3/`) | measured everywhere |
 | `aodv`, `olsr`, `dsdv` | **replication anchors** | stock ns-3 modules, never vendored | the published corpus |
 | `gpsr` | **competitive frontier** | vendored third-party port, repaired here ([#412](https://github.com/danieljoppi/AntHocNet/pull/412)) | builds + ASan green; **unmeasured** until [campaign phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control) |
-| `oracle` | **upper bound** | written here ([`ns3/oracle/`](../../ns3/oracle/README.md), [#415](https://github.com/danieljoppi/AntHocNet/issues/415)) | arm built, smoke-verified on both suites; **unmeasured** until [campaign phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control) |
+| `oracle` | **upper bound** | written here ([`ns3/oracle/`](../../ns3/oracle/README.md), [#415](https://github.com/danieljoppi/AntHocNet/issues/415)) | **measured** in [phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control) — six grid cells (`approx=1`) and the exact `approx=0` [ISL torus](satellite/isl-grid.md) |
 | `aomdv` | **attempted → documented gap** | vendored third-party port, repaired here ([#414](https://github.com/danieljoppi/AntHocNet/pull/414)) | builds on all five ns-3 versions; **does not route multi-hop** |
 | RL / DRL baseline | **deferred by design** | — | out of scope until [#293](https://github.com/danieljoppi/AntHocNet/issues/293) + [#295](https://github.com/danieljoppi/AntHocNet/issues/295) land |
 | Babel · BATMAN-adv · OLSRv2 | **decided against, for now** | — | [surveyed and declined](#modern-deployed-baseline--decided-not-skipped-item-4) |
@@ -314,6 +314,19 @@ derived per interface from the simulator's own objects; every oracle row carries
   against the oracle's **2.09** at **95.9 %**. The rule therefore fires only
   when the other arm delivered at least as much as the oracle and *still* shows
   a shorter mean path.
+- **The hop bound does not hold on any wifi cell, and phase 3 measured that.**
+  The clause above anticipated one way for the oracle's mean path to read long
+  — survivorship. Phase 3 found a second, and it is not an artefact of *which*
+  packets are averaged: on the identity-matched `##COMMON##` set (#308), where
+  every arm delivered the same `(flow, seq)` packets, **the oracle uses more
+  hops than every real arm in all six grid cells**, two-ray included (e.g.
+  `rwp-tworay` oracle 1.90 against anthocnet 1.56 and aodv 1.47). The cause is
+  `approx=1`: on a wifi channel the oracle's adjacency is a geometric disk, so
+  its graph both misses links the radios actually have — forcing longer paths —
+  and admits deeply-faded ones. **Read the hop bound as quotable only where the
+  oracle is `approx=0`** (the wired ISL topologies). See
+  [grid.md](grid.md) for the per-cell evidence and the delivery-vs-latency
+  quoting rule that follows from it.
 - Consequently the AntHocNet-to-oracle gap is an **upper bound on how much of
   the shortfall is protocol overhead** — it does not decompose that shortfall
   into discovery cost, suboptimal path choice and reconvergence loss.

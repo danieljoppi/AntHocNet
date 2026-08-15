@@ -9,6 +9,28 @@ AntHocNet measured against the standard NS-3 MANET routing protocols
 mobility and traffic, driven from the same RNG runs so every protocol sees the
 same realisations. Metrics come from an NS-3 `FlowMonitor`:
 
+A fifth arm, the **oracle** control
+([#415](https://github.com/danieljoppi/AntHocNet/issues/415)), appears in the
+[grid](grid.md#the-oracle-control--how-much-of-the-shortfall-is-routing) and
+[satellite](satellite/isl-grid.md) suites. It is a control, not a protocol —
+global-knowledge Dijkstra over the ground-truth topology — and it changes how
+two columns on this page must be read:
+
+- **`nrl` / `nrl_bytes` are `0.00` / `0.0000` exactly, as an *asserted
+  invariant*, not as an observation.** The arm emits no control traffic at all,
+  and that is enforced by `NS_ABORT` in both harnesses plus a `scenario_check`
+  rule — a non-zero value aborts the run rather than being reported. Do not
+  read the zero as "measured very low overhead"; nothing was measured, a
+  property was asserted and held (all 120 per-seed grid rows, min = max = 0.00).
+- **Its `delay99` is frequently not comparable with any other arm's**, for the
+  general reason in
+  [`delay99` is not comparable across arms with materially different PDR](#delay99-is-not-comparable-across-arms-with-materially-different-pdr-415)
+  below — the oracle simply happens to be the arm that made the rule visible.
+
+Its exactness limits (`approx=0` vs `approx=1`) are a *harness* property, not a
+metric one, and live in
+[methodology.md](methodology.md#upper-bound--the-oracle-control-415).
+
 - **PDR** — packet-delivery ratio (received / sent), %, over the CBR data flows.
 - **mean delay** — average end-to-end delay of delivered packets, ms.
 - **99th-percentile delay** — tail of the delivered-packet delay distribution.
@@ -19,6 +41,10 @@ same realisations. Metrics come from an NS-3 `FlowMonitor`:
   changes what gets delivered, and it is not always labelled as a delivery
   change — see
   [Survivorship within one protocol: capped arms](#survivorship-within-one-protocol-capped-arms-386).
+  And when the PDR difference is large enough, the two arms' 99th percentiles
+  stop measuring comparable quantiles altogether — the stronger,
+  no-interpretation-available case in
+  [`delay99` is not comparable across arms with materially different PDR](#delay99-is-not-comparable-across-arms-with-materially-different-pdr-415).
 - **jitter** (`jitter_ms`) — mean delay jitter over delivered packets
   (FlowMonitor `jitterSum` / (rx−1)), ms. Accumulates
   `|delay_i − delay_{i−1}|`, where `delay = arrival − send`.
@@ -119,7 +145,9 @@ flowchart TB
 
 **The trap each family carries**, stated once here and in detail below:
 `delay99` is survivorship-confounded across protocols (a protocol that drops
-hard packets looks better); `drop_queue_pct` misses DSDV's silent shedding
+hard packets looks better) and, once the PDR gap is large, is
+[not comparable across arms at all](#delay99-is-not-comparable-across-arms-with-materially-different-pdr-415);
+`drop_queue_pct` misses DSDV's silent shedding
 (#229); `energy` absolutes are idle-dominated so only **deltas and spread** are
 readable; `reorder ratio/extent` measure route *flapping* rather than
 multipath, leaving **`buf_max`** as the honest multipath signal; and
@@ -247,6 +275,77 @@ that follows is narrow and mechanical:
 - The rule generalises past this sweep: **any** knob whose effect includes "and
   it delivers less" moves the delay columns for free, in the flattering
   direction.
+
+### `delay99` is not comparable across arms with materially different PDR (#415)
+
+The two sections above are about **which packets** each arm delivered: the
+surplus is the slow tenth, so the arm that drops it looks faster. Both admit a
+bounded reading — `##MATCH##` truncates by rank, `##COMMON##` keys by identity,
+`dOff50`/`dOff90` count a lost packet as infinite. Campaign phase 3 produced
+the *stronger* case, where no correction to the naive number is available
+because the two arms' 99th percentiles are not measuring the same thing at all.
+
+**The rule: `delay99` must not be compared across arms whose PDR differs
+materially.** Not "adjust for the confound" — do not compare the column.
+
+**Why, in one line of arithmetic.** `delay99` is the 99th percentile of an
+arm's **own delivered set**, so it is the `0.99 × PDR` quantile of the
+*offered* load. Two arms in the same cell therefore read the tail at two
+different depths:
+
+| arm (rwp-nakagami, [grid](grid.md)) | PDR | `delay99` measures the … | reported `delay99` |
+|---|---|---|---|
+| oracle | 99.54 % | **98.5th** percentile of offered packets | 2010.5 ms |
+| anthocnet | 89.78 % | **88.9th** percentile of offered packets | 920.0 ms |
+
+Nearly ten points of offered load separate the two measurement depths. The
+naive difference — "the oracle's tail is 1090 ms worse" — is a comparison of
+the 98.5th percentile of one distribution against the 88.9th of another.
+
+**The evidence that this is a cliff and not a distribution.** The oracle's
+`delay99` on the three Nakagami grid cells is pinned at **2010.5 / 2010.8 /
+2019.5 ms**, with a per-seed standard deviation of only **2.3–3.4 ms** across
+20 seeds. A tail statistic that reproduces to a few milliseconds over twenty
+independent mobility and fading realisations is not sampling a distribution; it
+is landing on a step. At 99.4–99.6 % delivery the 99th percentile of the
+delivered set sits **exactly on the boundary** between the arm's fast bulk and
+the retry-driven tail that carries its last fraction of a percent — so the
+statistic reports the *location of that boundary*, which barely moves between
+seeds, rather than the shape of the tail. An arm at 89.8 % reads a point deep
+inside its own bulk instead. The two numbers are computed by the same formula
+and describe different phenomena.
+
+Two things this is **not**:
+
+- **Not a 2 s cap or clamp.** OLSR reaches 2685–2961 ms in the same three
+  cells, so nothing in the harness truncates delays at ~2 s. The pinning is a
+  property of where the quantile falls, not a ceiling.
+- **Not the #57/#54 survivorship confound, though it is its neighbour.**
+  Survivorship says the compared populations differ; this says the compared
+  *quantiles* differ. A survivorship correction that equalises populations
+  (`##MATCH##`, `##COMMON##`) fixes it; a caveat sentence does not.
+
+**The correct instrument is `##COMMON##`'s `p99Common`** ([#308](https://github.com/danieljoppi/AntHocNet/issues/308),
+the `p99C` columns) — the 99th percentile over the `(flow, seq)` packets every
+arm in the run delivered. One population, one quantile, one depth. On the same
+rwp-nakagami cell it reads **586.8 ms (anthocnet) against 1469.1 ms (oracle)**,
+and *that* pair is interpretable. Note that the conclusion here happens to
+survive the correction — the oracle's fading tail really is worse, for the
+`approx=1` graph reason documented on
+[grid.md](grid.md#the-caveat-stated-with-the-numbers-rather-than-under-them) —
+but it survives **because the identity-matched instrument said so**, not
+because the naive column did. Reaching the right answer from an uninterpretable
+statistic is not evidence that the statistic was interpretable.
+
+Where `##COMMON##` is unavailable, `dOff50`/`dOff90` remain the monotone-honest
+fallback: they are quantiles of the **offered** load by construction, so they
+are read at the same depth for every arm regardless of what each delivered.
+
+**Operationally**: publish `delay99` per arm (it is the arm's own tail, and
+that is a real thing to report), and never *difference* two arms' `delay99`
+unless their PDRs are close — where "close" means small next to the
+`0.99 × PDR` depth shift the difference implies. When they are not close,
+difference `p99Common` instead and say which instrument produced the number.
 
 ### Application goodput (`##GOODPUT##`, #63)
 
@@ -938,6 +1037,7 @@ from `drop_route_pct` — a queue timeout is congestion, not a route failure).
 | **aodv** | **Counted.** Timeout/overflow/RERR sheds fire the error callback (`aodv::RequestQueue::Drop` is stock-instrumented); since #229 the conservation hook re-attributes them from `drop_route_pct` to `drop_queue_pct`, and packets still queued at run end (the former −2.4 pp dense-small residue) are added to `drop_queue_pct`. |
 | **olsr** | Not applicable — OLSR is proactive and does not buffer awaiting a route. |
 | **dsdv** | **Counted by the harness** (#229 conservation hook). Stock `dsdv::PacketQueue` sheds on `MaxQueuedPacketsPerDst` / `MaxQueueLen` overflow and `MaxQueueTime` purge with no observable signal; the hook measures those sheds by conservation and they appear in `drop_queue_pct` — 21.8 pp at `dense-small`, ≤ 0.73 pp elsewhere. |
+| **oracle** (#415) | **Not applicable — there is no pending queue.** The control always holds a route to every reachable destination, so it never buffers awaiting one; `drop_route_pct` is `0.00` in every measured cell, by construction rather than by luck. Its `nrl` / `nrl_bytes` are likewise `0.00` / `0.0000` **as an asserted invariant** (`NS_ABORT` + `scenario_check`), not as a measurement. What the arm does *not* escape is the MAC and the channel: it runs the same PHY as every other arm, so its residual losses are real and its sub-100 % PDR under fading is expected. |
 
 Before the hook, the silence cost **11.46 pp** of the DSDV identity at
 `dense-small` as filed (−21.8 pp measured post-#388, when honest MAC
