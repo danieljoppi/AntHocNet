@@ -122,6 +122,33 @@ otherwise independent of the epic chain.
 | **v2.0.0** | A committed time-varying Walker result: scheduled handovers, failure overlay, oracle + geographic comparators, handover metric family, calibration deltas vs Hypatia/LENS. **Also the NS-2 removal** ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)) — dropping a supported platform is breaking, so it lands with a major. |
 | **v3.0.0** | Four-protocol vulnerability table under blackhole/grayhole; defense profile recovering PDR under attack while reading **NOISE** in benign scenarios; `EnableSecurity=false` path proven byte-identical. |
 
+### What the v1.5.0 campaign left behind
+
+The campaign shipped its exit criteria and generated a tail of work that is
+**deliberately unscheduled** — per the labelling rule above, only issues the
+ladder gates carry a `release:` label, and none of these gate a release. They
+are listed here because they are the campaign's findings, and a reader deciding
+what to pick up next should not have to reconstruct them from closed threads.
+
+| issue | what it is | why it is not scheduled |
+|---|---|---|
+| [#425](https://github.com/danieljoppi/AntHocNet/issues/425) | the `gpsr` arm delivers zero packets — vendored, repaired, beacons, forwards nothing | v1.5.0 ships it as a documented verdict; fixing it adds an arm, it does not unblock anything |
+| [#429](https://github.com/danieljoppi/AntHocNet/issues/429) | enforce the baseline smoke-run rule with a gate | the rule is written in `methodology.md` but **prose does not fail** — this is the gate that would have caught #414 and #425 at merge |
+| [#416](https://github.com/danieljoppi/AntHocNet/issues/416) | the AOMDV `Path*` aliasing audit | open-ended work on a vendored fork; the infeasibility verdict is the shipped answer |
+| [#431](https://github.com/danieljoppi/AntHocNet/issues/431) | the oracle is exact only on wired topologies | the delivery bound already works everywhere; only the latency and hop bounds are limited, and both are scoped in the docs |
+| [#432](https://github.com/danieljoppi/AntHocNet/issues/432) | run the satellite adversarial cells with the oracle arm | the base torus was measured and cannot discriminate; these cells are where a satellite comparison has to come from |
+| [#430](https://github.com/danieljoppi/AntHocNet/issues/430) | a re-injection remedy that distinguishes redundant from delivering | capping by count was measured and rejected; the waste is real but the first remedy tried was the wrong instrument |
+| [#433](https://github.com/danieljoppi/AntHocNet/issues/433) | `RepairHoldCap`, the unmeasured half of the hold-cap frontier | changing it supersedes the corpus again — **fold into whatever campaign next re-baselines the grid**, exactly as #371 was folded into this one |
+| [#423](https://github.com/danieljoppi/AntHocNet/issues/423) | `##ORACLE##` missing from the compact block; oracle `noRoute` in no drop bucket | cosmetic and diagnostic respectively; neither affects a published number |
+| [#230](https://github.com/danieljoppi/AntHocNet/issues/230) | the interleaving path-diversity counter | the gate is fixed and the columns are marked unpublishable; the clean instrument still wants a CI dispatch to validate |
+
+**The one lesson worth carrying forward.** Two of the three non-reference arms
+attempted in this campaign compiled, passed a five-version matrix and ASan, and
+did not forward a single packet. The oracle did not fail that way because
+delivery numbers were in its acceptance criteria and a smoke run was required
+before merge. That difference — not diligence, not luck — is why #429 exists,
+and it is the rule the next vendored baseline should inherit.
+
 ## Platform support
 
 **NS-2 is being retired.** `v1.2.0` is the **last release in which NS-2 was
