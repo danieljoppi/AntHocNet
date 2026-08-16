@@ -88,7 +88,9 @@ COPY . .
 # merely omitting the arm. This is the same coupling as ci.yml's mods=, the
 # five campaign workflows' --enable-modules, check-determinism.sh's
 # filter_rows() and paper-benchmark.yml's ##BENCH## awk. Any new module has to
-# be added to all of them.
+# be added to all of them — enforced since #435 by ns3/tools/check-allowlists.sh
+# (CI `allowlists` job), which also asserts the stock base list above stays
+# free of vendored modules (the #24 control).
 RUN make install-ns3 NS3DIR=/opt/ns-3 \
  && cd /opt/ns-3 \
  && profile_flag=$([ "${NS3_PROFILE}" = "default" ] || echo "-d ${NS3_PROFILE}") \

@@ -2554,7 +2554,7 @@ int main(int argc, char* argv[]) {
                  firstRun);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols",
-                 "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,oracle). "
+                 "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,aomdv,oracle). "
                  "`oracle` is the #296 global-knowledge shortest-path CONTROL "
                  "(upper bound, zero control traffic), off unless named.",
                  protocols);

@@ -31,7 +31,12 @@ cd "$NS3DIR"
 # Build only AntHocNet's own examples/tests, not the stock modules' (their
 # cross-module deps drift by release). The filter flag scopes that to our
 # module; it was added after ns-3.36, so older trees just build + smoke.
-mods='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+# #435: this list must match ci.yml's mods= — without aomdv/gpsr/oracle the
+# anthocnet-compare and isl-grid examples are SKIPPED silently (their
+# CMakeLists lists those libs), so the "run anthocnet-compare" suggestion
+# below would point at a binary that was never built. Consistency is now
+# enforced by ns3/tools/check-allowlists.sh.
+mods='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
 if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
     ./ns3 configure --enable-tests --enable-examples \
         --filter-module-examples-and-tests=anthocnet \
