@@ -70,7 +70,9 @@ fi
 
 # arm=issue pairs. An entry means "this arm is expected to FAIL delivery; the
 # defect is tracked in that issue". See the header for the removal rule.
-KNOWN_BROKEN="aomdv=#416"
+# (Empty since #416's RREP fixes: the gate itself flagged aomdv as delivering
+# — PDR 84.4, hopsMean 5.21 on this scenario — and demanded its removal.)
+KNOWN_BROKEN=""
 
 # Static (pause 120 s > 60 s run: ns-3 RWP pauses first, so nodes never move),
 # multi-hop (500 m field, 175 m disk range), 3 CBR flows, 1 seed. --range>0 is
