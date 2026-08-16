@@ -168,10 +168,22 @@ All original copyright headers are preserved in the vendored files.
   therefore **not** interoperable with stock aodv's (they are different
   protocols on the same UDP port 654).
 
-## Runtime status — multi-hop routes on a wired chain; wifi smoke revalidation pending
+## Runtime status — multi-hop routing works; performance not yet at AODV parity
 
-**The multi-hop root cause is found and fixed (items 10–13), but the arm is
-not cleared for campaigns until the wifi smoke below is re-run.**
+**The multi-hop root cause is found and fixed (items 10–13), and the wifi
+smoke has been re-run: the arm now routes multi-hop.** Scheduling it into a
+measured campaign is now a quality question (the Marina & Das acceptance
+below), no longer a correctness gate.
+
+Wifi smoke after items 10–14 (ns-3.48, `anthocnet-compare`, 25 nodes / 300 m /
+4 flows / 40 s / 5 m·s⁻¹, optimized profile, 3 seeds): **PDR 18.6 %**
+(was 0.0 %), `hopsMean=2.10`, `hopsMax=5.7` — genuine multi-hop delivery.
+Against stock `aodv` on the identical seeds: 34.3 % PDR, so the arm works but
+does not yet compete — route drops are still 65.7 % (aodv: 0.3 %), delay
+384.6 ms vs 83.3 ms, NRL 17.1 vs 4.3, and per-seed PDR variance is large
+(σ≈14) at 3 seeds. Plausible contributors are the still-inert machinery
+listed below; whether the gap closes is for a campaign to measure, not this
+smoke.
 
 History: the arm used to deliver **PDR 0.0 % with 86 % route drops**
 (ns-3.48, `anthocnet-compare`, 25 nodes / 300 m / 4 flows / 40 s / 5 m·s⁻¹)
@@ -186,11 +198,8 @@ parity with stock `aodv` (9728 B) at every chain length tested (2–6 nodes,
 1–5 hops), including a bidirectional-flow variant that previously segfaulted.
 The full fix-by-fix ladder and per-site audit table are in #416.
 
-Still open before scheduling the arm:
+Still open:
 
-- **Re-run the wifi smoke** (`anthocnet-compare`, the 25-node scenario above)
-  and update this section with its PDR — the chain oracle is
-  necessary-not-sufficient evidence.
 - The audited-but-unguarded `PathFind ()->` sites (verdict table in #416):
   most need an interface-down/address-removal event, which no current
   scenario scripts for aomdv, but they are one topology change away.
