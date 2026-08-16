@@ -1384,6 +1384,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(gpsrHelper);
     } else if (proto == "oracle") {
         internet.SetRoutingHelper(oracleHelper);
+    } else {
+        // #448: an unknown arm must abort here, not run on the bare IP stack
+        // and emit a plausible-looking 0 % row.
+        NS_ABORT_MSG("unknown protocol '" << proto
+                     << "' -- see --PrintHelp's --protocols list");
     }
     internet.Install(nodes);
     // #296: gpsr's data packets carry a position header, injected by
@@ -1429,6 +1434,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // makes that a measured zero rather than a gap in the #352 coverage.
         TakeStreams(stream, streamBase, oracleHelper.AssignStreams(nodes, stream),
                     "oracle routing");
+    } else {
+        // #448: unreachable once the install chain above aborts, but the two
+        // dispatch chains stay structurally parallel by convention — guard both.
+        NS_ABORT_MSG("unknown protocol '" << proto
+                     << "' -- see --PrintHelp's --protocols list");
     }
 
     // Count routing-control transmissions uniformly at the IP layer. Connect to
