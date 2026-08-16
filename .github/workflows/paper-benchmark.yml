@@ -344,6 +344,16 @@ jobs:
           # by design.
           grep '^##REINJ##' "$GITHUB_WORKSPACE/paper-results.txt" \
             >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
+          # #423 item 1: the oracle arm's per-seed self-description (mode=,
+          # approx=, noRoute=, ...). NOT added when the marker shipped in #419
+          # — the third instance of the "emitting it is only half of shipping
+          # it" class — and its absence cost the phase-3 readout
+          # tail_lines=2400 instead of ~900, with no way to tell exact from
+          # approximate oracle cells on a cheap fetch. Found again by
+          # check-allowlists.sh (#435), which now asserts every marker the
+          # harness emits appears in this block.
+          grep '^##ORACLE##' "$GITHUB_WORKSPACE/paper-results.txt" \
+            >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
           # #230: the '# paths/energy/drops/stddev/reorder' diagnostic lines are
           # the *only* place the #209/#212/#215/#217 metric families appear in a
           # single-point run — the fixed-width table cannot carry them (its field

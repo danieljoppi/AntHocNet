@@ -158,6 +158,21 @@ jobs:
             "https://api.github.com/gists/$GIST_ID" \
             -d @payload.json > /dev/null
 
+  allowlists:
+    name: module/arm/marker allowlist consistency
+    runs-on: ubuntu-latest
+    # #435: the module lists (this file's mods=, the campaign workflows'
+    # --enable-modules, Dockerfile.ns3), the protocol-arm awk alternations
+    # (paper-benchmark.yml ##BENCH##, check-determinism.sh filter_rows) and
+    # the ##MARKER## re-emit block are hand-maintained copies that fail
+    # SILENTLY when one is missed — four of the ten were, in one day, the
+    # last of which broke every v1.5.0 ns-3 release image. Pure text against
+    # tree-derived ground truth: seconds, no ns-3 build.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check allowlists against the tree
+        run: bash ns3/tools/check-allowlists.sh
+
   codec-fuzz:
     name: codec fuzz (libFuzzer, 60s)
     runs-on: ubuntu-latest
