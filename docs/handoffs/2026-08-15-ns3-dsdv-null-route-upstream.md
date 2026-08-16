@@ -10,7 +10,11 @@
 > issue thread is the durable record; this file is the index + reproducible
 > method.
 >
-> **Date:** 2026-08-15 · **Status:** #434 verified and corrected; not yet filed upstream.
+> **Date:** 2026-08-15 · **Status:** verified, corrected, and **filed upstream 2026-08-16**:
+> issue [nsnam/ns-3-dev#1364](https://gitlab.com/nsnam/ns-3-dev/-/issues/1364),
+> fix MR [nsnam/ns-3-dev!2985](https://gitlab.com/nsnam/ns-3-dev/-/merge_requests/2985)
+> (defect (a) only, scope note included), plus a pointer comment on
+> [#503](https://gitlab.com/nsnam/ns-3-dev/-/issues/503) tying its backtrace to the diagnosis.
 
 ## TL;DR
 
@@ -302,10 +306,13 @@ patch -p1 < <repo>/docs/handoffs/ns3-dsdv-upstream/0002-dsdv-advertise-per-inter
 
 ## Still not done
 
-1. **Not filed upstream.** That is #434's actual ask and it remains open.
+1. ~~**Not filed upstream.**~~ **Done 2026-08-16** — see Status above. Follow
+   the MR for maintainer feedback; the advertisement defect (b) is offered in
+   #1364 as a follow-up, deliberately not bundled into the crash-fix MR.
 2. **The ns-3 test suite was not run against either patch** — both local builds
    were configured `--disable-tests`. Run `./test.py -s routing-dsdv` (and the
-   AODV/OLSR suites) before submitting an MR.
+   AODV/OLSR suites) before submitting an MR. *(Still true for the submitted
+   MR — noted so a reviewer request for it is no surprise.)*
 3. **DSR still not demonstrated to crash** (#434 §9.4) — idiom confirmed at 4
    sites, failure not shown. It is wifi-coupled and irrelevant to ISL work.
 4. **`nix-vector-routing`, IPv6 routing and `mesh` still unexamined** (#434 §9.5).
