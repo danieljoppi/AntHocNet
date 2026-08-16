@@ -19,8 +19,10 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 > `harness=isl-grid`. Cell: 4×4 +Grid torus — 16 satellites / 32 ISLs (mean
 > degree 4.00) at 5.00 ms / 10 Mbps — 8 flows, 900 s, **20 seeds**,
 > `protocols=anthocnet,aodv,olsr,oracle`. They supersede nothing, because
-> nothing comparative was published from this suite before. Reproduce this
-> page's results at commit `0f7a3ab`.
+> nothing comparative was published from this suite before. Reproduce the
+> base-torus results at commit `0f7a3ab`; the
+> [#432 adversarial cells](#the-adversarial-cells-corridor-and-failcell-432)
+> carry their own provenance (`820f5cf`).
 
 ## The headline result: the base torus does not discriminate
 
@@ -103,16 +105,176 @@ must come from the adversarial cells this suite already anticipates:
 
 - the **asymmetric-congestion corridor**
   ([#280](https://github.com/danieljoppi/AntHocNet/issues/280), instrument
-  described [below](#the-congestion-cell-216-cell-1));
+  described [below](#the-congestion-cell-216-cell-1)) — **now measured with
+  the oracle arm**, [below](#the-adversarial-cells-corridor-and-failcell-432);
 - **scripted ISL breaks**
-  ([#260](https://github.com/danieljoppi/AntHocNet/issues/260));
+  ([#260](https://github.com/danieljoppi/AntHocNet/issues/260)) — **now
+  measured with the oracle arm**,
+  [below](#the-adversarial-cells-corridor-and-failcell-432);
 - **larger or less regular constellations**, where a shortest path is not
-  trivially reachable by everyone.
+  trivially reachable by everyone — still open, and deliberately not
+  dispatched in [#432](https://github.com/danieljoppi/AntHocNet/issues/432):
+  a bare larger 4-regular torus is predicted to tie at the bound for exactly
+  the reason the 4×4 did (static, lossless, uncongested), so it needs its own
+  cell design (irregularity or dynamics, not just size) before it earns a
+  dispatch.
 
-**Recommendation: add the `oracle` arm to those cells before any satellite
-comparison is published.** The incremental cost is one arm per cell, and the
-control stays *exact* on any wired topology — including a torus with a cut
-ISL, since a downed interface simply drops out of the `Channel` adjacency.
+The recommendation this section used to close on — add the `oracle` arm to
+those cells before any satellite comparison is published — **was followed**:
+both instrumented cells ran with the control beside them, and the control
+stayed *exact* on the cut-ISL topology too (a downed interface simply drops
+out of the `Channel` adjacency).
+
+## The adversarial cells: corridor and failcell (#432)
+
+> **Provenance — measured at `820f5cf`, 20 seeds per cell, with the exact
+> control.** Both cells are from the
+> [#432](https://github.com/danieljoppi/AntHocNet/issues/432) dispatch
+> ([dispatch record + pre-registered expectations](https://github.com/danieljoppi/AntHocNet/issues/432#issuecomment-5305417841)):
+> `ref=main`, `commit=820f5cfa2295baf8f7b734ece862bd93747b2521`,
+> `image=ghcr.io/danieljoppi/ns3:3.42-opt`, `profile=release`,
+> `harness=isl-grid`, 900 s, 20 seeds (1–20),
+> `protocols=anthocnet,aodv,olsr,oracle` (the pinned canonical order).
+> Corridor cell: run
+> [31922945507](https://github.com/danieljoppi/AntHocNet/actions/runs/31922945507).
+> Failcell: run
+> [31922957019](https://github.com/danieljoppi/AntHocNet/actions/runs/31922957019).
+> Every number below is a 20-seed mean computed by script from the per-seed
+> `##RUN##` / `# corridor` / `# failcell` rows (`bench_parse.py` plus a
+> diagnostic-line reducer — nothing eyeballed or hand-averaged); `±` is a
+> 95 % t-CI half-width, `boot[lo,hi]` a percentile-bootstrap 95 % interval
+> (delay99), and `[lo,hi]` after a paired difference is the paired per-seed
+> 95 % t-CI. Both cells passed `scenario_check.py results` (0 fail, 0 warn).
+> Reproduce this section's results at commit `820f5cf`.
+
+These are the first two adversarial regimes, each re-run with the `oracle`
+arm beside it as recommended above — and they are the suite's **first
+discriminating satellite results**. In one sentence each: the corridor cell
+separates the arms on the headline delay metric, and AntHocNet beats the
+congestion-blind bound on it (with a mechanism caveat that belongs in every
+quote of that claim); the failcell still cannot separate anyone on headline
+metrics, but its reconvergence instrument now discriminates — OLSR
+reconverges 5× slower than the oracle's floor while AntHocNet and AODV sit
+statistically on it.
+
+### The corridor cell: beating the congestion-blind bound (#216 cell 1 / #280)
+
+Cell: 6×6 torus (36 satellites, 72 ISLs), 5 ms / 10 Mbps,
+`--corridorLoad=12Mbps --corridorLoadAt=15` (ρ = 1.2 — the documented
+deliberate overload of the east corridor's second link), `--flows=0`, so the
+headline `##RUN##` row **is** the probe flow `(0,0)→(0,3)` over two equal
+3-hop corridors (the #280 zero-new-parsing contract). The AntHocNet arm runs
+at **shipped defaults** (`EnableMacMetric` off): this cell's question is
+where the *shipped* protocols sit against the exact bound; the
+mac-metric/gate mechanism ladder stays on
+[#216](https://github.com/danieljoppi/AntHocNet/issues/216)/[#180](https://github.com/danieljoppi/AntHocNet/issues/180).
+
+| protocol | probe PDR % | delay (ms) | delay99 (ms) | NRL | clean-corridor seeds |
+|---|---|---|---|---|---|
+| anthocnet | 100.00 ±0.00 | 55.6 ±19.4 | 57.5 boot[40.9, 74.1] | 36.62 ±0.05 | 10/20 |
+| aodv | 99.93 ±0.01 | 97.3 ±0.1 | 99.0 boot[99.0, 99.0] | 36.38 ±0.04 | 0/20 |
+| olsr | 100.00 ±0.00 | 68.7 ±18.9 | 70.0 boot[53.4, 86.5] | 39.44 ±0.05 | 7/20 |
+| **oracle** | **100.00 ±0.00** | **97.2 ±0.1** | **99.0 boot[99.0, 99.0]** | **0.00** | **0/20** |
+
+("Clean-corridor seeds" = seeds whose `# corridor` line shows the majority
+of post-`loadStart` probe packets leaving on the clean west corridor.)
+
+**The cell discriminates, and the pre-registered headline happened: an arm
+beat the bound.** The oracle routes the probe through the loaded corridor in
+all 20 seeds (`viaLoaded≈3536 viaClean=0`, probe delay 97.19 ±0.13 ms): its
+Dijkstra tie-break picks east in every seed, and being blind to congestion
+by construction it stays there while the 12 Mbps background saturates the
+link. AntHocNet's probe delay is lower by a paired per-seed difference of
+**−41.6 ms, 95 % CI [−60.9, −22.2]** at the same 100.00 % probe PDR, and its
+delay99 (57.5 boot[40.9, 74.1]) sits far below the bound's 99.0.
+
+**This is not a paradox, and it must never be quoted as "faster than
+optimal".** The oracle is a *shortest-path* bound: exact on topology, blind
+to load by construction — which is the reason this cell exists (the
+[#202 survey](../../satellite-routing-prior-art.md) §6's "congestion the
+precomputed control cannot see"). On a saturated corridor the shortest path
+is not the fastest path, so the bound's *delay* is beatable here precisely
+because the cell was built to make it beatable; its PDR and its NRL = 0.00
+remain the bounds they always were.
+
+**The mechanism caveat that belongs in every quote of the claim.** The
+per-seed `# corridor` lines are all-or-nothing: every arm's every seed sends
+essentially 100 % of post-`loadStart` probe packets down a single corridor.
+AntHocNet locks clean-west in 10/20 seeds (15.2–15.5 ms) and loaded-east in
+10/20 (92.3–97.4 ms), with **no seed shifting corridors after the load
+arrives** — the `# pher` traces show both corridors hold pheromone at load
+onset, then the unused corridor's entry evaporates to zero and never
+re-forms at the source. The #216 round-2 lock-in observation therefore
+**persists at 900 s**; session length did not break it (follow-up (a) of the
+[round-2 readout](https://github.com/danieljoppi/AntHocNet/issues/216#issuecomment-5153883684),
+now answered). What beats the bound is not measured congestion adaptation
+but *initial-choice diversity*: the stochastic ant choice lands half the
+seeds on the corridor that will stay clean, and lock-in keeps them there.
+OLSR makes the same point from the other side: a purely load-blind hop-count
+protocol also "beats the bound" (−28.4 ms, 95 % CI [−47.2, −9.6]) on nothing
+but seed-dependent tie-breaking (7/20 clean seeds, at the identical
+15.2 ms), and AntHocNet vs OLSR is statistically indistinguishable on this
+cell (paired −13.1 ms, 95 % CI [−41.6, +15.3]). AODV, which commits its
+discovery-time route on the quiet net and keeps it, ties the bound exactly
+(+0.1 ms, 95 % CI [−0.0, +0.3]) and is the only arm below 100 % probe PDR
+(99.93 ±0.01 — tail-drops on the saturated ISL).
+
+The quotable claims, in full: **(1)** this is the suite's first cell where
+headline metrics separate the arms, at 20 seeds with CIs; **(2)** AntHocNet
+at shipped defaults beats the congestion-blind shortest-path bound on probe
+delay with a paired CI excluding zero — the first legitimate satellite
+"beats-the-bound" claim, valid only with the shortest-path qualifier
+attached; **(3)** at shipped defaults the advantage is corridor lottery plus
+lock-in, not observed load-shifting — AntHocNet does not separate from
+load-blind OLSR here. Whether `EnableMacMetric=true` turns 10/20 clean seeds
+into 20/20 is exactly the #216/#180 mechanism ladder, deliberately not part
+of this dispatch.
+
+### The failcell: reconvergence at the oracle floor (#260)
+
+Cell: the published base-torus cell exactly (4×4, 8 flows) plus one scripted
+break — `--breakLink=0,0,3,0 --breakAt=450` cuts the ISL `(0,0)–(3,0)`,
+which preflight verified lies on a shortest path of flows `0→15` and `3→12`;
+equal-cost alternates survive on the torus, and 450 s of post-break run
+remain. The oracle's recompute cadence is 1 s, and every seed self-reports
+`changes=2 noRoute=0` — the initial solve plus exactly one post-break
+recompute, never without a route.
+
+| protocol | PDR % | delay (ms) | delay99 (ms) | NRL | tReconverge (s) |
+|---|---|---|---|---|---|
+| anthocnet | 100.00 ±0.00 | 10.16 ±0.00 | 11.0 boot[11.0, 11.0] | 2.12 ±0.00 | 0.91 ±0.10 |
+| aodv | 99.95 ±0.00 | 10.18 ±0.01 | 11.0 boot[11.0, 11.0] | 2.00 ±0.00 | 0.95 ±0.11 |
+| olsr | 99.93 ±0.02 | 10.15 ±0.00 | 11.0 boot[11.0, 11.0] | 1.89 ±0.02 | 4.49 ±1.03 |
+| **oracle** | **100.00 ±0.00** | **10.15 ±0.00** | **11.0 boot[11.0, 11.0]** | **0.00** | **0.86 ±0.11** |
+
+**On headline metrics the break cell still does not discriminate — that is
+the finding, and it is worth stating plainly.** A single cut ISL with
+equal-cost alternates on a static lossless torus is absorbed at ~100 % PDR /
+10.2 ms by every arm; the visible cost of the entire event is ≤ 0.07 pp of
+PDR (aodv 99.95, olsr 99.93 — the packets lost inside each arm's
+reconvergence window), far below any materiality threshold. This is the
+measured confirmation of the prediction that kept #432 item 3 undispatched:
+a topology event the routing can absorb does not move headline numbers on
+this substrate; only an instrument aimed at the event window sees it.
+
+**The instrument, however, now discriminates — and no arm beats the floor.**
+The oracle's 1 s recompute cadence puts its reconvergence floor at
+0.86 ±0.11 s, inside the pre-registered ≤ 1 s. AntHocNet (0.91 ±0.10 s) and
+AODV (0.95 ±0.11 s) sit statistically **on** that floor — paired differences
++0.05 s [−0.13, +0.23] and +0.09 s [−0.08, +0.27], both CIs spanning zero —
+while **OLSR reconverges 5× slower**: 4.49 ±1.03 s, paired +3.63 s
+[+2.55, +4.71] above the floor, the cost of waiting out its periodic
+HELLO/TC machinery instead of reacting to the loss event. Pre-registered
+expectation 2 is confirmed: nobody beats the topology-change floor; the
+comparison is who reaches it, and two of the three real arms do.
+
+Read `tDetect`/`tReconverge` with the documented caveats
+([above](#what-this-suite-is-and-is-not)): `tDetect` is 0.00 in all 20
+AntHocNet seeds *by construction* for a scripted break (the interface-down
+fast path is the detection; the baselines expose no detection trace —
+theirs is `nan`), and `tReconverge` is a proxy whose per-seed minima
+(0.22–0.38 s across arms) include the ~125 ms CBR-gap contribution of
+unaffected flows.
 
 ## What this suite is, and is not
 
@@ -148,10 +310,10 @@ discriminates nothing. Of the adversarial cells that could separate them
   [the congestion cell](#the-congestion-cell-216-cell-1) below.
 
 The handover cell is still #216's scope and does not exist yet. The #216
-control row now exists and has run **on the base torus cell only** — so the
-failcell and corridor lines still have no upper bound beside them and still
-support harness-validation claims, not protocol-advantage claims, until they
-are re-run with the `oracle` arm.
+control row has now run beside **both** instruments — the
+[#432 adversarial cells](#the-adversarial-cells-corridor-and-failcell-432)
+above — so the failcell and corridor lines carry an upper bound and support
+protocol-level claims, with the caveats recorded there.
 
 **Read the failcell numbers honestly.** `tDetect` (break → the protocol's
 first neighbour-loss event for the severed peer, from the `RouteChanged`
@@ -275,8 +437,10 @@ across both corridors rather than leave it east; and AntHocNet's default
 wall-clock ant metric also feels queueing delay, so the mac-metric-OFF arm is
 not fully blind. The truly load-blind references are the hop-count baseline
 (OLSR — not DSDV, which cannot run here at all, above) and the #216
-precomputed control, which now exists and should be added to this cell before
-anything comparative is read out of it. Judge the cell
+precomputed control, which has now run beside this cell — see
+[the measured corridor result](#the-corridor-cell-beating-the-congestion-blind-bound-216-cell-1--280),
+where the OLSR reference did real work: it showed that landing on the clean
+corridor does not require congestion awareness. Judge the cell
 on the probe's counters and QoS across arms, not on the background's path.
 With `--flows=0` the headline `##RUN##`/table row *is* the probe flow, so the
 standard pipeline compares the cell without any new parsing.
@@ -319,13 +483,17 @@ excess tracked in [#250](https://github.com/danieljoppi/AntHocNet/issues/250)
 
 ## Results
 
-The suite's first committed result is
+The suite's committed results are
 [the v1.5.0 phase-3 base-torus cell](#the-headline-result-the-base-torus-does-not-discriminate)
-above — 20 seeds, with the exact `oracle` control, so it is above the
-statistical policy's ≥ 10-run bar. It is a *negative* result: the cell does
-not discriminate, so nothing comparative may be quoted from it — which is also
-why no interval is attached to a column where four arms report the same
-number. The pipeline
+and [the two #432 adversarial cells](#the-adversarial-cells-corridor-and-failcell-432)
+above — all 20 seeds with the exact `oracle` control, so above the
+statistical policy's ≥ 10-run bar. The base cell is a *negative* result: it
+does not discriminate, so nothing comparative may be quoted from it — which
+is also why no interval is attached to a column where four arms report the
+same number. The corridor cell is the first *positive* comparative result
+(quote it only with its mechanism caveat), and the failcell separates the
+arms on its reconvergence instrument while confirming the headline-metric
+tie. The pipeline
 that lands and gates results is
 real ([#259](https://github.com/danieljoppi/AntHocNet/issues/259)) — the same
 dispatch → rescue → validate → parse loop the MANET suite runs, so no
@@ -372,12 +540,16 @@ the control's answer and the protocols' answers can differ at all:
 
 1. **Discriminating cells** — the adversarial regimes under
    [#216](https://github.com/danieljoppi/AntHocNet/issues/216), each re-run
-   with the `oracle` arm beside it: asymmetric congestion
-   ([#280](https://github.com/danieljoppi/AntHocNet/issues/280)), scripted ISL
-   breaks ([#260](https://github.com/danieljoppi/AntHocNet/issues/260)), the
-   handover cell (no instrument yet), and larger or less regular
-   constellations. **A satellite comparison published from the base torus
-   would be a comparison of four ties.**
+   with the `oracle` arm beside it. Two are now
+   [measured](#the-adversarial-cells-corridor-and-failcell-432): asymmetric
+   congestion ([#280](https://github.com/danieljoppi/AntHocNet/issues/280))
+   and scripted ISL breaks
+   ([#260](https://github.com/danieljoppi/AntHocNet/issues/260)). Still open:
+   the handover cell (no instrument yet), and larger or less regular
+   constellations (needs a cell design with irregularity or dynamics — size
+   alone is predicted to tie, and the failcell's headline tie is the measured
+   evidence for that prediction). **A satellite comparison published from the
+   base torus would be a comparison of four ties.**
 2. [#206](https://github.com/danieljoppi/AntHocNet/issues/206) — per-next-hop
    congestion signal, precondition for the congestion cell.
 3. [#244](https://github.com/danieljoppi/AntHocNet/issues/244) /
