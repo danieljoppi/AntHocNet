@@ -39,8 +39,9 @@
 # scenario is deliverable and multi-hop before any real arm is blamed for
 # failing on it.
 #
-# Known-broken arms. GPSR (#425) and AOMDV (#416) are broken TODAY, so a plain
-# gate would be red on every PR and get ignored. Each entry below is an
+# Known-broken arms. GPSR (#425) and AOMDV (#416) were broken when this gate
+# landed (both since fixed), and a plain gate would have been red on every PR
+# and gotten ignored. Each entry below is an
 # expected-fail carrying its issue number: the arm still runs, a delivery
 # failure is reported and tolerated, and — the honesty half — if a listed arm
 # unexpectedly DELIVERS, the gate FAILS with "remove it from the list", so the
@@ -70,8 +71,7 @@ fi
 
 # arm=issue pairs. An entry means "this arm is expected to FAIL delivery; the
 # defect is tracked in that issue". See the header for the removal rule.
-# (Empty since #416's RREP fixes: the gate itself flagged aomdv as delivering
-# — PDR 84.4, hopsMean 5.21 on this scenario — and demanded its removal.)
+# Empty since the #416 aomdv fix — every advertised arm must deliver.
 KNOWN_BROKEN=""
 
 # Static (pause 120 s > 60 s run: ns-3 RWP pauses first, so nodes never move),

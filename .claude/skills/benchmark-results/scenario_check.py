@@ -19,6 +19,19 @@ Usage:
         # defaults = the paper base scenario; override what your dispatch
         # overrides. Exit 1 on any FAIL-level degeneracy.
 
+    scenario_check.py preflight --harness isl-grid
+                                [--rows 6] [--cols 6] [--torus true|false]
+                                [--islDelayMs 5] [--islRate 10Mbps]
+                                [--time 60] [--flows 4] [--cbrBps 4096]
+                                [--breakLink r1,c1,r2,c2] [--breakAt <s>]
+                                [--corridorLoad 12Mbps] [--corridorLoadAt 15]
+                                [--protocols anthocnet,aodv,olsr,oracle]
+        # #444: pre-flight a satellite (isl-grid) cell instead of the MANET
+        # field. Defaults mirror the harness's own; the rules mirror its
+        # dispatch-time NS_ABORTs plus the checks it cannot do at t=0 (the
+        # break-on-a-flow's-shortest-path BFS, the corridor rho echo).
+        # Exit 1 on any FAIL.
+
     scenario_check.py results FILE [FILE ...] [--anchor single-hop|broch-low-mobility]
         # FILE = a saved ##BENCH## cell / results-table text, a classified
         # campaign CSV (sniffed by header), or isl-grid output (#259): its
@@ -122,6 +135,37 @@ ORACLE_PROTO = "oracle"
 ORACLE_HOP_TOL = 0.01
 # "delivered at least as much": within a rounding unit of the oracle's PDR.
 ORACLE_PDR_TIE = 0.05
+
+# --- #444 satellite (isl-grid) preflight -------------------------------------
+# The MANET preflight above is field geometry (nodes/area/range on a wifi
+# disk); none of it can express an ISL cell, which is why the #432 dispatch had
+# to hand-build a validator and discard it. These constants and the sat_*
+# helpers below mirror ns3/examples/isl-grid.cc's own dispatch-time NS_ABORT
+# rules (the #230 design lesson: derive from the harness, never paraphrase —
+# a validator that drifts from the harness is worse than none), plus the two
+# checks the harness cannot do at t=0: the BFS proving the cut ISL lies on a
+# configured flow's shortest path, and the rho = load/capacity echo that makes
+# a corridor overload declared rather than accidental.
+#
+# #362: the canonical arm order the dispatch records are pinned to. isl-grid
+# results historically depended on --protocols order (pointer-keyed socket
+# maps); the #352 stream pinning removed the mechanism, but the order stays
+# pinned so no cross-cell comparison ever has order as a variable. dsdv is
+# deliberately not in it: on any multi-ISL grid the harness rejects it (#420).
+SAT_CANONICAL_ORDER = ("anthocnet", "aodv", "olsr", "oracle")
+SAT_PROTOS = ("anthocnet", "aodv", "olsr", "dsdv", "oracle")
+# #260 timing headroom. Flow start times are drawn in [1, 11] s and the
+# corridor cell's default onset (15 s) is documented as "after route discovery
+# settles"; a break before that conflates route setup with reconvergence.
+SAT_SETTLE_S = 15.0
+# Post-break runtime: tReconverge measured up to 4.49 +/- 1.03 s (olsr, #432
+# cell B) on top of the per-flow CBR-gap floor, and flows stop at time-1; 30 s
+# keeps the tail measurable without policing the knob (#432 left 450 s).
+SAT_POST_BREAK_S = 30.0
+# ns-3 DataRate strings the rho arithmetic understands ("12Mbps", "500kb/s").
+# Anything else is left unchecked with a WARN rather than guessed at.
+SAT_RATE = re.compile(r"^([\d.]+)\s*([kMG]?)(?:b/s|bps)$")
+SAT_RATE_MULT = {"": 1.0, "k": 1e3, "M": 1e6, "G": 1e9}
 
 ROW = re.compile(r"^\s*(?:##BENCH##\s+)?([a-z][\w-]*)((?:\s+[-\d.]+|\s+inf)+)\s*$")
 
@@ -276,7 +320,312 @@ def anchor_floor(anchor):
     return yml_floor(ANCHOR_KEY[anchor])
 
 
+def sat_rate_bps(s):
+    """Parse an ns-3 DataRate string to bits/s, or None if unrecognised."""
+    m = SAT_RATE.match(s.strip())
+    return float(m.group(1)) * SAT_RATE_MULT[m.group(2)] if m else None
+
+
+def sat_axis_links(n, torus):
+    """Mirror of isl-grid.cc AxisLinks(): links along one axis of length n.
+
+    None for a single element, a ring (n) when the torus wraps it, a path
+    (n-1) otherwise. An axis of length 2 is never wrapped — the wrap would
+    duplicate the forward link.
+    """
+    if n < 2:
+        return 0
+    return n if (torus and n > 2) else n - 1
+
+
+def sat_grid_links(rows, cols, torus):
+    """Mirror of isl-grid.cc GridLinks(): every ISL once, forward walks only.
+
+    cmd_preflight_sat cross-checks this against the AxisLinks closed form,
+    the same dual-entry bookkeeping the harness's CheckTopology does (#226):
+    the two are written independently so an edit to one trips the other.
+    """
+    links = []
+    for r in range(rows):
+        for c in range(cols):
+            if c + 1 < cols:
+                links.append((r * cols + c, r * cols + c + 1))
+            elif torus and cols > 2:
+                links.append((r * cols + c, r * cols))
+            if r + 1 < rows:
+                links.append((r * cols + c, (r + 1) * cols + c))
+            elif torus and rows > 2:
+                links.append((r * cols + c, c))
+    return links
+
+
+def sat_bfs(adj, src):
+    """Hop distances from src over an adjacency dict; unreachable = absent."""
+    dist = {src: 0}
+    q = [src]
+    for u in q:
+        for v in adj[u]:
+            if v not in dist:
+                dist[v] = dist[u] + 1
+                q.append(v)
+    return dist
+
+
+def cmd_preflight_sat(a):
+    """#444: pre-flight an isl-grid cell (satellite counterpart of the MANET
+    preflight below; see the SAT_* constants for where each rule comes from)."""
+    rows, cols = a.rows, a.cols
+    torus = str(a.torus).lower() not in ("false", "0")
+    time = 60.0 if a.time is None else a.time
+    flows = 4 if a.flows is None else a.flows
+    protocols = "anthocnet" if a.protocols is None else a.protocols
+    n = rows * cols
+    kind = "torus" if torus else "open"
+    links = sat_grid_links(rows, cols, torus)
+    adj = {i: [] for i in range(n)}
+    for x, y in links:
+        adj[x].append(y)
+        adj[y].append(x)
+    deg = [len(adj[i]) for i in range(n)] or [0]
+    print(f"+Grid {kind} {rows}x{cols} = {n} satellites, {len(links)} ISLs "
+          f"(mean degree {2.0 * len(links) / n if n else 0.0:.2f}) @ "
+          f"{a.islDelayMs:g} ms {a.islRate}")
+    print(f"  degree min={min(deg)} max={max(deg)}, {time:g} s, "
+          f"{flows} standard flow(s)")
+    # #226, mirrored: the link walk and the closed form are independent
+    # bookkeeping; a disagreement means this script no longer builds the graph
+    # isl-grid.cc builds, and every rule below would judge the wrong topology.
+    expected = (rows * sat_axis_links(cols, torus)
+                + cols * sat_axis_links(rows, torus))
+    if len(links) != expected:
+        report("FAIL", f"topology mirror out of sync: walked {len(links)} "
+                       f"links but the closed form says {expected} for "
+                       f"{rows}x{cols} torus={torus} — this script no longer "
+                       "matches isl-grid.cc GridLinks/AxisLinks (#226); fix "
+                       "the mirror before trusting any rule below")
+    if n < 2:
+        report("FAIL", f"{rows}x{cols} = {n} node(s) — no flow has two "
+                       "distinct endpoints, so the run measures nothing")
+    # Degenerate "torus" claims. The harness accepts these (its degree-4
+    # assertion applies only where the +Grid claim does), so they are WARNs
+    # about what the dispatch record would say, not aborts. The 1x2 single-ISL
+    # anchor (#237) is deliberately below both conditions and stays quiet.
+    wraps = torus and (rows > 2 or cols > 2)
+    if torus and n > 2 and not wraps:
+        report("WARN", "torus=true wraps nothing (an axis of length <= 2 is "
+                       "never wrapped — the wrap would duplicate the forward "
+                       "link), so the built graph is the open grid; pass "
+                       "--torus=false to say what is actually built")
+    elif torus and min(rows, cols) == 1 and max(rows, cols) > 2:
+        report("WARN", f"a 1x{max(rows, cols)} torus is a ring (degree 2), "
+                       "not a +Grid constellation — the 4-ISL torus intuition "
+                       "(equal-cost alternates everywhere) does not apply; "
+                       "fine only if a ring cell is the design")
+    # Flow endpoints are fully derivable: isl-grid pairs i -> n-1-i (skipping
+    # the odd middle), and the corridor adds the probe (0,0) -> (0, cols/2).
+    # That determinism is what lets the break BFS below be exact.
+    flow_pairs = [(i, n - 1 - i) for i in range(min(flows, n))
+                  if i != n - 1 - i]
+    corridor = bool(a.corridorLoad)
+    if corridor and n:
+        flow_pairs.append((0, cols // 2))
+    if n >= 2 and not flow_pairs:
+        report("FAIL", "--flows=0 with no --corridorLoad: not a single data "
+                       "flow, so the run measures nothing. flows=0 is valid "
+                       "only under the corridor probe contract (#280)")
+    # --- arms ----------------------------------------------------------------
+    arms = [x for x in protocols.split(",") if x]
+    if not arms:
+        report("FAIL", "--protocols selected nothing (harness abort)")
+    for arm in arms:
+        if arm not in SAT_PROTOS:
+            report("FAIL", f"unknown protocol '{arm}': isl-grid installs no "
+                           "routing helper for it, so the arm runs on the "
+                           "bare stack with empty tables and reads dead — "
+                           "NOT a harness abort, which is why it must be "
+                           "caught here")
+    if "dsdv" in arms and max(deg) > 1:
+        report("FAIL", "dsdv cannot run on this ISL topology: ns-3's DSDV "
+                       "assumes one non-loopback interface per node, and "
+                       f"this {rows}x{cols} {kind} grid gives a satellite up "
+                       f"to {max(deg)} ISLs, each on its own /30 — next hops "
+                       "learned on the other interfaces are unresolvable and "
+                       "DSDV forwards on a null output device (#420, harness "
+                       "abort). Drop dsdv from --protocols; the 1x2 "
+                       "single-ISL anchor is the one grid where it is valid")
+    if ORACLE_PROTO in arms:
+        if len(arms) == 1:
+            report("WARN", "--protocols=oracle alone: an upper bound with "
+                           "nothing under it measures nothing (#296)")
+        print("  oracle: wired substrate — adjacency read off the p2p "
+              "channels, exact; expect mode=wired approx=0 on the ##ORACLE## "
+              "row (#296)")
+    canon = [x for x in arms if x in SAT_CANONICAL_ORDER]
+    if canon != sorted(canon, key=SAT_CANONICAL_ORDER.index):
+        report("WARN", f"--protocols order '{protocols}' deviates from the "
+                       "canonical anthocnet,aodv,olsr,oracle (#362) — "
+                       "dispatch records stay comparable only while the "
+                       "order stays pinned")
+    print("  note: canonical --protocols order is anthocnet,aodv,olsr,oracle "
+          "(#362); dsdv is excluded by necessity on any multi-ISL grid (#420)")
+    # --- corridor cell (#216 cell 1 / #280) ----------------------------------
+    if corridor:
+        if not torus or cols < 4 or cols % 2 != 0:
+            report("FAIL", "--corridorLoad needs a torus with an even number "
+                           "of columns >= 4 (two equal-length row corridors; "
+                           "harness abort)")
+        if a.corridorLoadAt <= 0.0 or a.corridorLoadAt >= time - 1.0:
+            report("FAIL", f"--corridorLoadAt={a.corridorLoadAt:g}s must "
+                           "fall inside the run (0 < t < time-1 = "
+                           f"{time - 1.0:g}s; harness abort)")
+        for i in range(min(flows, n)):
+            if n - 1 - i == cols // 2:
+                report("FAIL", f"standard flow {i} also targets the probe "
+                               f"destination (node {cols // 2}): the probe "
+                               "is identified by destination address + port, "
+                               "so that flow's packets would silently count "
+                               "into the probe's numbers (harness abort); "
+                               "lower --flows or grow the grid")
+        if flows > 0:
+            report("WARN", f"--flows={flows} with --corridorLoad: the "
+                           "headline row mixes the probe with the standard "
+                           "flows. The #280 contract — headline row IS the "
+                           "probe, zero new parsing — needs --flows=0; with "
+                           "flows on, probe numbers exist only on the "
+                           "'# corridor' lines")
+        load, cap = sat_rate_bps(a.corridorLoad), sat_rate_bps(a.islRate)
+        if load is None or not cap:
+            report("WARN", f"cannot parse --corridorLoad={a.corridorLoad} / "
+                           f"--islRate={a.islRate} as ns-3 DataRate strings "
+                           "— rho unchecked (and a rate ns-3 cannot parse "
+                           "aborts the run at t=0)")
+        elif torus and cols >= 4 and cols % 2 == 0:
+            hops = cols // 2
+            rho = load / cap
+            print(f"  corridor: probe (0,0)->(0,{hops}), two {hops}-hop "
+                  f"corridors; background (0,1)->(0,2) at {a.corridorLoad} "
+                  f"constant duty = rho={rho:.2f} of the {a.islRate} ISL")
+            if rho >= 1.0:
+                print("  note: rho>=1 is the declared-overload regime (#216 "
+                      "round-2 recipe) — the loaded corridor saturates and "
+                      "tail-drops by design")
+            else:
+                report("WARN", f"rho={rho:.2f} < 1: the background load does "
+                               "not saturate the loaded ISL, so the corridor "
+                               "cannot show congestion avoidance — raise "
+                               "--corridorLoad or record why an unsaturated "
+                               "corridor is the design (#216)")
+    # --- scripted break (#260) -----------------------------------------------
+    if a.breakLink or a.breakAt > 0.0:
+        if not a.breakLink or a.breakAt <= 0.0:
+            report("FAIL", "--breakLink and --breakAt must be given together "
+                           "(harness abort)")
+        else:
+            if a.breakAt >= time:
+                report("FAIL", f"--breakAt={a.breakAt:g}s is past "
+                               f"--time={time:g}s (harness abort)")
+            else:
+                if a.breakAt < SAT_SETTLE_S:
+                    report("WARN", f"--breakAt={a.breakAt:g}s is inside the "
+                                   "settle window (flow starts are drawn in "
+                                   "[1,11] s; the corridor cell settles to "
+                                   "15 s) — the break conflates route setup "
+                                   "with reconvergence (#260)")
+                left = time - 1.0 - a.breakAt
+                if left < SAT_POST_BREAK_S:
+                    gap_ms = 64 * 8 / a.cbrBps * 1000.0
+                    report("WARN", f"only {left:g}s of post-break traffic "
+                                   "(flows stop at time-1): tReconverge "
+                                   "measured up to ~4.5 s (olsr, #432 cell "
+                                   f"B) on top of the ~{gap_ms:.0f} ms "
+                                   "CBR-gap floor — leave >= "
+                                   f"{SAT_POST_BREAK_S:g}s (#260)")
+            try:
+                rc = [int(x) for x in a.breakLink.split(",")]
+            except ValueError:
+                rc = []
+            if len(rc) != 4 or min(rc, default=-1) < 0:
+                report("FAIL", "--breakLink expects r1,c1,r2,c2, got "
+                               f"'{a.breakLink}' (harness abort)")
+            elif (rc[0] >= rows or rc[2] >= rows
+                    or rc[1] >= cols or rc[3] >= cols):
+                report("FAIL", "--breakLink endpoint outside the "
+                               f"{rows}x{cols} grid (harness abort)")
+            else:
+                ba, bb = rc[0] * cols + rc[1], rc[2] * cols + rc[3]
+                built = {(min(x, y), max(x, y)) for x, y in links}
+                if ba == bb:
+                    report("FAIL", "--breakLink endpoints are the same node "
+                                   "(harness abort)")
+                elif (min(ba, bb), max(ba, bb)) not in built:
+                    report("FAIL", "--breakLink names no built ISL: "
+                                   f"({rc[0]},{rc[1]}) and ({rc[2]},{rc[3]}) "
+                                   f"are not adjacent on this {kind} grid — "
+                                   "wrap links exist only on axes > 2 "
+                                   "(harness abort)")
+                elif flow_pairs:
+                    # The check that made #432 cell B interpretable, and the
+                    # one the harness cannot make: does anyone actually route
+                    # over the cut ISL? Exact, because the flow endpoints are
+                    # derived above, not guessed.
+                    dist = {}
+
+                    def dfrom(s):
+                        if s not in dist:
+                            dist[s] = sat_bfs(adj, s)
+                        return dist[s]
+                    adj_cut = {u: [v for v in vs
+                                   if (u, v) not in ((ba, bb), (bb, ba))]
+                               for u, vs in adj.items()}
+                    cut_off = [f for f in flow_pairs
+                               if f[1] not in sat_bfs(adj_cut, f[0])]
+                    on_path = [
+                        (s, d) for s, d in flow_pairs
+                        if dfrom(s).get(ba, n) + 1 + dfrom(d).get(bb, n)
+                        == dfrom(s).get(d)
+                        or dfrom(s).get(bb, n) + 1 + dfrom(d).get(ba, n)
+                        == dfrom(s).get(d)]
+                    if cut_off:
+                        names = ", ".join(f"{s}->{d}" for s, d in cut_off)
+                        report("FAIL", f"the break disconnects flow(s) "
+                                       f"{names}: post-break PDR measures "
+                                       "connectivity, not reconvergence "
+                                       "(#260)")
+                    elif not on_path:
+                        report("FAIL", "the cut ISL lies on no configured "
+                                       "flow's shortest path (flows are the "
+                                       "deterministic i -> n-1-i pairing"
+                                       + (" plus the corridor probe"
+                                          if corridor else "")
+                                       + ") — a break nobody routes over "
+                                       "measures nothing; tReconverge "
+                                       "degenerates to the CBR gap "
+                                       "(#260, #432)")
+                    else:
+                        names = ", ".join(f"{s}->{d}" for s, d in on_path)
+                        print(f"  break: cut ISL ({rc[0]},{rc[1]})-"
+                              f"({rc[2]},{rc[3]}) at t={a.breakAt:g}s lies "
+                              f"on a shortest path of flow(s) {names} — "
+                              "reconvergence is exercised; alternate path(s) "
+                              "survive the cut")
+    verdict()
+
+
 def cmd_preflight(a):
+    # #444: the satellite harness has its own geometry; everything below this
+    # dispatch is MANET field arithmetic and would be meaningless for it.
+    if getattr(a, "harness", "compare") == "isl-grid":
+        return cmd_preflight_sat(a)
+    # Knobs whose defaults differ per harness (MANET 300 s / 20 flows / the
+    # four wifi arms vs isl-grid's 60 s / 4 flows / anthocnet): argparse holds
+    # None and each branch fills its own harness's default, so a bare
+    # `preflight` behaves exactly as it did before #444.
+    if a.time is None:
+        a.time = 300.0
+    if a.flows is None:
+        a.flows = 20
+    if a.protocols is None:
+        a.protocols = "anthocnet,aodv,olsr,dsdv"
     area = a.areaX * a.areaY
     # Mean node degree on a random geometric graph: n * (disk ∩ area) / area.
     # Cap the disk by the area's short edge (the 1500x300 field is a strip).
@@ -1514,10 +1863,13 @@ def main():
     p.add_argument("--areaX", type=float, default=1500)
     p.add_argument("--areaY", type=float, default=300)
     p.add_argument("--range", type=float, default=300)
-    p.add_argument("--time", type=float, default=300)
+    # None = per-harness default (MANET 300 s / isl-grid 60 s), filled in
+    # cmd_preflight so a bare `preflight` is byte-identical to pre-#444.
+    p.add_argument("--time", type=float, default=None)
     p.add_argument("--pause", type=float, default=30)
     p.add_argument("--speed", type=float, default=20)
-    p.add_argument("--flows", type=int, default=20)
+    # None = per-harness default (MANET 20 / isl-grid 4), same mechanism.
+    p.add_argument("--flows", type=int, default=None)
     p.add_argument("--pktBytes", type=int, default=64)
     p.add_argument("--pktPerSec", type=float, default=1)
     p.add_argument("--rateMbps", type=float, default=2)
@@ -1528,9 +1880,25 @@ def main():
     p.add_argument("--propagation", choices=("range", "tworay", "nakagami"),
                    default="range")
     p.add_argument("--transport", choices=("udp", "tcp"), default="udp")
-    # #296: which arms the dispatch names. Only the oracle rules read it — the
-    # rest of preflight is arm-independent.
-    p.add_argument("--protocols", default="anthocnet,aodv,olsr,dsdv")
+    # #296: which arms the dispatch names. In MANET mode only the oracle rules
+    # read it; in isl-grid mode the #420/#296/#362 arm rules do. None = the
+    # per-harness default (MANET anthocnet,aodv,olsr,dsdv / isl-grid
+    # anthocnet, mirroring each harness's own default).
+    p.add_argument("--protocols", default=None)
+    # --- #444 satellite mode: --harness isl-grid switches preflight to the
+    # ISL rules; the knobs and their defaults mirror ns3/examples/isl-grid.cc.
+    p.add_argument("--harness", choices=("compare", "isl-grid"),
+                   default="compare")
+    p.add_argument("--rows", type=int, default=6)
+    p.add_argument("--cols", type=int, default=6)
+    p.add_argument("--torus", choices=("true", "false"), default="true")
+    p.add_argument("--islDelayMs", type=float, default=5.0)
+    p.add_argument("--islRate", default="10Mbps")
+    p.add_argument("--cbrBps", type=float, default=4096.0)
+    p.add_argument("--breakLink", default="")
+    p.add_argument("--breakAt", type=float, default=0.0)
+    p.add_argument("--corridorLoad", default="")
+    p.add_argument("--corridorLoadAt", type=float, default=15.0)
     r = sub.add_parser("results")
     r.add_argument("files", nargs="+")
     r.add_argument("--anchor", choices=sorted(ANCHOR_KEY))

@@ -1524,6 +1524,288 @@ def _oracle_preflight_absent():
 
 
 
+# --- #444 satellite (isl-grid) preflight -------------------------------------
+#
+# Fixtures are the two real #432 dispatch cells (issue 432, comment
+# 5305417841) — the ones whose hand-built, discarded validator this preflight
+# turns permanent: cell A, the 6x6 corridor cell (12Mbps constant duty over
+# the 10Mbps ISL from t=15, flows=0 per the #280 probe contract), and cell B,
+# the 4x4 failcell (break (0,0)-(3,0) — the rows-axis wrap link — at 450 s of
+# 900 s, 8 standard flows). Both must pass here AND reach the same conclusions
+# the hand validator printed: rho=1.20 declared overload, and the cut ISL on
+# the shortest paths of flows 0->15 and 3->12.
+
+def run_sat(**overrides):
+    """Sat-mode preflight (isl-grid harness defaults + overrides)."""
+    kw = {"harness": "isl-grid", "rows": 6, "cols": 6, "torus": True,
+          "islDelayMs": 5.0, "islRate": "10Mbps", "cbrBps": 4096.0,
+          "time": None, "flows": None, "protocols": None,
+          "breakLink": "", "breakAt": 0.0,
+          "corridorLoad": "", "corridorLoadAt": 15.0}
+    kw.update(overrides)
+    sc.issues = []
+    with contextlib.redirect_stdout(io.StringIO()) as out:
+        try:
+            sc.cmd_preflight(argparse.Namespace(**kw))
+        except SystemExit:
+            pass
+    return list(sc.issues), out.getvalue()
+
+
+CELL_A = {"rows": 6, "cols": 6, "time": 900.0, "flows": 0,
+          "corridorLoad": "12Mbps", "corridorLoadAt": 15.0,
+          "protocols": "anthocnet,aodv,olsr,oracle"}
+CELL_B = {"rows": 4, "cols": 4, "time": 900.0, "flows": 8,
+          "breakLink": "0,0,3,0", "breakAt": 450.0,
+          "protocols": "anthocnet,aodv,olsr,oracle"}
+
+
+@case("#444 the #432 corridor cell (A) passes and declares rho=1.20")
+def _sat_cell_a():
+    levels, out = run_sat(**CELL_A)
+    expect(levels == [], "sat-cell-a",
+           f"the dispatched-and-succeeded cell must be clean, got {levels}\n{out}")
+    expect("rho=1.20" in out and "declared-overload" in out, "sat-cell-a",
+           f"the overload was not declared\n{out}")
+    expect("probe (0,0)->(0,3), two 3-hop corridors" in out, "sat-cell-a",
+           f"corridor geometry not echoed\n{out}")
+
+
+@case("#444 the #432 failcell (B) passes; BFS finds flows 0->15, 3->12 on the cut ISL")
+def _sat_cell_b():
+    # (0,0)-(3,0) is the rows-axis wrap link, so this is also the quiet half
+    # of the wrap-aware adjacency rule.
+    levels, out = run_sat(**CELL_B)
+    expect(levels == [], "sat-cell-b",
+           f"the dispatched-and-succeeded cell must be clean, got {levels}\n{out}")
+    expect("shortest path of flow(s) 0->15, 3->12" in out, "sat-cell-b",
+           f"BFS did not reach the hand validator's conclusion\n{out}")
+
+
+@case("#444 topology: 1x1 FAILs; the 1x2 single-ISL anchor (with dsdv) stays clean")
+def _sat_topology_degenerate():
+    levels, out = run_sat(rows=1, cols=1)
+    expect("FAIL" in levels and "measures nothing" in out,
+           "sat-1x1", f"a 1-node grid did not FAIL\n{out}")
+    # The #237 anchor shape: 2 nodes, 1 ISL, degree 1 — dsdv is genuinely
+    # correct there (the harness gates on topology, not on the arm), and the
+    # default torus=true wraps nothing without being worth a warning.
+    levels, out = run_sat(rows=1, cols=2, protocols="anthocnet,dsdv")
+    expect(levels == [], "sat-anchor",
+           f"the 1x2 anchor topology must stay clean, got {levels}\n{out}")
+
+
+@case("#444 topology: a 1xN torus WARNs it is a ring; a 2x2 torus wraps nothing")
+def _sat_torus_degenerate():
+    levels, out = run_sat(rows=1, cols=8, flows=1)
+    expect(levels == ["WARN"] and "is a ring" in out, "sat-ring",
+           f"a 1x8 'torus' was not called a ring, got {levels}\n{out}")
+    levels, out = run_sat(rows=2, cols=2)
+    expect(levels == ["WARN"] and "wraps nothing" in out, "sat-inert-torus",
+           f"an inert torus flag was not flagged, got {levels}\n{out}")
+    # Quiet half: the full 6x6/4x4 tori (cells A/B above) say nothing.
+
+
+@case("#444 the GridLinks/AxisLinks mirror desync trips the #226 tripwire")
+def _sat_mirror_desync():
+    # The dual-entry bookkeeping the harness's CheckTopology does, mirrored:
+    # patch the closed form to the open-grid count and the walked torus links
+    # must no longer match — proving an edit to one mirror trips the other.
+    orig = sc.sat_axis_links
+
+    def open_only(n, torus):
+        return 0 if n < 2 else n - 1
+    sc.sat_axis_links = open_only
+    try:
+        _levels, out = run_sat(**CELL_B)
+        expect("mirror out of sync" in out, "sat-mirror",
+               f"a desynced closed form was not flagged\n{out}")
+    finally:
+        sc.sat_axis_links = orig
+    levels, out = run_sat(**CELL_B)
+    expect(levels == [], "sat-mirror-quiet",
+           f"the intact mirror must stay quiet, got {levels}\n{out}")
+
+
+@case("#444 #280 flows=0 without a corridor FAILs; as the corridor probe it is the contract")
+def _sat_flows_zero():
+    levels, out = run_sat(flows=0)
+    expect("FAIL" in levels and "measures nothing" in out, "sat-flows0",
+           f"flows=0 with nothing to probe did not FAIL\n{out}")
+    # Quiet half: cell A runs flows=0 WITH the corridor and is clean (above).
+    # The reverse reading: flows>0 with the corridor breaks the headline-row-
+    # is-the-probe contract and must WARN.
+    levels, out = run_sat(**dict(CELL_A, flows=4))
+    expect("WARN" in levels and "headline row IS the probe" in out,
+           "sat-flows-probe-mix",
+           f"flows=4 with the corridor did not WARN on the #280 contract\n{out}")
+
+
+@case("#444 arms: an unknown protocol FAILs, an empty list FAILs (harness abort)")
+def _sat_arms():
+    levels, out = run_sat(protocols="anthocnet,foo")
+    expect("FAIL" in levels and "unknown protocol 'foo'" in out, "sat-arm-foo",
+           f"an unknown arm was not flagged\n{out}")
+    levels, out = run_sat(protocols="")
+    expect("FAIL" in levels and "selected nothing" in out, "sat-arm-empty",
+           f"an empty arm list was not flagged\n{out}")
+    # Quiet half: the canonical four-arm list (cells A/B) reports nothing.
+
+
+@case("#444 #420 dsdv on a multi-ISL grid FAILs, mirroring the harness gate")
+def _sat_dsdv_fires():
+    levels, out = run_sat(**dict(CELL_B, protocols="anthocnet,dsdv"))
+    expect("FAIL" in levels and "#420" in out, "sat-dsdv",
+           f"dsdv on a 4x4 torus (degree 4) did not FAIL\n{out}")
+    expect("null output device" in out, "sat-dsdv",
+           f"the FAIL did not name the mechanism\n{out}")
+    # Quiet half: dsdv on the 1x2 single-ISL anchor, in the topology case.
+
+
+@case("#444 #296 oracle notes: exactness echoed with the arm, alone WARNs, absent silent")
+def _sat_oracle_notes():
+    _levels, out = run_sat(**CELL_A)
+    expect("mode=wired approx=0" in out, "sat-oracle-exact",
+           f"the exact-on-wired note was not echoed\n{out}")
+    levels, out = run_sat(protocols="oracle")
+    expect("WARN" in levels and "upper bound with nothing under it" in out,
+           "sat-oracle-alone", f"a lone oracle arm did not WARN\n{out}")
+    _levels, out = run_sat(protocols="anthocnet,aodv")
+    expect("approx=0" not in out, "sat-oracle-absent",
+           f"oracle notes printed without an oracle arm\n{out}")
+
+
+@case("#444 #362 the canonical --protocols order is echoed; a deviation WARNs")
+def _sat_order():
+    _levels, out = run_sat(**CELL_A)
+    expect("canonical --protocols order is anthocnet,aodv,olsr,oracle" in out,
+           "sat-order-echo", f"the order note was not echoed\n{out}")
+    levels, out = run_sat(protocols="aodv,anthocnet,olsr,oracle")
+    expect("WARN" in levels and "deviates" in out, "sat-order-fires",
+           f"a swapped arm order did not WARN\n{out}")
+    # A subset in canonical relative order is not a deviation.
+    levels, out = run_sat(protocols="anthocnet,oracle")
+    expect("deviates" not in out and levels == [], "sat-order-subset",
+           f"a canonical-order subset was flagged, got {levels}\n{out}")
+
+
+@case("#444 #216 corridor prerequisites FAIL off-torus / odd cols / bad onset")
+def _sat_corridor_aborts():
+    levels, out = run_sat(**dict(CELL_A, torus=False))
+    expect("FAIL" in levels and "even number of columns" in out,
+           "sat-corr-open", f"an open-grid corridor did not FAIL\n{out}")
+    _levels, out = run_sat(**dict(CELL_A, cols=5))
+    expect("even number of columns" in out, "sat-corr-odd",
+           f"odd cols did not FAIL\n{out}")
+    _levels, out = run_sat(**dict(CELL_A, corridorLoadAt=899.5))
+    expect("must fall inside the run" in out, "sat-corr-late",
+           f"an onset at time-0.5s did not FAIL\n{out}")
+    _levels, out = run_sat(**dict(CELL_A, corridorLoadAt=0.0))
+    expect("must fall inside the run" in out, "sat-corr-zero",
+           f"a zero onset did not FAIL\n{out}")
+    # Quiet half: cell A's onset at 15 s of 900 s.
+
+
+@case("#444 #216 a standard flow hitting the probe destination FAILs (harness abort)")
+def _sat_probe_collision():
+    # 6x6, probe dst = node 3; flow i targets n-1-i, so i=32 is the collision:
+    # flows=33 fires, flows=32 does not.
+    _levels, out = run_sat(**dict(CELL_A, flows=33))
+    expect("also targets the probe destination" in out, "sat-collide",
+           f"flow 32 -> node 3 was not flagged\n{out}")
+    _levels, out = run_sat(**dict(CELL_A, flows=32))
+    expect("also targets the probe destination" not in out, "sat-collide-quiet",
+           f"a non-colliding flow count was flagged\n{out}")
+
+
+@case("#444 #216 rho < 1 WARNs an unsaturated corridor; an unparsable rate WARNs")
+def _sat_rho():
+    levels, out = run_sat(**dict(CELL_A, corridorLoad="8Mbps"))
+    expect("WARN" in levels and "rho=0.80 < 1" in out, "sat-rho-under",
+           f"an unsaturated corridor did not WARN\n{out}")
+    _levels, out = run_sat(**dict(CELL_A, corridorLoad="fast"))
+    expect("rho unchecked" in out, "sat-rho-unparsed",
+           f"an unparsable DataRate was silently skipped\n{out}")
+    # Quiet half: cell A's 12Mbps/10Mbps prints rho=1.20 as a note, no WARN.
+
+
+@case("#444 #260 break knobs must come together; breakAt must precede --time")
+def _sat_break_pairing():
+    _levels, out = run_sat(**dict(CELL_B, breakLink=""))
+    expect("given together" in out, "sat-break-lone-at",
+           f"--breakAt without --breakLink did not FAIL\n{out}")
+    _levels, out = run_sat(**dict(CELL_B, breakAt=0.0))
+    expect("given together" in out, "sat-break-lone-link",
+           f"--breakLink without --breakAt did not FAIL\n{out}")
+    levels, out = run_sat(**dict(CELL_B, breakAt=900.0))
+    expect("FAIL" in levels and "past --time" in out, "sat-break-late",
+           f"breakAt == time did not FAIL\n{out}")
+    # Quiet half: cell B's 450 s of 900 s.
+
+
+@case("#444 #260 break endpoints: format, range, identity, wrap-aware adjacency")
+def _sat_break_endpoints():
+    _levels, out = run_sat(**dict(CELL_B, breakLink="0,0,3"))
+    expect("expects r1,c1,r2,c2" in out, "sat-break-format",
+           f"a 3-field breakLink did not FAIL\n{out}")
+    _levels, out = run_sat(**dict(CELL_B, breakLink="0,0,4,0"))
+    expect("outside the 4x4 grid" in out, "sat-break-range",
+           f"an out-of-grid endpoint did not FAIL\n{out}")
+    _levels, out = run_sat(**dict(CELL_B, breakLink="1,1,1,1"))
+    expect("same node" in out, "sat-break-self",
+           f"a self-link did not FAIL\n{out}")
+    _levels, out = run_sat(**dict(CELL_B, breakLink="0,0,2,0"))
+    expect("not adjacent" in out, "sat-break-nonadj",
+           f"a distance-2 pair did not FAIL\n{out}")
+    # (0,0)-(3,0) is adjacent ONLY via the rows-axis wrap: the same endpoints
+    # on the open grid must FAIL. The torus quiet half is cell B itself.
+    levels, out = run_sat(**dict(CELL_B, torus=False))
+    expect("FAIL" in levels and "not adjacent" in out, "sat-break-wrap",
+           f"the wrap link survived torus=false\n{out}")
+
+
+@case("#444 #260 break timing: an early break and a thin post-break window WARN")
+def _sat_break_timing():
+    levels, out = run_sat(**dict(CELL_B, breakAt=10.0))
+    expect("WARN" in levels and "settle window" in out, "sat-break-early",
+           f"a break inside the settle window did not WARN\n{out}")
+    levels, out = run_sat(**dict(CELL_B, breakAt=880.0))
+    expect("WARN" in levels and "post-break traffic" in out, "sat-break-thin",
+           f"19 s of post-break traffic did not WARN\n{out}")
+    # Quiet half: cell B's 450 s (>= 15 s settle, 449 s of post-break).
+
+
+@case("#444 #260 a break no flow routes over FAILs; a partitioning break FAILs")
+def _sat_break_bfs():
+    # 4x4 torus, one flow (0 -> 15, 2 hops): the column link (1,0)-(2,0) is
+    # adjacent but on no shortest path of that flow — a break nobody routes
+    # over measures nothing.
+    levels, out = run_sat(rows=4, cols=4, time=900.0, flows=1,
+                          breakLink="1,0,2,0", breakAt=450.0,
+                          protocols="anthocnet,aodv,olsr,oracle")
+    expect("FAIL" in levels and "no configured flow's shortest path" in out,
+           "sat-break-offpath", f"an off-path break did not FAIL\n{out}")
+    # 1x4 open path, flow 0 -> 3: cutting (0,1)-(0,2) partitions it, so the
+    # cell measures connectivity, not reconvergence.
+    levels, out = run_sat(rows=1, cols=4, torus=False, time=100.0, flows=1,
+                          breakLink="0,1,0,2", breakAt=30.0,
+                          protocols="anthocnet")
+    expect("FAIL" in levels and "disconnects flow(s) 0->3" in out,
+           "sat-break-partition", f"a partitioning break did not FAIL\n{out}")
+    # Quiet half: cell B's break sits on flows 0->15 and 3->12 (above).
+
+
+@case("#444 the MANET preflight defaults are unchanged by the per-harness fill")
+def _sat_manet_defaults_unchanged():
+    # --time/--flows/--protocols moved to a None default so isl-grid can fill
+    # its own; a bare MANET preflight must be byte-identical to the explicit
+    # pre-#444 defaults.
+    explicit = run_preflight()
+    filled = run_preflight(time=None, flows=None, protocols=None)
+    expect(explicit == filled, "sat-manet-defaults",
+           f"the None fill changed MANET behaviour:\n{explicit}\nvs\n{filled}")
+
+
 def main():
     for name, fn in CASES:
         fn()
