@@ -193,6 +193,8 @@ Both exit non-zero on FAIL.
 S=.claude/skills/benchmark-results/scenario_check.py
 python3 $S preflight                              # paper base defaults, OK
 python3 $S preflight --areaX 2500 --flows 40      # override what you'd dispatch
+python3 $S preflight --harness isl-grid --rows 4 --cols 4 --flows 8 \
+    --time 900 --breakLink 0,0,3,0 --breakAt 450  # satellite cell (#444)
 python3 $S results cell.txt                       # ##BENCH## cell or campaign CSV
 python3 $S results --anchor broch-low-mobility cell.txt   # enforce #59 floor
 ```
@@ -204,7 +206,21 @@ warnings, and the #230 **diversity-window coherence** rule — `--pathWindowS`
 against the `range / (2·speed)` link lifetime, since a window longer than a
 route survives counts route *replacement* as concurrent multipath. That last
 one FAILs the shipped 10 s default at the paper-base knobs, which is where
-#230 should have been caught instead of after a 115-minute campaign. `results` checks: PDR ∈ [0,100], delay99 ≥ mean delay, negative
+#230 should have been caught instead of after a 115-minute campaign.
+
+`preflight --harness isl-grid` validates a satellite cell instead (#444 — the
+validator the #432 dispatch had to hand-build and discard, made permanent).
+Knobs and defaults mirror `ns3/examples/isl-grid.cc`; the MANET interface is
+untouched. It mirrors every dispatch-time `NS_ABORT` in the harness (topology
+closed form, break-endpoint format/range/adjacency including torus wraps,
+`breakAt` inside the window, corridor prerequisites, the #420
+dsdv-on-multi-ISL rejection) plus the checks the harness cannot make at t=0:
+a BFS proving the cut ISL lies on a configured flow's shortest path (flow
+endpoints are the deterministic `i -> n-1-i` pairing plus the corridor probe,
+so the check is exact — a break nobody routes over FAILs), the corridor's
+ρ = load/capacity echoed so an overload is declared rather than accidental
+(and the #280 `flows=0` probe contract enforced), and the #296/#362 arm notes
+(oracle exact on the wired substrate; canonical `--protocols` order). `results` checks: PDR ∈ [0,100], delay99 ≥ mean delay, negative
 metrics, dead cells (#28), the #209 energy invariants (total energy positive
 and finite, energy-per-delivered-packet finite and non-negative — and non-zero
 whenever PDR is, residual energy within [0, initial]; all skipped for inputs
