@@ -133,13 +133,13 @@ what to pick up next should not have to reconstruct them from closed threads.
 | issue | what it is | why it is not scheduled |
 |---|---|---|
 | [#425](https://github.com/danieljoppi/AntHocNet/issues/425) | the `gpsr` arm delivers zero packets — vendored, repaired, beacons, forwards nothing | v1.5.0 ships it as a documented verdict; fixing it adds an arm, it does not unblock anything |
-| [#429](https://github.com/danieljoppi/AntHocNet/issues/429) | enforce the baseline smoke-run rule with a gate | the rule is written in `methodology.md` but **prose does not fail** — this is the gate that would have caught #414 and #425 at merge |
+| [#429](https://github.com/danieljoppi/AntHocNet/issues/429) | enforce the baseline smoke-run rule with a gate | **closed 2026-08-16** — [PR #439](https://github.com/danieljoppi/AntHocNet/pull/439) merged `ns3/tools/check-arm-delivery.sh`: every arm the compare harness advertises runs per-PR on a static multi-hop field (3.42 leg), with an unconditional PDR floor, an oracle anchor, and gpsr/aomdv carried as expected-fails that fail the gate the moment they start delivering |
 | [#416](https://github.com/danieljoppi/AntHocNet/issues/416) | the AOMDV `Path*` aliasing audit | open-ended work on a vendored fork; the infeasibility verdict is the shipped answer |
 | [#431](https://github.com/danieljoppi/AntHocNet/issues/431) | the oracle is exact only on wired topologies | the delivery bound already works everywhere; only the latency and hop bounds are limited, and both are scoped in the docs |
 | [#432](https://github.com/danieljoppi/AntHocNet/issues/432) | run the satellite adversarial cells with the oracle arm | the base torus was measured and cannot discriminate; these cells are where a satellite comparison has to come from |
 | [#430](https://github.com/danieljoppi/AntHocNet/issues/430) | a re-injection remedy that distinguishes redundant from delivering | capping by count was measured and rejected; the waste is real but the first remedy tried was the wrong instrument |
 | [#433](https://github.com/danieljoppi/AntHocNet/issues/433) | `RepairHoldCap`, the unmeasured half of the hold-cap frontier | changing it supersedes the corpus again — **fold into whatever campaign next re-baselines the grid**, exactly as #371 was folded into this one |
-| [#423](https://github.com/danieljoppi/AntHocNet/issues/423) | `##ORACLE##` missing from the compact block; oracle `noRoute` in no drop bucket | cosmetic and diagnostic respectively; neither affects a published number |
+| [#423](https://github.com/danieljoppi/AntHocNet/issues/423) | `##ORACLE##` missing from the compact block; oracle `noRoute` in no drop bucket | item 1 closed by [PR #438](https://github.com/danieljoppi/AntHocNet/pull/438) (re-emit added, and the marker re-emit list is now CI-gated); item 2 (the `noRoute` bucket) remains — diagnostic, affects no published number |
 | [#230](https://github.com/danieljoppi/AntHocNet/issues/230) | the interleaving path-diversity counter | the gate is fixed and the columns are marked unpublishable; the clean instrument still wants a CI dispatch to validate |
 
 **The one lesson worth carrying forward.** Two of the three non-reference arms
@@ -147,7 +147,13 @@ attempted in this campaign compiled, passed a five-version matrix and ASan, and
 did not forward a single packet. The oracle did not fail that way because
 delivery numbers were in its acceptance criteria and a smoke run was required
 before merge. That difference — not diligence, not luck — is why #429 exists,
-and it is the rule the next vendored baseline should inherit.
+and it is the rule the next vendored baseline should inherit. Since 2026-08-16
+the rule is enforced per-PR ([#439](https://github.com/danieljoppi/AntHocNet/pull/439)),
+and the sibling failure class — the hand-maintained module/arm/marker
+allowlists whose fifth silent miss blocked the v1.5.0 release images
+([#435](https://github.com/danieljoppi/AntHocNet/issues/435)) — is gated
+against tree-derived ground truth in the same pass
+([#438](https://github.com/danieljoppi/AntHocNet/pull/438)).
 
 ## Platform support
 
