@@ -267,6 +267,20 @@ implementation.**
 > merges without a smoke run showing non-zero delivery and a drop book that
 > closes** — one `runs=2 time=300` dispatch, which would have caught both
 > #414 and #425 at merge time rather than at campaign time.
+>
+> **Update (2026-08-16): the [#425](https://github.com/danieljoppi/AntHocNet/issues/425)
+> defect was found and fixed post-v1.5.0.** Root cause: `RouteOutput` had no
+> broadcast handling, so on a subnet-masked interface the port's own hellos
+> (subnet-directed broadcasts, resolved through `RouteOutput` by
+> `UdpSocketImpl`) were greedy-looked-up against an empty neighbour table,
+> deferred to the loopback queue and dropped — a cold-start deadlock in which
+> hellos need neighbours and neighbours need hellos. The paragraphs above
+> describe what the v1.5.0 campaign measured and remain true of it; no v1.5.0
+> number is republished. With the fix the arm passes the
+> `check-arm-delivery.sh` gate (PDR 67.1 on the gate scenario, `hopTx` alive,
+> drop book closes), so a geographic arm becomes available to **future**
+> campaigns — subject, before any publication, to the validation clause below
+> (its results being checked against published GPSR behaviour).
 - [PA-GPSR](https://github.com/CSVNetLab/PA-GPSR) (IEEE Access 2019) fixed real
   bugs in this lineage, but publishes no licence anywhere and so was not copied
   from — not one line. Where this port needed the same fix it was re-derived
