@@ -1,0 +1,17 @@
+--- a/src/dsdv/model/dsdv-routing-protocol.cc
++++ b/src/dsdv/model/dsdv-routing-protocol.cc
+@@ -1158,7 +1158,13 @@
+             else
+             {
+                 RoutingTableEntry newrt;
+-                m_routingTable.LookupRoute(rt.GetNextHop(), newrt);
++                if (!m_routingTable.LookupRoute(rt.GetNextHop(), newrt))
++                {
++                    NS_LOG_LOGIC("No route to next hop "
++                                 << rt.GetNextHop() << "; leaving packets queued for "
++                                 << rt.GetDestination());
++                    continue;
++                }
+                 route = newrt.GetRoute();
+                 NS_ASSERT(route);
+                 NS_LOG_LOGIC("A route exists from " << route->GetSource() << " to destination "
