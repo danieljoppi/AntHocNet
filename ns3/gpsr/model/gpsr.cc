@@ -1174,6 +1174,32 @@ RoutingProtocol::RouteOutput (Ptr<Packet> p, const Ipv4Header &header,
   Ptr<Ipv4Route> route = Create<Ipv4Route> ();
   Ipv4Address dst = header.GetDestination ();
 
+  // Port fix (#425): broadcasts — GPSR's own hellos first among them — must
+  // never go through greedy forwarding. On a subnet-masked interface the
+  // hello destination is the subnet-directed broadcast, which UdpSocketImpl
+  // resolves through this RouteOutput (the socket is bound to ANY); the
+  // greedy lookup below then defers it to the loopback queue, where
+  // SendPacketFromQueue drops it (no GOD position exists for a broadcast
+  // address). Hellos need neighbours and neighbours need hellos, so the
+  // protocol deadlocks silently at cold start: 45k hellos counted at L3 (the
+  // loopback Tx) with a byte-silent medium. Hand broadcasts straight to the
+  // interface instead, as AODV's broadcast routing-table entry does.
+  if (dst.IsBroadcast () || dst == m_ipv4->GetAddress (1, 0).GetBroadcast ())
+    {
+      route->SetDestination (dst);
+      route->SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
+      route->SetGateway (dst);
+      // FIXME: Does not work for multiple interfaces
+      route->SetOutputDevice (m_ipv4->GetNetDevice (1));
+      if (oif && route->GetOutputDevice () != oif)
+        {
+          NS_LOG_DEBUG ("Output device doesn't match. Dropped.");
+          sockerr = Socket::ERROR_NOROUTETOHOST;
+          return Ptr<Ipv4Route> ();
+        }
+      return route;
+    }
+
   Vector dstPos = Vector (1, 0, 0);
 
   if (!(dst == m_ipv4->GetAddress (1, 0).GetBroadcast ()))

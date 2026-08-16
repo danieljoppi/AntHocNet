@@ -70,7 +70,7 @@ fi
 
 # arm=issue pairs. An entry means "this arm is expected to FAIL delivery; the
 # defect is tracked in that issue". See the header for the removal rule.
-KNOWN_BROKEN="gpsr=#425 aomdv=#416"
+KNOWN_BROKEN="aomdv=#416"
 
 # Static (pause 120 s > 60 s run: ns-3 RWP pauses first, so nodes never move),
 # multi-hop (500 m field, 175 m disk range), 3 CBR flows, 1 seed. --range>0 is
