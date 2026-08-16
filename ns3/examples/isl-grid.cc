@@ -427,6 +427,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(dsdvHelper);
     } else if (proto == "oracle") {
         internet.SetRoutingHelper(oracleHelper);
+    } else {
+        // #448: an unknown arm must abort here, not run on the bare IP stack
+        // and emit a plausible-looking 0 % row. dsdv IS dispatched (the #420
+        // multi-ISL gate rejects it earlier, before RunOne), so it never lands
+        // here.
+        NS_ABORT_MSG("unknown protocol '" << proto
+                     << "' -- see --PrintHelp's --protocols list");
     }
     internet.Install(nodes);
     // Pinned for the same reason as in anthocnet-compare: ArpL3Protocol owns a
@@ -453,6 +460,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // the zero is measured, not merely unwritten (#352).
         TakeStreams(stream, streamBase, oracleHelper.AssignStreams(nodes, stream),
                     "oracle routing");
+    } else {
+        // #448: unreachable once the install chain above aborts, but the two
+        // dispatch chains stay structurally parallel by convention — guard both.
+        NS_ABORT_MSG("unknown protocol '" << proto
+                     << "' -- see --PrintHelp's --protocols list");
     }
 
     // One point-to-point link per ISL, each on its own /30 — the addressing a

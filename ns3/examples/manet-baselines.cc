@@ -331,6 +331,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(olsrHelper);
     } else if (proto == "dsdv") {
         internet.SetRoutingHelper(dsdvHelper);
+    } else {
+        // #448: an unknown arm must abort here, not run on the bare IP stack
+        // and emit a plausible-looking 0 % row.
+        NS_ABORT_MSG("unknown protocol '" << proto
+                     << "' -- see --PrintHelp's --protocols list");
     }
     internet.Install(nodes);
     // The IPv4 stack is not stream-free: ArpL3Protocol owns m_requestJitter, a
@@ -351,6 +356,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else if (proto == "dsdv") {
         TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream),
                     "dsdv routing");
+    } else {
+        // #448: unreachable once the install chain above aborts, but the two
+        // dispatch chains stay structurally parallel by convention — guard both.
+        NS_ABORT_MSG("unknown protocol '" << proto
+                     << "' -- see --PrintHelp's --protocols list");
     }
 
     for (uint32_t i = 0; i < nodes.GetN(); ++i) {
