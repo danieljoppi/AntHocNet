@@ -158,6 +158,21 @@ jobs:
             "https://api.github.com/gists/$GIST_ID" \
             -d @payload.json > /dev/null
 
+  allowlists:
+    name: module/arm/marker allowlist consistency
+    runs-on: ubuntu-latest
+    # #435: the module lists (this file's mods=, the campaign workflows'
+    # --enable-modules, Dockerfile.ns3), the protocol-arm awk alternations
+    # (paper-benchmark.yml ##BENCH##, check-determinism.sh filter_rows) and
+    # the ##MARKER## re-emit block are hand-maintained copies that fail
+    # SILENTLY when one is missed — four of the ten were, in one day, the
+    # last of which broke every v1.5.0 ns-3 release image. Pure text against
+    # tree-derived ground truth: seconds, no ns-3 build.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check allowlists against the tree
+        run: bash ns3/tools/check-allowlists.sh
+
   codec-fuzz:
     name: codec fuzz (libFuzzer, 60s)
     runs-on: ubuntu-latest
@@ -381,6 +396,26 @@ jobs:
         # single-matrix-version placement as the gates above.
         if: matrix.version == '3.42'
         run: python3 ns3/tools/check-seed-independence.py /opt/ns-3 --seeds 4 --time 30
+      - name: Arm delivery smoke (#429, every MANET arm must route multi-hop)
+        # The MANET equivalent of the satellite arm smoke below, and the gate
+        # that turns methodology.md's "no baseline merges without a smoke run
+        # showing non-zero delivery and a drop book that closes" from prose
+        # into something that can fail. Two vendored baselines merged green on
+        # this whole matrix plus ASan and did not route (AOMDV #414/#416
+        # single-hop only, GPSR #425 0.00% PDR on 40/40 campaign seeds) —
+        # nothing per-PR ever ran the arms end-to-end and asked whether they
+        # DELIVER. Runs every arm anthocnet-compare advertises on a small
+        # static multi-hop field (multi-hop is load-bearing: #416 is invisible
+        # on single-hop paths) and asserts per arm: PDR above a floor
+        # (unconditional — #425 passed the delivery-gated invariants by
+        # exemption), hopTx > 0, hopsMean > 1, and a drop book that closes.
+        # The oracle arm anchors the scenario (near-100% or the scenario is
+        # broken); gpsr/aomdv are expected-fails carried with their issue
+        # numbers, and the gate fails if one of them unexpectedly delivers, so
+        # the list cannot outlive the defects. ~2-3 min; same
+        # single-matrix-version placement as the gates above.
+        if: matrix.version == '3.42'
+        run: bash ns3/tools/check-arm-delivery.sh /opt/ns-3
 
       - name: Satellite validation anchors (#237, ISL topology)
         # The ISL analogue of the anchor gate above, and stronger in kind: a

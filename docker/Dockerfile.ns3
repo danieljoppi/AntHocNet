@@ -81,11 +81,21 @@ FROM base AS anthocnet
 WORKDIR /opt/anthocnet
 COPY . .
 
+# #421/#435: the module list below is an allowlist and it fails SILENTLY when a
+# module is missing from it -- `make install-ns3` installs anthocnet, aomdv,
+# gpsr and oracle into contrib/, and anthocnet-compare.cc includes all four
+# module headers, so an arm absent here breaks the example build rather than
+# merely omitting the arm. This is the same coupling as ci.yml's mods=, the
+# five campaign workflows' --enable-modules, check-determinism.sh's
+# filter_rows() and paper-benchmark.yml's ##BENCH## awk. Any new module has to
+# be added to all of them — enforced since #435 by ns3/tools/check-allowlists.sh
+# (CI `allowlists` job), which also asserts the stock base list above stays
+# free of vendored modules (the #24 control).
 RUN make install-ns3 NS3DIR=/opt/ns-3 \
  && cd /opt/ns-3 \
  && profile_flag=$([ "${NS3_PROFILE}" = "default" ] || echo "-d ${NS3_PROFILE}") \
  && ./ns3 configure ${profile_flag} --enable-examples \
-        --enable-modules='anthocnet;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point' \
+        --enable-modules='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point' \
  && ./ns3 build \
  && ./ns3 show profile \
  && ./ns3 run anthocnet-example

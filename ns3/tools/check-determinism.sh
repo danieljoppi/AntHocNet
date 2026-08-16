@@ -63,6 +63,8 @@ esac
 # An arm missing here is not "not compared" loudly — it is dropped from BOTH
 # sides of the diff, so a non-deterministic oracle/gpsr/aomdv would pass this
 # gate silently. That is how the three post-v1.4.0 arms went unchecked.
+# #435: check-allowlists.sh now asserts this alternation names every arm the
+# compare harness dispatches on, so a missed arm fails CI instead.
 filter_rows() {
     awk '$1 ~ /^(anthocnet|aodv|olsr|dsdv|oracle|gpsr|aomdv)$/ && $2 ~ /^[0-9.]+$/'
 }
