@@ -12,9 +12,14 @@
 >
 > **Date:** 2026-08-15 · **Status:** verified, corrected, and **filed upstream 2026-08-16**:
 > issue [nsnam/ns-3-dev#1364](https://gitlab.com/nsnam/ns-3-dev/-/issues/1364),
-> fix MR [nsnam/ns-3-dev!2985](https://gitlab.com/nsnam/ns-3-dev/-/merge_requests/2985)
-> (defect (a) only, scope note included), plus a pointer comment on
+> fix MR [nsnam/ns-3-dev!2985](https://gitlab.com/nsnam/ns-3-dev/-/merge_requests/2985),
+> plus a pointer comment on
 > [#503](https://gitlab.com/nsnam/ns-3-dev/-/issues/503) tying its backtrace to the diagnosis.
+> Same day, at maintainer request (T. Pecorella asked for Option 1 — real
+> multi-interface compliance — over document-and-assert), the MR grew a second
+> commit carrying defect (b)'s fix (per-interface advertisement, this page's
+> `0002` patch) and a Scope-and-Limitations section for `dsdv.rst`; the
+> drop-vs-abort question was answered with #503's single-interface evidence.
 
 ## TL;DR
 
