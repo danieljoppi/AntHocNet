@@ -616,11 +616,18 @@ RoutingProtocol::Forwarding (Ptr<const Packet> p, const Ipv4Header & header,
            *  to be no less than the current time plus ActiveRouteTimeout
            */
           RoutingTableEntry toOrigin;
-          m_routingTable.LookupRoute (origin, toOrigin);
-          UpdatePathsLifeTime (toOrigin.PathFind ()->GetNextHop (), m_activeRouteTimeout);
-
           m_nb.Update (route->GetGateway (), m_activeRouteTimeout);
-          m_nb.Update (toOrigin.PathFind ()->GetNextHop (), m_activeRouteTimeout);
+          // Vendoring fix (#416): the lookup can fail (reverse entry purged
+          // while the source keeps sending) or return the pathless IN_SEARCH
+          // placeholder (this node is itself searching for origin), and
+          // PathFind () is NULL in both cases — previously dereferenced
+          // unconditionally. The lifetime refresh is best-effort; skip it
+          // rather than crash.
+          if (m_routingTable.LookupRoute (origin, toOrigin) && toOrigin.PathFind ())
+            {
+              UpdatePathsLifeTime (toOrigin.PathFind ()->GetNextHop (), m_activeRouteTimeout);
+              m_nb.Update (toOrigin.PathFind ()->GetNextHop (), m_activeRouteTimeout);
+            }
 
           ucb (route, p, header);
           return true;
@@ -1581,6 +1588,16 @@ RoutingProtocol::RecvRequest (Ptr<Packet> p, Ipv4Address receiver, Ipv4Address s
         }
       rreqHeader.SetHopCount (toOrigin.GetAdvertisedHopCount ());
       #ifdef AOMDV_NODE_DISJOINT_PATHS
+      // Vendoring fix (#416): toOrigin can be pathless here — a RREQ from an
+      // origin this node is itself searching for finds the IN_SEARCH
+      // placeholder, and neither seqno branch above inserts a path when the
+      // header's origin seqno ties the placeholder's invalid one. With no
+      // reverse path the RREQ cannot be usefully propagated; drop it and let
+      // the originator retry.
+      if (toOrigin.PathFind () == NULL)
+        {
+          return;
+        }
       rreqHeader.SetFirstHop ((toOrigin.PathFind ())->GetLastHop ());
       #endif // AOMDV_NODE_DISJOINT_PATHS
       for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j =
@@ -1614,6 +1631,16 @@ RoutingProtocol::SendReply (RreqHeader const & rreqHeader, RoutingTableEntry & t
                             Ipv4Address firstHop)
 {
   NS_LOG_FUNCTION (this << toOrigin.GetDestination ());
+  // Vendoring fix (#416): toOrigin is the caller's unchecked re-lookup of the
+  // RREQ origin and can be the pathless IN_SEARCH placeholder (bidirectional
+  // discovery: this node is searching for origin while origin's RREQ arrives
+  // over more than one hop). The sends below dereference PathFind ()
+  // unconditionally; with no reverse path there is nowhere to unicast the
+  // RREP — drop and let the originator retry.
+  if (toOrigin.PathFind () == NULL)
+    {
+      return;
+    }
   /*
    * Destination node MUST increment its own sequence number by one if the sequence number in the RREQ packet is equal to that
    * incremented value. Otherwise, the destination does not change its sequence number before generating the  RREP message.
@@ -1759,14 +1786,29 @@ RoutingProtocol::RecvReply (Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sen
       //   }
       // (ii)the Destination Sequence Number in the RREP is greater than the node's copy of the destination sequence number
       // and the known value is valid,
-      if ((int32_t (rrepHeader.GetDstSeqno ()) - int32_t (toDst.GetSeqNo ())) > 0)
+      // Vendoring fix (#416): restore stock aodv's acceptance rule (i) — the
+      // fork carries it commented out above. Without it an entry whose stored
+      // seqno is invalid (SendRequest's IN_SEARCH placeholder: seqNo 0,
+      // validSeqNo false) is never converted by an RREP whose dstSeqno is
+      // also 0 — and a pure-sink destination never increments its seqno, so
+      // every multi-hop discovery toward a sink died in the final
+      // `else { return; }` below. Also stamp the accepted seqno valid; the
+      // fork updated the number but never the flag.
+      if ((!toDst.GetValidSeqNo ()) ||
+          (int32_t (rrepHeader.GetDstSeqno ()) - int32_t (toDst.GetSeqNo ())) > 0)
         {
           toDst.SetSeqNo (rrepHeader.GetDstSeqno ());
+          toDst.SetValidSeqNo (true);
           toDst.SetAdvertisedHopCount (INFINITY2);
           toDst.PathAllDelete ();
           toDst.SetFlag (VALID);
           /* Insert forward path to RREQ destination. */
-          forwardPath = toDst.PathInsert (dev, rrepHeader.GetOrigin (), hop, 
+          // Vendoring fix (#416): the forward path's next hop is the
+          // neighbour the RREP arrived from (sender), as the new-entry branch
+          // below does — not the RREQ originator, which is the node behind us
+          // (or this node itself, at the originator). The fork's own
+          // commented-out constructor call above preserves the correct value.
+          forwardPath = toDst.PathInsert (dev, sender, hop,
                                           Simulator::Now() + rrepHeader.GetLifeTime (), rrepHeader.GetFirstHop (),
                                           m_ipv4->GetAddress (m_ipv4->GetInterfaceForAddress (receiver), 0));
 	  // CHANGE
@@ -1784,19 +1826,23 @@ RoutingProtocol::RecvReply (Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sen
           // here, so the branch was taken exactly when the lookup found
           // nothing and then dereferenced NULL (GCC proves it: -Wnonnull),
           // and did nothing at all when a disjoint path did exist.
-          if ((forwardPath = toDst.PathLookupDisjoint (rrepHeader.GetOrigin (),rrepHeader.GetFirstHop ())))
+          // Vendoring fix (#416): disjointness is keyed on (next hop, last
+          // hop) — ns-2 aomdv's path_lookup_disjoint(nexthop, lasthop). The
+          // next hop of a forward path is the RREP's sender, not its origin;
+          // same defect as the insert in the branch above.
+          if ((forwardPath = toDst.PathLookupDisjoint (sender, rrepHeader.GetFirstHop ())))
             {
               if (forwardPath->GetHopCount () == hop)
                 {
                   forwardPath->SetExpire (std::max (forwardPath->GetExpire (), Simulator::Now() + rrepHeader.GetLifeTime ()));
                 }
             }
-          else if ((toDst.PathNewDisjoint (rrepHeader.GetOrigin (),rrepHeader.GetFirstHop ()))
+          else if ((toDst.PathNewDisjoint (sender, rrepHeader.GetFirstHop ()))
                     && (toDst.GetNumberofPaths () < AOMDV_MAX_PATHS) 
                     && (hop - toDst.PathGetMinHopCount () <= AOMDV_PRIM_ALT_PATH_LENGTH_DIFF))
             {
               /* Insert forward path to RREQ destination. */
-              forwardPath = toDst.PathInsert (dev, rrepHeader.GetOrigin (), hop, 
+              forwardPath = toDst.PathInsert (dev, sender, hop,
                                               Simulator::Now() + rrepHeader.GetLifeTime (), 
                                               rrepHeader.GetFirstHop (),
                                               m_ipv4->GetAddress (m_ipv4->GetInterfaceForAddress (receiver), 0));
@@ -1822,11 +1868,16 @@ RoutingProtocol::RecvReply (Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sen
       // The forward route for this destination is created if it does not already exist.
       NS_LOG_LOGIC ("add new route");
       // Vendoring fix (#296): path before AddRoute (see SetIpv4 note).
-      forwardPath = newEntry.PathInsert (dev, sender, hop, 
-                           Time ((2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime)), 
-                           rrepHeader.GetFirstHop (), 
+      forwardPath = newEntry.PathInsert (dev, sender, hop,
+                           Time ((2 * m_netTraversalTime - 2 * hop * m_nodeTraversalTime)),
+                           rrepHeader.GetFirstHop (),
                            m_ipv4->GetAddress (m_ipv4->GetInterfaceForAddress (receiver), 0));
       m_routingTable.AddRoute (newEntry);
+      // Vendoring fix (#416): adopt the entry just stored — the forwarding
+      // block below reads toDst, which on this branch is a stale pathless
+      // local, and dereferences toDst.PathFind () (the SetFirstHop below).
+      // Same defect class and same fix as RecvRequest's `toOrigin = newEntry`.
+      toDst = newEntry;
     }
   // Acknowledge receipt of the RREP by sending a RREP-ACK message back
   if (rrepHeader.GetAckRequired ())
@@ -1850,7 +1901,12 @@ RoutingProtocol::RecvReply (Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sen
 
   RoutingTableEntry toOrigin;
   uint32_t id = rrepHeader.GetRequestID ();
-  b = m_rreqIdCache.GetId (dst, id);
+  // Vendoring fix (#416): the id cache is keyed by RREQ *origin* at both
+  // insert sites (RecvRequest, SendRequest); querying by the RREP's *dst*
+  // always missed at a relay, so the guard below dropped every forwarded
+  // RREP ("Impossible! drop.") and multi-hop replies never reached the
+  // originator.
+  b = m_rreqIdCache.GetId (rrepHeader.GetOrigin (), id);
   #ifdef AOMDV_NODE_DISJOINT_PATHS
   if (!m_routingTable.LookupRoute (rrepHeader.GetOrigin (), toOrigin) || (toOrigin.GetFlag () != VALID)
       || (b == NULL) || (b->count))

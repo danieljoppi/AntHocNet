@@ -427,6 +427,23 @@ The paragraph this produces, in the form the paper will use it:
 > geographic one, and any claim about its multipath advantage is relative to
 > those, not to a multipath competitor.
 
+> **Update (2026-08-16): the [#416](https://github.com/danieljoppi/AntHocNet/issues/416)
+> defects were found and fixed post-v1.5.0.** The audit traced the multi-hop
+> failure to three functional defects in the fork's `RecvReply` (RREQ-id cache
+> queried by the wrong key so relayed RREPs were dropped; the forward path
+> installed with the RREQ *originator* as next hop; stock AODV's
+> invalid-seqno acceptance rule carried only as a comment, so the IN_SEARCH
+> placeholder never converted for sink destinations), plus the copy-vs-alias
+> crash the first of them masked — the hypothesis above was real but
+> secondary. The paragraphs above describe what the v1.5.0 corpus measured
+> and remain true of it; no v1.5.0 number is republished. With the fix
+> (vendoring items 10–14, [`ns3/aomdv/README.md`](../../ns3/aomdv/README.md))
+> the arm passes the `check-arm-delivery.sh` gate (PDR 84.4 on the gate
+> scenario, `hopsMean` 5.21, drop book closes), so a multipath arm becomes
+> available to **future** campaigns — subject, before any publication, to the
+> issue's remaining acceptance bar (directional agreement with Marina & Das
+> 2001 under a measured campaign).
+
 ### Deferred by design — the RL / DRL baseline
 
 An ACO-versus-RL comparison under one rigorous harness is uncommon and would be

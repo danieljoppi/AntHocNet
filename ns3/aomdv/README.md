@@ -123,6 +123,40 @@ All original copyright headers are preserved in the vendored files.
      re-points `reversePath` into `toOrigin`'s own path list — `reversePath`
      pointed into `newEntry`, which dies at the end of that block. Same defect
      class as items 2 and 4.
+  10. `RecvReply`'s forwarding gate queried the RREQ-id cache with the RREP's
+     *destination* while both insert sites key it by the RREQ *origin*, so
+     the lookup always missed at a relay and the `"Impossible! drop."` guard
+     discarded **every forwarded RREP** — multi-hop replies never reached the
+     originator. Now queried by `rrepHeader.GetOrigin ()` (#416).
+  11. `RecvReply`'s existing-entry branch inserted the forward path with
+     `nextHop = rrepHeader.GetOrigin ()` — the RREQ originator, i.e. the node
+     *behind* us (or this node itself, at the originator) — where the
+     new-entry branch (and the fork's own commented-out constructor call)
+     correctly uses `sender`. The same origin-for-sender swap sat in the
+     equal-seqno branch's `PathLookupDisjoint`/`PathNewDisjoint`/`PathInsert`
+     triple; all keyed on `sender` now (#416).
+  12. Stock aodv's RREP acceptance rule (i) — *update when the stored seqno is
+     invalid* — was present only as a comment. Without it, `SendRequest`'s
+     `IN_SEARCH` placeholder (`seqNo 0`, `validSeqNo false`) could never be
+     converted by an RREP whose `dstSeqno` is also 0, and a pure-sink
+     destination never increments its seqno — so **every multi-hop discovery
+     toward a sink died** in the branch chain's final `return`. Restored as a
+     disjunct on the newer-seqno branch, which now also stamps
+     `SetValidSeqNo (true)` (#416).
+  13. `RecvReply`'s new-forward-route branch had the item-9 defect on the
+     forward side: the path went into `newEntry`/the table while the
+     forwarding block read the stale pathless local `toDst` and dereferenced
+     `toDst.PathFind ()` — a deterministic segfault at any RREP relay once
+     item 10 let RREPs relay at all (the item-10 bug was *masking* this one).
+     Adopts the stored entry, as item 9 does (#416).
+  14. Three `PathFind ()` dereferences reachable with a pathless entry on
+     ordinary traffic are now guarded (skip/drop instead of crash): the
+     data-forwarding reverse-route lifetime refresh (lookup result was
+     discarded outright), the node-disjoint `SetFirstHop` on the RREQ
+     propagate path, and `SendReply`'s reverse-path sends. The remaining
+     `PathFind ()->` sites are audited but unguarded — the full site-by-site
+     verdict table lives in
+     [#416](https://github.com/danieljoppi/AntHocNet/issues/416) (#416).
 - **Fork semantics kept as-is** (faithful port, not a rewrite): the RREP
   forwarding path does not carry/decrement the `SocketIpTtlTag` (the fork
   dropped stock's TTL bookkeeping there), node-disjoint path computation is the
@@ -134,28 +168,45 @@ All original copyright headers are preserved in the vendored files.
   therefore **not** interoperable with stock aodv's (they are different
   protocols on the same UDP port 654).
 
-## Runtime status — the arm builds, it does not yet route multi-hop
+## Runtime status — multi-hop routing works; performance not yet at AODV parity
 
-**This module is not ready to be measured.** Read this before scheduling the
-arm into a campaign.
+**The multi-hop root cause is found and fixed (items 10–13), and the wifi
+smoke has been re-run: the arm now routes multi-hop.** Scheduling it into a
+measured campaign is now a quality question (the Marina & Das acceptance
+below), no longer a correctness gate.
 
-Verified locally (ns-3.48, `anthocnet-compare`, 25 nodes / 300 m / 4 flows /
-40 s / 5 m·s⁻¹, one run): the aomdv arm now *completes* a run — items 6–9 above
-were each found by running it, and each was a hard abort or segfault before the
-fix. But it delivers **PDR 0.0 %, with 86 % of drops attributed to "route"**
-(no route ever found), against **16 % PDR / 0.09 % route drops for stock `aodv`
-on the identical scenario**. On a trivial 5-node / 100 m field it does deliver
-(PDR 10 %, `hopsMean=1.00`), i.e. one-hop discovery works and **multi-hop
-discovery does not**.
+Wifi smoke after items 10–14 (ns-3.48, `anthocnet-compare`, 25 nodes / 300 m /
+4 flows / 40 s / 5 m·s⁻¹, optimized profile, 3 seeds): **PDR 18.6 %**
+(was 0.0 %), `hopsMean=2.10`, `hopsMax=5.7` — genuine multi-hop delivery.
+Against stock `aodv` on the identical seeds: 34.3 % PDR, so the arm works but
+does not yet compete — route drops are still 65.7 % (aodv: 0.3 %), delay
+384.6 ms vs 83.3 ms, NRL 17.1 vs 4.3, and per-seed PDR variance is large
+(σ≈14) at 3 seeds. Plausible contributors are the still-inert machinery
+listed below; whether the gap closes is for a campaign to measure, not this
+smoke.
 
-That remaining gap is protocol-level debugging of the fork, not port
-mechanics, and it is very likely the same root cause as items 2, 4 and 9: the
-fork's value-semantics translation of ns-2's *pointer-aliased* routing table
-means every `Path*` obtained from a `RoutingTableEntry` aliases whichever copy
-produced it, and a mutation is only durable if an `m_routingTable.Update ()`
-follows on the same copy. The sites fixed so far were the ones a run actually
-reached; the rest of the RREQ/RREP paths have not been audited for it. Until
-that audit happens, treat this arm as a build-matrix citizen only.
+History: the arm used to deliver **PDR 0.0 % with 86 % route drops**
+(ns-3.48, `anthocnet-compare`, 25 nodes / 300 m / 4 flows / 40 s / 5 m·s⁻¹)
+against 16 % PDR for stock `aodv`, with only one-hop discovery working. The
+[#416 audit](https://github.com/danieljoppi/AntHocNet/issues/416) traced that
+to three separable RREP-handling defects (items 10–12) plus a crash the first
+of them was masking (item 13), and demonstrated recovery on an N-node
+point-to-point chain oracle against ns-3-dev master: stock fork = 1-hop
+delivers / 2-hop **livelocks the simulator** (queue-overflow → ICMP-no-route →
+loopback re-entry cycle, simulated clock pinned); with items 10–13 = byte
+parity with stock `aodv` (9728 B) at every chain length tested (2–6 nodes,
+1–5 hops), including a bidirectional-flow variant that previously segfaulted.
+The full fix-by-fix ladder and per-site audit table are in #416.
+
+Still open:
+
+- The audited-but-unguarded `PathFind ()->` sites (verdict table in #416):
+  most need an interface-down/address-removal event, which no current
+  scenario scripts for aomdv, but they are one topology change away.
+- Known-inert machinery, documented in #416: the RREP-ACK timer is armed but
+  never scheduled (unidirectional-link blacklisting does nothing), and the
+  originator's RREQ retry timer is never cancelled on success (spurious
+  rediscoveries).
 
 - No benchmark numbers — measurement is phase 3 of the
   [v1.5.0 campaign](../../docs/benchmarks/v1.5.0-campaign.md); acceptance is
