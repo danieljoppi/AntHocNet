@@ -1456,6 +1456,79 @@ def _oracle_noroute_warns():
            f"a partitioned oracle field was not flagged\n{out}")
 
 
+# --- #431: the per-seed identity-matched hop gate ----------------------------
+#
+# Fixtures are the #431 measurement study's real numbers (issue 431, comment
+# 5310753299 §3: 20 nodes, 1500 x 300 m, 120 s, tworay, 5 seeds — one seed
+# shown). BEFORE: the pre-#431 explicit 300 m disk, where the oracle routed
+# the identity-matched packets in MORE hops than aodv (hopsC 2.044 vs 1.594,
+# +0.450 — the defect the survivorship guard suppressed on wifi, because the
+# oracle dominates PDR there and the guard never released). AFTER: the derived
+# 423.3 m decode disk, where the same bound holds with margin (1.528 vs
+# 1.611). The gate must FIRE on the former and STAY QUIET on the latter.
+
+TWORAY_300_ORACLE_CELL = """\
+##ORACLE## 1 oracle mode=disk-approx approx=1 nodes=20 edges=146 recomputes=120 changes=64 range=300.0 noRoute=0 nrl=0.00
+##RUN## 1 oracle 100.00 6.1 28.0 4.97 0.00 4.60 2.0 14.5 0.0000
+##RUN## 1 aodv 94.24 9.8 40.2 4.08 1.12 8.90 3.5 22.1 3.0630
+##COMMON## 1 oracle 360 349 45.0 8.1 52.0 2.044 2.05
+##COMMON## 1 aodv 352 349 47.0 9.2 55.0 1.594 1.60
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes
+oracle         100.0        6.1         28.0         4.97    0.00        4.60         2.0        14.5       0.000
+aodv            94.2        9.8         40.2         4.08    1.12        8.90         3.5        22.1       3.063
+"""
+
+TWORAY_423_ORACLE_CELL = """\
+##ORACLE## 1 oracle mode=decode-approx approx=1 nodes=20 edges=203 recomputes=120 changes=71 range=423.3 noRoute=0 nrl=0.00
+##RUN## 1 oracle 98.62 5.4 24.1 4.90 0.00 4.10 1.9 13.2 0.0000
+##RUN## 1 aodv 94.24 9.8 40.2 4.08 1.12 8.90 3.5 22.1 3.0630
+##COMMON## 1 oracle 355 349 44.0 7.6 50.0 1.528 1.53
+##COMMON## 1 aodv 352 349 47.0 9.2 55.0 1.611 1.62
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes
+oracle          98.6        5.4         24.1         4.90    0.00        4.10         1.9        13.2       0.000
+aodv            94.2        9.8         40.2         4.08    1.12        8.90         3.5        22.1       3.063
+"""
+
+
+@case("#431 the matched-set hop violation FIRES per seed, no survivorship guard")
+def _oracle_common_hops_fires():
+    # The whole-run guarded rule is silent on this cell (the oracle delivers
+    # 100 % vs aodv's 94.2 %, so the PDR-tie guard never releases) — which is
+    # exactly the suppression #431's acceptance section names. On the matched
+    # set the +0.450 excess is unexplainable and must FAIL.
+    levels, out = run_cell(TWORAY_300_ORACLE_CELL)
+    expect("identity-matched hops" in out and "+0.450" in out,
+           "oracle-common-hops-fires",
+           f"the matched-set hop violation was not flagged\n{out}")
+    expect("FAIL" in levels, "oracle-common-hops-fires-level",
+           f"expected a FAIL, got {levels}\n{out}")
+
+
+@case("#431 the derived decode radius' matched hops stay quiet (and coherent)")
+def _oracle_common_hops_quiet():
+    levels, out = run_cell(TWORAY_423_ORACLE_CELL)
+    expect("identity-matched hops" not in out, "oracle-common-hops-quiet",
+           f"a satisfied matched-set hop bound was flagged\n{out}")
+    # decode-approx carries the "approx" substring, so the mode/flag coherence
+    # rule accepts it, and the arm still WARNs as approximate.
+    expect("contradicts mode" not in out, "oracle-decode-mode-coherent",
+           f"decode-approx tripped the mode/flag coherence rule\n{out}")
+    expect("APPROXIMATE here" in out, "oracle-decode-still-approx",
+           f"a derived-radius fading cell must still WARN approx=1\n{out}")
+
+
+@case("#431 a pre-instrumentation ##COMMON## row (no hop fields) is skipped")
+def _oracle_common_hops_no_fields():
+    text = TWORAY_300_ORACLE_CELL \
+        .replace(" 45.0 8.1 52.0 2.044 2.05", " 45.0 8.1 52.0") \
+        .replace(" 47.0 9.2 55.0 1.594 1.60", " 47.0 9.2 55.0")
+    _levels, out = run_cell(text)
+    expect("identity-matched hops" not in out, "oracle-common-hops-absent",
+           f"the gate fired on rows without hop instrumentation\n{out}")
+
+
 @case("#216 beating the oracle on a static lossless torus FAILs")
 def _oracle_static_pdr_fires():
     # aodv above the oracle on a topology with full knowledge, no setup cost
@@ -1499,21 +1572,27 @@ def _oracle_preflight_alone():
 def _oracle_preflight_channel():
     _levels, out = run_preflight(protocols="anthocnet,oracle",
                                  propagation="nakagami")
-    expect("pins the oracle's adjacency" in out, "oracle-preflight-fading",
+    expect("auto-derived" in out, "oracle-preflight-fading",
            f"an approximate oracle cell was not flagged at preflight\n{out}")
     _levels, out = run_preflight(protocols="anthocnet,oracle")
-    expect("#296" not in out, "oracle-preflight-disk",
+    expect("#296" not in out and "#431" not in out, "oracle-preflight-disk",
            f"an exact disk oracle cell was flagged at preflight\n{out}")
 
 
-@case("#296 preflight: the oracle on a fading channel with no range FAILs")
+@case("#431 preflight: fading with no --range WARNs but no longer FAILs")
 def _oracle_preflight_no_range():
+    # Before #431 this combination FAILed ("the run will ABORT at t=0"): the
+    # oracle had no derivation for a fading channel and --range was what
+    # pinned its radius. Auto-derivation removed both facts — the run starts
+    # and derives its own radius, so a FAIL here would block valid dispatches.
     levels, out = run_preflight(protocols="anthocnet,oracle",
                                 propagation="tworay", range=0.0)
-    expect("will ABORT at t=0" in out, "oracle-preflight-no-range",
-           f"a run that cannot start was not flagged\n{out}")
-    expect("FAIL" in levels, "oracle-preflight-no-range-level",
-           f"expected a FAIL, got {levels}")
+    expect("auto-derived" in out, "oracle-preflight-no-range",
+           f"the derived-adjacency WARN did not fire\n{out}")
+    # The geometry rules still FAIL a range=0 field estimate — that is theirs,
+    # not the oracle's; only the oracle abort must be gone.
+    expect("will ABORT at t=0" not in out, "oracle-preflight-no-range-level",
+           f"the pre-#431 oracle abort FAIL is still firing\n{out}")
 
 
 @case("#296 preflight is silent about the oracle when the arm is not named")
