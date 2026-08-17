@@ -35,6 +35,16 @@
  * "# corridor" line — see the comment at the corridor globals below for the
  * exact construction and what each number means.
  *
+ * Issue #432 item 3: static irregularity (--removeLinks=r1,c1,r2,c2[;...]).
+ * The named ISLs are never built — absent from t=0, both directions (a p2p
+ * link IS both directions) — so the constellation has non-uniform degree and
+ * genuine path-length asymmetry, unlike the 4-regular torus where every
+ * alternative is equal-cost and the base cell ties every arm at the oracle
+ * bound. Each quadruple must name a grid-adjacent pair (same rules as
+ * --breakLink), no ISL may be removed twice, and the remaining graph must
+ * stay connected — a disconnecting removal makes PDR measure connectivity,
+ * not routing, so it aborts up front.
+ *
  * Metrics mirror anthocnet-compare's definitions (PDR, mean and 99th-pct delay,
  * throughput, NRL as routing-control packets over delivered data packets, plus
  * #132 byte-NRL and #57 jitter) so numbers are comparable across the two
@@ -141,6 +151,22 @@ void CountControlTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t) {
     Ipv4Header ip;
     if (c->RemoveHeader(ip) == 0) return;
     if (ip.GetProtocol() != 17) return;  // not UDP; routing control here is UDP
+    // Fragmentation safety (#432): Ipv4L3Protocol fires this trace once per
+    // FRAGMENT when a datagram exceeds the p2p MTU, and a continuation
+    // fragment (offset > 0) carries no UDP header — peeking one read past the
+    // buffer and aborted the run the first time a > 1500 B OLSR control
+    // aggregate appeared (the seam cell's irregular topology; never triggered
+    // on the regular torus). A fragment's datagram here can only be routing
+    // control: data packets are 64 B and the corridor load 1000 B, both far
+    // below the MTU, so they never fragment. Each fragment is an IP packet on
+    // the wire, so it counts as control at this counting point; the first
+    // fragment (offset 0) still carries the UDP header and is classified by
+    // port exactly as before.
+    if (ip.GetFragmentOffset() != 0) {
+        ++g_controlPkts;
+        g_controlBytes += p->GetSize();
+        return;
+    }
     UdpHeader udp;
     if (c->PeekHeader(udp) == 0) return;
     const uint16_t dport = udp.GetDestinationPort();
@@ -260,6 +286,10 @@ void CorridorTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
     Ipv4Header ip;
     if (c->RemoveHeader(ip) == 0) return;
     if (ip.GetProtocol() != 17) return;
+    // Same fragmentation guard as CountControlTx (#432): a continuation
+    // fragment has no UDP header to peek, and probe data (64 B) never
+    // fragments, so it cannot be a probe packet.
+    if (ip.GetFragmentOffset() != 0) return;
     if (ip.GetDestination() != g_corridorDst) return;
     UdpHeader udp;
     if (c->PeekHeader(udp) == 0) return;
@@ -283,6 +313,9 @@ struct Params {
     uint32_t breakB;    // node index of the other
     std::string corridorLoad;   // #216 cell 1: background rate; "" = cell off
     double   corridorLoadAt;    // s; when the background load switches on
+    // #432 item 3: ISLs absent from t=0, as normalized (min,max) node-index
+    // pairs in --removeLinks order. Empty = the full +Grid.
+    std::vector<std::pair<uint32_t, uint32_t>> removed;
 };
 
 struct Result {
@@ -335,6 +368,29 @@ std::vector<std::pair<uint32_t, uint32_t>> GridLinks(const Params& P) {
                 links.emplace_back(Idx(r, c, P), Idx(0, c, P));
             }
         }
+    }
+    return links;
+}
+
+/// #432 item 3: erase the --removeLinks ISLs from the built link list. Runs
+/// AFTER CheckTopology — the closed form and the degree-4 regularity claim
+/// are properties of the +Grid construction, and the removals then make the
+/// built constellation deliberately irregular. main() validates every pair
+/// (in-grid, distinct, adjacent, no duplicates, remainder connected) before
+/// any run, so the abort here fires only if the two walks ever disagree.
+std::vector<std::pair<uint32_t, uint32_t>> RemoveIsls(
+    std::vector<std::pair<uint32_t, uint32_t>> links, const Params& P) {
+    for (const auto& rm : P.removed) {
+        const auto it = std::find_if(
+            links.begin(), links.end(),
+            [&rm](const std::pair<uint32_t, uint32_t>& l) {
+                return std::min(l.first, l.second) == rm.first &&
+                       std::max(l.first, l.second) == rm.second;
+            });
+        NS_ABORT_MSG_IF(it == links.end(),
+                        "--removeLinks names no built ISL: nodes " << rm.first
+                        << " and " << rm.second << " are not adjacent");
+        links.erase(it);
     }
     return links;
 }
@@ -477,8 +533,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
     Ipv4AddressHelper address;
     address.SetBase("10.1.0.0", "255.255.255.252");
-    const std::vector<std::pair<uint32_t, uint32_t>> links = GridLinks(P);
-    CheckTopology(links, P);  // #226: fail loudly rather than measure a wrong graph
+    // #226: check the full +Grid first (fail loudly rather than measure a
+    // wrong graph), then apply the #432 removals — from here on `links` is the
+    // irregular constellation actually built, and everything downstream
+    // (interfaces, addresses, break lookup, the summary's link count and mean
+    // degree) describes it.
+    const std::vector<std::pair<uint32_t, uint32_t>> grid = GridLinks(P);
+    CheckTopology(grid, P);
+    const std::vector<std::pair<uint32_t, uint32_t>> links = RemoveIsls(grid, P);
     std::vector<Ipv4InterfaceContainer> ifs;
     ifs.reserve(links.size());
     for (const auto& l : links) {
@@ -782,6 +844,7 @@ int main(int argc, char* argv[]) {
     double breakAt = 0.0;
     std::string corridorLoad;
     double corridorLoadAt = 15.0;
+    std::string removeLinks;
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("rows", "Orbital planes (grid rows)", rows);
@@ -813,6 +876,13 @@ int main(int argc, char* argv[]) {
                                  "even cols >= 4; empty = cell off", corridorLoad);
     cmd.AddValue("corridorLoadAt", "Time (s) the corridor background load starts "
                                    "(after route discovery settles)", corridorLoadAt);
+    cmd.AddValue("removeLinks", "Static ISL removals (#432 item 3): semicolon-"
+                                "separated r1,c1,r2,c2 endpoint quadruples, each "
+                                "adjacent on the grid (same rules as --breakLink). "
+                                "The named ISLs are never built, making the "
+                                "constellation deliberately irregular; the "
+                                "remaining graph must stay connected",
+                 removeLinks);
     cmd.Parse(argc, argv);
 
     // Same 1 ms delay bin as anthocnet-compare, so delay99 is comparable.
@@ -876,6 +946,84 @@ int main(int argc, char* argv[]) {
         P.breakAt = breakAt;
     }
 
+    // #432 item 3: parse and validate the static removals before any run. The
+    // per-pair rules mirror --breakLink's; the two extra ones are its own —
+    // no ISL is removed twice, and the remaining constellation is connected
+    // (a disconnecting removal makes PDR measure connectivity, not routing).
+    if (!removeLinks.empty()) {
+        const std::vector<std::pair<uint32_t, uint32_t>> grid = GridLinks(P);
+        std::set<std::pair<uint32_t, uint32_t>> built;
+        for (const auto& l : grid) {
+            built.insert(std::make_pair(std::min(l.first, l.second),
+                                        std::max(l.first, l.second)));
+        }
+        std::stringstream rs(removeLinks);
+        std::string quad;
+        while (std::getline(rs, quad, ';')) {
+            std::vector<uint32_t> rc;
+            std::stringstream qs(quad);
+            std::string tok;
+            while (std::getline(qs, tok, ',')) {
+                std::stringstream ts(tok);
+                uint32_t v = 0;
+                NS_ABORT_MSG_IF(!(ts >> v),
+                                "--removeLinks expects r1,c1,r2,c2[;...], got '"
+                                << quad << "'");
+                rc.push_back(v);
+            }
+            NS_ABORT_MSG_IF(rc.size() != 4,
+                            "--removeLinks expects r1,c1,r2,c2[;...], got '"
+                            << quad << "'");
+            NS_ABORT_MSG_IF(rc[0] >= rows || rc[2] >= rows
+                            || rc[1] >= cols || rc[3] >= cols,
+                            "--removeLinks endpoint outside the " << rows << "x"
+                            << cols << " grid: '" << quad << "'");
+            const uint32_t ra = Idx(rc[0], rc[1], P);
+            const uint32_t rb = Idx(rc[2], rc[3], P);
+            NS_ABORT_MSG_IF(ra == rb,
+                            "--removeLinks endpoints are the same node: '"
+                            << quad << "'");
+            const std::pair<uint32_t, uint32_t> key(std::min(ra, rb),
+                                                    std::max(ra, rb));
+            NS_ABORT_MSG_IF(!built.count(key),
+                            "--removeLinks names no built ISL: (" << rc[0] << ","
+                            << rc[1] << ") and (" << rc[2] << "," << rc[3]
+                            << ") are not adjacent on this grid");
+            NS_ABORT_MSG_IF(std::find(P.removed.begin(), P.removed.end(), key)
+                            != P.removed.end(),
+                            "--removeLinks removes the ISL '" << quad
+                            << "' twice");
+            P.removed.push_back(key);
+        }
+        // Connectivity of the remainder, checked once up front: BFS over the
+        // surviving ISLs must reach every satellite.
+        const std::vector<std::pair<uint32_t, uint32_t>> left =
+            RemoveIsls(grid, P);
+        const uint32_t n = rows * cols;
+        std::vector<std::vector<uint32_t>> adj(n);
+        for (const auto& l : left) {
+            adj[l.first].push_back(l.second);
+            adj[l.second].push_back(l.first);
+        }
+        std::vector<bool> seen(n, false);
+        std::vector<uint32_t> queue{0};
+        seen[0] = true;
+        uint32_t reached = 1;
+        for (std::size_t q = 0; q < queue.size(); ++q) {
+            for (uint32_t v : adj[queue[q]]) {
+                if (!seen[v]) {
+                    seen[v] = true;
+                    ++reached;
+                    queue.push_back(v);
+                }
+            }
+        }
+        NS_ABORT_MSG_IF(reached != n,
+                        "--removeLinks disconnects the constellation: only "
+                        << reached << " of " << n << " satellites reachable — "
+                        "PDR would measure connectivity, not routing (#432)");
+    }
+
     std::vector<std::string> list;
     std::stringstream ss(protocols);
     std::string item;
@@ -903,7 +1051,10 @@ int main(int argc, char* argv[]) {
     if (std::find(list.begin(), list.end(), "dsdv") != list.end()) {
         std::vector<uint32_t> degree(rows * cols, 0);
         uint32_t maxDegree = 0;
-        for (const auto& l : GridLinks(P)) {
+        // #432: degree is a property of the topology actually BUILT, so the
+        // --removeLinks removals apply before this gate — a satellite's ISL
+        // count is what decides whether DSDV's one-interface assumption holds.
+        for (const auto& l : RemoveIsls(GridLinks(P), P)) {
             maxDegree = std::max(maxDegree, ++degree[l.first]);
             maxDegree = std::max(maxDegree, ++degree[l.second]);
         }

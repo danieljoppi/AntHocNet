@@ -1541,7 +1541,8 @@ def run_sat(**overrides):
           "islDelayMs": 5.0, "islRate": "10Mbps", "cbrBps": 4096.0,
           "time": None, "flows": None, "protocols": None,
           "breakLink": "", "breakAt": 0.0,
-          "corridorLoad": "", "corridorLoadAt": 15.0}
+          "corridorLoad": "", "corridorLoadAt": 15.0,
+          "removeLinks": ""}
     kw.update(overrides)
     sc.issues = []
     with contextlib.redirect_stdout(io.StringIO()) as out:
@@ -1793,6 +1794,94 @@ def _sat_break_bfs():
     expect("FAIL" in levels and "disconnects flow(s) 0->3" in out,
            "sat-break-partition", f"a partitioning break did not FAIL\n{out}")
     # Quiet half: cell B's break sits on flows 0->15 and 3->12 (above).
+
+
+# --- #432 item 3: static irregularity (--removeLinks) ------------------------
+#
+# Fixture is the designed seam cell (#432 item 3): the 6x6 torus with the
+# rows-axis wrap seam cut at every column but 0 — 67 ISLs, degree min 3 /
+# max 4, still connected, and the surviving wrap ISL (0,0)-(5,0) on a
+# shortest path of all 8 standard flows. Mean shortest-path hops over those
+# flows: 4.25 (21.25 ms oracle floor) vs 3.25 on the full torus, with flows
+# 2->33 and 3->32 tripled from 2 to 6 hops and equal-cost but structurally
+# different alternatives (funnel vs around the open rows axis).
+
+SEAM = {"rows": 6, "cols": 6, "time": 900.0, "flows": 8,
+        "removeLinks": "5,1,0,1;5,2,0,2;5,3,0,3;5,4,0,4;5,5,0,5",
+        "protocols": "anthocnet,aodv,olsr,oracle"}
+
+
+@case("#432 the seam cell passes; the built (post-removal) topology is echoed")
+def _seam_cell():
+    levels, out = run_sat(**SEAM)
+    expect(levels == [], "seam",
+           f"the designed cell must be clean, got {levels}\n{out}")
+    expect("67 ISLs" in out, "seam",
+           f"the ISL count does not reflect the removals\n{out}")
+    # The degree spread comes from the post-removal adjacency — the same `deg`
+    # the #420 dsdv rule reads, so this line is also the proof that the dsdv
+    # gate keys on the topology actually built, not on the +Grid closed form.
+    expect("degree min=3 max=4" in out, "seam",
+           f"the degree spread is not post-removal\n{out}")
+    expect("still connected" in out, "seam",
+           f"connectivity of the remainder was not proven\n{out}")
+
+
+@case("#432 removeLinks validation: format, range, identity, adjacency, duplicate")
+def _seam_validation():
+    _levels, out = run_sat(**dict(SEAM, removeLinks="5,1,0"))
+    expect("expects r1,c1,r2,c2" in out, "seam-format",
+           f"a 3-field quadruple did not FAIL\n{out}")
+    _levels, out = run_sat(**dict(SEAM, removeLinks="6,0,0,0"))
+    expect("outside the 6x6 grid" in out, "seam-range",
+           f"an out-of-grid endpoint did not FAIL\n{out}")
+    _levels, out = run_sat(**dict(SEAM, removeLinks="1,1,1,1"))
+    expect("same node" in out, "seam-self",
+           f"a self-link did not FAIL\n{out}")
+    _levels, out = run_sat(**dict(SEAM, removeLinks="0,0,2,0"))
+    expect("not adjacent" in out, "seam-nonadj",
+           f"a distance-2 pair did not FAIL\n{out}")
+    _levels, out = run_sat(**dict(SEAM, removeLinks="5,1,0,1;5,1,0,1"))
+    expect("twice" in out, "seam-dupe",
+           f"a duplicate removal did not FAIL\n{out}")
+    # Quiet half: the seam cell's five distinct wrap quadruples (above).
+
+
+@case("#432 a disconnecting removal FAILs; the seam removal stays connected")
+def _seam_disconnect():
+    # 4x4 torus, all four ISLs of satellite (0,0) removed -> node 0 isolated.
+    levels, out = run_sat(rows=4, cols=4, time=900.0, flows=8,
+                          removeLinks="0,0,0,1;0,0,0,3;0,0,1,0;0,0,3,0",
+                          protocols="anthocnet,aodv,olsr,oracle")
+    expect("FAIL" in levels and "disconnects the constellation" in out,
+           "seam-cut", f"an isolating removal did not FAIL\n{out}")
+    # Quiet half: the seam cell removes 5 ISLs and stays connected (above).
+
+
+@case("#432 a removed ISL cannot host the scripted break; the funnel can")
+def _seam_break_removed():
+    levels, out = run_sat(**dict(SEAM, breakLink="5,1,0,1", breakAt=450.0))
+    expect("FAIL" in levels and "names no built ISL" in out,
+           "seam-break-removed",
+           f"breaking a removed ISL did not FAIL\n{out}")
+    # Quiet half: the surviving funnel ISL (0,0)-(5,0) is grid-adjacent, not
+    # removed, and on every flow's shortest path — the break BFS must run on
+    # the post-removal adjacency and find it.
+    levels, out = run_sat(**dict(SEAM, breakLink="0,0,5,0", breakAt=450.0))
+    expect(levels == [] and "shortest path of flow(s)" in out,
+           "seam-break-funnel",
+           f"breaking the funnel ISL was not clean, got {levels}\n{out}")
+
+
+@case("#432 a row-0 removal with the corridor on FAILs; an off-row-0 one is clean")
+def _seam_corridor():
+    levels, out = run_sat(**dict(CELL_A, removeLinks="0,1,0,2"))
+    expect("FAIL" in levels and "cuts a row-0 ISL" in out, "seam-corr",
+           f"a removal inside the corridor ring did not FAIL\n{out}")
+    levels, out = run_sat(**dict(CELL_A, removeLinks="3,0,4,0"))
+    expect(levels == [], "seam-corr-quiet",
+           f"an off-row-0 removal with the corridor on was flagged, "
+           f"got {levels}\n{out}")
 
 
 @case("#444 the MANET preflight defaults are unchanged by the per-harness fill")
