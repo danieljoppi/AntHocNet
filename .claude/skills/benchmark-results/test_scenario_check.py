@@ -1508,7 +1508,7 @@ def _oracle_common_hops_fires():
 
 @case("#431 the derived decode radius' matched hops stay quiet (and coherent)")
 def _oracle_common_hops_quiet():
-    levels, out = run_cell(TWORAY_423_ORACLE_CELL)
+    _, out = run_cell(TWORAY_423_ORACLE_CELL)
     expect("identity-matched hops" not in out, "oracle-common-hops-quiet",
            f"a satisfied matched-set hop bound was flagged\n{out}")
     # decode-approx carries the "approx" substring, so the mode/flag coherence
@@ -1670,8 +1670,8 @@ def _oracle_preflight_no_range():
     # oracle had no derivation for a fading channel and --range was what
     # pinned its radius. Auto-derivation removed both facts — the run starts
     # and derives its own radius, so a FAIL here would block valid dispatches.
-    levels, out = run_preflight(protocols="anthocnet,oracle",
-                                propagation="tworay", range=0.0)
+    _, out = run_preflight(protocols="anthocnet,oracle",
+                           propagation="tworay", range=0.0)
     expect("auto-derived" in out, "oracle-preflight-no-range",
            f"the derived-adjacency WARN did not fire\n{out}")
     # The geometry rules still FAIL a range=0 field estimate — that is theirs,
