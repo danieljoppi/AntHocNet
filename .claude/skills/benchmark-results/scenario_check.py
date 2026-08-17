@@ -155,6 +155,22 @@ ORACLE_PDR_TIE = 0.05
 #     it stays quiet on tworay (diff -0.04..-0.10 per seed) while still
 #     flagging a wrong solve.
 ORACLE_COMMON_HOP_EPS = 0.05
+# #431: severity of an eps-exceeding seed is MODE-aware, matching the published
+# scoping (methodology.md: on fading the oracle bounds delivery everywhere,
+# hops only where its adjacency is propagation-exact). Modes that CLAIM the
+# hop bound — wired, disk, decode-approx, and fail-closed any seed whose mode
+# is unknown — FAIL at eps. p50-approx does NOT claim it: the Nakagami median
+# disk is calibrated to the delivery bound, and a probabilistic link has no
+# true radius, so an honest residual remains — measured at the calibrated
+# radius: -0.02..+0.08 per seed, vs +0.17..+0.74 for the defect class. There
+# an eps-exceeding seed reports as a loud WARN, not a publication-blocking
+# FAIL (otherwise the gate would forbid landing the very re-measurement that
+# closes #431) — UNLESS the excess is defect-class-sized:
+# ORACLE_COMMON_HOP_DEFECT = 0.15 sits between the largest honest residual
+# observed at the calibrated radius (+0.083) and the smallest defect-class
+# excess in the six published cells (+0.17), so every published violation
+# would still FAIL even on a p50-approx cell.
+ORACLE_COMMON_HOP_DEFECT = 0.15
 # The ##COMMON## row re-read per (run, protocol) for the #431 gate — COMMON_LINE
 # folds extrema per protocol and drops the run number, which a per-seed bound
 # cannot use. Groups: run, proto, nCommon, hopsC (absent pre-instrumentation).
@@ -1466,12 +1482,15 @@ def check_oracle(path, rows):
         text = fh.read()
 
     # --- the ##ORACLE## rows ------------------------------------------------
+    seed_mode = {}  # seed -> mode tag, read by the #431 hop gate's severity
     for line in text.splitlines():
         m = ORACLE_LINE.match(line)
         if not m:
             continue
         (seed, proto, mode, approx, nodes, edges,
          recomputes, changes, rng, no_route, nrl) = m.groups()
+        if proto == ORACLE_PROTO:
+            seed_mode[seed] = mode
         tag = f"{os.path.basename(path)} seed{seed}/{proto}"
         if proto != ORACLE_PROTO:
             report("FAIL", f"{tag}: a ##ORACLE## row for '{proto}' — only the "
@@ -1520,7 +1539,10 @@ def check_oracle(path, rows):
     # fires on every seed of every fading cell (matched-hop excess up to
     # +0.45 at 20 nodes, +0.17..+0.74 across the six published cells); at the
     # derived decode radius on tworay it passes with margin. See
-    # ORACLE_COMMON_HOP_EPS above for how the 0.05 was sized.
+    # ORACLE_COMMON_HOP_EPS above for how the 0.05 was sized, and
+    # ORACLE_COMMON_HOP_DEFECT for why a p50-approx seed's sub-defect excess
+    # is a WARN rather than a FAIL (the P50 disk claims the delivery bound,
+    # not the hop bound); a seed with no ##ORACLE## mode row fails closed.
     common_hops = {}
     for line in text.splitlines():
         m = ORACLE_COMMON_SEED_LINE.match(line)
@@ -1538,10 +1560,29 @@ def check_oracle(path, rows):
             if name == ORACLE_PROTO:
                 continue
             p_hops_c = common_hops[run][name]
-            if o_hops_c > p_hops_c + ORACLE_COMMON_HOP_EPS:
+            excess = o_hops_c - p_hops_c
+            if excess <= ORACLE_COMMON_HOP_EPS:
+                continue
+            mode = seed_mode.get(run)
+            if (mode is not None and "p50-approx" in mode
+                    and excess <= ORACLE_COMMON_HOP_DEFECT):
+                report("WARN", f"{os.path.basename(path)} seed{run}: oracle "
+                               f"identity-matched hops {o_hops_c} exceed "
+                               f"{name}'s {p_hops_c} (+{excess:.3f} > eps "
+                               f"{ORACLE_COMMON_HOP_EPS}) on a p50-approx "
+                               "cell — the Nakagami median disk is calibrated "
+                               "to the delivery bound, not the hop bound (a "
+                               "probabilistic link has no true radius), and "
+                               "this excess is inside the honest residual "
+                               "measured at the calibrated radius "
+                               "(-0.02..+0.08, vs +0.17..+0.74 for the defect "
+                               "class). Do not quote the hop bound from this "
+                               "cell; the probability-weighted graph (#431 "
+                               "direction 2) is the full fix")
+            else:
                 report("FAIL", f"{os.path.basename(path)} seed{run}: oracle "
                                f"identity-matched hops {o_hops_c} exceed "
-                               f"{name}'s {p_hops_c} (+{o_hops_c - p_hops_c:.3f} "
+                               f"{name}'s {p_hops_c} (+{excess:.3f} "
                                f"> eps {ORACLE_COMMON_HOP_EPS}) on the common "
                                "packet set, where survivorship is eliminated "
                                "by construction — the oracle's adjacency is "

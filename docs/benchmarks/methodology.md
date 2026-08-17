@@ -371,9 +371,13 @@ derived per interface from the simulator's own objects; every oracle row carries
   included (e.g. `rwp-tworay` oracle 1.90 against anthocnet 1.56 and aodv
   1.47). The cause was the mis-radiused disk (above), fixed by #431's derived
   radii — measured at 20-node scale the bound then holds per seed on tworay —
-  and the check is no longer suppressed: `scenario_check.py` FAILs any seed
-  whose matched-set oracle hops exceed an arm's by more than 0.05, with no
-  survivorship guard (none is needed on the matched set). **The published
+  and the check is no longer suppressed: `scenario_check.py` asserts every
+  seed's matched-set oracle hops against each arm's + 0.05, with no
+  survivorship guard (none is needed on the matched set) — a real FAIL on
+  every mode that claims the hop bound (`wired`, `disk`, `decode-approx`), a
+  loud WARN on `p50-approx` for a sub-defect excess (≤ 0.15 — the median disk
+  is calibrated to the delivery bound and carries a measured honest residual
+  of −0.02..+0.08), and a FAIL regardless of mode beyond that. **The published
   grid's oracle rows still predate #431**: until the six fading cells are
   re-measured and [grid.md](grid.md) updated (the remaining step tracked on
   #431), keep reading their hop bound as quotable only where the oracle is

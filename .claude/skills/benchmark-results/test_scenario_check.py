@@ -1519,6 +1519,91 @@ def _oracle_common_hops_quiet():
            f"a derived-radius fading cell must still WARN approx=1\n{out}")
 
 
+NAKAGAMI_P50_ORACLE_CELL = """\
+##ORACLE## 1 oracle mode=p50-approx approx=1 nodes=20 edges=176 recomputes=120 changes=71 range=373.4 noRoute=0 nrl=0.00
+##RUN## 1 oracle 99.10 5.9 26.3 4.92 0.00 4.30 2.0 13.8 0.0000
+##RUN## 1 aodv 47.70 52.8 1037.5 2.08 3.12 48.90 6.5 322.1 9.0630
+##COMMON## 1 oracle 350 340 44.0 7.8 51.0 1.386 1.39
+##COMMON## 1 aodv 168 340 340.0 52.2 1005.0 1.329 1.34
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes
+oracle          99.1        5.9         26.3         4.92    0.00        4.30         2.0        13.8       0.000
+aodv            47.7       52.8       1037.5         2.08    3.12       48.90         6.5       322.1       9.063
+"""
+
+
+@case("#431 a p50-approx sub-defect excess WARNs (loud, not publication-blocking)")
+def _oracle_common_hops_p50_warns():
+    # Real numbers from the calibrated nakagami A/B (seed 3: oracle 1.386 vs
+    # aodv 1.329, +0.057): the P50 disk is calibrated to the DELIVERY bound —
+    # a probabilistic link has no true radius — so its honest residual
+    # (-0.02..+0.08 measured) must not FAIL, or the gate forbids publishing
+    # the very re-measurement that closes #431. It must still be loud.
+    levels, out = run_cell(NAKAGAMI_P50_ORACLE_CELL)
+    expect("p50-approx cell" in out and "+0.057" in out,
+           "oracle-common-hops-p50-warn",
+           f"the p50 honest-residual WARN did not fire\n{out}")
+    expect("FAIL" not in levels, "oracle-common-hops-p50-warn-level",
+           f"a sub-defect p50 residual must WARN, not FAIL, got {levels}\n{out}")
+
+
+@case("#431 a p50-approx cell within eps stays quiet")
+def _oracle_common_hops_p50_quiet():
+    # oracle 1.386 vs aodv 1.390: bound satisfied, neither branch fires.
+    text = NAKAGAMI_P50_ORACLE_CELL.replace(" 1005.0 1.329 1.34",
+                                            " 1005.0 1.390 1.40")
+    _levels, out = run_cell(text)
+    expect("identity-matched hops" not in out, "oracle-common-hops-p50-quiet",
+           f"a satisfied p50 hop bound was flagged\n{out}")
+
+
+@case("#431 a defect-class excess FAILs even on a p50-approx cell")
+def _oracle_common_hops_p50_defect_fires():
+    # oracle 1.827 vs aodv 1.377 (+0.450, the tworay defect magnitude): above
+    # ORACLE_COMMON_HOP_DEFECT (0.15, sized between the largest honest p50
+    # residual +0.083 and the smallest published defect +0.17), so the mode
+    # buys no leniency — every published #431 violation would still FAIL here.
+    text = NAKAGAMI_P50_ORACLE_CELL \
+        .replace(" 51.0 1.386 1.39", " 51.0 1.827 1.83") \
+        .replace(" 1005.0 1.329 1.34", " 1005.0 1.377 1.38")
+    levels, out = run_cell(text)
+    expect("missing links the radios actually have" in out and "+0.450" in out,
+           "oracle-common-hops-p50-defect",
+           f"a defect-class p50 excess was not FAILed\n{out}")
+    expect("FAIL" in levels, "oracle-common-hops-p50-defect-level",
+           f"expected a FAIL, got {levels}\n{out}")
+
+
+@case("#431 the same sub-defect excess on decode-approx still FAILs")
+def _oracle_common_hops_decode_still_fails():
+    # decode-approx CLAIMS the hop bound (the decode disk is the measured
+    # zero-load delivery graph), so +0.080 there is a real violation, not an
+    # honest residual: only p50-approx gets the WARN branch.
+    text = TWORAY_423_ORACLE_CELL.replace(" 55.0 1.611 1.62",
+                                          " 55.0 1.448 1.45")
+    levels, out = run_cell(text)
+    expect("missing links the radios actually have" in out and "+0.080" in out,
+           "oracle-common-hops-decode-fails",
+           f"a decode-approx excess was not FAILed\n{out}")
+    expect("FAIL" in levels, "oracle-common-hops-decode-fails-level",
+           f"expected a FAIL, got {levels}\n{out}")
+
+
+@case("#431 an eps-exceeding seed with no ##ORACLE## mode row fails closed")
+def _oracle_common_hops_no_mode_fails():
+    # ##COMMON## rows without the oracle's self-description: severity cannot
+    # be keyed off the mode, so the gate takes the FAIL branch rather than
+    # guessing leniency.
+    text = "\n".join(line for line in NAKAGAMI_P50_ORACLE_CELL.splitlines()
+                     if not line.startswith("##ORACLE##")) + "\n"
+    levels, out = run_cell(text)
+    expect("missing links the radios actually have" in out,
+           "oracle-common-hops-no-mode",
+           f"an excess without a mode row did not fail closed\n{out}")
+    expect("FAIL" in levels, "oracle-common-hops-no-mode-level",
+           f"expected a FAIL, got {levels}\n{out}")
+
+
 @case("#431 a pre-instrumentation ##COMMON## row (no hop fields) is skipped")
 def _oracle_common_hops_no_fields():
     text = TWORAY_300_ORACLE_CELL \

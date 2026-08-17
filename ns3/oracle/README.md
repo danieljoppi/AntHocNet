@@ -215,11 +215,18 @@ cross-checks the arm against the others in the same cell.
    on the whole-run mean with a survivorship guard (below), and — since #431 —
    **unguarded on the identity-matched `##COMMON##` set, per seed**: on the
    packets every arm delivered, survivorship is eliminated by construction, so
-   `oracle hopsC <= arm hopsC + 0.05` is a real FAIL. The 0.05 is draw-noise
-   headroom (per-seed sd of the matched-hop diff measured at 0.03–0.08), not a
-   tolerance for structural excess: #431's defect was +0.17 to +0.74 in the
-   mean yet ≤ +1 hop for ~96 % of individual packets, so any per-packet or
-   ≥ 1-hop tolerance would have stayed green through the whole regression.
+   `oracle hopsC <= arm hopsC + 0.05` is a real FAIL on every mode that claims
+   the hop bound (`wired`, `disk`, `decode-approx`; fail-closed when the seed
+   has no `##ORACLE##` mode row). The 0.05 is draw-noise headroom (per-seed sd
+   of the matched-hop diff measured at 0.03–0.08), not a tolerance for
+   structural excess: #431's defect was +0.17 to +0.74 in the mean yet
+   ≤ +1 hop for ~96 % of individual packets, so any per-packet or ≥ 1-hop
+   tolerance would have stayed green through the whole regression. On
+   `p50-approx` — which is calibrated to the *delivery* bound, a probabilistic
+   link having no true radius — a sub-defect excess (≤ 0.15, above the largest
+   honest residual +0.083 and below the smallest published defect +0.17)
+   reports as a loud WARN instead, so an honest median-disk cell is not
+   publication-blocked; a defect-class excess FAILs regardless of mode.
 3. **Nothing outperforms full knowledge on a static, lossless topology** —
    asserted on ISL-grid cells, and deliberately *not* asserted on the #216
    adversarial cells (congestion corridor, scripted ISL break), which exist
