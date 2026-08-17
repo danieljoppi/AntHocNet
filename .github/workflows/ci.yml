@@ -314,7 +314,7 @@ jobs:
           mods='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
           if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
             ./ns3 configure --enable-tests --enable-examples \
-              --filter-module-examples-and-tests=anthocnet \
+              --filter-module-examples-and-tests='anthocnet;oracle' \
               --enable-modules="$mods"
             echo "RUN_TESTS=1" >> "$GITHUB_ENV"
           else
@@ -325,7 +325,7 @@ jobs:
         run: cd /opt/ns-3 && ./ns3 build
       - name: Run module test suite (header round-trip + multi-hop delivery)
         if: env.RUN_TESTS == '1'
-        run: cd /opt/ns-3 && ./test.py -s anthocnet
+        run: cd /opt/ns-3 && ./test.py -s anthocnet && ./test.py -s oracle
       - name: Smoke-run the example
         run: cd /opt/ns-3 && ./ns3 run anthocnet-example
       - name: E2E delivery smoke (AntHocNet must deliver in a connected scenario)
@@ -507,20 +507,20 @@ jobs:
           # (added after 3.36), so tests always run here.
           if ./ns3 configure --help 2>/dev/null | grep -q enable-sanitizers; then
             ./ns3 configure --enable-sanitizers --enable-tests --enable-examples \
-              --filter-module-examples-and-tests=anthocnet \
+              --filter-module-examples-and-tests='anthocnet;oracle' \
               --enable-modules="$mods"
           else
             ./ns3 clean
             CXXFLAGS='-fsanitize=address -fno-omit-frame-pointer -g' \
             LDFLAGS='-fsanitize=address' \
             ./ns3 configure --enable-tests --enable-examples \
-              --filter-module-examples-and-tests=anthocnet \
+              --filter-module-examples-and-tests='anthocnet;oracle' \
               --enable-modules="$mods"
           fi
       - name: Build
         run: cd /opt/ns-3 && ./ns3 build
       - name: Run module test suite under ASan/LSan
-        run: cd /opt/ns-3 && ./test.py -s anthocnet
+        run: cd /opt/ns-3 && ./test.py -s anthocnet && ./test.py -s oracle
       - name: E2E delivery smoke under ASan/LSan
         # Same loose "routes data" gate as ns3-build, but without ns3-build's
         # `2>/dev/null` so sanitizer reports land in the job log (command

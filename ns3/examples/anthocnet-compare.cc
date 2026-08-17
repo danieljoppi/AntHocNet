@@ -1359,14 +1359,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // helper owns this run's ground-truth graph, so a fresh one per run is what
     // stops run N inheriting run N-1's nodes.
     OracleHelper oracleHelper;
-    // #296: on a shared medium the oracle can read a crisp adjacency only off a
-    // disk channel (the `range` arm). `tworay`/`nakagami` have no radius at
-    // which the link stops existing, so the oracle is told which radius to hold
-    // the control to — the scenario's own nominal --range — and flags itself
-    // approximate for those cells. Without this it aborts rather than guessing,
-    // which is the behaviour we want if a future channel is added and nobody
-    // thinks about what "ground truth" means on it.
-    oracleHelper.Set("LinkRangeM", DoubleValue(P.range));
+    // #296/#431: the oracle derives its adjacency from the installed objects
+    // on every channel this harness configures — the disk channel's own
+    // MaxRange (exact), the two-ray decode radius at the PHY's decode
+    // threshold, or the Nakagami closed-form median radius at that same
+    // threshold (both flagged approx=1). LinkRangeM is deliberately NOT set
+    // here any more: pinning it to --range was what held the fading cells to
+    // a 300 m disk the radios outreach by 40 % (#431's measured hop
+    // violation). To force a radius, pass the attribute explicitly:
+    // --ns3::oracle::Topology::LinkRangeM=<m>. On a channel the oracle cannot
+    // derive, it still aborts rather than guess.
     if (proto == "anthocnet") {
         internet.SetRoutingHelper(ahnHelper);
     } else if (proto == "aodv") {

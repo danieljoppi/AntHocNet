@@ -61,10 +61,11 @@ install: require-ns3dir
 	cp $(HERE)/aomdv/test/*.cc "$(AOMDV_DEST)/test/"
 	cp $(HERE)/aomdv/CMakeLists.txt $(HERE)/aomdv/README.md "$(AOMDV_DEST)/"
 	@echo ">> Installing oracle control module into $(ORACLEDEST)"
-	mkdir -p "$(ORACLEDEST)/model" "$(ORACLEDEST)/helper" \
+	mkdir -p "$(ORACLEDEST)/model" "$(ORACLEDEST)/helper" "$(ORACLEDEST)/test" \
 	         "$(ORACLEDEST)/core/include/anthocnet/core" "$(ORACLEDEST)/core/src"
 	cp $(HERE)/oracle/model/*.h  $(HERE)/oracle/model/*.cc  "$(ORACLEDEST)/model/"
 	cp $(HERE)/oracle/helper/*.h $(HERE)/oracle/helper/*.cc "$(ORACLEDEST)/helper/"
+	cp $(HERE)/oracle/test/*.cc "$(ORACLEDEST)/test/"
 	cp $(HERE)/oracle/CMakeLists.txt "$(ORACLEDEST)/"
 	cp $(CORE)/include/anthocnet/core/shortest_path.h \
 	   "$(ORACLEDEST)/core/include/anthocnet/core/"

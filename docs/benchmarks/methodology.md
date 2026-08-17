@@ -315,24 +315,34 @@ derived per interface from the simulator's own objects; every oracle row carries
 |---|---|---|
 | satellite +Grid ISL torus, and any non-wifi channel | co-membership of the point-to-point channel | **yes** — the graph *is* the wiring |
 | MANET, `--propagation=range` | the channel's own `RangePropagationLossModel` cutoff | **yes** — a disk has a crisp cutoff |
-| MANET, `--propagation=tworay` / `nakagami` | the scenario's `--range`, as an explicit radius | **no** — flagged `approx=1`, WARNed on every read |
+| MANET, `--propagation=tworay` | the **decode disk** ([#431](https://github.com/danieljoppi/AntHocNet/issues/431)): the two-ray power's crossing of the PHY's decode floor, derived from the installed objects | **no** — flagged `approx=1` (propagation-exact, interference-blind), WARNed on every read |
+| MANET, `--propagation=nakagami` | the **median disk** (#431): the closed-form Gamma fading law's P = 1/2 crossing at the same decode floor | **no** — flagged `approx=1`, WARNed on every read |
 
 **What it is not exact for**, stated so no reader over-reads it later:
 
 - **Neither fading *nor* two-ray has a crisp adjacency.** The pre-registration
   above expected `tworay` to be exact or near-exact because it is
-  deterministic. It is not, and the attempt is instructive: deriving links from
+  deterministic. The first attempt is instructive: deriving links from
   ns-3's own two-ray budget (`Prx >= RxSensitivity`) made 2440 of 2450 possible
   edges adjacent — a near-complete graph — and the resulting "oracle" delivered
   **30.4 %**, below every protocol it exists to bound. That rule was withdrawn,
-  not shipped; both fading and two-ray cells are held to the scenario's
-  `--range` and flagged approximate. The error has a known direction (the disk
-  is conservative under two-ray, so the control uses a *subset* of the links
-  that work), which is why these cells stay readable as reference points.
-- **`--range` is inert under `tworay`/`nakagami` for every arm *except*
-  `oracle`**, where it pins the control's adjacency. `scenario_check.py
-  preflight --protocols=…,oracle` says so, and FAILs the combination that would
-  abort the run.
+  and for v1.5.0 both fading cells were held to the scenario's `--range`
+  instead — which #431 then measured as the opposite error (a 300 m disk the
+  radios outreach by ~40 %, costing the oracle hops on the matched set in
+  every published fading cell). Since #431 the radii are **derived from the
+  installed PHY**: the budget rule's defect was reading `RxSensitivity`
+  (−101 dBm) where the binding decode floor is the preamble-detection
+  `MinimumRssi` (−82 dBm); at the corrected threshold the two-ray decode disk
+  *is* the measured zero-load delivery graph (99.8 % precision/recall), and
+  the Nakagami closed-form median disk at the same threshold restores the
+  delivery bound per seed. Both stay `approx=1` — calibrated reference
+  points, not proven upper bounds. Full derivations:
+  [`ns3/oracle/README.md`](../../ns3/oracle/README.md).
+- **`--range` is inert under `tworay`/`nakagami` for every arm, `oracle`
+  included** (since #431 — before that it pinned the control's adjacency).
+  The explicit override is `--ns3::oracle::Topology::LinkRangeM=<m>`;
+  `scenario_check.py preflight --protocols=…,oracle` WARNs what the derived
+  rule will be.
 - **It bounds routing, not delivery.** It runs on the same MAC/PHY as every
   other arm, so contention and collision losses remain. An oracle PDR below
   100 % is expected and is not a defect (measured at paper-base/range: 3.06 %
@@ -352,19 +362,23 @@ derived per interface from the simulator's own objects; every oracle row carries
   against the oracle's **2.09** at **95.9 %**. The rule therefore fires only
   when the other arm delivered at least as much as the oracle and *still* shows
   a shorter mean path.
-- **The hop bound does not hold on any wifi cell, and phase 3 measured that.**
-  The clause above anticipated one way for the oracle's mean path to read long
-  — survivorship. Phase 3 found a second, and it is not an artefact of *which*
-  packets are averaged: on the identity-matched `##COMMON##` set (#308), where
-  every arm delivered the same `(flow, seq)` packets, **the oracle uses more
-  hops than every real arm in all six grid cells**, two-ray included (e.g.
-  `rwp-tworay` oracle 1.90 against anthocnet 1.56 and aodv 1.47). The cause is
-  `approx=1`: on a wifi channel the oracle's adjacency is a geometric disk, so
-  its graph both misses links the radios actually have — forcing longer paths —
-  and admits deeply-faded ones. **Read the hop bound as quotable only where the
-  oracle is `approx=0`** (the wired ISL topologies). See
-  [grid.md](grid.md) for the per-cell evidence and the delivery-vs-latency
-  quoting rule that follows from it.
+- **The hop bound did not hold on the v1.5.0 wifi cells, and phase 3 measured
+  that.** The clause above anticipated one way for the oracle's mean path to
+  read long — survivorship. Phase 3 found a second, and it is not an artefact
+  of *which* packets are averaged: on the identity-matched `##COMMON##` set
+  (#308), where every arm delivered the same `(flow, seq)` packets, **the
+  oracle used more hops than every real arm in all six grid cells**, two-ray
+  included (e.g. `rwp-tworay` oracle 1.90 against anthocnet 1.56 and aodv
+  1.47). The cause was the mis-radiused disk (above), fixed by #431's derived
+  radii — measured at 20-node scale the bound then holds per seed on tworay —
+  and the check is no longer suppressed: `scenario_check.py` FAILs any seed
+  whose matched-set oracle hops exceed an arm's by more than 0.05, with no
+  survivorship guard (none is needed on the matched set). **The published
+  grid's oracle rows still predate #431**: until the six fading cells are
+  re-measured and [grid.md](grid.md) updated (the remaining step tracked on
+  #431), keep reading their hop bound as quotable only where the oracle is
+  `approx=0` (the wired ISL topologies), per the per-cell evidence and the
+  delivery-vs-latency quoting rule in [grid.md](grid.md).
 - Consequently the AntHocNet-to-oracle gap is an **upper bound on how much of
   the shortfall is protocol overhead** — it does not decompose that shortfall
   into discovery cost, suboptimal path choice and reconvergence loss.

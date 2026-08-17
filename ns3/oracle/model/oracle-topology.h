@@ -23,28 +23,42 @@
  *   `RangePropagationLossModel` (the harness's `range` arm): adjacency is
  *   that model's own `MaxRange`, read off the live channel. **Exact** — a
  *   disk model has a crisp cutoff and this is it.
- * - **Any other wifi channel** (`tworay`, `nakagami`): there is no crisp
- *   adjacency to derive, so the topology refuses to invent one. It uses the
- *   explicit `LinkRangeM` radius, which the scenario must set (both harnesses
- *   pass their `--range`), and flags itself **approximate**; with no radius
- *   set it aborts rather than guessing.
+ * - **WifiNetDevice** on a lone `TwoRayGroundPropagationLossModel`
+ *   (`tworay`): the decode disk, derived (#431) — the distance at which the
+ *   deterministic two-ray received power crosses the PHY's decode floor
+ *   `max(RxSensitivity, ThresholdPreambleDetectionModel::MinimumRssi)`,
+ *   every parameter read off the installed objects. **Approximate** —
+ *   propagation-exact, but decoding under load also depends on interference,
+ *   which no disk carries.
+ * - **WifiNetDevice** on two-ray + `NakagamiPropagationLossModel`
+ *   (`nakagami`): the median disk, derived (#431) — under Nakagami the
+ *   received power is Gamma-distributed, so P(decode | d) has a closed form
+ *   and the P = 1/2 crossing is computed from it with zero RNG draws.
+ *   **Approximate** — a probabilistic link has no true radius at all.
+ * - **Any other wifi channel**: no derivation exists, so the topology
+ *   refuses to invent one. It uses the explicit `LinkRangeM` radius, which
+ *   the scenario must then set, and flags itself **approximate**; with no
+ *   radius set it aborts rather than guessing. `LinkRangeM` also overrides
+ *   the two derived rules above when set.
  *
- * Why not a link budget on `tworay`, which is deterministic? Because it was
- * tried and measured: `Prx >= RxSensitivity` over ns-3's own two-ray chain
- * makes 2440 of the 2450 possible edges of the paper scenario adjacent — a
- * near-complete graph — because ns-3 attempts reception 25 dB below what a
- * frame needs to survive interference. The resulting "oracle" routed
- * everything one hop and delivered 30.4 % PDR, below every protocol it is
- * supposed to bound. An upper bound that loses to the things it bounds is
- * not an upper bound; the number is recorded in ns3/oracle/README.md so the
- * next person does not re-derive it.
+ * Why the decode floor and not `RxSensitivity`? Because the budget rule was
+ * tried at RxSensitivity and measured: `Prx >= -101 dBm` over ns-3's own
+ * two-ray chain makes 2440 of the 2450 possible edges of the paper scenario
+ * adjacent — a near-complete graph — because the -82 dBm preamble-detection
+ * floor, not RxSensitivity, is what actually gates decoding. The resulting
+ * "oracle" routed everything one hop and delivered 30.4 % PDR, below every
+ * protocol it is supposed to bound. An upper bound that loses to the things
+ * it bounds is not an upper bound; the numbers are recorded in
+ * ns3/oracle/README.md so the next person does not re-derive them.
  *
- * No propagation model is ever *evaluated*, which also means no draw is ever
- * taken from the channel's pinned RNG stream (#352): the oracle arm sees the
- * same fading realisation as every other arm, not a perturbed one. And since
- * `tworay` and `nakagami` are held to the same radius by the same rule, the
- * harness's controlled {tworay, nakagami} contrast is not confounded by the
- * oracle changing its own definition of adjacency between the two cells.
+ * No propagation model is ever *evaluated* — the derivations mirror ns-3's
+ * closed forms in oracle-decode-budget.{h,cc} — which also means no draw is
+ * ever taken from the channel's pinned RNG stream (#352): the oracle arm
+ * sees the same fading realisation as every other arm, not a perturbed one.
+ * And since `tworay` and `nakagami` radii both derive from the same decode
+ * threshold through each channel's own law, the harness's controlled
+ * {tworay, nakagami} contrast compares one rule under two channels, not two
+ * unrelated rules.
  *
  * Down interfaces (`Ipv4::IsUp`) are excluded, which is what makes a
  * scripted ISL break (#260) visible to the oracle without any extra wiring.
@@ -76,6 +90,7 @@
 namespace ns3 {
 
 class Node;
+class WifiNetDevice;
 
 namespace oracle {
 
@@ -114,9 +129,12 @@ class Topology : public Object
     }
 
     /// Tags of the adjacency rules in force, "+"-joined: "wired" (exact,
-    /// channel co-membership), "disk" (exact, the channel's own MaxRange) and
-    /// "disk-approx" (the explicit LinkRangeM radius on a channel with no
-    /// crisp adjacency).
+    /// channel co-membership), "disk" (exact, the channel's own MaxRange),
+    /// "decode-approx" (two-ray decode disk derived from the PHY's decode
+    /// threshold, #431), "p50-approx" (Nakagami closed-form median disk at
+    /// the same threshold, #431) and "disk-approx" (the explicit LinkRangeM
+    /// override). Every approximate tag carries the "approx" substring —
+    /// scenario_check.py cross-checks the approx flag against it.
     std::string GetMode() const
     {
         return m_mode;
@@ -169,7 +187,8 @@ class Topology : public Object
     struct WifiChannelModel
     {
         double range = 0.0;   //!< cutoff radius in metres
-        bool approx = false;  //!< true when the radius is LinkRangeM, not the channel's
+        bool approx = false;  //!< true unless the channel itself defines the radius
+        std::string tag;      //!< the mode tag this rule contributes (see GetMode)
     };
 
     void Recompute();
@@ -180,7 +199,11 @@ class Topology : public Object
                        Ptr<NetDevice> dev,
                        std::vector<std::vector<Link>>& out);
     /// Adjacency radius for one shared-medium channel (derived, or explicit).
-    const WifiChannelModel& ChannelModel(Ptr<Channel> channel);
+    /// `dev` is a representative device on that channel — the PHY whose tx
+    /// power / gains / decode threshold the #431 derivations read.
+    const WifiChannelModel& ChannelModel(Ptr<Channel> channel, Ptr<WifiNetDevice> dev);
+    /// max(RxSensitivity, preamble-detection MinimumRssi) off the installed PHY.
+    static double DecodeThresholdDbm(Ptr<WifiNetDevice> dev);
 
     std::vector<Ptr<Node>> m_nodes;
     std::map<uint32_t, int> m_index;              //!< ns-3 node id -> index
