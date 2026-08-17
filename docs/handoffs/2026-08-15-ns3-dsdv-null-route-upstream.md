@@ -312,8 +312,10 @@ patch -p1 < <repo>/docs/handoffs/ns3-dsdv-upstream/0002-dsdv-advertise-per-inter
 ## Still not done
 
 1. ~~**Not filed upstream.**~~ **Done 2026-08-16** — see Status above. Follow
-   the MR for maintainer feedback; the advertisement defect (b) is offered in
-   #1364 as a follow-up, deliberately not bundled into the crash-fix MR.
+   the MR for maintainer feedback. The advertisement defect (b) was initially
+   offered in #1364 as a follow-up, deliberately not bundled into the crash-fix
+   MR — then folded into !2985 the same day at maintainer request (Option 1;
+   see Status above), so the MR now carries both fixes.
 2. **The ns-3 test suite was not run against either patch** — both local builds
    were configured `--disable-tests`. Run `./test.py -s routing-dsdv` (and the
    AODV/OLSR suites) before submitting an MR. *(Still true for the submitted
