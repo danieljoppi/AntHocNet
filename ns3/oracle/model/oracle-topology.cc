@@ -3,6 +3,8 @@
 
 #include "oracle-topology.h"
 
+#include "oracle-decode-budget.h"
+
 #include "ns3/abort.h"
 #include "ns3/channel.h"
 #include "ns3/double.h"
@@ -13,6 +15,9 @@
 #include "ns3/pointer.h"
 #include "ns3/simulator.h"
 #include "ns3/wifi-net-device.h"
+#include "ns3/wifi-phy.h"
+
+#include <algorithm>
 
 #include "anthocnet/core/shortest_path.h"
 
@@ -46,12 +51,19 @@ Topology::GetTypeId()
                           MakeTimeAccessor(&Topology::m_interval),
                           MakeTimeChecker(Seconds(0.001)))
             .AddAttribute("LinkRangeM",
-                          "Adjacency radius, in metres, for a shared medium whose channel has "
-                          "no crisp cutoff to read (two-ray, fading). Using it marks the "
-                          "topology APPROXIMATE. 0 (the default) means 'derive from the "
-                          "channel or abort' — the oracle never silently guesses a radius. "
-                          "Ignored on a channel that is exactly a RangePropagationLossModel, "
-                          "whose own MaxRange is exact, and on wired topologies.",
+                          "EXPLICIT OVERRIDE of the shared-medium adjacency radius, in "
+                          "metres. 0 (the default) derives the radius from the installed "
+                          "objects instead: the channel's own MaxRange on a disk channel "
+                          "(exact), the PHY decode threshold's crossing distance on "
+                          "two-ray, and the closed-form median of the Gamma fading "
+                          "distribution at that same threshold on two-ray+Nakagami (#431; "
+                          "both derived rules stay APPROXIMATE). Setting it forces the "
+                          "given radius on any channel with no crisp cutoff and marks the "
+                          "topology APPROXIMATE; it is ignored on a channel that is "
+                          "exactly a RangePropagationLossModel and on wired topologies. "
+                          "On an underivable loss chain (neither disk, two-ray, nor "
+                          "two-ray+Nakagami) it is REQUIRED — the oracle aborts rather "
+                          "than guess.",
                           DoubleValue(0.0),
                           MakeDoubleAccessor(&Topology::m_linkRangeM),
                           MakeDoubleChecker<double>(0.0));
@@ -202,6 +214,7 @@ Topology::BuildLinks(std::vector<std::vector<Link>>& out)
         uint32_t iface;
         Ptr<MobilityModel> mob;
         Ipv4Address addr;
+        Ptr<WifiNetDevice> dev; //!< the PHY the adjacency rule is derived from
     };
     std::map<Ptr<Channel>, std::vector<WifiPart>> wifi;
     std::set<std::string> tags;
@@ -243,14 +256,15 @@ Topology::BuildLinks(std::vector<std::vector<Link>>& out)
             p.iface = i;
             p.mob = mob;
             p.addr = local;
+            p.dev = wdev;
             wifi[dev->GetChannel()].push_back(p);
         }
     }
 
     for (auto& kv : wifi)
     {
-        const WifiChannelModel& model = ChannelModel(kv.first);
-        tags.insert(model.approx ? "disk-approx" : "disk");
+        const WifiChannelModel& model = ChannelModel(kv.first, kv.second.front().dev);
+        tags.insert(model.tag);
         m_approx = m_approx || model.approx;
         m_usedRange = model.range;
         const double r2 = model.range * model.range;
@@ -334,8 +348,43 @@ Topology::AddWiredLinks(int u,
     }
 }
 
+double
+Topology::DecodeThresholdDbm(Ptr<WifiNetDevice> dev)
+{
+    // The power a frame needs for the PHY to decode it at all, read off the
+    // installed PHY the way the disk rule reads MaxRange off the live channel.
+    // Two floors gate reception, and the BINDING one is the higher:
+    //
+    //  - RxSensitivity (default -101 dBm): below it reception is not even
+    //    attempted;
+    //  - ThresholdPreambleDetectionModel::MinimumRssi (default -82 dBm,
+    //    installed on every PHY by WifiPhyHelper): below it the preamble is
+    //    dropped regardless of SNR, so no frame ever decodes.
+    //
+    // The withdrawn link-budget rule (README) used RxSensitivity alone — 19 dB
+    // below the preamble floor — and derived a 1264 m near-complete graph of
+    // links the PHY then refused to decode. Reading the *installed* preamble
+    // model is what removes that 19 dB error without introducing a calibrated
+    // constant (#431).
+    Ptr<WifiPhy> phy = dev->GetPhy();
+    NS_ABORT_MSG_IF(!phy, "oracle: wifi device with no PHY");
+    DoubleValue sens;
+    phy->GetAttribute("RxSensitivity", sens);
+    double threshold = sens.Get();
+    PointerValue pd;
+    if (phy->GetAttributeFailSafe("PreambleDetectionModel", pd) && pd.Get<Object>())
+    {
+        DoubleValue rssiMin;
+        if (pd.Get<Object>()->GetAttributeFailSafe("MinimumRssi", rssiMin))
+        {
+            threshold = std::max(threshold, rssiMin.Get());
+        }
+    }
+    return threshold;
+}
+
 const Topology::WifiChannelModel&
-Topology::ChannelModel(Ptr<Channel> channel)
+Topology::ChannelModel(Ptr<Channel> channel, Ptr<WifiNetDevice> dev)
 {
     auto it = m_channels.find(channel);
     if (it != m_channels.end())
@@ -350,35 +399,128 @@ Topology::ChannelModel(Ptr<Channel> channel)
                     "channel the oracle can read.");
     Ptr<PropagationLossModel> head = pv.Get<PropagationLossModel>();
     NS_ABORT_MSG_IF(!head, "oracle: wifi channel has no propagation loss model attached");
+    const std::string headType = head->GetInstanceTypeId().GetName();
+    Ptr<PropagationLossModel> next = head->GetNext();
+    const std::string nextType = next ? next->GetInstanceTypeId().GetName() : "";
 
     WifiChannelModel model;
     // A disk model has a crisp cutoff and the channel object knows it. This is
     // the ONE shared-medium case the oracle can be exact for.
-    if (head->GetInstanceTypeId().GetName() == "ns3::RangePropagationLossModel" &&
-        !head->GetNext())
+    if (headType == "ns3::RangePropagationLossModel" && !next)
     {
         DoubleValue maxRange;
         head->GetAttribute("MaxRange", maxRange);
         model.range = maxRange.Get();
         model.approx = false;
+        model.tag = "disk";
+    }
+    else if (m_linkRangeM > 0.0)
+    {
+        // Explicit override: the scenario pinned a radius, so the derived
+        // rules below are bypassed and the topology is approximate by fiat.
+        model.range = m_linkRangeM;
+        model.approx = true;
+        model.tag = "disk-approx";
+    }
+    else if (headType == "ns3::TwoRayGroundPropagationLossModel" &&
+             (!next || (nextType == "ns3::NakagamiPropagationLossModel" && !next->GetNext())))
+    {
+        // #431: the fading channels' adjacency, derived — not guessed — from
+        // the installed objects. Everything below is read off the live model
+        // and PHY; there is no free constant (the withdrawn budget rule's
+        // failure was reading the wrong attribute, not deriving per se).
+        //
+        // No propagation model is ever *evaluated* here — the closed forms in
+        // oracle-decode-budget.cc mirror ns-3's formulas — so no draw is ever
+        // taken from the channel's pinned RNG stream (#352): the oracle arm
+        // still sees the same fading realisation as every other arm.
+        oracle::TwoRayBudget budget;
+        DoubleValue v;
+        // TxPowerEnd is the transmit power of the default single power level
+        // the harnesses use; a scenario doing per-packet TPC has no single
+        // disk and should set LinkRangeM explicitly.
+        Ptr<WifiPhy> phy = dev->GetPhy();
+        phy->GetAttribute("TxPowerEnd", v);
+        budget.txPowerDbm = v.Get();
+        phy->GetAttribute("TxGain", v);
+        budget.txGainDb = v.Get();
+        phy->GetAttribute("RxGain", v);
+        budget.rxGainDb = v.Get();
+        head->GetAttribute("Frequency", v);
+        budget.frequencyHz = v.Get();
+        head->GetAttribute("SystemLoss", v);
+        budget.systemLoss = v.Get();
+        head->GetAttribute("MinDistance", v);
+        budget.minDistanceM = v.Get();
+        // The model adds each node's z to HeightAboveZ per endpoint. A single
+        // disk radius needs one height, so the representative device's z is
+        // used; on a mixed-height field the adjacency is not a disk at all —
+        // set LinkRangeM (or improve this) rather than trust the derivation.
+        head->GetAttribute("HeightAboveZ", v);
+        Ptr<MobilityModel> mob = dev->GetNode()->GetObject<MobilityModel>();
+        budget.heightM = v.Get() + (mob ? mob->GetPosition().z : 0.0);
+        const double threshold = DecodeThresholdDbm(dev);
+
+        if (!next)
+        {
+            // Deterministic two-ray: received power crosses the decode floor
+            // at exactly one distance, so the decode disk IS the set of pairs
+            // that can exchange a frame absent interference (measured on #431:
+            // 99.8 % precision / 99.8 % recall against the probed delivery
+            // graph at paper-shape parameters, where the radius is 423.3 m).
+            // Still flagged approximate: decoding under load also depends on
+            // interference and capture, which no disk can carry — exactness
+            // stays reserved for adjacency the scenario itself configured.
+            model.range = oracle::TwoRayDecodeRadius(budget, threshold);
+            model.tag = "decode-approx";
+        }
+        else
+        {
+            // Two-ray + Nakagami: link existence is a probability, not a
+            // radius — received power is Gamma(m(d), P(d)/m(d))-distributed,
+            // so P(decode | d) = Q(m, m*T/P(d)) in closed form. The median
+            // (P = 1/2) disk is the best single-radius approximation measured
+            // on #431 (373.4 m at paper-shape parameters: delivery bound holds
+            // in every seed, matched-hop gap an order of magnitude below the
+            // naive --range disk's). The full probability-weighted graph is
+            // direction 2 of #431 and deliberately not built here.
+            oracle::NakagamiProfile prof;
+            next->GetAttribute("Distance1", v);
+            prof.distance1M = v.Get();
+            next->GetAttribute("Distance2", v);
+            prof.distance2M = v.Get();
+            next->GetAttribute("m0", v);
+            prof.m0 = v.Get();
+            next->GetAttribute("m1", v);
+            prof.m1 = v.Get();
+            next->GetAttribute("m2", v);
+            prof.m2 = v.Get();
+            model.range = oracle::NakagamiMedianRadius(budget, prof, threshold);
+            model.tag = "p50-approx";
+        }
+        model.approx = true;
+        NS_ABORT_MSG_IF(model.range <= 0.0,
+                        "oracle: the derived decode radius for " << headType
+                            << " came out " << model.range
+                            << " m — the PHY's decode threshold is above what any "
+                               "distance delivers, so the ground-truth graph would be "
+                               "empty. Set LinkRangeM explicitly if this is intended.");
     }
     else
     {
-        // Anything else — two-ray, fading, a chain — has no distance at which
-        // the link stops existing, so there is nothing to derive. Refuse to
-        // guess; the scenario must state the radius it wants the control held
-        // to, and the result is marked approximate for the rest of its life.
-        NS_ABORT_MSG_IF(m_linkRangeM <= 0.0,
-                        "oracle: this channel's propagation model ("
-                            << head->GetInstanceTypeId().GetName()
-                            << ") has no crisp adjacency — reception fades with distance and "
-                               "interference rather than stopping at a radius — so the oracle "
-                               "cannot derive a ground-truth topology from it. Set the "
-                               "LinkRangeM attribute to the radius the control should be held "
-                               "to (both harnesses pass their --range) and the result will be "
-                               "flagged approximate. The oracle will not invent one (#296).");
-        model.range = m_linkRangeM;
-        model.approx = true;
+        // Any other chain has no derivation implemented, so there is nothing
+        // to read. Refuse to guess; the scenario must state the radius it
+        // wants the control held to, and the result is marked approximate for
+        // the rest of its life.
+        NS_ABORT_MSG("oracle: this channel's propagation chain (head "
+                     << headType
+                     << ") has no adjacency derivation — the oracle can derive a "
+                        "radius only from a RangePropagationLossModel (exact), a lone "
+                        "TwoRayGroundPropagationLossModel (decode disk, #431) or "
+                        "two-ray + NakagamiPropagationLossModel (median disk, #431). "
+                        "Set the LinkRangeM attribute to the radius the control "
+                        "should be held to and the result will be flagged "
+                        "approximate. The oracle will not invent one (#296).");
     }
     return m_channels.insert(std::make_pair(channel, model)).first->second;
 }

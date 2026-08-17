@@ -136,6 +136,47 @@ ORACLE_PROTO = "oracle"
 ORACLE_HOP_TOL = 0.01
 # "delivered at least as much": within a rounding unit of the oracle's PDR.
 ORACLE_PDR_TIE = 0.05
+# #431: tolerance for the per-seed hop bound on the identity-matched ##COMMON##
+# set — oracle hopsC <= arm hopsC + eps, per seed, unguarded (a real FAIL).
+# On the matched set survivorship is eliminated BY CONSTRUCTION (every arm
+# delivered the same (flow, seq) packets), so unlike the whole-run mean below
+# this needs no PDR-tie guard — which is exactly why #419's guard suppressed
+# the rule on wifi (the oracle dominates PDR there, the guard never released,
+# and the +0.17..+0.74 hop violation in all six published fading cells went
+# unflagged until #431 measured it by hand). Sizing, from the #431 study:
+#   - the defect class is STRUCTURAL but SUB-1-HOP: mean matched-hop excess
+#     +0.27..+0.45 at 20 nodes, +0.17..+0.74 across the six published 50-node
+#     cells, yet <= +1 hop for 95.5-97.8 % of individual packets — so any
+#     per-packet or ">= 1 hop" tolerance stays green through the whole
+#     regression and would never have caught #431;
+#   - per-seed sd of the matched-hop diff is ~0.03-0.08, so 0.05 is draw-noise
+#     headroom, not slack for structural excess: at the mis-set 300 m radius it
+#     fires on every seed of every fading cell, and at the #431-derived radii
+#     it stays quiet on tworay (diff -0.04..-0.10 per seed) while still
+#     flagging a wrong solve.
+ORACLE_COMMON_HOP_EPS = 0.05
+# #431: severity of an eps-exceeding seed is MODE-aware, matching the published
+# scoping (methodology.md: on fading the oracle bounds delivery everywhere,
+# hops only where its adjacency is propagation-exact). Modes that CLAIM the
+# hop bound — wired, disk, decode-approx, and fail-closed any seed whose mode
+# is unknown — FAIL at eps. p50-approx does NOT claim it: the Nakagami median
+# disk is calibrated to the delivery bound, and a probabilistic link has no
+# true radius, so an honest residual remains — measured at the calibrated
+# radius: -0.02..+0.08 per seed, vs +0.17..+0.74 for the defect class. There
+# an eps-exceeding seed reports as a loud WARN, not a publication-blocking
+# FAIL (otherwise the gate would forbid landing the very re-measurement that
+# closes #431) — UNLESS the excess is defect-class-sized:
+# ORACLE_COMMON_HOP_DEFECT = 0.15 sits between the largest honest residual
+# observed at the calibrated radius (+0.083) and the smallest defect-class
+# excess in the six published cells (+0.17), so every published violation
+# would still FAIL even on a p50-approx cell.
+ORACLE_COMMON_HOP_DEFECT = 0.15
+# The ##COMMON## row re-read per (run, protocol) for the #431 gate — COMMON_LINE
+# folds extrema per protocol and drops the run number, which a per-seed bound
+# cannot use. Groups: run, proto, nCommon, hopsC (absent pre-instrumentation).
+ORACLE_COMMON_SEED_LINE = re.compile(
+    r"^\s*##COMMON##\s+(\d+)\s+([a-z][\w-]*)\s+\d+\s+(\d+)\s+\S+\s+\S+\s+\S+"
+    r"(?:\s+(\S+)\s+\S+)?\s*$")
 
 # --- #444 satellite (isl-grid) preflight -------------------------------------
 # The MANET preflight above is field geometry (nodes/area/range on a wifi
@@ -804,21 +845,20 @@ def cmd_preflight(a):
                            "read as a GAP against the protocols in the same "
                            "cell, so run it alongside them (#296)")
         if a.propagation != "range":
-            if a.range <= 0:
-                report("FAIL", f"--propagation={a.propagation} with the "
-                               "oracle arm and no --range: this channel has "
-                               "no crisp adjacency for the oracle to derive, "
-                               "so the run will ABORT at t=0 rather than "
-                               "guess a radius. Set --range to the radius the "
-                               "control should be held to (#296)")
-            else:
-                report("WARN", f"--propagation={a.propagation} with the "
-                               "oracle arm: --range is inert for every OTHER "
-                               f"arm here, but it is what pins the oracle's "
-                               f"adjacency ({a.range} m) and the arm is "
-                               "flagged approx=1. Its delivery is a reference "
-                               "point, not a proven upper bound — see "
-                               "ns3/oracle/README.md (#296)")
+            # #431: the oracle derives its own radius on the fading channels —
+            # the decode-threshold disk on tworay, the closed-form fading-median
+            # disk on nakagami — so --range neither pins it nor is required
+            # (before #431 it was both, and the 300 m pin was the measured hop
+            # violation). Still WARN: derived or not, the cell is approx=1.
+            report("WARN", f"--propagation={a.propagation} with the oracle "
+                           "arm: adjacency is auto-derived from the installed "
+                           "PHY's decode threshold (#431 — decode disk on "
+                           "tworay, fading-median disk on nakagami) and the "
+                           "arm is flagged approx=1: a calibrated reference "
+                           "point, not a proven upper bound. --range does not "
+                           "pin the oracle's radius any more; to force one, "
+                           "pass --ns3::oracle::Topology::LinkRangeM=<m> "
+                           "(ns3/oracle/README.md)")
     if a.mobility != "rwp":
         report("WARN", f"--mobility={a.mobility} is not the model the "
                        "published corpus was measured under (rwp), so its "
@@ -1442,12 +1482,15 @@ def check_oracle(path, rows):
         text = fh.read()
 
     # --- the ##ORACLE## rows ------------------------------------------------
+    seed_mode = {}  # seed -> mode tag, read by the #431 hop gate's severity
     for line in text.splitlines():
         m = ORACLE_LINE.match(line)
         if not m:
             continue
         (seed, proto, mode, approx, nodes, edges,
          recomputes, changes, rng, no_route, nrl) = m.groups()
+        if proto == ORACLE_PROTO:
+            seed_mode[seed] = mode
         tag = f"{os.path.basename(path)} seed{seed}/{proto}"
         if proto != ORACLE_PROTO:
             report("FAIL", f"{tag}: a ##ORACLE## row for '{proto}' — only the "
@@ -1484,6 +1527,67 @@ def check_oracle(path, rows):
                            "field partitioned under the oracle's own topology, "
                            "so its PDR is bounded by connectivity here, not by "
                            "routing")
+
+    # --- #431: the per-seed hop bound on the identity-matched set -----------
+    # "No protocol routes the same packet in fewer hops" asserted where it is
+    # actually sound: the ##COMMON## rows are computed over the exact (flow,
+    # seq) packets EVERY arm delivered (#308), so survivorship — the reason
+    # the whole-run rule below needs its PDR-tie guard — cannot explain any
+    # difference here, and the bound is asserted per seed, unguarded, as a
+    # real FAIL. This is the check #431's acceptance section asked to "fire
+    # and pass, not stay suppressed": at the pre-#431 300 m fading radius it
+    # fires on every seed of every fading cell (matched-hop excess up to
+    # +0.45 at 20 nodes, +0.17..+0.74 across the six published cells); at the
+    # derived decode radius on tworay it passes with margin. See
+    # ORACLE_COMMON_HOP_EPS above for how the 0.05 was sized, and
+    # ORACLE_COMMON_HOP_DEFECT for why a p50-approx seed's sub-defect excess
+    # is a WARN rather than a FAIL (the P50 disk claims the delivery bound,
+    # not the hop bound); a seed with no ##ORACLE## mode row fails closed.
+    common_hops = {}
+    for line in text.splitlines():
+        m = ORACLE_COMMON_SEED_LINE.match(line)
+        if not m:
+            continue
+        run, proto, n_common, hops_c = m.groups()
+        if hops_c in (None, "na") or int(n_common) == 0 or float(hops_c) == 0.0:
+            continue  # predates the hop instrumentation, or an empty set
+        common_hops.setdefault(run, {})[proto] = float(hops_c)
+    for run in sorted(common_hops):
+        o_hops_c = common_hops[run].get(ORACLE_PROTO)
+        if o_hops_c is None:
+            continue
+        for name in sorted(common_hops[run]):
+            if name == ORACLE_PROTO:
+                continue
+            p_hops_c = common_hops[run][name]
+            excess = o_hops_c - p_hops_c
+            if excess <= ORACLE_COMMON_HOP_EPS:
+                continue
+            mode = seed_mode.get(run)
+            if (mode is not None and "p50-approx" in mode
+                    and excess <= ORACLE_COMMON_HOP_DEFECT):
+                report("WARN", f"{os.path.basename(path)} seed{run}: oracle "
+                               f"identity-matched hops {o_hops_c} exceed "
+                               f"{name}'s {p_hops_c} (+{excess:.3f} > eps "
+                               f"{ORACLE_COMMON_HOP_EPS}) on a p50-approx "
+                               "cell — the Nakagami median disk is calibrated "
+                               "to the delivery bound, not the hop bound (a "
+                               "probabilistic link has no true radius), and "
+                               "this excess is inside the honest residual "
+                               "measured at the calibrated radius "
+                               "(-0.02..+0.08, vs +0.17..+0.74 for the defect "
+                               "class). Do not quote the hop bound from this "
+                               "cell; the probability-weighted graph (#431 "
+                               "direction 2) is the full fix")
+            else:
+                report("FAIL", f"{os.path.basename(path)} seed{run}: oracle "
+                               f"identity-matched hops {o_hops_c} exceed "
+                               f"{name}'s {p_hops_c} (+{excess:.3f} "
+                               f"> eps {ORACLE_COMMON_HOP_EPS}) on the common "
+                               "packet set, where survivorship is eliminated "
+                               "by construction — the oracle's adjacency is "
+                               "missing links the radios actually have, or "
+                               "the solve/recompute is wrong (#431)")
 
     # --- cross-row: the bounds ---------------------------------------------
     groups = {}

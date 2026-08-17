@@ -58,13 +58,15 @@ control with no extra plumbing.
 |---|---|---|---|
 | Not a `WifiNetDevice` — point-to-point ISLs, CSMA | channel co-membership, read off the ns-3 `Channel` | `wired` | **Yes.** The graph *is* the wiring. |
 | Wifi whose loss chain is exactly one `RangePropagationLossModel` (`--propagation=range`) | that model's own `MaxRange`, read off the live channel | `disk` | **Yes.** A disk model has a crisp cutoff and this is it. |
-| Any other wifi channel — `tworay`, `nakagami` | the explicit `LinkRangeM` radius (the harnesses pass their `--range`) | `disk-approx` | **No — flagged `approx=1`.** |
+| Wifi on a lone `TwoRayGroundPropagationLossModel` (`--propagation=tworay`) | the **decode disk** ([#431](https://github.com/danieljoppi/AntHocNet/issues/431)): the distance at which the deterministic two-ray received power crosses the PHY's decode floor, every parameter read off the installed objects | `decode-approx` | **No — flagged `approx=1`** (propagation-exact, interference-blind; below). |
+| Wifi on two-ray + `NakagamiPropagationLossModel` (`--propagation=nakagami`) | the **median disk** (#431): under Nakagami the received power is Gamma-distributed, so P(decode\|d) has a closed form; the P = 1/2 crossing of that form, zero RNG draws | `p50-approx` | **No — flagged `approx=1`** (a probabilistic link has no true radius). |
+| Any other wifi channel | the explicit `LinkRangeM` radius — **required** here, an **override** everywhere above | `disk-approx` | **No — flagged `approx=1`.** |
 
-With no `LinkRangeM` set on such a channel the oracle **aborts** at `t = 0`
-rather than guess a radius. `scenario_check.py preflight` FAILs the same
-combination before the dispatch is spent.
+With neither a derivation nor `LinkRangeM` the oracle **aborts** at `t = 0`
+rather than guess a radius. `scenario_check.py preflight` knows which
+propagation models the harness offers are derivable.
 
-### Why `tworay` gets an approximation and not a link budget
+### The fading-channel derivations (#431), and the withdrawn budget rule
 
 Two-ray ground is deterministic, so "derive the adjacency from the channel" is
 tempting: compute `Prx = TxPowerEnd + TxGain − loss + RxGain` off the live
@@ -78,36 +80,79 @@ oracle   PDR 30.4%   delay 1.1 ms   hops 1.00
 aodv     PDR 69.6%   delay 102.2 ms hops 1.94
 ```
 
-**2440 of the 2450 possible directed edges** — a near-complete graph. ns-3
-attempts reception ~25 dB below what a frame needs to survive interference
-(`RxSensitivity` is −101 dBm; the noise floor for 22 MHz at NF 7 dB is about
-−93.6 dBm), so the link budget says every node hears every other node. The
+**2440 of the 2450 possible directed edges** — a near-complete graph. The
 resulting "oracle" routed everything in one hop and delivered **30.4 %** — below
-every protocol it exists to bound. An upper bound that loses to the things it
-bounds is not an upper bound, so that rule was withdrawn rather than shipped.
-The number is recorded here so nobody re-derives it.
+every protocol it exists to bound — so that rule was withdrawn, and for a
+release the fading cells were held to the harness's nominal `--range` instead
+(300 m, `disk-approx`). That approximation had its own measured cost, #431: the
+300 m disk under-reaches the radios by ~40 %, so the oracle used **more hops
+than every real arm on the identity-matched packet set in all six published
+fading cells** (`rwp-tworay` oracle 1.90 vs anthocnet 1.56) and intermittently
+partitioned fields the radios cover (noRoute up to 61 lookups/seed).
 
-What replaced it is the rule this repository's own methodology already implies:
-hold the control to the scenario's nominal `--range`. Note the **direction of
-the error**, because it is what a reader needs:
+The #431 measurement study found the budget rule's actual defect: **it read the
+wrong attribute.** `RxSensitivity` (−101 dBm) is where ns-3 stops *attempting*
+reception, but `WifiPhyHelper` installs a `ThresholdPreambleDetectionModel` on
+every PHY whose `MinimumRssi` (−82 dBm, 19 dB higher) drops any frame below it
+at preamble detection regardless of SNR. The binding decode floor is therefore
 
-- the 300 m disk is *conservative* under two-ray — real two-ray links reach
-  further — so the oracle uses a **subset** of the links that actually work;
-- therefore on `tworay`/`nakagami` the oracle is a **reference point, not a
-  proven upper bound**. Measured at paper base/60 s it still dominates
-  comfortably (`tworay`: oracle 100.0 % vs aodv 69.6 %; `nakagami`: oracle
-  99.3 % vs aodv 55.2 %), but that is an observation, not a theorem.
+```
+T = max(RxSensitivity, ThresholdPreambleDetectionModel::MinimumRssi)
+```
 
-`scenario_check.py` WARNs on every `approx=1` cell so the distinction cannot be
-lost between the run and the write-up.
+read off the installed PHY exactly the way the disk rule reads `MaxRange` off
+the live channel — **no free calibration constant**. From that threshold the
+two fading channels get separate, closed-form derivations
+(`oracle-decode-budget.{h,cc}`, unit-tested against hand-computed values):
 
-No propagation model is ever *evaluated*, which has a second benefit: the oracle
-takes no draw from the channel's pinned RNG stream
+- **`tworay` — the decode disk.** Solve the two-ray loss for the crossing
+  distance, in whichever regime it lands (ns-3's model is Friis below the
+  crossover `dCross = 4πh_t h_r/λ`, `1/d⁴` beyond; the two agree at `dCross`).
+  At the harness's paper PHY that is **423.3 m** (vs the withdrawn rule's
+  1264 m and the noise-floor variant's 806 m). Measured against an empirical
+  probe of the same PHY, the 423 m disk *is* the zero-load delivery graph:
+  99.8 % precision / 99.8 % recall (the 300 m disk: 100 % / 71 %).
+- **`nakagami` — the median disk.** The Nakagami power gain is
+  Gamma-distributed with shape `m(d)` and mean the two-ray power `P(d)`, so
+  `P(decode|d) = Q(m, m·T_W/P_W(d))` (regularized upper incomplete gamma) in
+  closed form — matched the empirically probed delivery curve within ~2 pp.
+  The P = 1/2 crossing (**373.4 m** at the paper PHY and ns-3's default
+  m-profile) is the best single-radius approximation of a link that is
+  genuinely probabilistic; the full probability-weighted graph is #431
+  direction 2 and deliberately not built.
+
+Why the split, measured (#431, 5 seeds, 20 nodes, 1500 × 300 m): the decode
+disk on `tworay` clears the full acceptance bar per seed — oracle PDR ≥ every
+arm **and** identity-matched hops ≤ every arm in every seed (at 300 m the hop
+bound failed in 10/10 seed×arm combinations). The same 423 m disk on
+`nakagami` breaks the delivery bound (a 423 m Nakagami link delivers ~35 % of
+frames; an arm beat the oracle in 1 of 5 seeds, p99 blew out to 2.4 s), while
+the median disk restores delivery in every seed and cuts the matched-hop gap
+an order of magnitude.
+
+**Both derived rules stay `approx=1`.** The decode disk is exact with respect
+to propagation and the decode threshold, but decoding under load also depends
+on interference and capture, which no disk can carry; `approx=0` stays
+reserved for adjacency the scenario itself configured. On these cells the
+oracle is a **calibrated reference point, not a proven upper bound** —
+`scenario_check.py` still WARNs on every `approx=1` cell, and its per-seed
+identity-matched hop gate (ε = 0.05) is the mechanical check that the
+calibration holds.
+
+`LinkRangeM` remains as an **explicit override** (it is what lets the #431
+A/B hold the oracle to any radius, e.g.
+`--ns3::oracle::Topology::LinkRangeM=300`), and is **required** only on a
+chain the oracle has no derivation for.
+
+No propagation model is ever *evaluated* — the derivations mirror ns-3's
+formulas — which has a second benefit: the oracle takes no draw from the
+channel's pinned RNG stream
 ([#352](https://github.com/danieljoppi/AntHocNet/issues/352)), so the oracle arm
 sees the same fading realisation as every other arm rather than a perturbed one.
-And because `tworay` and `nakagami` are held to the same radius by the same
-rule, the harness's controlled {`tworay`, `nakagami`} contrast is not confounded
-by the control changing its own definition of adjacency between the two cells.
+And because the `tworay` and `nakagami` radii derive from the **same decode
+threshold through each channel's own law**, the harness's controlled
+{`tworay`, `nakagami`} contrast compares one rule under two channels rather
+than two unrelated adjacency definitions.
 
 ### What "exact" does and does not claim
 
@@ -151,7 +196,8 @@ Each harness prints one line per (seed, oracle) run:
 ```
 
 `mode` is the "+"-joined set of adjacency rules in force (`wired`, `disk`,
-`disk-approx`); `range` is −1 on an all-wired topology; `noRoute` counts
+`decode-approx`, `p50-approx`, `disk-approx`); `range` is −1 on an all-wired
+topology and the derived (or overridden) radius otherwise; `noRoute` counts
 lookups that found no path, i.e. the field partitioned under the oracle's own
 topology. `scenario_check.py results` asserts on this row (NRL exactly 0, the
 graph was solved, the graph is non-empty, `approx` agrees with `mode`) and
@@ -165,8 +211,22 @@ cross-checks the arm against the others in the same cell.
 1. **NRL is exactly 0** — on the `##ORACLE##` row and on the results table.
    Asserted in the harnesses too, as `NS_ABORT`, so it holds in optimized
    campaign builds.
-2. **No protocol routes the same packet in fewer hops** — with a survivorship
-   guard, below.
+2. **No protocol routes the same packet in fewer hops** — asserted two ways:
+   on the whole-run mean with a survivorship guard (below), and — since #431 —
+   **unguarded on the identity-matched `##COMMON##` set, per seed**: on the
+   packets every arm delivered, survivorship is eliminated by construction, so
+   `oracle hopsC <= arm hopsC + 0.05` is a real FAIL on every mode that claims
+   the hop bound (`wired`, `disk`, `decode-approx`; fail-closed when the seed
+   has no `##ORACLE##` mode row). The 0.05 is draw-noise headroom (per-seed sd
+   of the matched-hop diff measured at 0.03–0.08), not a tolerance for
+   structural excess: #431's defect was +0.17 to +0.74 in the mean yet
+   ≤ +1 hop for ~96 % of individual packets, so any per-packet or ≥ 1-hop
+   tolerance would have stayed green through the whole regression. On
+   `p50-approx` — which is calibrated to the *delivery* bound, a probabilistic
+   link having no true radius — a sub-defect excess (≤ 0.15, above the largest
+   honest residual +0.083 and below the smallest published defect +0.17)
+   reports as a loud WARN instead, so an honest median-disk cell is not
+   publication-blocked; a defect-class excess FAILs regardless of mode.
 3. **Nothing outperforms full knowledge on a static, lossless topology** —
    asserted on ISL-grid cells, and deliberately *not* asserted on the #216
    adversarial cells (congestion corridor, scripted ISL break), which exist
