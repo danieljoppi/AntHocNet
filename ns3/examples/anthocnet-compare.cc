@@ -179,6 +179,22 @@ void CountControlTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t) {
     Ipv4Header ip;
     if (c->RemoveHeader(ip) == 0) return;
     if (ip.GetProtocol() != 17) return;  // not UDP; routing control here is UDP
+    // Fragmentation safety (#454, the isl-grid PR #453 fix ported): this trace
+    // fires once per FRAGMENT when a datagram exceeds the device MTU, and a
+    // continuation fragment (offset > 0) carries no UDP header — peeking one
+    // reads past the buffer (NS_ASSERT abort in debug, undefined read in
+    // release). A UDP fragment's datagram here can only be routing control:
+    // data is 64 B CBR (92 B IP packet) against the 2296 B wifi MTU, so it
+    // never fragments (the TCP arm's segments — 536 B default MSS — never
+    // fragment either, and are protocol 6, already excluded above). Each
+    // fragment is an IP packet on the wire, so it counts as control at this
+    // counting point; the first fragment (offset 0) still carries the UDP
+    // header and is classified by port exactly as before.
+    if (ip.GetFragmentOffset() != 0) {
+        ++g_controlPkts;
+        g_controlBytes += p->GetSize();
+        return;
+    }
     UdpHeader udp;
     if (c->PeekHeader(udp) == 0) return;
     if (udp.GetDestinationPort() != kDataPort) {
@@ -308,6 +324,12 @@ bool IsDataIp(Ptr<const Packet> p) {
     Ptr<Packet> c = p->Copy();
     Ipv4Header ip;
     if (c->RemoveHeader(ip) == 0) return false;
+    // #454: a continuation fragment (offset > 0) carries no L4 header to peek
+    // a port from, and no data packet ever fragments (UDP data is a 92 B IP
+    // packet, TCP segments cap at the 536 B default MSS, both far under the
+    // 2296 B wifi MTU) — so a continuation fragment is by construction not
+    // data. Classifying by port stays first-fragment-only.
+    if (ip.GetFragmentOffset() != 0) return false;
     if (ip.GetProtocol() == 6) {  // TCP (#389)
         // Pure TCP ACKs are excluded naturally: on the reverse path the
         // destination port is the sender's ephemeral port, so only forward
@@ -398,6 +420,12 @@ uint64_t g_reinjSkips = 0;  // MacReinjectSkip trace fires (incl. unparsed)
 bool ReinjKeyFromUdp(const Ipv4Header& ip, Ptr<const Packet> p,
                      Address& flow, uint32_t& seq) {
     if (ip.GetProtocol() != 17) return false;
+    // #454: a continuation fragment's payload does not start with a UDP
+    // header, so there is no (flow, seq) key to parse off it — and data never
+    // fragments here (see IsDataIp), so it cannot be a SeqTs CBR datagram.
+    // Callers that must close their books (CountMacReinject) classify the
+    // false return like any other non-data payload.
+    if (ip.GetFragmentOffset() != 0) return false;
     Ptr<Packet> c = p->Copy();
     UdpHeader udp;
     if (c->RemoveHeader(udp) == 0) return false;
@@ -886,6 +914,10 @@ void CountAckedDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
     if (llc.GetType() != 0x0800) return;  // not IPv4
     Ipv4Header ip;
     if (pkt->RemoveHeader(ip) == 0) return;
+    // #454: a fragment crosses the MAC as its own frame, so a continuation
+    // fragment (offset > 0, no L4 header to peek) can land here too. Data
+    // never fragments (see IsDataIp), so it is never a data hop.
+    if (ip.GetFragmentOffset() != 0) return;
     // Data only: routing control is exactly what must NOT count as a used path.
     // Routing control here is UDP, so a data-port TCP segment is by
     // construction never control (#389).
@@ -916,7 +948,10 @@ void CountAckedDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
 
 // Ipv4L3Protocol "LocalDeliver": one call per packet handed to the local
 // transport, i.e. exactly the delivered packets PDR counts. The header arrives
-// with the TTL the packet carried on the wire.
+// with the TTL the packet carried on the wire. Unlike the per-fragment "Tx"/
+// "Rx" traces (#454), this one fires only after reassembly — Ipv4L3Protocol::
+// LocalDeliver runs ProcessFragment first and traces the complete datagram
+// with the offset reset to 0 — so the L4 peeks below need no fragment guard.
 void CountDeliveredHops(const Ipv4Header& ip, Ptr<const Packet> p, uint32_t) {
     const bool isTcp = ip.GetProtocol() == 6;  // #389: TCP data counts here too
     UdpHeader udp;
