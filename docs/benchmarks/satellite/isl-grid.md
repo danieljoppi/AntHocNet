@@ -345,6 +345,7 @@ gap measures re-convergence.
 | `protocols` | anthocnet,aodv,olsr,oracle | `anthocnet,aodv` is the [#250](https://github.com/danieljoppi/AntHocNet/issues/250) hop-delay discriminator pair; `oracle` is the [#419](https://github.com/danieljoppi/AntHocNet/pull/419) exact upper bound. **`dsdv` is not available in this suite** — see below |
 | `breakLink` / `breakAt` | off | [#260](https://github.com/danieljoppi/AntHocNet/issues/260) scripted single-ISL break: endpoints `r1,c1,r2,c2` + cut time (s); emits `# failcell` detect/reconverge lines |
 | `corridorLoad` / `corridorLoadAt` | off / 15 | [#216](https://github.com/danieljoppi/AntHocNet/issues/216) cell 1: background rate (e.g. `12Mbps`) loading one of two equal-length corridors, switched on at `corridorLoadAt` (s); emits `# corridor` path-shift lines. Needs `torus=true` and even `cols` ≥ 4 |
+| `removeLinks` | off | [#432](https://github.com/danieljoppi/AntHocNet/issues/432) item 3: static ISL removals — semicolon-separated `r1,c1,r2,c2` endpoint quadruples, each adjacent on the grid (same rules as `breakLink`), never built (absent from t=0, both directions). Makes the constellation deliberately irregular: non-uniform degree, unequal-length alternatives. The remaining graph must stay connected (harness abort; the preflight proves it by BFS) |
 
 ### Why `dsdv` is not one of the arms ([#420](https://github.com/danieljoppi/AntHocNet/issues/420))
 

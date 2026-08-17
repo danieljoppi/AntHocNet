@@ -25,6 +25,7 @@ Usage:
                                 [--time 60] [--flows 4] [--cbrBps 4096]
                                 [--breakLink r1,c1,r2,c2] [--breakAt <s>]
                                 [--corridorLoad 12Mbps] [--corridorLoadAt 15]
+                                [--removeLinks r1,c1,r2,c2[;...]]
                                 [--protocols anthocnet,aodv,olsr,oracle]
         # #444: pre-flight a satellite (isl-grid) cell instead of the MANET
         # field. Defaults mirror the harness's own; the rules mirror its
@@ -371,6 +372,54 @@ def sat_bfs(adj, src):
     return dist
 
 
+def sat_removals(spec, rows, cols, links):
+    """#432 item 3: parse and validate --removeLinks, mirroring the harness's
+    NS_ABORT rules (quadruple format, endpoints in-grid, distinct, adjacent on
+    the grid, no ISL removed twice). Returns the normalized (lo, hi)
+    node-index pairs of the valid removals; an invalid quadruple reports FAIL
+    and is skipped, so every later rule judges the constellation the valid
+    removals leave. Connectivity of the remainder is checked by the caller,
+    where the post-removal adjacency exists.
+    """
+    removed = []
+    if not spec:
+        return removed
+    built = {(min(x, y), max(x, y)) for x, y in links}
+    quads = spec.split(";")
+    if quads and quads[-1] == "":
+        quads.pop()  # a trailing ';' yields no extra token in the harness
+    for quad in quads:
+        try:
+            rc = [int(t) for t in quad.split(",")]
+        except ValueError:
+            rc = []
+        if len(rc) != 4 or min(rc, default=-1) < 0:
+            report("FAIL", "--removeLinks expects r1,c1,r2,c2[;...], got "
+                           f"'{quad}' (harness abort)")
+            continue
+        if rc[0] >= rows or rc[2] >= rows or rc[1] >= cols or rc[3] >= cols:
+            report("FAIL", f"--removeLinks endpoint outside the {rows}x{cols} "
+                           f"grid: '{quad}' (harness abort)")
+            continue
+        ra, rb = rc[0] * cols + rc[1], rc[2] * cols + rc[3]
+        if ra == rb:
+            report("FAIL", "--removeLinks endpoints are the same node: "
+                           f"'{quad}' (harness abort)")
+            continue
+        key = (min(ra, rb), max(ra, rb))
+        if key not in built:
+            report("FAIL", "--removeLinks names no built ISL: "
+                           f"({rc[0]},{rc[1]}) and ({rc[2]},{rc[3]}) are not "
+                           "adjacent on this grid (harness abort)")
+            continue
+        if key in removed:
+            report("FAIL", f"--removeLinks removes the ISL '{quad}' twice "
+                           "(harness abort)")
+            continue
+        removed.append(key)
+    return removed
+
+
 def cmd_preflight_sat(a):
     """#444: pre-flight an isl-grid cell (satellite counterpart of the MANET
     preflight below; see the SAT_* constants for where each rule comes from)."""
@@ -382,6 +431,26 @@ def cmd_preflight_sat(a):
     n = rows * cols
     kind = "torus" if torus else "open"
     links = sat_grid_links(rows, cols, torus)
+    # #226, mirrored: the link walk and the closed form are independent
+    # bookkeeping; a disagreement means this script no longer builds the graph
+    # isl-grid.cc builds, and every rule below would judge the wrong topology.
+    # Checked on the FULL +Grid, before the #432 removals reshape `links` —
+    # the closed form describes the construction, not the built remainder.
+    expected = (rows * sat_axis_links(cols, torus)
+                + cols * sat_axis_links(rows, torus))
+    if len(links) != expected:
+        report("FAIL", f"topology mirror out of sync: walked {len(links)} "
+                       f"links but the closed form says {expected} for "
+                       f"{rows}x{cols} torus={torus} — this script no longer "
+                       "matches isl-grid.cc GridLinks/AxisLinks (#226); fix "
+                       "the mirror before trusting any rule below")
+    # #432 item 3: apply the static removals here, so the adjacency, degree,
+    # dsdv and BFS arithmetic below all judge the constellation actually
+    # built, exactly as the harness does (RemoveIsls after CheckTopology).
+    removed = sat_removals(a.removeLinks, rows, cols, links)
+    if removed:
+        cut = set(removed)
+        links = [lk for lk in links if (min(lk), max(lk)) not in cut]
     adj = {i: [] for i in range(n)}
     for x, y in links:
         adj[x].append(y)
@@ -392,17 +461,21 @@ def cmd_preflight_sat(a):
           f"{a.islDelayMs:g} ms {a.islRate}")
     print(f"  degree min={min(deg)} max={max(deg)}, {time:g} s, "
           f"{flows} standard flow(s)")
-    # #226, mirrored: the link walk and the closed form are independent
-    # bookkeeping; a disagreement means this script no longer builds the graph
-    # isl-grid.cc builds, and every rule below would judge the wrong topology.
-    expected = (rows * sat_axis_links(cols, torus)
-                + cols * sat_axis_links(rows, torus))
-    if len(links) != expected:
-        report("FAIL", f"topology mirror out of sync: walked {len(links)} "
-                       f"links but the closed form says {expected} for "
-                       f"{rows}x{cols} torus={torus} — this script no longer "
-                       "matches isl-grid.cc GridLinks/AxisLinks (#226); fix "
-                       "the mirror before trusting any rule below")
+    if removed:
+        # The connectivity half of the #432 knob's contract: the harness
+        # aborts on a disconnecting removal, and this is where the dispatch
+        # finds out first. A disconnected remainder makes PDR measure
+        # connectivity, not routing.
+        reach = sat_bfs(adj, 0) if n else {}
+        if len(reach) != n:
+            report("FAIL", "--removeLinks disconnects the constellation: "
+                           f"only {len(reach)} of {n} satellites reachable — "
+                           "PDR would measure connectivity, not routing "
+                           "(#432, harness abort)")
+        else:
+            print(f"  removed: {len(removed)} ISL(s) (--removeLinks) — "
+                  "deliberately irregular constellation, still connected "
+                  "(#432)")
     if n < 2:
         report("FAIL", f"{rows}x{cols} = {n} node(s) — no flow has two "
                        "distinct endpoints, so the run measures nothing")
@@ -474,6 +547,17 @@ def cmd_preflight_sat(a):
             report("FAIL", "--corridorLoad needs a torus with an even number "
                            "of columns >= 4 (two equal-length row corridors; "
                            "harness abort)")
+        # #432: the corridor construction IS the row-0 ring — two equal-length
+        # corridors between (0,0) and (0,cols/2). A removal inside row 0
+        # breaks that premise silently (the harness has no such check), and
+        # the corridor counters would then describe a corridor that does not
+        # exist.
+        if any(lo < cols and hi < cols for lo, hi in removed):
+            report("FAIL", "--removeLinks cuts a row-0 ISL with the corridor "
+                           "cell on: the two-equal-length-corridors "
+                           "construction no longer holds, so the corridor "
+                           "counters and the rho arithmetic describe a "
+                           "corridor that does not exist (#216, #432)")
         if a.corridorLoadAt <= 0.0 or a.corridorLoadAt >= time - 1.0:
             report("FAIL", f"--corridorLoadAt={a.corridorLoadAt:g}s must "
                            "fall inside the run (0 < t < time-1 = "
@@ -1899,6 +1983,9 @@ def main():
     p.add_argument("--breakAt", type=float, default=0.0)
     p.add_argument("--corridorLoad", default="")
     p.add_argument("--corridorLoadAt", type=float, default=15.0)
+    # #432 item 3: static ISL removals (semicolon-separated r1,c1,r2,c2
+    # quadruples), the irregular-constellation knob.
+    p.add_argument("--removeLinks", default="")
     r = sub.add_parser("results")
     r.add_argument("files", nargs="+")
     r.add_argument("--anchor", choices=sorted(ANCHOR_KEY))
