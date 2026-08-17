@@ -22,7 +22,8 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 > nothing comparative was published from this suite before. Reproduce the
 > base-torus results at commit `0f7a3ab`; the
 > [#432 adversarial cells](#the-adversarial-cells-corridor-and-failcell-432)
-> carry their own provenance (`820f5cf`).
+> carry their own provenance (corridor/failcell `820f5cf`, seam cell
+> `5220bd0`).
 
 ## The headline result: the base torus does not discriminate
 
@@ -111,13 +112,17 @@ must come from the adversarial cells this suite already anticipates:
   ([#260](https://github.com/danieljoppi/AntHocNet/issues/260)) — **now
   measured with the oracle arm**,
   [below](#the-adversarial-cells-corridor-and-failcell-432);
-- **larger or less regular constellations**, where a shortest path is not
-  trivially reachable by everyone — still open, and deliberately not
-  dispatched in [#432](https://github.com/danieljoppi/AntHocNet/issues/432):
-  a bare larger 4-regular torus is predicted to tie at the bound for exactly
-  the reason the 4×4 did (static, lossless, uncongested), so it needs its own
-  cell design (irregularity or dynamics, not just size) before it earns a
-  dispatch.
+- **larger or less regular constellations** — this one now has a designed,
+  measured answer: the [#432](https://github.com/danieljoppi/AntHocNet/issues/432)
+  item 3 **seam cell** (a deliberately irregular 6×6 torus with the rows-axis
+  wrap seam cut, [PR #453](https://github.com/danieljoppi/AntHocNet/pull/453))
+  was measured at 20 seeds with the oracle arm,
+  [below](#the-seam-cell-static-irregularity-also-ties-the-floor-432-item-3) —
+  and **static irregularity also cannot discriminate** on this substrate.
+  Headline discrimination in the static suite comes only from load (the
+  corridor) or an event instrument (the failcell); the residue of item 3
+  (dynamics/churn) is subsumed by
+  [#297](https://github.com/danieljoppi/AntHocNet/issues/297).
 
 The recommendation this section used to close on — add the `oracle` arm to
 those cells before any satellite comparison is published — **was followed**:
@@ -155,7 +160,11 @@ congestion-blind bound on it (with a mechanism caveat that belongs in every
 quote of that claim); the failcell still cannot separate anyone on headline
 metrics, but its reconvergence instrument now discriminates — OLSR
 reconverges 5× slower than the oracle's floor while AntHocNet and AODV sit
-statistically on it.
+statistically on it. A third cell — the [#432 item 3 **seam
+cell**](#the-seam-cell-static-irregularity-also-ties-the-floor-432-item-3),
+measured after these two — closes the adversarial-design question for the
+*static* suite: even genuine topological irregularity does not move the
+headline metrics off the bound.
 
 ### The corridor cell: beating the congestion-blind bound (#216 cell 1 / #280)
 
@@ -275,6 +284,118 @@ fast path is the detection; the baselines expose no detection trace —
 theirs is `nan`), and `tReconverge` is a proxy whose per-seed minima
 (0.22–0.38 s across arms) include the ~125 ms CBR-gap contribution of
 unaffected flows.
+
+### The seam cell: static irregularity also ties the floor (#432 item 3)
+
+> **Provenance — measured at `5220bd0`, 20 seeds, with the exact control.**
+> Run [31985601548](https://github.com/danieljoppi/AntHocNet/actions/runs/31985601548),
+> `ref=main`, `commit=5220bd0d6275413d58b9701d944b45d5496462d3`,
+> `image=ghcr.io/danieljoppi/ns3:3.42-opt`, `profile=release`,
+> `harness=isl-grid`. Cell: 6×6 +Grid torus with the rows-axis wrap seam
+> removed at columns 1–5
+> (`--removeLinks=5,1,0,1;5,2,0,2;5,3,0,3;5,4,0,4;5,5,0,5` — 67 ISLs, degree
+> min 3 / max 4, mean 3.72, connected), 5 ms / 10 Mbps, 8 standard flows
+> (`i → 35−i`), cbrBps 4096, 900 s, seeds 1–20,
+> `protocols=anthocnet,aodv,olsr,oracle` (the pinned canonical order). Design
+> and pre-registration: [PR #453](https://github.com/danieljoppi/AntHocNet/pull/453)
+> and the
+> [issue design record](https://github.com/danieljoppi/AntHocNet/issues/432#issuecomment-5310762041),
+> both written before any 20-seed data existed. Every number below is a
+> 20-seed mean computed by script from the per-seed `##RUN##` rows
+> (`bench_parse.py`; paired per-seed deltas against the oracle rows via the
+> skill's `stats_util` — nothing eyeballed or hand-averaged); `±` is a 95 %
+> t-CI half-width, `boot[lo,hi]` a percentile-bootstrap 95 % interval
+> (delay99), and paired `[lo,hi]` a per-seed paired 95 % CI (t for PDR/delay,
+> bootstrap for delay99), n = 20 seeds. `scenario_check.py results`:
+> **OK (0 fail, 0 warn)**. Reproduce this subsection at commit `5220bd0`.
+
+The cell is the designed answer to "larger or less regular constellations"
+([#432](https://github.com/danieljoppi/AntHocNet/issues/432) item 3). The
+base torus tied because on a 4-regular torus every alternative is an
+equal-cost shortest path, so no routing choice has a price. Cutting the
+rows-axis wrap seam at every column but 0 makes choices priced while staying
+static, lossless and uncongested: non-uniform degree (3–4), genuine
+path-length asymmetry (flow shortest paths 2/4/6/6/4/2/4/6 hops, mean 4.25 —
+analytic oracle floor **21.25 ms** mean, **31.0** delay99 in the 1 ms bins),
+and the surviving wrap ISL `(0,0)–(5,0)` — "the funnel" — on a shortest path
+of all 8 flows, strictly so for two of them (the detour around the open rows
+axis costs +4 hops = +20 ms).
+
+| protocol | PDR % | delay (ms) | delay99 (ms) | NRL |
+|---|---|---|---|---|
+| anthocnet | 100.00 ±0.00 | 21.58 ±0.00 | 31.0 boot[31.0, 31.0] | 4.56 ±0.01 |
+| aodv | 99.91 ±0.01 | 21.71 ±0.04 | 31.0 boot[31.0, 31.0] | 4.27 ±0.00 |
+| olsr | 100.00 ±0.00 | 21.57 ±0.00 | 31.0 boot[31.0, 31.0] | 4.68 ±0.00 |
+| **oracle** | **100.00 ±0.00** | **21.57 ±0.00** | **31.0 boot[31.0, 31.0]** | **0.00 ±0.00** |
+
+**Pre-registered expectation 1 — the exact bound — held.** Every seed
+self-reports `##ORACLE## … mode=wired approx=0 nodes=36 edges=134
+recomputes=900 changes=1 noRoute=0 nrl=0.00` (134 directed edges = the 67
+post-removal ISLs, both directions — the oracle proves it solved the seam
+graph, not the full torus). Oracle PDR 100.00, delay99 exactly 31.0 in all
+20 seeds, and mean delay 21.57 ±0.00 = the 21.25 ms analytic floor plus a
+0.32 ms excess (~0.075 ms/hop at 4.25 mean hops — the same
+[#250](https://github.com/danieljoppi/AntHocNet/issues/250)-class per-hop
+excess the base cell pays).
+
+**Pre-registered expectation 2 — hop-stretch discrimination — failed: the
+predicted mechanism did not occur.** The registered signature was AntHocNet
+mean delay above the oracle floor by evaporation lock-in onto
+longer-than-shortest funnel-flow paths. The smallest version of that effect
+is quantized at the hop: a wrong first hop on a strictly-shortest funnel
+flow costs +20 ms on that flow, i.e. **+2.5 ms on that seed's 8-flow mean if
+held for the run, +0.25 ms if held for a tenth of it**. Measured: AntHocNet
+ties the floor — PDR 100.00 in every seed (paired dPDR all-zero), delay99
+exactly 31.0 in every seed (paired d_delay99 all-zero), and paired mean
+delay **+0.0165 ms [+0.0102, +0.0228]** — fifteen times smaller than even
+the tenth-of-a-run signature, four orders below the +20 ms detour. No seed
+in 160 flow-seed combinations shows a held longer path: the stochastic ant
+choice plus lock-in landed on true shortest paths every time. OLSR ties the
+floor outright (paired dPDR −0.001 pp [−0.002, +0.000], d_delay +0.0025 ms
+[−0.002, +0.007], both spanning zero). The secondary NRL prediction is not
+attributable: packet-NRL ordering did invert vs the base cell (olsr 4.68 >
+anthocnet 4.56 > aodv 4.27 here, vs olsr cheapest on the 4×4), but the grid
+size changed with the seam and no full 6×6 reference cell exists, so the
+shift cannot be pinned on the seam — noted, not claimed.
+
+**Three paired CIs exclude zero, and none of them is discrimination — the
+letter-level deviation from the pre-registration, disclosed.** The outcome-3
+clause said "all paired CIs spanning zero"; strictly, three do not:
+AntHocNet's +0.0165 ms mean-delay offset, and AODV's **dPDR −0.0925 pp
+[−0.1036, −0.0814]** with d_delay **+0.143 ms [+0.108, +0.178]**. All three
+are constant sub-hop-quantum offsets, 30–300× below the 5 ms hop price the
+cell was built to charge, resolvable only because this substrate's
+seed-to-seed dispersion is ~0.01 ms — at that dispersion a paired CI
+resolves fixed per-protocol processing cost, not path choice. AODV's PDR
+deficit is the flood-discovery startup transient, not a seam effect: ≈ 53 of
+57 600 offered packets (≈ 7 per flow) dropped before first routes exist,
+present in every prior cell (corridor 99.93, failcell 99.95, and ≈ 0.9 pp at
+the PR #453 120 s smoke — a fixed packet count amortized over run length),
+with delay99 untouched at 31.0. **The methodological finding travels
+forward: on a near-deterministic substrate, "paired CI excludes zero" is not
+a sufficient discrimination criterion — the next static-cell
+pre-registration must pin an effect-size floor to the hop quantum**
+(material fraction of 5 ms; ≥ 1 pp PDR).
+
+**Verdict — pre-registered outcome 3 obtains: static irregularity also
+cannot discriminate, and #432 item 3 closes on its falsification branch.**
+All three real arms sit at or indistinguishably near the oracle bound at
+headline scale — no arm pays a hop anywhere on a deliberately irregular
+graph where wrong choices finally had a price. With the corridor and
+failcell results above, the static satellite suite's discrimination map is
+now complete and consistent: **headline metrics move only under load (the
+corridor's instrument); events and now irregularity are absorbed without
+headline trace** (the failcell needed its reconvergence instrument; the seam
+cell has no instrument left to fall back on — that is its verdict). The
+remaining scope of item 3 — dynamics, churn, handover — is **subsumed by the
+[#297](https://github.com/danieljoppi/AntHocNet/issues/297) satellite
+evaluation-credibility epic**, per the closing criterion pre-registered on
+the issue. Honest caveats: the cell is lossless and uncongested *by design*
+(that isolation is the point, and also the reason nothing separates); the
+1 ms delay99 binning makes 31.0 a coarse ceiling check, not a tail
+measurement; and the tie says the arms all *find* shortest paths here — it
+says nothing about what they do under the dynamics this cell deliberately
+excludes.
 
 ## What this suite is, and is not
 
@@ -486,15 +607,16 @@ excess tracked in [#250](https://github.com/danieljoppi/AntHocNet/issues/250)
 
 The suite's committed results are
 [the v1.5.0 phase-3 base-torus cell](#the-headline-result-the-base-torus-does-not-discriminate)
-and [the two #432 adversarial cells](#the-adversarial-cells-corridor-and-failcell-432)
+and [the three #432 adversarial cells](#the-adversarial-cells-corridor-and-failcell-432)
 above — all 20 seeds with the exact `oracle` control, so above the
 statistical policy's ≥ 10-run bar. The base cell is a *negative* result: it
 does not discriminate, so nothing comparative may be quoted from it — which
 is also why no interval is attached to a column where four arms report the
 same number. The corridor cell is the first *positive* comparative result
-(quote it only with its mechanism caveat), and the failcell separates the
+(quote it only with its mechanism caveat), the failcell separates the
 arms on its reconvergence instrument while confirming the headline-metric
-tie. The pipeline
+tie, and the seam cell is the suite's second designed negative: static
+irregularity also ties the floor, closing the static discrimination map. The pipeline
 that lands and gates results is
 real ([#259](https://github.com/danieljoppi/AntHocNet/issues/259)) — the same
 dispatch → rescue → validate → parse loop the MANET suite runs, so no
@@ -541,16 +663,19 @@ the control's answer and the protocols' answers can differ at all:
 
 1. **Discriminating cells** — the adversarial regimes under
    [#216](https://github.com/danieljoppi/AntHocNet/issues/216), each re-run
-   with the `oracle` arm beside it. Two are now
+   with the `oracle` arm beside it. Three are now
    [measured](#the-adversarial-cells-corridor-and-failcell-432): asymmetric
-   congestion ([#280](https://github.com/danieljoppi/AntHocNet/issues/280))
-   and scripted ISL breaks
-   ([#260](https://github.com/danieljoppi/AntHocNet/issues/260)). Still open:
-   the handover cell (no instrument yet), and larger or less regular
-   constellations (needs a cell design with irregularity or dynamics — size
-   alone is predicted to tie, and the failcell's headline tie is the measured
-   evidence for that prediction). **A satellite comparison published from the
-   base torus would be a comparison of four ties.**
+   congestion ([#280](https://github.com/danieljoppi/AntHocNet/issues/280)),
+   scripted ISL breaks
+   ([#260](https://github.com/danieljoppi/AntHocNet/issues/260)), and static
+   irregularity (the
+   [#432 item 3 seam cell](#the-seam-cell-static-irregularity-also-ties-the-floor-432-item-3)
+   — measured, and it ties: of the three static instruments, only load
+   moves headline metrics). Still open: the handover cell (no instrument
+   yet) and dynamics/churn generally — subsumed by
+   [#297](https://github.com/danieljoppi/AntHocNet/issues/297). **A
+   satellite comparison published from the base torus would be a comparison
+   of four ties.**
 2. [#206](https://github.com/danieljoppi/AntHocNet/issues/206) — per-next-hop
    congestion signal, precondition for the congestion cell.
 3. [#244](https://github.com/danieljoppi/AntHocNet/issues/244) /
