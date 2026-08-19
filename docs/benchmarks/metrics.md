@@ -206,6 +206,24 @@ exactly those packets — same packets, same seeds, all delivered — so no
 population difference remains to confound the comparison. This is the
 assumption-free version of the matched measurement.
 
+**The precondition, which is not free (#431/#459/#460).** "Same packets" holds
+only if `(flow, seq)` names the same *transmission* in every arm — i.e. if the
+application layer is constructed **and seeded** identically across arms, so
+that the key's packet is sent at the same instant everywhere and crosses the
+same topology. That is a property of the harness, not of the key, and it was
+false until #459: `anthocnet-compare` drew the flow start times from a
+cumulative RNG stream counter that the routing helpers had already advanced by
+a protocol-dependent amount (#352), so each arm started every flow at a
+different time. The matched set was therefore matched **by index, not by
+transmission**, and under mobility the same key's packets crossed unrelated
+topologies — measured at ~1.5 s mean separation with the 5 s default start
+window, and expected near `startWindow / 3` ≈ 60 s on the `paper` scenario that
+every published grid cell uses. Numbers measured before #459 are inventoried in
+#460. When adding an arm or a helper, the rule this implies is: **anything the
+application layer draws must come from a stream index that does not depend on
+which routing protocol is under test** — in the harness today, the fixed
+`kAppStreamOffset` sub-block.
+
 `p99Surplus` is the tail over the packets this protocol delivered that some
 other protocol did not. It tests the hypothesis `##MATCH##` could only assume:
 **if a protocol's extra deliveries really are its slow ones, its surplus tail
