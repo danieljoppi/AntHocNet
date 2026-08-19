@@ -134,15 +134,36 @@ constexpr uint16_t kDataPort = 9;
 // that adds streams silently wrap into the next seed's block.
 constexpr int64_t kStreamStride = 1000000;
 
+// #431: the application sub-block. Everything assigned from the running
+// counter below is arm-invariant up to and including the internet stack — but
+// the routing helpers consume a protocol-dependent number of streams (the
+// oracle draws nothing, aodv/olsr pin one per node, anthocnet several), so any
+// draw taken from the running counter AFTER them lands on a different stream
+// in every arm. The flow start times were exactly such a draw, which meant the
+// same (flow, seq) key named a packet SENT AT A DIFFERENT TIME in each arm —
+// up to the full --startWindow apart. That silently broke the ##COMMON##
+// premise stated below ("application construction is identical and seeded
+// identically"): the identity-matched set was matched by index, not by
+// transmission, so its per-arm delays/hops were measured on topologies up to
+// minutes apart under mobility. Measured before this fix (50 nodes, tworay,
+// 300 s, 5 seeds): mean |t_oracle - t_aodv| for the same key was ~60 s, and
+// the same-1s-epoch fraction ~2%. The application streams therefore get a
+// FIXED offset at the top of the seed block, independent of which routing arm
+// ran, restoring cross-arm packet identity. Within-arm determinism and #352
+// split-structure invariance are unaffected (the block is still per-seed).
+constexpr int64_t kAppStreamOffset = kStreamStride - 10000;
+
 // Advance `next` by the number of streams a helper's AssignStreams() reported,
-// and abort if this run has overrun its per-seed block.
+// and abort if this run has overrun its per-seed block — which for the running
+// counter now ends where the fixed application sub-block begins.
 void TakeStreams(int64_t& next, int64_t base, int64_t used, const char* what) {
     next += used;
-    NS_ABORT_MSG_IF(next - base >= kStreamStride,
+    NS_ABORT_MSG_IF(next - base >= kAppStreamOffset,
                     "RNG stream budget exhausted after assigning " << what
                     << ": this run has consumed " << (next - base)
-                    << " streams but kStreamStride is " << kStreamStride
-                    << " — seed blocks would overlap (#352). Raise the stride.");
+                    << " streams but the application sub-block starts at "
+                    << kAppStreamOffset
+                    << " — blocks would overlap (#352/#431). Raise the stride.");
 }
 
 // #352: DsdvHelper is the one baseline helper with no AssignStreams() wrapper —
@@ -1567,8 +1588,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     startVar->SetAttribute("Max", DoubleValue(std::min(P.startWindow, P.simTime * 0.5)));
     // #352: pinned before the flow loop below reads it — the start times are
     // drawn there, not at Simulator::Run().
-    startVar->SetStream(stream);
-    TakeStreams(stream, streamBase, 1, "flow start times");
+    // #431: pinned at a FIXED offset in the seed block, not the running
+    // counter — the counter's value here depends on how many streams the
+    // routing arm consumed, and an arm-dependent stream would give every arm
+    // different flow start times, breaking the (flow, seq) packet identity
+    // the ##COMMON##/##MATCH## comparison rests on (see kAppStreamOffset).
+    int64_t appStream = streamBase + kAppStreamOffset;
+    startVar->SetStream(appStream);
+    appStream += 1;
     std::ostringstream rate;
     rate << static_cast<uint64_t>(P.cbrBps) << "bps";
     uint16_t port = kDataPort;
@@ -1657,11 +1684,18 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // nothing. AssignStreams is called on the applications rather than through
     // OnOffHelper::AssignStreams because the helper is per-flow and scoped to
     // the loop above.
+    // #431: from the fixed application sub-block, like the start times above —
+    // these too must be identical in every arm for the (flow, seq) identity to
+    // name the same physical transmission.
     for (uint32_t i = 0; i < apps.GetN(); ++i) {
         Ptr<OnOffApplication> onoffApp = DynamicCast<OnOffApplication>(apps.Get(i));
         if (onoffApp) {
-            TakeStreams(stream, streamBase, onoffApp->AssignStreams(stream),
-                        "onoff application");
+            appStream += onoffApp->AssignStreams(appStream);
+            NS_ABORT_MSG_IF(appStream - streamBase >= kStreamStride,
+                            "RNG stream budget exhausted assigning the onoff "
+                            "applications: the application sub-block "
+                            "(kStreamStride - kAppStreamOffset streams) is too "
+                            "small for this flow count (#431).");
         }
     }
 
