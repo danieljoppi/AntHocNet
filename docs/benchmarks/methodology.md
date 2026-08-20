@@ -362,27 +362,36 @@ derived per interface from the simulator's own objects; every oracle row carries
   against the oracle's **2.09** at **95.9 %**. The rule therefore fires only
   when the other arm delivered at least as much as the oracle and *still* shows
   a shorter mean path.
-- **The hop bound did not hold on the v1.5.0 wifi cells, and phase 3 measured
-  that.** The clause above anticipated one way for the oracle's mean path to
-  read long — survivorship. Phase 3 found a second, and it is not an artefact
-  of *which* packets are averaged: on the identity-matched `##COMMON##` set
-  (#308), where every arm delivered the same `(flow, seq)` packets, **the
-  oracle used more hops than every real arm in all six grid cells**, two-ray
-  included (e.g. `rwp-tworay` oracle 1.90 against anthocnet 1.56 and aodv
-  1.47). The cause was the mis-radiused disk (above), fixed by #431's derived
-  radii — measured at 20-node scale the bound then holds per seed on tworay —
-  and the check is no longer suppressed: `scenario_check.py` asserts every
-  seed's matched-set oracle hops against each arm's + 0.05, with no
-  survivorship guard (none is needed on the matched set) — a real FAIL on
-  every mode that claims the hop bound (`wired`, `disk`, `decode-approx`), a
-  loud WARN on `p50-approx` for a sub-defect excess (≤ 0.15 — the median disk
-  is calibrated to the delivery bound and carries a measured honest residual
-  of −0.02..+0.08), and a FAIL regardless of mode beyond that. **The published
-  grid's oracle rows still predate #431**: until the six fading cells are
-  re-measured and [grid.md](grid.md) updated (the remaining step tracked on
-  #431), keep reading their hop bound as quotable only where the oracle is
-  `approx=0` (the wired ISL topologies), per the per-cell evidence and the
-  delivery-vs-latency quoting rule in [grid.md](grid.md).
+- **The hop bound holds on the two-ray cells and fails under fading — and the
+  phase-3 reading that it failed everywhere was an instrument artefact.** The
+  clause above anticipated one way for the oracle's mean path to read long:
+  survivorship. Phase 3 reported a second, apparently survivorship-free one —
+  on the identity-matched `##COMMON##` set (#308) the oracle appeared to use
+  more hops than every real arm in all six grid cells, two-ray included
+  (`rwp-tworay` oracle 1.90 against anthocnet 1.56 and aodv 1.47). That reading
+  did not survive re-measurement. The harness had been drawing flow start times
+  from an RNG stream whose index depended on which routing arm ran, so the
+  matched set's `(flow, seq)` keys named packets **sent at different times in
+  each arm** — matched by index, not by transmission (#459). Re-measured on the
+  fixed harness at 20 seeds, the real arms reproduce to within ±0.015 while the
+  oracle alone falls by 0.50–0.81, and the bound **holds in 20/20 seeds against
+  every arm on all three two-ray cells** (`rwp-tworay` oracle 1.300 against
+  anthocnet 1.545 and aodv 1.460).
+- **What survives is a narrower, real approximation error under fading.** On
+  the three Nakagami cells the oracle is above olsr by +0.028..+0.038 and above
+  dsdv by +0.149..+0.167 in 20/20 seeds, while beating anthocnet 0/20. Since
+  the matched set is the intersection over all arms, dsdv routes the *same*
+  packets in fewer hops than the shortest-path control believes possible, which
+  means the `p50-approx` median radius (373.4 m) is missing links the radios
+  genuinely have. So the hop bound is quotable on `wired`, `disk` and
+  `decode-approx`, and **not** on `p50-approx`. The check is no longer
+  suppressed: `scenario_check.py` asserts every seed's matched-set oracle hops
+  against each arm's + 0.05, with no survivorship guard (none is needed on the
+  matched set) — a real FAIL on every mode that claims the hop bound, a loud
+  WARN on `p50-approx` for a sub-defect excess (≤ 0.15), and a FAIL regardless
+  of mode beyond that. Full six-cell readout and the superseded numbers:
+  [#431](https://github.com/danieljoppi/AntHocNet/issues/431#issuecomment-5339246820);
+  corpus-wide blast radius of the instrument defect: #460.
 - Consequently the AntHocNet-to-oracle gap is an **upper bound on how much of
   the shortfall is protocol overhead** — it does not decompose that shortfall
   into discovery cost, suboptimal path choice and reconvergence loss.
