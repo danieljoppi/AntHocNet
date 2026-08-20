@@ -252,11 +252,19 @@ not a measurement that happened to come out at zero.
 cells; `delay`/`delay99` are a bound only on the three two-ray cells; NRL is an
 assertion rather than a measurement; and `hopsMean` is not a bound anywhere on
 this page. The
-[quoting rule](#how-these-numbers-may-be-quoted-a-delivery-bound-everywhere-a-latency-bound-only-on-two-ray)
-below is where that is settled, with its evidence. Note already that `hopsMean` is
-**higher than every real arm's** in every cell — the opposite of what a
-shortest-path control is supposed to do, and the tell that the whole section
-rests on an approximate adjacency graph.
+[quoting rule](#how-these-numbers-may-be-quoted-a-delivery-bound-everywhere-latency-and-hops-on-two-ray)
+below is where that is settled, with its evidence. Note already that `hopsMean`
+is **higher than every real arm's** in every cell, and that this is *not* the
+defect it was once read as. `hopsMean` averages over each arm's **own** delivered
+set, and the oracle delivers 6–33 pp more packets than the arms it bounds — the
+extra ones being precisely the long-path, hard-to-route packets the others drop.
+A shortest-path control that delivers the hard packets *should* read longer here.
+The survivorship-free instrument is the identity-matched `##COMMON##` set below,
+and on it the ordering reverses: the oracle is **below** every arm on two-ray
+and below the reactive arms under fading. An earlier version of this page read
+the `hopsMean` ordering as evidence that the adjacency graph was wrong; on the
+matched set that reading does not hold, and the real approximation error is
+measured in [the caveat section](#the-caveat-stated-with-the-numbers-rather-than-under-them).
 
 ### Gap decomposition — the headline
 
@@ -297,6 +305,28 @@ channel finally costs something, and it costs **half a point**: 0.45–0.59 pp,
 leaving **95.5–95.8 %** of AntHocNet's gap and **98.2–98.3 %** of AODV's on the
 routing side.
 
+> **This decomposition is pending a re-derivation, and the direction of the
+> change is known.** The table above uses the v1.5.0 oracle, whose adjacency was
+> the scenario's `--range` — a 300 m geometric disk. [#457](https://github.com/danieljoppi/AntHocNet/pull/457)
+> replaced that with a radius derived from the installed PHY (423.3 m on
+> two-ray, 373.4 m on Nakagami), and a wider graph routes over marginal links,
+> so the oracle's own delivery falls. Re-measured at 20 seeds on the fixed
+> harness, oracle PDR is **96.00–98.20 %** rather than 99.41–100.00 %, which
+> moves the channel term to **1.80–4.00 pp** and the routing share to
+> **67.0–88.4 %** (AntHocNet 67.0–76.2 %, AODV 79.1–88.4 %). The qualitative
+> reading is unchanged — routing dominates the gap in every cell — but "the
+> channel costs nothing at all on two-ray" and "under 0.6 pp" are specific to
+> the 300 m disk and must not be quoted against the current oracle.
+>
+> The table is **not** silently restated here because which oracle belongs in
+> this decomposition is a real analytical choice, not a transcription: the 300 m
+> disk is the more conservative *delivery* reference (its links are solidly
+> in range, so `100 − oracle_pdr` is a tighter floor on what no router could
+> deliver), while the derived radius is the better *adjacency* model and is what
+> makes the hop bound hold. Picking one for this table is tracked on
+> [#460](https://github.com/danieljoppi/AntHocNet/issues/460) with the measured
+> numbers for both.
+
 The reading that matters is the one this grid could not previously support:
 **the headroom above AntHocNet is almost entirely addressable in the protocol**.
 A fading channel that intuition blames for a 10–14 pp delivery gap turns out to
@@ -315,96 +345,144 @@ against an absolute reference instead of against AODV.
 
 ### The caveat, stated with the numbers rather than under them
 
-**All six cells are approximate.** Every oracle row on this page reads
-`##ORACLE## … mode=disk-approx approx=1 range=300.0`. A two-ray or Nakagami
-channel has no crisp adjacency — link viability is a continuous function of
-distance, and under fading a random one — so the control cannot derive the
-true graph and is held instead to the scenario's `--range`, a **300 m
-geometric disk**. `scenario_check.py` says so once per seed: *"a fading or
-two-ray channel has no crisp adjacency, so this arm is a reference point, not a
-proven upper bound."* The exact (`approx=0`) rule exists only where the graph
-*is* the wiring — see the [satellite ISL suite](satellite/isl-grid.md), which
-publishes the `mode=wired approx=0` cell.
+**All six cells are approximate.** Every oracle row on this page is flagged
+`approx=1`. A two-ray or Nakagami channel has no crisp adjacency — link
+viability is a continuous function of distance, and under fading a random one —
+so the control cannot derive the true graph. Since
+[#457](https://github.com/danieljoppi/AntHocNet/pull/457) it is held to a
+radius derived from the installed PHY rather than to the scenario's `--range`:
+`mode=decode-approx` at **423.3 m** on two-ray (where the two-ray power crosses
+the decode floor) and `mode=p50-approx` at **373.4 m** on Nakagami (the
+closed-form Gamma law's P = ½ crossing at that same floor).
+`scenario_check.py` says so once per seed: *"a fading or two-ray channel has no
+crisp adjacency, so this arm is a reference point, not a proven upper bound."*
+The exact (`approx=0`) rule exists only where the graph *is* the wiring — see
+the [satellite ISL suite](satellite/isl-grid.md), which publishes the
+`mode=wired approx=0` cell.
 
-The approximation is not hypothetical, and phase 3 measured its size. The
-instrument is the identity-matched `##COMMON##` set
+> **These numbers supersede the phase-3 matched-hop and matched-latency tables,
+> which were measured on a broken instrument.** Phase 3 reported that the
+> oracle used more hops than every real arm in all six cells (e.g. `rwp-tworay`
+> oracle 1.90 against anthocnet 1.56) and that under fading it was 12–30 ms
+> slower in the mean than AntHocNet. Both readings were artifacts. The harness
+> drew flow start times from a cumulative RNG stream counter that the routing
+> helpers had already advanced by a *protocol-dependent* amount, so every arm
+> started every flow at a different instant and `##COMMON##`'s `(flow, seq)`
+> keys named packets **sent at different times in each arm** — the identity
+> match was by index, not by transmission
+> ([#459](https://github.com/danieljoppi/AntHocNet/pull/459)). On the `paper`
+> scenario's 180 s start window the expected separation between two arms' copies
+> of the same key is `startWindow / 3` ≈ 60 s, which at 20 m/s is a different
+> topology entirely. The tables below are the same six cells re-measured on the
+> fixed harness at 20 seeds; the superseded values are kept in
+> [#431](https://github.com/danieljoppi/AntHocNet/issues/431#issuecomment-5339246820)
+> and the blast radius across the corpus in
+> [#460](https://github.com/danieljoppi/AntHocNet/issues/460). Per the
+> [#352](https://github.com/danieljoppi/AntHocNet/issues/352) rule, do not run
+> `sweep_summary --vs` across that commit.
+
+The approximation is not hypothetical, and it has now been measured twice — the
+second time with an instrument that works. The instrument is the
+identity-matched `##COMMON##` set
 ([#308](https://github.com/danieljoppi/AntHocNet/issues/308)) — the exact
-`(flow, seq)` packets **all five arms delivered** — so nothing below is
-survivorship:
+`(flow, seq)` packets **all five arms delivered**, now genuinely the same
+transmissions — so nothing below is survivorship:
 
-| mobility | channel | metric | anthocnet | aodv | **oracle** |
-|---|---|---|---|---|---|
-| rwp | tworay | hopsC | 1.56 | 1.47 | **1.90** |
-| ssrwp | tworay | hopsC | 1.53 | 1.44 | **1.87** |
-| gaussmarkov | tworay | hopsC | 1.60 | 1.48 | **2.13** |
-| rwp | nakagami | hopsC | 1.56 | 1.25 | **1.73** |
-| ssrwp | nakagami | hopsC | 1.58 | 1.26 | **1.75** |
-| gaussmarkov | nakagami | hopsC | 1.62 | 1.26 | **2.00** |
+| mobility | channel | anthocnet | aodv | olsr | dsdv | **oracle** | hop bound |
+|---|---|---|---|---|---|---|---|
+| rwp | tworay | 1.545 | 1.460 | 1.325 | 1.335 | **1.300** | **holds 20/20** |
+| ssrwp | tworay | 1.516 | 1.441 | 1.309 | 1.317 | **1.285** | **holds 20/20** |
+| gaussmarkov | tworay | 1.586 | 1.476 | 1.355 | 1.364 | **1.322** | **holds 20/20** |
+| rwp | nakagami | 1.560 | 1.248 | 1.203 | 1.083 | **1.231** | fails vs olsr, dsdv |
+| ssrwp | nakagami | 1.578 | 1.258 | 1.209 | 1.084 | **1.238** | fails vs olsr, dsdv |
+| gaussmarkov | nakagami | 1.633 | 1.268 | 1.233 | 1.104 | **1.271** | fails vs olsr, dsdv |
 
-**On every cell — two-ray included — the oracle uses more hops than every real
-arm on identical packets.** A shortest-path control that routes *longer* than
-its subjects is measuring a different graph than the one the radios have. That
-is `approx=1` appearing directly in the data.
+**On the three two-ray cells the oracle is below every real arm in every one of
+the 20 seeds.** That is the hop bound holding, un-suppressed, for the first time
+on a wifi channel — and it is the acceptance bar #431 set for a replacement
+adjacency rule.
 
-The latency consequence follows the same line, and inverts between channels
-(same `##COMMON##` basis, anthocnet minus oracle):
+**On the three fading cells it is not.** The failure is narrow, one-directional
+and identical across all three: the oracle is above olsr by +0.028…+0.038 and
+above dsdv by +0.149…+0.167 in **20 of 20 seeds**, while beating anthocnet 0/20
+and aodv in all but the gaussmarkov cell. Because `common` is the intersection
+over *all* arms, dsdv is routing **the same packets** in fewer hops than the
+shortest-path control believes possible — which is only possible if the graph
+is missing links the radios genuinely have. A **median** radius does exactly
+that: every link Nakagami delivers on beyond 373.4 m is invisible to the solver,
+and the arms with full topology knowledge are the ones that exploit them. That
+is `approx=1` appearing directly in the data, at its measured size.
+
+The latency comparison, on the same `##COMMON##` basis (anthocnet minus oracle):
 
 | mobility | channel | meanC anthocnet | meanC oracle | Δ | p99C anthocnet | p99C oracle | Δ |
 |---|---|---|---|---|---|---|---|
-| rwp | tworay | 20.1 | 4.3 | **+15.7** | 308.2 | 21.9 | **+286.3** |
-| ssrwp | tworay | 16.5 | 4.2 | **+12.3** | 273.1 | 21.8 | **+251.3** |
-| gaussmarkov | tworay | 18.1 | 5.3 | **+12.8** | 298.0 | 23.9 | **+274.1** |
-| rwp | nakagami | 41.2 | 53.2 | **−12.1** | 586.8 | 1469.1 | **−882.4** |
-| ssrwp | nakagami | 39.5 | 53.3 | **−13.8** | 571.8 | 1487.5 | **−915.7** |
-| gaussmarkov | nakagami | 45.6 | 76.0 | **−30.3** | 665.9 | 1893.4 | **−1227.5** |
+| rwp | tworay | 18.4 | 1.9 | **+16.5** | 302.2 | 14.6 | **+287.6** |
+| ssrwp | tworay | 18.2 | 1.9 | **+16.3** | 289.1 | 14.4 | **+274.7** |
+| gaussmarkov | tworay | 16.9 | 2.1 | **+14.8** | 280.1 | 15.3 | **+264.8** |
+| rwp | nakagami | 39.3 | 30.9 | **+8.4** | 563.9 | 1015.9 | **−452.0** |
+| ssrwp | nakagami | 40.6 | 32.4 | **+8.2** | 571.0 | 1024.1 | **−453.1** |
+| gaussmarkov | nakagami | 43.4 | 40.4 | **+3.0** | 626.5 | 1272.2 | **−645.6** |
 
-Under fading the oracle is **12.1–30.3 ms slower in the mean and 882–1228 ms
-worse at p99 than AntHocNet**, on identical packets. That is not AntHocNet
-beating perfect routing.
+**The oracle is now faster in the mean in all six cells**, fading included — the
+phase-3 mean inversion was the instrument. What survives is the **tail**
+inversion under fading: the oracle's common-set p99 is 1.02–1.27 s against
+AntHocNet's 0.56–0.63 s on identical packets. It is real, and at roughly half
+the size phase 3 reported.
 
-**The mechanism** is one graph mismatch with two signs. A 300 m disk both
+**The mechanism** is one graph mismatch with two signs, and the two signs now
+separate cleanly by channel.
 
-- **misses links the radios actually have** — two-ray reaches past 300 m in
-  favourable geometry, so the control routes around edges that work, which is
-  why its hop counts are the highest on the page; and
-- **admits links the radios effectively do not have** — a nominally in-range
-  neighbour can be in a deep Nakagami fade, and the control, which evaluates no
+- **Missing links.** The derived radius is a threshold on a continuous law, so
+  links beyond it that nonetheless deliver are invisible to the solver and the
+  control routes around edges that work. This is the *only* sign active on
+  two-ray, and there it is small enough that the bound still holds in 20/20
+  seeds. Under fading, with a median radius, it is what produces the olsr/dsdv
+  hop residual above.
+- **Admitted links that are effectively absent.** A nominally in-range neighbour
+  can be in a deep Nakagami fade, and the control, which evaluates no
   propagation model, routes over it anyway. The packet is not lost; it is
-  retried until it arrives *very late*. Under fading that turns into the
-  1.47–1.89 s common-set p99 above — against AntHocNet's 0.57–0.67 s on the
-  same packets.
+  retried until it arrives *very late*. That lands in the tail and not in the
+  mean, which is exactly the shape of the surviving p99 inversion.
 
-Under two-ray only the first sign is active and it is cheap: the oracle still
-wins latency by **5.0–8.6× in the mean and 16.1–25.2× at `delay99`** over the
-whole population, a margin no plausible graph correction closes. Under Nakagami
-the second sign dominates and the comparison reverses.
+Under two-ray only the first sign is active and it is cheap: the oracle wins
+latency by an order of magnitude in the mean and ~19× at the common-set tail, a
+margin no plausible graph correction closes.
 
-### How these numbers may be quoted: a delivery bound everywhere, a latency bound only on two-ray
+**The two acceptance constraints pull in opposite directions**, which is the
+sharpest statement this page can make about the limit. Shrink the radius and the
+oracle's hop count rises above its subjects — today's fading failure. Grow it and
+the oracle's PDR falls *below* them: the refuted link-budget rule recorded in
+[`ns3/oracle/README.md`](../../ns3/oracle/README.md) made 2440 of 2450 edges
+adjacent and delivered 30.4 % PDR, a control its own subjects beat. Two-ray has a
+radius in the feasible band between those failures. Whether a fading channel has
+one at all is open, and if it does not, the answer is a probability-weighted
+(ETX-shaped) graph or an accepted-and-scoped limit — not further radius tuning.
 
-**Quote the oracle as a delivery bound in all six cells, and as a latency bound
-only on the two-ray cells.** This is the shipped rule, and it is what the
-evidence above supports, no more:
+### How these numbers may be quoted: a delivery bound everywhere, latency and hops on two-ray
 
-- **Delivery — robust in all six cells.** The oracle delivers 99.41–100.00 %
-  regardless of graph detail. A different-but-reasonable adjacency rule would
-  move that by a fraction of a point and cannot move the 7.05–35.42 pp
-  margins, so the [gap decomposition](#gap-decomposition--the-headline) and
-  every PDR conclusion on this page stand.
-- **Latency — two-ray only.** The 5–8× mean and 16–25× tail advantages hold
-  there with the graph error working *against* the oracle (missing links only,
-  so the true optimum is faster still — the bound is conservative). On the
-  fading cells the direction of the error is not signed and the measured
-  inversion is direct evidence of that, so **no latency bound may be quoted
-  from the three Nakagami cells at all** — neither for nor against AntHocNet.
-- **Hop count — not a bound anywhere on this page.** The
-  [#419](https://github.com/danieljoppi/AntHocNet/pull/419) assertion is
-  survivorship-guarded and therefore *vacuous* in all six cells (no arm ties
-  the oracle's PDR, so the rule never fires); the guard is also the only reason
-  it did not fire falsely — see
-  [the campaign record](v1.5.0-campaign.md#phase-3--the-oracle-control).
-- **`delay99` across arms is a separate trap**, and the oracle's pinned
-  ~2.01 s fading tail is the clearest instance of it in the corpus. It is a
-  general metric rule, not an oracle quirk — see
+- **Delivery — robust in all six cells.** Re-verified on the fixed harness:
+  oracle PDR 96.00–98.20 % against the best real arm's 85.58–92.42 %, with **zero
+  violations in 120/120 seeds**. A different-but-reasonable adjacency rule moves
+  that by a fraction of a point and cannot move the margins, so the
+  [gap decomposition](#gap-decomposition--the-headline) and every PDR conclusion
+  on this page stand.
+- **Latency — two-ray only.** The mean and tail advantages hold there with the
+  graph error working *against* the oracle (missing links only, so the true
+  optimum is faster still — the bound is conservative). On the fading cells the
+  error is not signed and the surviving p99 inversion is direct evidence of
+  that, so **no latency bound may be quoted from the three Nakagami cells** —
+  neither for nor against AntHocNet. The mean figures there are reportable as a
+  measurement but are not a bound.
+- **Hop count — a bound on the two-ray cells, and not on the fading cells.**
+  This is the change #457 and #459 bought: the assertion fires and passes at 20
+  seeds on all three two-ray cells. On the fading cells it fires and fails, and
+  the failure is the measured size of the median-radius approximation rather
+  than a defect in any arm — quote it as that, not as "dsdv beats optimal
+  routing".
+- **`delay99` across arms is a separate trap**, and the oracle's fading tail is
+  the clearest instance of it in the corpus. It is a general metric rule, not an
+  oracle quirk — see
   [metrics.md](metrics.md#delay99-is-not-comparable-across-arms-with-materially-different-pdr-415).
 
 ## The ranking-stability statement
