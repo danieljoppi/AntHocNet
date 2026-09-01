@@ -29,4 +29,4 @@
 ruff==0.16.1
 gcovr==8.6
 mkdocs-material==9.7.7
-commitizen==4.17.0
+commitizen==4.18.0
