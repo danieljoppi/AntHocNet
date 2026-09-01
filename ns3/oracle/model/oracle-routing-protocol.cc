@@ -144,7 +144,19 @@ RoutingProtocol::RouteOutput(Ptr<Packet> p,
     {
         // No queue, no discovery, no retry: the oracle either knows the path
         // now or there is none. That is what keeps its delay pure.
+        //
+        // #464: returning nullptr fails the send inside the socket, so this
+        // packet never reaches Ipv4L3Protocol::Send and FlowMonitor never
+        // counts it as transmitted. It is nonetheless an OFFERED packet, and
+        // a harness that computes PDR from FlowMonitor alone will silently
+        // omit it from the denominator — which is how a partitioned cell came
+        // to report 100 % delivery. Recorded separately from the RouteInput
+        // failures below, because those are already booked as route drops.
         NS_LOG_LOGIC("oracle: no path to " << dst << ", dropping " << p);
+        if (m_topology)
+        {
+            m_topology->NoteNoRouteOrigin();
+        }
         sockerr = Socket::ERROR_NOROUTETOHOST;
     }
     return route;
@@ -189,6 +201,14 @@ RoutingProtocol::RouteInput(Ptr<const Packet> p,
     {
         ucb(route, p, header);
         return true;
+    }
+    // #464: unlike the RouteOutput path above, this packet is already in
+    // flight and FlowMonitor has counted it. The error callback books it as a
+    // route drop, so the accounting closes on its own; the counter exists so
+    // the two populations can be told apart rather than inferred.
+    if (m_topology)
+    {
+        m_topology->NoteNoRouteForward();
     }
     ecb(p, header, Socket::ERROR_NOROUTETOHOST);
     return true;

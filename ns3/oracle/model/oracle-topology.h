@@ -162,9 +162,44 @@ class Topology : public Object
     }
 
     /// Lookups that found no path — the oracle's own "network partitioned".
+    /// This spans BOTH entry points, so it is a diagnostic rather than a
+    /// packet count; use the two splits below for accounting (#464).
     uint64_t GetNoRouteCount() const
     {
         return m_noRoute;
+    }
+
+    /// #464: route lookups that failed for a **locally originated** packet, so
+    /// RouteOutput returned nullptr, the socket send failed, and the packet
+    /// never reached Ipv4L3Protocol::Send. FlowMonitor therefore never counted
+    /// it as transmitted: these are offered packets that are absent from the
+    /// PDR denominator unless a harness adds them back. Counted in packets.
+    uint64_t GetNoRouteOriginCount() const
+    {
+        return m_noRouteOrigin;
+    }
+
+    /// #464: route lookups that failed for a packet **already in flight**, so
+    /// RouteInput invoked the error callback. Ipv4FlowProbe books those as a
+    /// route drop and the packet was already in the denominator, so unlike the
+    /// count above they need no correction — reported so the split is
+    /// auditable rather than inferred.
+    uint64_t GetNoRouteForwardCount() const
+    {
+        return m_noRouteForward;
+    }
+
+    /// Called by RoutingProtocol on the two failure paths, so the split is
+    /// recorded where the packet's fate is actually decided. Lookup() cannot
+    /// make the distinction: it is reached from both.
+    void NoteNoRouteOrigin()
+    {
+        ++m_noRouteOrigin;
+    }
+
+    void NoteNoRouteForward()
+    {
+        ++m_noRouteForward;
     }
 
     /// The shared-medium adjacency radius actually used, or -1 when the
@@ -221,6 +256,8 @@ class Topology : public Object
     uint32_t m_recomputes = 0;
     uint32_t m_changes = 0;
     uint64_t m_noRoute = 0;
+    uint64_t m_noRouteOrigin = 0;   // #464
+    uint64_t m_noRouteForward = 0;  // #464
     double m_usedRange = -1.0;
     EventId m_timer;
 };
