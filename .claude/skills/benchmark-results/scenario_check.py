@@ -276,7 +276,12 @@ DROPID_REINJ_FIELDS = re.compile(
 ORACLE_LINE = re.compile(
     r"^\s*##ORACLE##\s+(\d+)\s+([a-z][\w-]*)\s+mode=(\S+)\s+approx=([01])"
     r"\s+nodes=(\d+)\s+edges=(\d+)\s+recomputes=(\d+)\s+changes=(\d+)"
-    r"\s+range=(-?[\d.]+)\s+noRoute=(\d+)\s+nrl=([\d.]+)")
+    r"\s+range=(-?[\d.]+)\s+noRoute=(\d+)"
+    # #464: optional, so cells measured before the split still parse. Absence
+    # means "this cell predates the fix", which the gate below reports rather
+    # than silently treating as zero.
+    r"(?:\s+noRouteOrigin=(\d+)\s+noRouteFwd=(\d+))?"
+    r"\s+nrl=([\d.]+)")
 
 REINJ_LINE = re.compile(
     r"^\s*##REINJ##\s+(\d+)\s+([a-z][\w-]*)\s+events=(\d+)\s+parsed=(\d+)"
@@ -1483,12 +1488,14 @@ def check_oracle(path, rows):
 
     # --- the ##ORACLE## rows ------------------------------------------------
     seed_mode = {}  # seed -> mode tag, read by the #431 hop gate's severity
+    oracle_origin_refusals = {}  # seed -> #464 refused-send count
     for line in text.splitlines():
         m = ORACLE_LINE.match(line)
         if not m:
             continue
         (seed, proto, mode, approx, nodes, edges,
-         recomputes, changes, rng, no_route, nrl) = m.groups()
+         recomputes, changes, rng, no_route,
+         no_route_origin, no_route_fwd, nrl) = m.groups()
         if proto == ORACLE_PROTO:
             seed_mode[seed] = mode
         tag = f"{os.path.basename(path)} seed{seed}/{proto}"
@@ -1527,6 +1534,63 @@ def check_oracle(path, rows):
                            "field partitioned under the oracle's own topology, "
                            "so its PDR is bounded by connectivity here, not by "
                            "routing")
+        # #464: a lookup that fails for a LOCALLY ORIGINATED packet makes
+        # RouteOutput return nullptr, so the send dies in the socket and
+        # FlowMonitor never counts it as transmitted. Unless the harness folds
+        # those back into the offered count they are missing from the PDR
+        # denominator AND from the drop book, which is how a partitioned cell
+        # came to report 100.0 % delivery on a seed with 4512 refused sends
+        # while `# drops` closed at sum=100.00. Since the fix books them under
+        # `route`, a cell with refusals and a zero route column can only come
+        # from a harness that predates it — a stale binary or a regression.
+        if no_route_origin is None:
+            if int(no_route) > 0:
+                report("WARN", f"{tag}: noRoute={no_route} but no "
+                               "noRouteOrigin/noRouteFwd split — this cell "
+                               "predates #464, so its refused sends are "
+                               "missing from the PDR denominator and its "
+                               "oracle PDR reads high. Re-measure before "
+                               "quoting it")
+        else:
+            origin = int(no_route_origin)
+            if origin + int(no_route_fwd) != int(no_route):
+                report("FAIL", f"{tag}: noRouteOrigin {no_route_origin} + "
+                               f"noRouteFwd {no_route_fwd} != noRoute "
+                               f"{no_route} — the split does not account for "
+                               "every failed lookup (#464)")
+            oracle_origin_refusals[seed] = origin
+        # Pre-#464 cells carry no split. Their TOTAL is still the right input
+        # to the contradiction gate below: if any of those failures had been
+        # RouteInput ones the error callback would have booked them, so a zero
+        # route column with a non-zero noRoute means unbooked refusals either
+        # way. Using the total here keeps the gate effective on exactly the
+        # cells that predate the fix, which are the dangerous ones.
+        if no_route_origin is None and int(no_route) > 0:
+            oracle_origin_refusals[seed] = int(no_route)
+
+    # #464: with the refusals folded into the route column, a cell that has
+    # them and still reports route=0.00 can only come from a harness that
+    # predates the fix. The #215 identity cannot catch that case on its own —
+    # a pre-fix cell's book closes at sum=100.00 precisely BECAUSE the missing
+    # packets are absent from the denominator too, so the arithmetic is
+    # self-consistently wrong. This is the rule that makes it fail loudly.
+    if sum(oracle_origin_refusals.values()) > 0:
+        for r in rows:
+            if r.get("proto") != ORACLE_PROTO:
+                continue
+            route = _fnum(r, "drop_route")
+            if route is not None and route == 0.0:
+                total = sum(oracle_origin_refusals.values())
+                report("FAIL",
+                       f"{os.path.basename(path)}/{ORACLE_PROTO}: {total} "
+                       "failed route lookup(s) but the route column reads "
+                       "0.00 — refused sends are missing from both the drop "
+                       "book and the PDR denominator, so this arm's PDR is "
+                       "computed over the packets it had a route for, not "
+                       "over offered traffic. The #215 identity cannot catch "
+                       "this on its own: the book closes at sum=100.00 "
+                       "BECAUSE the same packets are absent from the "
+                       "denominator (#464)")
 
     # --- #431: the per-seed hop bound on the identity-matched set -----------
     # "No protocol routes the same packet in fewer hops" asserted where it is
