@@ -1456,6 +1456,64 @@ def _oracle_noroute_warns():
            f"a partitioned oracle field was not flagged\n{out}")
 
 
+# --- #464: refused sends must reach the denominator and the drop book --------
+#
+# The oracle refuses a locally originated send when its graph holds no path:
+# RouteOutput returns nullptr, the send dies in the socket, and FlowMonitor
+# never counts the packet as transmitted. Before #464 those packets were in
+# neither the PDR denominator nor the drop book, so a partitioned cell read
+# pdr=100.0 on a seed with 4512 refused sends while `# drops` closed at
+# sum=100.00 — self-consistently wrong, which is exactly why the #215 identity
+# could not catch it. Numbers below are the real measured cell (25 nodes /
+# 1600 x 1600 / range 450 / static, seeds 1,2,4 partitioned).
+
+ORACLE_REFUSAL_CELL = """\
+##RUN## 1 oracle 87.40 3.2 7.5 38.69 0.00 0.32 2.5 inf 0.0000
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes
+oracle          87.4        3.2          7.5        38.69    0.00        0.32         2.5         inf       0.000
+# drops oracle pdr=@PDR@ route=@ROUTE@ queue=0.00 mac=0.00 chan=0.04 ttl=0.00 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+"""
+
+
+@case("#464 refused sends absent from the drop book FAIL")
+def _oracle_refusals_unbooked_fires():
+    # A pre-#464 cell: noRoute is non-zero and carries no split, and the route
+    # column reads 0.00 because those packets never entered the accounting.
+    cell = (ORACLE_LINE_OK.replace("noRoute=0", "noRoute=913")
+            + ORACLE_REFUSAL_CELL.replace("@PDR@", "99.96").replace("@ROUTE@", "0.00"))
+    _levels, out = run_cell(cell)
+    expect("refused sends are missing" in out or "route column reads" in out,
+           "oracle-refusals-unbooked",
+           f"unbooked refused sends were not flagged\n{out}")
+
+
+@case("#464 booked refusals stay quiet")
+def _oracle_refusals_booked_quiet():
+    # A post-#464 cell: the split is present and the refusals are in the route
+    # column, so the accounting closes honestly and nothing should fire.
+    line = ORACLE_LINE_OK.replace(
+        "noRoute=0 nrl=0.00",
+        "noRoute=913 noRouteOrigin=913 noRouteFwd=0 nrl=0.00")
+    cell = line + ORACLE_REFUSAL_CELL.replace("@PDR@", "77.97").replace("@ROUTE@", "21.99")
+    _levels, out = run_cell(cell)
+    expect("refused sends are missing" not in out
+           and "route column reads" not in out,
+           "oracle-refusals-booked",
+           f"a correctly booked partitioned cell was flagged\n{out}")
+
+
+@case("#464 a split that does not sum to the total FAILs")
+def _oracle_refusal_split_broken():
+    line = ORACLE_LINE_OK.replace(
+        "noRoute=0 nrl=0.00",
+        "noRoute=913 noRouteOrigin=900 noRouteFwd=0 nrl=0.00")
+    cell = line + ORACLE_REFUSAL_CELL.replace("@PDR@", "77.97").replace("@ROUTE@", "21.99")
+    _levels, out = run_cell(cell)
+    expect("does not account for" in out, "oracle-refusal-split",
+           f"an inconsistent noRoute split was not flagged\n{out}")
+
+
 # --- #431: the per-seed identity-matched hop gate ----------------------------
 #
 # Fixtures are the #431 measurement study's real numbers (issue 431, comment

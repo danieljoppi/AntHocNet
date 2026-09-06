@@ -326,6 +326,22 @@ routing side.
 > makes the hop bound hold. Picking one for this table is tracked on
 > [#460](https://github.com/danieljoppi/AntHocNet/issues/460) with the measured
 > numbers for both.
+>
+> **A second, independent reason the same figures are overstated
+> ([#464](https://github.com/danieljoppi/AntHocNet/issues/464)).** When the
+> oracle's graph holds no path it refuses the send outright — `RouteOutput`
+> returns `nullptr`, so the packet never reaches `Ipv4L3Protocol::Send` and
+> FlowMonitor never counts it as transmitted. Until #464 those refusals were
+> absent from the PDR denominator *and* from the drop book, so `oracle_pdr`
+> was computed over the packets the control had a route for rather than over
+> offered traffic — biasing it **upward** and the channel term downward, which
+> is the same direction as the radius question above. The published v1.5.0
+> grid ran under the 300 m disk and did carry refusals, so "the oracle
+> delivers 100.00 % exactly" is optimistic on that account too. The effect is
+> small — 3 of the 120 re-measured seeds carry any refusals at all (2, 2 and
+> 30 lookups, all on fading cells), so under the derived radii it is worth
+> hundredths of a point — but it is systematic rather than noise, and it must
+> be corrected before the decomposition is re-derived rather than after.
 
 The reading that matters is the one this grid could not previously support:
 **the headroom above AntHocNet is almost entirely addressable in the protocol**.

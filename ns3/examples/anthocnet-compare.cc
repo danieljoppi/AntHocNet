@@ -1833,6 +1833,30 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                    + reason(Ipv4FlowProbe::DROP_QUEUE_DISC);
         for (uint32_t v : pd) dropL3Total += v;
     }
+    // #464: the oracle refuses a locally originated send outright when its
+    // graph holds no path — RouteOutput returns nullptr, the socket send
+    // fails, and the packet never reaches Ipv4L3Protocol::Send. FlowMonitor
+    // therefore never counts it as transmitted, so without this correction
+    // PDR is computed over "the packets the control had a route for" rather
+    // than over offered traffic: a partitioned cell reported 100.0 % delivery
+    // on a seed with 4512 refused sends, and the drop book closed at
+    // sum=100.00 precisely because it excluded them. A refused send is an
+    // offered packet that was lost for want of a route, so it belongs in the
+    // denominator and in the route column. The RouteInput half of the
+    // topology's noRoute counter is NOT added: those packets were already in
+    // flight, FlowMonitor counted them, and the error callback already books
+    // them under DROP_ROUTE_ERROR — adding them here would double-count.
+    // dOff50/dOff90 below are offered-based by construction, so they become
+    // more honest for the same reason, not less.
+    uint64_t noRouteOrigin = 0;
+    if (proto == "oracle") {
+        Ptr<oracle::Topology> topo = oracleHelper.GetTopology();
+        if (topo) {
+            noRouteOrigin = topo->GetNoRouteOriginCount();
+            r.txPackets += noRouteOrigin;
+            dropRoute += noRouteOrigin;
+        }
+    }
     r.pdr = r.txPackets ? 100.0 * r.rxPackets / r.txPackets : 0.0;
     r.meanDelayMs = rxForDelay ? 1000.0 * totalDelay / rxForDelay : 0.0;
     r.throughputKbps = (totalRxBytes * 8.0 / 1000.0) / P.simTime;
@@ -2581,6 +2605,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                   << " changes=" << topo->GetTopologyChanges()
                   << " range=" << std::fixed << std::setprecision(1) << topo->GetLinkRange()
                   << " noRoute=" << topo->GetNoRouteCount()
+                  // #464: appended, never inserted — the split between the two
+                  // failure paths, so the accounting can be audited rather than
+                  // inferred. noRouteOrigin is folded into the offered count
+                  // and the route column; noRouteForward was already booked.
+                  << " noRouteOrigin=" << topo->GetNoRouteOriginCount()
+                  << " noRouteFwd=" << topo->GetNoRouteForwardCount()
                   << " nrl=" << std::fixed << std::setprecision(2) << r.nrl
                   << "\n";
     }
