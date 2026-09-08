@@ -340,8 +340,14 @@ routing side.
 > delivers 100.00 % exactly" is optimistic on that account too. The effect is
 > small — 3 of the 120 re-measured seeds carry any refusals at all (2, 2 and
 > 30 lookups, all on fading cells), so under the derived radii it is worth
-> hundredths of a point — but it is systematic rather than noise, and it must
-> be corrected before the decomposition is re-derived rather than after.
+> hundredths of a point — but it is systematic rather than noise, and it had
+> to be corrected before the decomposition is re-derived rather than after.
+> That fix has shipped
+> ([PR #466](https://github.com/danieljoppi/AntHocNet/pull/466)): origin
+> refusals now enter `txPackets` and the `route` column, `##ORACLE##` carries
+> `noRouteOrigin=`/`noRouteFwd=`, and `scenario_check.py` FAILs a cell whose
+> refusals are unbooked. Any re-derivation of this decomposition must be
+> measured on the post-#466 harness.
 
 The reading that matters is the one this grid could not previously support:
 **the headroom above AntHocNet is almost entirely addressable in the protocol**.
