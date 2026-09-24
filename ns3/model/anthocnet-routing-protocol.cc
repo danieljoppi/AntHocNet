@@ -24,6 +24,8 @@
 #include "ns3/udp-header.h"
 #include "ns3/tag.h"
 
+#include <cstdint>
+
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE("AntHocNetRoutingProtocol");
@@ -709,8 +711,10 @@ void RoutingProtocol::NotifyInterfaceDown(uint32_t interface) {
     Ipv4InterfaceAddress iface = m_ipv4->GetAddress(interface, 0);
     Ptr<Socket> socket = FindSocketWithInterfaceAddress(iface);
     if (socket) {
-        socket->Close();
+        // Erase before Close: the map's comparator reads the bound device
+        // (#362), so look the key up while the socket is still intact.
         m_socketAddresses.erase(socket);
+        socket->Close();
     }
     for (auto it = m_socketSubnetBroadcast.begin(); it != m_socketSubnetBroadcast.end(); ++it) {
         if (it->second == iface) {
@@ -1340,6 +1344,20 @@ bool RoutingProtocol::IsMyOwnAddress(Ipv4Address src) const {
         if (kv.second.GetLocal() == src) return true;
     }
     return false;
+}
+
+bool RoutingProtocol::SocketByBoundDevice::operator()(const Ptr<Socket>& a,
+                                                     const Ptr<Socket>& b) const {
+    // Issue #362: every socket is bound to its interface's device before it is
+    // inserted, and there is one socket per device in each map, so the device
+    // index is a unique, heap-independent key. The pointer tie-break only
+    // keeps the ordering strict if that invariant were ever broken.
+    const Ptr<NetDevice> da = a->GetBoundNetDevice();
+    const Ptr<NetDevice> db = b->GetBoundNetDevice();
+    const uint32_t ia = da ? da->GetIfIndex() : UINT32_MAX;
+    const uint32_t ib = db ? db->GetIfIndex() : UINT32_MAX;
+    if (ia != ib) return ia < ib;
+    return PeekPointer(a) < PeekPointer(b);
 }
 
 Ptr<Socket> RoutingProtocol::FindSocketWithInterfaceAddress(Ipv4InterfaceAddress addr) const {

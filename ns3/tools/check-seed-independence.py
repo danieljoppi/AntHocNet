@@ -49,16 +49,19 @@ which carry exact per-flow tx/rx/lost counts. Gating it matters more than its
 property of the scenario, or an artefact of our harness?" — is only readable if
 its numbers mean the same thing as anthocnet-compare's for the same seed.
 
-isl-grid is deliberately NOT checked here, and the reason is a finding rather
-than an omission. An order case was written for it and it FAILED — see #362.
-The cause is not RNG and this gate's fix would not address it: both our routing
-protocol and ns-3's own AODV key their per-interface socket tables on
+isl-grid is checked on the order half, for the anthocnet arm only (#362). Its
+order case first FAILED for a reason that is not RNG: both our routing protocol
+and ns-3's own AODV keyed their per-interface socket tables on
 `std::map<Ptr<Socket>, ...>`, i.e. on heap addresses, and broadcast in that
 iteration order. anthocnet-compare gives every node one wifi interface, so
-those maps hold one entry and the order cannot vary; isl-grid gives every
-satellite four ISLs, so it does vary — with whatever the allocator did earlier
-in the process. Half the exposure is upstream, so this gate cannot be made
-green by any change to ns3/examples/. Re-enable the case when #362 closes.
+those maps hold one entry and the order cannot vary; isl-grid gives satellites
+several ISLs, so it did vary — with whatever the allocator did earlier in the
+process. #362 re-keyed our maps on the bound device's index. The aodv arm is
+excluded from the comparison, not from the runs: ns-3's AODV still carries the
+pointer-keyed maps and is not ours to patch, so its rows may differ by order
+and that is a documented threat to validity for multi-interface baseline
+comparisons (docs/benchmarks/methodology.md). It still runs in both orders,
+because running it first is what perturbs the heap before anthocnet does.
 
 Needs an ns-3 tree with the AntHocNet module installed, configured and built
 with examples enabled. Runs on stdlib only:
@@ -82,6 +85,14 @@ PROTOCOLS = ["anthocnet", "aodv"]
 # hand (DsdvHelper has no AssignStreams() wrapper in any ns-3 of the matrix),
 # i.e. the entry with no upstream helper backing it up.
 BASELINE_PROTOCOLS = ["aodv", "dsdv"]
+
+# isl-grid order case (#362): the scenario from the issue's failing evidence.
+# A 3x3 open grid is the smallest one whose interior satellites hold more than
+# one ISL, which is what makes socket-map order a degree of freedom at all.
+ISL_SCENARIO = "--rows=3 --cols=3 --flows=2"
+ISL_PROTOCOLS = ["anthocnet", "aodv"]
+# Arms whose rows are compared. aodv is upstream ns-3 and still pointer-keyed.
+ISL_GATED = {"anthocnet"}
 
 # manet-baselines prints per-seed diagnostics rather than ##RUN## rows:
 #   "  [diag aodv seed=3] flow 10.1.0.1:49153 -> ... tx=.. rx=.. lost=.."
@@ -157,6 +168,16 @@ def run_baselines(ns3dir, protocols, runs, time_s):
     return parse_diag_rows(run_ns3(ns3dir, cmd), cmd)
 
 
+def run_isl(ns3dir, protocols, runs, time_s):
+    """Run isl-grid once; return {(seed, proto): row} for the gated arms."""
+    cmd = (
+        f"isl-grid {ISL_SCENARIO} --time={time_s} "
+        f"--protocols={','.join(protocols)} --runs={runs}"
+    )
+    rows = parse_run_rows(run_ns3(ns3dir, cmd), cmd)
+    return {key: row for key, row in rows.items() if key[1] in ISL_GATED}
+
+
 def compare(case, reference, other):
     """Print per-key differences; return the number of problems found."""
     problems = 0
@@ -217,7 +238,14 @@ def main():
     )
     problems += compare("order/manet-baselines", base_reference, base_reversed)
 
-    checked = len(reference) + len(base_reference)
+    # isl-grid: order half only (no --firstRun), anthocnet rows only (#362).
+    isl_reference = run_isl(args.ns3dir, ISL_PROTOCOLS, args.seeds, args.time)
+    isl_reversed = run_isl(
+        args.ns3dir, list(reversed(ISL_PROTOCOLS)), args.seeds, args.time
+    )
+    problems += compare("order/isl-grid", isl_reference, isl_reversed)
+
+    checked = len(reference) + len(base_reference) + len(isl_reference)
 
     if problems:
         print(
@@ -237,7 +265,7 @@ def main():
     print(
         f"\nPASS [seed-independence]: {checked} per-seed row(s) identical across "
         "split structures (anthocnet-compare) and across protocol order "
-        "(anthocnet-compare, manet-baselines)"
+        "(anthocnet-compare, manet-baselines, isl-grid anthocnet arm)"
     )
     return 0
 

@@ -786,30 +786,36 @@ difference is worth stating rather than implying:
 |---|---|---|---|
 | `anthocnet-compare` | ✅ (`--firstRun`) | ✅ | `##RUN##` rows |
 | `manet-baselines` | ✗ — no `--firstRun` | ✅ | per-seed `[diag]` lines |
-| `isl-grid` | ✗ — no `--firstRun` | ❌ **fails** ([#362](https://github.com/danieljoppi/AntHocNet/issues/362)) | — |
+| `isl-grid` | ✗ — no `--firstRun` | ✅ `anthocnet` arm only; `aodv` excluded ([#362](https://github.com/danieljoppi/AntHocNet/issues/362)) | `##RUN##` rows |
 
 Neither of the last two exposes a first-run offset, so the structure half cannot
 be expressed against them.
 
-> **`isl-grid` rows are not safe to merge across differently-ordered
-> invocations.** An order case *was* written for `isl-grid` and it failed, on
-> ground the RNG pinning does not cover: both AntHocNet's routing protocol and
-> ns-3's own AODV key their per-interface socket tables on
-> `std::map<Ptr<Socket>, …>` — i.e. on **heap addresses** — and broadcast in
-> that iteration order. On `anthocnet-compare` every node has one wifi
-> interface, so those maps hold a single entry and the order cannot vary; on
-> `isl-grid` every satellite holds four ISLs, so it varies with whatever the
-> allocator did earlier in the process. Half the exposure is upstream, so no
-> change under `ns3/examples/` can close it. Measured effect at 4 seeds on a
-> 3×3 torus: AODV PDR 98.03 → 99.51 and mean delay 7.47 → 9.65 ms for the same
-> seed, purely from reversing `--protocols`. Until
-> [#362](https://github.com/danieljoppi/AntHocNet/issues/362) closes, keep every
-> satellite comparison inside one invocation with a fixed protocol order —
-> which is what `run-scenarios.py` and `check-sat-anchors.sh` already do, so no
-> published satellite number is affected. `isl-grid` keeps its own determinism
-> gate ([`check-determinism.sh`](../../ns3/tools/check-determinism.sh)), which
-> passes: identical invocations *are* reproducible, and that is precisely the
-> weaker property.
+> **`isl-grid` baseline rows are not safe to merge across differently-ordered
+> invocations; its `anthocnet` rows are, since #362.** An order case *was*
+> written for `isl-grid` and it first failed, on ground the RNG pinning does
+> not cover: both AntHocNet's routing protocol and ns-3's own AODV keyed their
+> per-interface socket tables on `std::map<Ptr<Socket>, …>` — i.e. on **heap
+> addresses** — and broadcast in that iteration order (AntHocNet also took its
+> "first interface" fallbacks from `.begin()` of that map). On
+> `anthocnet-compare` every node has one wifi interface, so those maps hold a
+> single entry and the order cannot vary; on `isl-grid` satellites hold several
+> ISLs, so it varied with whatever the allocator did earlier in the process.
+> Measured effect at 4 seeds on a 3×3 grid before the fix: AODV PDR 98.03 →
+> 99.51 and mean delay 7.47 → 9.65 ms for the same seed, purely from reversing
+> `--protocols`; AntHocNet's data plane was unchanged but its control counts
+> (`nrl`, `nrlBytes`, `jitter`) moved.
+> [#362](https://github.com/danieljoppi/AntHocNet/issues/362) re-keyed
+> AntHocNet's maps on the bound device's index, and the seed-independence gate
+> now runs the `isl-grid` order case and compares the `anthocnet` rows. **AODV's
+> half is upstream and remains:** its rows are still excluded from the gate, so
+> keep every satellite *baseline* comparison inside one invocation with a fixed
+> protocol order — which is what `run-scenarios.py` and `check-sat-anchors.sh`
+> already do, so no published satellite number is affected. The same exposure
+> applies to any multi-interface baseline comparison, and is a threat to
+> validity to state wherever one is published. `isl-grid` also keeps its own
+> determinism gate ([`check-determinism.sh`](../../ns3/tools/check-determinism.sh)):
+> identical invocations are reproducible, which is the weaker property.
 
 > **Campaign data produced before #352 carries a structure dependence.** Within
 > one invocation it is internally consistent (and per-seed pairing across

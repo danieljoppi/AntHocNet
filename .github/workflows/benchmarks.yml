@@ -51,7 +51,52 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The daily backstop exists to catch merges whose push-triggered run was
+  # cancelled (see the concurrency note above). When nothing that can move a
+  # number has changed since the commit the published table was measured at,
+  # a scheduled run re-measures identical code and only rewrites the
+  # `_Measured at <sha>_` stamp -- 2-3 h of runner time a day for a docs-only
+  # commit (observed 2026-09-07..09-23: every refresh commit was 7 stamp lines
+  # and no number). This gate skips that case. It never skips a push or a
+  # manual dispatch, so #365's "every merge is re-measured" contract is
+  # untouched, and it runs whenever the stamped commit lags a code change --
+  # exactly the staleness the backstop is for.
+  changed:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.diff.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != "schedule" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # The stamp update-benchmarks.py writes: .../commit/<40-hex sha>
+          measured=$(grep -oE 'commit/[0-9a-f]{40}' docs/benchmarks.md | head -1 | cut -d/ -f2)
+          if [ -z "$measured" ] || ! git cat-file -e "$measured^{commit}" 2>/dev/null; then
+            echo "No usable measured-at stamp ('$measured'); running."
+            echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # Everything that can move a number: the protocol, the ns-3 module +
+          # harness + tools, the image recipe, the build entry point, and this
+          # workflow. (The ns-3 base image is only republished on merges, which
+          # change these paths too.)
+          if git diff --quiet "$measured" HEAD -- core ns3 docker Makefile .github/workflows/benchmarks.yml; then
+            echo "Nothing benchmark-relevant changed since ${measured:0:7}; skipping."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Benchmark-relevant changes since ${measured:0:7}; running."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
   benchmark:
+    needs: changed
+    if: needs.changed.outputs.run == 'true'
     runs-on: ubuntu-latest
     # Build against the pre-built plain ns-3 image (same as ci.yml) instead of
     # compiling ns-3 from source, so the job has budget to run the whole

@@ -153,9 +153,9 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   summaries (`sweep_summary.py`), scenario pre-flight + result-plausibility
   validation (`scenario_check.py`, #134), and diff invariant checks — raw
   tables and logs stay out of LLM context; only script verdicts are read.
-- **Open work is tracked in GitHub issues** — per-area epics #26–#31 and the
-  open defects (#20–#23, #51), prioritized via `priority:P1..P3` labels
-  (see §10).
+- **Open work is tracked in GitHub issues**, prioritized via
+  `priority:P1..P3` labels — see §10 for how to query it rather than trusting
+  a list in this file.
 - **A 2026 roadmap exists** ([#298](https://github.com/danieljoppi/AntHocNet/issues/298)):
   a literature gap analysis (recent MANET routing · satellite/LEO · evaluation
   methodology, all three survey reports attached to the issue) crossed against
@@ -185,17 +185,17 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 - The NS-2 patch depends on **stable text anchors** in upstream files; a future
   NS-2 release that moves an anchor makes the installer fail loudly (by design)
   and the fragment must be updated.
-- **Delay-tail (#21) is partly a channel-model artefact.** On the contention-
-  dominated ns-3 disk model AntHocNet's delay/jitter tail runs above AODV; on
-  two-ray (the paper's PHY) the gap roughly halves, and with the ns-3
-  `ReconvHoldCap` (issue #21 lever L2, default **200 ms** since the #371
-  flip — 1 s from v1.3.0–v1.4.0: deep-tail
-  reconvergence holds drop at the cap instead of the 3 s `QueueTimeout`)
-  mean delay reaches parity with AODV on two-ray for near-noise PDR cost
-  (#103, measured at the then-default 1 s). The residual disk-model gap is the CONTEXT-§8 channel penalty plus
-  `T_hop` (#88 — since corrected to the thesis's 3 ms; tail impact pending
-  re-measurement), not an algorithmic deviation. NS-3 only;
-  the NS-2 adapter has no equivalent cap yet.
+- **The delay tail (#21, closed) is a priced trade, not a defect.** The #308
+  hold-cap ablation showed the tail and the delivery advantage are one
+  mechanism: reconvergence holds turn would-be drops into late deliveries, so
+  the packets in AntHocNet's tail are largely the ones AODV loses. The ns-3
+  `ReconvHoldCap` picks the operating point on that frontier — default
+  **200 ms** since the #371 flip (1 s in v1.3.0–v1.4.0) — and the frontier is
+  documented in `docs/configuration.md`. Any tail claim must name the channel
+  (the ranking inverts under fading — `docs/benchmarks/grid.md`) and the
+  transport (`docs/benchmarks/tcp.md`). The `RepairHoldCap` half of the
+  frontier is still unmeasured (#433). NS-3 only; the NS-2 adapter has no
+  equivalent cap yet.
 
 ## 9. Glossary
 
@@ -221,12 +221,11 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 
 ## 10. Open questions for future work
 
-> **Start here:** live work is tracked in GitHub issues, grouped into per-area
-> epics — #26 fidelity · #27 adapter · #28 benchmark · #29 observability · #30
-> packaging · #31 positioning — plus the open defects (#20–#23, #51, all
-> `priority:P1`) and the OMNeT++/INET adapter proposal #32. Each ticket has
+> **Start here:** live work is tracked in GitHub issues. Each ticket has
 > evidence, a fix sketch, and acceptance criteria; `priority:P1..P3` labels
-> order the backlog (ADR-0013).
+> order the backlog (ADR-0013), and area epics group it (e.g. #26 fidelity ·
+> #27 adapter · #28 benchmark · #29 observability · #31 positioning · #32
+> OMNeT++/INET adapter).
 >
 > **For sequencing** — which of those to do first, and which release it serves —
 > read the 2026 roadmap [#298](https://github.com/danieljoppi/AntHocNet/issues/298):
@@ -244,13 +243,11 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   gh issue list --repo danieljoppi/AntHocNet --state open --label priority:P1
   ```
 
-  (or the equivalent GitHub UI filter). As of 2026-07-26 that returns **#21**
-  (99th-percentile delay tail — the last contradicted paper headline), **#91**
-  (the compliance-ledger epic), **#121** (campaign affordability / the 6 h job
-  ceiling), and the two largest thesis-fidelity gaps found by the #182 audit:
-  **#179** (all three pheromone exponents are 20 in the thesis; we ship
-  1.0/2.0) and **#180** (proactive rate 10x too slow, and the thesis's
-  "10% better virtual pheromone" emission gate is missing entirely).
+  (or the equivalent GitHub UI filter). That list has itself gone stale once
+  already: the 2026-07-26 snapshot here named #21, #91, #121, #179 and #180,
+  and **all five were closed by 2026-09-24**, when the P1 query returned
+  nothing. When it is empty, sort by `priority:P2` and read the roadmap (#298)
+  for sequencing.
 - **Where the fidelity work stands.** The 2007 Ducatelle thesis is now readable
   in the private `papers` repo, and auditing every `Config` default against it
   (#182) changed the shape of the question: [1] (PPSN 2004) and the thesis
