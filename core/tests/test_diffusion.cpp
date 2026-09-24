@@ -5,6 +5,7 @@
 // pheromone (not a constant 1.0); the receiver bootstraps a one-hop-discounted
 // virtual pheromone that guides proactive ants only (never data). Regression
 // for deviation D3, plus the ADR-0007 gating and reach-guard relaxation.
+#include "anthocnet/core/ant_message_codec.h"
 #include "anthocnet/core/ant_router_logic.h"
 #include "anthocnet/core/config.h"
 #include "anthocnet/core/pheromone_engine.h"
@@ -138,6 +139,42 @@ int main() {
         CHECK_NEAR(advertFor(hello, 10), 0.2, 1e-12);
         CHECK_NEAR(advertFor(hello, 11), 0.9, 1e-12);
         CHECK(advertFor(hello, 12) < 0.0);
+    }
+
+    // 7. The advert cap k is Config::maxHelloAdverts (#186): the no-argument
+    //    createHelloAnt() the adapters call honours it, its default is the
+    //    thesis's k = 10, and it is clamped to the codec's wire bound so a
+    //    large k can never produce a hello every receiver would reject.
+    {
+        FakeClock clock;
+        ScriptedRng rng({0.5});
+        auto populated = [&](Config cfg, int nDest) {
+            AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
+            for (int d = 0; d < nDest; ++d)
+                router.table().setPheromoneRegular(/*dest*/ 100 + d, /*neighbor*/ 1,
+                                                   0.1 + 0.001 * d);
+            return router.createHelloAnt();
+        };
+
+        Config cfg;
+        CHECK_EQ(cfg.maxHelloAdverts, static_cast<std::size_t>(10));
+        CHECK_EQ(populated(cfg, 15).helloDests.size(), static_cast<std::size_t>(10));
+
+        cfg.maxHelloAdverts = 3;
+        AntMessage hello = populated(cfg, 15);
+        CHECK_EQ(hello.helloDests.size(), static_cast<std::size_t>(3));
+        CHECK_NEAR(advertFor(hello, 114), 0.114, 1e-12);  // best-first, unchanged
+
+        cfg.maxHelloAdverts = 0;  // the thesis's k = 0 sweep point: no adverts
+        CHECK(populated(cfg, 15).helloDests.empty());
+
+        cfg.maxHelloAdverts = 1000;
+        hello = populated(cfg, 100);
+        CHECK_EQ(hello.helloDests.size(),
+                 static_cast<std::size_t>(codec::kMaxHelloOnWire));
+        AntMessage decoded;
+        CHECK(codec::deserialize(codec::serialize(hello), decoded));
+        CHECK_EQ(decoded.helloDests.size(), hello.helloDests.size());
     }
 
     return RUN_TESTS();

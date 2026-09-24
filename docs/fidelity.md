@@ -225,6 +225,19 @@ be split before anyone deviates per ant type.
 7. **Cross-simulator parity is not guaranteed** — NS-2 and NS-3 have different
    MAC/PHY; the NS-2 adapter also has no pending-queue hold cap yet. Treat
    cross-sim comparison as behaviour re-validation, not a bit-for-bit port.
+8. **Hello advert selection is best-first, not random** (#186). The thesis caps
+   a hello at k destinations — k = 10, which we match (`maxHelloAdverts`) — and
+   *"if more than k destinations are available, k of them are picked out
+   randomly"*. We fill the slots deterministically instead: destinations with
+   an active data session first, then the rest by best regular pheromone
+   (#26 item 6.5, where "never a coin flip" was a deliberate choice but went
+   unrecorded here). The behavioural difference only appears when a node knows
+   more than k usable destinations: random selection spreads advertisement over
+   the whole known set across successive hellos, while best-first keeps
+   re-advertising the same top k and may never mention the rest, so less-used
+   destinations may get no virtual pheromone at all. **Unmeasured.** Changing it would go through `IRng`
+   (golden rule 3) and needs an A/B; the knob that makes the thesis's own k
+   sweep runnable is now exposed (ns-3 `MaxHelloAdverts`).
 
 ## Verification status
 

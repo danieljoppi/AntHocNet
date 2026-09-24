@@ -64,6 +64,8 @@ FIELDS = {
         "ns2_var": "proactive_virtual_margin_",
         "ns3": "m_proactiveVirtualMargin",
     },
+    # #186: ns-3 only — the NS-2 adapter is frozen and uses the core default.
+    "maxHelloAdverts": {"ns3": "m_maxHelloAdverts"},
     "sessionTtl": {"ns2_var": "session_ttl_", "ns3": "m_sessionTtl"},
     "helloInterval": {"ns2_macro": "AHN_HELLO_INTERVAL", "ns3": "m_helloInterval"},
     "proactiveInterval": {

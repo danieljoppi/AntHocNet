@@ -15,7 +15,7 @@ One struct, two surfaces:
 
 | Layer | File | What it is |
 |---|---|---|
-| Core | [`core/include/anthocnet/core/config.h`](../core/include/anthocnet/core/config.h) | `anthocnet::core::Config` — **36 fields**, plain C++14 aggregate with default member initializers. The single source of truth; `AntRouterLogic` reads nothing else. |
+| Core | [`core/include/anthocnet/core/config.h`](../core/include/anthocnet/core/config.h) | `anthocnet::core::Config` — **37 fields**, plain C++14 aggregate with default member initializers. The single source of truth; `AntRouterLogic` reads nothing else. |
 | NS-3 | [`ns3/model/anthocnet-routing-protocol.cc`](../ns3/model/anthocnet-routing-protocol.cc) | 30 `AddAttribute` blocks on `ns3::anthocnet::RoutingProtocol`. **24** of them write into `Config`; the other 6 are adapter-side state (queue timeouts, hold caps, the MAC failure detector, the MAC service-time EWMA, the adapter's own reactive-retry timer). |
 | NS-2 | [`ns2/src/ahn_router.cc`](../ns2/src/ahn_router.cc) | 15 `bind()`/`bind_bool()` TCL variables writing into `Config`, plus four compile-time `AHN_*` macros in [`ahn_router.h`](../ns2/src/ahn_router.h) (`AHN_HELLO_INTERVAL`, `AHN_PROACTIVE_INTERVAL`, `AHN_NETWORK_DIAMETER`, `AHN_LIFE_ANT`). |
 
@@ -100,7 +100,7 @@ The `ns-3 attribute` column is the name you pass to
 `--ns3::anthocnet::RoutingProtocol::<name>`; `—` means the field is core-only
 (edit `config.h` and rebuild).
 
-### 3.1 All 36 fields
+### 3.1 All 37 fields
 
 | parameter | default | unit | ns-3 attribute | source | what it affects |
 |---|---|---|---|---|---|
@@ -116,6 +116,7 @@ The `ns-3 attribute` column is the name you pass to
 | `reactiveRetryInterval` | `1.0` | s | — (see note) | **`unknown`** (number only) — the *mechanism* is real and belongs to **thesis §4.1.2**; `config.h`'s `[1] §4.2` citation is wrong, because §4.2 of the PPSN paper is the *results* section (see §3.3 below). Neither source states a numeric interval, so the 1.0 s stays unsourced ([#182](https://github.com/danieljoppi/AntHocNet/issues/182)). | At most one reactive forward ant per destination per window, so packets to an unreachable destination cannot flood ants. Also rate-limits repair-ant launches. |
 | `enableProactive` | `true` | bool | `EnableProactive` | Mechanism `[1] §3.3`; **the gate** is `repo choice` ([ADR-0007](adr/0007-proactive-diffusion-gated.md)) so the ablation is runnable. | Master switch for proactive ants **and** diffusion. Off = purely reactive AntHocNet. |
 | `enableDiffusion` | `true` | bool | `EnableDiffusion` | Mechanism `[1] §3.3` (hello messages as pheromone diffusion); **the gate** is `repo choice` (ADR-0007). | Whether hellos carry pheromone adverts and the virtual table is maintained. Virtual pheromone guides proactive ants only, never data. |
+| `maxHelloAdverts` | `10` | destinations per hello | `MaxHelloAdverts` | **`thesis`** — *"picks a maximum number k of destinations it has routing information for. k is normally kept on 10"* (lines 3925-3927); §5.3.4 sweeps k = 0/2/5/10/20 and reports performance improving **monotonically** with k (lines 6712-6714). Was a C++ default argument, unreachable from either adapter, until [#186](https://github.com/danieljoppi/AntHocNet/issues/186). Clamped to the wire bound `kMaxHelloOnWire = 64` (the ns-3 checker rejects larger values). **The selection rule is a deviation**: slots go to active sessions first, then best pheromone (#26 item 6.5), where the thesis picks the k at random — see [`fidelity.md`](fidelity.md) deviation 8. NS-2: not bound (adapter frozen, [`ns2-support.md`](ns2-support.md)); it uses the default. | How many destinations each hello advertises for diffusion. `0` = hellos carry no adverts (discovery/liveness only); larger = more virtual pheromone per hello and a bigger hello. The thesis predicts higher is better up to its tested 20; unmeasured here. |
 | `enableReactive` | `true` | bool | `EnableReactive` | Mechanism `[1] §3.1`; **the gate** is `repo choice` — an ablation switch, symmetric with `enableProactive`. Neither source contemplates running without reactive discovery. | Whether a data packet for an unknown destination launches a reactive forward ant. Off = **no source of regular pheromone at all**: data is queued and (barring diffusion) never delivered. Use it to measure what reactive setup buys, not as an operating mode. |
 | `enableRepair` | `true` | bool | `EnableRepair` | Mechanism `[1] §3.5` (local route repair); **the gate** is `repo choice`. | Whether a link break on an active path launches a repair ant. Off = reconvergence falls back to a fresh reactive discovery, so expect a longer outage and a wider flood per break. |
 | `enableLinkFail` | `true` | bool | `EnableLinkFail` | Mechanism `[1] §3.5` (link-failure notification); **the gate** is `repo choice`. | Whether this node *originates* a LinkFail notification. Off suppresses only the outbound note — local pruning of the dead neighbour and the release of packets held for it still run, because those are correctness, not signalling. Pairs with `linkfailNotifyInterval` (rate-limit) as the off-switch end of the same storm question ([#20](https://github.com/danieljoppi/AntHocNet/issues/20)). |
@@ -303,7 +304,7 @@ implements a design its own authors dropped, at a looser factor than they ever
 ran, bounded by a mechanism this repo invented. #177 is measuring the three
 options; treat this row as unsettled until it closes.
 
-### Proactive & diffusion — `enableProactive`, `enableDiffusion`, `proactiveInterval`, `proactiveBroadcastProb`, `proactiveMaxBroadcasts`, `sessionTtl`
+### Proactive & diffusion — `enableProactive`, `enableDiffusion`, `maxHelloAdverts`, `proactiveInterval`, `proactiveBroadcastProb`, `proactiveMaxBroadcasts`, `sessionTtl`
 
 Path maintenance while a session runs. This group is the repo's largest
 *mechanism-level* deviation from [1]: the paper emits one proactive ant per *n*
