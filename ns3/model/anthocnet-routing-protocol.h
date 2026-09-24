@@ -326,6 +326,7 @@ private:
     bool m_enableDirectedReactive;    ///< steer reactive ants by the virtual table
     double m_proactiveBroadcastProb;
     double m_proactiveVirtualMargin;
+    uint32_t m_maxHelloAdverts;       ///< #186: diffusion advert cap k (thesis: 10)
     double m_sessionTtl;
     uint32_t m_txFailureThreshold;
     bool m_enableMacFailureDetector;

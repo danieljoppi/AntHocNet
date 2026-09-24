@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Daniel Henrique Joppi
 
 #include "anthocnet/core/ant_router_logic.h"
+#include "anthocnet/core/ant_message_codec.h"  // kMaxHelloOnWire (#186)
 
 #include <algorithm>
 #include <cmath>
@@ -431,7 +432,14 @@ AntMessage AntRouterLogic::createForwardAnt(AntType type, NodeAddress dest) {
     return m;
 }
 
+AntMessage AntRouterLogic::createHelloAnt() {
+    return createHelloAnt(config_.maxHelloAdverts);
+}
+
 AntMessage AntRouterLogic::createHelloAnt(std::size_t maxAdverts) {
+    // Never emit more adverts than the codec accepts on decode (#186): an
+    // over-long list would make every receiver drop the whole hello.
+    maxAdverts = std::min<std::size_t>(maxAdverts, codec::kMaxHelloOnWire);
     AntMessage m;
     m.type      = AntType::Hello;
     m.direction = AntDirection::Up;

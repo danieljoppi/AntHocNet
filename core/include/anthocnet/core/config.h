@@ -90,6 +90,17 @@ struct Config {
     bool enableProactive = true;   ///< master: proactive ants + diffusion.
     bool enableDiffusion = true;   ///< hello pheromone adverts + virtual table.
 
+    /// Diffusion advert cap k: at most this many destinations per hello ant
+    /// (#186). 2007 thesis: "picks a maximum number k of destinations it has
+    /// routing information for. k is normally kept on 10" — and its §5.3.4
+    /// sweeps k = 0/2/5/10/20, reporting performance improving monotonically
+    /// with k. Clamped to the wire bound kMaxHelloOnWire (64) so a large value
+    /// can never produce a hello the codec would reject. Which k destinations
+    /// fill the slots is a separate, documented deviation: active sessions
+    /// first, then best pheromone (#26 item 6.5), where the thesis picks k at
+    /// random — see docs/fidelity.md.
+    std::size_t maxHelloAdverts = 10;
+
     /// Per-ant-type gates, completing the ablation surface the other
     /// `enable*` flags already provide. **All default true: turning none of
     /// them off reproduces current behaviour exactly.** They exist so the

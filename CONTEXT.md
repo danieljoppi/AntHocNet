@@ -263,7 +263,7 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 - Are the `Config` defaults (`alpha`/`betaAnts`/`betaData`/`gamma`, intervals, `maxPathLength`,
   `maxHistory`) the right operating point, or should they be tuned per
   simulator? (See #23 convergence, #26 fidelity.) **Now partly answered:**
-  [`docs/configuration.md`](docs/configuration.md) tabulates all 36 fields with
+  [`docs/configuration.md`](docs/configuration.md) tabulates all 37 fields with
   the *provenance* of each default. Four have none — §3.2 lists them as the
   standing worklist (the #182 thesis audit shrank it from eleven: five more
   turned out *positively absent* from the sources, i.e. `repo choice` with

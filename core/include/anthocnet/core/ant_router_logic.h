@@ -132,7 +132,8 @@ public:
 
     // --- ant construction -------------------------------------------------
     AntMessage createForwardAnt(AntType type, NodeAddress dest);
-    AntMessage createHelloAnt(std::size_t maxAdverts = 10);
+    AntMessage createHelloAnt();  // caps adverts at Config::maxHelloAdverts
+    AntMessage createHelloAnt(std::size_t maxAdverts);
     /// Build the backward ant for a forward ant that reached this node
     /// (this == dst). The returned message's `nextHop` is via firstBackHop().
     AntMessage createBackAnt(const AntMessage& forward);

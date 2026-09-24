@@ -60,6 +60,7 @@ RoutingProtocol::RoutingProtocol()
       m_enableDirectedReactive(false),
       m_proactiveBroadcastProb(0.1),
       m_proactiveVirtualMargin(0.0),
+      m_maxHelloAdverts(10),
       m_sessionTtl(5.0),
       m_txFailureThreshold(3),
       m_enableMacFailureDetector(true),
@@ -172,6 +173,18 @@ TypeId RoutingProtocol::GetTypeId() {
                           DoubleValue(0.0),
                           MakeDoubleAccessor(&RoutingProtocol::m_proactiveVirtualMargin),
                           MakeDoubleChecker<double>(0.0))
+            .AddAttribute("MaxHelloAdverts",
+                          "Diffusion advert cap k: at most this many destinations "
+                          "per hello ant (#186). Ducatelle 2007 thesis: \"k is "
+                          "normally kept on 10\"; its section 5.3.4 sweeps "
+                          "k = 0/2/5/10/20 and reports performance improving "
+                          "monotonically with k. 0 sends no adverts. Bounded by "
+                          "the wire format's 64-advert limit. Slots go to active "
+                          "sessions first, then best pheromone (the thesis picks "
+                          "at random; see docs/fidelity.md).",
+                          UintegerValue(10),
+                          MakeUintegerAccessor(&RoutingProtocol::m_maxHelloAdverts),
+                          MakeUintegerChecker<uint32_t>(0, 64))
             .AddAttribute("SessionTtl",
                           "Seconds a data session stays active for proactive probing.",
                           DoubleValue(5.0),
@@ -547,6 +560,7 @@ void RoutingProtocol::DoInitialize() {
     m_config.enableDirectedReactive = m_enableDirectedReactive;
     m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
     m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
+    m_config.maxHelloAdverts = m_maxHelloAdverts;
     m_config.sessionTtl = m_sessionTtl;
     m_config.helloInterval = m_helloInterval.GetSeconds();
     m_config.proactiveInterval = m_proactiveInterval.GetSeconds();
@@ -621,6 +635,7 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.enableDirectedReactive = m_enableDirectedReactive;
         m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
         m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
+        m_config.maxHelloAdverts = m_maxHelloAdverts;
         m_config.sessionTtl = m_sessionTtl;
         m_config.helloInterval = m_helloInterval.GetSeconds();
         m_config.proactiveInterval = m_proactiveInterval.GetSeconds();
