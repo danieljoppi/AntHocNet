@@ -41,6 +41,23 @@ Use `:<sim-version>-<release>` when you need a reproducible image for a citation
 release-pinned tier is published by the `Release` workflow (which reuses
 `images.yml`); the rolling tiers are published on every default-branch merge.
 
+> **v1.5.0 has no `anthocnet-ns3` pins.** Its release run's image jobs failed:
+> the `v1.5.0` tag's `Dockerfile.ns3` enabled `anthocnet;wifi;…` but not the
+> `aomdv`/`gpsr`/`oracle` modules the examples include, so the ns-3 example
+> build broke ([#436](https://github.com/danieljoppi/AntHocNet/pull/436)
+> fixed `main` the next day, after the tag). A 2026-09-24 backfill from the tag
+> ([#473](https://github.com/danieljoppi/AntHocNet/pull/473)'s pin-only
+> dispatch) confirmed the tag cannot build them, and published what it can:
+> `ns2:<ver>-v1.5.0`, `anthocnet-ns2:<ver>-v1.5.0` and the plain
+> `ns3:<ver>-v1.5.0`. For a pinned AntHocNet ns-3 image use `-v1.4.0`, or the
+> next release's pin once it is cut.
+
+A failed release image job can be republished without moving the rolling tags:
+dispatch `Images` on `main` with `release=vX.Y.Z` and `pin_only=true`
+(#473). The job checks out the release tag, so it only helps when the failure
+was transient. It cannot fix a recipe that is broken inside the tag itself,
+as v1.5.0's is.
+
 ## Build locally
 
 Each Dockerfile has a `base` stage (plain simulator) and an `anthocnet` stage on
