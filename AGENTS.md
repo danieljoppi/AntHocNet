@@ -144,7 +144,7 @@ results.
 | Check a claim/parameter against the papers | `docs/publications/` (digests of [1] + thesis status) |
 | See what v1.0 reproduces / deviates from the paper | `docs/fidelity.md` |
 | Understand a structural decision / its "why" | `docs/adr/` |
-| **Pick up open work** | GitHub issues (epics #26–#31; start with `priority:P1`) |
+| **Pick up open work** | GitHub issues — start with the highest open `priority:P*` label (query live; see `CONTEXT.md` §10) |
 | **Know which release a piece of work serves, or why something is *not* planned** | [#298](https://github.com/danieljoppi/AntHocNet/issues/298) — the 2026 roadmap: literature gap analysis → epics #293–#297, #300–#302 → release goals v1.3.0…v3.0.0, plus the non-goals with the reasoning that would reverse each |
 | Understand the ant types (what each one is for, what it writes, which switch gates it) | [`docs/ant-types.md`](docs/ant-types.md) — comparison table + lifecycle diagrams for Hello / Reactive / Proactive / Repair / LinkFail and the backward ant |
 | See the whole stack, or which mechanism is live/inert in a given regime | [`docs/software-layers.md`](docs/software-layers.md) — core → ports → adapters → harnesses, mechanisms × their config switches, and per-regime support |
