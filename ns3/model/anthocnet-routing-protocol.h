@@ -265,8 +265,17 @@ private:
     // unicast ants), one bound to the subnet-broadcast address (receives
     // broadcast hello/forward ants). A socket bound only to the unicast
     // address does NOT receive broadcasts, so both are required.
-    std::map<Ptr<Socket>, Ipv4InterfaceAddress> m_socketAddresses;
-    std::map<Ptr<Socket>, Ipv4InterfaceAddress> m_socketSubnetBroadcast;
+    //
+    // Issue #362: ordered by the index of the device each socket is bound to,
+    // NOT by Ptr<Socket> (whose operator< compares heap addresses). With more
+    // than one interface (the ISL mesh) the broadcast fan-out order and the
+    // `.begin()` "first interface" fallbacks otherwise depended on what the
+    // process had allocated earlier — i.e. on --protocols order.
+    struct SocketByBoundDevice {
+        bool operator()(const Ptr<Socket>& a, const Ptr<Socket>& b) const;
+    };
+    std::map<Ptr<Socket>, Ipv4InterfaceAddress, SocketByBoundDevice> m_socketAddresses;
+    std::map<Ptr<Socket>, Ipv4InterfaceAddress, SocketByBoundDevice> m_socketSubnetBroadcast;
 
     /// Issue #203: where a peer the core named actually is. `iface` is the ns-3
     /// interface index whose device shares a link with it; `linkLocal` is the
