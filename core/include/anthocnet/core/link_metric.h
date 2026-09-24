@@ -24,7 +24,7 @@ namespace core {
 /// Carries path aggregates and node-local signals only — never per-hop
 /// downstream vectors (the wire carries one scalar cost per hop, ADR-0009).
 struct LinkObservation {
-    int    hops     = 0;    ///< hops from this node to the destination.
+    double hops     = 0.0;  ///< hops to the destination; fractional once smoothed (#185).
     double pathTime = 0.0;  ///< accumulated time estimate (seconds, item 02).
     double hopTime  = 0.0;  ///< config T_hop (seconds).
 };

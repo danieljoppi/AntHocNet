@@ -23,6 +23,7 @@ int main() {
     const Config c;
 
     CHECK_EQ(c.alpha, 0.7);                     // legacy ALFA; meaning per ADR-0012
+    CHECK_EQ(c.hopCountAlpha, 0.0);             // thesis α (eq. 4.2) gated off until A/B'd (#185)
     CHECK_EQ(c.gamma, 0.7);                     // legacy GAMA; [1] §3.1
     CHECK_EQ(c.betaAnts, 20.0);                 // thesis beta1/beta2 (#179)
     CHECK_EQ(c.betaData, 20.0);                 // thesis beta3 (#179)

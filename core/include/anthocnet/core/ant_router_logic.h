@@ -17,6 +17,7 @@
 #define ANTHOCNET_CORE_ANT_ROUTER_LOGIC_H
 
 #include <map>
+#include <utility>
 #include <vector>
 
 #include "anthocnet/core/ant_history.h"
@@ -221,6 +222,11 @@ private:
     std::uint32_t   seqNum_ = 0;
     std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
     std::map<NodeAddress, double> lastSeen_;        ///< neighbor -> last reception time
+    /// #185: smoothed hop count ĥ per (destination, next hop), the thesis's
+    /// eq. 4.2 state. Only populated when Config::hopCountAlpha > 0; entries for
+    /// a neighbour are erased with it (loseNeighbor), so it is bounded by the
+    /// same (dest, neighbour) set as the regular pheromone table.
+    std::map<std::pair<NodeAddress, NodeAddress>, double> hopEstimate_;
     std::map<NodeAddress, double> lastReactive_;    ///< dest -> last reactive-ant time
     std::map<NodeAddress, double> lastRepair_;      ///< dest -> last repair-ant time
     std::map<NodeAddress, double> repairDeadline_;  ///< dest -> repair wait expiry (D6)

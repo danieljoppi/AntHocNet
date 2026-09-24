@@ -43,6 +43,8 @@ NS3_CC = REPO / "ns3/model/anthocnet-routing-protocol.cc"
 FIELDS = {
     "alpha": {"ns3": "m_alpha"},
     "gamma": {"ns3": "m_gamma"},
+    # #185: ns-3 only — the NS-2 adapter is frozen and uses the core default.
+    "hopCountAlpha": {"ns3": "m_hopCountAlpha"},
     "betaAnts": {"ns2_var": "beta_ants_", "ns3": "m_betaAnts"},
     "betaData": {"ns2_var": "beta_data_", "ns3": "m_betaData"},
     "hopTimeSec": {"ns3": "m_hopTime"},

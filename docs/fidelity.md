@@ -238,6 +238,16 @@ be split before anyone deviates per ant type.
    destinations may get no virtual pheromone at all. **Unmeasured.** Changing it would go through `IRng`
    (golden rule 3) and needs an A/B; the knob that makes the thesis's own k
    sweep runnable is now exposed (ns-3 `MaxHelloAdverts`).
+9. **The thesis's hop-count moving average is implemented but shipped OFF**
+   (`hopCountAlpha`, default `0`; the thesis states α = 0.7, eq. 4.2; #185).
+   Before #185 it did not exist: each backward ant's instantaneous hop count
+   went straight into the metric, so the hop term reacted fully to every ant
+   while the thesis smooths it. The default stays `0` — byte-identical to the
+   pre-#185 protocol — until the A/B the issue requires measures `0.7`.
+   Smoothing hop count changes every routing decision, the same blast radius
+   as `T_hop` (#88). Unrelated to `Config::alpha`, which is an evaporation
+   factor the thesis does not have; the naming collision is now called out on
+   both fields.
 
 ## Verification status
 

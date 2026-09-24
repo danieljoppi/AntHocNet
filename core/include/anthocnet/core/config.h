@@ -19,7 +19,24 @@ namespace core {
 
 struct Config {
     /// Pheromone reinforcement / evaporation weights.
-    double alpha = 0.7;  ///< ALFA: evaporation retains alpha of the value.
+    /// ALFA: evaporation retains alpha of the value per evaporationInterval
+    /// (ADR-0012, a repo extension). **This is NOT the thesis's α.** The 2007
+    /// thesis has three distinct 0.7s: γ (pheromone running average → `gamma`),
+    /// η (MAC send-time average → ns-3 `MacServiceAlpha`) and α (the hop-count
+    /// moving average, eq. 4.2 → `hopCountAlpha` below). This field is none of
+    /// them — the thesis has no evaporation term at all (#182, #185).
+    double alpha = 0.7;
+
+    /// The thesis's α — hop-count moving average, eq. 4.2:
+    /// h ← α·h + (1−α)·h_ant, per (destination, next hop), applied before the
+    /// hop count enters the pheromone metric (#185). 2007 thesis: "α is a
+    /// parameter regulating how quickly the formula adapts to new information.
+    /// In our experiments, α is always kept on 0.7." **Defaults to 0.0**, which
+    /// makes h equal the ant's own hop count — exactly the pre-#185 behaviour —
+    /// so enabling the thesis value (0.7) is an A/B decision, not a silent
+    /// change. Must be in [0, 1).
+    double hopCountAlpha = 0.0;
+
     double gamma = 0.7;  ///< GAMA: weight of the old value when reinforcing.
 
     /// Eq.1 exponents for the stochastic next-hop choice, from the primary

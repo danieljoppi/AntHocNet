@@ -53,6 +53,10 @@ void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
     const bool had = lastSeen_.find(neighbor) != lastSeen_.end();
     engine_.cleanNeighbor(table_, neighbor);
     lastSeen_.erase(neighbor);
+    for (auto it = hopEstimate_.begin(); it != hopEstimate_.end();) {  // #185
+        if (it->first.second == neighbor) it = hopEstimate_.erase(it);
+        else ++it;
+    }
     txFailures_.erase(neighbor);
     if (had && observer_) observer_->onRouteChanged(neighbor, neighbor, false);
 }
@@ -567,7 +571,7 @@ double AntRouterLogic::backAntPheromone(const AntMessage& ant) const {
     // Reconstruct T̂_d^i and the hop count from the retraced path carried in
     // `history` (the per-hop deltas summed = path time to the destination).
     LinkObservation obs;
-    obs.hops = static_cast<int>(ant.history.size());
+    obs.hops = static_cast<double>(ant.history.size());
     double t = 0.0;
     for (const AntHop& h : ant.history) t += h.time;
     obs.pathTime = t;
@@ -586,7 +590,31 @@ void AntRouterLogic::computeBackAntState(AntMessage& ant) const {
 }
 
 void AntRouterLogic::reinforceFromBackAnt(const AntMessage& ant) {
-    engine_.updateRegular(table_, ant.src, ant.prevHop, ant.pheromone);
+    double deposit = ant.pheromone;
+    // #185, thesis eq. 4.2: smooth the hop count per (destination, next hop)
+    // before it enters the metric, h <- a*h + (1-a)*h_ant. At the default a = 0
+    // this branch is skipped and the deposit is byte-identical to before.
+    if (config_.hopCountAlpha > 0.0 && ant.prevHop != kInvalidAddress) {
+        const auto key = std::make_pair(ant.src, ant.prevHop);
+        const double sample = static_cast<double>(ant.hops);
+        auto it = hopEstimate_.find(key);
+        // Seed from the first sample, and re-seed when the route itself has
+        // lapsed (no regular pheromone left): an estimate for a path that no
+        // longer exists must not bias the one that replaces it.
+        if (it == hopEstimate_.end() ||
+            table_.getPheromoneRegular(ant.src, ant.prevHop) <= 0.0) {
+            hopEstimate_[key] = sample;
+        } else {
+            it->second = config_.hopCountAlpha * it->second +
+                         (1.0 - config_.hopCountAlpha) * sample;
+        }
+        LinkObservation obs;
+        obs.hops = hopEstimate_[key];
+        obs.pathTime = ant.pathTime;
+        obs.hopTime = config_.hopTimeSec;
+        deposit = metric_->pheromone(obs);
+    }
+    engine_.updateRegular(table_, ant.src, ant.prevHop, deposit);
 }
 
 // --- consolidated receive ---------------------------------------------------
