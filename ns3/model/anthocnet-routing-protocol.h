@@ -318,6 +318,7 @@ private:
     double m_betaAnts;
     double m_betaData;
     double m_gamma;
+    double m_hopCountAlpha;           ///< #185: thesis alpha, eq. 4.2 (default 0 = off)
     bool m_enableProactive;
     bool m_enableDiffusion;
     bool m_enableReactive;            ///< reactive forward-ant gate (ablation)

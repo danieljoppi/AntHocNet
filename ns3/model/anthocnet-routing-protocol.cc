@@ -52,6 +52,7 @@ RoutingProtocol::RoutingProtocol()
       m_betaAnts(20.0),
       m_betaData(20.0),
       m_gamma(0.7),
+      m_hopCountAlpha(0.0),
       m_enableProactive(true),
       m_enableDiffusion(true),
       m_enableReactive(true),
@@ -96,7 +97,10 @@ TypeId RoutingProtocol::GetTypeId() {
                           TimeValue(Seconds(10.0)),
                           MakeTimeAccessor(&RoutingProtocol::m_proactiveInterval),
                           MakeTimeChecker())
-            .AddAttribute("Alpha", "Pheromone evaporation weight (ALFA).",
+            .AddAttribute("Alpha",
+                          "Evaporation retention factor per evaporation interval "
+                          "(legacy ALFA, ADR-0012). NOT the thesis's alpha: that "
+                          "is the hop-count moving average, HopCountAlpha (#185).",
                           DoubleValue(0.7),
                           MakeDoubleAccessor(&RoutingProtocol::m_alpha),
                           MakeDoubleChecker<double>())
@@ -112,6 +116,16 @@ TypeId RoutingProtocol::GetTypeId() {
                           DoubleValue(0.7),
                           MakeDoubleAccessor(&RoutingProtocol::m_gamma),
                           MakeDoubleChecker<double>())
+            .AddAttribute("HopCountAlpha",
+                          "The thesis's alpha (eq. 4.2): hop-count moving average "
+                          "per (destination, next hop), h <- a*h + (1-a)*h_ant, "
+                          "before the hop count enters the pheromone metric "
+                          "(#185). Ducatelle 2007: \"alpha is always kept on "
+                          "0.7\". Default 0 = no smoothing (each ant's own hop "
+                          "count, the pre-#185 behaviour). Range [0, 0.99].",
+                          DoubleValue(0.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_hopCountAlpha),
+                          MakeDoubleChecker<double>(0.0, 0.99))
             .AddAttribute("EnableProactive",
                           "Master switch for proactive ants + diffusion.",
                           BooleanValue(true),
@@ -552,6 +566,7 @@ void RoutingProtocol::DoInitialize() {
     m_config.betaAnts = m_betaAnts;
     m_config.betaData = m_betaData;
     m_config.gamma = m_gamma;
+    m_config.hopCountAlpha = m_hopCountAlpha;
     m_config.enableProactive = m_enableProactive;
     m_config.enableDiffusion = m_enableDiffusion;
     m_config.enableReactive = m_enableReactive;
@@ -627,6 +642,7 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.betaAnts = m_betaAnts;
         m_config.betaData = m_betaData;
         m_config.gamma = m_gamma;
+        m_config.hopCountAlpha = m_hopCountAlpha;
         m_config.enableProactive = m_enableProactive;
         m_config.enableDiffusion = m_enableDiffusion;
         m_config.enableReactive = m_enableReactive;
