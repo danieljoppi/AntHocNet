@@ -243,9 +243,16 @@ be split before anyone deviates per ant type.
    Before #185 it did not exist: each backward ant's instantaneous hop count
    went straight into the metric, so the hop term reacted fully to every ant
    while the thesis smooths it. The default stays `0` — byte-identical to the
-   pre-#185 protocol — until the A/B the issue requires measures `0.7`.
-   Smoothing hop count changes every routing decision, the same blast radius
-   as `T_hop` (#88). Unrelated to `Config::alpha`, which is an evaporation
+   pre-#185 protocol. **Measured and left off (2026-09-24):** the A/B the issue
+   required (10 paired seeds, paper field, disk and two-ray, AODV
+   byte-identical across arms) reads **PAIRED-NOISE on both channels**. dPDR
+   was +0.41 [−0.52, +1.34] pp on disk and +0.50 [−0.25, +1.25] on two-ray;
+   delay99 and NRL were also flat; 7/10 and 8/10 seeds were byte-identical
+   between arms. The smoothing touches only the `h·T_hop` term, which at
+   `T_hop = 3 ms` is small next to the measured path time, so it rarely
+   changes a routing decision here. Runs and the full readout are on
+   [#185](https://github.com/danieljoppi/AntHocNet/issues/185#issuecomment-5823817986).
+   Unrelated to `Config::alpha`, which is an evaporation
    factor the thesis does not have; the naming collision is now called out on
    both fields.
 
