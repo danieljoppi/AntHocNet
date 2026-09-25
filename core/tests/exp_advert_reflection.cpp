@@ -81,6 +81,13 @@ struct Counts {
     // snapshot time (route-formation transient vs steady state) and by whether
     // vArg itself still holds a regular route to d (a stale advert otherwise).
     std::uint64_t fartherEarly = 0, fartherVargNoRoute = 0;
+    // #476: steady-state (t >= 20 s) regular-absent "farther" cases compared
+    // against the CLOSEST neighbour c (minimum hop distance to d). Either c has
+    // no regular route to advertise at all (coverage), or it has one that is
+    // older and/or lower than the farther neighbour's (freshness).
+    std::uint64_t steadyFarther = 0, closestNoRoute = 0, closestHasRoute = 0,
+                  vargYounger = 0, vargHigherAdvert = 0;
+    std::vector<double> ageVarg, ageClosest;
 };
 
 core::NodeAddress argmaxRegular(const core::PheromoneTable& t, core::NodeAddress d,
@@ -133,6 +140,32 @@ void run(const Scenario& sc) {
         }
     }
 
+    // #476 freshness tracker: per (node, dest), the last time the node's best
+    // regular pheromone for dest INCREASED — i.e. was reinforced — polled every
+    // 0.25 s (evaporation only ever lowers it, so a rise is a reinforcement).
+    std::map<std::pair<int, core::NodeAddress>, std::pair<double, double>> fresh;  // prev, lastUp
+    for (int q = 0; q <= 424; ++q) {
+        const double tq = 0.25 * q;
+        tb.at(tq, [&, tq] {
+            for (int n = 0; n < sc.numNodes; ++n) {
+                const core::PheromoneTable& tbl = tb.node(n).table();
+                for (core::NodeAddress d : tbl.regularDestinations()) {
+                    const double b = tbl.bestRegular(d);
+                    auto it = fresh.find({n, d});
+                    if (it == fresh.end()) fresh[{n, d}] = {b, tq};
+                    else {
+                        if (b > it->second.first + 1e-12) it->second.second = tq;
+                        it->second.first = b;
+                    }
+                }
+            }
+        });
+    }
+    auto lastUp = [&](int n, core::NodeAddress d) {
+        auto it = fresh.find({n, d});
+        return it == fresh.end() ? -1.0 : it->second.second;
+    };
+
     Counts regAbsent, regPresent;
     for (int k = 0; k <= 40; ++k) {
         const double t = 5.3 + 2.5 * k;
@@ -163,6 +196,40 @@ void run(const Scenario& sc) {
                         if (tb.node(static_cast<int>(vArg)).table().bestRegular(d) <=
                             cfg.minPheromone)
                             ++c.fartherVargNoRoute;
+                        if (&c == &regAbsent && t >= 20.0) {
+                            ++c.steadyFarther;
+                            // Closest neighbour: min hop distance to d; ties
+                            // broken by the higher advertised value.
+                            int cl = -1;
+                            for (core::NodeAddress nb : table.neighbors()) {
+                                const int n = static_cast<int>(nb);
+                                if (n < 0 || n >= sc.numNodes) continue;
+                                const int dnb = dist[static_cast<std::size_t>(d)]
+                                                    [static_cast<std::size_t>(n)];
+                                if (cl < 0 ||
+                                    dnb < dist[static_cast<std::size_t>(d)]
+                                              [static_cast<std::size_t>(cl)] ||
+                                    (dnb == dist[static_cast<std::size_t>(d)]
+                                                [static_cast<std::size_t>(cl)] &&
+                                     tb.node(n).table().bestRegular(d) >
+                                         tb.node(cl).table().bestRegular(d)))
+                                    cl = n;
+                            }
+                            const double advC = tb.node(cl).table().bestRegular(d);
+                            const double advV =
+                                tb.node(static_cast<int>(vArg)).table().bestRegular(d);
+                            if (advC <= cfg.minPheromone) {
+                                ++c.closestNoRoute;
+                            } else {
+                                ++c.closestHasRoute;
+                                const double aV = t - lastUp(static_cast<int>(vArg), d);
+                                const double aC = t - lastUp(cl, d);
+                                c.ageVarg.push_back(aV);
+                                c.ageClosest.push_back(aC);
+                                if (aV < aC) ++c.vargYounger;
+                                if (advV > advC) ++c.vargHigherAdvert;
+                            }
+                        }
                     }
                     if (dn < di) ++c.closer;
                     if (reflected) ++c.reflected;
@@ -208,6 +275,20 @@ void run(const Scenario& sc) {
                 "%llu where vArg holds no regular route to d (stale advert)\n",
                 (unsigned long long) regAbsent.fartherEarly,
                 (unsigned long long) regAbsent.fartherVargNoRoute);
+    {
+        const Counts& a = regAbsent;
+        auto med = [](std::vector<double> v) {
+            if (v.empty()) return 0.0;
+            std::sort(v.begin(), v.end());
+            return v[v.size() / 2];
+        };
+        std::printf("  #476 steady regular-absent farther (t>=20s): %llu — closest neighbour has "
+                    "NO route: %llu; has a route: %llu (farther nb younger: %llu, "
+                    "higher advert: %llu; median entry age farther=%.2fs closest=%.2fs)\n",
+                    (unsigned long long) a.steadyFarther, (unsigned long long) a.closestNoRoute,
+                    (unsigned long long) a.closestHasRoute, (unsigned long long) a.vargYounger,
+                    (unsigned long long) a.vargHigherAdvert, med(a.ageVarg), med(a.ageClosest));
+    }
     std::printf("  proactive blend max(r,v), regular-present: argmax farther=%5.1f%%  "
                 "argmax reflected=%5.1f%%\n",
                 pct(regPresent.blendFarther, regPresent.total),
