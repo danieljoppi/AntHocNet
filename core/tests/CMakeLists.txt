@@ -43,6 +43,7 @@ endforeach()
 set(ANTHOCNET_EXPERIMENTS
   exp_gate_cascade
   exp_uniformity_probe
+  exp_advert_reflection
 )
 
 foreach(exp ${ANTHOCNET_EXPERIMENTS})
