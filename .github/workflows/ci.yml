@@ -356,6 +356,17 @@ jobs:
           echo "AntHocNet ISL-grid PDR% = ${pdr:-<none>}"
           awk -v p="${pdr:-0}" 'BEGIN { exit (p+0 > 0) ? 0 : 1 }' \
             || { echo "FAIL: AntHocNet delivered no packets on the ISL grid (PDR=${pdr:-<none>})"; exit 1; }
+      - name: 3-D field smoke (#480, --areaZ for the FANET family)
+        # --areaZ > 0 must really place AND move nodes in a 3-D box (altitude
+        # span from the harness's `# geom` diagnostic at t=0 and mid-run), under
+        # both gaussmarkov and rwp; every 3-D-capable arm must deliver; each
+        # 3-D run must be byte-identical on the same seed; and every arm that
+        # would otherwise silently flatten the field is refused (tworay,
+        # nakagami, ssrwp, gpsr), as is a negative --areaZ.
+        # The mid-run sample exists because the first draft passed a t=0-only
+        # check while the mobility bounds clamped every node back to z = 0.
+        if: matrix.version == '3.42'
+        run: bash ns3/tools/check-3d-field.sh /opt/ns-3
       - name: Validation-anchor gate (single-hop PDR floor, #59)
         # Blocking anchor from docs/benchmarks/methodology.md "Validation
         # anchors": on a static, in-range 2-node link the *stock* stack

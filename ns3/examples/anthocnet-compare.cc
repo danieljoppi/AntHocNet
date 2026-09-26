@@ -1031,6 +1031,12 @@ struct Params {
     uint32_t nNodes;
     double   simTime;
     double   areaX, areaY;
+    // #480: vertical extent of the field (m). 0 (the default, and what every
+    // published number was measured under) keeps the harness planar and
+    // byte-identical; > 0 places and moves nodes in a 3-D box for the FANET
+    // family (#300). See the --areaZ refusals in main() for the arms that
+    // cannot honour it.
+    double   areaZ;
     double   speed;
     double   pause;
     double   range;     // 0 => ns-3 default channel (log-distance)
@@ -1314,10 +1320,28 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     Ptr<UniformRandomVariable> uy = CreateObject<UniformRandomVariable>();
     uy->SetAttribute("Min", DoubleValue(0.0));
     uy->SetAttribute("Max", DoubleValue(P.areaY));
-    Ptr<RandomRectanglePositionAllocator> pos =
-        CreateObject<RandomRectanglePositionAllocator>();
-    pos->SetX(ux);
-    pos->SetY(uy);
+    // #480: a 3-D box only when --areaZ > 0. The planar field keeps the exact
+    // RandomRectanglePositionAllocator it always had -- same object, same two
+    // variables, same stream count -- so areaZ=0 stays byte-identical to the
+    // published corpus rather than merely equivalent in distribution.
+    Ptr<PositionAllocator> pos;
+    if (P.areaZ > 0.0) {
+        Ptr<UniformRandomVariable> uz = CreateObject<UniformRandomVariable>();
+        uz->SetAttribute("Min", DoubleValue(0.0));
+        uz->SetAttribute("Max", DoubleValue(P.areaZ));
+        Ptr<RandomBoxPositionAllocator> box =
+            CreateObject<RandomBoxPositionAllocator>();
+        box->SetX(ux);
+        box->SetY(uy);
+        box->SetZ(uz);
+        pos = box;
+    } else {
+        Ptr<RandomRectanglePositionAllocator> rect =
+            CreateObject<RandomRectanglePositionAllocator>();
+        rect->SetX(ux);
+        rect->SetY(uy);
+        pos = rect;
+    }
     mobility.SetPositionAllocator(pos);
     std::ostringstream speedStr, pauseStr;
     speedStr << "ns3::UniformRandomVariable[Min=1.0|Max=" << P.speed << "]";
@@ -1352,9 +1376,20 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // different model #295 asks for, and the one aerial/FANET claims
         // require.
         //
-        // Two-dimensional on purpose: the Box's z extent is zero and the pitch
-        // is fixed at 0, so nodes stay in the plane the propagation models and
-        // the 2-D field geometry assume.
+        // Two-dimensional by default: with --areaZ=0 the Box's z extent is
+        // zero and the pitch is pinned at 0, so nodes stay in the plane the
+        // propagation models and the 2-D field geometry assume. With
+        // --areaZ > 0 (#480, the FANET family #300) the Box gains that z
+        // extent and the pitch a small symmetric spread, so tracks climb and
+        // descend; the model reflects off every face of the box, the top and
+        // bottom included.
+        //
+        // The 3-D pitch values below are a harness placeholder, not a sourced
+        // profile: +/-0.05 rad mean pitch and a Normal(0, 0.02) perturbation
+        // bounded at 0.04 rad, i.e. the direction perturbation's shape scaled
+        // down by ten. #482 fixes the FANET mobility parameters against the
+        // published evaluation setups and records their provenance; until
+        // then nothing measured with them is publishable.
         //
         // There is no pause concept here -- a Gauss-Markov node never stops.
         // `--pause` is therefore inert under this model, which is why
@@ -1362,13 +1397,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // letting a sweep believe it varied something.
         mobility.SetMobilityModel(
             "ns3::GaussMarkovMobilityModel",
-            "Bounds", BoxValue(Box(0.0, P.areaX, 0.0, P.areaY, 0.0, 0.0)),
+            "Bounds", BoxValue(Box(0.0, P.areaX, 0.0, P.areaY, 0.0, P.areaZ)),
             "TimeStep", TimeValue(Seconds(1.0)),
             "Alpha", DoubleValue(0.85),
             "MeanVelocity", StringValue(speedStr.str()),
             "MeanDirection",
             StringValue("ns3::UniformRandomVariable[Min=0.0|Max=6.283185307]"),
-            "MeanPitch", StringValue("ns3::ConstantRandomVariable[Constant=0.0]"),
+            "MeanPitch",
+            StringValue(P.areaZ > 0.0
+                            ? "ns3::UniformRandomVariable[Min=-0.05|Max=0.05]"
+                            : "ns3::ConstantRandomVariable[Constant=0.0]"),
             "NormalVelocity",
             StringValue("ns3::NormalRandomVariable[Mean=0.0|Variance=1.0|Bound=1.0]"),
             "NormalDirection",
@@ -1380,10 +1418,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             // (NormalPitch)", SIGABRT). MeanPitch above takes the plain
             // RandomVariableStream checker and does accept a constant, which
             // is why only this one tripped. Variance 0 keeps the pitch pinned
-            // at 0 and the model two-dimensional.
+            // at 0 and the model two-dimensional (the planar default).
             "NormalPitch",
-            StringValue("ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"));
+            StringValue(P.areaZ > 0.0
+                            ? "ns3::NormalRandomVariable[Mean=0.0|Variance=0.02|Bound=0.04]"
+                            : "ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"));
     } else {
+        // With --areaZ > 0 the waypoints come from the 3-D box allocator above,
+        // so RWP legs are straight 3-D segments with no further change (#480).
         mobility.SetMobilityModel("ns3::RandomWaypointMobilityModel",
                                   "Speed", StringValue(speedStr.str()),
                                   "Pause", StringValue(pauseStr.str()),
@@ -1398,6 +1440,27 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     mobility.Install(nodes);
     TakeStreams(stream, streamBase, mobility.AssignStreams(nodes, stream),
                 "mobility");
+    // #480: evidence that a 3-D field is really 3-D. Under --diag, a 3-D run
+    // prints the altitude span of the nodes at t=0 and at mid-run (the second
+    // shows the mobility model actually moves them vertically, not just the
+    // placement). Planar runs print nothing, so their --diag output is
+    // unchanged. Prefixed "# " like every diagnostic, so CSV consumers skip it.
+    if (g_diag && P.areaZ > 0.0) {
+        auto geom = [nodes, proto, seed]() {
+            double zMin = 0.0, zMax = 0.0;
+            for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+                const double z =
+                    nodes.Get(i)->GetObject<MobilityModel>()->GetPosition().z;
+                if (i == 0 || z < zMin) zMin = z;
+                if (i == 0 || z > zMax) zMax = z;
+            }
+            std::cout << std::fixed << std::setprecision(2) << "# geom " << proto
+                      << " seed=" << seed << " t=" << Simulator::Now().GetSeconds()
+                      << " zMin=" << zMin << " zMax=" << zMax << '\n';
+        };
+        geom();
+        Simulator::Schedule(Seconds(P.simTime / 2.0), geom);
+    }
 
     // #352: the routing helpers are hoisted out of the branches so their
     // AssignStreams() can run after Install() (SetRoutingHelper stores a Copy(),
@@ -2625,7 +2688,7 @@ int main(int argc, char* argv[]) {
     // Sentinels (<0 / 0) mean "unset" so a preset or the legacy defaults fill in.
     std::string scenario;
     int32_t  nNodes = 0;
-    double   simTime = -1, area = -1, areaX = -1, areaY = -1;
+    double   simTime = -1, area = -1, areaX = -1, areaY = -1, areaZ = 0;
     double   speed = -1, pause = -1, range = -1, cbrBps = -1;
     int32_t  nFlows = 0;
     int32_t  sink = -1;
@@ -2650,6 +2713,12 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("area", "Square area side (m); shorthand for areaX=areaY", area);
     cmd.AddValue("areaX", "Area width (m)", areaX);
     cmd.AddValue("areaY", "Area height (m)", areaY);
+    cmd.AddValue("areaZ", "Field altitude extent (m), #480. 0 (default) = the "
+                          "planar field every published number used; > 0 "
+                          "places and moves nodes in a 3-D box (FANET, #300). "
+                          "Refused with tworay/nakagami (ground-reflection "
+                          "model), ssrwp (planar-only in ns-3) and the gpsr "
+                          "arm (2-D headers and planarization)", areaZ);
     cmd.AddValue("speed", "Max node speed (m/s)", speed);
     cmd.AddValue("pause", "Random-waypoint pause time (s)", pause);
     cmd.AddValue("range", "Transmission range (m); 0 = ns-3 default channel", range);
@@ -2772,6 +2841,8 @@ int main(int argc, char* argv[]) {
                            : (area >= 0 ? area : (thesis ? 2400.0 : paper ? 1500.0 : 300.0));
     P.areaY   = areaY >= 0 ? areaY
                            : (area >= 0 ? area : (thesis ? 800.0 : paper ? 300.0 : 300.0));
+    NS_ABORT_MSG_UNLESS(areaZ >= 0.0, "--areaZ must be >= 0 (got " << areaZ << ")");
+    P.areaZ   = areaZ;
     P.speed   = speed >= 0 ? speed : (thesis ? 10.0 : paper ? 20.0 : 5.0);
     P.pause   = pause >= 0 ? pause : (paper ? 30.0 : 1.0);
     P.range   = range >= 0 ? range : (thesis ? 250.0 : paper ? 300.0 : 0.0);
@@ -2804,6 +2875,24 @@ int main(int argc, char* argv[]) {
                            "than silently falling back to rwp: a typo would "
                            "otherwise produce a plausible run of the wrong "
                            "model (#61).");
+    // #480: arms that cannot honour a 3-D field are refused, never silently
+    // flattened. A planar fallback would produce a plausible FANET-labelled
+    // run of the wrong geometry -- the same failure class as the unknown-arm
+    // refusals above.
+    if (P.areaZ > 0.0) {
+        NS_ABORT_MSG_UNLESS(propagation == "range",
+                            "--propagation=" << propagation << " with --areaZ="
+                            << P.areaZ << ": two-ray ground reflection (and the "
+                            "nakagami arm stacked on it) assumes 1.5 m antennas "
+                            "over a ground plane, which is meaningless between "
+                            "aircraft. Use the disk ('range') channel; a 3-D "
+                            "fading arm is future work (#480, #60).");
+        NS_ABORT_MSG_UNLESS(mobilityModel != "ssrwp",
+                            "--mobility=ssrwp with --areaZ=" << P.areaZ
+                            << ": ns-3's SteadyStateRandomWaypointMobilityModel "
+                            "is planar (a fixed Z), so it would silently "
+                            "flatten the field. Use rwp or gaussmarkov (#480).");
+    }
     P.rateManager = rateManager;
     P.sink = sink;
     P.energyJ = energyJ;
@@ -2821,6 +2910,20 @@ int main(int argc, char* argv[]) {
     std::string item;
     while (std::getline(ss, item, ',')) {
         if (!item.empty()) list.push_back(item);
+    }
+    // #480: the vendored GPSR carries only x/y in its hello and position
+    // headers, and its perimeter mode planarizes a 2-D graph. Under --areaZ > 0
+    // it would route on projected positions -- a silent degradation that would
+    // read as a protocol result. Refused; a 3-D geographic arm is out of scope.
+    if (P.areaZ > 0.0) {
+        for (const std::string& proto : list) {
+            NS_ABORT_MSG_UNLESS(proto != "gpsr",
+                                "--protocols includes gpsr with --areaZ="
+                                << P.areaZ << ": the vendored GPSR is planar "
+                                "(2-D headers, 2-D planarization) and would "
+                                "route on projected positions. Drop it from "
+                                "--protocols for a 3-D field (#480).");
+        }
     }
 
     // Each protocol: mean over runs (every protocol sees the same seed set).
@@ -2887,8 +2990,11 @@ int main(int argc, char* argv[]) {
     std::cout << "##CONFIG## scenario=" << scenario
               << " nNodes=" << P.nNodes << " time=" << P.simTime
               << " runs=" << runs << " firstRun=" << firstRun
-              << " areaX=" << P.areaX << " areaY=" << P.areaY
-              << " speed=" << P.speed << " pause=" << P.pause
+              << " areaX=" << P.areaX << " areaY=" << P.areaY;
+    // #480: only a 3-D field names its z extent, so every planar run's
+    // ##CONFIG## row stays byte-identical to the published corpus.
+    if (P.areaZ > 0.0) std::cout << " areaZ=" << P.areaZ;
+    std::cout << " speed=" << P.speed << " pause=" << P.pause
               << " range=" << P.range << " propagation=" << P.propagation
               << " mobility=" << P.mobility
               << " transport=" << P.transport
