@@ -8,6 +8,28 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v1.6.0 (2026-09-26)
+
+### Feat
+
+- **core**: implement the thesis's hop-count moving average, default-off (#474)
+- **core**: promote the diffusion advert cap k to Config::maxHelloAdverts (#472)
+- **oracle**: derive fading-channel adjacency from the installed PHY decode threshold (#457)
+- **bench**: add --removeLinks static irregularity to isl-grid + preflight (#453)
+- **bench**: satellite-aware preflight — scenario_check.py learns the isl-grid cells (#447)
+- **bench**: arm delivery smoke gate — every MANET arm must route multi-hop (#439)
+
+### Fix
+
+- **ns3**: order per-interface socket maps by bound device, not heap address (#471)
+- **bench**: count the oracle's refused sends as offered packets (#466)
+- **bench**: draw the application RNG streams from an arm-independent block (#459)
+- **bench**: guard anthocnet-compare's L4 header reads against IP fragments (#458)
+- **bench**: abort on an unknown --protocols arm instead of running the bare stack (#451)
+- **aomdv**: repair the three RREP defects that broke multi-hop routing (#446)
+- **gpsr**: route broadcasts directly in RouteOutput so hellos can leave the node (#441)
+- **ci**: the docker image module list dropped aomdv/gpsr/oracle, breaking every ns-3 image (#436)
+
 ## v1.5.0 (2026-08-15)
 
 ### Feat
