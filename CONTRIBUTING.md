@@ -115,6 +115,9 @@ table is that record.
 | **Concept ("all versions")** | `10.5281/zenodo.20981979` | always the latest release — this is the value in the README badge and `CITATION.cff` |
 | v1.0.0 | `10.5281/zenodo.21502372` | [record 21502372](https://zenodo.org/records/21502372) |
 | v1.1.0 | `10.5281/zenodo.21583731` | [record 21583731](https://zenodo.org/records/21583731) |
+| v1.2.0 | `10.5281/zenodo.21762983` | [record 21762983](https://zenodo.org/records/21762983) — the last release in which NS-2 was actively supported (also cited in [`docs/ns2-support.md`](docs/ns2-support.md)) |
+| v1.3.0 | `10.5281/zenodo.21795253` | [record 21795253](https://zenodo.org/records/21795253) — the provenance pin for the published benchmark corpus (also in the README and `CITATION.cff`) |
+| v1.6.0 | `10.5281/zenodo.22970218` | [record 22970218](https://zenodo.org/records/22970218) |
 
 **Adding a row is the whole per-release chore.** Append the new version DOI
 here; do **not** touch the README badge or `CITATION.cff`, which already point
