@@ -98,10 +98,19 @@ small `docs:` PR. Keep the two in sync — they have drifted apart before.
 Point the badge and `CITATION.cff` at the **concept DOI** so step 2 becomes a
 one-time setup instead of a per-release chore.
 
-**Note for AI agents:** you **cannot** do step 2 from the sandbox — `zenodo.org`
-is blocked (the agent proxy returns 403), and the new DOI does not exist until
-after publish anyway. Ask the maintainer for the DOI (concept preferred) and
-open the `docs:` PR with the value they give you. **Never invent a DOI.**
+**Note for AI agents:** the new DOI does not exist until Zenodo has archived the
+tag, a few minutes after publish. Read it from Zenodo's public API — no token
+needed — which lists every version under the concept record:
+
+```
+curl -s "https://zenodo.org/api/records/20981979/versions?size=25&sort=version"
+```
+
+Each hit carries `metadata.version` (the tag) and `doi`. `size` above 25 is
+rejected unauthenticated (HTTP 400). `zenodo.org` has been proxy-blocked from
+the agent sandbox before (HTTP 403, until 2026-09); if it is, ask the
+maintainer for the DOI instead. Either way, open the `docs:` PR only with a
+value read from Zenodo or supplied by the maintainer. **Never invent a DOI.**
 
 #### DOI record
 
@@ -113,10 +122,17 @@ table is that record.
 | Target | DOI | Resolves to |
 |---|---|---|
 | **Concept ("all versions")** | `10.5281/zenodo.20981979` | always the latest release — this is the value in the README badge and `CITATION.cff` |
+| v0.1.1 | `10.5281/zenodo.20981980` | [record 20981980](https://zenodo.org/records/20981980) — the first archived release |
+| v0.2.0 | `10.5281/zenodo.21007725` | [record 21007725](https://zenodo.org/records/21007725) |
+| v0.3.0 | `10.5281/zenodo.21219572` | [record 21219572](https://zenodo.org/records/21219572) |
+| v0.4.0 | `10.5281/zenodo.21435553` | [record 21435553](https://zenodo.org/records/21435553) |
+| v0.5.0 | `10.5281/zenodo.21453208` | [record 21453208](https://zenodo.org/records/21453208) |
 | v1.0.0 | `10.5281/zenodo.21502372` | [record 21502372](https://zenodo.org/records/21502372) |
 | v1.1.0 | `10.5281/zenodo.21583731` | [record 21583731](https://zenodo.org/records/21583731) |
 | v1.2.0 | `10.5281/zenodo.21762983` | [record 21762983](https://zenodo.org/records/21762983) — the last release in which NS-2 was actively supported (also cited in [`docs/ns2-support.md`](docs/ns2-support.md)) |
 | v1.3.0 | `10.5281/zenodo.21795253` | [record 21795253](https://zenodo.org/records/21795253) — the provenance pin for the published benchmark corpus (also in the README and `CITATION.cff`) |
+| v1.4.0 | `10.5281/zenodo.21863774` | [record 21863774](https://zenodo.org/records/21863774) |
+| v1.5.0 | `10.5281/zenodo.21956001` | [record 21956001](https://zenodo.org/records/21956001) |
 | v1.6.0 | `10.5281/zenodo.22970218` | [record 22970218](https://zenodo.org/records/22970218) |
 
 **Adding a row is the whole per-release chore.** Append the new version DOI
