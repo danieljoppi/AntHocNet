@@ -480,6 +480,101 @@ def _channel_default_silent():
     expect("stochastic channel" not in out, "channel-default-silent", out)
 
 
+# --- #481 3-D preflight -------------------------------------------------------
+#
+# A 3-D cell as the FANET work will dispatch it: disk channel, gaussmarkov,
+# pause 0, a window short enough to clear #230. Each refusal below mutates
+# exactly one knob of it.
+FANET_3D = {"nodes": 30, "areaX": 1000.0, "areaY": 1000.0, "areaZ": 300.0,
+            "range": 250.0, "speed": 20.0, "pause": 0.0,
+            "mobility": "gaussmarkov", "flows": 5, "pathWindowS": 2.0}
+
+
+@case("#481 box_in_range_prob matches its closed-form limits")
+def _box_prob_limits():
+    import math
+    # Range longer than the box diagonal: every pair is in range.
+    expect(sc.box_in_range_prob(100, 100, 100, 200) == 1.0, "box-prob",
+           "r > diagonal should give probability 1")
+    # A near-zero-height box is the 2-D unit square, whose pair-distance CDF
+    # is exact: pi r^2 - 8/3 r^3 + r^4 / 2.
+    r = 0.1
+    exact = math.pi * r * r - 8 / 3 * r ** 3 + r ** 4 / 2
+    got = sc.box_in_range_prob(1, 1, 1e-6, r)
+    expect(abs(got - exact) < 0.002, "box-prob",
+           f"thin box {got:.5f} vs exact square {exact:.5f}")
+
+
+@case("#481 preflight uses 3-D box geometry when --areaZ > 0")
+def _pre3d_geometry():
+    levels, out = run_preflight(**FANET_3D)
+    expect("(3-D)" in out, "pre3d-geometry", out)
+    # 30 nodes at 250 m in 1000x1000x300 m: the measured probability puts the
+    # mean degree near 3.5, right at ln(30) = 3.4 -- the 2-D strip cap would
+    # have said ~5.6 by ignoring the third dimension entirely.
+    deg = float(out.split("expected mean degree ~")[1].split()[0])
+    expect(3.0 < deg < 4.0, "pre3d-geometry", f"degree {deg}\n{out}")
+    expect("FAIL" not in levels, "pre3d-geometry",
+           f"a coherent 3-D cell was FAILed\n{out}")
+
+
+@case("#481 preflight WARNs that a 3-D cell is harness validation only")
+def _pre3d_unpublishable():
+    levels, out = run_preflight(**FANET_3D)
+    expect("WARN" in levels and "not publishable" in out, "pre3d-unpub", out)
+    # The planar anchor advice names channels a 3-D cell may not use.
+    expect("grid-tworay" not in out, "pre3d-unpub", out)
+
+
+@case("#481 preflight says nothing 3-D on a planar cell")
+def _pre3d_planar_silent():
+    _, out = run_preflight(pathWindowS=2.0)
+    expect("(3-D)" not in out and "--areaZ" not in out, "pre3d-planar", out)
+
+
+@case("#481 preflight mirrors the harness's five --areaZ refusals")
+def _pre3d_refusals():
+    for knob, msg in (({"propagation": "tworay"}, "--propagation=tworay"),
+                      ({"propagation": "nakagami"}, "--propagation=nakagami"),
+                      ({"mobility": "ssrwp", "speed": 20.0}, "--mobility=ssrwp"),
+                      ({"protocols": "anthocnet,gpsr"}, "includes gpsr"),
+                      ({"areaZ": -5.0}, "must be >= 0")):
+        levels, out = run_preflight(**dict(FANET_3D, **knob))
+        expect("FAIL" in levels and msg in out, "pre3d-refusals",
+               f"{knob} was not refused with '{msg}'\n{out}")
+    # gpsr on a planar field is still fine: the refusal is 3-D only.
+    levels, out = run_preflight(protocols="anthocnet,gpsr", pathWindowS=2.0)
+    expect("includes gpsr" not in out, "pre3d-refusals", out)
+
+
+@case("#481 preflight FAILs links shorter-lived than the hello interval")
+def _hello_fail():
+    # 250 m at 150 m/s: ~0.83 s link lifetime against a 1 s hello.
+    levels, out = run_preflight(**dict(FANET_3D, speed=150.0, pathWindowS=0.5))
+    expect("FAIL" in levels and "shorter than the" in out, "hello-fail", out)
+
+
+@case("#481 preflight WARNs links living under 3 hello periods")
+def _hello_warn():
+    # 150 m at 30 m/s: 2.5 s.
+    levels, out = run_preflight(**dict(FANET_3D, range=150.0, speed=30.0,
+                                       nodes=200, pathWindowS=1.0))
+    expect("WARN" in levels and "under 3 hello" in out, "hello-warn", out)
+
+
+@case("#481 hello rule is silent on every published MANET cell shape")
+def _hello_quiet():
+    # paper-base (300 m / 20 m/s = 7.5 s) and thesis (250 m / 10 m/s = 12.5 s).
+    for kw in ({"pathWindowS": 2.0},
+               {"nodes": 100, "areaX": 2400.0, "areaY": 800.0, "range": 250.0,
+                "speed": 10.0, "pathWindowS": 2.0}):
+        _, out = run_preflight(**kw)
+        expect("hello period" not in out.replace("hello periods)", ""),
+               "hello-quiet", out)
+        expect("under 3 hello" not in out and "shorter than the" not in out,
+               "hello-quiet", out)
+
+
 # --- #230 preflight ----------------------------------------------------------
 
 @case("#230 preflight FAILs the shipped 10s window at paper-base")

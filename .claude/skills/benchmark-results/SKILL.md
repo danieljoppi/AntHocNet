@@ -193,6 +193,8 @@ Both exit non-zero on FAIL.
 S=.claude/skills/benchmark-results/scenario_check.py
 python3 $S preflight                              # paper base defaults, OK
 python3 $S preflight --areaX 2500 --flows 40      # override what you'd dispatch
+python3 $S preflight --areaX 1000 --areaY 1000 --areaZ 300 --range 250 \
+    --speed 20 --pause 0 --mobility gaussmarkov --nodes 30 --pathWindowS 2  # 3-D cell (#481)
 python3 $S preflight --harness isl-grid --rows 4 --cols 4 --flows 8 \
     --time 900 --breakLink 0,0,3,0 --breakAt 450  # satellite cell (#444)
 python3 $S results cell.txt                       # ##BENCH## cell or campaign CSV
@@ -207,6 +209,15 @@ against the `range / (2·speed)` link lifetime, since a window longer than a
 route survives counts route *replacement* as concurrent multipath. That last
 one FAILs the shipped 10 s default at the paper-base knobs, which is where
 #230 should have been caught instead of after a 115-minute campaign.
+
+With `--areaZ > 0`, `preflight` switches to 3-D rules (#481):
+- the degree comes from a measured in-box pair probability, not the strip cap;
+- the harness's five 3-D refusals FAIL here too (tworay, nakagami, ssrwp,
+  gpsr, negative `--areaZ`);
+- a standing WARN marks the cell as harness validation only until #482.
+
+The hello-vs-link-lifetime rule (`--helloInterval`, default 1 s) applies to
+every cell: FAIL below one hello period, WARN below three.
 
 `preflight --harness isl-grid` validates a satellite cell instead (#444 — the
 validator the #432 dispatch had to hand-build and discard, made permanent).

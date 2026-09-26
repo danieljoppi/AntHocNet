@@ -12,7 +12,7 @@ Two failure classes this script catches before they cost a dispatch cycle
 All arithmetic happens here; only the verdict lines reach LLM context.
 
 Usage:
-    scenario_check.py preflight [--nodes 50] [--areaX 1500] [--areaY 300]
+    scenario_check.py preflight [--nodes 50] [--areaX 1500] [--areaY 300] [--areaZ 0]
                                 [--range 300] [--time 300] [--pause 30]
                                 [--speed 20] [--flows 20] [--pktBytes 64]
                                 [--pktPerSec 1] [--rateMbps 2]
@@ -741,6 +741,33 @@ def cmd_preflight_sat(a):
     verdict()
 
 
+# #481: pairs sampled for the 3-D in-range probability. A fixed-seed Monte
+# Carlo, so the verdict is deterministic; at 100k pairs the standard error on
+# the probability is <= 0.0016, far below what moves a degree verdict.
+BOX_DEGREE_SAMPLES = 100_000
+
+
+def box_in_range_prob(ax, ay, az, r, samples=BOX_DEGREE_SAMPLES):
+    """P(|X - Y| < r) for X, Y independent and uniform in an ax*ay*az box.
+
+    The 2-D rule approximates the in-range area with a strip cap. In a box
+    the sphere is clipped by up to three faces at once, and each dimension
+    may be shorter or longer than 2r. Rather than stack caps, this measures
+    the probability directly, boundary effects included (#481).
+    """
+    import random
+    rng = random.Random(481)
+    r2 = r * r
+    hits = 0
+    for _ in range(samples):
+        dx = (rng.random() - rng.random()) * ax
+        dy = (rng.random() - rng.random()) * ay
+        dz = (rng.random() - rng.random()) * az
+        if dx * dx + dy * dy + dz * dz < r2:
+            hits += 1
+    return hits / samples
+
+
 def cmd_preflight(a):
     # #444: the satellite harness has its own geometry; everything below this
     # dispatch is MANET field arithmetic and would be meaningless for it.
@@ -756,18 +783,35 @@ def cmd_preflight(a):
         a.flows = 20
     if a.protocols is None:
         a.protocols = "anthocnet,aodv,olsr,dsdv"
-    area = a.areaX * a.areaY
-    # Mean node degree on a random geometric graph: n * (disk ∩ area) / area.
-    # Cap the disk by the area's short edge (the 1500x300 field is a strip).
-    disk = math.pi * a.range ** 2
-    # In a strip narrower than the disk (the paper's 1500x300 field), a
-    # node's in-range area is ~2r x short-edge, not the full disk.
-    reach = min(disk, 2 * a.range * min(a.areaY, a.areaX), area)
-    degree = (a.nodes - 1) * reach / area
-    print(f"field {a.areaX}x{a.areaY} m, {a.nodes} nodes, range {a.range} m")
+    # #481: --areaZ is the harness's 3-D field knob (#480). getattr keeps
+    # callers that predate it (and the self-test's namespaces) on the 2-D path.
+    area_z = getattr(a, "areaZ", 0.0) or 0.0
+    if area_z < 0:
+        report("FAIL", f"--areaZ={area_z}: must be >= 0 (the harness aborts "
+                       "on a negative extent, #480)")
+        area_z = 0.0
+    if area_z > 0:
+        # Mean node degree in a box: (n-1) * P(two uniform nodes in range),
+        # measured rather than approximated, because the sphere is clipped by
+        # up to three faces (#481).
+        prob = box_in_range_prob(a.areaX, a.areaY, area_z, a.range)
+        degree = (a.nodes - 1) * prob
+        print(f"field {a.areaX}x{a.areaY}x{area_z:g} m (3-D), {a.nodes} nodes, "
+              f"range {a.range} m")
+    else:
+        area = a.areaX * a.areaY
+        # Mean node degree on a random geometric graph: n * (disk ∩ area) /
+        # area. Cap the disk by the area's short edge (the 1500x300 field is a
+        # strip).
+        disk = math.pi * a.range ** 2
+        # In a strip narrower than the disk (the paper's 1500x300 field), a
+        # node's in-range area is ~2r x short-edge, not the full disk.
+        reach = min(disk, 2 * a.range * min(a.areaY, a.areaX), area)
+        degree = (a.nodes - 1) * reach / area
+        print(f"field {a.areaX}x{a.areaY} m, {a.nodes} nodes, range {a.range} m")
     print(f"  expected mean degree ~{degree:.1f} "
           f"(connectivity wants >~{math.log(max(a.nodes, 2)):.1f})")
-    if a.range >= max(a.areaX, a.areaY):
+    if a.range >= max(a.areaX, a.areaY, area_z):
         report("WARN", "range >= long edge — effectively single-hop "
                        "(fine only for an anchor scenario)")
     if degree < math.log(max(a.nodes, 2)):
@@ -864,7 +908,30 @@ def cmd_preflight(a):
                            "pin the oracle's radius any more; to force one, "
                            "pass --ns3::oracle::Topology::LinkRangeM=<m> "
                            "(ns3/oracle/README.md)")
-    if a.mobility != "rwp":
+    # #481: the harness's #480 refusals, mirrored so a bad 3-D cell fails here
+    # at zero dispatches instead of aborting on the runner.
+    if area_z > 0:
+        if a.propagation != "range":
+            report("FAIL", f"--propagation={a.propagation} with --areaZ="
+                           f"{area_z:g}: two-ray ground reflection (and nakagami "
+                           "on top of it) assumes antennas over a ground plane, "
+                           "meaningless between aircraft; the harness refuses "
+                           "it. Use the disk channel (#480)")
+        if a.mobility == "ssrwp":
+            report("FAIL", f"--mobility=ssrwp with --areaZ={area_z:g}: ns-3's "
+                           "steady-state RWP is planar and the harness refuses "
+                           "it. Use rwp or gaussmarkov (#480)")
+        if "gpsr" in a.protocols.split(","):
+            report("FAIL", f"--protocols includes gpsr with --areaZ={area_z:g}: "
+                           "the vendored GPSR is planar (2-D headers and "
+                           "planarization) and the harness refuses it (#480)")
+        report("WARN", f"3-D field (--areaZ={area_z:g}): not comparable to the "
+                       "published planar corpus, and no FANET anchor exists "
+                       "yet. The gaussmarkov pitch values are a harness "
+                       "placeholder until #482 sources the FANET mobility "
+                       "parameters. Harness validation only, not publishable "
+                       "(#480, #482)")
+    elif a.mobility != "rwp":
         report("WARN", f"--mobility={a.mobility} is not the model the "
                        "published corpus was measured under (rwp), so its "
                        "results are not comparable to the published cells. "
@@ -884,6 +951,28 @@ def cmd_preflight(a):
     # at the paper-base defaults it fires on the shipped 10 s default.
     if a.pause < a.time and a.speed > 0:
         churn = a.range / (2 * a.speed)
+        # #481: hello interval vs link lifetime. Neighbour loss is detected by
+        # missed hellos (detector A), so when a link lives only a few hello
+        # periods the protocol spends much of each link's life not yet knowing
+        # it exists, or not yet knowing it is gone. The #300 FANET envelope
+        # (30 m/s) is where this bites; the published MANET cells all sit
+        # well clear of it (paper-base: 300 m / 40 m/s = 7.5 s vs 1 s).
+        hello = getattr(a, "helloInterval", 1.0) or 1.0
+        print(f"  hello interval {hello:g}s vs ~{churn:.1f}s link lifetime "
+              f"({churn / hello:.1f} hello periods)")
+        if churn < hello:
+            report("FAIL", f"link lifetime ~{churn:.1f}s is shorter than the "
+                           f"{hello:g}s hello interval: links appear and vanish "
+                           "between hellos, so neighbour discovery cannot "
+                           "track the topology and every protocol measures "
+                           "detection lag, not routing (#481)")
+        elif churn < 3 * hello:
+            report("WARN", f"link lifetime ~{churn:.1f}s is under 3 hello "
+                           f"periods ({hello:g}s): neighbour-detection lag is a "
+                           "large share of each link's life. Expected in the "
+                           "FANET envelope; state it next to any result, and "
+                           "treat a HelloInterval change as an A/B follow-up "
+                           "(#300 watchlist), not a pre-tuning (#481)")
         print(f"  path-diversity window {a.pathWindowS}s vs ~{churn:.1f}s "
               f"link lifetime at {a.speed} m/s over {a.range} m")
         if a.pathWindowS > churn:
@@ -2114,6 +2203,10 @@ def main():
     p.add_argument("--nodes", type=int, default=50)
     p.add_argument("--areaX", type=float, default=1500)
     p.add_argument("--areaY", type=float, default=300)
+    # #481: the harness's --areaZ (#480). 0 = the planar field.
+    p.add_argument("--areaZ", type=float, default=0)
+    # AntHocNet's HelloInterval default (s); the #481 link-lifetime rule.
+    p.add_argument("--helloInterval", type=float, default=1.0)
     p.add_argument("--range", type=float, default=300)
     # None = per-harness default (MANET 300 s / isl-grid 60 s), filled in
     # cmd_preflight so a bare `preflight` is byte-identical to pre-#444.
