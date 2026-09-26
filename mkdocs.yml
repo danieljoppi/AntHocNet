@@ -107,6 +107,7 @@ nav:
           - benchmarks/sweeps/pause.md
           - benchmarks/sweeps/scale.md
       - benchmarks/grid.md
+      - benchmarks/static-mesh.md
   - Research provenance & fidelity:
       - fidelity.md
       - publications/README.md
