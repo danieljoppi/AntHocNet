@@ -588,9 +588,41 @@ Three things worth knowing before dispatching a non-default arm:
   would kill the [#24](https://github.com/danieljoppi/AntHocNet/issues/24)
   baselines arm outright.
 
-`gaussmarkov` is deliberately two-dimensional — the bounding box has zero
+`gaussmarkov` is two-dimensional by default — the bounding box has zero
 z extent and pitch is fixed at 0 — so nodes stay in the plane the propagation
 models and the field geometry assume.
+
+### 3-D fields (`--areaZ`, [#480](https://github.com/danieljoppi/AntHocNet/issues/480))
+
+`--areaZ=<m>` gives the field a vertical extent for the FANET family
+([#300](https://github.com/danieljoppi/AntHocNet/issues/300)). The default is
+**0**, the planar field every published number was measured under. At 0 the
+harness is **byte-identical** to before: the same `RandomRectanglePositionAllocator`
+is used, and `##CONFIG##` does not print the `areaZ` key.
+
+With `--areaZ > 0`:
+
+| arm | behaviour |
+|---|---|
+| placement | a uniform 3-D box, `[0,areaX]×[0,areaY]×[0,areaZ]` |
+| `rwp` | waypoints come from the same box, so legs are straight 3-D segments |
+| `gaussmarkov` | the bounding box gains the z extent, and pitch gets a small symmetric spread: mean U(−0.05, 0.05) rad, Normal(0, 0.02) perturbation bounded at 0.04 rad. These pitch values are a **harness placeholder, not a sourced profile**. [#482](https://github.com/danieljoppi/AntHocNet/issues/482) fixes FANET mobility against published setups, so do not publish numbers measured with them before that lands. |
+| `ssrwp` | **refused** — ns-3's steady-state RWP is planar (fixed Z) and would silently flatten the field |
+| `tworay`, `nakagami` | **refused** — ground reflection assumes 1.5 m antennas over a ground plane, which is meaningless between aircraft. The disk (`range`) channel is 3-D-correct as is. |
+| `gpsr` arm | **refused** — the vendored GPSR carries only x/y in its headers and planarizes a 2-D graph, so it would route on projected positions |
+| `oracle` arm | works unchanged: its adjacency uses 3-D distance |
+
+Under `--diag`, a 3-D run prints a `# geom` line with the nodes' altitude span
+at t=0 and at mid-run. CI gates it with
+[`check-3d-field.sh`](../../ns3/tools/check-3d-field.sh) on the 3.42 leg. The
+mid-run sample is the load-bearing one: an early draft placed nodes in 3-D but
+left the mobility bounds planar, so every node was clamped back to z = 0 after
+its first step. A placement-only check would have passed that run.
+
+`scenario_check.py preflight` does not yet understand `--areaZ`: its density
+and degree math is 2-D. That is
+[#481](https://github.com/danieljoppi/AntHocNet/issues/481), and no 3-D cell
+should be dispatched as a campaign before it lands.
 
 ## Channel models (`--propagation`, [#24](https://github.com/danieljoppi/AntHocNet/issues/24) / [#60](https://github.com/danieljoppi/AntHocNet/issues/60))
 
