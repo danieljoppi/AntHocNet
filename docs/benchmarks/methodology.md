@@ -619,10 +619,28 @@ mid-run sample is the load-bearing one: an early draft placed nodes in 3-D but
 left the mobility bounds planar, so every node was clamped back to z = 0 after
 its first step. A placement-only check would have passed that run.
 
-`scenario_check.py preflight` does not yet understand `--areaZ`: its density
-and degree math is 2-D. That is
-[#481](https://github.com/danieljoppi/AntHocNet/issues/481), and no 3-D cell
-should be dispatched as a campaign before it lands.
+`scenario_check.py preflight --areaZ <m>` checks a 3-D cell before dispatch
+([#481](https://github.com/danieljoppi/AntHocNet/issues/481)):
+
+- **Mean degree** is `(n−1) × P(two uniform nodes within range)` in the box,
+  measured with a fixed-seed Monte Carlo instead of the 2-D strip cap. The
+  sphere is clipped by up to three faces, and each dimension can be shorter or
+  longer than `2r`, so stacking caps would be wrong in a different way for
+  every shape. As an example of why this matters: 30 nodes in 1000×1000×300 m
+  at 250 m average about 3.5 neighbours. That is right at the ln(n)
+  connectivity floor, where the 2-D rule would have said about 5.6.
+- **The harness's five refusals** are mirrored as FAILs, so a bad cell fails
+  at zero dispatches: tworay, nakagami, ssrwp, gpsr and a negative `--areaZ`.
+- **A standing WARN** says a 3-D cell is harness validation only, not
+  publishable, until [#482](https://github.com/danieljoppi/AntHocNet/issues/482)
+  sources the preset and its anchor.
+
+One new rule applies to every cell, planar included: **hello interval vs link
+lifetime** (`--helloInterval`, default 1 s). It FAILs when a link lives less
+than one hello period, and WARNs below three. Published MANET cells sit well
+clear of it: paper-base links last about 7.5 s, thesis links about 12.5 s. The
+FANET envelope (≈4 s at 30 m/s over 250 m) is what it is for. Every existing
+2-D and satellite preflight verdict is unchanged.
 
 ## Channel models (`--propagation`, [#24](https://github.com/danieljoppi/AntHocNet/issues/24) / [#60](https://github.com/danieljoppi/AntHocNet/issues/60))
 
