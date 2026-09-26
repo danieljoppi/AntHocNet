@@ -14,7 +14,7 @@
 {
   "name": "AntHocNet (ns-3.42 + AntHocNet)",
 
-  // Tag choice — `anthocnet-ns3:3.42-v1.3.0`, deliberately NOT `:latest`:
+  // Tag choice — `anthocnet-ns3:3.42-v1.6.0`, deliberately NOT `:latest`:
   //
   //   * tier: `:<sim-version>-<release>` is the **immutable** tier
   //     (docker/README.md "Container images"). The rolling tiers (`:3.42`,
@@ -26,7 +26,7 @@
   //     gates on, and the default `version` input of the scenario-matrix /
   //     paper-benchmark campaigns. Numbers produced in here are therefore
   //     comparable to the ones in docs/benchmarks/.
-  //   * release: v1.3.0 = the current VERSION. The full tag list is visible via
+  //   * release: v1.6.0 = the current VERSION. The full tag list is visible via
   //     the GHCR API (`ghcr.io/v2/danieljoppi/anthocnet-ns3/tags/list`).
   //   * size/arch: ~0.62 GiB compressed across 8 layers — comfortably inside a
   //     Codespaces machine, so no reason to reach for a slimmer variant (and
@@ -42,7 +42,7 @@
   // devcontainer image pin is the separate `devcontainers` ecosystem, which the
   // repo does not enable. So: bump this line by hand alongside a release, in the
   // same PR that bumps VERSION, or when moving the reference ns-3 version.
-  "image": "ghcr.io/danieljoppi/anthocnet-ns3:3.42-v1.3.0",
+  "image": "ghcr.io/danieljoppi/anthocnet-ns3:3.42-v1.6.0",
 
   // The image's ns-3 tree. Everything (the Makefile installer, the ns3 wrapper,
   // the docs) refers to it by path; exporting it means the commands in
