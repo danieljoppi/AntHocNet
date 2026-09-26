@@ -49,8 +49,8 @@ release-pinned tier is published by the `Release` workflow (which reuses
 > ([#473](https://github.com/danieljoppi/AntHocNet/pull/473)'s pin-only
 > dispatch) confirmed the tag cannot build them, and published what it can:
 > `ns2:<ver>-v1.5.0`, `anthocnet-ns2:<ver>-v1.5.0` and the plain
-> `ns3:<ver>-v1.5.0`. For a pinned AntHocNet ns-3 image use `-v1.4.0`, or the
-> next release's pin once it is cut.
+> `ns3:<ver>-v1.5.0`. For a pinned AntHocNet ns-3 image use `-v1.6.0` (the
+> first release after the fix; its image jobs all passed) or `-v1.4.0`.
 
 A failed release image job can be republished without moving the rolling tags:
 dispatch `Images` on `main` with `release=vX.Y.Z` and `pin_only=true`
