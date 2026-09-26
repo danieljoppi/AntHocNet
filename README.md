@@ -187,7 +187,8 @@ matrix in [docker/README.md](docker/README.md).
 
 The same protocol binary runs in two very different networks: the **MANET
 fields** (paper + thesis, via `anthocnet-compare`) and a **satellite ISL +Grid
-snapshot** (via `isl-grid`), with VANET/FANET mobility families planned. What
+snapshot** (via `isl-grid`). FANET is in progress for v1.7.0: the harness already runs 3-D fields
+(`--areaZ`), and the preset and results page are next. VANET is planned for v1.9.0. What
 is *unknown* in each regime decides which of AntHocNet's mechanisms matter
 there — the family table, the side-by-side harness comparison, and the
 mechanism-by-mechanism live/inert map are all in
