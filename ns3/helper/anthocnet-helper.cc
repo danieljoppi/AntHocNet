@@ -44,6 +44,16 @@ int64_t AntHocNetHelper::AssignStreams(NodeContainer c, int64_t stream) {
             currentStream += ahn->AssignStreams(currentStream);
         }
     }
+    // #496: the timer-jitter streams go after every node's core stream, so the
+    // core streams keep their pre-#496 indices (TimerJitter=0 stays
+    // byte-identical to the old fixed timers).
+    for (auto i = c.Begin(); i != c.End(); ++i) {
+        Ptr<anthocnet::RoutingProtocol> ahn = DynamicCast<anthocnet::RoutingProtocol>(
+            (*i)->GetObject<Ipv4>()->GetRoutingProtocol());
+        if (ahn) {
+            currentStream += ahn->AssignTimerStreams(currentStream);
+        }
+    }
     return (currentStream - stream);
 }
 

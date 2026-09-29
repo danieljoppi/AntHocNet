@@ -97,6 +97,17 @@ TypeId RoutingProtocol::GetTypeId() {
                           TimeValue(Seconds(10.0)),
                           MakeTimeAccessor(&RoutingProtocol::m_proactiveInterval),
                           MakeTimeChecker())
+            .AddAttribute("TimerJitter",
+                          "Relative jitter on the hello and proactive timers (#496). "
+                          "> 0: each node's first firing is a uniform phase in "
+                          "[0, interval) and every later period is interval x "
+                          "U[1-j, 1+j]. 0: the pre-#496 fixed timers, where every "
+                          "node beacons at the same instants and hidden terminals "
+                          "collide on every hello (spurious neighbour evictions). "
+                          "The NS-2 adapter has always jittered these timers.",
+                          DoubleValue(0.05),
+                          MakeDoubleAccessor(&RoutingProtocol::m_timerJitter),
+                          MakeDoubleChecker<double>(0.0, 0.5))
             .AddAttribute("Alpha",
                           "Evaporation retention factor per evaporation interval "
                           "(legacy ALFA, ADR-0012). NOT the thesis's alpha: that "
@@ -616,8 +627,9 @@ void RoutingProtocol::Start() {
 
     m_helloTimer.SetFunction(&RoutingProtocol::HelloTimerExpire, this);
     m_proactiveTimer.SetFunction(&RoutingProtocol::ProactiveTimerExpire, this);
-    m_helloTimer.Schedule(m_helloInterval);
-    m_proactiveTimer.Schedule(m_proactiveInterval);
+    // #496: desynchronise the nodes' timers (all nodes Start() at t~0).
+    m_helloTimer.Schedule(TimerDelay(m_helloInterval, true));
+    m_proactiveTimer.Schedule(TimerDelay(m_proactiveInterval, true));
 
     // Issue #21: drive re-discovery for held data at a sub-second cadence
     // (0 disables). Off the data-packet path, so a broken route re-forms
@@ -1151,7 +1163,7 @@ void RoutingProtocol::HelloTimerExpire() {
         AntMessage hello = m_logic->createHelloAnt();
         SendAnt(hello, Ipv4Address("255.255.255.255"));
     }
-    m_helloTimer.Schedule(m_helloInterval);
+    m_helloTimer.Schedule(TimerDelay(m_helloInterval, false));
 }
 
 void RoutingProtocol::ProactiveTimerExpire() {
@@ -1167,7 +1179,7 @@ void RoutingProtocol::ProactiveTimerExpire() {
             }
         }
     }
-    m_proactiveTimer.Schedule(m_proactiveInterval);
+    m_proactiveTimer.Schedule(TimerDelay(m_proactiveInterval, false));
 }
 
 void RoutingProtocol::ReactiveRetryTimerExpire() {
@@ -1401,6 +1413,18 @@ Ptr<Socket> RoutingProtocol::FindSocketWithInterfaceAddress(Ipv4InterfaceAddress
 int64_t RoutingProtocol::AssignStreams(int64_t stream) {
     m_rng.Stream()->SetStream(stream);
     return 1;
+}
+
+int64_t RoutingProtocol::AssignTimerStreams(int64_t stream) {
+    m_timerRng->SetStream(stream);
+    return 1;
+}
+
+Time RoutingProtocol::TimerDelay(Time base, bool first) {
+    if (m_timerJitter <= 0.0) return base;
+    const double scale = first ? m_timerRng->GetValue(0.0, 1.0)
+                               : m_timerRng->GetValue(1.0 - m_timerJitter, 1.0 + m_timerJitter);
+    return Seconds(base.GetSeconds() * scale);
 }
 
 void RoutingProtocol::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit) const {

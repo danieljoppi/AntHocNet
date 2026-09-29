@@ -17,6 +17,7 @@
 #include "ns3/ipv4-l3-protocol.h"
 #include "ns3/socket.h"
 #include "ns3/timer.h"
+#include "ns3/random-variable-stream.h"
 #include "ns3/traced-callback.h"
 #include "ns3/mac48-address.h"
 #include "ns3/queue.h"
@@ -124,6 +125,12 @@ public:
 
     /// Seed the protocol's RNG; returns the number of streams used.
     int64_t AssignStreams(int64_t stream);
+    /// #496: seed the hello/proactive timer-jitter stream (separate from the
+    /// core's decision stream, so jitter draws never shift the core's
+    /// sequence); returns the number of streams used. AntHocNetHelper assigns
+    /// these after every node's core stream, so the core streams keep their
+    /// pre-#496 indices.
+    int64_t AssignTimerStreams(int64_t stream);
 
     /// Issue #20 diagnostics: LinkFail origin/propagation split from the core
     /// (origins = antTx[linkfail] − propagations; budget drops = suppressed).
@@ -309,6 +316,15 @@ private:
 
     Timer m_helloTimer;
     Timer m_proactiveTimer;
+    /// #496: relative per-period jitter on the hello and proactive timers
+    /// (0 = the pre-#496 fixed, phase-locked timers).
+    double m_timerJitter = 0.05;
+    Ptr<UniformRandomVariable> m_timerRng = CreateObject<UniformRandomVariable>();
+    /// Delay to the next firing of a periodic timer with period `base`: the
+    /// first firing is a uniform phase in [0, base), later ones base scaled by
+    /// U[1 - TimerJitter, 1 + TimerJitter]. Returns `base` unchanged (and draws
+    /// nothing) when TimerJitter is 0.
+    Time TimerDelay(Time base, bool first);
     Timer m_reactiveRetryTimer;  ///< issue #21: re-flood discovery for held data
 
     // attribute-backed parameters

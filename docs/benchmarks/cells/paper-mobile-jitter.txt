@@ -1,0 +1,140 @@
+# paper mobile (pause=0) 20 seeds @ce81eefe run 36595259957 (TimerJitter=0.05, #496)
+##RUN## 1 anthocnet 96.3 24.1 335.5 6.15 17.97 36.03 1.5 131.5 24.3668
+##RUN## 2 anthocnet 95.8 30.1 418.5 6.20 20.35 45.83 1.5 152.5 26.8308
+##RUN## 3 anthocnet 96.5 27.9 375.5 6.50 18.15 43.16 1.5 139.5 24.2684
+##RUN## 4 anthocnet 96.0 30.5 391.5 6.28 20.01 45.62 1.5 147.5 26.3381
+##RUN## 5 anthocnet 96.5 27.4 370.5 6.47 18.00 41.27 1.5 142.5 24.1140
+##RUN## 6 anthocnet 96.6 30.8 375.5 6.38 19.11 46.17 1.5 143.5 25.3263
+##RUN## 7 anthocnet 96.8 26.0 296.5 6.48 17.82 39.79 1.5 136.5 23.8716
+##RUN## 8 anthocnet 96.3 27.3 316.5 6.33 19.28 40.70 1.5 140.5 25.5379
+##RUN## 9 anthocnet 96.5 28.1 398.5 6.54 18.22 43.77 1.5 137.5 24.2674
+##RUN## 10 anthocnet 96.3 27.7 353.5 6.17 18.67 42.97 1.5 142.5 25.0256
+##RUN## 11 anthocnet 95.3 27.6 437.5 6.27 18.71 41.95 1.5 146.5 25.0736
+##RUN## 12 anthocnet 96.7 25.6 289.5 6.49 17.76 38.64 1.5 134.5 23.7982
+##RUN## 13 anthocnet 96.3 23.9 303.5 6.22 17.42 36.96 1.5 135.5 23.6488
+##RUN## 14 anthocnet 96.8 25.0 313.5 6.37 17.63 38.01 1.5 132.5 23.7284
+##RUN## 15 anthocnet 94.3 26.5 283.5 6.17 19.10 39.99 1.5 153.5 25.5189
+##RUN## 16 anthocnet 95.9 26.7 330.5 6.27 18.94 41.10 1.5 142.5 25.2523
+##RUN## 17 anthocnet 96.7 27.5 401.5 6.47 18.33 41.96 1.5 136.5 24.4287
+##RUN## 18 anthocnet 95.8 29.1 333.5 6.33 19.88 43.70 1.5 152.5 26.1181
+##RUN## 19 anthocnet 96.4 24.0 299.5 6.35 16.98 36.57 1.5 129.5 23.1272
+##RUN## 20 anthocnet 96.0 24.4 286.5 6.21 18.10 37.73 1.5 135.5 24.3856
+##RUN## 1 aodv 85.0 33.3 440.5 5.42 59.14 50.05 3.5 inf 31.0927
+##RUN## 2 aodv 79.8 38.5 514.5 5.17 64.23 56.77 11.5 inf 33.8033
+##RUN## 3 aodv 83.2 37.6 550.5 5.60 59.05 56.08 4.5 inf 31.0621
+##RUN## 4 aodv 81.7 37.6 590.5 5.35 61.55 56.22 5.5 inf 32.4069
+##RUN## 5 aodv 83.5 36.6 552.5 5.60 57.34 56.21 4.5 inf 30.2019
+##RUN## 6 aodv 82.5 38.1 530.5 5.45 60.66 56.75 7.5 inf 31.8994
+##RUN## 7 aodv 84.4 39.5 549.5 5.65 59.23 60.06 5.5 inf 31.1592
+##RUN## 8 aodv 82.5 38.3 527.5 5.42 60.34 57.27 5.5 inf 31.7583
+##RUN## 9 aodv 82.8 31.2 492.5 5.61 55.43 48.53 3.5 inf 29.1581
+##RUN## 10 aodv 83.1 36.4 493.5 5.32 57.80 54.29 5.5 inf 30.4840
+##RUN## 11 aodv 84.0 34.5 516.5 5.53 58.86 51.73 4.5 inf 30.9646
+##RUN## 12 aodv 83.1 36.5 550.5 5.58 60.26 57.21 4.5 inf 31.6970
+##RUN## 13 aodv 85.1 30.9 494.5 5.49 59.49 48.44 2.5 inf 31.2350
+##RUN## 14 aodv 82.4 29.4 498.5 5.42 57.71 44.55 3.5 inf 30.4899
+##RUN## 15 aodv 81.3 36.2 512.5 5.32 61.88 55.20 6.5 inf 32.6499
+##RUN## 16 aodv 83.9 33.7 484.5 5.49 56.40 51.08 4.5 inf 29.7408
+##RUN## 17 aodv 83.4 32.9 506.5 5.58 59.26 50.85 3.5 inf 31.2668
+##RUN## 18 aodv 82.4 38.2 534.5 5.44 56.97 55.45 4.5 inf 30.0415
+##RUN## 19 aodv 84.9 32.1 443.5 5.59 55.41 47.53 3.5 inf 29.1624
+##RUN## 20 aodv 83.5 30.5 434.5 5.39 59.29 46.31 3.5 inf 31.2261
+##RUN## 1 olsr 80.5 6.3 24.5 4.88 5.22 8.20 1.5 inf 11.7365
+##RUN## 2 olsr 74.7 9.8 28.5 4.53 5.57 14.48 1.5 inf 12.5623
+##RUN## 3 olsr 80.3 9.6 25.5 5.10 4.95 13.66 1.5 inf 11.1898
+##RUN## 4 olsr 77.1 11.4 31.5 4.71 5.40 17.06 1.5 inf 12.0164
+##RUN## 5 olsr 80.1 10.8 30.5 5.07 5.04 16.83 1.5 inf 11.3407
+##RUN## 6 olsr 75.9 8.2 25.5 4.77 5.36 10.91 1.5 inf 12.0627
+##RUN## 7 olsr 78.8 7.6 24.5 4.98 5.04 10.71 1.5 inf 11.4191
+##RUN## 8 olsr 77.9 6.6 23.5 4.87 5.24 9.10 1.5 inf 11.9010
+##RUN## 9 olsr 79.6 8.2 25.5 5.10 4.96 11.79 1.5 inf 11.1416
+##RUN## 10 olsr 77.6 9.0 27.5 4.73 5.31 13.17 1.5 inf 12.3427
+##RUN## 11 olsr 78.7 8.0 25.5 4.87 5.12 11.10 1.5 inf 11.5291
+##RUN## 12 olsr 78.1 6.1 23.5 5.01 5.08 7.51 1.5 inf 11.4370
+##RUN## 13 olsr 81.1 8.5 23.5 4.97 5.10 12.31 1.5 inf 11.6622
+##RUN## 14 olsr 78.2 8.3 24.5 4.91 5.17 12.56 1.5 inf 11.8165
+##RUN## 15 olsr 76.3 8.7 26.5 4.72 5.38 12.09 1.5 inf 12.3116
+##RUN## 16 olsr 78.1 6.4 22.5 4.83 5.24 8.61 1.5 inf 11.8990
+##RUN## 17 olsr 77.1 8.8 27.5 4.87 5.22 12.80 1.5 inf 11.7813
+##RUN## 18 olsr 77.4 6.7 24.5 4.82 5.30 8.94 1.5 inf 12.0584
+##RUN## 19 olsr 82.5 13.3 39.5 5.22 4.82 20.39 1.5 inf 10.8066
+##RUN## 20 olsr 80.0 6.2 24.5 4.94 5.12 7.86 1.5 inf 11.7944
+##RUN## 1 dsdv 71.5 17.6 1003.5 4.56 27.54 30.52 1.5 inf 18.9540
+##RUN## 2 dsdv 66.1 15.7 381.5 4.28 29.52 26.60 2.5 inf 20.3125
+##RUN## 3 dsdv 70.9 14.4 328.5 4.77 26.41 24.60 1.5 inf 18.1775
+##RUN## 4 dsdv 66.2 16.7 414.5 4.33 29.21 28.81 2.5 inf 20.0771
+##RUN## 5 dsdv 69.6 18.1 458.5 4.67 27.06 30.79 2.5 inf 18.6134
+##RUN## 6 dsdv 66.2 17.2 445.5 4.37 29.00 30.38 2.5 inf 19.9322
+##RUN## 7 dsdv 70.3 15.7 383.5 4.70 26.79 27.29 1.5 inf 18.4315
+##RUN## 8 dsdv 69.6 17.0 470.5 4.58 27.77 30.07 1.5 inf 19.0725
+##RUN## 9 dsdv 69.7 16.3 364.5 4.73 26.77 27.25 1.5 inf 18.4103
+##RUN## 10 dsdv 69.5 15.2 355.5 4.45 28.45 26.85 1.5 inf 19.5512
+##RUN## 11 dsdv 69.7 16.2 381.5 4.59 27.36 27.05 2.5 inf 18.8428
+##RUN## 12 dsdv 71.1 15.5 373.5 4.77 26.44 25.69 1.5 inf 18.1926
+##RUN## 13 dsdv 71.5 12.8 243.5 4.61 27.36 22.41 1.5 inf 18.8285
+##RUN## 14 dsdv 69.1 19.9 1008.5 4.55 27.94 34.84 1.5 inf 19.1901
+##RUN## 15 dsdv 67.4 19.0 1003.5 4.41 28.55 32.55 2.5 inf 19.6546
+##RUN## 16 dsdv 67.7 17.5 1003.5 4.43 28.59 30.28 2.5 inf 19.6569
+##RUN## 17 dsdv 69.2 11.5 175.5 4.63 27.24 19.46 1.5 inf 18.7434
+##RUN## 18 dsdv 65.0 17.1 1002.5 4.29 29.58 30.37 2.5 inf 20.3212
+##RUN## 19 dsdv 72.2 14.7 336.5 4.76 26.46 24.17 1.5 inf 18.2156
+##RUN## 20 dsdv 68.9 17.2 1002.5 4.45 28.36 30.42 1.5 inf 19.5008
+##RUN## 1 oracle 95.0 7.0 23.5 6.07 0.00 8.96 1.5 14.5 0.0000
+##RUN## 2 oracle 94.9 4.3 21.5 6.14 0.00 3.78 1.5 15.5 0.0000
+##RUN## 3 oracle 95.4 5.1 22.5 6.42 0.00 5.80 1.5 13.5 0.0000
+##RUN## 4 oracle 93.7 7.8 23.5 6.13 0.00 10.60 1.5 17.5 0.0000
+##RUN## 5 oracle 95.5 5.6 23.5 6.40 0.00 6.52 1.5 14.5 0.0000
+##RUN## 6 oracle 93.9 5.3 23.5 6.20 0.00 6.08 1.5 16.5 0.0000
+##RUN## 7 oracle 95.8 4.3 23.5 6.41 0.00 4.24 1.5 14.5 0.0000
+##RUN## 8 oracle 94.9 4.4 22.5 6.24 0.00 4.31 1.5 15.5 0.0000
+##RUN## 9 oracle 95.2 4.9 22.5 6.46 0.00 5.15 1.5 15.5 0.0000
+##RUN## 10 oracle 95.1 4.0 22.5 6.09 0.00 3.57 1.5 14.5 0.0000
+##RUN## 11 oracle 94.9 6.1 22.5 6.25 0.00 7.25 1.5 15.5 0.0000
+##RUN## 12 oracle 96.0 4.8 22.5 6.44 0.00 5.15 1.5 13.5 0.0000
+##RUN## 13 oracle 96.0 4.1 22.5 6.20 0.00 3.91 1.5 13.5 0.0000
+##RUN## 14 oracle 95.6 5.8 21.5 6.29 0.00 7.16 1.5 14.5 0.0000
+##RUN## 15 oracle 93.8 5.0 22.5 6.13 0.00 5.53 1.5 16.5 0.0000
+##RUN## 16 oracle 95.0 5.8 23.5 6.21 0.00 6.52 1.5 15.5 0.0000
+##RUN## 17 oracle 95.4 6.1 23.5 6.39 0.00 7.97 1.5 14.5 0.0000
+##RUN## 18 oracle 92.9 6.3 23.5 6.14 0.00 8.04 1.5 18.5 0.0000
+##RUN## 19 oracle 95.4 6.6 24.5 6.28 0.00 8.51 1.5 14.5 0.0000
+##RUN## 20 oracle 94.3 5.0 22.5 6.09 0.00 5.38 1.5 15.5 0.0000
+##ORACLE## 1 oracle mode=disk approx=0 nodes=50 edges=992 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 2 oracle mode=disk approx=0 nodes=50 edges=1118 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 3 oracle mode=disk approx=0 nodes=50 edges=1056 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 4 oracle mode=disk approx=0 nodes=50 edges=1034 recomputes=900 changes=900 range=300.0 noRoute=7 noRouteOrigin=7 noRouteFwd=0 nrl=0.00
+##ORACLE## 5 oracle mode=disk approx=0 nodes=50 edges=924 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 6 oracle mode=disk approx=0 nodes=50 edges=1114 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 7 oracle mode=disk approx=0 nodes=50 edges=1092 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 8 oracle mode=disk approx=0 nodes=50 edges=1004 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 9 oracle mode=disk approx=0 nodes=50 edges=1030 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 10 oracle mode=disk approx=0 nodes=50 edges=1222 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 11 oracle mode=disk approx=0 nodes=50 edges=1080 recomputes=900 changes=900 range=300.0 noRoute=4 noRouteOrigin=4 noRouteFwd=0 nrl=0.00
+##ORACLE## 12 oracle mode=disk approx=0 nodes=50 edges=1052 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 13 oracle mode=disk approx=0 nodes=50 edges=894 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 14 oracle mode=disk approx=0 nodes=50 edges=1056 recomputes=900 changes=900 range=300.0 noRoute=5 noRouteOrigin=5 noRouteFwd=0 nrl=0.00
+##ORACLE## 15 oracle mode=disk approx=0 nodes=50 edges=1072 recomputes=900 changes=900 range=300.0 noRoute=8 noRouteOrigin=8 noRouteFwd=0 nrl=0.00
+##ORACLE## 16 oracle mode=disk approx=0 nodes=50 edges=1140 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 17 oracle mode=disk approx=0 nodes=50 edges=986 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##ORACLE## 18 oracle mode=disk approx=0 nodes=50 edges=1006 recomputes=900 changes=900 range=300.0 noRoute=3 noRouteOrigin=3 noRouteFwd=0 nrl=0.00
+##ORACLE## 19 oracle mode=disk approx=0 nodes=50 edges=1254 recomputes=900 changes=900 range=300.0 noRoute=9 noRouteOrigin=9 noRouteFwd=0 nrl=0.00
+##ORACLE## 20 oracle mode=disk approx=0 nodes=50 edges=964 recomputes=900 changes=900 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+# drops anthocnet pdr=96.19 route=2.48 queue=0.00 mac=0.47 chan=0.86 ttl=0.00 sum=100.00 other=0.00 [route: setup=0.00 reconv=2.01 repair=0.47]
+# drops aodv pdr=83.12 route=3.87 queue=0.02 mac=11.39 chan=1.48 ttl=0.05 sum=99.93 other=0.00 [route: setup=- reconv=- repair=-]
+# drops olsr pdr=78.50 route=0.28 queue=0.00 mac=16.09 chan=5.11 ttl=0.02 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# drops dsdv pdr=69.07 route=0.00 queue=0.00 mac=23.80 chan=7.07 ttl=0.04 sum=99.98 other=0.00 [route: setup=- reconv=- repair=-]
+# drops oracle pdr=94.94 route=0.02 queue=0.00 mac=3.33 chan=1.71 ttl=0.00 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# stddev anthocnet pdr=0.60 delay=2.1 delay99=47.8 nrl=0.899 nrl_bytes=0.987
+# stddev aodv pdr=1.30 delay=3.1 delay99=40.4 nrl=2.190 nrl_bytes=1.146
+# stddev olsr pdr=1.90 delay=1.9 delay99=3.9 nrl=0.178 nrl_bytes=0.438
+# stddev dsdv pdr=2.04 delay=2.0 delay99=307.5 nrl=1.037 nrl_bytes=0.706
+# stddev oracle pdr=0.83 delay=1.0 delay99=0.8 nrl=0.000 nrl_bytes=0.000
+##BENCH## anthocnet 96.2 27.0 345.6 6.33 18.52 41.10 1.5 140.7 24.751
+##BENCH## aodv 83.1 35.1 510.9 5.47 59.01 53.03 4.9 inf 31.075
+##BENCH## olsr 78.5 8.4 26.4 4.89 5.18 12.00 1.5 inf 11.740
+##BENCH## dsdv 69.1 16.3 556.9 4.55 27.82 28.02 1.9 inf 19.134
+##BENCH## oracle 94.9 5.4 22.9 6.25 0.00 6.22 1.5 15.2 0.000
+##CONFIG## scenario=paper nNodes=50 time=900 runs=20 firstRun=1 areaX=1500 areaY=300 speed=20 pause=0 range=300 propagation=range mobility=rwp transport=udp flows=20 cbrBps=512 rateManager=constant2
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##PROV## commit=ce81eefe9c9826e7c6e770c3a46adb3b8cd5e1c5 ref=claude/anthocnet-project-review-2brrrv run_id=36595259957 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=compare
