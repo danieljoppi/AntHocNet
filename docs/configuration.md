@@ -210,7 +210,7 @@ class of defect as a missing one.
 
 ### 3.4 ns-3 attributes that are *not* `Config` fields
 
-Seven of the 31 attributes configure the NS-3 adapter, not the algorithm. They are
+Eight of the 34 attributes configure the NS-3 adapter, not the algorithm. They are
 listed here so a sweep does not mistake one for a protocol parameter:
 
 | attribute | default | what it does |
@@ -222,6 +222,7 @@ listed here so a sweep does not mistake one for a protocol parameter:
 | `RepairHoldCap` | `0 s` (disabled) | The same cap for repair-held packets. |
 | `ReactiveRetryInterval` | `0.25 s` | Adapter-side re-flood timer for queued-but-routeless destinations (#21). **Not** `Config::reactiveRetryInterval` — see §3.3. |
 | `MacServiceAlpha` | `0.7` | EWMA weight when smoothing the measured MAC service time. This is [1] §3.1's α (#70) — the paper value, matching the digest. |
+| `TimerJitter` | `0.05` | Desynchronises the hello and proactive timers ([#496](https://github.com/danieljoppi/AntHocNet/issues/496)). Each node's first firing is a uniform phase in `[0, interval)` and every later period is `interval × U[1−j, 1+j]`, drawn from a dedicated `AssignStreams`-pinned stream so the core's decision stream is untouched. **`0` restores the pre-#496 fixed timers**, byte-identical to every result published before it: every node then beacons at the same instants, hidden terminals collide on every hello, and two such losses in a row evict a live neighbour (~93k spurious evictions per 900 s run on the static field). The NS-2 adapter has always jittered both timers (hello `0.75–1.25×`, proactive `1–2.5×`), so this is a parity fix, not a protocol change. |
 
 ## 4. Functional groups, and what each trades off
 
@@ -377,6 +378,14 @@ Two independent detectors feed one `loseNeighbor` (ADR-0008): the hello timeout
 (`helloInterval × allowedHelloLoss`, always on) and the adapter's MAC
 transmit-failure fast path (`txFailureThreshold`, ns-3 `EnableMacFailureDetector`).
 Both defaults for the hello pair come straight from [1] §3.3 fn.1.
+
+The hello timeout assumes hello losses are independent. They are only
+independent if the nodes' hellos are not synchronised: before
+[#496](https://github.com/danieljoppi/AntHocNet/issues/496) the ns-3 adapter fired
+every node's hello at the same instants, so the same hidden-terminal collisions
+repeated every period and the detector evicted live neighbours about every 15 s
+on a static field. `TimerJitter` (§3.4) is what keeps this detector honest; don't
+tune `allowedHelloLoss` against results measured with it at `0`.
 
 Tightening detection (shorter hellos, fewer allowed losses, threshold 1) makes
 the protocol jumpier: transient collisions get read as topology changes,
