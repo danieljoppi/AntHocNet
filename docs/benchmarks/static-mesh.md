@@ -9,16 +9,19 @@ t = 0 position for the whole run. It is the community-network / Freifunk-class
 
 [← Benchmark index](../benchmarks.md) · [Metrics](metrics.md) · [Methodology](methodology.md) · [Regimes](../network-regimes.md)
 
-> **Provenance: measured at `4fffedcc` (default arm) and `0c524697` (1 s arm),
-> after `v1.6.0`.** The two commits differ only in docs and the Python
-> preflight, not in the simulator. The four baselines are byte-identical
-> across the two runs, which is the control that proves it. Like the
-> [grid](grid.md) and [TCP](tcp.md) pages, these numbers are **not** comparable
-> with the `v1.3.0`-pinned sweep pages. The raw per-seed cells are committed
-> next to this page, so the numbers survive the CI logs expiring:
+> **Provenance: measured at `ce81eefe`, the [#496](https://github.com/danieljoppi/AntHocNet/issues/496)
+> timer-jitter fix, after `v1.6.0`.** Every AntHocNet row on this page before
+> #496 was measured with the ns-3 adapter's hello timer phase-locked across all
+> nodes. That artifact is kept below as the dated **pre-#496** record, and it is
+> reproducible with `--ns3::anthocnet::RoutingProtocol::TimerJitter=0`. The
+> four baselines are byte-identical across all three runs, which is the control
+> that proves only AntHocNet moved. Like the [grid](grid.md) and [TCP](tcp.md)
+> pages, these numbers are **not** comparable with the `v1.3.0`-pinned sweep
+> pages. The raw per-seed cells are committed next to this page:
+> [`cells/static-mesh-jitter.txt`](cells/static-mesh-jitter.txt) (current),
 > [`cells/static-mesh-cap200ms.txt`](cells/static-mesh-cap200ms.txt) and
-> [`cells/static-mesh-cap1s.txt`](cells/static-mesh-cap1s.txt). Run IDs are in
-> [Provenance](#provenance) below.
+> [`cells/static-mesh-cap1s.txt`](cells/static-mesh-cap1s.txt) (pre-#496).
+> Run IDs are in [Provenance](#provenance) below.
 
 ## Why this family, and why it is framed rather than built
 
@@ -44,66 +47,73 @@ Whatever AntHocNet loses here, it loses to its own machinery.
 
 ## Results (20 seeds, 95 % CIs)
 
-Both AntHocNet rows are the same field, the same seeds and the same binary. The
-only difference is `ReconvHoldCap`: **200 ms**, the shipped default since
-[#371](https://github.com/danieljoppi/AntHocNet/issues/371), and **1 s**, the
-v1.3.0–v1.4.0 value.
+Current defaults (`TimerJitter = 0.05`, `ReconvHoldCap = 200 ms`):
 
 | protocol | PDR % | mean delay (ms) | delay99 (ms, bootstrap) | NRL |
 |---|---:|---:|---:|---:|
-| **anthocnet**, 200 ms (default) | 88.00 ± 2.24 | 12.06 ± 1.70 | 153.6 [130.1, 177.3] | 31.20 ± 1.46 |
-| **anthocnet**, 1 s | **97.97 ± 0.33** | 26.70 ± 3.43 | 588.8 [510.1, 661.0] | 29.68 ± 1.14 |
+| **anthocnet** | **99.28 ± 0.25** | 3.70 ± 0.33 | 10.5 [9.3, 11.8] | 8.84 ± 0.27 |
 | aodv | 95.98 ± 0.44 | 23.47 ± 2.54 | 266.7 [239.8, 297.1] | 39.39 ± 1.95 |
 | dsdv | 99.68 ± 0.08 | 8.54 ± 1.19 | 125.3 [112.0, 138.2] | 17.04 ± 0.35 |
 | olsr | 100.00 ± 0.00 | 2.54 ± 0.23 | 6.7 [5.8, 7.6] | 3.56 ± 0.07 |
 | oracle (exact) | 100.00 ± 0.00 | 2.67 ± 0.30 | 11.3 [10.8, 11.8] | 0.00 |
 
-Paired AntHocNet, 1 s vs 200 ms (`bench_parse --ab`, n = 20):
+The AntHocNet drop book is `route=0.44 [reconv=0.36]`, with `chan=0.27`.
+
+### What #496 changed
+
+Before #496, the ns-3 adapter started every node's hello timer at t ≈ 0 with no
+jitter, so all 50 nodes beaconed at exactly t = 1, 2, 3 … s. Hidden terminals
+collided on the same broadcasts every second. Two lost hellos in a row evict a
+live neighbour, so the field tore down every link about every 15 s while no
+node moved: about 93k spurious evictions per run. Each eviction pruned routes,
+flooded LinkFail notes, and held data as `HOLD_RECONV`. The NS-2 adapter has
+always jittered this timer; the ns-3 port lost it.
+
+Paired AntHocNet, fixed timer vs the old one, same seeds and same 200 ms cap
+(`bench_parse --ab`, n = 20):
 
 | metric | change | 95 % CI | Wilcoxon p |
 |---|---|---|---|
-| dPDR | **+9.97 pp** | [+7.87, +12.06] | 9.5 × 10⁻⁵ |
-| delay99 | **+435 ms** | [+358, +506] | 1.9 × 10⁻⁶ |
-| NRL | −1.52 | [−2.15, −0.89] | 8.2 × 10⁻⁵ |
+| dPDR | **+11.28 pp** | [+9.10, +13.45] | 1.9 × 10⁻⁶ |
+| delay99 | **−143 ms** | [−167, −120] | 1.9 × 10⁻⁶ |
+| NRL | **−22.37** | [−23.61, −21.12] | 1.9 × 10⁻⁶ |
 
-The dPDR is positive on **20 / 20 seeds**, so the verdict is **PAIRED-MIXED**:
-more delivery, a much longer tail.
+The dPDR is positive on **20 / 20 seeds**: **PAIRED-IMPROVED** on every metric.
 
-**Where the packets go.** The AntHocNet drop book is
-`route=11.52 [reconv=11.51]` at 200 ms and `route=1.34 [reconv=1.33]` at 1 s.
-Almost the whole 200 ms shortfall is packets held for a route to re-form and
-then discarded. That happens on a field where the oracle proves every flow is
-deliverable and nothing moves.
+### Pre-#496 record (`TimerJitter = 0`)
+
+Kept because #494 and the first version of this page were measured here, and
+because it is the evidence for #496. Both rows are the same field, seeds and
+binary, differing only in `ReconvHoldCap`.
+
+| protocol | PDR % | mean delay (ms) | delay99 (ms, bootstrap) | NRL |
+|---|---:|---:|---:|---:|
+| anthocnet, 200 ms | 88.00 ± 2.24 | 12.06 ± 1.70 | 153.6 [130.1, 177.3] | 31.20 ± 1.46 |
+| anthocnet, 1 s | 97.97 ± 0.33 | 26.70 ± 3.43 | 588.8 [510.1, 661.0] | 29.68 ± 1.14 |
+
+The drop books were `route=11.52 [reconv=11.51]` at 200 ms and
+`route=1.34 [reconv=1.33]` at 1 s. The 1 s cap recovered most of the lost
+packets by holding them long enough to outlast the spurious break, at a
+588 ms tail. The fixed timer removes the break instead, and beats both rows on
+every metric.
 
 ## What the family says
 
-1. **The ranking depends on the operating point, and the default sits at the
-   unflattering end here.**
-
-   | operating point | PDR vs AODV | tail vs AODV |
-   |---|---|---|
-   | 200 ms (default) | **8 pp worse** (88.0 vs 96.0, disjoint CIs) | better (154 vs 267 ms) |
-   | 1 s | **2 pp better** (98.0 vs 96.0, disjoint CIs) | 2.2× worse |
-
-   Neither point beats the proactive protocols. On a static mesh, OLSR and
-   DSDV sit at or near the oracle on every metric. That is the expected
-   outcome for a network whose topology never changes, and it is exactly the
-   Babel / BATMAN-adv home turf discussed below.
-2. **This is the [#308](https://github.com/danieljoppi/AntHocNet/issues/308)
-   mechanism on a new family.** A held packet is either delivered late or
-   dropped. So the tail and the delivery lead are one knob, and #371's choice
-   of 200 ms was measured on the **mobile** cells. #371's headline, that
-   200 ms "beats AODV on every published metric", **does not hold for the
-   static family**. That finding is tracked as
-   [#494](https://github.com/danieljoppi/AntHocNet/issues/494).
-3. **The open question is why a static network reconverges at all.** 11.5 % of
-   packets waited on a route to re-form while no node moved. Candidates are
-   MAC-level link-failure detections under contention, and a still-valid route
-   evaporating. Removing that trigger would recover these packets at either
-   cap. That is the next measurement on #494.
-
-A claim about AntHocNet on a static mesh that does not name its
-`ReconvHoldCap` is unsupported.
+1. **With the timer fixed, AntHocNet beats AODV on every metric here.** It
+   delivers 99.28 % vs 95.98 % (disjoint CIs). Its delay99 is 10.5 ms vs
+   266.7 ms, and its NRL is 8.84 vs 39.39. Its tail is also below DSDV's
+   (125.3 ms) and within the oracle's interval (11.3 ms [10.8, 11.8]).
+2. **OLSR still wins the static mesh**, as expected on a topology that never
+   changes: 100 % delivery at 3.56 NRL. That is the Babel / BATMAN-adv home
+   turf discussed below. AntHocNet's 0.7 pp gap to OLSR is `route=0.44` +
+   `chan=0.27`.
+3. **The first version of this page measured a timer bug, not the family.** Its
+   headline, that the 200 ms `ReconvHoldCap` costs about 10 pp here and that
+   #371's "beats AODV on every metric" does not hold for static meshes
+   ([#494](https://github.com/danieljoppi/AntHocNet/issues/494)), was the #496
+   artifact. Whether 200 ms or 1 s is the better cap once the timer is fixed is
+   a new measurement, tracked on #494. It is no longer a 10 pp question: the
+   remaining reconv share is 0.36 %.
 
 ## Threats to validity
 
@@ -123,17 +133,22 @@ A claim about AntHocNet on a static mesh that does not name its
 
 | arm | run | commit | image | seeds |
 |---|---|---|---|---|
-| default (`ReconvHoldCap` 200 ms) | [36261077793](https://github.com/danieljoppi/AntHocNet/actions/runs/36261077793) | `4fffedcc` | `ns3:3.42-opt` | 1–20 |
-| `ReconvHoldCap=1s` | [36269605435](https://github.com/danieljoppi/AntHocNet/actions/runs/36269605435) | `0c524697` | `ns3:3.42-opt` | 1–20 |
+| current (`TimerJitter` 0.05, cap 200 ms) | [36595249953](https://github.com/danieljoppi/AntHocNet/actions/runs/36595249953) | `ce81eefe` | `ns3:3.42-opt` | 1–20 |
+| pre-#496, cap 200 ms | [36261077793](https://github.com/danieljoppi/AntHocNet/actions/runs/36261077793) | `4fffedcc` | `ns3:3.42-opt` | 1–20 |
+| pre-#496, cap 1 s | [36269605435](https://github.com/danieljoppi/AntHocNet/actions/runs/36269605435) | `0c524697` | `ns3:3.42-opt` | 1–20 |
+| control: `ce81eefe` at `TimerJitter=0` | [36595255598](https://github.com/danieljoppi/AntHocNet/actions/runs/36595255598) | `ce81eefe` | `ns3:3.42-opt` | 1–20 |
 
-Both cells:
+All cells:
 
 - `scenario_check.py results`: WARN only, 0 FAIL;
 - `bench_parse` column mapping: OK (25 checks each);
 - baselines (aodv, olsr, dsdv, oracle): byte-identical per-seed rows across
-  the two arms.
+  every arm;
+- the control run reproduces the pre-#496 200 ms AntHocNet rows byte for
+  byte, so `TimerJitter=0` is exactly the old timer.
 
 Reproduce with `paper-benchmark.yml` using `nNodes=50 time=900 runs=20
 areaX=1500 pause=900 speed=20 range=300 propagation=range
-protocols=anthocnet,aodv,olsr,dsdv,oracle version=3.42-opt`. For the second
-arm, add `extraArgs=--ns3::anthocnet::RoutingProtocol::ReconvHoldCap=1s`.
+protocols=anthocnet,aodv,olsr,dsdv,oracle version=3.42-opt`. For the pre-#496
+arms, add `extraArgs=--ns3::anthocnet::RoutingProtocol::TimerJitter=0`, plus
+`--ns3::anthocnet::RoutingProtocol::ReconvHoldCap=1s` for the 1 s row.
