@@ -1,0 +1,28 @@
+# paper mobile (pause=0) 20 seeds @ce81eefe run 36595263862 (TimerJitter=0 control, pre-#496 timer)
+##BENCH## anthocnet 91.8 35.8 498.1 6.04 35.95 54.86 2.6 inf 42.097
+##RUN## 1 anthocnet 92.7 25.2 308.5 5.92 34.45 37.05 1.5 167.5 40.2832
+##RUN## 2 anthocnet 90.3 40.9 543.5 5.84 38.90 63.73 3.5 922.5 45.5810
+##RUN## 3 anthocnet 91.9 37.6 637.5 6.18 34.94 58.29 2.5 339.5 41.1093
+##RUN## 4 anthocnet 89.0 40.5 608.5 5.83 38.54 61.72 2.5 inf 45.0710
+##RUN## 5 anthocnet 91.8 37.1 512.5 6.16 35.47 58.26 2.5 347.5 41.6576
+##RUN## 6 anthocnet 93.1 31.6 507.5 6.14 34.85 48.28 2.5 180.5 40.8371
+##RUN## 7 anthocnet 91.8 38.0 609.5 6.14 35.58 59.22 2.5 355.5 41.4555
+##RUN## 8 anthocnet 92.0 31.6 443.5 6.05 35.43 48.88 2.5 244.5 41.4670
+##RUN## 9 anthocnet 92.3 37.4 510.5 6.26 34.65 57.12 2.5 282.5 40.6488
+##RUN## 10 anthocnet 91.1 43.4 600.5 5.83 38.36 67.62 2.5 546.5 44.6041
+##RUN## 11 anthocnet 91.2 32.3 471.5 6.00 35.78 50.05 2.5 395.5 42.0582
+##RUN## 12 anthocnet 93.0 37.7 439.5 6.25 35.18 55.21 2.5 193.5 41.1784
+##RUN## 13 anthocnet 92.3 36.2 421.5 5.96 34.43 55.71 2.5 251.5 40.3509
+##RUN## 14 anthocnet 91.3 35.5 464.5 6.01 36.16 53.80 3.5 354.5 42.1554
+##RUN## 15 anthocnet 90.8 43.7 615.5 5.94 38.39 66.94 4.5 665.5 45.1072
+##RUN## 16 anthocnet 91.4 35.2 448.5 5.98 36.37 53.66 2.5 335.5 42.5527
+##RUN## 17 anthocnet 90.8 39.7 534.5 6.07 37.14 60.55 3.5 594.5 43.6053
+##RUN## 18 anthocnet 92.3 36.1 532.5 6.10 36.74 54.24 2.5 242.5 42.9074
+##RUN## 19 anthocnet 93.8 27.6 363.5 6.18 32.58 42.39 1.5 159.5 38.4286
+##RUN## 20 anthocnet 92.9 29.2 388.5 6.00 35.01 44.46 2.5 180.5 40.8885
+# drops anthocnet pdr=91.78 route=6.06 queue=0.00 mac=0.41 chan=1.73 ttl=0.02 sum=100.00 other=0.00 [route: setup=0.00 reconv=5.35 repair=0.71]
+# stddev anthocnet pdr=1.11 delay=5.0 delay99=90.6 nrl=1.645 nrl_bytes=1.881
+##CONFIG## scenario=paper nNodes=50 time=900 runs=20 firstRun=1 areaX=1500 areaY=300 speed=20 pause=0 range=300 propagation=range mobility=rwp transport=udp flows=20 cbrBps=512 rateManager=constant2
+##CONFIG## attr TimerJitter=0
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##PROV## commit=ce81eefe9c9826e7c6e770c3a46adb3b8cd5e1c5 ref=claude/anthocnet-project-review-2brrrv run_id=36595263862 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=compare
