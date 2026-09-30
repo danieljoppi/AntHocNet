@@ -21,6 +21,9 @@ t = 0 position for the whole run. It is the community-network / Freifunk-class
 > [`cells/static-mesh-jitter.txt`](cells/static-mesh-jitter.txt) (current),
 > [`cells/static-mesh-cap200ms.txt`](cells/static-mesh-cap200ms.txt) and
 > [`cells/static-mesh-cap1s.txt`](cells/static-mesh-cap1s.txt) (pre-#496).
+> The #494 cap re-measure arms are
+> [`cells/static-mesh-jitter-cap1s.txt`](cells/static-mesh-jitter-cap1s.txt) and
+> [`cells/paper-mobile-jitter-cap1s.txt`](cells/paper-mobile-jitter-cap1s.txt).
 > Run IDs are in [Provenance](#provenance) below.
 
 ## Why this family, and why it is framed rather than built
@@ -80,6 +83,21 @@ Paired AntHocNet, fixed timer vs the old one, same seeds and same 200 ms cap
 
 The dPDR is positive on **20 / 20 seeds**: **PAIRED-IMPROVED** on every metric.
 
+### The cap, re-measured on the fixed timer (#494)
+
+With the timer fixed, `ReconvHoldCap = 1 s` against the 200 ms default, paired
+on the same seeds (`bench_parse --ab`, n = 20). The mobile paper cell
+(`pause = 0`) is included because #371 picked the cap on mobile cells.
+
+| cell | PDR 200 ms → 1 s | dPDR [95 % CI] | delay99 200 ms → 1 s | NRL change |
+|---|---|---|---|---|
+| static mesh | 99.28 → 99.55 | +0.26 [+0.04, +0.49] pp, p = 0.011; 11 / 20 seeds up, 3 down | 10.5 → 10.4 ms (p = 0.57) | −0.01 (p = 0.90) |
+| paper mobile | 96.19 → 97.50 | +1.31 [+1.06, +1.55] pp, 20 / 20 seeds | **345.6 → 555.0 ms** (+209 [+172, +249]) | +0.42 [+0.27, +0.57] |
+
+On the static field the cap is now close to irrelevant: `reconv` is 0.36 % at
+200 ms. On mobile, 1 s buys 1.3 pp by holding packets longer, and pushes the
+tail above AODV's 510.9 ms. That is the trade #371 priced, so **200 ms stays**.
+
 ### Pre-#496 record (`TimerJitter = 0`)
 
 Kept because #494 and the first version of this page were measured here, and
@@ -111,9 +129,9 @@ every metric.
    headline, that the 200 ms `ReconvHoldCap` costs about 10 pp here and that
    #371's "beats AODV on every metric" does not hold for static meshes
    ([#494](https://github.com/danieljoppi/AntHocNet/issues/494)), was the #496
-   artifact. Whether 200 ms or 1 s is the better cap once the timer is fixed is
-   a new measurement, tracked on #494. It is no longer a 10 pp question: the
-   remaining reconv share is 0.36 %.
+   artifact. Re-measured on the fixed timer, 1 s adds only +0.26 pp here and
+   costs 209 ms of mobile tail, so the 200 ms default stands (see
+   [above](#the-cap-re-measured-on-the-fixed-timer-494)).
 
 ## Threats to validity
 
@@ -136,6 +154,8 @@ every metric.
 | current (`TimerJitter` 0.05, cap 200 ms) | [36595249953](https://github.com/danieljoppi/AntHocNet/actions/runs/36595249953) | `ce81eefe` | `ns3:3.42-opt` | 1–20 |
 | pre-#496, cap 200 ms | [36261077793](https://github.com/danieljoppi/AntHocNet/actions/runs/36261077793) | `4fffedcc` | `ns3:3.42-opt` | 1–20 |
 | pre-#496, cap 1 s | [36269605435](https://github.com/danieljoppi/AntHocNet/actions/runs/36269605435) | `0c524697` | `ns3:3.42-opt` | 1–20 |
+| #494 re-measure: cap 1 s, fixed timer | [36767457453](https://github.com/danieljoppi/AntHocNet/actions/runs/36767457453) | `4c8482fd` | `ns3:3.42-opt` | 1–20 |
+| #494 re-measure: paper mobile, cap 1 s | [36767461455](https://github.com/danieljoppi/AntHocNet/actions/runs/36767461455) | `4c8482fd` | `ns3:3.42-opt` | 1–20 |
 | control: `ce81eefe` at `TimerJitter=0` | [36595255598](https://github.com/danieljoppi/AntHocNet/actions/runs/36595255598) | `ce81eefe` | `ns3:3.42-opt` | 1–20 |
 
 All cells:
@@ -152,3 +172,7 @@ areaX=1500 pause=900 speed=20 range=300 propagation=range
 protocols=anthocnet,aodv,olsr,dsdv,oracle version=3.42-opt`. For the pre-#496
 arms, add `extraArgs=--ns3::anthocnet::RoutingProtocol::TimerJitter=0`, plus
 `--ns3::anthocnet::RoutingProtocol::ReconvHoldCap=1s` for the 1 s row.
+The #494 arms add only `ReconvHoldCap=1s` and run `protocols=anthocnet`
+(`pause=0` for the mobile one); their 200 ms partners are
+`cells/static-mesh-jitter.txt` and `cells/paper-mobile-jitter.txt`. `4c8482fd`
+carries the same code as `ce81eefe` (it differs only by a docs refresh).
