@@ -1,0 +1,61 @@
+# sparse-static 20 seeds @4c8482fd run 36767457453 (ReconvHoldCap=1s arm, #494 re-measure on the #496 timer)
+##CONFIG## scenario=paper nNodes=50 time=900 runs=20 firstRun=1 areaX=1500 areaY=300 speed=20 pause=900 range=300 propagation=range mobility=rwp transport=udp flows=20 cbrBps=512 rateManager=constant2 protocols=anthocnet
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+1e+09ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##RUN## 1 anthocnet 99.9 4.8 17.5 6.38 9.60 2.17 2.5 6.5 15.9784
+##RUN## 2 anthocnet 99.0 4.1 11.5 6.41 9.36 2.17 2.5 4.5 15.5510
+##RUN## 3 anthocnet 99.3 3.9 11.5 6.68 8.81 2.05 1.5 5.5 14.6890
+##RUN## 4 anthocnet 99.6 4.8 10.5 6.52 9.43 2.77 2.5 4.5 15.6585
+##RUN## 5 anthocnet 99.7 3.4 10.5 6.68 8.63 1.56 1.5 5.5 14.6353
+##RUN## 6 anthocnet 99.7 3.8 9.5 6.58 8.78 1.49 2.5 4.5 14.9184
+##RUN## 7 anthocnet 99.2 4.6 11.5 6.63 9.91 2.19 2.5 6.5 16.2875
+##RUN## 8 anthocnet 99.9 3.6 7.5 6.57 8.40 1.93 1.5 4.5 14.3434
+##RUN## 9 anthocnet 99.9 3.0 10.5 6.77 8.65 0.98 2.5 ##RSS## t=420s top=ns3.42-anthocne pid=457 rss_kb=71968 mem_avail_kb=15265436
+##RUN## 10 anthocnet 99.7 3.3 8.5 6.38 8.57 1.58 1.5 3.5 14.7776
+##RUN## 11 anthocnet 99.9 3.4 7.5 6.58 7.80 1.68 0.5 3.5 13.7979
+##RUN## 12 anthocnet 99.3 4.9 14.5 6.66 9.35 1.94 2.5 6.5 15.5089
+##RUN## 13 anthocnet 99.2 4.5 10.5 6.41 9.06 2.35 1.5 5.5 15.4324
+##RUN## 14 anthocnet 98.9 4.5 14.5 6.50 9.42 2.19 2.5 5.5 15.6217
+##RUN## 15 anthocnet 99.5 3.3 7.5 6.51 8.56 2.02 1.5 3.5 14.6532
+##RUN## 16 anthocnet 99.8 2.4 7.5 6.53 8.03 0.98 1.5 3.5 14.0340
+##RUN## 17 anthocnet 99.7 3.4 8.5 6.67 8.23 1.61 0.5 4.5 14.1872
+##RUN## 18 anthocnet 99.9 3.9 11.5 6.60 8.68 1.57 2.5 5.5 14.8258
+##RUN## 19 anthocnet 99.5 3.3 9.5 6.55 8.84 1.26 2.5 4.5 14.9861
+##RUN## 20 anthocnet 99.3 2.6 7.5 6.42 8.49 1.04 1.5 3.5 14.4783
+# drops anthocnet pdr=99.54 route=0.20 queue=0.00 mac=0.00 chan=0.26 ttl=0.00 sum=100.00 other=0.00 [route: setup=0.08 reconv=0.12 repair=0.00]
+# stddev anthocnet pdr=0.32 delay=0.7 delay99=2.7 nrl=0.546 nrl_bytes=0.669
+##BENCH## anthocnet 99.5 3.8 10.4 6.55 8.83 1.78 1.9 4.8 14.946
+##RUN## 9 anthocnet 99.9 3.0 10.5 6.77 8.65 0.98 2.5 4.5 14.5606
+##PROV## commit=4c8482fd01d7575995c22eeffe7ff4ee0e253647 ref=main run_id=36767457453 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=compare
