@@ -1,0 +1,374 @@
+# grid rwp-tworay 20 seeds @dd171e5e run 36810709154 (#496 re-baseline: TimerJitter=0.05, ReconvHoldCap=200ms, +oracle)
+##CONFIG## scenario=paper nNodes=50 time=900 runs=20 firstRun=1 areaX=1500 areaY=300 speed=20 pause=30 range=300 propagation=tworay mobility=rwp transport=udp flows=20 cbrBps=512 rateManager=constant2 protocols=anthocnet,aodv,olsr,dsdv,oracle
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##RUN## 1 anthocnet 97.6 14.7 203.5 6.23 13.50 22.24 1.5 11.5 19.7137
+##RUN## 2 anthocnet 97.2 15.5 218.5 6.29 13.85 23.46 1.5 13.5 19.9808
+##RUN## 3 anthocnet 98.4 13.5 209.5 6.62 12.95 20.67 1.5 7.5 18.7717
+##RUN## 4 anthocnet 97.6 15.4 209.5 6.39 13.97 25.03 1.5 16.5 20.0316
+##RUN## 5 anthocnet 97.6 17.9 245.5 6.54 14.15 28.43 1.5 20.5 20.0839
+##RUN## 6 anthocnet 97.3 14.2 197.5 6.42 13.56 22.27 1.5 10.5 19.5916
+##RUN## 7 anthocnet 96.7 14.4 198.5 6.47 14.05 22.26 1.5 19.5 20.0394
+##RUN## 8 anthocnet 98.0 13.7 196.5 6.44 13.91 20.83 1.5 13.5 19.8887
+##RUN## 9 anthocnet 97.8 14.8 201.5 6.63 13.42 23.14 1.5 10.5 19.2709
+##RUN## 10 anthocnet 98.4 11.8 183.5 6.30 12.18 18.72 0.5 5.5 18.2249
+##RUN## 11 anthocnet 98.4 11.4 177.5 6.48 12.29 17.06 1.5 6.5 18.2436
+##RUN## 12 anthocnet 97.6 15.9 229.5 6.55 14.03 24.75 1.5 20.5 19.9152
+##RUN## 13 anthocnet 98.0 13.7 192.5 6.33 13.29 21.04 1.5 7.5 19.3515
+##RUN## 14 anthocnet 97.5 13.6 192.5 6.42 13.36 21.03 1.5 11.5 19.3316
+##RUN## 15 anthocnet 97.7 15.4 212.5 6.40 13.01 24.73 1.5 8.5 18.9976
+##RUN## 16 anthocnet 98.1 14.2 209.5 6.42 13.71 22.39 1.5 10.5 19.7200
+##RUN## 17 anthocnet 97.5 13.9 187.5 6.53 13.41 21.34 1.5 11.5 19.3441
+##RUN## 18 anthocnet 98.4 15.3 220.5 6.50 13.70 23.54 1.5 14.5 19.6018
+##RUN## 19 anthocnet 98.4 15.0 193.5 6.48 13.45 23.23 1.5 11.5 19.4045
+##RUN## 20 anthocnet 97.5 12.5 193.5 6.30 13.40 18.79 1.5 9.5 19.4911
+##RUN## 1 aodv 87.0 46.7 614.5 5.55 67.70 70.72 4.5 inf 35.5564
+##RUN## 2 aodv 86.4 47.5 659.5 5.59 65.93 75.69 3.5 inf 34.6999
+##RUN## 3 aodv 85.3 51.6 681.5 5.74 68.76 80.84 3.5 inf 36.1197
+##RUN## 4 aodv 84.3 45.1 620.5 5.52 65.71 69.33 4.5 inf 34.6047
+##RUN## 5 aodv 82.1 50.2 694.5 5.51 68.53 77.08 5.5 inf 36.0877
+##RUN## 6 aodv 85.9 46.3 657.5 5.67 64.97 72.86 4.5 inf 34.2094
+##RUN## 7 aodv 83.9 47.3 652.5 5.61 67.82 74.99 6.5 inf 35.7135
+##RUN## 8 aodv 85.6 40.6 540.5 5.63 63.82 63.61 3.5 inf 33.6694
+##RUN## 9 aodv 85.0 39.5 566.5 5.77 62.31 62.23 3.5 inf 32.8918
+##RUN## 10 aodv 86.4 40.4 518.5 5.53 64.75 65.64 2.5 inf 33.9491
+##RUN## 11 aodv 87.6 45.7 665.5 5.77 67.18 75.11 2.5 inf 35.3261
+##RUN## 12 aodv 86.1 49.2 674.5 5.78 67.45 77.19 3.5 inf 35.4457
+##RUN## 13 aodv 82.7 39.5 533.5 5.34 69.08 63.79 3.5 inf 36.3038
+##RUN## 14 aodv 87.8 41.0 527.5 5.77 62.57 62.27 2.5 inf 32.9960
+##RUN## 15 aodv 84.7 43.4 609.5 5.54 66.19 69.84 3.5 inf 34.7649
+##RUN## 16 aodv 84.6 45.2 624.5 5.53 68.13 72.30 3.5 inf 35.7853
+##RUN## 17 aodv 85.0 44.8 597.5 5.69 66.13 69.07 3.5 inf 34.8620
+##RUN## 18 aodv 86.7 38.2 496.5 5.73 61.88 59.58 3.5 inf 32.5869
+##RUN## 19 aodv 86.6 46.4 563.5 5.70 65.16 69.94 4.5 inf 34.4017
+##RUN## 20 aodv 86.0 46.7 612.5 5.56 70.38 73.05 3.5 inf 36.9901
+##RUN## 1 olsr 90.9 9.0 22.5 5.64 4.16 14.19 0.5 22.5 10.6833
+##RUN## 2 olsr 90.3 8.3 23.5 5.67 4.08 12.12 1.5 1004.5 10.8521
+##RUN## 3 olsr 92.0 9.3 25.5 6.08 3.85 14.35 1.5 19.5 10.0200
+##RUN## 4 olsr 89.0 12.9 42.5 5.66 4.14 21.06 1.5 inf 10.6637
+##RUN## 5 olsr 89.5 10.9 28.5 5.81 4.07 17.31 1.5 inf 10.2762
+##RUN## 6 olsr 90.5 6.8 21.5 5.85 4.04 8.92 0.5 25.5 10.2456
+##RUN## 7 olsr 89.7 7.3 23.5 5.82 4.06 10.98 1.5 inf 10.4748
+##RUN## 8 olsr 91.6 6.1 22.5 5.86 4.03 8.72 1.5 19.5 10.4257
+##RUN## 9 olsr 89.6 7.2 22.5 5.93 3.96 10.51 1.5 inf 10.0925
+##RUN## 10 olsr 92.3 5.6 20.5 5.82 3.97 7.59 0.5 16.5 10.5203
+##RUN## 11 olsr 91.5 6.6 21.5 5.94 3.92 9.49 0.5 19.5 9.9916
+##RUN## 12 olsr 89.2 5.9 22.5 5.86 4.00 8.31 1.5 inf 10.4196
+##RUN## 13 olsr 90.8 9.3 23.5 5.72 4.07 14.52 1.5 25.5 10.6561
+##RUN## 14 olsr 91.3 8.7 23.5 5.83 4.01 13.25 1.5 20.5 10.6861
+##RUN## 15 olsr 91.2 6.3 23.5 5.84 4.01 8.93 0.5 21.5 10.3932
+##RUN## 16 olsr 90.5 6.6 22.5 5.74 4.10 8.88 0.5 26.5 10.7241
+##RUN## 17 olsr 90.7 8.3 24.5 5.92 3.95 12.64 1.5 28.5 10.1616
+##RUN## 18 olsr 90.2 5.8 21.5 5.82 4.02 8.06 0.5 1003.5 10.5814
+##RUN## 19 olsr 89.9 10.7 30.5 5.78 4.04 15.70 1.5 inf 10.5050
+##RUN## 20 olsr 91.7 6.9 22.5 5.80 4.04 10.00 0.5 19.5 10.8299
+##RUN## 1 dsdv 86.4 16.9 470.5 5.52 23.43 29.53 1.5 inf 16.0232
+##RUN## 2 dsdv 82.4 15.4 391.5 5.33 24.19 26.81 1.5 inf 16.5476
+##RUN## 3 dsdv 84.6 15.8 462.5 5.69 22.70 28.07 1.5 inf 15.5241
+##RUN## 4 dsdv 82.7 17.8 480.5 5.42 23.82 30.31 1.5 inf 16.2919
+##RUN## 5 dsdv 81.0 18.7 491.5 5.43 23.75 32.80 1.5 inf 16.2501
+##RUN## 6 dsdv 85.6 15.9 431.5 5.65 22.90 28.15 1.5 inf 15.6595
+##RUN## 7 dsdv 85.1 17.5 1003.5 5.69 22.65 31.61 1.5 inf 15.4955
+##RUN## 8 dsdv 83.6 17.9 487.5 5.50 23.52 31.84 1.5 inf 16.0842
+##RUN## 9 dsdv 82.5 16.6 452.5 5.59 23.11 28.57 1.5 inf 15.8062
+##RUN## 10 dsdv 88.1 18.3 1003.5 5.64 22.71 33.66 0.5 inf 15.5626
+##RUN## 11 dsdv 87.0 14.6 364.5 5.72 22.42 25.96 1.5 inf 15.3598
+##RUN## 12 dsdv 83.6 18.8 1003.5 5.61 23.04 33.##RSS## t=12423s top=ns3.42-anthocne pid=459 rss_kb=162728 mem_avail_kb=15156692
+##RUN## 13 dsdv 85.6 12.7 294.5 5.53 23.36 22.22 1.5 inf 15.9813
+##RUN## 14 dsdv 85.3 18.1 1003.5 5.61 23.00 32.26 1.5 inf 15.7367
+##RUN## 15 dsdv 86.0 14.5 338.5 5.63 22.92 25.85 1.5 inf 15.6765
+##RUN## 16 dsdv 83.3 18.1 1003.5 5.45 23.68 32.45 1.5 inf 16.1975
+##RUN## 17 dsdv 84.4 12.7 230.5 5.65 22.81 21.11 1.5 inf 15.6079
+##RUN## 18 dsdv 85.4 19.1 1004.5 5.64 22.95 34.60 1.5 inf 15.6910
+##RUN## 19 dsdv 84.2 18.6 1003.5 5.55 23.25 33.41 1.5 inf 15.9072
+##RUN## 20 dsdv 85.9 16.6 446.5 5.55 23.19 29.88 1.5 inf 15.8702
+##ORACLE## 1 oracle mode=decode-approx approx=1 nodes=50 edges=1248 recomputes=900 changes=869 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 1 oracle 98.1 5.1 20.5 6.26 0.00 6.13 1.5 8.5 0.0000
+##ORACLE## 2 oracle mode=decode-approx approx=1 nodes=50 edges=1282 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 2 oracle 98.3 3.1 19.5 6.36 0.00 2.89 1.5 6.5 0.0000
+##ORACLE## 3 oracle mode=decode-approx approx=1 nodes=50 edges=1480 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 3 oracle 98.1 3.4 19.5 6.60 0.00 3.64 0.5 7.5 0.0000
+##ORACLE## 4 oracle mode=decode-approx approx=1 nodes=50 edges=1284 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 4 oracle 97.6 4.7 20.5 6.39 0.00 5.76 1.5 9.5 0.0000
+##ORACLE## 5 oracle mode=decode-approx approx=1 nodes=50 edges=1396 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 5 oracle 98.0 4.5 20.5 6.57 0.00 5.48 1.5 8.5 0.0000
+##ORACLE## 6 oracle mode=decode-approx approx=1 nodes=50 edges=1168 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 6 oracle 97.5 3.7 20.5 6.43 0.00 4.03 1.5 8.5 0.0000
+##ORACLE## 7 oracle mode=decode-approx approx=1 nodes=50 edges=1362 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 7 oracle 97.8 3.1 19.5 6.54 0.00 2.92 0.5 8.5 0.0000
+##ORACLE## 8 oracle mode=decode-approx approx=1 nodes=50 edges=1402 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 8 oracle 97.7 2.6 19.5 6.42 0.00 2.09 1.5 8.5 0.0000
+##ORACLE## 9 oracle mode=decode-approx approx=1 nodes=50 edges=1378 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 9 oracle 98.3 2.6 19.5 6.66 0.00 2.01 1.5 8.5 0.0000
+##ORACLE## 10 oracle mode=decode-approx approx=1 nodes=50 edges=1466 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 10 oracle 98.3 2.2 18.5 6.30 0.00 1.65 0.5 2.5 0.0000
+##ORACLE## 11 oracle mode=decode-approx approx=1 nodes=50 edges=1236 recomputes=900 changes=868 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 11 oracle 98.2 2.2 18.5 6.47 0.00 1.42 0.5 4.5 0.0000
+##ORACLE## 12 oracle mode=decode-approx approx=1 nodes=50 edges=1454 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 12 oracle 98.4 4.4 20.5 6.60 0.00 5.36 0.5 9.5 0.0000
+##ORACLE## 13 oracle mode=decode-approx approx=1 nodes=50 edges=1362 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 13 oracle 98.6 2.8 19.5 6.37 0.00 2.37 1.5 5.5 0.0000
+##ORACLE## 14 oracle mode=decode-approx approx=1 nodes=50 edges=1240 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 14 oracle 98.5 3.7 19.5 6.48 0.00 4.25 0.5 6.5 0.0000
+##ORACLE## 15 oracle mode=decode-approx approx=1 nodes=50 edges=1332 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 15 oracle 98.3 2.7 19.5 6.43 0.00 2.36 0.5 5.5 0.0000
+##ORACLE## 16 oracle mode=decode-approx approx=1 nodes=50 edges=1298 recomputes=900 changes=870 rang##RSS## t=13383s top=ns3.42-anthocne pid=459 rss_kb=162732 mem_avail_kb=15153424
+##RUN## 16 oracle 97.9 4.1 20.5 6.40 0.00 4.94 0.5 8.5 0.0000
+##ORACLE## 17 oracle mode=decode-approx approx=1 nodes=50 edges=1228 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 17 oracle 97.7 3.5 19.5 6.54 0.00 3.71 1.5 8.5 0.0000
+##ORACLE## 18 oracle mode=decode-approx approx=1 nodes=50 edges=1272 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 18 oracle 97.6 5.2 21.5 6.45 0.00 7.02 0.5 8.5 0.0000
+##ORACLE## 19 oracle mode=decode-approx approx=1 nodes=50 edges=1516 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 19 oracle 98.2 3.7 19.5 6.47 0.00 4.18 1.5 6.5 0.0000
+##ORACLE## 20 oracle mode=decode-approx approx=1 nodes=50 edges=1502 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 20 oracle 98.5 2.9 19.5 6.37 0.00 2.79 0.5 6.5 0.0000
+##MATCH## 1 anthocnet 7616 6746 203.5 5.5
+##MATCH## 1 aodv 6792 6746 614.5 477.5
+##MATCH## 1 olsr 6891 6746 22.5 16.5
+##MATCH## 1 dsdv 6746 6746 470.5 470.5
+##MATCH## 1 oracle 7659 6746 20.5 3.5
+##MATCH## 2 anthocnet 7686 6521 218.5 3.5
+##MATCH## 2 aodv 6834 6521 659.5 206.5
+##MATCH## 2 olsr 6936 6521 23.5 12.5
+##MATCH## 2 dsdv 6521 6521 391.5 391.5
+##MATCH## 2 oracle 7776 6521 19.5 2.5
+##MATCH## 3 anthocnet 8095 6962 209.5 3.5
+##MATCH## 3 aodv 7024 6962 681.5 493.5
+##MATCH## 3 olsr 7433 6962 25.5 11.5
+##MATCH## 3 dsdv 6962 6962 462.5 462.5
+##MATCH## 3 oracle 8070 6962 19.5 2.5
+##MATCH## 4 anthocnet 7810 6624 209.5 3.5
+##MATCH## 4 aodv 6750 6624 620.5 326.5
+##MATCH## 4 olsr 6927 6624 42.5 14.5
+##MATCH## 4 dsdv 6624 6624 480.5 480.5
+##MATCH## 4 oracle 7815 6624 20.5 2.5
+##MATCH## 5 anthocnet 8002 6640 245.5 4.5
+##MATCH## 5 aodv 6732 6640 694.5 420.5
+##MATCH## 5 olsr 7107 6640 28.5 11.5
+##MATCH## 5 dsdv 6640 6640 491.5 491.5
+##MATCH## 5 oracle 8037 6640 20.5 2.5
+##MATCH## 6 anthocnet 7854 6906 197.5 4.5
+##MATCH## 6 aodv 6931 6906 657.5 571.5
+##MATCH## 6 olsr 7152 6906 21.5 13.5
+##MATCH## 6 dsdv 6906 6906 431.5 431.5
+##MATCH## 6 oracle 7868 6906 20.5 2.5
+##MATCH## 7 anthocnet 7908 6860 198.5 4.5
+##MATCH## 7 aodv 6860 6860 652.5 652.5
+##MATCH## 7 olsr 7117 6860 23.5 14.5
+##MATCH## 7 dsdv 6958 6860 1003.5 115.5
+##MATCH## 7 oracle 8003 6860 19.5 2.5
+##MATCH## 8 anthocnet 7875 6723 196.5 3.5
+##MATCH## 8 aodv 6883 6723 540.5 271.5
+##MATCH## 8 olsr 7160 6723 22.5 11.5
+##MATCH## 8 dsdv 6723 6723 487.5 487.5
+##MATCH## 8 oracle 7854 6723 19.5 2.5
+##MATCH## 9 anthocnet 8105 6837 201.5 3.5
+##MATCH## 9 aodv 7050 6837 566.5 227.5
+##MATCH## 9 olsr 7246 6837 22.5 12.5
+##MATCH## 9 dsdv 6837 6837 452.5 452.5
+##MATCH## 9 oracle 8146 6837 19.5 2.5
+##MATCH## 10 anthocnet 7707 6763 183.5 3.5
+##MATCH## 10 aodv 6763 6763 518.5 518.5
+##MATCH## 10 olsr 7120 6763 20.5 12.5
+##MATCH## 10 dsdv 6899 6763 1003.5 58.5
+##MATCH## 10 oracle 7702 6763 18.5 2.5
+##MATCH## 11 anthocnet 7925 7000 177.5 3.5
+##MATCH## 11 aodv 7053 7000 665.5 489.5
+##MATCH## 11 olsr 7261 7000 21.5 13.5
+##MATCH## 11 dsdv 7000 7000 364.5 364.5
+##MATCH## 11 oracle 7909 7000 18.5 2.5
+##MATCH## 12 anthocnet 8012 6862 229.5 4.5
+##MATCH## 12 aodv 7066 6862 674.5 302.5
+##MATCH## 12 olsr 7160 6862 22.5 13.5
+##MATCH## 12 dsdv 6862 6862 1003.5 1003.5
+##MATCH## 12 oracle 8076 6862 20.5 2.5
+##MATCH## 13 anthocnet 7741 6529 192.5 3.5
+##MATCH## 13 aodv 6529 6529 533.5 533.5
+##MATCH## 13 olsr 6992 6529 23.5 11.5
+##MATCH## 13 dsdv 6757 6529 294.5 19.5
+##MATCH## 13 oracle 7784 6529 19.5 2.5
+##MATCH## 14 anthocnet 7847 6863 192.5 4.5
+##MATCH## 14 aodv 7061 6863 527.5 216.5
+##MATCH## 14 olsr 7132 6863 23.5 13.5
+##MATCH## 14 dsdv 6863 6863 1003.5 1003.5
+##MATCH## 14 oracle 7927 6863 19.5 2.5
+##MATCH## 15 anthocnet 7821 6775 212.5 3.5
+##MATCH## 15 aodv 6775 6775 609.5 609.5
+##MATCH## 15 olsr 7145 6775 23.5 12.5
+##MATCH## 15 dsdv 6885 6775 338.5 61.5
+##MATCH## 15 oracle 7866 6775 19.5 2.5
+##MATCH## 16 anthocnet 7849 6665 209.5 3.5
+##MATCH## 16 aodv 6764 6665 624.5 407.5
+##MATCH## 16 olsr 7023 6665 22.5 12.5
+##MATCH## 16 dsdv 6665 6665 1003.5 1003.5
+##MATCH## 16 oracle 7828 6665 20.5 2.5
+##MATCH## 17 anthocnet 7979 6908 187.5 3.5
+##MATCH## 17 aodv 6956 6908 597.5 491.5
+##MATCH## 17 olsr 7238 6908 24.5 13.5
+##MATCH## 17 dsdv 6908 6908 230.5 230.5
+##MATCH## 17 oracle 7996 6908 19.5 2.5
+##MATCH## 18 anthocnet 7953 6902 220.5 4.5
+##MATCH## 18 aodv 7007 6902 496.5 313.5
+##MATCH## 18 olsr 7119 6902 21.5 14.5
+##MATCH## 18 dsdv 6902 6902 1004.5 1004.5
+##MATCH## 18 oracle 7887 6902 21.5 2.5
+##MATCH## 19 anthocnet 7924 6784 193.5 3.5
+##MATCH## 19 aodv 6973 6784 563.5 297.5
+##MATCH## 19 olsr 7063 6784 30.5 15.5
+##MATCH## 19 dsdv 6784 6784 1003.5 1003.5
+##MATCH## 19 oracle 7912 6784 19.5 2.5
+##MATCH## 20 anthocnet 7708 6792 193.5 3.5
+##MATCH## 20 aodv 6794 6792 612.5 606.5
+##MATCH## 20 olsr 7093 6792 22.5 13.5
+##MATCH## 20 dsdv 6792 6792 446.5 446.5
+##MATCH## 20 oracle 7784 6792 19.5 2.5
+##COMMON## 1 anthocnet 7616 5659 119.6 5.8 1023.5 1.399 3.009
+##COMMON## 1 aodv 6792 5659 500.5 38.2 811.8 1.488 3.117
+##COMMON## 1 olsr 6891 5659 19.5 5.5 1008.1 1.341 2.211
+##COMMON## 1 dsdv 6746 5659 336.8 13.2 1012.6 1.355 2.479
+##COMMON## 1 oracle 7659 5659 16.1 2.4 29.6 1.317 2.338
+##COMMON## 2 anthocnet 7686 5433 114.6 6.3 649.9 1.423 2.845
+##COMMON## 2 aodv 6834 5433 554.7 38.8 1032.2 1.526 2.904
+##COMMON## 2 olsr 6936 5433 19.6 5.1 1003.6 1.378 2.199
+##COMMON## 2 dsdv 6521 5433 320.5 12.7 1012.1 1.398 2.490
+##COMMON## 2 oracle 7776 5433 14.2 1.7 23.0 1.351 2.298
+##COMMON## 3 anthocnet 8095 5900 132.6 5.0 959.8 1.391 2.810
+##COMMON## 3 aodv 7024 5900 557.9 41.9 1054.6 1.476 2.887
+##COMMON## 3 olsr 7433 5900 21.1 5.5 1010.0 1.338 2.195
+##COMMON## 3 dsdv 6962 5900 293.4 11.8 1021.0 1.353 2.401
+##COMMON## 3 oracle 8070 5900 14.9 1.9 23.6 1.314 2.246
+##COMMON## 4 anthocnet 7810 5444 128.2 5.4 580.4 1.450 3.108
+##COMMON## 4 aodv 6750 5444 588.4 38.8 697.5 1.540 3.086
+##COMMON## 4 olsr 6927 5444 23.4 8.2 1011.4 1.392 2.339
+##COMMON## 4 dsdv 6624 5444 280.1 11.2 1037.1 1.405 2.531
+##COMMON## 4 oracle 7815 5444 15.4 2.6 25.7 1.363 2.430
+##COMMON## 5 anthocnet 8002 5417 146.4 6.2 756.4 1.481 3.137
+##COMMON## 5 aodv 6732 5417 550.0 40.3 1013.0 1.566 3.024
+##COMMON## 5 olsr 7107 5417 20.3 6.3 1009.2 1.403 2.347
+##COMMON## 5 dsdv 6640 5417 361.0 13.8 1023.3 1.416 2.613
+##COMMON## 5 oracle 8037 5417 14.0 2.3 24.7 1.373 2.412
+##COMMON## 6 anthocnet 7854 5741 130.4 4.6 491.8 1.428 3.061
+##COMMON## 6 aodv 6931 5741 539.8 36.6 1107.7 1.512 3.129
+##COMMON## 6 olsr 7152 5741 18.4 3.9 379.6 1.364 2.345
+##COMMON## 6 dsdv 6906 5741 330.0 13.3 1012.9 1.378 2.535
+##COMMON## 6 oracle 7868 5741 16.8 2.0 23.7 1.340 2.393
+##COMMON## 7 anthocnet 7908 5665 134.3 5.2 592.8 1.392 2.979
+##COMMON## 7 aodv 6860 5665 589.0 40.5 849.6 1.485 3.125
+##COMMON## 7 olsr 7117 5665 19.7 4.5 1004.9 1.333 2.218
+##COMMON## 7 dsdv 6958 5665 287.2 12.8 1028.6 1.336 2.461
+##COMMON## 7 oracle 8003 5665 15.2 1.5 23.5 1.303 2.346
+##COMMON## 8 anthocnet 7875 5688 134.4 5.1 363.6 1.446 3.089
+##COMMON## 8 aodv 6883 5688 487.7 33.4 732.9 1.515 3.033
+##COMMON## 8 olsr 7160 5688 20.7 5.1 25.7 1.381 2.320
+##COMMON## 8 dsdv 6723 5688 339.0 13.7 1017.1 1.393 2.600
+##COMMON## 8 oracle 7854 5688 15.7 1.8 22.6 1.352 2.392
+##COMMON## 9 anthocnet 8105 5655 129.8 5.4 555.7 1.436 3.010
+##COMMON## 9 aodv 7050 5655 472.7 31.7 662.5 1.518 3.088
+##COMMON## 9 olsr 7246 5655 20.0 5.1 46.2 1.373 2.282
+##COMMON## 9 dsdv 6837 5655 320.4 12.1 1019.9 1.388 2.512
+##COMMON## 9 oracle 8146 5655 14.9 1.6 22.3 1.343 2.351
+##COMMON## 10 anthocnet 7707 5908 113.5 5.0 550.6 1.325 2.743
+##COMMON## 10 aodv 6763 5908 491.7 34.6 1016.4 1.423 2.780
+##COMMON## 10 olsr 7120 5908 19.1 4.0 29.9 1.287 2.136
+##COMMON## 10 dsdv 6899 5908 302.3 13.0 1023.4 1.299 2.351
+##COMMON## 10 oracle 7702 5908 12.7 1.4 22.0 1.262 2.217
+##COMMON## 11 anthocnet 7925 5972 116.4 5.0 443.3 1.367 2.770
+##COMMON## 11 aodv 7053 5972 538.6 38.4 1014.2 1.468 2.832
+##COMMON## 11 olsr 7261 5972 19.0 5.2 29.1 1.320 2.134
+##COMMON## 11 dsdv 7000 5972 330.1 12.7 1020.9 1.331 2.232
+##COMMON## 11 oracle 7909 5972 14.4 1.6 21.1 1.296 2.224
+##COMMON## 12 anthocnet 8012 5794 140.0 5.9 1013.7 1.449 3.078
+##COMMON## 12 aodv 7066 5794 596.1 40.7 1004.6 1.519 2.887
+##COMMON## 12 olsr 7160 5794 20.2 3.3 34.9 1.360 2.233
+##COMMON## 12 dsdv 6862 5794 370.1 14.5 1018.7 1.377 2.433
+##COMMON## 12 oracle 8076 5794 17.1 2.2 25.5 1.329 2.298
+##COMMON## 13 anthocnet 7741 5537 55.8 3.9 621.2 1.427 2.931
+##COMMON## 13 aodv 6529 5537 474.6 33.6 800.3 1.516 3.041
+##COMMON## 13 olsr 6992 5537 20.5 6.0 1005.2 1.380 2.261
+##COMMON## 13 dsdv 6757 5537 252.5 10.5 1006.6 1.391 2.423
+##COMMON## 13 oracle 7784 5537 14.9 1.6 23.1 1.349 2.335
+##COMMON## 14 anthocnet 7847 5834 127.2 5.3 432.5 1.417 2.979
+##COMMON## 14 aodv 7061 5834 487.6 35.1 753.8 1.483 2.917
+##COMMON## 14 olsr 7132 5834 22.7 7.7 35.9 1.365 2.229
+##COMMON## 14 dsdv 6863 5834 400.8 14.5 1017.1 1.374 2.435
+##COMMON## 14 oracle 7927 5834 14.1 2.2 23.5 1.336 2.327
+##COMMON## 15 anthocnet 7821 5758 95.6 4.0 1130.2 1.368 2.949
+##COMMON## 15 aodv 6775 5758 559.4 37.3 749.5 1.448 2.890
+##COMMON## 15 olsr 7145 5758 19.1 3.7 1004.4 1.323 2.252
+##COMMON## 15 dsdv 6885 5758 278.0 11.6 1009.0 1.331 2.477
+##COMMON## 15 oracle 7866 5758 14.3 1.8 23.1 1.295 2.335
+##COMMON## 16 anthocnet 7849 5590 120.0 4.8 773.5 1.390 3.114
+##COMMON## 16 aodv 6764 5590 545.2 36.8 910.6 1.462 3.000
+##COMMON## 16 olsr 7023 5590 19.3 3.9 1003.9 1.335 2.305
+##COMMON## 16 dsdv 6665 5590 284.1 12.7 1018.1 1.341 2.608
+##COMMON## 16 oracle 7828 5590 14.6 2.3 23.7 1.311 2.408
+##COMMON## 17 anthocnet 7979 5710 128.9 5.3 474.4 1.443 3.023
+##COMMON## 17 aodv 6956 5710 547.4 37.1 886.3 1.529 2.931
+##COMMON## 17 olsr 7238 5710 20.4 6.4 36.5 1.385 2.306
+##COMMON## 17 dsdv 6908 5710 182.6 9.8 1009.0 1.400 2.505
+##COMMON## 17 oracle 7996 5710 15.6 2.2 23.9 1.360 2.339
+##COMMON## 18 anthocnet 7953 5860 130.4 5.3 802.0 1.376 3.050
+##COMMON## 18 aodv 7007 5860 460.3 31.1 920.9 1.442 2.929
+##COMMON## 18 olsr 7119 5860 20.0 4.1 31.9 1.325 2.231
+##COMMON## 18 dsdv 6902 5860 354.0 14.1 1021.9 1.330 2.424
+##COMMON## 18 oracle 7887 5860 15.7 2.5 29.3 1.292 2.289
+##COMMON## 19 anthocnet 7924 5683 121.1 5.1 543.2 1.437 3.021
+##COMMON## 19 aodv 6973 5683 489.8 37.3 841.8 1.524 3.078
+##COMMON## 19 olsr 7063 5683 21.5 6.2 1008.7 1.378 2.314
+##COMMON## 19 dsdv 6784 5683 356.9 14.1 1015.5 1.399 2.516
+##COMMON## 19 oracle 7912 5683 14.3 2.1 23.2 1.352 2.359
+##COMMON## 20 anthocnet 7708 5751 92.7 4.0 590.4 1.368 2.876
+##COMMON## 20 aodv 6794 5751 515.1 38.7 945.9 1.479 2.941
+##COMMON## 20 olsr 7093 5751 20.1 4.8 36.8 1.327 2.192
+##COMMON## 20 dsdv 6792 5751 347.1 13.1 1014.4 1.338 2.427
+##COMMON## 20 oracle 7784 5751 15.7 1.7 22.7 1.304 2.282
+# drops anthocnet pdr=97.79 route=1.41 queue=0.00 mac=0.18 chan=0.61 ttl=0.00 sum=100.00 other=0.00 [route: setup=0.01 reconv=1.22 repair=0.18]
+# drops aodv pdr=85.48 route=3.06 queue=0.01 mac=8.87 chan=2.46 ttl=0.04 sum=99.92 other=0.00 [route: setup=- reconv=- repair=-]
+# drops olsr pdr=90.63 route=0.08 queue=0.00 mac=7.57 chan=1.71 ttl=0.01 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# drops dsdv pdr=84.64 route=0.00 queue=0.00 mac=12.70 chan=2.66 ttl=0.00 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# drops oracle pdr=98.09 route=0.00 queue=0.00 mac=1.37 chan=0.54 ttl=0.00 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# stddev anthocnet pdr=0.48 delay=1.5 delay99=16.3 nrl=0.534 nrl_bytes=0.546
+# stddev aodv pdr=1.49 delay=3.8 delay99=60.2 nrl=2.368 nrl_bytes=1.210
+# stddev olsr pdr=0.96 delay=2.0 delay99=4.9 nrl=0.073 nrl_bytes=0.260
+# stddev dsdv pdr=1.74 delay=1.9 delay99=297.3 nrl=0.454 nrl_bytes=0.308
+# stddev oracle pdr=0.33 delay=0.9 delay99=0.7 nrl=0.000 nrl_bytes=0.000
+##BENCH## anthocnet 97.8 14.3 203.7 6.44 13.46 22.25 1.4 12.1 19.450
+##BENCH## aodv 85.5 44.8 605.5 5.63 66.22 70.26 3.8 inf 34.848
+##BENCH## olsr 90.6 7.9 24.4 5.82 4.03 11.78 1.1 inf 10.460
+##BENCH## dsdv 84.6 16.7 618.4 5.57 23.17 29.64 1.4 inf 15.851
+##BENCH## oracle 98.1 3.5 19.8 6.46 0.00 3.75 1.0 7.3 0.000
+##RUN## 12 dsdv 83.6 18.8 1003.5 5.61 23.04 33.77 1.5 inf 15.7533
+##ORACLE## 16 oracle mode=decode-approx approx=1 nodes=50 edges=1298 recomputes=900 changes=870 range=423.3 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##PROV## commit=dd171e5e7b99b16fba4f3dd4c63e52d63c847a99 ref=main run_id=36810709154 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=compare
