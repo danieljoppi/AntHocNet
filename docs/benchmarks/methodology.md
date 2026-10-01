@@ -940,6 +940,38 @@ keep their `v1.3.0` pin per
 the [TCP arm](tcp.md) keeps its `0b42c89` / 1 s vintage — each is re-measured
 only when a claim needs its shape at the new default.
 
+### The #496 flip: the grid is re-established at `dd171e5e`
+
+The next invalidating merge the section above anticipated was
+[#497](https://github.com/danieljoppi/AntHocNet/pull/497) (`43dd2f96`, issue
+[#496](https://github.com/danieljoppi/AntHocNet/issues/496)). It
+desynchronised the ns-3 adapter's hello and proactive timers
+(`TimerJitter = 0.05`). Before it, every node beaconed at the same instant
+every period, so hidden terminals collided on those broadcasts and two lost
+hellos in a row evicted a live neighbour, about 93 k spurious evictions per
+900 s static run. A protocol-behaviour change, so the rule applies again:
+
+- **The grid** was re-measured on `main` at `dd171e5e` (the #497 merge plus
+  documentation commits) and republished on [grid.md](grid.md), with the oracle
+  arm in the same dispatch. The `a1daa7a` corpus is historical evidence of the
+  unjittered timer.
+- **The attribution control is weaker than the #371 one, and says so.** The
+  last pre-#496 grid's per-seed logs (the #431 re-measure at `4611bbb`) had
+  expired by the time it was needed, so no byte-level baseline comparison was
+  possible. The oracle arm, which runs no AntHocNet code, reproduces #431's
+  per-cell PDR in 6 / 6 cells (to the printed digit in five, 0.01 pp in the
+  sixth). That is the control. The lesson is to **commit per-seed cells**: the
+  grid now has them under `cells/`, so the next re-baseline can diff rows
+  instead of relying on the Actions log retention window.
+- **The static mesh** was republished at the fixed timer in the same PR as the
+  fix ([static-mesh.md](static-mesh.md)), and the
+  [#494](https://github.com/danieljoppi/AntHocNet/issues/494) cap re-measure
+  confirmed `ReconvHoldCap = 200 ms` on the fixed timer.
+- **Unchanged by policy:** the sweep pages keep their `v1.3.0` pin and the
+  [TCP arm](tcp.md) keeps its `0b42c89` / 1 s vintage; each is re-measured only
+  when a claim needs its shape at the current defaults. The per-merge scenario
+  pages regenerate themselves and stamp their own commit.
+
 ### Run ID → commit
 
 Every campaign CSV under `docs/benchmarks/campaign/` is named after the Actions
