@@ -518,10 +518,12 @@ def _pre3d_geometry():
            f"a coherent 3-D cell was FAILed\n{out}")
 
 
-@case("#481 preflight WARNs that a 3-D cell is harness validation only")
+@case("#481/#482 preflight WARNs that a 3-D cell is its own family")
 def _pre3d_unpublishable():
     levels, out = run_preflight(**FANET_3D)
-    expect("WARN" in levels and "not publishable" in out, "pre3d-unpub", out)
+    expect("WARN" in levels and "not comparable" in out, "pre3d-unpub", out)
+    # #482: it names the FANET anchors to validate against instead.
+    expect("fanet-single-hop-3d" in out, "pre3d-unpub", out)
     # The planar anchor advice names channels a 3-D cell may not use.
     expect("grid-tworay" not in out, "pre3d-unpub", out)
 

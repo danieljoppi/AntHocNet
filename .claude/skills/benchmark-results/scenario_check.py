@@ -59,7 +59,10 @@ ANCHOR_KEY = {"single-hop": "single_hop_pdr_min",
               # measurement, not literature values — see anchors.yml for why
               # there is nothing external to anchor these against.
               "grid-tworay": "grid_tworay_aodv_pdr_min",
-              "grid-nakagami": "grid_nakagami_aodv_pdr_min"}
+              "grid-nakagami": "grid_nakagami_aodv_pdr_min",
+              # #482 FANET anchors: analytic (geometry), see anchors.yml.
+              "fanet-single-hop-3d": "fanet_single_hop_3d_pdr_min",
+              "fanet-vertical-3d": "fanet_vertical_3d_pdr_min"}
 
 # #217: core Config::maxPathLength — the cap on the visited path an ant carries
 # and therefore on any path the protocol can lay. A delivered data packet
@@ -925,12 +928,14 @@ def cmd_preflight(a):
             report("FAIL", f"--protocols includes gpsr with --areaZ={area_z:g}: "
                            "the vendored GPSR is planar (2-D headers and "
                            "planarization) and the harness refuses it (#480)")
-        report("WARN", f"3-D field (--areaZ={area_z:g}): not comparable to the "
-                       "published planar corpus, and no FANET anchor exists "
-                       "yet. The gaussmarkov pitch values are a harness "
-                       "placeholder until #482 sources the FANET mobility "
-                       "parameters. Harness validation only, not publishable "
-                       "(#480, #482)")
+        report("WARN", f"3-D field (--areaZ={area_z:g}): a FANET cell, not "
+                       "comparable to the published planar corpus (#300). "
+                       "Validate with --anchor fanet-single-hop-3d / "
+                       "fanet-vertical-3d (the analytic anchors in "
+                       "check-anchors.sh), not the planar Broch or grid "
+                       "floors. The gaussmarkov pitch values are a recorded "
+                       "assumption, not a citation: see "
+                       "docs/benchmarks/scenarios/fanet.md (#482)")
     elif a.mobility != "rwp":
         report("WARN", f"--mobility={a.mobility} is not the model the "
                        "published corpus was measured under (rwp), so its "

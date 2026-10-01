@@ -1295,6 +1295,24 @@ Picking the wrong one is a loud error rather than a quiet pass: a healthy
 Nakagami reading checked against `grid-tworay` FAILs, and there is a test case
 pinning that.
 
+### FANET validation anchors ([#482](https://github.com/danieljoppi/AntHocNet/issues/482))
+
+The Broch floor is a measurement of RWP on the ground and says nothing about a
+3-D field. The FANET family ([#300](https://github.com/danieljoppi/AntHocNet/issues/300))
+therefore has its own anchors, and like the satellite ones below they are
+**analytic**: the expected value follows from geometry. Both shrink the
+`--scenario=fanet` preset (Gauss-Markov, 10–30 m/s, 350 m disk) to a field whose
+answer is known, and route only stock AODV and the oracle control.
+
+| anchor | configuration | expected (derived) | what it checks |
+|---|---|---|---|
+| `fanet-single-hop-3d` | 10 nodes, 100 m cube | the 173 m diagonal is inside the 350 m range, so every flow is one hop: PDR ≥ 99 % and oracle hopsMean = 1.00 | 3-D placement, mobility and channel deliver at all |
+| `fanet-vertical-3d` | 10 nodes, 10 × 10 × 1000 m column | a field flattened to 2-D reads hopsMean = 1.00 exactly; with altitude honoured, pairs more than 350 m apart need relays: hopsMean > 1.2 (measured 1.90) | the third dimension is real end to end |
+
+They run on `anthocnet-compare` rather than `manet-baselines`, because only the
+former has a 3-D field, and they gate in `ci.yml` on the 3.42 leg. The preset's
+provenance is on [the fanet scenario page](scenarios/fanet.md).
+
 ### Satellite validation anchors ([#237](https://github.com/danieljoppi/AntHocNet/issues/237))
 
 The anchors above are **literature-derived and approximate** ("AODV ≈ 90–100%")
