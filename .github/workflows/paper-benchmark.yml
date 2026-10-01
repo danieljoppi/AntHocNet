@@ -7,6 +7,10 @@ name: Paper benchmark (manual)
 on:
   workflow_dispatch:
     inputs:
+      scenario:
+        description: "Preset (#482): paper (the default, and every published cell) | fanet (3-D Gauss-Markov UAV field; pass mobility=gaussmarkov, and the preset's areaZ/speedMin/flows/cbrBps apply because no input overrides them). Every numeric input below still overrides the preset."
+        required: false
+        default: 'paper'
       version:
         description: 'ns-3 image tag. Suffix -opt (e.g. 3.42-opt) selects the optimized-profile image — assertions/NS_LOG compiled out, typically 2-10x faster (#123). Use it for campaign runs; use the plain tag when you want assertions on.'
         default: '3.42'
@@ -143,7 +147,7 @@ jobs:
         shell: bash
         run: |
           cd /opt/ns-3
-          common="--scenario=paper \
+          common="--scenario=${{ github.event.inputs.scenario || 'paper' }} \
             --runs=${{ github.event.inputs.runs }} \
             --nNodes=${{ github.event.inputs.nNodes }} \
             --time=${{ github.event.inputs.time }} \

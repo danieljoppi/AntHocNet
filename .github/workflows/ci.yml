@@ -378,6 +378,22 @@ jobs:
         # Thresholds: ns3/tools/anchors.yml.
         if: matrix.version == '3.42'
         run: bash ns3/tools/check-anchors.sh /opt/ns-3 single-hop
+      - name: FANET anchors (#482, --scenario=fanet)
+        # The FANET family's analytic anchors, gated before any FANET number is
+        # published. Both shrink the --scenario=fanet preset to a field whose
+        # answer follows from geometry, and route only stock AODV and the
+        # oracle control (anthocnet-compare, because manet-baselines has no
+        # 3-D field):
+        #   fanet-single-hop-3d  100 m cube, 350 m range: every flow is one
+        #                        hop, so PDR >= 99 and oracle hopsMean == 1.00;
+        #   fanet-vertical-3d    10 x 10 x 1000 m column: oracle hopsMean must
+        #                        exceed 1.2, which a field flattened to 2-D
+        #                        (exactly 1.00) cannot.
+        # Thresholds: ns3/tools/anchors.yml.
+        if: matrix.version == '3.42'
+        run: |
+          bash ns3/tools/check-anchors.sh /opt/ns-3 fanet-single-hop-3d
+          bash ns3/tools/check-anchors.sh /opt/ns-3 fanet-vertical-3d
       - name: Determinism gate (same seed twice must be byte-identical, #129)
         # Golden rule 3 (AGENTS.md): all randomness via IRng, all time via
         # IClock, so identical seeds must reproduce identical runs — the

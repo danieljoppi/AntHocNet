@@ -6,7 +6,11 @@
 # regression (like the #51 IdealWifiManager ~50% single-hop loss) fails CI
 # loudly instead of silently corrupting every published number.
 #
-# Usage: check-anchors.sh <ns3-dir> <single-hop|broch-low-mobility>
+# Usage: check-anchors.sh <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d>
+#
+# The two fanet-* anchors (#482) run on anthocnet-compare instead, because
+# manet-baselines has no 3-D field; they still route only stock AODV and the
+# oracle control, so no AntHocNet code is under test.
 #
 # The ns-3 tree must already be configured + built with the anthocnet module's
 # examples enabled (manet-baselines builds as part of the module's examples).
@@ -15,7 +19,7 @@ set -euo pipefail
 NS3DIR=${1:-}
 ANCHOR=${2:-}
 if [ -z "$NS3DIR" ] || [ -z "$ANCHOR" ]; then
-    echo "usage: $0 <ns3-dir> <single-hop|broch-low-mobility>" >&2
+    echo "usage: $0 <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d>" >&2
     exit 2
 fi
 
@@ -28,6 +32,9 @@ floor_for() {
         "$ANCHORS_FILE"
 }
 
+harness=manet-baselines
+hops_min=""
+hops_max=""
 case "$ANCHOR" in
     single-hop)
         # 2 nodes, 50x50 m, 300 m disk range, static (pause=900 speed=1):
@@ -49,18 +56,43 @@ case "$ANCHOR" in
         protocols="aodv"
         floor=$(floor_for broch_low_mobility_aodv_pdr_min)
         ;;
+    fanet-single-hop-3d)
+        # #482, the FANET family's analytic anchor: the --scenario=fanet preset
+        # (Gauss-Markov, 10-30 m/s, 3-D) shrunk to a 100 m cube with the
+        # preset's 350 m range. The cube's diagonal is 173 m, so every pair is
+        # in range at every instant: each flow is exactly one hop. Closed form:
+        # stock AODV must deliver ~everything (as on the planar single-hop
+        # anchor) and the oracle's mean hop count must be exactly 1.00. A 3-D
+        # placement, mobility or channel regression breaks one or the other.
+        harness=anthocnet-compare
+        args="--scenario=fanet --nNodes=10 --areaX=100 --areaY=100 --areaZ=100 --range=350 --time=120 --runs=2"
+        protocols="aodv,oracle"
+        floor=$(floor_for fanet_single_hop_3d_pdr_min)
+        hops_max=$(floor_for fanet_single_hop_3d_oracle_hops_max)
+        ;;
+    fanet-vertical-3d)
+        # #482, the check that altitude is honoured: a 10 x 10 x 1000 m column
+        # at 350 m range. Planar distances are all < 15 m, so a field collapsed
+        # to 2-D reads exactly 1.00 oracle hops; with z honoured, pairs more
+        # than 350 m apart in altitude need relays (measured 1.90 at 2 runs).
+        harness=anthocnet-compare
+        args="--scenario=fanet --nNodes=10 --areaX=10 --areaY=10 --areaZ=1000 --range=350 --time=120 --runs=2"
+        protocols="aodv,oracle"
+        floor=$(floor_for fanet_vertical_3d_pdr_min)
+        hops_min=$(floor_for fanet_vertical_3d_oracle_hops_min)
+        ;;
     *)
-        echo "unknown anchor '$ANCHOR' (want: single-hop | broch-low-mobility)" >&2
+        echo "unknown anchor '$ANCHOR' (want: single-hop | broch-low-mobility | fanet-single-hop-3d | fanet-vertical-3d)" >&2
         exit 2
         ;;
 esac
 
-cmd="manet-baselines $args --protocols=$protocols"
+cmd="$harness $args --protocols=$protocols"
 echo "[$ANCHOR] ./ns3 run \"$cmd\"  (gate: PDR >= $floor)"
 cd "$NS3DIR"
 if ! out=$(./ns3 run "$cmd" 2>&1); then
     printf '%s\n' "$out" | tail -n 40
-    echo "FAIL [$ANCHOR]: manet-baselines did not run (output tail above)"
+    echo "FAIL [$ANCHOR]: $harness did not run (output tail above)"
     exit 1
 fi
 printf '%s\n' "$out"
@@ -84,4 +116,24 @@ for proto in ${protocols//,/ }; do
         status=1
     fi
 done
+if [ -n "$hops_min$hops_max" ]; then
+    # "# paths oracle ... hopsMean=1.00 ..." — the oracle's shortest-path hop
+    # count over its delivered packets, deterministic for a given seed set.
+    hops=$(printf '%s\n' "$out" |
+           awk '$1 == "#" && $2 == "paths" && $3 == "oracle" {
+                    for (i = 4; i <= NF; i++) if ($i ~ /^hopsMean=/) { sub(/^hopsMean=/, "", $i); v = $i } }
+                END { print v }')
+    if [ -z "$hops" ]; then
+        echo "FAIL [$ANCHOR]: no '# paths oracle' hopsMean line"
+        status=1
+    elif [ -n "$hops_max" ] && ! awk -v v="$hops" -v m="$hops_max" 'BEGIN { exit (v + 0 <= m + 0) ? 0 : 1 }'; then
+        echo "FAIL [$ANCHOR] oracle hopsMean=$hops > $hops_max — a fully connected field routed over relays"
+        status=1
+    elif [ -n "$hops_min" ] && ! awk -v v="$hops" -v m="$hops_min" 'BEGIN { exit (v + 0 >= m + 0) ? 0 : 1 }'; then
+        echo "FAIL [$ANCHOR] oracle hopsMean=$hops < $hops_min — the field's altitude is not being honoured"
+        status=1
+    else
+        echo "PASS [$ANCHOR] oracle hopsMean=$hops within [${hops_min:-0}, ${hops_max:-inf}]"
+    fi
+fi
 exit $status
