@@ -102,6 +102,7 @@ nav:
           - benchmarks/scenarios/high-mobility.md
           - benchmarks/scenarios/heavy-load.md
           - benchmarks/scenarios/large-scale.md
+          - benchmarks/scenarios/fanet.md
       - Sweeps:
           - benchmarks/sweeps/area.md
           - benchmarks/sweeps/pause.md

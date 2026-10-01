@@ -1038,6 +1038,10 @@ struct Params {
     // cannot honour it.
     double   areaZ;
     double   speed;
+    // #482: lower bound of the per-node speed draw U(speedMin, speed). 1 m/s
+    // (the default, and what every published number used) keeps the draw
+    // byte-identical; the FANET preset raises it to 10 m/s.
+    double   speedMin;
     double   pause;
     double   range;     // 0 => ns-3 default channel (log-distance)
     uint32_t nFlows;
@@ -1344,7 +1348,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     }
     mobility.SetPositionAllocator(pos);
     std::ostringstream speedStr, pauseStr;
-    speedStr << "ns3::UniformRandomVariable[Min=1.0|Max=" << P.speed << "]";
+    speedStr << "ns3::UniformRandomVariable[Min=" << P.speedMin << "|Max=" << P.speed << "]";
     pauseStr << "ns3::ConstantRandomVariable[Constant=" << P.pause << "]";
     // #61: mobility model selection. `rwp` is the default and is left exactly
     // as it was — every published number was measured under it, and the
@@ -1361,7 +1365,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // nodes itself. MinSpeed must be > 0 — the stationary distribution
         // divides by speed — which the 1.0 m/s floor above already satisfies.
         mobility.SetMobilityModel("ns3::SteadyStateRandomWaypointMobilityModel",
-                                  "MinSpeed", DoubleValue(1.0),
+                                  "MinSpeed", DoubleValue(P.speedMin),
                                   "MaxSpeed", DoubleValue(P.speed),
                                   "MinPause", DoubleValue(P.pause),
                                   "MaxPause", DoubleValue(P.pause),
@@ -1384,12 +1388,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // descend; the model reflects off every face of the box, the top and
         // bottom included.
         //
-        // The 3-D pitch values below are a harness placeholder, not a sourced
+        // The 3-D pitch values below are a harness choice, not a sourced
         // profile: +/-0.05 rad mean pitch and a Normal(0, 0.02) perturbation
         // bounded at 0.04 rad, i.e. the direction perturbation's shape scaled
-        // down by ten. #482 fixes the FANET mobility parameters against the
-        // published evaluation setups and records their provenance; until
-        // then nothing measured with them is publishable.
+        // down by ten. #482 found no published FANET evaluation that states
+        // its Gauss-Markov pitch parameters, so the FANET preset keeps these
+        // and docs/benchmarks/scenarios/fanet.md records them as an
+        // assumption rather than a citation.
         //
         // There is no pause concept here -- a Gauss-Markov node never stops.
         // `--pause` is therefore inert under this model, which is why
@@ -2688,8 +2693,8 @@ int main(int argc, char* argv[]) {
     // Sentinels (<0 / 0) mean "unset" so a preset or the legacy defaults fill in.
     std::string scenario;
     int32_t  nNodes = 0;
-    double   simTime = -1, area = -1, areaX = -1, areaY = -1, areaZ = 0;
-    double   speed = -1, pause = -1, range = -1, cbrBps = -1;
+    double   simTime = -1, area = -1, areaX = -1, areaY = -1, areaZ = -1;
+    double   speed = -1, speedMin = -1, pause = -1, range = -1, cbrBps = -1;
     int32_t  nFlows = 0;
     int32_t  sink = -1;
     uint32_t runs = 0;  // 0 = unset; resolved below (preset-dependent, #58)
@@ -2705,21 +2710,27 @@ int main(int argc, char* argv[]) {
     std::string protocols = "anthocnet,aodv,olsr,dsdv";
 
     CommandLine cmd(__FILE__);
-    cmd.AddValue("scenario", "Preset: 'paper' (Broch/CMU calibration field) or "
+    cmd.AddValue("scenario", "Preset: 'paper' (Broch/CMU calibration field), "
                              "'thesis' (AntHocNet's own evaluation field, "
-                             "Ducatelle PhD 2007 §5.1.3 — #58)", scenario);
+                             "Ducatelle PhD 2007 §5.1.3 — #58) or 'fanet' "
+                             "(3-D Gauss-Markov UAV field, #482; provenance in "
+                             "docs/benchmarks/scenarios/fanet.md)", scenario);
     cmd.AddValue("nNodes", "Number of nodes", nNodes);
     cmd.AddValue("time", "Simulation time (s)", simTime);
     cmd.AddValue("area", "Square area side (m); shorthand for areaX=areaY", area);
     cmd.AddValue("areaX", "Area width (m)", areaX);
     cmd.AddValue("areaY", "Area height (m)", areaY);
-    cmd.AddValue("areaZ", "Field altitude extent (m), #480. 0 (default) = the "
+    cmd.AddValue("areaZ", "Field altitude extent (m), #480. 0 (default; 300 "
+                          "for --scenario=fanet) = the "
                           "planar field every published number used; > 0 "
                           "places and moves nodes in a 3-D box (FANET, #300). "
                           "Refused with tworay/nakagami (ground-reflection "
                           "model), ssrwp (planar-only in ns-3) and the gpsr "
                           "arm (2-D headers and planarization)", areaZ);
     cmd.AddValue("speed", "Max node speed (m/s)", speed);
+    cmd.AddValue("speedMin", "Min node speed (m/s): speeds are drawn "
+                             "U(speedMin, speed). Default 1 (10 for "
+                             "--scenario=fanet, #482)", speedMin);
     cmd.AddValue("pause", "Random-waypoint pause time (s)", pause);
     cmd.AddValue("range", "Transmission range (m); 0 = ns-3 default channel", range);
     cmd.AddValue("flows", "Number of CBR flows", nFlows);
@@ -2742,7 +2753,7 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("qdiag", "Emit per-run '# qdiag' lines: per-node MAC queue depth "
                           "distribution (meanQ/maxQ/pctNonzero) — does A2 have a "
                           "signal? (#73)", g_qdiag);
-    std::string mobilityModel = "rwp";
+    std::string mobilityModel;  // "" = preset default: gaussmarkov for fanet, else rwp
     std::string transport = "udp";
     std::string propagation = "range";
     cmd.AddValue("transport",
@@ -2828,27 +2839,60 @@ int main(int argc, char* argv[]) {
     //    both benchmark workflows always pass one. Reproducing a thesis figure
     //    through those means setting runs=20 there.
     // See docs/benchmarks/methodology.md ("Reproducing a thesis run").
+    // #482: refuse an unknown preset rather than silently running the legacy
+    // defaults under a label that claims otherwise (a typo'd "fanet" would
+    // otherwise produce a planar 20-node RWP run tagged scenario=fanet).
+    NS_ABORT_MSG_UNLESS(scenario.empty() || scenario == "paper" ||
+                            scenario == "thesis" || scenario == "fanet",
+                        "unknown --scenario='" << scenario
+                        << "' (expected paper|thesis|fanet, or omit it)");
     const bool thesis = (scenario == "thesis");
     const bool paper = (scenario == "paper") || thesis;
+    // #482 FANET preset (family #300). Scenario knobs ONLY (ADR-0019): no
+    // protocol attribute is touched here. Each value and its source is
+    // tabulated in docs/benchmarks/scenarios/fanet.md; in short:
+    //   nodes     30                   Biomo, Kunz & St-Hilaire 2015 (30 UAVs);
+    //                                  inside the #298 envelope (20-40)
+    //   field     1000 x 1000 x 300 m  #298 envelope; a 3-D box as in
+    //                                  Makkar et al. 2018 (ns-3, 3-D GM cube)
+    //   range     350 m disk           chosen for density: mean degree 7.2
+    //                                  clears 2 ln(30) = 6.8 (#481 preflight);
+    //                                  250 m (the sparse cell) is 3.5
+    //   mobility  Gauss-Markov         Makkar 2018; Yang et al. 2024 (Sci Rep
+    //                                  14:15632); the #298 survey standard
+    //   speed     U(10, 30) m/s        #298 envelope (10-30 m/s); below the
+    //                                  fixed-wing 50-60 m/s of Biomo 2015
+    //   traffic   10 CBR flows, 4 x 64 B/s (2048 bps), start in [0, 180] s
+    //                                  low-rate telemetry; per-flow rate is the
+    //                                  thesis's (Ducatelle 2007 §5.1.3)
+    //   time      900 s                the paper/thesis horizon
+    const bool fanet = (scenario == "fanet");
     // #58: the thesis averages 20 repetitions; everything else keeps the
     // historical default of 1. Explicit --runs=N always overrides.
     if (runs < 1) runs = thesis ? 20 : 1;
     Params P;
     P.nNodes  = nNodes > 0 ? static_cast<uint32_t>(nNodes)
-                           : (thesis ? 100 : paper ? 50 : 20);
-    P.simTime = simTime >= 0 ? simTime : (paper ? 900.0 : 40.0);
+                           : (thesis ? 100 : paper ? 50 : fanet ? 30 : 20);
+    P.simTime = simTime >= 0 ? simTime : ((paper || fanet) ? 900.0 : 40.0);
     P.areaX   = areaX >= 0 ? areaX
-                           : (area >= 0 ? area : (thesis ? 2400.0 : paper ? 1500.0 : 300.0));
+                           : (area >= 0 ? area : (thesis ? 2400.0 : paper ? 1500.0 : fanet ? 1000.0 : 300.0));
     P.areaY   = areaY >= 0 ? areaY
-                           : (area >= 0 ? area : (thesis ? 800.0 : paper ? 300.0 : 300.0));
-    NS_ABORT_MSG_UNLESS(areaZ >= 0.0, "--areaZ must be >= 0 (got " << areaZ << ")");
-    P.areaZ   = areaZ;
-    P.speed   = speed >= 0 ? speed : (thesis ? 10.0 : paper ? 20.0 : 5.0);
-    P.pause   = pause >= 0 ? pause : (paper ? 30.0 : 1.0);
-    P.range   = range >= 0 ? range : (thesis ? 250.0 : paper ? 300.0 : 0.0);
-    P.nFlows  = nFlows > 0 ? static_cast<uint32_t>(nFlows) : (paper ? 20 : 5);
-    P.cbrBps  = cbrBps >= 0 ? cbrBps : (thesis ? 2048.0 : paper ? 512.0 : 8000.0);
-    P.startWindow = paper ? 180.0 : 5.0;
+                           : (area >= 0 ? area : (thesis ? 800.0 : paper ? 300.0 : fanet ? 1000.0 : 300.0));
+    // -1 = unset (the preset decides); an explicit --areaZ=0 forces planar.
+    NS_ABORT_MSG_UNLESS(areaZ >= 0.0 || areaZ == -1.0,
+                        "--areaZ must be >= 0 (got " << areaZ << ")");
+    P.areaZ   = areaZ >= 0 ? areaZ : (fanet ? 300.0 : 0.0);
+    P.speed   = speed >= 0 ? speed : (thesis ? 10.0 : paper ? 20.0 : fanet ? 30.0 : 5.0);
+    P.speedMin = speedMin >= 0 ? speedMin : (fanet ? 10.0 : 1.0);
+    NS_ABORT_MSG_UNLESS(P.speedMin <= P.speed,
+                        "--speedMin=" << P.speedMin << " exceeds the max speed "
+                        << P.speed << ": U(speedMin, speed) would be empty (#482)");
+    P.pause   = pause >= 0 ? pause : (paper ? 30.0 : fanet ? 0.0 : 1.0);
+    P.range   = range >= 0 ? range : (thesis ? 250.0 : paper ? 300.0 : fanet ? 350.0 : 0.0);
+    P.nFlows  = nFlows > 0 ? static_cast<uint32_t>(nFlows) : (paper ? 20 : fanet ? 10 : 5);
+    P.cbrBps  = cbrBps >= 0 ? cbrBps : ((thesis || fanet) ? 2048.0 : paper ? 512.0 : 8000.0);
+    P.startWindow = (paper || fanet) ? 180.0 : 5.0;
+    if (mobilityModel.empty()) mobilityModel = fanet ? "gaussmarkov" : "rwp";
     // An explicitly empty --propagation= has always meant "the default", and
     // scenario-matrix.yml documents its blank input that way; normalise it
     // rather than letting the guard below reject a working dispatch.
@@ -2994,7 +3038,11 @@ int main(int argc, char* argv[]) {
     // #480: only a 3-D field names its z extent, so every planar run's
     // ##CONFIG## row stays byte-identical to the published corpus.
     if (P.areaZ > 0.0) std::cout << " areaZ=" << P.areaZ;
-    std::cout << " speed=" << P.speed << " pause=" << P.pause
+    std::cout << " speed=" << P.speed;
+    // #482: like areaZ, only a non-default floor is named, keeping every
+    // existing ##CONFIG## row byte-identical.
+    if (P.speedMin != 1.0) std::cout << " speedMin=" << P.speedMin;
+    std::cout << " pause=" << P.pause
               << " range=" << P.range << " propagation=" << P.propagation
               << " mobility=" << P.mobility
               << " transport=" << P.transport

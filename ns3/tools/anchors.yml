@@ -64,3 +64,24 @@ grid_tworay_aodv_pdr_min: 75.0
 # because link existence here includes a random draw and per-seed dispersion is
 # correspondingly higher (#60).
 grid_nakagami_aodv_pdr_min: 55.0
+
+# --- FANET anchors (#482, consumed by check-anchors.sh) ----------------------
+# Analytic, like the satellite ones: the expected values follow from geometry,
+# not from a literature measurement (no published FANET reference value exists
+# for this harness's field, and the Broch floor is RWP-on-the-ground only).
+
+# --scenario=fanet shrunk to a 100 m cube at the preset's 350 m range: the
+# 173 m diagonal keeps every pair in range, so every flow is one hop. Stock
+# AODV measured 100.0 % (2 runs, 120 s); 99.0 mirrors the planar single-hop
+# floor.
+fanet_single_hop_3d_pdr_min: 99.0
+# The oracle's mean hop count on that cube is exactly 1.00 by construction.
+fanet_single_hop_3d_oracle_hops_max: 1.0
+
+# A 10 x 10 x 1000 m column at 350 m: AODV measured 98.9 %, oracle hopsMean
+# 1.90 (2 runs, 120 s). The hop floor is the point of this anchor: a field
+# collapsed to 2-D reads exactly 1.00, so anything above 1.2 proves altitude is
+# honoured with margin for seed variation. The PDR floor only catches a broken
+# multi-hop path, so it is looser.
+fanet_vertical_3d_pdr_min: 90.0
+fanet_vertical_3d_oracle_hops_min: 1.2
