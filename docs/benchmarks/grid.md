@@ -5,34 +5,38 @@
 
 [← Benchmark index](../benchmarks.md) · [Metrics](metrics.md) · [Methodology](methodology.md)
 
-> **Provenance — measured at `a1daa7a`, `ReconvHoldCap = 200 ms`.** This is the
-> **v1.5.0 phase-1 re-baseline** ([campaign plan](v1.5.0-campaign.md),
-> [#371](https://github.com/danieljoppi/AntHocNet/issues/371)): the
-> [#411](https://github.com/danieljoppi/AntHocNet/pull/411) merge flipped the
-> shipped `ReconvHoldCap` default 1 s → 200 ms — a protocol-behaviour change
-> that superseded the `v1.4.0` corpus under the
-> [provenance rule](methodology.md#provenance-which-version-a-number-was-measured-at)
-> — and all six cells were re-measured on `main` at that merge commit. The
-> baselines are **byte-identical** to the `v1.4.0` grid (0/18 rows moved — see
-> the attribution control below), so every AntHocNet delta on this page is
-> attributable to the flip alone. The previous version of this page (measured
-> at `4cdfb96`, 1 s) remains in git history — `git show
-> v1.4.0:docs/benchmarks/grid.md` — and its numbers stay valid as historical
-> evidence of the 1 s operating point. Reproduce this page at commit `a1daa7a`.
+> **Provenance — measured at `dd171e5e`, the [#496](https://github.com/danieljoppi/AntHocNet/issues/496) timer
+> fix in place (`TimerJitter = 0.05`, `ReconvHoldCap = 200 ms`).** This is the
+> **#496 re-baseline**. [PR #497](https://github.com/danieljoppi/AntHocNet/pull/497) (`43dd2f96`) desynchronised the
+> ns-3 adapter's hello and proactive timers. Before it, every node beaconed at
+> the same instant every second, hidden terminals collided on those broadcasts,
+> and two consecutive lost hellos evicted a live neighbour. That is a
+> protocol-behaviour change, so it superseded the previous version of this page
+> under the
+> [provenance rule](methodology.md#provenance-which-version-a-number-was-measured-at).
+> All six cells were re-measured on `main` at `dd171e5e`, which carries the
+> #496 code plus documentation commits only. **The oracle now runs in the same
+> dispatch** as the four protocols, so every column on this page comes from one
+> run per cell.
 >
-> **The fifth arm — the oracle — was measured separately, at `40b434d`.**
-> [Campaign phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control)
-> ([#415](https://github.com/danieljoppi/AntHocNet/issues/415),
-> [#296](https://github.com/danieljoppi/AntHocNet/issues/296)) re-ran the same
-> six cells with `--protocols=…,oracle` on `main` @ `40b434d`, the commit that
-> added the arm. Those cells are a *different dispatch at a different commit*,
-> so they would normally not be quotable in the same table — except that their
-> **480 baseline `##RUN##` rows are byte-identical** to the phase-1 corpus
-> (6 cells × 4 protocols × 20 seeds, AntHocNet included). That control is what
-> makes the composition legitimate; it is stated in full in
-> [Why the oracle columns compose](#why-the-oracle-columns-compose-with-the-tables-above)
-> below, together with the caveat that travels with every oracle number on
-> this page.
+> **The attribution control is the oracle, not the baselines.** The per-seed
+> logs of the last pre-#496 grid (the [#431](https://github.com/danieljoppi/AntHocNet/issues/431#issuecomment-5339246820)
+> re-measure at `4611bbb`) have expired, so a byte-level baseline comparison is
+> no longer possible. What survives is #431's per-cell table. The oracle, which
+> runs no AntHocNet code, reproduces it in **6 / 6 cells** (to the printed
+> digit in five, 0.01 pp in the sixth). So no harness, seed or channel change
+> separates the two corpora, and AntHocNet's movement is attributable to #496
+> alone. See
+> [the attribution control](#the-attribution-control-the-oracle-reproduces-431-in-66-cells).
+>
+> The two previous versions stay in git history and remain valid as evidence
+> of their own operating points:
+>
+> - `a1daa7a` (v1.5.0 phase 1, 200 ms cap, unjittered timer):
+>   `git show 0caa508d:docs/benchmarks/grid.md`;
+> - `4cdfb96` (1 s cap): `git show v1.4.0:docs/benchmarks/grid.md`.
+>
+> The per-seed cells are committed as `cells/grid-<mobility>-<channel>.txt`.
 
 ## What it varies
 
@@ -68,62 +72,61 @@ a fifth arm — same scenario, same 20 seeds, same
 (the oracle evaluates no propagation model, so it draws from none of them).
 
 Because the cells come from independent dispatches rather than one classified
-sweep, this page has **no generated block** — the tables below are
+sweep, this page has **no generated block**: the tables below are
 hand-written, as on the [satellite suite](satellite/isl-grid.md) page. The
-per-run data behind them lives in the six Actions run logs (IDs in the
-provenance table below; each cell's `##PROV##` line pins `commit=a1daa7a` and
-its `##CONFIG##` pins `ReconvHoldCap=+2e+08ns`, so every block is
-self-describing). The committed
+per-seed data behind them is committed next to this page as
+`cells/grid-<mobility>-<channel>.txt` (`##RUN##`, `##BENCH##`, `##CONFIG##`,
+`##PROV##`, `##ORACLE##`, `##COMMON##`, `##MATCH##`, `# drops`, `# stddev`).
+Each cell's `##PROV##` line pins `commit=dd171e5e`, and its `##CONFIG##` pins
+`TimerJitter=0.05` and `ReconvHoldCap=+2e+08ns`, so every block is
+self-describing. The committed
 `../benchmarks/campaign/pooled-grid-mobility-channel-20260808.csv` and its
-per-run sibling remain the **1 s corpus**: their aodv/olsr/dsdv rows match
-this page to the last digit (deterministic baselines, identical
-[#352](https://github.com/danieljoppi/AntHocNet/issues/352)-pinned seeds), and
-their anthocnet rows are the superseded 1 s measurement.
+per-run sibling remain the **1 s corpus**, superseded twice over.
 
 ## Results
 
+The oracle column is a reference point rather than a competitor; how far each
+of its columns may be read as a bound is settled in
+[the quoting rule](#how-these-numbers-may-be-quoted-a-delivery-bound-everywhere-latency-and-hops-on-two-ray).
+
 ### Delivery — PDR %, mean ± 95 % CI
 
-| mobility | channel | anthocnet | aodv | olsr | dsdv |
-|---|---|---|---|---|---|
-| rwp | tworay | **92.58 ± 0.63** | 85.92 ± 0.55 | 90.59 ± 0.46 | 84.99 ± 0.63 |
-| ssrwp | tworay | **92.95 ± 0.63** | 86.56 ± 0.63 | 91.25 ± 0.62 | 85.74 ± 0.72 |
-| gaussmarkov | tworay | **90.08 ± 0.63** | 83.90 ± 0.81 | 85.92 ± 0.90 | 78.70 ± 1.02 |
-| rwp | nakagami | **89.78 ± 0.86** | 73.49 ± 1.08 | 87.78 ± 0.38 | 71.86 ± 1.03 |
-| ssrwp | nakagami | **89.54 ± 0.88** | 73.02 ± 0.71 | 87.64 ± 0.47 | 72.37 ± 1.14 |
-| gaussmarkov | nakagami | **85.87 ± 1.11** | 67.23 ± 1.26 | 83.46 ± 0.78 | 63.99 ± 1.17 |
+| mobility | channel | anthocnet | aodv | olsr | dsdv | oracle |
+|---|---|---|---|---|---|---|
+| rwp | tworay | 97.78 ± 0.22 | 85.48 ± 0.70 | 90.62 ± 0.44 | 84.64 ± 0.82 | 98.08 ± 0.16 |
+| ssrwp | tworay | 97.97 ± 0.23 | 86.23 ± 0.41 | 91.34 ± 0.53 | 85.62 ± 0.84 | 98.20 ± 0.22 |
+| gaussmarkov | tworay | 95.59 ± 0.34 | 84.17 ± 0.88 | 86.00 ± 0.83 | 78.64 ± 1.16 | 96.69 ± 0.31 |
+| rwp | nakagami | 91.50 ± 0.90 | 73.57 ± 0.91 | 87.74 ± 0.57 | 72.57 ± 1.24 | 96.92 ± 0.39 |
+| ssrwp | nakagami | 91.10 ± 0.86 | 72.69 ± 1.27 | 87.36 ± 0.48 | 71.92 ± 1.26 | 96.53 ± 0.59 |
+| gaussmarkov | nakagami | 88.11 ± 0.71 | 66.65 ± 1.16 | 83.55 ± 0.69 | 63.89 ± 1.13 | 95.99 ± 0.35 |
 
 ### Overhead — NRL, mean ± 95 % CI
 
-| mobility | channel | anthocnet | aodv | olsr | dsdv |
-|---|---|---|---|---|---|
-| rwp | tworay | 34.92 ± 0.63 | 64.64 ± 1.41 | 4.02 ± 0.04 | 23.01 ± 0.21 |
-| ssrwp | tworay | 34.37 ± 0.70 | 64.37 ± 2.09 | 3.96 ± 0.04 | 22.74 ± 0.28 |
-| gaussmarkov | tworay | 36.65 ± 1.05 | 63.73 ± 1.81 | 4.34 ± 0.07 | 24.90 ± 0.37 |
-| rwp | nakagami | 46.89 ± 1.09 | 77.98 ± 1.79 | 4.35 ± 0.04 | 27.83 ± 0.41 |
-| ssrwp | nakagami | 46.88 ± 1.44 | 76.80 ± 1.53 | 4.31 ± 0.05 | 27.41 ± 0.54 |
-| gaussmarkov | nakagami | 52.44 ± 1.69 | 85.05 ± 2.40 | 4.73 ± 0.06 | 31.43 ± 0.55 |
+| mobility | channel | anthocnet | aodv | olsr | dsdv | oracle |
+|---|---|---|---|---|---|---|
+| rwp | tworay | 13.46 ± 0.25 | 66.22 ± 1.11 | 4.03 ± 0.03 | 23.17 ± 0.21 | 0.00 ± 0.00 |
+| ssrwp | tworay | 12.97 ± 0.30 | 65.26 ± 0.94 | 3.97 ± 0.04 | 22.82 ± 0.25 | 0.00 ± 0.00 |
+| gaussmarkov | tworay | 16.69 ± 0.47 | 64.41 ± 1.74 | 4.36 ± 0.06 | 25.09 ± 0.40 | 0.00 ± 0.00 |
+| rwp | nakagami | 24.86 ± 0.58 | 78.10 ± 1.83 | 4.35 ± 0.06 | 27.57 ± 0.57 | 0.00 ± 0.00 |
+| ssrwp | nakagami | 25.16 ± 0.84 | 79.13 ± 2.38 | 4.35 ± 0.05 | 27.76 ± 0.63 | 0.00 ± 0.00 |
+| gaussmarkov | nakagami | 30.78 ± 0.70 | 87.69 ± 2.40 | 4.76 ± 0.06 | 31.73 ± 0.59 | 0.00 ± 0.00 |
 
 ### Tail — `delay99` ms, mean with bootstrap 95 % interval
 
-| mobility | channel | anthocnet | aodv | olsr | dsdv |
-|---|---|---|---|---|---|
-| rwp | tworay | 420.8 [385.4, 454.6] | 584.6 [560.2, 609.2] | **23.2 [22.3, 24.2]** | 419.8 [374.1, 485.7] |
-| ssrwp | tworay | 373.3 [331.7, 415.9] | 583.5 [558.2, 611.1] | **22.2 [21.6, 22.9]** | 499.1 [411.1, 600.2] |
-| gaussmarkov | tworay | 512.8 [463.9, 563.9] | 575.5 [551.5, 600.8] | **68.7 [24.4, 144.7]** | 545.9 [421.7, 677.5] |
-| rwp | nakagami | 920.0 [868.4, 964.2] | **839.1 [807.3, 871.4]** | 2714.1 [2530.0, 2880.5] | 2036.0 [2027.9, 2044.7] |
-| ssrwp | nakagami | 890.6 [824.1, 952.6] | **817.6 [780.5, 857.5]** | 2685.2 [2516.3, 2846.7] | 2034.0 [2026.5, 2041.8] |
-| gaussmarkov | nakagami | **1022.9 [987.5, 1055.6]** | 1027.5 [958.0, 1103.3] | 2961.0 [2867.6, 3009.2] | 2271.4 [2137.7, 2428.9] |
+| mobility | channel | anthocnet | aodv | olsr | dsdv | oracle |
+|---|---|---|---|---|---|---|
+| rwp | tworay | 203.7 [197.1, 210.7] | 605.5 [579.7, 631.0] | 24.4 [22.8, 26.9] | 618.4 [496.6, 748.8] | 19.8 [19.5, 20.1] |
+| ssrwp | tworay | 195.3 [187.2, 204.2] | 593.5 [570.5, 617.5] | 22.9 [22.4, 23.7] | 561.5 [453.5, 685.6] | 19.4 [19.1, 19.8] |
+| gaussmarkov | tworay | 302.5 [281.6, 324.0] | 578.9 [552.5, 607.2] | 58.2 [24.0, 125.2] | 618.8 [496.2, 747.5] | 21.4 [21.0, 21.7] |
+| rwp | nakagami | 369.4 [335.0, 410.1] | 849.2 [814.0, 888.8] | 2442.9 [2255.6, 2634.9] | 2032.5 [2027.3, 2038.2] | 2170.6 [2073.3, 2297.8] |
+| ssrwp | nakagami | 386.2 [345.3, 432.0] | 842.7 [802.5, 883.4] | 2646.7 [2464.3, 2820.8] | 2085.3 [2032.8, 2184.9] | 2236.2 [2090.2, 2416.4] |
+| gaussmarkov | nakagami | 596.9 [539.0, 661.9] | 1059.5 [1014.6, 1111.5] | 2974.5 [2902.1, 3011.8] | 2384.8 [2215.6, 2562.4] | 3009.6 [3008.3, 3010.8] |
 
-Bold marks the *nominal* best in each row, and three of the six rows are now
-ties rather than wins: rwp-tworay's anthocnet vs dsdv intervals overlap
-almost completely, gaussmarkov-nakagami's anthocnet-vs-aodv paired difference
-is −4.65 ms [−83.20, +69.55] (p = 0.7 — a clean statistical tie with
-anthocnet nominally first), and in the rwp/ssrwp fading cells aodv's paired
-edge (+80.95 / +72.95 ms, p = 0.012 / 0.033) is marginal against the
-multiple-comparison expectation below. A `t`-interval on a per-run p99 is not
-defensible, so the tail uses a percentile bootstrap
-([policy](methodology.md#ci-method-per-metric)).
+A `t`-interval on a per-run p99 is not defensible, so the tail uses a
+percentile bootstrap ([policy](methodology.md#ci-method-per-metric)). The
+oracle's fading-cell tail is **not** a bound and must not be read against the
+other arms; see
+[metrics.md](metrics.md#delay99-is-not-comparable-across-arms-with-materially-different-pdr-415).
 
 ### AntHocNet vs AODV — paired, per seed
 
@@ -134,57 +137,101 @@ orientation.
 
 | mobility | channel | ΔPDR (pp) | ΔNRL | Δ`delay99` (ms) |
 |---|---|---|---|---|
-| rwp | tworay | **+6.66** [+5.94, +7.39] | **−29.73** [−31.36, −28.09] | **−163.85** [−208.10, −119.90] |
-| ssrwp | tworay | **+6.40** [+5.53, +7.26] | **−30.00** [−32.27, −27.74] | **−210.20** [−264.25, −157.50] |
-| gaussmarkov | tworay | **+6.17** [+5.29, +7.06] | **−27.08** [−28.74, −25.42] | −62.65 [−118.50, −8.90] |
-| rwp | nakagami | **+16.28** [+15.00, +17.57] | **−31.08** [−32.75, −29.42] | +80.95 [+23.50, +134.60] |
-| ssrwp | nakagami | **+16.53** [+15.70, +17.36] | **−29.93** [−31.56, −28.30] | +72.95 [+10.70, +134.80] |
-| gaussmarkov | nakagami | **+18.63** [+17.63, +19.64] | **−32.61** [−34.54, −30.68] | −4.65 [−83.20, +69.55] |
+| rwp | tworay | **+12.30 [+11.62, +12.98]** | **-52.76 [-53.89, -51.63]** | **-401.90 [-425.15, -377.55]** |
+| ssrwp | tworay | **+11.74 [+11.33, +12.15]** | **-52.28 [-53.33, -51.24]** | **-398.15 [-421.15, -377.30]** |
+| gaussmarkov | tworay | **+11.42 [+10.63, +12.21]** | **-47.71 [-49.19, -46.23]** | **-276.35 [-307.00, -245.75]** |
+| rwp | nakagami | **+17.93 [+16.72, +19.13]** | **-53.24 [-54.95, -51.54]** | **-479.75 [-527.30, -430.30]** |
+| ssrwp | nakagami | **+18.41 [+17.57, +19.25]** | **-53.97 [-55.93, -52.01]** | **-456.50 [-494.05, -420.65]** |
+| gaussmarkov | nakagami | **+21.46 [+20.13, +22.80]** | **-56.91 [-59.37, -54.46]** | **-462.60 [-527.90, -404.30]** |
 
-Every PDR and NRL comparison has p ≤ 9.6 × 10⁻⁵; the smallest of those
-effects is 7 interval half-widths from zero, so none is marginal. The
-`delay99` column is different in kind from the 1 s corpus, where AntHocNet
-paid +137…+335 ms against AODV in **every** cell: at 200 ms the sign flips
-negative in four of six cells, and the remaining tail comparisons are the
-marginal ones (p = 0.012–0.7; eighteen comparisons at α = 0.05 expect ~0.9
-false positives, so treat the rwp/ssrwp-nakagami values as an
-aodv-leaning-or-tie, not a settled ordering).
+**AntHocNet beats AODV on all three metrics in all six cells**, every
+interval excluding zero, every p ≤ 9.6 × 10⁻⁵ (18 comparisons; at α = 0.05
+that is ~0.9 expected false positives, and the largest p here is about 500×
+below α). That is new: before #496 the tail was the marginal column. AODV
+held a paired edge of +81 / +73 ms (p = 0.012 / 0.033) in the rwp and ssrwp
+fading cells, and gaussmarkov-nakagami was a tie (p = 0.7). Those edges now
+read **−480 / −457 / −463 ms**.
 
-### Old → new: what the 200 ms flip cost and bought, per cell
+### Old → new: what the #496 timer fix bought, per cell
 
-The [#411](https://github.com/danieljoppi/AntHocNet/pull/411) flip's
-grid-wide price and benefit, AntHocNet only (the baselines did not move —
-next section). Old = `4cdfb96` at 1 s, new = `a1daa7a` at 200 ms:
+AntHocNet only.
 
-| mobility | channel | PDR (Δpp) | `delay99` (Δ%) | NRL Δ |
-|---|---|---|---|---|
-| rwp | tworay | 97.43 → 92.58 (−4.85) | 787.5 → 420.8 (−46.6 %) | −0.22 |
-| ssrwp | tworay | 97.55 → 92.95 (−4.60) | 720.8 → 373.3 (−48.2 %) | +0.10 |
-| gaussmarkov | tworay | 96.97 → 90.08 (−6.89) | 832.3 → 512.8 (−38.4 %) | +0.48 |
-| rwp | nakagami | 92.03 → 89.78 (−2.25) | 1155.2 → 920.0 (−20.4 %) | −2.89 |
-| ssrwp | nakagami | 92.08 → 89.54 (−2.54) | 1152.4 → 890.6 (−22.7 %) | −3.02 |
-| gaussmarkov | nakagami | 89.33 → 85.87 (−3.46) | 1343.2 → 1022.9 (−23.8 %) | −4.66 |
+- **Pre-#496 PDR** is #431's per-cell table at `4611bbb`: the last grid before
+  the fix, on the same harness, oracle and seeds.
+- **Pre-#496 NRL and `delay99`** come from the previous version of this page at
+  `a1daa7a`, because #431 did not republish them. `a1daa7a` predates the
+  [#459](https://github.com/danieljoppi/AntHocNet/pull/459) flow-start fix,
+  which moved AntHocNet's PDR by 0.1–0.5 pp (`a1daa7a` → `4611bbb` column).
+  So the NRL and `delay99` deltas are #496 plus a small #459 share.
 
-The trade is clean and grid-wide: tail −20 % to −48 %, delivery −2.3 to
-−6.9 pp, overhead flat-to-down (the fading cells shed 2.9–4.7 NRL). The
-[#411 pre-merge A/B](https://github.com/danieljoppi/AntHocNet/pull/411)'s
-−4.38 pp at paper-base/disk sits inside this envelope; the two-ray cells pay
-more delivery than the fading cells, with the maximum at gaussmarkov-tworay
-(−6.89 pp). This is the [#308
-ablation](https://github.com/danieljoppi/AntHocNet/issues/308#issuecomment-5211529535)'s
-mechanism at grid scale: the reconvergence hold converts would-be drops into
-late deliveries, and the cap trades those deliveries back for the tail.
+| mobility | channel | PDR `a1daa7a` | PDR `4611bbb` → now (Δpp) | NRL `a1daa7a` → now | `delay99` `a1daa7a` → now |
+|---|---|---|---|---|---|
+| rwp | tworay | 92.58 | 92.11 → 97.78 (**+5.67**) | 34.92 → 13.46 | 420.8 → 203.7 (−52 %) |
+| ssrwp | tworay | 92.95 | 92.42 → 97.97 (**+5.55**) | 34.37 → 12.97 | 373.3 → 195.3 (−48 %) |
+| gaussmarkov | tworay | 90.08 | 89.83 → 95.59 (**+5.76**) | 36.65 → 16.69 | 512.8 → 302.5 (−41 %) |
+| rwp | nakagami | 89.78 | 89.64 → 91.50 (**+1.86**) | 46.89 → 24.86 | 920.0 → 369.4 (−60 %) |
+| ssrwp | nakagami | 89.54 | 89.48 → 91.10 (**+1.62**) | 46.88 → 25.16 | 890.6 → 386.2 (−57 %) |
+| gaussmarkov | nakagami | 85.87 | 85.58 → 88.11 (**+2.53**) | 52.44 → 30.78 | 1022.9 → 596.9 (−42 %) |
 
-### The attribution control — 0/18 baseline rows moved
+**The fix bought on every axis at once.** The 200 ms `ReconvHoldCap` flip
+traded delivery for tail; #496 removes the spurious link breaks the hold was
+covering for, so it does not trade at all:
 
-Every aodv/olsr/dsdv `pdr`/`delay99`/`nrl` value matches the `v1.4.0` grid
-(`4cdfb96` corpus) **to the last printed digit** — deterministic baselines on
-identical [#352](https://github.com/danieljoppi/AntHocNet/issues/352)-pinned
-seeds, no harness drift between the corpora. Every AntHocNet delta above is
-therefore attributable to the `ReconvHoldCap` flip alone. This is the same
-control the [#308 ablation](https://github.com/danieljoppi/AntHocNet/issues/308#issuecomment-5211529535)
-ran (byte-identical AODV blocks across cap arms), now confirmed across a
-commit gap and all six cells.
+- delivery rises +1.6 to +5.8 pp;
+- overhead falls by roughly half (−20 to −22 NRL);
+- the tail falls 41–60 %.
+
+**Two-ray gains the most delivery:** AntHocNet now sits 0.23–1.09 pp below the
+oracle there. **Fading gains the most tail.** Under Nakagami the channel
+itself still costs 3–4 pp (oracle 96.0–96.9 %), and AntHocNet's remaining gap
+to the oracle is 5.4–7.9 pp.
+
+### The attribution control: the oracle reproduces #431 in 6/6 cells
+
+The pre-#496 per-seed logs (#431's runs `32209168271` … `32209193038`) have
+expired (HTTP 410) and left no artifacts, so the byte-identical baseline
+comparison this page used to carry cannot be repeated. The control that
+remains:
+
+| cell | oracle PDR, #431 at `4611bbb` | oracle PDR, now |
+|---|---|---|
+| rwp / tworay | 98.08 | 98.08 |
+| ssrwp / tworay | 98.20 | 98.20 |
+| gaussmarkov / tworay | 96.69 | 96.69 |
+| rwp / nakagami | 96.92 | 96.92 |
+| ssrwp / nakagami | 96.53 | 96.53 |
+| gaussmarkov / nakagami | 96.00 | 95.99 |
+
+The last row differs by 0.01 pp (95.99 here against #431's 96.00); every other
+row matches to the printed digit.
+
+**Why this control works.** The oracle runs no AntHocNet code and evaluates
+no propagation model. Its delivery depends only on:
+
+- the mobility and fading realisations;
+- the flow schedule;
+- the PHY-derived radius.
+
+Reproducing #431 in every cell therefore shows that none of those moved
+between `4611bbb` and `dd171e5e`. The only routing-relevant code change in
+that range is #497. This is weaker than a per-seed byte match: it is
+aggregate-level, and it does not cover the three baselines directly. It is,
+however, essentially exact on the one arm that cannot be influenced by
+AntHocNet.
+
+**Do not compare these baselines with the `a1daa7a` version of this page.**
+The [#459](https://github.com/danieljoppi/AntHocNet/pull/459) flow-start fix
+landed between the two and moved every arm by a few tenths of a point. For
+example, aodv rwp-tworay reads 85.92 there and 85.48 here.
+
+**The hop-bound FAILs are the known #431 class.** `scenario_check results`
+FAILs only on the three Nakagami cells, all on the known #431 fading residual
+(oracle identity-matched hops above dsdv's on the `##COMMON##` set), on 8, 15
+and 17 of 20 seeds. #431 recorded 6, 13 and 15. The common set is the packets
+*every* arm delivered, AntHocNet included, so a changed AntHocNet changes that
+set; the residual itself is the oracle's median-radius approximation and is
+unchanged in kind. The two-ray cells are WARN-only (the approximate-oracle
+notes).
 
 ## The oracle control — how much of the shortfall is routing?
 
@@ -197,6 +244,21 @@ an `Ipv4RoutingProtocol`, emitting no control traffic whatsoever
 ([#415](https://github.com/danieljoppi/AntHocNet/issues/415); framing in
 [methodology.md](methodology.md#upper-bound--the-oracle-control-415)) — is the
 arm that makes the split measurable.
+
+> **Read this section as the v1.5.0 phase-3 record, measured before #496.**
+> The analysis below (the composition argument, the per-cell oracle table, the
+> gap decomposition and the caveat) was measured at `40b434d` / `4611bbb`. In
+> that version the oracle was a separate dispatch beside the `a1daa7a`
+> four-arm grid, and AntHocNet still had the unjittered timer. Its oracle-side
+> findings still stand, because the oracle's own numbers are reproduced
+> exactly above. Its AntHocNet-side figures do not: AntHocNet's routing gap to
+> the oracle is now
+>
+> - **0.23–1.09 pp** on two-ray (it was 5.8–6.9 pp at `4611bbb`);
+> - **5.4–7.9 pp** under Nakagami (it was 7.1–10.4 pp).
+>
+> The current oracle column is in the [Results](#results) tables, measured in
+> the same dispatch as every other arm.
 
 ### Why the oracle columns compose with the tables above
 
@@ -216,8 +278,7 @@ oracle therefore perturbed nothing measurable — same seeds, same realisations,
 same scheduler order for the arms that were already there — and the oracle
 column is a measurement *of the same six cells*, not of a neighbouring
 configuration. This is the same class of control as the
-[0/18 attribution control](#the-attribution-control--018-baseline-rows-moved)
-above, applied to an added arm rather than to a changed default, and it is the
+0/18 attribution control of the pre-#496 version of this page, applied to an added arm rather than to a changed default, and it is the
 reason the rest of this section is legitimate rather than merely convenient.
 
 Two structural facts back it up: the oracle module is off unless `--protocols`
@@ -478,8 +539,10 @@ one at all is open, and if it does not, the answer is a probability-weighted
 ### How these numbers may be quoted: a delivery bound everywhere, latency and hops on two-ray
 
 - **Delivery — robust in all six cells.** Re-verified on the fixed harness:
-  oracle PDR 96.00–98.20 % against the best real arm's 85.58–92.42 %, with **zero
-  violations in 120/120 seeds**. A different-but-reasonable adjacency rule moves
+  oracle PDR 96.00–98.20 % against the best real arm's 85.58–92.42 % at
+  `4611bbb`, with **zero violations in 120/120 seeds**. After #496 the best real
+  arm (AntHocNet) reads 88.11–97.97 %, still below the oracle in every cell
+  (by 0.23 pp at the tightest, ssrwp-tworay). A different-but-reasonable adjacency rule moves
   that by a fraction of a point and cannot move the margins, so the
   [gap decomposition](#gap-decomposition--the-headline) and every PDR conclusion
   on this page stand.
@@ -503,100 +566,94 @@ one at all is open, and if it does not, the answer is a probability-weighted
 
 ## The ranking-stability statement
 
-**Scoped, because one ranking is stable and another is not — and the
-re-baseline moved the boundary.**
+**Scoped, because the tail ranking depends on the channel.**
 
-**Stable — delivery and overhead.** The delivery ordering is
-`anthocnet > olsr > aodv > dsdv` in **all six** cells, with the first-vs-second
-gap exceeding the summed per-arm CIs in every cell, and AntHocNet's paired
-lead over AODV significant in every one. The overhead ordering
-(`olsr < dsdv < anthocnet < aodv`) likewise holds in all six. Neither claim
-depends on the mobility model or the channel. **But the magnitude changed:**
-the paired AntHocNet−OLSR delivery lead narrowed from +4.25…+11.06 pp at 1 s
-to **+1.70…+4.16 pp** at 200 ms (all still significant, max p = 9.5 × 10⁻⁴;
-tightest cell ssrwp-tworay at +1.70 pp against a summed per-arm CI of 1.25).
-The stability statement survives the flip; a claim quoting its old size does
-not.
+**Stable — delivery.** The delivery ordering is
+`anthocnet > olsr > aodv > dsdv` in **all six** cells. The AntHocNet−OLSR
+gap exceeds the summed per-arm CIs in every cell, and AntHocNet's paired lead
+over both rivals is significant in every one (p ≤ 9.6 × 10⁻⁵). **The size of
+the lead over OLSR grew with #496:**
 
-**Not stable — the tail.** At 1 s this section reported a clean inversion:
-OLSR → dsdv → aodv → anthocnet under two-ray, aodv → anthocnet → dsdv → olsr
-under fading. At 200 ms **the invariant part is OLSR**: best tail under
-two-ray (22–69 ms, a factor of ~25 ahead) and **worst** under fading
-(2685–2961 ms). Its jitter moves the same way (9.6–12.6 ms → 164–189 ms), so
-the two are one effect rather than two. AntHocNet's position, by channel:
+- two-ray: **+6.62 … +9.59 pp**;
+- Nakagami: **+3.74 … +4.56 pp**.
 
-| channel | `delay99` at 200 ms |
+Before the fix it was +1.70 … +4.16 pp, with the tightest cell (ssrwp-tworay)
+at +1.70 pp against a summed CI of 1.25. That cell is now +6.62 pp against
+0.76.
+
+**Stable — overhead, in a new order.** The overhead ordering is
+`olsr < anthocnet < dsdv < aodv` in all six cells. Before #496 it was
+`olsr < dsdv < anthocnet < aodv`: the fix halved AntHocNet's NRL
+(12.97–30.78, from 34.37–52.44), taking it below DSDV everywhere. OLSR's
+proactive flooding of a single link-state table stays cheapest by a factor of
+3–7.
+
+**Scoped — the tail.** OLSR is still the invariant part: best tail under
+two-ray (22.9–58.2 ms) and **worst** under fading (2442.9–2974.5 ms). What
+moved is AntHocNet:
+
+| channel | `delay99` order at `dd171e5e` |
 |---|---|
-| two-ray | **olsr** (22–69 ms) → **anthocnet 2nd** (ssrwp, gaussmarkov; tied with dsdv in rwp) → dsdv → aodv. The 1 s "…anthocnet last" ordering is obsolete. |
-| Nakagami | **aodv-or-tie first**: aodv nominally ahead in rwp/ssrwp (paired +81/+73 ms, p = 0.012/0.033 — marginal), anthocnet nominally first in gaussmarkov (paired p = 0.7 — a tie) → dsdv → **olsr worst**. The 1 s "aodv wins the fading tail" claim degrades to aodv-or-tie. |
+| two-ray | **olsr** (23–58 ms) → **anthocnet** (195–303 ms), second in all three cells → aodv / dsdv (561–619 ms, overlapping intervals). |
+| Nakagami | **anthocnet first in all three cells** (369–597 ms) → aodv (843–1060 ms) → dsdv → **olsr worst**. The pre-#496 "aodv-or-tie wins the fading tail" claim is retired. |
 
-**Consequence: a tail claim that does not name its channel is unsupported.**
-That survives the re-baseline unchanged — OLSR's factor-of-~25 inversion
-carries it on its own. What the re-baseline retired is the claim that
-AntHocNet's tail is *last* anywhere: at 200 ms the
-[#21](https://github.com/danieljoppi/AntHocNet/issues/21) deficit against
-AODV persists only as a marginal edge in two fading cells, and under two-ray
-AntHocNet's tail now beats AODV's outright.
+**Consequence: a tail claim that does not name its channel is still
+unsupported.** OLSR's inversion carries that on its own. What #496 retired is
+every remaining AntHocNet tail deficit: it beats AODV's `delay99` by
+276–480 ms in all six cells (paired, p ≤ 9.6 × 10⁻⁵), and the
+[#21](https://github.com/danieljoppi/AntHocNet/issues/21) deficit against AODV no longer appears anywhere on this
+grid.
 
 **Mobility is the weaker axis.** Across the three mobility models at fixed
-channel, the paired ΔPDR (vs AODV) moves by ≤ 2.4 pp and no ordering changes
-anywhere. Steady-state RWP lands essentially on classic RWP (+0.37 pp two-ray
-/ −0.24 pp Nakagami, p = 0.68 / 0.72 — not significant), which is a useful
-negative: at this scenario the speed-decay transient the steady-state model
-exists to remove is not what drives the result.
+channel, the paired ΔPDR against AODV moves by:
+
+- two-ray: ≤ 0.9 pp (+11.42 … +12.30);
+- Nakagami: ≤ 3.5 pp (+17.93 … +21.46).
+
+No ordering changes anywhere. Steady-state RWP stays on classic RWP: the
+ssrwp − rwp difference in that delta is −0.56 pp on two-ray and +0.48 pp under
+Nakagami, both inside either cell's paired interval. At this scenario the
+speed-decay transient the steady-state model exists to remove is still not
+what drives the result.
 
 ## Provenance
 
-`main` @ `a1daa7a` (the [#411](https://github.com/danieljoppi/AntHocNet/pull/411)
-merge commit), image `ghcr.io/danieljoppi/ns3:3.42-opt`, `runs=20`,
-`time=900`, `areaX=1500`, `speed=20`, `protocols=anthocnet,aodv,olsr,dsdv`,
-`ReconvHoldCap=200 ms` (the shipped default — no `extraArgs` override).
+`main` @ `dd171e5e`, image `ghcr.io/danieljoppi/ns3:3.42-opt`, `runs=20`,
+`time=900`, `areaX=1500`, `speed=20`, `range=300`,
+`protocols=anthocnet,aodv,olsr,dsdv,oracle`, shipped defaults (no
+`extraArgs`), so `TimerJitter=0.05` and `ReconvHoldCap=200 ms`.
+`dd171e5e` is the #496 merge `43dd2f96` plus documentation-only commits
+(#498 and two benchmark-page refreshes).
 
-| mobility | channel | pause | run ID |
-|---|---|---|---|
-| rwp | tworay | 30 | [`31618105814`](https://github.com/danieljoppi/AntHocNet/actions/runs/31618105814) |
-| ssrwp | tworay | 30 | [`31618110426`](https://github.com/danieljoppi/AntHocNet/actions/runs/31618110426) |
-| gaussmarkov | tworay | 0 | [`31618116286`](https://github.com/danieljoppi/AntHocNet/actions/runs/31618116286) |
-| rwp | nakagami | 30 | [`31618108070`](https://github.com/danieljoppi/AntHocNet/actions/runs/31618108070) |
-| ssrwp | nakagami | 30 | [`31618114426`](https://github.com/danieljoppi/AntHocNet/actions/runs/31618114426) |
-| gaussmarkov | nakagami | 0 | [`31618118283`](https://github.com/danieljoppi/AntHocNet/actions/runs/31618118283) |
-
-**The oracle arm** ([phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control))
-was measured on `main` @ `40b434d` — the
-[#419](https://github.com/danieljoppi/AntHocNet/pull/419) merge commit that adds
-`contrib/oracle` — with the same image, `runs=20`, `time=900`, `areaX=1500`,
-`speed=20`, `gaussmarkov` at `pause=0`, and `protocols=anthocnet,aodv,olsr,dsdv,oracle`:
-
-| mobility | channel | run ID |
-|---|---|---|
-| rwp | tworay | [`31807666381`](https://github.com/danieljoppi/AntHocNet/actions/runs/31807666381) |
-| ssrwp | tworay | [`31807668353`](https://github.com/danieljoppi/AntHocNet/actions/runs/31807668353) |
-| gaussmarkov | tworay | [`31807670848`](https://github.com/danieljoppi/AntHocNet/actions/runs/31807670848) |
-| rwp | nakagami | [`31807672820`](https://github.com/danieljoppi/AntHocNet/actions/runs/31807672820) |
-| ssrwp | nakagami | [`31807676290`](https://github.com/danieljoppi/AntHocNet/actions/runs/31807676290) |
-| gaussmarkov | nakagami | [`31807678924`](https://github.com/danieljoppi/AntHocNet/actions/runs/31807678924) |
-
-All six `scenario_check.py results` runs exit 0 with **zero FAILs**, 25 checks
-per cell, and the oracle's positional `##RUN##` column mapping was validated
-against the harness's own `# stddev oracle` line. The four baseline arms in
-these six blocks are byte-identical to the six phase-1 blocks above, which is
-what licenses reading the two dispatches as one table — see
-[Why the oracle columns compose](#why-the-oracle-columns-compose-with-the-tables-above).
-Full readout, including the assertion record and the anomalies:
-[#415 (comment)](https://github.com/danieljoppi/AntHocNet/issues/415#issuecomment-5297098438).
+| mobility | channel | pause | run ID | cell |
+|---|---|---|---|---|
+| rwp | tworay | 30 | [`36810709154`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810709154) | `cells/grid-rwp-tworay.txt` |
+| ssrwp | tworay | 30 | [`36810711356`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810711356) | `cells/grid-ssrwp-tworay.txt` |
+| gaussmarkov | tworay | 0 | [`36810713478`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810713478) | `cells/grid-gaussmarkov-tworay.txt` |
+| rwp | nakagami | 30 | [`36810715413`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810715413) | `cells/grid-rwp-nakagami.txt` |
+| ssrwp | nakagami | 30 | [`36810717701`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810717701) | `cells/grid-ssrwp-nakagami.txt` |
+| gaussmarkov | nakagami | 0 | [`36810720076`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810720076) | `cells/grid-gaussmarkov-nakagami.txt` |
 
 Every cell self-identifies through its `##CONFIG##` row
 ([#369](https://github.com/danieljoppi/AntHocNet/issues/369)) — cell identity
 is read from the data, not from dispatch order — and its `##PROV##` line pins
-`commit=a1daa7a` ([#365](https://github.com/danieljoppi/AntHocNet/issues/365)).
-`bench_parse` column-mapping self-checks passed (20 checks) on all six cells.
-`scenario_check.py results` found nothing outside the known classes: the
-standing 3-per-cell [#230](https://github.com/danieljoppi/AntHocNet/issues/230)
-path-diversity instrumentation FAILs (aodv/olsr/dsdv, non-blocking), scattered
-[#386](https://github.com/danieljoppi/AntHocNet/issues/386) ICMP-re-injection
-WARNs (one seed each in four cells), and end-of-run-queue drop-cause
-overshoots ≤ +2.26 pp (WARN class). No anchor, energy, reordering-bounds, or
-route-quality failures.
+`commit=dd171e5e` ([#365](https://github.com/danieljoppi/AntHocNet/issues/365)).
+`bench_parse` column-mapping self-checks passed (25 checks) on all six cells.
+`scenario_check.py results`:
+
+- the two-ray cells are WARN-only (the approximate-oracle notes);
+- the three Nakagami cells FAIL only on the known #431 hop residual (8 / 15 / 17
+  seeds), as explained under
+  [the attribution control](#the-attribution-control-the-oracle-reproduces-431-in-66-cells).
+
+The superseded versions:
+
+- **`a1daa7a` four-arm grid** (runs `31618105814` … `31618118283`), with the
+  `40b434d` oracle dispatch beside it (runs `31807666381` … `31807678924`):
+  `git show 0caa508d:docs/benchmarks/grid.md`.
+- **`4611bbb` #431 re-measure** (runs `32209168271` … `32209193038`): per-cell
+  table on [#431](https://github.com/danieljoppi/AntHocNet/issues/431#issuecomment-5339246820);
+  its run logs have expired.
 
 ## What is deliberately not published here
 
