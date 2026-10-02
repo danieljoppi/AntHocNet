@@ -13,6 +13,12 @@ permissions:
 
 jobs:
   lint-title:
+    # Skip Dependabot: it titles PRs `build(deps): Bump …` with a capital B,
+    # which fails the lowercase subjectPattern below, and it has no option to
+    # lowercase it. The type prefix — the only part Commitizen reads for the
+    # version bump — is already valid. A job skipped by `if:` still satisfies a
+    # required status check.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
