@@ -100,10 +100,12 @@ one-time setup instead of a per-release chore.
 
 **Note for AI agents:** the new DOI does not exist until Zenodo has archived the
 tag, a few minutes after publish. Read it from Zenodo's public API — no token
-needed — which lists every version under the concept record:
+needed. The versions endpoint must be addressed through a **version** record:
+the concept ID `20981979` returns HTTP 404 there, as measured 2026-10-02. Any
+version record lists every version of the concept, for example v0.1.1's:
 
 ```
-curl -s "https://zenodo.org/api/records/20981979/versions?size=25&sort=version"
+curl -s "https://zenodo.org/api/records/20981980/versions?size=25&sort=version"
 ```
 
 Each hit carries `metadata.version` (the tag) and `doi`. `size` above 25 is
@@ -134,6 +136,7 @@ table is that record.
 | v1.4.0 | `10.5281/zenodo.21863774` | [record 21863774](https://zenodo.org/records/21863774) |
 | v1.5.0 | `10.5281/zenodo.21956001` | [record 21956001](https://zenodo.org/records/21956001) |
 | v1.6.0 | `10.5281/zenodo.22970218` | [record 22970218](https://zenodo.org/records/22970218) |
+| v1.7.0 | `10.5281/zenodo.23108019` | [record 23108019](https://zenodo.org/records/23108019) — the FANET + static-mesh family release |
 
 **Adding a row is the whole per-release chore.** Append the new version DOI
 here; do **not** touch the README badge or `CITATION.cff`, which already point
