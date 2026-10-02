@@ -38,6 +38,28 @@
 >
 > The per-seed cells are committed as `cells/grid-<mobility>-<channel>.txt`.
 
+> **OLSR's delivery column is restated
+> ([#510](https://github.com/danieljoppi/AntHocNet/issues/510)).** Stock ns-3 OLSR refuses an unroutable send at
+> the source: `RouteOutput` returns no route, the socket send fails, and
+> FlowMonitor never counts the packet. So OLSR's PDR left those sends out of its
+> denominator. This is the oracle's #464 defect, in the one real arm that shares
+> it. [PR #511](https://github.com/danieljoppi/AntHocNet/pull/511) counts them. The OLSR column below comes from a
+> 20-seed OLSR-only re-run of each cell on the fix (`bd1f4e49`).
+>
+> The re-runs reproduce every other OLSR column byte-for-byte. Only PDR, the
+> offered-load percentiles and the drop book move. The new PDR matches the
+> delivered-bytes estimate from the original dispatch to ≤ 0.18 pp per seed.
+> OLSR reads **1.96–5.16 pp lower** than published, and the other three
+> protocols and the oracle are unaffected.
+>
+> **One ordering changes.** In gaussmarkov-tworay, AODV now *leads* OLSR, by
+> +1.85 pp [+1.25, +2.45] (p = 2.7 × 10⁻⁴, 19/20 seeds). The delivery ordering
+> is no longer the same in all six cells; see
+> [the ranking-stability statement](#the-ranking-stability-statement).
+>
+> Cells: `cells/grid-<mobility>-<channel>-olsr510.txt`, runs `36962722070` …
+> `36962733439`.
+
 ## What it varies
 
 The [v1.4.0 exit criteria](../roadmap.md) ask for a headline grid under **≥2
@@ -91,14 +113,17 @@ of its columns may be read as a bound is settled in
 
 ### Delivery — PDR %, mean ± 95 % CI
 
-| mobility | channel | anthocnet | aodv | olsr | dsdv | oracle |
+| mobility | channel | anthocnet | aodv | olsr ([#510](https://github.com/danieljoppi/AntHocNet/issues/510)) | dsdv | oracle |
 |---|---|---|---|---|---|---|
-| rwp | tworay | 97.78 ± 0.22 | 85.48 ± 0.70 | 90.62 ± 0.44 | 84.64 ± 0.82 | 98.08 ± 0.16 |
-| ssrwp | tworay | 97.97 ± 0.23 | 86.23 ± 0.41 | 91.34 ± 0.53 | 85.62 ± 0.84 | 98.20 ± 0.22 |
-| gaussmarkov | tworay | 95.59 ± 0.34 | 84.17 ± 0.88 | 86.00 ± 0.83 | 78.64 ± 1.16 | 96.69 ± 0.31 |
-| rwp | nakagami | 91.50 ± 0.90 | 73.57 ± 0.91 | 87.74 ± 0.57 | 72.57 ± 1.24 | 96.92 ± 0.39 |
-| ssrwp | nakagami | 91.10 ± 0.86 | 72.69 ± 1.27 | 87.36 ± 0.48 | 71.92 ± 1.26 | 96.53 ± 0.59 |
-| gaussmarkov | nakagami | 88.11 ± 0.71 | 66.65 ± 1.16 | 83.55 ± 0.69 | 63.89 ± 1.13 | 95.99 ± 0.35 |
+| rwp | tworay | 97.78 ± 0.22 | 85.48 ± 0.70 | 88.41 ± 0.57 | 84.64 ± 0.82 | 98.08 ± 0.16 |
+| ssrwp | tworay | 97.97 ± 0.23 | 86.23 ± 0.41 | 89.38 ± 0.70 | 85.62 ± 0.84 | 98.20 ± 0.22 |
+| gaussmarkov | tworay | 95.59 ± 0.34 | 84.17 ± 0.88 | 82.32 ± 1.11 | 78.64 ± 1.16 | 96.69 ± 0.31 |
+| rwp | nakagami | 91.50 ± 0.90 | 73.57 ± 0.91 | 85.36 ± 0.67 | 72.57 ± 1.24 | 96.92 ± 0.39 |
+| ssrwp | nakagami | 91.10 ± 0.86 | 72.69 ± 1.27 | 84.98 ± 0.56 | 71.92 ± 1.26 | 96.53 ± 0.59 |
+| gaussmarkov | nakagami | 88.11 ± 0.71 | 66.65 ± 1.16 | 78.39 ± 0.80 | 63.89 ± 1.13 | 95.99 ± 0.35 |
+
+OLSR's column is offered-based (#510). The pre-#510 values were 90.62, 91.34,
+86.00, 87.74, 87.36 and 83.55.
 
 ### Overhead — NRL, mean ± 95 % CI
 
@@ -568,18 +593,31 @@ one at all is open, and if it does not, the answer is a probability-weighted
 
 **Scoped, because the tail ranking depends on the channel.**
 
-**Stable — delivery.** The delivery ordering is
-`anthocnet > olsr > aodv > dsdv` in **all six** cells. The AntHocNet−OLSR
-gap exceeds the summed per-arm CIs in every cell, and AntHocNet's paired lead
-over both rivals is significant in every one (p ≤ 9.6 × 10⁻⁵). **The size of
-the lead over OLSR grew with #496:**
+**Stable — AntHocNet first in delivery; scoped — the order behind it.**
+AntHocNet leads delivery in **all six** cells, and its paired lead over every
+rival is significant in every one (p ≤ 9.6 × 10⁻⁵). On the #510 offered-based
+OLSR column, its lead over OLSR is:
 
-- two-ray: **+6.62 … +9.59 pp**;
-- Nakagami: **+3.74 … +4.56 pp**.
+- two-ray: **+8.59 … +13.27 pp**;
+- Nakagami: **+6.12 … +9.72 pp**.
 
-Before the fix it was +1.70 … +4.16 pp, with the tightest cell (ssrwp-tworay)
-at +1.70 pp against a summed CI of 1.25. That cell is now +6.62 pp against
-0.76.
+Before #510 corrected OLSR's denominator, this read +6.62 … +9.59 and
++3.74 … +4.56. Before #496 it was +1.70 … +4.16.
+
+**The order behind AntHocNet is not stable:**
+
+- **five cells** read `anthocnet > olsr > aodv > dsdv`;
+- **gaussmarkov-tworay** reads `anthocnet > aodv > olsr > dsdv`. AODV leads
+  OLSR by +1.85 pp [+1.25, +2.45], p = 2.7 × 10⁻⁴, on 19/20 seeds.
+
+So the AODV–OLSR order depends on the cell, and a claim about it must name
+its mobility and channel. The OLSR-over-AODV margins elsewhere:
+
+- two-ray: +2.93 and +3.15 pp;
+- Nakagami: +11.75 … +12.29 pp.
+
+The fading margin is wide because AODV's delivery collapses under fading
+(66.65–73.57 %).
 
 **Stable — overhead, in a new order.** The overhead ordering is
 `olsr < anthocnet < dsdv < aodv` in all six cells. Before #496 it was

@@ -1,0 +1,123 @@
+# grid-ssrwp-nakagami OLSR re-run, 20 seeds @bd1f4e49 (#510 fix: source-refused sends counted as offered). Only pdr/off50/off90 and the drop book differ from the olsr rows of grid-ssrwp-nakagami.txt; every other column is byte-identical.
+##BENCH## olsr 85.0 104.0 2646.7 5.59 4.35 164.57 2.5 inf 11.790
+##RUN## 1 olsr 84.0 122.2 3012.5 5.36 4.55 192.06 2.5 inf 12.4312
+##RUN## 2 olsr 87.3 98.5 2072.5 5.65 4.31 165.88 2.5 inf 11.7116
+##RUN## 3 olsr 84.1 107.0 3008.5 5.66 4.29 163.80 2.5 inf 11.4397
+##RUN## 4 olsr 84.6 102.9 2192.5 5.54 4.41 159.93 3.5 inf 11.6840
+##RUN## 5 olsr 85.7 98.9 3004.5 5.75 4.23 151.20 2.5 inf 11.8027
+##RUN## 6 olsr 85.5 106.7 3006.5 5.64 4.29 164.81 2.5 inf 11.7696
+##RUN## 7 olsr 85.3 103.3 2386.5 5.70 4.27 161.88 2.5 inf 11.4492
+##RUN## 8 olsr 85.3 103.5 3009.5 5.61 4.34 165.72 2.5 inf 11.6017
+##RUN## 9 olsr 85.4 101.1 2062.5 5.79 4.24 158.04 2.5 inf 11.3386
+##RUN## 10 olsr 85.8 112.2 3006.5 5.49 4.47 173.79 2.5 inf 11.9309
+##RUN## 11 olsr 82.4 109.3 3005.5 5.42 4.49 176.57 3.5 inf 12.3354
+##RUN## 12 olsr 86.5 104.7 2721.5 5.81 4.18 162.77 2.5 inf 11.4829
+##RUN## 13 olsr 84.6 99.5 2057.5 5.46 4.47 161.24 2.5 inf 12.0138
+##RUN## 14 olsr 87.2 81.3 2036.5 5.74 4.24 133.68 1.5 inf 11.5559
+##RUN## 15 olsr 84.8 104.8 2239.5 5.55 4.37 169.54 2.5 inf 11.7029
+##RUN## 16 olsr 85.0 101.9 2266.5 5.56 4.35 166.17 2.5 inf 11.8511
+##RUN## 17 olsr 84.7 98.6 2825.5 5.67 4.29 158.05 2.5 inf 11.6274
+##RUN## 18 olsr 83.7 113.0 3007.5 5.53 4.42 179.15 2.5 inf 11.9277
+##RUN## 19 olsr 83.7 104.2 3006.5 5.51 4.43 160.00 2.5 inf 11.9385
+##RUN## 20 olsr 84.0 106.8 3005.5 5.43 4.44 167.10 2.5 inf 12.2029
+##MATCH## 1 olsr 6556 6556 3012.5 3012.5
+##MATCH## 2 olsr 6904 6904 2072.5 2072.5
+##MATCH## 3 olsr 6921 6921 3008.5 3008.5
+##MATCH## 4 olsr 6770 6770 2192.5 2192.5
+##MATCH## 5 olsr 7027 7027 3004.5 3004.5
+##MATCH## 6 olsr 6899 6899 3006.5 3006.5
+##MATCH## 7 olsr 6973 6973 2386.5 2386.5
+##MATCH## 8 olsr 6858 6858 3009.5 3009.5
+##MATCH## 9 olsr 7083 7083 2062.5 2062.5
+##MATCH## 10 olsr 6718 6718 3006.5 3006.5
+##MATCH## 11 olsr 6630 6630 3005.5 3005.5
+##MATCH## 12 olsr 7105 7105 2721.5 2721.5
+##MATCH## 13 olsr 6681 6681 2057.5 2057.5
+##MATCH## 14 olsr 7013 7013 2036.5 2036.5
+##MATCH## 15 olsr 6787 6787 2239.5 2239.5
+##MATCH## 16 olsr 6799 6799 2266.5 2266.5
+##MATCH## 17 olsr 6933 6933 2825.5 2825.5
+##MATCH## 18 olsr 6761 6761 3007.5 3007.5
+##MATCH## 19 olsr 6738 6738 3006.5 3006.5
+##MATCH## 20 olsr 6643 6643 3005.5 3005.5
+##AIR## 1 olsr 103.847 2019.970 427.370 5.6693
+##AIR## 2 olsr 101.133 1968.618 409.570 5.5096
+##AIR## 3 olsr 102.371 1921.016 420.288 5.4304
+##AIR## 4 olsr 103.167 1921.129 425.833 5.4447
+##AIR## 5 olsr 103.186 2070.363 430.215 5.7861
+##AIR## 6 olsr 104.443 2026.511 430.195 5.6914
+##AIR## 7 olsr 102.377 1944.651 414.915 5.4710
+##AIR## 8 olsr 101.446 1923.055 405.356 5.3997
+##AIR## 9 olsr 104.154 1979.148 433.574 5.5931
+##AIR## 10 olsr 101.829 1928.159 404.108 5.4091
+##AIR## 11 olsr 103.547 2035.674 429.953 5.7093
+##AIR## 12 olsr 103.010 2013.024 421.624 5.6392
+##AIR## 13 olsr 101.751 1930.899 404.433 5.4157
+##AIR## 14 olsr 100.657 1955.619 399.795 5.4579
+##AIR## 15 olsr 101.649 1928.557 411.176 5.4253
+##AIR## 16 olsr 102.945 1981.785 416.726 5.5588
+##AIR## 17 olsr 102.542 1964.080 424.107 5.5350
+##AIR## 18 olsr 103.621 1998.299 421.652 5.6079
+##AIR## 19 olsr 103.321 1978.716 426.332 5.5742
+##AIR## 20 olsr 100.858 1983.976 405.936 5.5350
+##ENERGY## 1 olsr 37094.771 5.658141 1.1051e-02 0.453
+##ENERGY## 2 olsr 37071.975 5.369637 1.0488e-02 0.415
+##ENERGY## 3 olsr 37072.483 5.356521 1.0462e-02 0.470
+##ENERGY## 4 olsr 37080.465 5.477174 1.0698e-02 0.583
+##ENERGY## 5 olsr 37096.495 5.279137 1.0311e-02 0.449
+##ENERGY## 6 olsr 37124.598 5.381156 1.0510e-02 0.608
+##ENERGY## 7 olsr 37076.851 5.317202 1.0385e-02 0.592
+##ENERGY## 8 olsr 37080.693 5.406925 1.0560e-02 0.428
+##ENERGY## 9 olsr 37085.542 5.235852 1.0226e-02 0.456
+##ENERGY## 10 olsr 37077.268 5.519093 1.0779e-02 0.357
+##ENERGY## 11 olsr 37114.014 5.597891 1.0933e-02 0.538
+##ENERGY## 12 olsr 37087.765 5.219953 1.0195e-02 0.448
+##ENERGY## 13 olsr 37093.338 5.552064 1.0844e-02 0.457
+##ENERGY## 14 olsr 37075.115 5.286627 1.0325e-02 0.452
+##ENERGY## 15 olsr 37074.747 5.462612 1.0669e-02 0.534
+##ENERGY## 16 olsr 37103.693 5.457228 1.0659e-02 0.494
+##ENERGY## 17 olsr 37079.973 5.348330 1.0446e-02 0.441
+##ENERGY## 18 olsr 37102.247 5.487686 1.0718e-02 0.561
+##ENERGY## 19 olsr 37081.923 5.503402 1.0749e-02 0.458
+##ENERGY## 20 olsr 37082.699 5.582222 1.0903e-02 0.446
+##CONFIG## scenario=paper nNodes=50 time=900 runs=20 firstRun=1 areaX=1500 areaY=300 speed=20 pause=30 range=300 propagation=nakagami mobility=ssrwp transport=udp flows=20 cbrBps=512 rateManager=constant2 protocols=olsr
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+# paths olsr divUsed=1.400 divMax=5.8 entropyBits=0.294 windowS=10.0 hopsMean=1.49 hopsMax=5.4
+# energy olsr initJ=5000.0 resMinJ=4257.2 resMeanJ=4258.2 resSdJ=0.482 firstDeathS=-1.0
+# drops olsr pdr=84.98 route=2.82 queue=0.00 mac=5.11 chan=7.07 ttl=0.02 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# stddev olsr pdr=1.21 delay=7.8 delay99=417.6 nrl=0.101 nrl_bytes=0.297
+# reorder olsr ratio=0.0098 ratioWorstFlow=0.0228 extentMean=1.04 extentMax=1.95 bufMax=1.80
+##PROV## commit=bd1f4e49b595c6c18d8e9fa957f34c207851becc ref=claude/anthocnet-project-review-2brrrv run_id=36962731084 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=compare

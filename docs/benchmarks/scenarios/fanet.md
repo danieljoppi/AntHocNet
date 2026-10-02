@@ -286,6 +286,82 @@ check's premise that the same packet crosses the same topology in every arm:
 So **no hop or latency bound is quoted for the FANET family**; the oracle's
 delay columns above are measurements, not bounds.
 
+## Ranking stability: MANET vs FANET
+
+ADR-0019 keeps the protocol configuration identical across families. A ranking
+that changes between families is therefore a property of the network, not of
+our tuning.
+
+**Comparators.** The comparison uses every mobile MANET cell measured on the
+current code, with OLSR offered-based (#510) everywhere:
+
+- the six [grid](../grid.md) cells, two-ray or Nakagami;
+- the disk-propagation paper cell (`cells/paper-mobile-jitter*.txt`, RWP,
+  pause 0, from [#494](https://github.com/danieljoppi/AntHocNet/issues/494)).
+
+The paper cell is the channel-matched comparator, because FANET also runs on
+the disk model.
+
+| ordering | MANET grid (6 cells) | MANET paper, disk | FANET main | FANET sparse |
+|---|---|---|---|---|
+| delivery | `anthocnet > olsr > aodv > dsdv` (5 cells); `anthocnet > aodv > olsr > dsdv` (gaussmarkov-tworay) | `anthocnet > aodv > olsr > dsdv` | `anthocnet > aodv > olsr > dsdv` | `anthocnet > aodv > dsdv > olsr` |
+| overhead (NRL) | `olsr < anthocnet < dsdv < aodv` | same | same | `olsr < aodv < dsdv < anthocnet` |
+| tail (`delay99`) | two-ray: OLSR best, AntHocNet second; Nakagami: AntHocNet best, OLSR worst | OLSR best, AntHocNet second | OLSR, DSDV, then AntHocNet (survivorship: they deliver ≤ 48 %) | same as main |
+
+**Stable across every mobile cell: AntHocNet delivers most.** That holds in
+all six grid cells, the disk paper cell and both FANET cells, each paired and
+significant. AntHocNet's lead over the best classical rival grows with the
+family:
+
+- grid: +6.1 … +11.4 pp over the best classical rival (OLSR, or AODV in
+  gaussmarkov-tworay);
+- paper disk cell: +13.1 pp over AODV;
+- FANET main cell: +11.5 pp over AODV;
+- FANET sparse cell: +3.9 pp over AODV, inside a 60 % oracle ceiling.
+
+It is *not* stable on a static field. On the
+[static mesh](../static-mesh.md), OLSR and DSDV deliver more (100.00 and 99.68
+against 99.28). So "AntHocNet delivers most" is a claim about **mobile**
+networks.
+
+**Not stable: the order of the classical protocols.** A claim about it that
+does not name its family, and on MANET its channel, is unsupported:
+
+- **AODV vs OLSR flips with the cell.**
+  - OLSR leads in five grid cells (+2.9 … +12.3 pp).
+  - AODV leads in gaussmarkov-tworay (+1.9 pp) and in the disk paper cell
+    (+8.8 pp).
+  - In FANET, AODV leads by **+35.1 pp (main) and +32.2 pp (sparse)**, an
+    order of magnitude wider than anything on MANET.
+- **OLSR is family-sensitive, not merely channel-sensitive.**
+  - It delivers 74–89 % on every MANET cell, but **47.85 %** at FANET speeds.
+  - Its MAC drop rate rises from 15 % (paper cell) to 36 %, because its tables
+    keep next hops that have flown out of range.
+  - In the partition-bound sparse cell it refuses 60 % of sends at the source
+    and falls to last.
+- **DSDV is last on every MANET cell but not in sparse FANET.** There, OLSR
+  falls below it, by 1.31 pp [0.97, 1.65], 19/20 seeds.
+
+**Overhead is stable where the network is connected.**
+`olsr < anthocnet < dsdv < aodv` holds in all seven MANET cells and in the
+main FANET cell. It breaks only in the sparse cell, where AntHocNet's ants
+keep searching a graph that keeps splitting. AntHocNet's NRL there is 16.32,
+the highest of the four.
+
+**The tail ordering does not transfer at all.** In FANET the two
+lowest-`delay99` arms are those that deliver less than half the traffic.
+Their tails are survivorship and not comparable
+([metrics.md](../metrics.md#delay99-is-not-comparable-across-arms-with-materially-different-pdr-415)).
+
+**Hello interval vs link lifetime.** This is the knob-watchlist item from #300.
+The #481 preflight puts the link lifetime at 30 m/s at about **5.8 hello
+periods** (350 m) and **4.2** (250 m), above its 3-period line. The campaign
+gives no reason to open a tuning ticket: AntHocNet's loss in the main cell is
+3.93 pp of reconvergence and 0.42 pp of MAC drops. The hold caps and the
+multipath parameters likewise show no measured cost here. AntHocNet's tail is
+the lowest among the arms that deliver comparably. ADR-0019 forbids per-family
+defaults in any case. A knob becomes a ticket only on a measured delta.
+
 ## Provenance of the numbers
 
 **The published tables** come from the six-arm dispatches plus the #510 OLSR
