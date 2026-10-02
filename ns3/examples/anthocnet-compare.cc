@@ -1118,6 +1118,8 @@ struct Result {
     double goodputKbps = 0.0;
     double energyJ = 0.0;        // total consumed over all nodes (J)
     double energyPerPktJ = 0.0;  // energyJ / delivered data packets (J/pkt)
+    double energyPerBitJ = 0.0;  // energyJ / delivered application bits (#294)
+    uint64_t rxAppBytes = 0;     // application bytes at the PacketSinks (#63)
     double resMinJ = 0.0;        // residual energy across nodes: min / mean /
     double resMeanJ = 0.0;       // sample stddev (J) — the fairness spread
     double resSdJ = 0.0;
@@ -1846,6 +1848,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             Ptr<PacketSink> ps = DynamicCast<PacketSink>(sinks.Get(i));
             if (ps) rxBytes += ps->GetTotalRx();
         }
+        r.rxAppBytes = rxBytes;
         r.goodputKbps = P.simTime > 0.0
                             ? 8.0 * static_cast<double>(rxBytes) / P.simTime / 1000.0
                             : 0.0;
@@ -2034,6 +2037,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // how nrl handles the same case.
         r.energyPerPktJ = r.rxPackets
             ? consumed / static_cast<double>(r.rxPackets) : 0.0;
+        // #294 item 3: the same figure per delivered application *bit*, the
+        // literature's cross-protocol energy column. Packet sizes are fixed
+        // under CBR, so on UDP this is energyPerPktJ / (8 x payload); it is
+        // measured from the sinks rather than derived so a TCP cell, whose
+        // segments are not one size, reads correctly too.
+        r.energyPerBitJ = r.rxAppBytes
+            ? consumed / (8.0 * static_cast<double>(r.rxAppBytes)) : 0.0;
         if (!residual.empty()) {
             double sum = 0.0, sumSq = 0.0;
             r.resMinJ = residual[0];
@@ -3164,6 +3174,19 @@ int main(int argc, char* argv[]) {
                           << ' ' << std::setprecision(3) << r.airCcaS
                           << ' ' << std::setprecision(4)
                           << (nodeSeconds > 0.0 ? 100.0 * busy / nodeSeconds : 0.0)
+                          << "\n";
+                // #294 item 3 / #483: the energy family per seed, so it pairs
+                // and carries a CI like every other per-seed row. Until now it
+                // was only printed as a mean over runs ('# energy', the CSV),
+                // which no interval can be built from. Same gate as ##AIR##
+                // (both need the energy model on, #270): absent, not zero,
+                // under --energyJ=0.
+                std::cout << "##ENERGY## " << s << ' ' << list[i]
+                          << ' ' << std::setprecision(3) << r.energyJ
+                          << ' ' << std::setprecision(6) << r.energyPerPktJ
+                          << ' ' << std::scientific << std::setprecision(4)
+                          << r.energyPerBitJ << std::fixed
+                          << ' ' << std::setprecision(3) << r.resSdJ
                           << "\n";
             }
             // #63: application bytes delivered per second, from the
