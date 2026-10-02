@@ -629,6 +629,26 @@ def _preflight_rate_fixes():
            f"2s at 4 pkt/s should be clean, got {levels}\n{out}")
 
 
+@case("#483 preflight derives the packet rate from --cbrBps")
+def _preflight_cbr_derives():
+    # 2048 bit/s at 64 B is 4 pkt/s: the same clean verdict as pktPerSec=4.
+    levels, out = run_preflight(pathWindowS=2.0, pktPerSec=None,
+                                cbrBps=2048.0)
+    expect(levels == [], "preflight-cbr-derive",
+           f"cbrBps=2048 should read as 4 pkt/s and be clean, got {levels}"
+           f"\n{out}")
+    expect("offered load 41.0 kbps" in out, "preflight-cbr-load",
+           f"offered load not computed from cbrBps\n{out}")
+
+
+@case("#483 preflight FAILs a --cbrBps/--pktPerSec pair that disagrees")
+def _preflight_cbr_conflict():
+    levels, out = run_preflight(pathWindowS=2.0, pktPerSec=1.0,
+                                cbrBps=2048.0)
+    expect("FAIL" in levels and "pass one of them" in out,
+           "preflight-cbr-conflict", f"conflict not refused\n{out}")
+
+
 @case("#230 preflight skips a static field")
 def _preflight_static():
     levels, out = run_preflight(pause=900.0, time=300.0, speed=1.0)

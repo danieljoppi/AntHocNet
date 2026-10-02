@@ -1,0 +1,123 @@
+# fanet sparse OLSR re-run, 20 seeds @bd1f4e49 (#510 fix: source-refused sends counted as offered). Only pdr/off50/off90 and the drop book differ from the olsr rows of fanet-sparse-6arm.txt; every other column is byte-identical.
+##BENCH## olsr 16.6 4.6 19.2 2.18 7.18 3.87 inf inf 7.969
+##RUN## 1 olsr 16.7 4.8 20.5 2.19 7.20 3.68 inf inf 8.1468
+##RUN## 2 olsr 18.2 7.4 20.5 2.34 6.70 5.38 inf inf 7.5807
+##RUN## 3 olsr 16.0 4.5 18.5 2.18 7.15 4.06 inf inf 8.0280
+##RUN## 4 olsr 16.6 3.7 21.5 2.09 7.49 2.89 inf inf 8.5528
+##RUN## 5 olsr 12.8 3.1 17.5 1.71 8.86 3.94 inf inf 9.2589
+##RUN## 6 olsr 13.8 2.1 20.5 1.84 8.34 1.38 inf inf 8.9306
+##RUN## 7 olsr 16.0 5.2 16.5 2.11 7.30 5.62 inf inf 8.1210
+##RUN## 8 olsr 16.7 4.0 21.5 2.18 7.07 4.18 inf inf 7.7871
+##RUN## 9 olsr 17.7 2.4 19.5 2.41 6.45 2.07 inf inf 7.3132
+##RUN## 10 olsr 17.2 7.7 19.5 2.17 7.17 7.20 inf inf 7.9807
+##RUN## 11 olsr 15.3 6.6 19.5 1.98 7.85 6.14 inf inf 8.8061
+##RUN## 12 olsr 17.9 6.4 19.5 2.41 6.40 4.92 inf inf 7.2583
+##RUN## 13 olsr 18.6 3.1 15.5 2.43 6.38 2.25 inf inf 6.8495
+##RUN## 14 olsr 17.1 2.0 20.5 2.25 6.90 1.24 inf inf 7.6883
+##RUN## 15 olsr 17.2 2.8 17.5 2.22 7.03 1.96 inf inf 7.9555
+##RUN## 16 olsr 15.6 8.5 23.5 2.04 7.62 6.84 inf inf 8.3902
+##RUN## 17 olsr 17.0 4.5 18.5 2.32 6.62 3.27 inf inf 7.2922
+##RUN## 18 olsr 18.6 5.9 17.5 2.42 6.44 5.70 inf inf 7.5002
+##RUN## 19 olsr 18.5 1.7 16.5 2.40 6.44 0.92 inf inf 7.1378
+##RUN## 20 olsr 14.4 5.6 19.5 1.89 8.16 3.81 inf inf 8.8087
+##MATCH## 1 olsr 2676 2676 20.5 20.5
+##MATCH## 2 olsr 2857 2857 20.5 20.5
+##MATCH## 3 olsr 2670 2670 18.5 18.5
+##MATCH## 4 olsr 2561 2561 21.5 21.5
+##MATCH## 5 olsr 2096 2096 17.5 17.5
+##MATCH## 6 olsr 2245 2245 20.5 20.5
+##MATCH## 7 olsr 2586 2586 16.5 16.5
+##MATCH## 8 olsr 2669 2669 21.5 21.5
+##MATCH## 9 olsr 2948 2948 19.5 19.5
+##MATCH## 10 olsr 2658 2658 19.5 19.5
+##MATCH## 11 olsr 2418 2418 19.5 19.5
+##MATCH## 12 olsr 2952 2952 19.5 19.5
+##MATCH## 13 olsr 2975 2975 15.5 15.5
+##MATCH## 14 olsr 2754 2754 20.5 20.5
+##MATCH## 15 olsr 2718 2718 17.5 17.5
+##MATCH## 16 olsr 2499 2499 23.5 23.5
+##MATCH## 17 olsr 2835 2835 18.5 18.5
+##MATCH## 18 olsr 2960 2960 17.5 17.5
+##MATCH## 19 olsr 2935 2935 16.5 16.5
+##MATCH## 20 olsr 2306 2306 19.5 19.5
+##AIR## 1 olsr 53.952 168.583 54.192 1.0249
+##AIR## 2 olsr 52.037 161.355 52.679 0.9854
+##AIR## 3 olsr 50.715 159.556 50.419 0.9655
+##AIR## 4 olsr 48.440 158.229 48.488 0.9450
+##AIR## 5 olsr 41.185 116.540 34.454 0.7118
+##AIR## 6 olsr 44.266 130.588 39.589 0.7942
+##AIR## 7 olsr 45.972 138.099 41.835 0.8367
+##AIR## 8 olsr 48.224 149.013 47.871 0.9078
+##AIR## 9 olsr 53.395 173.195 55.777 1.0458
+##AIR## 10 olsr 50.198 155.193 49.734 0.9449
+##AIR## 11 olsr 48.440 153.766 48.393 0.9281
+##AIR## 12 olsr 47.984 157.737 49.161 0.9440
+##AIR## 13 olsr 46.088 134.757 42.916 0.8287
+##AIR## 14 olsr 49.775 151.396 47.510 0.9210
+##AIR## 15 olsr 50.407 160.481 50.507 0.9681
+##AIR## 16 olsr 45.330 138.505 41.500 0.8346
+##AIR## 17 olsr 49.302 150.782 47.941 0.9186
+##AIR## 18 olsr 51.661 174.559 55.839 1.0447
+##AIR## 19 olsr 45.971 144.930 44.638 0.8724
+##AIR## 20 olsr 46.736 137.808 44.063 0.8467
+##ENERGY## 1 olsr 22112.396 8.263227 1.6139e-02 0.330
+##ENERGY## 2 olsr 22116.352 7.741110 1.5119e-02 0.367
+##ENERGY## 3 olsr 22110.699 8.281161 1.6174e-02 0.333
+##ENERGY## 4 olsr 22111.017 8.633743 1.6863e-02 0.306
+##ENERGY## 5 olsr 22108.219 10.547814 2.0601e-02 0.440
+##ENERGY## 6 olsr 22120.294 9.853138 1.9244e-02 0.455
+##ENERGY## 7 olsr 22107.380 8.548871 1.6697e-02 0.277
+##ENERGY## 8 olsr 22112.889 8.285084 1.6182e-02 0.347
+##ENERGY## 9 olsr 22115.603 7.501901 1.4652e-02 0.360
+##ENERGY## 10 olsr 22113.221 8.319496 1.6249e-02 0.350
+##ENERGY## 11 olsr 22108.154 9.143157 1.7858e-02 0.295
+##ENERGY## 12 olsr 22116.286 7.491967 1.4633e-02 0.456
+##ENERGY## 13 olsr 22113.505 7.433111 1.4518e-02 0.382
+##ENERGY## 14 olsr 22111.910 8.029016 1.5682e-02 0.351
+##ENERGY## 15 olsr 22110.029 8.134668 1.5888e-02 0.355
+##ENERGY## 16 olsr 22109.046 8.847157 1.7280e-02 0.330
+##ENERGY## 17 olsr 22114.840 7.800649 1.5236e-02 0.368
+##ENERGY## 18 olsr 22114.000 7.470946 1.4592e-02 0.364
+##ENERGY## 19 olsr 22109.948 7.533202 1.4713e-02 0.421
+##ENERGY## 20 olsr 22107.642 9.587009 1.8725e-02 0.375
+##CONFIG## scenario=fanet nNodes=30 time=900 runs=20 firstRun=1 areaX=1000 areaY=1000 areaZ=300 speed=30 speedMin=10 pause=0 range=250 propagation=range mobility=gaussmarkov transport=udp flows=10 cbrBps=2048 rateManager=constant2 protocols=olsr
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+# paths olsr divUsed=1.329 divMax=5.2 entropyBits=0.245 windowS=10.0 hopsMean=1.49 hopsMax=7.8
+# energy olsr initJ=5000.0 resMinJ=4262.2 resMeanJ=4262.9 resSdJ=0.363 firstDeathS=-1.0
+# drops olsr pdr=16.60 route=60.35 queue=0.00 mac=16.45 chan=5.90 ttl=0.35 sum=99.64 other=0.00 [route: setup=- reconv=- repair=-]
+# stddev olsr pdr=1.60 delay=2.0 delay99=2.0 nrl=0.702 nrl_bytes=0.665
+# reorder olsr ratio=0.0002 ratioWorstFlow=0.0022 extentMean=1.30 extentMax=1.40 bufMax=1.20
+##PROV## commit=bd1f4e49b595c6c18d8e9fa957f34c207851becc ref=claude/anthocnet-project-review-2brrrv run_id=36962719693 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=compare
