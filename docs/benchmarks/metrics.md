@@ -898,6 +898,35 @@ what each protocol actually delivered; `energy_res_sd_j` is the one to quote
 about *fairness of forwarding load*, since a protocol that funnels traffic
 through a few relays drains them faster and widens the spread.
 
+### Per seed: `##ENERGY##` (#294 item 3, #483)
+
+```
+##ENERGY## <run> <proto> <energyJ> <perPktJ> <perBitJ> <resSdJ>
+```
+
+The columns above are means over runs (the CSV and the `# energy` line), which
+no confidence interval can be built from. `##ENERGY##` prints the same family
+**per seed**, so it pairs on identical realisations like `##RUN##`:
+
+- `energyJ`: total consumed over all nodes, the per-run `energy_j`.
+- `perPktJ`: `energyJ` ÷ delivered data packets, the per-run `energy_per_pkt_j`.
+- `perBitJ`: `energyJ` ÷ delivered **application bits** at the sinks, the
+  literature's *energy per delivered bit*. It is measured from the sink byte
+  counts, not derived, so it stays correct on TCP, whose segments are not one
+  size. On a UDP/CBR cell it equals `perPktJ / (8 × payload)` exactly.
+- `resSdJ`: the residual-energy spread across nodes, the per-run
+  `energy_res_sd_j`.
+
+It shares `##AIR##`'s gate: the row is printed only when the energy model is
+on, and is **absent, not zero**, under `--energyJ=0` (#270).
+
+**Read `perPktJ`/`perBitJ` as an efficiency restatement of delivery, not as an
+independent finding.** Idle dominates (above), so `energyJ` is nearly the same
+for every arm on a seed, and the per-delivered figures move almost exactly as
+1 / PDR. A ranking on energy per bit that matches the PDR ranking adds no
+evidence; one that departs from it is the interesting case, and points at a
+difference in transmit/receive airtime (`##AIR##`).
+
 ## Drop causes (#215, NS-3 only)
 
 PDR says how many packets went missing. These columns say **why**, as a
