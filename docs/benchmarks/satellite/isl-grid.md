@@ -32,11 +32,39 @@ exists, it ran on this cell, and its first finding is a negative one — all
 three real protocols already sit exactly on the upper bound, so this cell
 cannot carry a comparative delivery or latency claim in either direction.**
 
+> **OLSR's PDR is restated ([#513](https://github.com/danieljoppi/AntHocNet/issues/513)).** Stock ns-3 OLSR
+> refuses a send while it has no route at the source. Here that happens
+> during its start-up convergence: flows start in [1, 11] s, before the first
+> HELLO/TC rounds complete. The refused packet never reaches FlowMonitor, so
+> OLSR's PDR left those sends out of its denominator. This is the #510 defect,
+> fixed for this harness in [PR #516](https://github.com/danieljoppi/AntHocNet/pull/516).
+>
+> 20-seed OLSR-only re-runs on the fix (`152b8999`) put OLSR **0.3–0.4 pp
+> below** the bound in every multi-flow cell:
+>
+> | cell | before | after |
+> |---|---|---|
+> | base | 100.0 | **99.72 ±0.04** |
+> | failcell | 99.93 ±0.02 | **99.65 ±0.04** |
+> | seam | 100.00 ±0.00 | **99.57 ±0.05** |
+> | corridor probe | 100.00 ±0.00 | **99.63 ±0.12** |
+>
+> OLSR's other columns (delay, `delay99`, throughput, NRL, NRL bytes)
+> reproduce the published means on base, failcell and seam. AntHocNet, AODV
+> and the oracle are unaffected.
+>
+> **So "exactly on the bound" holds for AntHocNet and AODV.** OLSR pays a small
+> start-up delivery cost. That cost is a property of its proactive
+> convergence, not of the topology. It is below this page's ≥ 1 pp
+> discrimination floor, so no verdict below changes.
+>
+> Cells: `docs/benchmarks/cells/sat-{base,failcell,corridor,seam}-olsr513.txt`.
+
 | protocol | PDR% | delay (ms) | delay99 (ms) | thrput (kbps) | NRL | NRL bytes | jitter (ms) |
 |---|---|---|---|---|---|---|---|
 | anthocnet | 100.0 | 10.2 | 11.0 | 23.35 | 2.16 | 3.63 | 0.00 |
 | aodv | 100.0 | 10.2 | 11.0 | 23.34 | 2.03 | 1.06 | 0.01 |
-| olsr | 100.0 | 10.2 | 11.0 | 23.29 | 1.93 | 4.76 | 0.00 |
+| olsr | 99.7 ([#513](#the-headline-result-the-base-torus-does-not-discriminate)) | 10.2 | 11.0 | 23.29 | 1.93 | 4.76 | 0.00 |
 | **oracle** | **100.0** | **10.2** | **11.0** | **23.36** | **0.00** | **0.00** | **0.00** |
 
 ### The control is exact here
@@ -182,7 +210,7 @@ mac-metric/gate mechanism ladder stays on
 |---|---|---|---|---|---|
 | anthocnet | 100.00 ±0.00 | 55.6 ±19.4 | 57.5 boot[40.9, 74.1] | 36.62 ±0.05 | 10/20 |
 | aodv | 99.93 ±0.01 | 97.3 ±0.1 | 99.0 boot[99.0, 99.0] | 36.38 ±0.04 | 0/20 |
-| olsr | 100.00 ±0.00 | 68.7 ±18.9 | 70.0 boot[53.4, 86.5] | 39.44 ±0.05 | 7/20 |
+| olsr | 99.63 ±0.12 (#513) | 68.7 ±18.9 | 70.0 boot[53.4, 86.5] | 39.44 ±0.05 | 7/20 |
 | **oracle** | **100.00 ±0.00** | **97.2 ±0.1** | **99.0 boot[99.0, 99.0]** | **0.00** | **0/20** |
 
 ("Clean-corridor seeds" = seeds whose `# corridor` line shows the majority
@@ -253,7 +281,7 @@ recompute, never without a route.
 |---|---|---|---|---|---|
 | anthocnet | 100.00 ±0.00 | 10.16 ±0.00 | 11.0 boot[11.0, 11.0] | 2.12 ±0.00 | 0.91 ±0.10 |
 | aodv | 99.95 ±0.00 | 10.18 ±0.01 | 11.0 boot[11.0, 11.0] | 2.00 ±0.00 | 0.95 ±0.11 |
-| olsr | 99.93 ±0.02 | 10.15 ±0.00 | 11.0 boot[11.0, 11.0] | 1.89 ±0.02 | 4.49 ±1.03 |
+| olsr | 99.65 ±0.04 (#513) | 10.15 ±0.00 | 11.0 boot[11.0, 11.0] | 1.89 ±0.02 | 4.49 ±1.03 |
 | **oracle** | **100.00 ±0.00** | **10.15 ±0.00** | **11.0 boot[11.0, 11.0]** | **0.00** | **0.86 ±0.11** |
 
 **On headline metrics the break cell still does not discriminate — that is
@@ -261,7 +289,10 @@ the finding, and it is worth stating plainly.** A single cut ISL with
 equal-cost alternates on a static lossless torus is absorbed at ~100 % PDR /
 10.2 ms by every arm; the visible cost of the entire event is ≤ 0.07 pp of
 PDR (aodv 99.95, olsr 99.93 — the packets lost inside each arm's
-reconvergence window), far below any materiality threshold. This is the
+reconvergence window), far below any materiality threshold. Since #513, OLSR's
+PDR also counts the sends it refuses at start-up. It now reads 99.65 here
+against 99.72 on the unbroken base cell, so the break's own cost to OLSR is
+still ≈ 0.07 pp. This is the
 measured confirmation of the prediction that kept #432 item 3 undispatched:
 a topology event the routing can absorb does not move headline numbers on
 this substrate; only an instrument aimed at the event window sees it.
@@ -325,7 +356,7 @@ axis costs +4 hops = +20 ms).
 |---|---|---|---|---|
 | anthocnet | 100.00 ±0.00 | 21.58 ±0.00 | 31.0 boot[31.0, 31.0] | 4.56 ±0.01 |
 | aodv | 99.91 ±0.01 | 21.71 ±0.04 | 31.0 boot[31.0, 31.0] | 4.27 ±0.00 |
-| olsr | 100.00 ±0.00 | 21.57 ±0.00 | 31.0 boot[31.0, 31.0] | 4.68 ±0.00 |
+| olsr | 99.57 ±0.05 (#513) | 21.57 ±0.00 | 31.0 boot[31.0, 31.0] | 4.68 ±0.00 |
 | **oracle** | **100.00 ±0.00** | **21.57 ±0.00** | **31.0 boot[31.0, 31.0]** | **0.00 ±0.00** |
 
 **Pre-registered expectation 1 — the exact bound — held.** Every seed
