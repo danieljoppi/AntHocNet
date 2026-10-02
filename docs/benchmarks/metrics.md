@@ -11,7 +11,7 @@ same realisations. Metrics come from an NS-3 `FlowMonitor`:
 
 A fifth arm, the **oracle** control
 ([#415](https://github.com/danieljoppi/AntHocNet/issues/415)), appears in the
-[grid](grid.md#the-oracle-control--how-much-of-the-shortfall-is-routing) and
+[grid](grid.md#the-oracle-control-how-much-of-the-shortfall-is-routing) and
 [satellite](satellite/isl-grid.md) suites. It is a control, not a protocol —
 global-knowledge Dijkstra over the ground-truth topology — and it changes how
 two columns on this page must be read:
@@ -29,7 +29,7 @@ two columns on this page must be read:
 
 Its exactness limits (`approx=0` vs `approx=1`) are a *harness* property, not a
 metric one, and live in
-[methodology.md](methodology.md#upper-bound--the-oracle-control-415).
+[methodology.md](methodology.md#upper-bound-the-oracle-control-415).
 
 - **PDR** — packet-delivery ratio (received / sent), %, over the CBR data flows.
 - **mean delay** — average end-to-end delay of delivered packets, ms.
@@ -726,7 +726,7 @@ Two limits:
 
 Runs from before this marker existed (everything up to `v1.3.0`) have no
 `##PROV##` line. Their provenance is the release pin documented in
-[methodology.md](methodology.md#run-id--commit), not a per-run stamp — the
+[methodology.md](methodology.md#run-id-commit), not a per-run stamp — the
 mapping was never recorded, and inventing one now would be fabrication rather
 than recovery.
 
