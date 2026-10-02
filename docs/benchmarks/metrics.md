@@ -942,6 +942,25 @@ died of one of five causes. That identity is what makes the breakdown readable
 — a cause is a *share of the loss*, not a free-floating counter — and
 `scenario_check.py results` enforces it (see *Why the identity must close*).
 
+**"Offered" includes the sends a source refused.** FlowMonitor counts a packet
+as transmitted only once it reaches `Ipv4L3Protocol::Send`. A protocol whose
+`RouteOutput` *refuses* an unroutable send makes the UDP socket fail before
+that point; the application (OnOff, ns-3.42) then retries the same packet at
+its next tick and generates nothing new. Left alone, those ticks are missing
+from the denominator *and* the drop book, so PDR reads as "delivered over the
+ticks the protocol had a route for". Two arms refuse rather than defer:
+
+- the oracle, corrected in #466 from its own `noRouteOrigin` counter;
+- **stock OLSR**, corrected in [#510](https://github.com/danieljoppi/AntHocNet/issues/510)
+  by a fallback router installed behind it that counts each refusal.
+
+Both add the refused ticks to offered traffic and to `drop_route_pct`.
+AntHocNet, AODV, AOMDV and DSDV *defer* an unroutable send (loopback or a
+pending queue), so FlowMonitor already counts it. #510 measured this: their
+delivered-bytes share of offered traffic matches their PDR to within 0.05 pp
+in every committed cell. Before #510, OLSR's PDR read **2–5 pp high on the
+MANET grid and 23.5 pp high on the partition-bound sparse FANET cell**.
+
 The five causes are measured **identically for all four protocols**, so a
 column means the same thing in the AntHocNet arm and in the AODV arm:
 
