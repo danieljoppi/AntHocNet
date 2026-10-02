@@ -83,7 +83,7 @@ unlabelled: unsourced constants were the root cause of #88, #169 and #173.
 ```
 python3 .claude/skills/benchmark-results/scenario_check.py preflight \
   --nodes 30 --areaX 1000 --areaY 1000 --areaZ 300 --range 350 \
-  --speed 30 --pause 0 --mobility gaussmarkov --flows 10 --pktPerSec 4 \
+  --speed 30 --pause 0 --mobility gaussmarkov --flows 10 --cbrBps 2048 \
   --pathWindowS 2
 ```
 
@@ -108,70 +108,138 @@ with only the field shrunk, and route only stock AODV and the oracle control.
 
 ## Results
 
-20 seeds per cell, 900 s, image `3.42-opt`, five arms on identical
-realisations. Means with t 95 % CI half-widths; `delay99` is a mean with a
-percentile-bootstrap interval. Provenance and run IDs are [below](#provenance-of-the-numbers).
+20 seeds per cell, 900 s, image `3.42-opt`. **Six arms** run on identical
+realisations:
+
+- the four classical protocols (AntHocNet, AODV, OLSR, DSDV);
+- **AOMDV**, the multipath baseline (#296);
+- the oracle control.
+
+Means carry t 95 % CI half-widths. `delay99` is a mean with a
+percentile-bootstrap interval. Provenance and run IDs are
+[below](#provenance-of-the-numbers).
+
+**GPSR is not in the arm set, and no geographic protocol is.** The harness
+refuses `gpsr` whenever `--areaZ > 0`
+([#480](https://github.com/danieljoppi/AntHocNet/issues/480)), because the
+vendored GPSR's headers and planarization are 2-D: it would route on projected
+positions and measure an artifact of the projection. This is a threat to
+validity for the family. Geographic forwarding is a major FANET design point,
+and this page has no arm for it.
 
 **The oracle column uses a 100 ms `RecomputeInterval`, not the 1 s default.**
 At the default it is not a bound on this family
 ([#506](https://github.com/danieljoppi/AntHocNet/issues/506)); see
-[the oracle at FANET speeds](#the-oracle-at-fanet-speeds) below. The four
-protocol columns are byte-identical between the two oracle settings, because
-the oracle draws on no shared random stream.
+[the oracle at FANET speeds](#the-oracle-at-fanet-speeds) below.
+
+**The OLSR column is offered-based
+([#510](https://github.com/danieljoppi/AntHocNet/issues/510)).** Before #510,
+stock OLSR's PDR left out the sends its source refused for want of a route, so
+it read **3.80 pp high here and 23.53 pp high in the sparse cell**. The OLSR
+column below comes from a re-run with the fix. Its other columns are
+byte-identical to the six-arm dispatch. Only PDR, the offered-load percentiles
+and the drop book changed.
+
+Energy is **energy per delivered application bit** (mJ/bit, `##ENERGY##`,
+[#508](https://github.com/danieljoppi/AntHocNet/pull/508)). The radio's idle
+draw dominates the total, which is near-identical across arms on a seed. This
+column is therefore an efficiency restatement of delivery
+([metrics.md](../metrics.md#per-seed-energy-294-item-3-483)). It is quoted
+because its ordering agrees with the PDR ordering in both cells, not as
+independent evidence.
 
 ### Main cell (`fanet`, 350 m)
 
-| metric | anthocnet | aodv | olsr | dsdv | oracle (100 ms) |
+| metric | anthocnet | aodv | olsr | dsdv | aomdv | oracle (100 ms) |
+|---|---|---|---|---|---|---|
+| PDR % | **94.41 ± 0.45** | 82.92 ± 0.81 | 47.85 ± 0.95 | 42.52 ± 1.02 | 46.77 ± 0.66 | 97.11 ± 0.37 |
+| mean delay (ms) | 20.04 ± 0.50 | 30.51 ± 5.58 | 4.50 ± 0.61 | 7.04 ± 0.59 | 387.33 ± 18.67 | 4.27 ± 0.60 |
+| `delay99` (ms) | 271.7 [268.2, 275.4] | 702.1 [512.6, 940.6] | 23.2 [21.1, 25.9] | 36.1 [33.1, 39.4] | 7806.2 [7715.7, 7888.0] | 18.8 [18.2, 19.4] |
+| NRL | 6.66 ± 0.14 | 7.79 ± 0.13 | 2.71 ± 0.06 | 7.25 ± 0.19 | 12.56 ± 0.35 | 0.00 |
+| energy (mJ/bit) | **2.872 ± 0.029** | 3.263 ± 0.049 | 5.645 ± 0.120 | 6.367 ± 0.165 | 5.778 ± 0.102 | 2.770 ± 0.030 |
+
+Paired, per seed (t-CI for PDR, NRL and energy; bootstrap for `delay99`;
+two-sided Wilcoxon):
+
+| comparison | ΔPDR (pp) | ΔNRL | Δ`delay99` (ms) | Δenergy (mJ/bit) | verdict |
 |---|---|---|---|---|---|
-| PDR % | **94.41 ± 0.45** | 82.92 ± 0.81 | 51.65 ± 0.93 | 42.52 ± 1.02 | 97.11 ± 0.37 |
-| mean delay (ms) | 20.04 ± 0.50 | 30.50 ± 5.58 | 4.50 ± 0.61 | 7.04 ± 0.59 | 4.27 ± 0.60 |
-| `delay99` (ms) | 271.7 [268.2, 275.4] | 702.1 [513.8, 938.5] | 23.2 [21.1, 25.9] | 36.1 [33.1, 39.4] | 18.8 [18.2, 19.4] |
-| NRL | 6.66 ± 0.14 | 7.79 ± 0.13 | 2.71 ± 0.06 | 7.25 ± 0.19 | 0.00 |
+| anthocnet − aodv | **+11.48** [+10.73, +12.25] | **−1.14** [−1.26, −1.02] | **−430** [−669, −240] | **−0.391** [−0.422, −0.360] | better on all four (p ≤ 4.2 × 10⁻⁴) |
+| anthocnet − olsr | **+46.56** [+45.74, +47.38] | +3.94 [+3.84, +4.05] | +249 [+245, +252] | **−2.773** [−2.881, −2.664] | delivery and energy, for overhead and tail |
+| anthocnet − dsdv | **+51.88** [+50.85, +52.91] | **−0.59** [−0.75, −0.43] | +236 [+231, +240] | **−3.495** [−3.649, −3.340] | delivery, overhead and energy, for tail |
+| anthocnet − aomdv | **+47.64** [+46.83, +48.45] | **−5.90** [−6.23, −5.58] | **−7535** [−7615, −7446] | **−2.905** [−2.996, −2.815] | better on all four (p ≤ 9.6 × 10⁻⁵) |
 
-Paired, per seed (t-CI for PDR/NRL, bootstrap for `delay99`, two-sided
-Wilcoxon):
+**AntHocNet delivers within 2.70 pp of the oracle.** The other protocols'
+shortfalls from the oracle:
 
-| comparison | ΔPDR (pp) | ΔNRL | Δ`delay99` (ms) | verdict |
-|---|---|---|---|---|
-| anthocnet − aodv | **+11.48** [+10.72, +12.25] | **−1.14** [−1.26, −1.02] | **−430** [−669, −240] | improved on all three (p ≤ 4.2 × 10⁻⁴) |
-| anthocnet − olsr | **+42.76** [+41.80, +43.71] | +3.94 [+3.84, +4.04] | +249 [+245, +252] | delivery for overhead and tail |
+- AODV: 14.19 pp;
+- OLSR: 49.26 pp;
+- AOMDV: 50.34 pp;
+- DSDV: 54.59 pp.
 
-**AntHocNet delivers within 2.70 pp of the oracle**; AODV is 14.19 pp short,
-OLSR 45.46 and DSDV 54.59. The proactive baselines collapse on the MAC layer,
-not on routing: their drop books read `mac=38.80` (OLSR) and `mac=49.01`
-(DSDV). At 10–30 m/s their tables keep next hops that have already flown out
-of range, and each such packet burns its MAC retries before it is dropped.
-AntHocNet's loss is mostly reconvergence (`route=4.40 [reconv=3.93]`).
+The trailing three are close. OLSR leads AOMDV by only +1.08 pp
+[+0.11, +2.04], p = 0.044, on 13/20 seeds. Read that as a tie, not an
+ordering. Both lead DSDV with p ≤ 1.4 × 10⁻⁴.
+
+The trailing arms fail in different ways:
+
+- **OLSR and DSDV fail on the MAC layer.** Their drop books read
+  `mac=35.96` and `mac=49.01`. At 10–30 m/s their tables keep next hops that
+  have already flown out of range, and each such packet burns its MAC retries
+  before it is dropped. OLSR also refuses 8.20 % of offered sends at the
+  source, for want of any route.
+- **AOMDV fails in routing.** Its book reads `route=45.57`. Its multipath
+  discovery cannot keep alternate paths alive at these speeds, and what it
+  does deliver arrives late (`delay99` 7.8 s).
+- **AntHocNet's loss is mostly reconvergence** (`route=4.40 [reconv=3.93]`).
 
 **Do not read OLSR's or DSDV's tail as a win.** Their `delay99` is low because
-they deliver only the short, easy half of the traffic. A tail measured over 52
-% delivery is not comparable with one over 94 %
+they deliver only the short, easy half of the traffic. A tail measured over
+≤ 48 % delivery is not comparable with one over 94 %
 ([metrics.md](../metrics.md#delay99-is-not-comparable-across-arms-with-materially-different-pdr-415)).
-Against AODV, which delivers a comparable share, AntHocNet's tail is 430 ms
+AODV delivers a comparable share, and against it AntHocNet's tail is 430 ms
 shorter.
 
 ### Sparse cell (`--range=250`, the partition regime)
 
-| metric | anthocnet | aodv | olsr | dsdv | oracle (100 ms) |
-|---|---|---|---|---|---|
-| PDR % | **52.63 ± 1.65** | 48.76 ± 1.71 | 40.12 ± 1.11 | 17.91 ± 0.78 | 60.37 ± 1.86 |
-| mean delay (ms) | 32.21 ± 1.17 | 359.58 ± 27.49 | 4.60 ± 0.95 | 13.02 ± 4.71 | 5.60 ± 0.49 |
-| `delay99` (ms) | 505.0 [472.4, 538.5] | 5246.8 [4874.9, 5662.9] | 19.2 [18.4, 20.1] | 34.5 [31.0, 38.5] | 24.9 [24.3, 25.6] |
-| NRL | 16.32 ± 0.64 | 8.78 ± 0.21 | 7.18 ± 0.33 | 12.61 ± 0.51 | 0.00 |
+| metric | anthocnet | aodv | olsr | dsdv | aomdv | oracle (100 ms) |
+|---|---|---|---|---|---|---|
+| PDR % | **52.63 ± 1.65** | 48.76 ± 1.71 | 16.59 ± 0.75 | 17.91 ± 0.78 | 25.97 ± 0.97 | 60.37 ± 1.86 |
+| mean delay (ms) | 32.21 ± 1.17 | 359.58 ± 27.49 | 4.60 ± 0.95 | 13.02 ± 4.71 | 704.35 ± 48.83 | 5.60 ± 0.49 |
+| `delay99` (ms) | 505.0 [472.4, 538.5] | 5246.8 [4874.9, 5662.9] | 19.2 [18.4, 20.1] | 34.5 [31.0, 38.5] | 8588.0 [8383.9, 8785.9] | 24.9 [24.3, 25.6] |
+| NRL | 16.32 ± 0.64 | 8.78 ± 0.21 | 7.18 ± 0.33 | 12.61 ± 0.51 | 17.04 ± 0.52 | 0.00 |
+| energy (mJ/bit) | **5.161 ± 0.161** | 5.557 ± 0.194 | 16.352 ± 0.790 | 15.174 ± 0.650 | 10.433 ± 0.371 | 4.466 ± 0.138 |
 
-| comparison | ΔPDR (pp) | ΔNRL | Δ`delay99` (ms) |
-|---|---|---|---|
-| anthocnet − aodv | **+3.87** [+3.17, +4.56] | +7.54 [+7.06, +8.01] | **−4742** [−5146, −4374] |
-| anthocnet − olsr | **+12.51** [+10.44, +14.58] | +9.14 [+8.70, +9.59] | +486 [+454, +519] |
+| comparison | ΔPDR (pp) | ΔNRL | Δ`delay99` (ms) | Δenergy (mJ/bit) |
+|---|---|---|---|---|
+| anthocnet − aodv | **+3.87** [+3.17, +4.56] | +7.54 [+7.06, +8.01] | **−4742** [−5146, −4374] | **−0.396** [−0.475, −0.316] |
+| anthocnet − olsr | **+36.04** [+34.82, +37.25] | +9.14 [+8.70, +9.59] | +486 [+454, +519] | **−11.191** [−11.863, −10.520] |
+| anthocnet − dsdv | **+34.73** [+33.44, +36.01] | +3.72 [+3.19, +4.25] | +470 [+439, +503] | **−10.013** [−10.565, −9.462] |
+| anthocnet − aomdv | **+26.66** [+25.44, +27.88] | −0.72 [−1.42, −0.01] | **−8083** [−8276, −7875] | **−5.272** [−5.555, −4.989] |
 
-This cell is **partition-bound by design**, so its absolute PDR is not a
-measure of protocol quality. Even the oracle delivers only 60.37 %, and its
-drop book attributes 38.25 points to "no path existed", which no protocol can
-recover. Within that ceiling AntHocNet still leads every protocol (7.74 pp
-below the oracle; AODV 11.61, OLSR 20.25, DSDV 42.47). It pays for it in
-overhead: nearly twice AODV's NRL (16.32 vs 8.78), as its ants keep searching a graph that keeps
-splitting. AODV buffers packets for seconds waiting for a route that does not
-exist, which is its 5.2 s `delay99`.
+This cell is **partition-bound by design**, so its absolute PDR does not
+measure protocol quality. Even the oracle delivers only 60.37 %, and its drop
+book attributes 38.25 points to "no path existed", which no protocol can
+recover. Within that ceiling the protocols separate cleanly:
+
+`anthocnet > aodv > aomdv > dsdv > olsr`
+
+Every adjacent gap is significant. The narrowest is DSDV over OLSR, +1.31 pp
+[+0.97, +1.65], p = 1.1 × 10⁻⁴, 19/20 seeds.
+
+AntHocNet sits 7.74 pp below the oracle. It pays for that lead in overhead:
+nearly twice AODV's NRL (16.32 vs 8.78), as its ants keep searching a graph
+that keeps splitting. AODV buffers packets for seconds waiting for a route that
+does not exist, which is its 5.2 s `delay99`. OLSR refuses 60.35 % of offered
+sends at the source. That refusal is the share the pre-#510 PDR left out.
+
+### What this page does not measure
+
+- **Route stability.** The issue asks for route lifetime, route changes and
+  repair latency. That metric family (#294 item 4) does not exist in the
+  harness yet, so no route-stability column is published. The drop book's
+  AntHocNet `reconv`/`repair` split is the closest available signal.
+- **A geographic arm** (see above).
+- **Hop or latency bounds** (see the oracle section below).
 
 ### The oracle at FANET speeds
 
@@ -194,8 +262,15 @@ At 100 ms the oracle is above every arm on every seed in both cells, so the
 page.
 
 **Hops: not a bound on a moving field.** `scenario_check.py results` FAILs the
-identity-matched hop check: once in the main cell, and in the sparse cell on
-every seed against every arm, at 100 ms as well as 1 s. Two effects break the
+identity-matched hop check, at 100 ms as well as 1 s:
+
+- **Main cell:** 16 times on 10 seeds. Ten of those are against AOMDV, whose
+  few delivered packets are its shortest. Against the other arms it fails
+  only on seeds 7 and 12.
+- **Sparse cell:** on every seed against every arm.
+
+With AOMDV in the arm set, the common set shrinks to the packets every arm
+delivered, and in the sparse cell the oracle's excess grows to 1.0–2.1 hops. Two effects break the
 check's premise that the same packet crosses the same topology in every arm:
 
 - **Delay skew.** AODV holds matched packets for about 2 s in its discovery
@@ -213,6 +288,32 @@ delay columns above are measurements, not bounds.
 
 ## Provenance of the numbers
 
+**The published tables** come from the six-arm dispatches plus the #510 OLSR
+re-runs:
+
+| cell | arms | run | commit | cell file |
+|---|---|---|---|---|
+| main, 350 m | anthocnet, aodv, olsr, dsdv, aomdv, oracle (100 ms), `##ENERGY##` | [36957200584](https://github.com/danieljoppi/AntHocNet/actions/runs/36957200584) | `77098cfe` | `cells/fanet-main-6arm.txt` |
+| sparse, 250 m | same | [36957203615](https://github.com/danieljoppi/AntHocNet/actions/runs/36957203615) | `77098cfe` | `cells/fanet-sparse-6arm.txt` |
+| main, 350 m | olsr, #510 offered-based PDR | [36962716872](https://github.com/danieljoppi/AntHocNet/actions/runs/36962716872) | `bd1f4e49` | `cells/fanet-main-olsr510.txt` |
+| sparse, 250 m | olsr, #510 offered-based PDR | [36962719693](https://github.com/danieljoppi/AntHocNet/actions/runs/36962719693) | `bd1f4e49` | `cells/fanet-sparse-olsr510.txt` |
+
+`77098cfe` is the #508 branch head; its code is what merged as `a412ab0f`.
+`bd1f4e49` is the #511 branch head; its code is what merged as `f480d0ae`.
+
+**Controls:**
+
+- **The six-arm dispatches.** All 100 per-seed `##RUN##` rows of the five arms
+  measured before are byte-identical to the `0197fe66` dispatches below. Adding
+  AOMDV and `##ENERGY##` changed nothing else.
+- **The OLSR re-runs.** Every OLSR `##RUN##` column except PDR and the
+  offered-load percentiles (`off50`/`off90`, offered-based by construction) is
+  byte-identical to the six-arm dispatch. The new PDR matches #510's
+  delivered-bytes estimate to ≤ 0.08 pp on every seed.
+
+**The superseded first measurement (#482)** had four protocols plus the oracle,
+and OLSR's pre-#510 denominator:
+
 | cell | arms | run | commit | cell file |
 |---|---|---|---|---|
 | main, 350 m | anthocnet, aodv, olsr, dsdv (+ oracle at 1 s) | [36932609311](https://github.com/danieljoppi/AntHocNet/actions/runs/36932609311) | `54886e2a` | `cells/fanet-main.txt` |
@@ -220,17 +321,19 @@ delay columns above are measurements, not bounds.
 | main, 350 m | oracle at 100 ms (all five arms re-run) | [36936966493](https://github.com/danieljoppi/AntHocNet/actions/runs/36936966493) | `0197fe66` | `cells/fanet-main-oracle100ms.txt` |
 | sparse, 250 m | oracle at 100 ms (all five arms re-run) | [36936970028](https://github.com/danieljoppi/AntHocNet/actions/runs/36936970028) | `0197fe66` | `cells/fanet-sparse-oracle100ms.txt` |
 
-`0197fe66` differs from `54886e2a` by documentation and cell files only. The
-control: all 80 per-seed `##RUN##` rows of the four protocols (4 × 20 seeds)
-are byte-identical between the two dispatches of each cell.
+**Dispatch:** `paper-benchmark.yml` with
 
-Dispatch: `paper-benchmark.yml` with `scenario=fanet version=3.42-opt nNodes=30
-time=900 runs=20 areaX=1000 areaY=1000 pause=0 speed=30 range=350` (or `250`)
-`propagation=range mobility=gaussmarkov
-protocols=anthocnet,aodv,olsr,dsdv,oracle`. The 100 ms runs add
-`extraArgs=--ns3::oracle::Topology::RecomputeInterval=100ms`. `areaZ`,
+```
+scenario=fanet version=3.42-opt nNodes=30 time=900 runs=20
+areaX=1000 areaY=1000 pause=0 speed=30 range=350   # or range=250
+propagation=range mobility=gaussmarkov
+protocols=anthocnet,aodv,olsr,dsdv,aomdv,oracle
+extraArgs=--ns3::oracle::Topology::RecomputeInterval=100ms
+```
+
+The OLSR re-runs use `protocols=olsr` and no `extraArgs`. `areaZ`,
 `speedMin`, flows and rate come from the preset.
 
-`scenario_check.py results`: the oracle no-path WARNs are expected on a field
-that partitions, and the only FAILs are the hop-check class explained above.
-`bench_parse` column mapping is OK on all four cells.
+**`scenario_check.py results`:** the oracle no-path WARNs are expected on a
+field that partitions. The only FAILs are the hop-check class explained above.
+`bench_parse` column mapping is OK on every cell.
