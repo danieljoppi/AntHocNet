@@ -560,7 +560,7 @@ wall-clock ant metric also feels queueing delay, so the mac-metric-OFF arm is
 not fully blind. The truly load-blind references are the hop-count baseline
 (OLSR — not DSDV, which cannot run here at all, above) and the #216
 precomputed control, which has now run beside this cell — see
-[the measured corridor result](#the-corridor-cell-beating-the-congestion-blind-bound-216-cell-1--280),
+[the measured corridor result](#the-corridor-cell-beating-the-congestion-blind-bound-216-cell-1-280),
 where the OLSR reference did real work: it showed that landing on the clean
 corridor does not require congestion awareness. Judge the cell
 on the probe's counters and QoS across arms, not on the background's path.

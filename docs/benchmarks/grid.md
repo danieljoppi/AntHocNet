@@ -236,13 +236,13 @@ notes).
 ## The oracle control — how much of the shortfall is routing?
 
 This is the question the four-arm grid above cannot answer and the reason
-[phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control) exists. Every table
+[phase 3](v1.5.0-campaign.md#phase-3-the-oracle-control) exists. Every table
 so far compares protocols *to each other*; none of them says how much of the
 distance to **perfect** is protocol overhead and how much is the channel. The
 oracle — global-knowledge Dijkstra over the ground-truth topology, replayed as
 an `Ipv4RoutingProtocol`, emitting no control traffic whatsoever
 ([#415](https://github.com/danieljoppi/AntHocNet/issues/415); framing in
-[methodology.md](methodology.md#upper-bound--the-oracle-control-415)) — is the
+[methodology.md](methodology.md#upper-bound-the-oracle-control-415)) — is the
 arm that makes the split measurable.
 
 > **Read this section as the v1.5.0 phase-3 record, measured before #496.**
@@ -417,7 +417,7 @@ Note the shape of the two columns: the channel term is a property of the
 distinguishes the arms. AntHocNet's routing loss is **2.4× to 2.7× smaller than
 AODV's** on the fading cells (9.76 vs 26.05; 10.01 vs 26.54; 13.54 vs 32.18),
 which is the same ranking the paired
-[ΔPDR table](#anthocnet-vs-aodv--paired-per-seed) reports, now expressed
+[ΔPDR table](#anthocnet-vs-aodv-paired-per-seed) reports, now expressed
 against an absolute reference instead of against AODV.
 
 ### The caveat, stated with the numbers rather than under them
@@ -544,7 +544,7 @@ one at all is open, and if it does not, the answer is a probability-weighted
   arm (AntHocNet) reads 88.11–97.97 %, still below the oracle in every cell
   (by 0.23 pp at the tightest, ssrwp-tworay). A different-but-reasonable adjacency rule moves
   that by a fraction of a point and cannot move the margins, so the
-  [gap decomposition](#gap-decomposition--the-headline) and every PDR conclusion
+  [gap decomposition](#gap-decomposition-the-headline) and every PDR conclusion
   on this page stand.
 - **Latency — two-ray only.** The mean and tail advantages hold there with the
   graph error working *against* the oracle (missing links only, so the true

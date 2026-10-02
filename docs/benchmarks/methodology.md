@@ -171,10 +171,10 @@ written here — and each provenance carries its own quality risk.
 | `anthocnet` | subject under test | this repo (`core/` + `ns3/`) | measured everywhere |
 | `aodv`, `olsr`, `dsdv` | **replication anchors** | stock ns-3 modules, never vendored | the published corpus |
 | `gpsr` | **attempted → documented gap** (was: competitive frontier) | vendored third-party port, repaired here ([#412](https://github.com/danieljoppi/AntHocNet/pull/412)) | builds + ASan green, beacons correctly — and **delivers zero packets on 40/40 seeds** ([#425](https://github.com/danieljoppi/AntHocNet/issues/425)). Not a usable arm |
-| `oracle` | **upper bound** | written here ([`ns3/oracle/`](../../ns3/oracle/README.md), [#415](https://github.com/danieljoppi/AntHocNet/issues/415)) | **measured** in [phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control) — six grid cells (`approx=1`) and the exact `approx=0` [ISL torus](satellite/isl-grid.md) |
+| `oracle` | **upper bound** | written here ([`ns3/oracle/`](../../ns3/oracle/README.md), [#415](https://github.com/danieljoppi/AntHocNet/issues/415)) | **measured** in [phase 3](v1.5.0-campaign.md#phase-3-the-oracle-control) — six grid cells (`approx=1`) and the exact `approx=0` [ISL torus](satellite/isl-grid.md) |
 | `aomdv` | **attempted → documented gap** | vendored third-party port, repaired here ([#414](https://github.com/danieljoppi/AntHocNet/pull/414)) | builds on all five ns-3 versions; **does not route multi-hop** |
 | RL / DRL baseline | **deferred by design** | — | out of scope until [#293](https://github.com/danieljoppi/AntHocNet/issues/293) + [#295](https://github.com/danieljoppi/AntHocNet/issues/295) land |
-| Babel · BATMAN-adv · OLSRv2 | **decided against, for now** | — | [surveyed and declined](#modern-deployed-baseline--decided-not-skipped-item-4) |
+| Babel · BATMAN-adv · OLSRv2 | **decided against, for now** | — | [surveyed and declined](#modern-deployed-baseline-decided-not-skipped-item-4) |
 
 ### Replication anchors — AODV / OLSR / DSDV
 
@@ -299,7 +299,7 @@ Global-knowledge Dijkstra over the ground-truth topology, replayed as an
 `Ipv4RoutingProtocol`. **Not a protocol — a control**, and the only arm that can
 answer "how much of the gap between AntHocNet and perfect is protocol overhead?"
 The arm exists (`contrib/oracle`, off unless `--protocols` names it) and runs in
-both suites; its cells are [phase 3](v1.5.0-campaign.md#phase-3--the-oracle-control)
+both suites; its cells are [phase 3](v1.5.0-campaign.md#phase-3-the-oracle-control)
 of the v1.5.0 campaign. Design, evidence and the recompute-cadence tradeoff:
 [`ns3/oracle/README.md`](../../ns3/oracle/README.md).
 
