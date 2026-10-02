@@ -75,7 +75,7 @@ Probing `src/<module>/CMakeLists.txt` on `ns-3-dev` `master`:
 
 | module | present? | note |
 |---|---|---|
-| `aodv`, `olsr`, `dsdv`, `dsr` | ✅ | the classical set — this project's [replication anchors](methodology.md#replication-anchors--aodv--olsr--dsdv) are three of these |
+| `aodv`, `olsr`, `dsdv`, `dsr` | ✅ | the classical set — this project's [replication anchors](methodology.md#replication-anchors-aodv-olsr-dsdv) are three of these |
 | `mesh` | ✅ | IEEE 802.11s: peering management + **HWMP**. See [below](#the-second-thing-the-epic-did-not-predict-80211s-hwmp-is-already-in-stock-ns-3) |
 | `babel`, `batman`, `batmand`, `olsrv2`, `nhdp` | ❌ (404) | no modern deployed L3 protocol |
 | `aomdv`, `gpsr` | ❌ (404) | why both are vendored here at all ([#414](https://github.com/danieljoppi/AntHocNet/pull/414), [#412](https://github.com/danieljoppi/AntHocNet/pull/412)) |
@@ -88,7 +88,7 @@ And the ns-3 OLSR model's own documentation is explicit about its vintage:
 > — [`src/olsr/doc/olsr.rst`](https://raw.githubusercontent.com/nsnam/ns-3-dev-git/master/src/olsr/doc/olsr.rst)
 
 That file's *Scope and Limitations* also records two gaps worth carrying into
-the [anchors' quality-risk statement](methodology.md#replication-anchors--aodv--olsr--dsdv):
+the [anchors' quality-risk statement](methodology.md#replication-anchors-aodv-olsr-dsdv):
 the model does not respond to interface up/down notifications, and — unlike the
 NS-2 original it was ported from — "does not yet support MAC layer feedback as
 described in RFC 3626".

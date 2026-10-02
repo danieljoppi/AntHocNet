@@ -246,7 +246,7 @@ alternative that was on the table.
   protocol change, and would have to be measured against arm A.
 - **`postTx` and the `##REINJ##` books are AntHocNet-and-UDP only**, and absent
   (not zero) on the baselines and on TCP cells — see
-  [metrics.md](metrics.md#re-injection-identity--fate-reinj-386-ns-3-only-anthocnet--udp-only).
+  [metrics.md](metrics.md#re-injection-identity-fate-reinj-386-ns-3-only-anthocnet-udp-only).
 - **The uncapped drop-cause residue came in below its forecast** (+1.29 / +2.22
   against a pre-registered ≈ +3.3). Benign, and expected to differ: that
   forecast was calibrated at the 1 s hold cap while these cells ran at the
