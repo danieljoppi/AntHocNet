@@ -8,6 +8,20 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v1.7.0 (2026-10-02)
+
+### Feat
+
+- **bench**: emit the energy family per seed as ##ENERGY##, with energy per delivered bit (#508)
+- **bench**: --scenario=fanet preset, provenance, two 3-D anchors and the first FANET results (#482) (#505)
+- **bench**: teach preflight 3-D fields and the hello-vs-link-lifetime rule (#481) (#492)
+- **bench**: add --areaZ, a 3-D field for the FANET family (#480) (#491)
+
+### Fix
+
+- **bench**: count OLSR's source-refused sends as offered packets (#511)
+- **ns3**: desynchronise the hello and proactive timers (#496) (#497)
+
 ## v1.6.0 (2026-09-26)
 
 ### Feat
