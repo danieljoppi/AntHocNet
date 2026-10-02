@@ -15,7 +15,7 @@ Usage:
     scenario_check.py preflight [--nodes 50] [--areaX 1500] [--areaY 300] [--areaZ 0]
                                 [--range 300] [--time 300] [--pause 30]
                                 [--speed 20] [--flows 20] [--pktBytes 64]
-                                [--pktPerSec 1] [--rateMbps 2]
+                                [--pktPerSec 1 | --cbrBps 512] [--rateMbps 2]
         # defaults = the paper base scenario; override what your dispatch
         # overrides. Exit 1 on any FAIL-level degeneracy.
 
@@ -472,6 +472,8 @@ def sat_removals(spec, rows, cols, links):
 def cmd_preflight_sat(a):
     """#444: pre-flight an isl-grid cell (satellite counterpart of the MANET
     preflight below; see the SAT_* constants for where each rule comes from)."""
+    if getattr(a, "cbrBps", None) is None:
+        a.cbrBps = 4096.0
     rows, cols = a.rows, a.cols
     torus = str(a.torus).lower() not in ("false", "0")
     time = 60.0 if a.time is None else a.time
@@ -786,6 +788,23 @@ def cmd_preflight(a):
         a.flows = 20
     if a.protocols is None:
         a.protocols = "anthocnet,aodv,olsr,dsdv"
+    # #483: anthocnet-compare sets the per-flow rate with --cbrBps (the fanet
+    # preset uses 2048), but this preflight read only --pktPerSec, so a
+    # dispatch-faithful `--cbrBps 2048` was silently judged at 1 pkt/s: the
+    # offered load and the #230 window rule both used the wrong rate. Derive
+    # the packet rate from --cbrBps the way the harness does, and refuse a
+    # pair that disagrees rather than pick one silently.
+    cbr = getattr(a, "cbrBps", None)
+    pps = getattr(a, "pktPerSec", None)
+    if cbr is not None:
+        derived = cbr / (8.0 * a.pktBytes)
+        if pps is not None and abs(pps - derived) > 1e-9:
+            report("FAIL", f"--cbrBps {cbr:g} is {derived:g} pkt/s at "
+                           f"{a.pktBytes} B, but --pktPerSec says {pps:g}; "
+                           "pass one of them")
+        a.pktPerSec = derived
+    elif pps is None:
+        a.pktPerSec = 1.0
     # #481: --areaZ is the harness's 3-D field knob (#480). getattr keeps
     # callers that predate it (and the self-test's namespaces) on the 2-D path.
     area_z = getattr(a, "areaZ", 0.0) or 0.0
@@ -2221,7 +2240,9 @@ def main():
     # None = per-harness default (MANET 20 / isl-grid 4), same mechanism.
     p.add_argument("--flows", type=int, default=None)
     p.add_argument("--pktBytes", type=int, default=64)
-    p.add_argument("--pktPerSec", type=float, default=1)
+    # None = derived: from --cbrBps when it is given (the harness's own rate
+    # knob, #483), else 1 pkt/s (the paper base scenario).
+    p.add_argument("--pktPerSec", type=float, default=None)
     p.add_argument("--rateMbps", type=float, default=2)
     # kDefaultPathWindowS in ns3/examples/anthocnet-compare.cc (#217).
     p.add_argument("--pathWindowS", type=float, default=10)
@@ -2244,7 +2265,10 @@ def main():
     p.add_argument("--torus", choices=("true", "false"), default="true")
     p.add_argument("--islDelayMs", type=float, default=5.0)
     p.add_argument("--islRate", default="10Mbps")
-    p.add_argument("--cbrBps", type=float, default=4096.0)
+    # Per-flow CBR rate (bit/s). None = per-harness: isl-grid 4096; on the
+    # MANET harness it sets pktPerSec = cbrBps / (8 x pktBytes), exactly as
+    # anthocnet-compare's --cbrBps does (#483).
+    p.add_argument("--cbrBps", type=float, default=None)
     p.add_argument("--breakLink", default="")
     p.add_argument("--breakAt", type=float, default=0.0)
     p.add_argument("--corridorLoad", default="")
