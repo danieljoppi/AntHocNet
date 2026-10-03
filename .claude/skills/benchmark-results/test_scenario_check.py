@@ -1692,7 +1692,7 @@ def _oracle_common_hops_3d_warns():
             "range=350 propagation=range mobility=gaussmarkov transport=udp "
             "flows=10 cbrBps=2048 rateManager=constant2 protocols=aodv,oracle\n"
             + TWORAY_300_ORACLE_CELL)
-    levels, out = run_cell(cell)
+    _levels, out = run_cell(cell)
     expect("#506" in out and "1 seed x arm" in out, "oracle-common-hops-3d",
            f"the 3-D scoping WARN did not fire\n{out}")
     expect("on the common packet set, where survivorship" not in out,

@@ -1738,7 +1738,7 @@ def check_oracle(path, rows):
     # speed back at or below it. The excess is therefore not evidence of a
     # missing link there, and is reported once per file as a WARN instead of a
     # FAIL per seed; the planar corpus keeps the FAIL.
-    m_z = re.search(r"^##CONFIG## .*\bareaZ=([0-9.]+)", text, re.M)
+    m_z = re.search(r"^##CONFIG## .*\bareaZ=([0-9.]+)", text, re.MULTILINE)
     moving_3d = bool(m_z) and float(m_z.group(1)) > 0
     skipped_3d = 0
     for run in sorted(common_hops):
