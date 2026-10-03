@@ -2980,6 +2980,29 @@ int main(int argc, char* argv[]) {
     P.cbrBps  = cbrBps >= 0 ? cbrBps : ((thesis || fanet) ? 2048.0 : paper ? 512.0 : 8000.0);
     P.startWindow = (paper || fanet) ? 180.0 : 5.0;
     if (mobilityModel.empty()) mobilityModel = fanet ? "gaussmarkov" : "rwp";
+    // #506: the oracle control re-derives its graph every RecomputeInterval
+    // (1 s by default). At FANET closing speeds (up to 60 m/s) a 1 s-old graph
+    // routes over links that have already broken, and the oracle stops being a
+    // delivery bound -- measured: 88.89 % vs AntHocNet's 94.41 % on the main
+    // cell, 7.89 % MAC drops. At 100 ms it is above every arm on every seed
+    // (#506, both cells, 20 seeds). The oracle is the measuring instrument,
+    // not a protocol under test, so this is not the per-family protocol
+    // default ADR-0019 forbids. An explicit
+    // --ns3::oracle::Topology::RecomputeInterval=... on the command line
+    // still wins; no other scenario is touched.
+    if (fanet) {
+        bool explicitRecompute = false;
+        for (int k = 1; k < argc; ++k) {
+            if (std::string(argv[k]).find("oracle::Topology::RecomputeInterval")
+                != std::string::npos) {
+                explicitRecompute = true;
+            }
+        }
+        if (!explicitRecompute) {
+            Config::SetDefault("ns3::oracle::Topology::RecomputeInterval",
+                               TimeValue(MilliSeconds(100)));
+        }
+    }
     // An explicitly empty --propagation= has always meant "the default", and
     // scenario-matrix.yml documents its blank input that way; normalise it
     // rather than letting the guard below reject a working dispatch.
@@ -3157,6 +3180,27 @@ int main(int argc, char* argv[]) {
                 std::cout << "##CONFIG## attr " << info.name << '='
                           << info.initialValue->SerializeToString(info.checker)
                           << '\n';
+            }
+        }
+    }
+    // #506: the oracle's recompute cadence, when it is not the 1 s default.
+    // Printed only off-default so every existing oracle cell's ##CONFIG##
+    // block stays byte-identical; a FANET cell records its 100 ms here.
+    if (protocols.find("oracle") != std::string::npos) {
+        TypeId otid;
+        if (TypeId::LookupByNameFailSafe("ns3::oracle::Topology", &otid)) {
+            const std::size_t nO = otid.GetAttributeN();
+            for (std::size_t a = 0; a < nO; ++a) {
+                const TypeId::AttributeInformation info = otid.GetAttribute(a);
+                if (info.name != "RecomputeInterval") continue;
+                if (!info.initialValue || !info.checker) break;
+                const std::string v =
+                    info.initialValue->SerializeToString(info.checker);
+                if (v != "+1e+09ns") {
+                    std::cout << "##CONFIG## attr ns3::oracle::Topology::"
+                                 "RecomputeInterval=" << v << '\n';
+                }
+                break;
             }
         }
     }

@@ -1729,6 +1729,18 @@ def check_oracle(path, rows):
         if hops_c in (None, "na") or int(n_common) == 0 or float(hops_c) == 0.0:
             continue  # predates the hop instrumentation, or an empty set
         common_hops.setdefault(run, {})[proto] = float(hops_c)
+    # #506: on a 3-D (FANET) field the check's premise fails twice over --
+    # the "same" (flow, seq) is forwarded at different instants in each arm
+    # (AODV buffers it for seconds), and the oracle re-looks the route up at
+    # every hop in a graph that moves under the packet, so a delivered oracle
+    # path is a chain of several instants' shortest paths. Measured: at
+    # 10-30 m/s the oracle sits 0.6-0.7 matched hops above DSDV, at walking
+    # speed back at or below it. The excess is therefore not evidence of a
+    # missing link there, and is reported once per file as a WARN instead of a
+    # FAIL per seed; the planar corpus keeps the FAIL.
+    m_z = re.search(r"^##CONFIG## .*\bareaZ=([0-9.]+)", text, re.M)
+    moving_3d = bool(m_z) and float(m_z.group(1)) > 0
+    skipped_3d = 0
     for run in sorted(common_hops):
         o_hops_c = common_hops[run].get(ORACLE_PROTO)
         if o_hops_c is None:
@@ -1739,6 +1751,9 @@ def check_oracle(path, rows):
             p_hops_c = common_hops[run][name]
             excess = o_hops_c - p_hops_c
             if excess <= ORACLE_COMMON_HOP_EPS:
+                continue
+            if moving_3d:
+                skipped_3d += 1
                 continue
             mode = seed_mode.get(run)
             if (mode is not None and "p50-approx" in mode
@@ -1765,6 +1780,14 @@ def check_oracle(path, rows):
                                "by construction — the oracle's adjacency is "
                                "missing links the radios actually have, or "
                                "the solve/recompute is wrong (#431)")
+
+    if skipped_3d:
+        report("WARN", f"{os.path.basename(path)}: oracle identity-matched "
+                       f"hops exceed an arm's on {skipped_3d} seed x arm "
+                       "pair(s) of a 3-D field. Not a hop bound here (#506): "
+                       "matched packets are forwarded at different instants "
+                       "and the oracle re-routes per hop over a moving graph, "
+                       "so quote no hop or latency bound for this family")
 
     # --- cross-row: the bounds ---------------------------------------------
     groups = {}
