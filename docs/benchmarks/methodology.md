@@ -972,6 +972,40 @@ hellos in a row evicted a live neighbour, about 93 k spurious evictions per
   when a claim needs its shape at the current defaults. The per-merge scenario
   pages regenerate themselves and stamp their own commit.
 
+### #510: OLSR's PDR before `f480d0ae` omits source-refused sends
+
+This is not a protocol-behaviour change. It is a measurement defect found on
+2026-10-02, and its blast radius is recorded here so a pinned page is not
+misread.
+
+**The defect.** Stock ns-3 OLSR refuses a send when the source has no route.
+`RouteOutput` returns null, the socket send fails, and FlowMonitor never
+counts the packet. On ns-3.42, OnOff then retries the same packet, so no new
+one is generated. OLSR's PDR was therefore "delivered over the ticks it had a
+route for".
+
+**The fixes.**
+- [PR #511](https://github.com/danieljoppi/AntHocNet/pull/511) (`f480d0ae`) fixed `anthocnet-compare`.
+- [PR #516](https://github.com/danieljoppi/AntHocNet/pull/516) fixed `isl-grid` ([#513](https://github.com/danieljoppi/AntHocNet/issues/513)).
+- Both mirror the oracle's #466 fix.
+
+**What is unaffected.** Every other arm, and every OLSR column except PDR, the
+offered-load percentiles and the drop book.
+
+| where | status |
+|---|---|
+| [grid](grid.md), [FANET](scenarios/fanet.md), [satellite](satellite/isl-grid.md) | **restated** from 20-seed OLSR-only re-runs on the fix |
+| scenario taxonomy (per-merge refresh) | **regenerated** automatically after #511; e.g. dense-small OLSR 56.2 → 22.0 % |
+| [area](sweeps/area.md) / [pause](sweeps/pause.md) / [scale](sweeps/scale.md) sweeps (pinned `v1.3.0`) | **annotated** with a per-point offered-based estimate: −4.1…−11.2 / −0.3…−10.6 / 0…−1.7 pp |
+| [static mesh](static-mesh.md) | annotated: 100.00 → ≈ 99.95 %, no ordering change |
+| [tcp](tcp.md) | headline is goodput, which is unaffected; the UDP-ordering sentence is restated |
+
+**Quoting rule.** Treat an OLSR PDR from any cell measured before `f480d0ae`
+(MANET) or `152b8999` (satellite) as an upper bound on its offered-based
+value. The difference grows with how often the source has no route: about
+0 on a static or converged field, and up to 23.5 pp on the partition-bound
+sparse FANET cell.
+
 ### Run ID → commit
 
 Every campaign CSV under `docs/benchmarks/campaign/` is named after the Actions

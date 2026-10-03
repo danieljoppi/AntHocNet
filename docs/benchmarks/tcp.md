@@ -90,9 +90,13 @@ are for orientation.
 
 ## The ranking-inversion statement
 
-Under UDP/CBR the delivery ordering is `anthocnet > olsr > aodv > dsdv` — in
-all six [grid](grid.md) cells, including the `rwp × tworay` cell this arm
-re-ran as its control. Under TCP the goodput ordering is
+Under UDP/CBR the delivery ordering is `anthocnet > olsr > aodv > dsdv`. It
+holds in five of the six [grid](grid.md) cells, including the `rwp × tworay`
+cell this arm re-ran as its control. Since [#510](https://github.com/danieljoppi/AntHocNet/issues/510) made OLSR's
+PDR offered-based, `gaussmarkov × tworay` reads `anthocnet > aodv > olsr >
+dsdv`. The control cell keeps OLSR over AODV (88.41 vs 85.48), so the
+inversion below stands. TCP goodput counts delivered bytes, which #510 does
+not touch. Under TCP the goodput ordering is
 `anthocnet ≈ olsr > dsdv > aodv`:
 
 - **AODV falls from 3rd to last**, and the fall is not marginal — every one of
