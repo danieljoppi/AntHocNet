@@ -2266,6 +2266,67 @@ def _sat_manet_defaults_unchanged():
            f"the None fill changed MANET behaviour:\n{explicit}\nvs\n{filled}")
 
 
+# --- #294 item 4 route stability ---------------------------------------------
+# Rows shaped from a local 3.42 run of the paper field at pause=900, time=200,
+# propagation=range (seed 1): the oracle reads pathChg 0 exactly and every
+# single-path baseline's path length equals its TTL hop count.
+
+ROUTE_CONFIG_STATIC = (
+    "##CONFIG## scenario=paper nNodes=50 time=200 runs=1 firstRun=1 "
+    "areaX=1500 areaY=300 speed=20 pause=900 range=300 propagation=range "
+    "mobility=rwp transport=udp flows=20 cbrBps=512\n")
+ROUTE_ROWS = (
+    "##ROUTE## 1 anthocnet 2.0578 94.0028 0 0.07351 10.000 91 3.0397 3.0541\n"
+    "##ROUTE## 1 aodv 2.2718 14.0058 0 0.23022 6.000 256 3.0910 3.0910\n"
+    "##ROUTE## 1 olsr 2.0145 3.0072 0 0.00000 -1.000 0 2.9631 2.9631\n"
+    "##ROUTE## 1 oracle 2.0128 2.0417 0 0.00000 -1.000 0 2.9639 2.9639\n")
+
+
+@case("#294 coherent ##ROUTE## rows on a static disk field stay quiet")
+def _route_clean_quiet():
+    # AntHocNet's 3.0397 vs 3.0541 is the held-packet TTL offset, exempt by
+    # design; every other rule holds on these rows.
+    _levels, out = run_cell(ISL_CELL + ROUTE_CONFIG_STATIC + ROUTE_ROWS)
+    expect("#294" not in out, "route-clean", f"coherent rows flagged\n{out}")
+
+
+@case("#294 pathChg > 1, mis-mapped setup/lifetime and a baseline path/TTL "
+      "gap FAIL")
+def _route_incoherent_fires():
+    rows = (
+        "##ROUTE## 1 aodv 2.2718 14.0058 0 1.20000 6.000 256 3.0910 3.0910\n"
+        "##ROUTE## 2 aodv 14.0058 2.2718 0 0.20000 6.000 256 3.0910 3.0910\n"
+        "##ROUTE## 3 dsdv 2.0200 3.0145 0 0.19124 -1.000 249 3.2769 3.2769\n"
+        "##ROUTE## 4 olsr 2.0145 3.0072 0 0.00000 -1.000 0 2.5000 2.9631\n")
+    _levels, out = run_cell(ISL_CELL + rows)
+    for needle, name in (("pathChg 1.2 outside", "route-chg"),
+                         ("setup latency median 14.0058", "route-setup"),
+                         ("pathLifeN 249", "route-life"),
+                         ("path length 2.5 hops", "route-identity")):
+        expect(needle in out, name, f"expected {needle!r}\n{out}")
+
+
+@case("#294 the oracle control: path change on a static disk field FAILs, "
+      "the same row on a moving field is quiet")
+def _route_oracle_control():
+    row = "##ROUTE## 1 oracle 2.0128 2.0417 0 0.00100 40.0 3 2.9639 2.9639\n"
+    _levels, out = run_cell(ISL_CELL + ROUTE_CONFIG_STATIC + row)
+    expect("oracle pathChg 0.001 on a static disk" in out, "route-oracle",
+           f"a moving oracle path on a static field was not flagged\n{out}")
+    moving = ROUTE_CONFIG_STATIC.replace("pause=900", "pause=0")
+    _levels, out = run_cell(ISL_CELL + moving + row)
+    expect("#294" not in out, "route-oracle-moving",
+           f"an oracle path change on a moving field was flagged\n{out}")
+
+
+@case("#294 a ##ROUTE## row under transport=tcp FAILs")
+def _route_tcp_fires():
+    tcp = ROUTE_CONFIG_STATIC.replace("transport=udp", "transport=tcp")
+    _levels, out = run_cell(ISL_CELL + tcp + ROUTE_ROWS)
+    expect("under transport=tcp" in out, "route-tcp",
+           f"a TCP ##ROUTE## row was not flagged\n{out}")
+
+
 def main():
     for name, fn in CASES:
         fn()
