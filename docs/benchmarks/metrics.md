@@ -980,8 +980,12 @@ cross-arm comparison only between protocols of the same kind.
   asserted until the identity is checked on them.
 - **Range and mapping.** `pathChg` in [0, 1]; setup `-1/-1` or
   0 <= median <= max; `pathLifeMedS` is `-1` exactly when `pathLifeN` is 0.
-- **Absence.** No row under `transport=tcp`, where no `(flow, seq)` identity
-  exists. A row there FAILs (the #382 rule).
+- **Absence.** There is no row under `transport=tcp`, where no `(flow, seq)`
+  identity exists. There is also no row for **GPSR**: its own header sits
+  between IP and UDP, so the path hook cannot key its packets. The harness
+  suppresses any row whose hook recorded no path while packets were
+  delivered. A row with `pathHopsMean` 0 beside a positive `hopsMean`, or any
+  row under TCP, FAILs (the #382 rule).
 
 The marker is behaviour-invariant: every other output line is byte-identical
 to the previous binary (paper mobile with `--diag`, TCP, FANET and converge

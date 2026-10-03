@@ -1370,6 +1370,9 @@ def check_route(path):
     - The control: the oracle routes by deterministic Dijkstra over ground
       truth, so on a field that never moves (rwp with pause >= time) under the
       disk channel its path never changes. pathChg must read exactly 0.
+    - Blindness: pathHopsMean 0 beside a positive hopsMean means the hook
+      saw no delivered packet's path (GPSR's header sits between IP and UDP);
+      the harness suppresses that row, so a row like it FAILs.
     - Absence: under TCP there is no (flow, seq) identity, so a row is a
       wiring regression (the #382 rule).
     """
@@ -1411,6 +1414,11 @@ def check_route(path):
             report("FAIL", f"{tag}: pathLifeMedS {life_med} with pathLifeN "
                            f"{life_n:g} — the median is -1 exactly when no "
                            "path run completed (#294)")
+        if path_hops == 0.0 and hops > 0.0:
+            report("FAIL", f"{tag}: pathHopsMean 0 with hopsMean {hops} — "
+                           "packets were delivered but the path hook recorded "
+                           "none; the harness must emit no row for an arm it "
+                           "cannot see (#294 item 4, the #382 rule)")
         if proto in ROUTE_IDENTITY_ARMS and abs(path_hops - hops) > ROUTE_IDENTITY_TOL:
             report("FAIL", f"{tag}: path length {path_hops} hops vs TTL hop "
                            f"count {hops} — on a single-path IP-forwarding arm "

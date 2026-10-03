@@ -2616,7 +2616,6 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
     // #294 item 4 route stability (definitions in docs/benchmarks/metrics.md).
     if (g_routeOn) {
-        r.routeValid = true;
         std::vector<double> setup;
         for (std::size_t i = 0; i < g_flowFirstRx.size(); ++i) {
             if (g_flowFirstRx[i] < 0.0) { ++r.flowsNoDelivery; continue; }
@@ -2660,6 +2659,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         }
         r.pathHopsMean = delivered
             ? static_cast<double>(g_routeHopSum) / delivered : 0.0;
+        // A path hook that recorded nothing while packets were delivered is
+        // blind on this arm, not measuring zero churn: GPSR puts its own header
+        // between IP and UDP, so the (flow, seq) parse never matches. Emit no
+        // row there (absence, not zero — the #382 rule).
+        r.routeValid = !(g_hopCount > 0 && delivered == 0);
     }
     // Jain's fairness index over per-flow delivered-packet counts:
     //     J = (sum x_i)^2 / (n * sum x_i^2),  J in (0, 1], J = 1/n at maximum

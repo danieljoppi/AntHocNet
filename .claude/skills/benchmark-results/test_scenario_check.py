@@ -2290,19 +2290,21 @@ def _route_clean_quiet():
     expect("#294" not in out, "route-clean", f"coherent rows flagged\n{out}")
 
 
-@case("#294 pathChg > 1, mis-mapped setup/lifetime and a baseline path/TTL "
-      "gap FAIL")
+@case("#294 pathChg > 1, mis-mapped setup/lifetime, a baseline path/TTL "
+      "gap and a blind path hook FAIL")
 def _route_incoherent_fires():
     rows = (
         "##ROUTE## 1 aodv 2.2718 14.0058 0 1.20000 6.000 256 3.0910 3.0910\n"
         "##ROUTE## 2 aodv 14.0058 2.2718 0 0.20000 6.000 256 3.0910 3.0910\n"
         "##ROUTE## 3 dsdv 2.0200 3.0145 0 0.19124 -1.000 249 3.2769 3.2769\n"
-        "##ROUTE## 4 olsr 2.0145 3.0072 0 0.00000 -1.000 0 2.5000 2.9631\n")
+        "##ROUTE## 4 olsr 2.0145 3.0072 0 0.00000 -1.000 0 2.5000 2.9631\n"
+        "##ROUTE## 5 gpsr 2.0274 8.0230 0 0.00000 -1.000 0 0.0000 1.8309\n")
     _levels, out = run_cell(ISL_CELL + rows)
     for needle, name in (("pathChg 1.2 outside", "route-chg"),
                          ("setup latency median 14.0058", "route-setup"),
                          ("pathLifeN 249", "route-life"),
-                         ("path length 2.5 hops", "route-identity")):
+                         ("path length 2.5 hops", "route-identity"),
+                         ("pathHopsMean 0 with hopsMean 1.8309", "route-blind")):
         expect(needle in out, name, f"expected {needle!r}\n{out}")
 
 
