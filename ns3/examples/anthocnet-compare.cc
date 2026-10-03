@@ -357,6 +357,29 @@ std::map<Address, std::map<uint32_t, uint32_t>> g_rxHopsBySeq;
 // block further down (see "re-injection identity & fate").
 std::map<Address, std::map<uint32_t, uint32_t>> g_rxCount;
 
+// --- route stability (#294 item 4) -------------------------------------------
+// The path a delivered packet took: the node IDs that handed it to a real
+// interface at the IP layer, in transmission order (the source, then every
+// forwarder). Protocol-agnostic — it is the same Ipv4L3Protocol "Tx" hook the
+// #215 hop tallies use — so every arm is measured identically, the oracle
+// included. UDP arms only: the (flow, seq) identity does not exist under TCP.
+//
+// g_routePending collects hops per in-flight (flow, seq); the first delivery
+// moves the path, interned to a small id, and the packet's send time into
+// g_routeRx. A packet more than kRouteWindowSeq sequence numbers behind its
+// flow's latest delivery is pruned from the pending map: at the harness's CBR
+// rates that is minutes of simulated time, longer than any queue or hold.
+bool g_routeOn = false;
+std::map<Address, std::map<uint32_t, std::vector<uint32_t>>> g_routePending;
+std::map<std::vector<uint32_t>, uint32_t> g_routeIds;
+struct RouteRx {
+    uint32_t pathId;
+    double sendS;
+};
+std::map<Address, std::map<uint32_t, RouteRx>> g_routeRx;
+uint64_t g_routeHopSum = 0;  // sum over first deliveries of path length (hops)
+constexpr uint32_t kRouteWindowSeq = 1000;
+
 void RecordRxSeq(Ptr<const Packet> p, const Address& from) {
     SeqTsSizeHeader h;
     p->PeekHeader(h);
@@ -602,9 +625,17 @@ void CountReinjL3Drop(const Ipv4Header& ip, Ptr<const Packet> p,
     }
 }
 
-void CountDataHopTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
+void CountDataHopTx(Ptr<const Packet> p, Ptr<Ipv4> ipv4, uint32_t iface) {
     if (iface != 0 && IsDataIp(p)) {
         ++g_dataHopTx;
+        if (g_routeOn) {  // #294 item 4: this node is on the packet's path
+            Address flow;
+            uint32_t seq = 0;
+            if (ReinjKeyFromIp(p, flow, seq)) {
+                g_routePending[flow][seq].push_back(
+                    ipv4->GetObject<Node>()->GetId());
+            }
+        }
         // #386: subsequent hops of re-injected packets. g_reinj only fills on
         // the anthocnet arm (the trace is connected nowhere else), so the
         // emptiness gate keeps the extra parse off every other arm.
@@ -1073,6 +1104,25 @@ void CountDeliveredHops(const Ipv4Header& ip, Ptr<const Packet> p, uint32_t) {
     if (body->PeekHeader(seqTs) == 0) return;
     const Address flow = InetSocketAddress(ip.GetSource(), udp.GetSourcePort());
     g_rxHopsBySeq[flow][seqTs.GetSeq()] = hops;
+
+    // #294 item 4: close this packet's path on its FIRST delivery. A duplicate
+    // (#386 re-injection) finds no pending entry, or a fresh one that only
+    // holds the copy's later hops, and is ignored either way.
+    if (!g_routeOn) return;
+    const uint32_t seq = seqTs.GetSeq();
+    auto& pend = g_routePending[flow];
+    auto& rx = g_routeRx[flow];
+    const auto it = pend.find(seq);
+    if (it != pend.end() && rx.find(seq) == rx.end()) {
+        g_routeHopSum += it->second.size();
+        const auto id = g_routeIds.emplace(
+            it->second, static_cast<uint32_t>(g_routeIds.size()));
+        rx[seq] = RouteRx{id.first->second, seqTs.GetTs().GetSeconds()};
+    }
+    if (it != pend.end()) pend.erase(it);
+    if (seq > kRouteWindowSeq) {
+        pend.erase(pend.begin(), pend.lower_bound(seq - kRouteWindowSeq));
+    }
 }
 
 void SampleQueues(NodeContainer nodes, double period, double until) {
@@ -1216,6 +1266,17 @@ struct Result {
     double divMax = 0.0;         // max distinct used next hops in any one cell
     double divEntropyBits = 0.0; // mean Shannon entropy (bits) of the split
     double jain = 0.0;           // Jain's index over per-flow delivered packets
+    // #294 item 4 route stability; ##ROUTE## is emitted only when routeValid
+    // (UDP arms). setup* are -1 when no flow delivered or in converge mode,
+    // where flows share one sink and there is no per-flow first delivery.
+    bool routeValid = false;
+    double setupMedS = -1.0;     // median per-flow first delivery - app start
+    double setupMaxS = -1.0;     // worst flow's setup latency
+    uint32_t flowsNoDelivery = 0;
+    double pathChg = 0.0;        // fraction of consecutive delivered pairs whose path differs
+    double pathLifeMedS = -1.0;  // median completed path lifetime (s); -1 = none completed
+    uint64_t pathLifeN = 0;      // completed (uncensored) path runs
+    double pathHopsMean = 0.0;   // mean path length over first deliveries
 };
 
 Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
@@ -1244,6 +1305,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_rxDelayBySeq.clear();  // #308
     g_rxHopsBySeq.clear();   // #308 phase 2
     g_rxCount.clear();       // #386
+    g_routeOn = P.transport != "tcp";  // #294 item 4
+    g_routePending.clear();
+    g_routeIds.clear();
+    g_routeRx.clear();
+    g_routeHopSum = 0;
     g_reinj.clear();         // #386
     g_reinjEvents = g_reinjParsed = g_reinjOfDelivered = 0;  // #386
     g_reinjUnparsedIcmp = g_reinjUnparsedOther = 0;          // #386
@@ -1858,16 +1924,24 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         }
     }
 
-    if (g_diag) {
-        // First-delivery timestamp from every data sink (all protocols), plus
-        // per-flow first-Rx for the #23 setup-latency metric (default pairing
-        // only; converge mode has one shared sink and no per-flow mapping).
-        g_flowFirstRx.assign(g_flowStart.size(), -1.0);
+    // Per-flow first-Rx for the #23 setup latency (default pairing only;
+    // converge mode has one shared sink and no per-flow mapping). Connected on
+    // every run since #294 item 4 made the latency a ##ROUTE## column rather
+    // than a --diag extra; the hook is read-only.
+    const bool perFlowSinks = !converge && sinks.GetN() == g_flowStart.size();
+    g_flowFirstRx.assign(g_flowStart.size(), -1.0);
+    if (perFlowSinks) {
         for (uint32_t i = 0; i < sinks.GetN(); ++i) {
-            if (!converge && sinks.GetN() == g_flowStart.size()) {
-                sinks.Get(i)->TraceConnectWithoutContext(
-                    "Rx", MakeBoundCallback(&DiagSinkRxFlow, i));
-            } else {
+            sinks.Get(i)->TraceConnectWithoutContext(
+                "Rx", MakeBoundCallback(&DiagSinkRxFlow, i));
+        }
+    }
+
+    if (g_diag) {
+        // First-delivery timestamp from every data sink (all protocols). With
+        // per-flow sinks DiagSinkRxFlow above already records it.
+        if (!perFlowSinks) {
+            for (uint32_t i = 0; i < sinks.GetN(); ++i) {
                 sinks.Get(i)->TraceConnectWithoutContext("Rx", MakeCallback(&DiagSinkRx));
             }
         }
@@ -2539,6 +2613,58 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     r.divEntropyBits =
         g_divCells ? g_divEntSum / static_cast<double>(g_divCells) : 0.0;
     r.divMax = static_cast<double>(g_divMax);
+
+    // #294 item 4 route stability (definitions in docs/benchmarks/metrics.md).
+    if (g_routeOn) {
+        std::vector<double> setup;
+        for (std::size_t i = 0; i < g_flowFirstRx.size(); ++i) {
+            if (g_flowFirstRx[i] < 0.0) { ++r.flowsNoDelivery; continue; }
+            setup.push_back(g_flowFirstRx[i] - g_flowStart[i]);
+        }
+        if (!setup.empty()) {
+            std::sort(setup.begin(), setup.end());
+            r.setupMedS = setup[setup.size() / 2];
+            r.setupMaxS = setup.back();
+        }
+        // Per flow, in sequence order: a change is a consecutive pair of
+        // delivered packets on different paths. A run is a maximal stretch on
+        // one path; its lifetime is the send-time span from its first packet to
+        // the first packet of the next run. A flow's last run is censored by
+        // the end of the flow and is not counted.
+        uint64_t pairs = 0, changes = 0, delivered = 0;
+        std::vector<double> life;
+        for (const auto& [flow, bySeq] : g_routeRx) {
+            const RouteRx* prev = nullptr;
+            double runStart = 0.0;
+            for (const auto& [seq, rx] : bySeq) {
+                ++delivered;
+                if (prev == nullptr) {
+                    runStart = rx.sendS;
+                } else {
+                    ++pairs;
+                    if (rx.pathId != prev->pathId) {
+                        ++changes;
+                        life.push_back(rx.sendS - runStart);
+                        runStart = rx.sendS;
+                    }
+                }
+                prev = &rx;
+            }
+        }
+        r.pathChg = pairs ? static_cast<double>(changes) / pairs : 0.0;
+        r.pathLifeN = life.size();
+        if (!life.empty()) {
+            std::sort(life.begin(), life.end());
+            r.pathLifeMedS = life[life.size() / 2];
+        }
+        r.pathHopsMean = delivered
+            ? static_cast<double>(g_routeHopSum) / delivered : 0.0;
+        // A path hook that recorded nothing while packets were delivered is
+        // blind on this arm, not measuring zero churn: GPSR puts its own header
+        // between IP and UDP, so the (flow, seq) parse never matches. Emit no
+        // row there (absence, not zero — the #382 rule).
+        r.routeValid = !(g_hopCount > 0 && delivered == 0);
+    }
     // Jain's fairness index over per-flow delivered-packet counts:
     //     J = (sum x_i)^2 / (n * sum x_i^2),  J in (0, 1], J = 1/n at maximum
     // unfairness (one flow gets everything), J = 1 when every flow gets the
@@ -3318,6 +3444,21 @@ int main(int argc, char* argv[]) {
             // -- not pdr, not thrput -- is the cell's headline.
             std::cout << std::fixed << "##GOODPUT## " << s << ' ' << list[i]
                       << ' ' << std::setprecision(3) << r.goodputKbps << "\n";
+            // #294 item 4: route stability per seed. UDP arms only — absent,
+            // not zero, under TCP, where the (flow, seq) path identity does
+            // not exist (the #382 rule).
+            if (r.routeValid) {
+                std::cout << std::fixed << "##ROUTE## " << s << ' ' << list[i]
+                          << ' ' << std::setprecision(4) << r.setupMedS
+                          << ' ' << std::setprecision(4) << r.setupMaxS
+                          << ' ' << r.flowsNoDelivery
+                          << ' ' << std::setprecision(5) << r.pathChg
+                          << ' ' << std::setprecision(3) << r.pathLifeMedS
+                          << ' ' << r.pathLifeN
+                          << ' ' << std::setprecision(4) << r.pathHopsMean
+                          << ' ' << std::setprecision(4) << r.hopsMean
+                          << "\n";
+            }
             agg[i].pdr += r.pdr;
             agg[i].delay += r.meanDelayMs;
             agg[i].delay99 += r.delay99Ms;

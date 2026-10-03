@@ -927,6 +927,75 @@ for every arm on a seed, and the per-delivered figures move almost exactly as
 evidence; one that departs from it is the interesting case, and points at a
 difference in transmit/receive airtime (`##AIR##`).
 
+## Route stability (`##ROUTE##`, #294 item 4, NS-3 only, UDP only)
+
+```
+##ROUTE## <run> <proto> <setupMedS> <setupMaxS> <flowsNoDelivery> <pathChg> <pathLifeMedS> <pathLifeN> <pathHopsMean> <hopsMean>
+```
+
+One row per (seed, protocol). It answers "how long until a flow's first
+packet arrives, and how often does a flow's path change". It is measured
+identically for every arm, because the path comes from the IP layer, not from
+the protocol.
+
+**The path of a packet** is the ordered list of nodes that handed it to a
+radio interface: the Ipv4L3Protocol `Tx` trace on a non-loopback interface,
+keyed by `(flow, seq)` like [`##COMMON##`](#common-set-delay99-common-308-phase-1).
+That is the source followed by every forwarder. It is fixed at the packet's
+**first** delivery, so a #386 duplicate does not count twice.
+
+| field | definition |
+|---|---|
+| `setupMedS`, `setupMaxS` | Per flow, the sink's first delivery minus the application start time; median and maximum over flows. This is #23's latency, promoted out of `--diag`. `-1` when no flow delivered, and in converge (`--sink`) mode, where flows share a sink. |
+| `flowsNoDelivery` | Flows with no delivered packet at all. They are excluded from the setup columns, so read the two together. |
+| `pathChg` | Per flow, in sequence order: the fraction of consecutive delivered pairs whose paths differ, pooled over flows. In [0, 1]. |
+| `pathLifeMedS`, `pathLifeN` | A *path run* is a maximal stretch of one flow's delivered packets on one path. Its lifetime is the send-time span from its first packet to the first packet of the next run. A flow's last run is cut off by the end of the flow and is not counted. These are the median lifetime and the number of completed runs; `-1` / `0` when none completed. |
+| `pathHopsMean` | Mean path length (hops) over first deliveries. |
+| `hopsMean` | The #217 TTL-based mean, repeated here so the identity below is readable from one row. |
+
+**Read `setup*` relative to the oracle, not as an absolute.** The latency
+includes the source's own schedule: on the harness's current `OnOffApplication`
+settings the first packet leaves 2 s after the start time
+([#521](https://github.com/danieljoppi/AntHocNet/issues/521)). The oracle, which
+needs no discovery, reads 2.01–2.04 s on the paper field. The excess over the
+oracle is the discovery cost.
+
+**Read `pathChg` for AntHocNet as spreading, not instability.** A multipath
+protocol changes path on purpose from packet to packet, so its `pathChg`
+measures how widely it spreads load as well as how often routes break. For the
+single-path arms it is route churn. Like the reordering columns, it is a
+cross-arm comparison only between protocols of the same kind.
+
+### Controls (`scenario_check.py results`, `check_route`)
+
+- **Oracle on a static disk field.** On rwp with `pause >= time` and
+  `propagation=range`, the oracle's deterministic Dijkstra sees a topology that
+  never changes, so `pathChg` must read exactly 0, and `pathLifeN` 0. It does
+  (paper field, 200 s, seeds 1–2). Any other value FAILs.
+- **Path identity.** On `aodv`, `olsr`, `dsdv` and `oracle` each hop is one
+  `Tx` and one TTL decrement, so `pathHopsMean == hopsMean` (to 0.001). A gap
+  FAILs: the hook missed hops or mis-keyed them. AntHocNet is exempt and reads
+  slightly lower, because of the held-packet TTL offset in the
+  [route-quality caveats](#caveats-route-quality). GPSR and AOMDV are not
+  asserted until the identity is checked on them.
+- **Range and mapping.** `pathChg` in [0, 1]; setup `-1/-1` or
+  0 <= median <= max; `pathLifeMedS` is `-1` exactly when `pathLifeN` is 0.
+- **Absence.** There is no row under `transport=tcp`, where no `(flow, seq)`
+  identity exists. There is also no row for **GPSR**: its own header sits
+  between IP and UDP, so the path hook cannot key its packets. The harness
+  suppresses any row whose hook recorded no path while packets were
+  delivered. A row with `pathHopsMean` 0 beside a positive `hopsMean`, or any
+  row under TCP, FAILs (the #382 rule).
+
+The marker is behaviour-invariant: every other output line is byte-identical
+to the previous binary (paper mobile with `--diag`, TCP, FANET and converge
+cells).
+
+**Not in this row yet:** reconvergence time after a topology event (#294
+item 4's last sub-item). The MANET harness has no scripted event to measure
+from. The satellite `# failcell` `tDetect` / `tReconverge` row remains the only
+such measurement.
+
 ## Drop causes (#215, NS-3 only)
 
 PDR says how many packets went missing. These columns say **why**, as a
@@ -1321,15 +1390,20 @@ not a blank column.
 > falsifiable control `path_div_used` never had. `path_hops_*` and `jain_pkts`
 > are unaffected by all of this and readable from any cell.
 
-- **Reactive protocols read one hop high on route-discovery packets.** A
+- **AntHocNet reads one hop high on packets it held at the source.** A
   protocol with no route yet bounces the packet through the loopback device to
   reach `RouteInput` (AODV and this adapter both do); the packet then leaves via
-  `IpForward`, costing one TTL decrement that no radio carried. Those packets
-  report one hop too many, so `path_hops_mean` for `anthocnet`/`aodv` is a
-  slight over-estimate, bounded by (route discoveries)/(delivered packets) — a
-  fraction of a percent in the paper scenario, larger where routes break often.
-  FlowMonitor's `timesForwarded` counts the same bounce, so this is a property
-  of the loopback idiom, not of the TTL route to the number.
+  `IpForward`, costing one TTL decrement that no radio carried. ns-3's AODV
+  adds that decrement back (`SendPacketFromQueue`: "compensate extra TTL
+  decrement by fake loopback routing"); the AntHocNet adapter does not
+  ([#522](https://github.com/danieljoppi/AntHocNet/issues/522)). So
+  `path_hops_mean` for `anthocnet` is a slight over-estimate, bounded by
+  (held packets)/(delivered packets). It is +0.014 hops on a static paper field
+  (18 of ~1300 packets) and larger where routes break often. AODV reads
+  exactly. The `##ROUTE##` path identity below measured this: its path length
+  equals the TTL hop count to four decimals on `aodv`, `olsr`, `dsdv` and
+  `oracle`, and sits below it on `anthocnet`. *(Corrected by #294 item 4. This
+  bullet used to say AODV read high too.)*
 - **Diversity is measured on acknowledged unicasts only.** Broadcast frames are
   never acknowledged; that is correct here (routing control must not count as a
   used data path) but it also means a protocol that delivered data over

@@ -1339,6 +1339,98 @@ def check_drop_identity(path):
                        "refutes it and the cause is something else.")
 
 
+# #294 item 4: per-run route-stability rows, UDP arms only.
+#   ##ROUTE## <run> <proto> <setupMedS> <setupMaxS> <flowsNoDelivery> <pathChg>
+#             <pathLifeMedS> <pathLifeN> <pathHopsMean> <hopsMean>
+ROUTE_LINE = re.compile(
+    r"^\s*##ROUTE##\s+(\d+)\s+([a-z][\w-]*)((?:\s+[-\d.]+){8})\s*$")
+# Arms whose path identity is measured exactly: single-path, and every hop
+# goes through Ipv4L3Protocol's forward path with one TTL decrement and one
+# "Tx". AntHocNet is excluded on purpose — see check_route. GPSR and AOMDV
+# are excluded until the identity is verified on them.
+ROUTE_IDENTITY_ARMS = ("aodv", "olsr", "dsdv", "oracle")
+ROUTE_IDENTITY_TOL = 0.001  # hops; the row prints both means to 4 decimals
+
+
+def check_route(path):
+    """#294 item 4: the ##ROUTE## route-stability rows.
+
+    Every rule is an a-priori fact, not a tolerance on a measured value:
+
+    - pathChg is a fraction of consecutive delivered pairs, so in [0, 1];
+      setup latencies are -1 (no flow delivered / converge mode) or >= 0 with
+      median <= max; pathLifeMedS is -1 exactly when no run completed.
+    - Path identity. On an arm in ROUTE_IDENTITY_ARMS a delivered packet's
+      path length (IP "Tx" events) equals its TTL hop count, so the row's two
+      means must agree. A gap means the path hook missed hops or keyed them to
+      the wrong (flow, seq). AntHocNet is exempt: a packet it held at the
+      source is released through IpForward, which decrements the TTL once
+      more than the path has hops (measured: 18 of ~1300 packets, +0.014
+      hops on the mean), and #386 re-injection adds "Tx" events.
+    - The control: the oracle routes by deterministic Dijkstra over ground
+      truth, so on a field that never moves (rwp with pause >= time) under the
+      disk channel its path never changes. pathChg must read exactly 0.
+    - Blindness: pathHopsMean 0 beside a positive hopsMean means the hook
+      saw no delivered packet's path (GPSR's header sits between IP and UDP);
+      the harness suppresses that row, so a row like it FAILs.
+    - Absence: under TCP there is no (flow, seq) identity, so a row is a
+      wiring regression (the #382 rule).
+    """
+    with open(path) as fh:
+        text = fh.read()
+    if "##ROUTE##" not in text:
+        return
+    base = os.path.basename(path)
+    cfg = re.search(r"^##CONFIG## scenario=.*$", text, re.MULTILINE)
+    kv = dict(re.findall(r"(\w+)=(\S+)", cfg.group(0))) if cfg else {}
+    if kv.get("transport") == "tcp":
+        report("FAIL", f"{base}: ##ROUTE## rows under transport=tcp — the "
+                       "(flow, seq) path identity does not exist there and the "
+                       "row must be absent (#294 item 4, the #382 rule)")
+    static_disk = False
+    try:
+        static_disk = (kv.get("mobility") == "rwp"
+                       and kv.get("propagation") == "range"
+                       and float(kv["pause"]) >= float(kv["time"]))
+    except (KeyError, ValueError):
+        pass
+    for line in text.splitlines():
+        m = ROUTE_LINE.match(line)
+        if not m:
+            continue
+        seed, proto = m.group(1), m.group(2)
+        (set_med, set_max, _no_deliv, chg, life_med, life_n, path_hops,
+         hops) = (float(x) for x in m.group(3).split())
+        tag = f"{base}/{proto} seed {seed}"
+        if not 0.0 <= chg <= 1.0:
+            report("FAIL", f"{tag}: pathChg {chg} outside [0, 1] — it is a "
+                           "fraction of consecutive delivered pairs (#294)")
+        if (set_med < 0.0) != (set_max < 0.0) or (
+                set_med >= 0.0 and set_med > set_max):
+            report("FAIL", f"{tag}: setup latency median {set_med} s vs max "
+                           f"{set_max} s — both -1 or 0 <= median <= max; the "
+                           "fields are mis-mapped (#294)")
+        if (life_n == 0) != (life_med < 0.0):
+            report("FAIL", f"{tag}: pathLifeMedS {life_med} with pathLifeN "
+                           f"{life_n:g} — the median is -1 exactly when no "
+                           "path run completed (#294)")
+        if path_hops == 0.0 and hops > 0.0:
+            report("FAIL", f"{tag}: pathHopsMean 0 with hopsMean {hops} — "
+                           "packets were delivered but the path hook recorded "
+                           "none; the harness must emit no row for an arm it "
+                           "cannot see (#294 item 4, the #382 rule)")
+        if proto in ROUTE_IDENTITY_ARMS and abs(path_hops - hops) > ROUTE_IDENTITY_TOL:
+            report("FAIL", f"{tag}: path length {path_hops} hops vs TTL hop "
+                           f"count {hops} — on a single-path IP-forwarding arm "
+                           "they are the same number, so the path hook missed "
+                           "hops or mis-keyed them (#294 item 4)")
+        if proto == "oracle" and static_disk and chg != 0.0:
+            report("FAIL", f"{tag}: oracle pathChg {chg} on a static disk "
+                           "field — Dijkstra over a topology that never "
+                           "changes picks the same path every time, so the "
+                           "control must read exactly 0 (#294 item 4)")
+
+
 def check_reinj(path):
     """#386: the re-injection identity/fate books must be internally coherent.
 
@@ -1842,6 +1934,7 @@ def cmd_results(a):
         check_provenance(path)
         check_drop_identity(path)
         check_reinj(path)
+        check_route(path)
         rows = list(parse_results(path))
         check_path_diversity(rows)
         check_oracle(path, rows)

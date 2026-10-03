@@ -309,6 +309,10 @@ jobs:
           # that emits them — same rule as ##AIR##, whose gate they share.
           grep '^##ENERGY##' "$GITHUB_WORKSPACE/paper-results.txt" \
             >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
+          # #294 item 4: per-seed route-stability rows (UDP arms), added in
+          # the same commit that emits them — same rule as the rows above.
+          grep '^##ROUTE##' "$GITHUB_WORKSPACE/paper-results.txt" \
+            >> "$GITHUB_WORKSPACE/bench-rows.txt" || true
           # #308 phase 2 step 4: pending-queue hold rows. Added in the same
           # commit that emits them — and this marker exists BECAUSE the rule was
           # only half-followed before: the hold numbers were measured from #104
