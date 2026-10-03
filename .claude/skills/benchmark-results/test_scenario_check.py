@@ -1681,6 +1681,38 @@ def _oracle_common_hops_fires():
            f"expected a FAIL, got {levels}\n{out}")
 
 
+@case("#506 the same matched-hop excess on a 3-D field WARNs, not FAILs")
+def _oracle_common_hops_3d_warns():
+    # Identical rows to the #431 FAIL fixture above, plus the ##CONFIG## row
+    # of a 3-D (FANET) cell. There the check's premise fails (matched packets
+    # are forwarded at different instants, and the oracle re-routes per hop
+    # over a moving graph), so the excess is reported once per file as a WARN.
+    cell = ("##CONFIG## scenario=fanet nNodes=30 time=900 runs=1 firstRun=1 "
+            "areaX=1000 areaY=1000 areaZ=300 speed=30 speedMin=10 pause=0 "
+            "range=350 propagation=range mobility=gaussmarkov transport=udp "
+            "flows=10 cbrBps=2048 rateManager=constant2 protocols=aodv,oracle\n"
+            + TWORAY_300_ORACLE_CELL)
+    _levels, out = run_cell(cell)
+    expect("#506" in out and "1 seed x arm" in out, "oracle-common-hops-3d",
+           f"the 3-D scoping WARN did not fire\n{out}")
+    expect("on the common packet set, where survivorship" not in out,
+           "oracle-common-hops-3d-nofail",
+           f"a 3-D cell still FAILed the matched-hop bound\n{out}")
+
+
+@case("#506 a planar ##CONFIG## (areaZ=0) keeps the matched-hop FAIL")
+def _oracle_common_hops_planar_fails():
+    cell = ("##CONFIG## scenario=paper nNodes=20 time=120 runs=1 firstRun=1 "
+            "areaX=1500 areaY=300 areaZ=0 speed=20 pause=30 range=300 "
+            "propagation=tworay mobility=rwp transport=udp flows=5 "
+            "cbrBps=512 rateManager=constant2 protocols=aodv,oracle\n"
+            + TWORAY_300_ORACLE_CELL)
+    levels, out = run_cell(cell)
+    expect("FAIL" in levels and "+0.450" in out and "#506" not in out,
+           "oracle-common-hops-planar",
+           f"the planar matched-hop FAIL was lost\n{out}")
+
+
 @case("#431 the derived decode radius' matched hops stay quiet (and coherent)")
 def _oracle_common_hops_quiet():
     _, out = run_cell(TWORAY_423_ORACLE_CELL)

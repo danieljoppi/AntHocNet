@@ -104,7 +104,7 @@ with only the field shrunk, and route only stock AODV and the oracle control.
 | anchor | field | expected (derived) | measured | what it checks |
 |---|---|---|---|---|
 | `fanet-single-hop-3d` | 10 nodes, 100 m cube, 350 m | the 173 m diagonal keeps every pair in range, so every flow is one hop: **PDR ≈ 100 %** and oracle **hopsMean = 1.00** exactly | AODV 100.0 %, oracle 100.0 %, hopsMean 1.00 | 3-D placement, mobility and channel deliver at all |
-| `fanet-vertical-3d` | 10 nodes, 10 × 10 × 1000 m column, 350 m | planar distances are all < 15 m, so a field flattened to 2-D reads hopsMean = 1.00; with altitude honoured, pairs > 350 m apart need relays: **hopsMean > 1.2** | AODV 98.9 %, oracle 98.6 %, hopsMean 1.90 | the third dimension is real end to end |
+| `fanet-vertical-3d` | 10 nodes, 10 × 10 × 1000 m column, 350 m | planar distances are all < 15 m, so a field flattened to 2-D reads hopsMean = 1.00; with altitude honoured, pairs > 350 m apart need relays: **hopsMean > 1.2** | AODV 98.9 %, oracle 98.9 % (98.6 % at the pre-#506 1 s recompute), hopsMean 1.90 | the third dimension is real end to end |
 
 ## Results
 
@@ -130,7 +130,11 @@ and this page has no arm for it.
 **The oracle column uses a 100 ms `RecomputeInterval`, not the 1 s default.**
 At the default it is not a bound on this family
 ([#506](https://github.com/danieljoppi/AntHocNet/issues/506)); see
-[the oracle at FANET speeds](#the-oracle-at-fanet-speeds) below.
+[the oracle at FANET speeds](#the-oracle-at-fanet-speeds) below. Since
+[#506](https://github.com/danieljoppi/AntHocNet/issues/506), `--scenario=fanet` sets the 100 ms itself and records
+it on the `##CONFIG##` row. The published cells passed it explicitly, with
+byte-identical effect. An explicit `RecomputeInterval` on the command line
+still wins.
 
 **The OLSR column is offered-based
 ([#510](https://github.com/danieljoppi/AntHocNet/issues/510)).** Before #510,
@@ -261,8 +265,10 @@ At 100 ms the oracle is above every arm on every seed in both cells, so the
 **delivery bound holds**, and it is the only oracle property quoted on this
 page.
 
-**Hops: not a bound on a moving field.** `scenario_check.py results` FAILs the
-identity-matched hop check, at 100 ms as well as 1 s:
+**Hops: not a bound on a moving field.** The identity-matched hop check
+fails at 100 ms as well as at 1 s. Since #506, `scenario_check.py results`
+reports this as one WARN per file on any 3-D cell instead of a FAIL per seed.
+The planar corpus keeps the FAIL. The excesses it counts are:
 
 - **Main cell:** 16 times on 10 seeds. Ten of those are against AOMDV, whose
   few delivered packets are its shortest. Against the other arms it fails
@@ -407,9 +413,12 @@ protocols=anthocnet,aodv,olsr,dsdv,aomdv,oracle
 extraArgs=--ns3::oracle::Topology::RecomputeInterval=100ms
 ```
 
-The OLSR re-runs use `protocols=olsr` and no `extraArgs`. `areaZ`,
+Since #506 the `extraArgs` line is the preset's default and may be omitted;
+the result is byte-identical. The OLSR re-runs use `protocols=olsr`. `areaZ`,
 `speedMin`, flows and rate come from the preset.
 
 **`scenario_check.py results`:** the oracle no-path WARNs are expected on a
-field that partitions. The only FAILs are the hop-check class explained above.
+field that partitions. The hop-check class explained above is the only other
+finding. It was a FAIL when these cells were published; since #506 it is one
+WARN per file.
 `bench_parse` column mapping is OK on every cell.
