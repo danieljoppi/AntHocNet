@@ -125,6 +125,9 @@ every metric.
    changes: 100 % delivery at 3.56 NRL. That is the Babel / BATMAN-adv home
    turf discussed below. AntHocNet's 0.7 pp gap to OLSR is `route=0.44` +
    `chan=0.27`.
+   OLSR's 100 % predates [#510](https://github.com/danieljoppi/AntHocNet/issues/510), which counts the sends stock
+   OLSR refuses at the source. The offered-based estimate from this cell's own
+   throughput is 99.95 %, so the ordering and the gap are unchanged.
 3. **The first version of this page measured a timer bug, not the family.** Its
    headline, that the 200 ms `ReconvHoldCap` costs about 10 pp here and that
    #371's "beats AODV on every metric" does not hold for static meshes

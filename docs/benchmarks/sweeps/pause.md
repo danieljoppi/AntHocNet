@@ -17,6 +17,28 @@
 > [Provenance](../methodology.md#provenance-which-version-a-number-was-measured-at)
 > and [#365](https://github.com/danieljoppi/AntHocNet/issues/365).
 
+> **OLSR's PDR column is inflated ([#510](https://github.com/danieljoppi/AntHocNet/issues/510)).** These cells
+> predate the fix that counts a send stock OLSR *refuses* at the source as an
+> offered packet ([PR #511](https://github.com/danieljoppi/AntHocNet/pull/511), `f480d0ae`). Before it, OLSR's PDR
+> was computed over the ticks it had a route for. This page stays pinned to
+> `v1.3.0` and is not re-measured. The offered-based value below is estimated
+> from this table's own columns, as
+> `thrput_olsr / thrput_aodv × PDR_aodv`. On these aggregate rows the same
+> estimate reproduces AntHocNet's and DSDV's reported PDR to within ~0.6 pp,
+> which is the throughput rounding.
+>
+> | pause (s) | OLSR PDR as published | offered-based estimate | DSDV PDR |
+> |---|---|---|---|
+> | 0 | 65.8 | ≈ 55.6 (-10.2) | 54.1 |
+> | 100 | 68.4 | ≈ 57.8 (-10.6) | 57.3 |
+> | 300 | 81.6 | ≈ 74.7 (-6.9) | 75.5 |
+> | 600 | 92.0 | ≈ 88.5 (-3.5) | 87.8 |
+> | 900 | 100.0 | ≈ 99.7 (-0.3) | 98.7 |
+>
+> The correction reaches 10.6 pp. Where it brings OLSR within about
+> 2 pp of DSDV, do not quote an OLSR-over-DSDV ordering from this page.
+> AntHocNet, AODV and DSDV are unaffected.
+
 ## What it varies
 
 Reproduces **Fig. 2** of the AntHocNet paper (Di Caro/Ducatelle/Gambardella,
