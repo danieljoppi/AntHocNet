@@ -60,6 +60,134 @@
 > Cells: `cells/grid-<mobility>-<channel>-olsr510.txt`, runs `36962722070` …
 > `36962733439`.
 
+## Restated on CBR sources (#521)
+
+> **All six cells were re-measured on constant-bit-rate sources.** Until
+> [#521](https://github.com/danieljoppi/AntHocNet/issues/521) every source ran ns-3's default 1 s on / 1 s off,
+> so each flow was offered 0.5 pkt/s, not the stated 1 pkt/s.
+>
+> **Provenance.** Six `paper-benchmark.yml` dispatches at `main` @
+> `d26ae640` (the #524 merge), image `3.42-opt`, 20 seeds, 900 s,
+> five arms. Knobs are identical to the `dd171e5e` dispatches below:
+>
+> | mobility | channel | run |
+> |---|---|---|
+> | rwp | tworay | [37169506292](https://github.com/danieljoppi/AntHocNet/actions/runs/37169506292) |
+> | ssrwp | tworay | [37169507825](https://github.com/danieljoppi/AntHocNet/actions/runs/37169507825) |
+> | gaussmarkov | tworay | [37169509243](https://github.com/danieljoppi/AntHocNet/actions/runs/37169509243) |
+> | rwp | nakagami | [37169510406](https://github.com/danieljoppi/AntHocNet/actions/runs/37169510406) |
+> | ssrwp | nakagami | [37169511723](https://github.com/danieljoppi/AntHocNet/actions/runs/37169511723) |
+> | gaussmarkov | nakagami | [37169513137](https://github.com/danieljoppi/AntHocNet/actions/runs/37169513137) |
+>
+> Cells: `cells/grid-<mobility>-<channel>-cbr521.txt`. Each marker carries
+> 20 rows per arm. Rows split by the workflow's interleaved `##RSS##` line
+> are dropped; their clean re-emitted copies are kept. `bench_parse` column
+> mapping is OK (25 checks) on all six. Statistics come from `stats_util`.
+>
+> **`scenario_check.py results`:**
+> - the two-ray cells are WARN-only;
+> - the Nakagami cells FAIL only on the known #431 hop residual (8 / 12 / 15
+>   seeds, against 8 / 15 / 17 before).
+>
+> One more FAIL fired on two Nakagami cells, from the #464 "refusals with
+> route=0.00" gate. It was a display-precision false positive: 5 and 3 booked refusals over ~340k
+> offered packets print as 0.00. The gate now FAILs only when the share would
+> print (≥ 0.005 %). That fix lands in this PR, with a test.
+>
+> OLSR's PDR is offered-based (#510). AntHocNet's hop columns predate the
+> #522 TTL compensation (`ba25a458`); no number quoted here uses them.
+>
+> **Delivery — PDR %, mean ± 95 % CI:**
+>
+> | mobility | channel | anthocnet | aodv | olsr | dsdv | oracle |
+> |---|---|---|---|---|---|---|
+> | rwp | tworay | 98.52 ± 0.18 | 87.71 ± 0.56 | 88.31 ± 0.59 | 84.73 ± 0.79 | 97.93 ± 0.21 |
+> | ssrwp | tworay | 98.68 ± 0.18 | 87.61 ± 0.65 | 89.16 ± 0.71 | 86.06 ± 0.77 | 98.02 ± 0.23 |
+> | gaussmarkov | tworay | 97.22 ± 0.20 | 85.84 ± 0.78 | 82.31 ± 1.04 | 78.79 ± 1.12 | 96.54 ± 0.38 |
+> | rwp | nakagami | 91.90 ± 1.06 | 74.31 ± 0.77 | 85.72 ± 0.49 | 72.35 ± 1.15 | 96.09 ± 0.47 |
+> | ssrwp | nakagami | 90.66 ± 1.18 | 73.20 ± 1.06 | 84.90 ± 0.56 | 71.94 ± 1.35 | 95.55 ± 0.48 |
+> | gaussmarkov | nakagami | 86.86 ± 1.33 | 65.83 ± 1.29 | 78.28 ± 0.78 | 63.48 ± 1.35 | 94.82 ± 0.42 |
+>
+> **Overhead — NRL, mean ± 95 % CI:**
+>
+> | mobility | channel | anthocnet | aodv | olsr | dsdv | oracle |
+> |---|---|---|---|---|---|---|
+> | rwp | tworay | 7.10 ± 0.17 | 32.99 ± 0.54 | 2.01 ± 0.02 | 11.56 ± 0.11 | 0.00 ± 0.00 |
+> | ssrwp | tworay | 6.79 ± 0.15 | 32.85 ± 0.46 | 1.99 ± 0.02 | 11.35 ± 0.11 | 0.00 ± 0.00 |
+> | gaussmarkov | tworay | 8.80 ± 0.21 | 32.73 ± 0.60 | 2.17 ± 0.03 | 12.52 ± 0.18 | 0.00 ± 0.00 |
+> | rwp | nakagami | 14.32 ± 0.53 | 39.98 ± 0.97 | 2.17 ± 0.02 | 13.82 ± 0.27 | 0.00 ± 0.00 |
+> | ssrwp | nakagami | 14.56 ± 0.66 | 40.35 ± 0.98 | 2.18 ± 0.02 | 13.87 ± 0.33 | 0.00 ± 0.00 |
+> | gaussmarkov | nakagami | 19.44 ± 1.31 | 47.44 ± 1.46 | 2.39 ± 0.03 | 15.98 ± 0.40 | 0.00 ± 0.00 |
+>
+> **Tail — `delay99` ms, mean with bootstrap 95 % interval:**
+>
+> | mobility | channel | anthocnet | aodv | olsr | dsdv | oracle |
+> |---|---|---|---|---|---|---|
+> | rwp | tworay | 175.9 [172.1, 179.9] | 523.0 [510.1, 536.8] | 20.8 [20.2, 21.3] | 381.7 [350.8, 414.4] | 17.8 [17.4, 18.1] |
+> | ssrwp | tworay | 172.3 [168.9, 176.1] | 544.0 [525.0, 563.9] | 20.9 [20.1, 21.9] | 409.9 [365.1, 482.1] | 17.2 [16.9, 17.5] |
+> | gaussmarkov | tworay | 216.8 [210.1, 224.7] | 501.2 [488.9, 514.0] | 22.1 [21.2, 22.9] | 389.6 [334.8, 469.2] | 19.4 [19.1, 19.9] |
+> | rwp | nakagami | 429.1 [389.1, 475.4] | 710.1 [688.8, 735.3] | 2039.8 [2035.3, 2044.5] | 1848.2 [1691.5, 1974.7] | 2025.6 [2021.3, 2030.7] |
+> | ssrwp | nakagami | 438.1 [388.3, 488.4] | 713.0 [691.6, 733.8] | 2041.8 [2036.9, 2046.5] | 1887.5 [1743.6, 2009.9] | 2026.0 [2022.5, 2030.3] |
+> | gaussmarkov | nakagami | 750.0 [669.5, 833.4] | 914.4 [878.0, 950.3] | 2057.0 [2050.3, 2064.4] | 2039.5 [2032.0, 2047.5] | 2282.9 [2155.1, 2428.2] |
+>
+> **AntHocNet vs AODV, paired per seed** (t-CI for PDR and NRL, bootstrap
+> for `delay99`):
+>
+> | mobility | channel | ΔPDR (pp) | ΔNRL | Δdelay99 (ms) |
+> |---|---|---|---|---|
+> | rwp | tworay | **+10.81 [+10.33, +11.28]** | **-25.89 [-26.42, -25.37]** | **-347.10 [-360.80, -334.25]** |
+> | ssrwp | tworay | **+11.08 [+10.40, +11.75]** | **-26.06 [-26.53, -25.59]** | **-371.75 [-391.55, -352.55]** |
+> | gaussmarkov | tworay | **+11.38 [+10.64, +12.12]** | **-23.93 [-24.41, -23.44]** | **-284.35 [-292.65, -275.70]** |
+> | rwp | nakagami | **+17.59 [+16.54, +18.64]** | **-25.66 [-26.40, -24.92]** | **-281.05 [-319.00, -235.70]** |
+> | ssrwp | nakagami | **+17.46 [+16.23, +18.69]** | **-25.79 [-26.57, -25.00]** | **-275.00 [-321.45, -227.25]** |
+> | gaussmarkov | nakagami | **+21.04 [+20.07, +22.00]** | **-28.00 [-28.82, -27.19]** | **-164.35 [-225.60, -103.00]** |
+> max p 0.0005519796434053147
+>
+> **What holds:**
+> - **AntHocNet beats AODV on all three metrics in all six cells.** Every
+>   interval excludes zero; the largest Wilcoxon p is 5.5 × 10⁻⁴ (it was
+>   ≤ 9.6 × 10⁻⁵).
+> - **AntHocNet leads delivery in every cell.**
+> - **The AODV–OLSR order is the same.** AODV is ahead in gaussmarkov-tworay
+>   (+3.52 pp [+2.91, +4.14], 20/20 seeds). OLSR is ahead in the other five,
+>   narrowly in rwp-tworay (+0.59 pp [+0.22, +0.97], p = 0.0062).
+> - **The tail ranking is the same:**
+>   - two-ray: OLSR best, AntHocNet second;
+>   - Nakagami: AntHocNet best and OLSR worst. In gaussmarkov-nakagami OLSR
+>     reads 2057.0 [2050.3, 2064.4] against DSDV's 2039.5 [2032.0, 2047.5].
+>
+> **What changes:**
+> - **On two-ray, AntHocNet delivers more than the oracle:** +0.58 /
+>   +0.66 / +0.67 pp, on 17 / 19 / 16 of 20 seeds (p ≤ 0.004). Before #521
+>   it sat 0.23–1.09 pp below.
+>   - The two-ray oracle is `approx=1`: it routes over the PHY's decode-radius
+>     disk and is blind to link quality.
+>   - At the full offered load, its long decode-edge links lose 1.50–2.55 %
+>     at the MAC retry limit. Its PDR barely moves (98.09 → 97.93 % in
+>     rwp-tworay).
+>   - AntHocNet's own losses fell under CBR (route 1.41 → 0.90 % in
+>     rwp-tworay), and its total is now below the oracle's MAC loss alone.
+>   - **So the oracle's delivery is not a bound on the two-ray cells at this
+>     load.** The [quoting rule](#how-these-numbers-may-be-quoted-a-delivery-bound-everywhere-latency-and-hops-on-two-ray)
+>     narrows: delivery is a bound on the Nakagami cells only. There the
+>     oracle still leads AntHocNet by 4.19–7.96 pp on every seed.
+>   - Quote the two-ray result as "AntHocNet beats the hop-count, link-blind
+>     oracle". The words "the bound" do not apply to it.
+> - **The overhead ordering is no longer the same everywhere.**
+>   - Two-ray is unchanged: `olsr < anthocnet < dsdv < aodv`.
+>   - Under Nakagami DSDV's NRL is below AntHocNet's: `olsr < dsdv <
+>     anthocnet < aodv`, by +0.50 / +0.69 / +3.46 (p ≤ 0.015).
+>   - Why: with twice the data, NRL falls ×0.50 for OLSR and DSDV, whose
+>     periodic control does not depend on the data. AntHocNet's falls only
+>     ×0.58 / ×0.58 / ×0.63 on Nakagami (×0.53 on two-ray). That is consistent
+>     with part of its control (reactive and repair ants after fading losses)
+>     scaling with the data it carries. That mechanism is not measured here.
+> - **NRL roughly halves for every routing arm**: the same periodic control
+>   now carries twice the data (ratios above).
+>
+> The sections below are the dated pre-#521 record (`dd171e5e`). Where they
+> disagree with this block, this block is current.
+
 ## What it varies
 
 The [v1.4.0 exit criteria](../roadmap.md) ask for a headline grid under **≥2

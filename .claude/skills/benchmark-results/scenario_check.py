@@ -1705,6 +1705,9 @@ def check_path_diversity(rows):
                            f"to say so (#230)")
 
 
+ORACLE_SPLIT_SEEN = {}
+
+
 def check_oracle(path, rows):
     """#296 item 1 / #216: the oracle control's a-priori values, asserted.
 
@@ -1724,6 +1727,7 @@ def check_oracle(path, rows):
     # --- the ##ORACLE## rows ------------------------------------------------
     seed_mode = {}  # seed -> mode tag, read by the #431 hop gate's severity
     oracle_origin_refusals = {}  # seed -> #464 refused-send count
+    ORACLE_SPLIT_SEEN.clear()  # seed -> carried the #464 split (#521 precision)
     for line in text.splitlines():
         m = ORACLE_LINE.match(line)
         if not m:
@@ -1794,6 +1798,7 @@ def check_oracle(path, rows):
                                f"{no_route} — the split does not account for "
                                "every failed lookup (#464)")
             oracle_origin_refusals[seed] = origin
+            ORACLE_SPLIT_SEEN[seed] = True
         # Pre-#464 cells carry no split. Their TOTAL is still the right input
         # to the contradiction gate below: if any of those failures had been
         # RouteInput ones the error callback would have booked them, so a zero
@@ -1809,7 +1814,34 @@ def check_oracle(path, rows):
     # a pre-fix cell's book closes at sum=100.00 precisely BECAUSE the missing
     # packets are absent from the denominator too, so the arithmetic is
     # self-consistently wrong. This is the rule that makes it fail loudly.
-    if sum(oracle_origin_refusals.values()) > 0:
+    # #521: display precision. The route column prints to 0.01 %, so a
+    # post-#464 cell (split present, refusals folded in by the harness) whose
+    # refusals are a few packets in ~10^5 offered reads 0.00 honestly — the
+    # rwp x nakagami grid cell measured 5 origin refusals over ~340k offered.
+    # When the cell carries the split and the offered count can be rebuilt
+    # (##MATCH## delivered / ##RUN## PDR, per seed), only a share that would
+    # print as >= 0.01 can contradict a 0.00 column. Pre-#464 cells (no split)
+    # keep the unconditional FAIL: their refusals were never booked at all.
+    below_print = False
+    if oracle_origin_refusals and all(
+            ORACLE_SPLIT_SEEN.get(sd) for sd in oracle_origin_refusals):
+        pdr_by_seed, deliv_by_seed = {}, {}
+        for line in text.splitlines():
+            m = re.match(r"^\s*##RUN##\s+(\d+)\s+" + ORACLE_PROTO
+                         + r"\s+([\d.]+)\s", line)
+            if m:
+                pdr_by_seed[m.group(1)] = float(m.group(2))
+            m = re.match(r"^\s*##MATCH##\s+(\d+)\s+" + ORACLE_PROTO
+                         + r"\s+(\d+)\s", line)
+            if m:
+                deliv_by_seed[m.group(1)] = int(m.group(2))
+        seeds = set(pdr_by_seed) & set(deliv_by_seed)
+        if seeds and all(pdr_by_seed[sd] > 0 for sd in seeds):
+            offered = sum(100.0 * deliv_by_seed[sd] / pdr_by_seed[sd]
+                          for sd in seeds)
+            share = 100.0 * sum(oracle_origin_refusals.values()) / offered
+            below_print = share < 0.005
+    if sum(oracle_origin_refusals.values()) > 0 and not below_print:
         for r in rows:
             if r.get("proto") != ORACLE_PROTO:
                 continue
