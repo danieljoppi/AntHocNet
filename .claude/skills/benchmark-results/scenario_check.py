@@ -1392,10 +1392,11 @@ def check_route(path):
     - Path identity. On an arm in ROUTE_IDENTITY_ARMS a delivered packet's
       path length (IP "Tx" events) equals its TTL hop count, so the row's two
       means must agree. A gap means the path hook missed hops or keyed them to
-      the wrong (flow, seq). AntHocNet is exempt: a packet it held at the
-      source is released through IpForward, which decrements the TTL once
-      more than the path has hops (measured: 18 of ~1300 packets, +0.014
-      hops on the mean), and #386 re-injection adds "Tx" events.
+      the wrong (flow, seq). AntHocNet is exempt. On the disk channel it
+      matches exactly since #522 compensated the loopback TTL decrement on
+      held packets; under fading, #386 re-injection adds "Tx" events and
+      duplicate deliveries enter hopsMean, so the two means sit on different
+      populations (1.66 vs 2.07 on a Nakagami cell).
     - The control: the oracle routes by deterministic Dijkstra over ground
       truth, so on a field that never moves (rwp with pause >= time) under the
       disk channel its path never changes. pathChg must read exactly 0.

@@ -928,7 +928,14 @@ bool RoutingProtocol::RouteInput(Ptr<const Packet> p, const Ipv4Header& header,
 
     // Deferred (came back via loopback): queue and request a route.
     if (idev == m_ipv4->GetNetDevice(0)) {
-        DeferredRouteOutput(p, header, ucb, ecb);
+        // #522: the packet will leave through ucb -> Ipv4L3Protocol::IpForward,
+        // which decrements the TTL for a hop no radio carried (the loopback
+        // bounce). Add it back, as ns-3's AODV does in SendPacketFromQueue
+        // ("compensate extra TTL decrement by fake loopback routing"), so the
+        // TTL-derived hop count of a held packet is not one too high.
+        Ipv4Header compensated = header;
+        compensated.SetTtl(header.GetTtl() + 1);
+        DeferredRouteOutput(p, compensated, ucb, ecb);
         return true;
     }
 

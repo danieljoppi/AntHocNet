@@ -975,10 +975,12 @@ cross-arm comparison only between protocols of the same kind.
   (paper field, 200 s, seeds 1–2). Any other value FAILs.
 - **Path identity.** On `aodv`, `olsr`, `dsdv` and `oracle` each hop is one
   `Tx` and one TTL decrement, so `pathHopsMean == hopsMean` (to 0.001). A gap
-  FAILs: the hook missed hops or mis-keyed them. AntHocNet is exempt and reads
-  slightly lower, because of the held-packet TTL offset in the
-  [route-quality caveats](#caveats-route-quality). GPSR and AOMDV are not
-  asserted until the identity is checked on them.
+  FAILs: the hook missed hops or mis-keyed them. AntHocNet is exempt. On the
+  disk channel it matches exactly since [#522](https://github.com/danieljoppi/AntHocNet/issues/522) (3.0241 vs
+  3.0241 on the static paper field). Under fading, though, #386 re-injection
+  and duplicate deliveries put the two means on different populations: 1.66 vs
+  2.07 on a Nakagami cell. GPSR and AOMDV are not asserted until the identity is
+  checked on them.
 - **Range and mapping.** `pathChg` in [0, 1]; setup `-1/-1` or
   0 <= median <= max; `pathLifeMedS` is `-1` exactly when `pathLifeN` is 0.
 - **Absence.** There is no row under `transport=tcp`, where no `(flow, seq)`
@@ -1391,20 +1393,18 @@ not a blank column.
 > falsifiable control `path_div_used` never had. `path_hops_*` and `jain_pkts`
 > are unaffected by all of this and readable from any cell.
 
-- **AntHocNet reads one hop high on packets it held at the source.** A
-  protocol with no route yet bounces the packet through the loopback device to
-  reach `RouteInput` (AODV and this adapter both do); the packet then leaves via
-  `IpForward`, costing one TTL decrement that no radio carried. ns-3's AODV
-  adds that decrement back (`SendPacketFromQueue`: "compensate extra TTL
-  decrement by fake loopback routing"); the AntHocNet adapter does not
-  ([#522](https://github.com/danieljoppi/AntHocNet/issues/522)). So
-  `path_hops_mean` for `anthocnet` is a slight over-estimate, bounded by
-  (held packets)/(delivered packets). It is +0.014 hops on a static paper field
-  (18 of ~1300 packets) and larger where routes break often. AODV reads
-  exactly. The `##ROUTE##` path identity below measured this: its path length
-  equals the TTL hop count to four decimals on `aodv`, `olsr`, `dsdv` and
-  `oracle`, and sits below it on `anthocnet`. *(Corrected by #294 item 4. This
-  bullet used to say AODV read high too.)*
+- **Before [#522](https://github.com/danieljoppi/AntHocNet/issues/522), AntHocNet read one hop high on packets it
+  held at the source.** A protocol with no route yet bounces the packet through
+  the loopback device to reach `RouteInput` (AODV and this adapter both do).
+  The packet then leaves via `IpForward`, costing one TTL decrement that no
+  radio carried. ns-3's AODV adds that decrement back (`SendPacketFromQueue`:
+  "compensate extra TTL decrement by fake loopback routing"). The AntHocNet
+  adapter did not until #522, so its `path_hops_mean` was a slight
+  over-estimate, bounded by (held packets)/(delivered packets). That was +0.014
+  hops on a static paper field (18 of ~1300 packets) and larger where routes
+  break often. The fix changes only the hop fields: every other output line is
+  byte-identical, measured on static, mobile and Nakagami cells. AODV always
+  read exactly. *(This bullet said AODV read high too until #294 item 4.)*
 - **Diversity is measured on acknowledged unicasts only.** Broadcast frames are
   never acknowledged; that is correct here (routing control must not count as a
   used data path) but it also means a protocol that delivered data over
