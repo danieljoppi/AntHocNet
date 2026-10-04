@@ -411,7 +411,7 @@ RoutingProtocol::SendPacketFromQueue (Ipv4Address dst)
             p->AddHeader (tHeader);
             RestoreTransport (p, udpHeader, hasUdp);
 
-            RecoveryMode(dst, p, ucb, header);
+            RecoveryMode(dst, p, ucb, header, queueEntry.GetErrorCallback ());
           }
         return true;
       }
@@ -447,7 +447,8 @@ RoutingProtocol::SendPacketFromQueue (Ipv4Address dst)
 
 
 void
-RoutingProtocol::RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCallback ucb, Ipv4Header header){
+RoutingProtocol::RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCallback ucb, Ipv4Header header,
+                              ErrorCallback ecb){
 
   Vector Position;
   Vector previousHop;
@@ -504,6 +505,14 @@ RoutingProtocol::RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCall
   Ipv4Address nextHop = m_neighbors.BestAngle (previousHop, myPos);
   if (nextHop == Ipv4Address::GetZero ())
     {
+      // #521: no neighbour at all to walk the perimeter to. The packet is
+      // dropped here as it always was, but through the error callback, so the
+      // L3 "Drop" trace (and FlowMonitor's route bucket) sees it. The vendored
+      // code returned silently, which hid these drops from the drop-cause book:
+      // ~12 % of offered packets once true-CBR load saturates the channel and
+      // hello loss empties neighbour tables (16-node arm-delivery field).
+      NS_LOG_DEBUG ("RecoveryMode: no neighbour for packet " << p->GetUid () << ". Drop");
+      ecb (p, header, Socket::ERROR_NOROUTETOHOST);
       return;
     }
 
@@ -1058,7 +1067,7 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
     p->AddHeader (hdr);
     p->AddHeader (tHeader); //put headers back so that the RecoveryMode is compatible with Forwarding and SendFromQueue
     RestoreTransport (p, udpHeader, hasUdp);
-    RecoveryMode (dst, p, ucb, header);
+    RecoveryMode (dst, p, ucb, header, ecb);
     return true;
   }
 
@@ -1131,7 +1140,7 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
   RestoreTransport (p, udpHeader, hasUdp);
   NS_LOG_LOGIC ("Entering recovery-mode to " << dst << " in " << m_ipv4->GetAddress (1, 0).GetLocal ());
 
-  RecoveryMode (dst, p, ucb, header);
+  RecoveryMode (dst, p, ucb, header, ecb);
   return true;
 }
 
