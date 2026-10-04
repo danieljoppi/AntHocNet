@@ -1157,6 +1157,11 @@ struct Params {
     double   range;     // 0 => ns-3 default channel (log-distance)
     uint32_t nFlows;
     double   cbrBps;
+    // #521: the sources' OnOff off-phase (s). 0 (default) = constant bit rate,
+    // as every page documents. Before #521 the harness left ns-3's default of
+    // 1 s on / 1 s off, which halved the offered rate; --offTime=1 reproduces
+    // that schedule exactly, for paired A/B against the pre-#521 corpus.
+    double   offTime;
     double   startWindow;
     std::string propagation;  // "range" (disk, default) | "tworay" (two-ray ground, #24)
     std::string rateManager;  // "constant2" (paper's 2 Mbit/s radio, default) | ... (#51)
@@ -1858,6 +1863,15 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // date from ns-3.31, i.e. they predate the whole CI matrix (3.36-3.48),
         // which is where this is actually compiled and run.
         onoff.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
+        // #521: CBR, not ns-3's default 1 s on / 1 s off duty (see Params::
+        // offTime). Constant variables draw nothing, so the #352/#431 stream
+        // layout is unchanged.
+        onoff.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+        {
+            std::ostringstream off;
+            off << "ns3::ConstantRandomVariable[Constant=" << P.offTime << ']';
+            onoff.SetAttribute("OffTime", StringValue(off.str()));
+        }
         const double startS = startVar->GetValue();
         onoff.SetAttribute("StartTime", TimeValue(Seconds(startS)));
         onoff.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
@@ -2908,6 +2922,7 @@ int main(int argc, char* argv[]) {
     int32_t  nNodes = 0;
     double   simTime = -1, area = -1, areaX = -1, areaY = -1, areaZ = -1;
     double   speed = -1, speedMin = -1, pause = -1, range = -1, cbrBps = -1;
+    double   offTime = 0.0;  // #521
     int32_t  nFlows = 0;
     int32_t  sink = -1;
     uint32_t runs = 0;  // 0 = unset; resolved below (preset-dependent, #58)
@@ -2948,6 +2963,10 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("range", "Transmission range (m); 0 = ns-3 default channel", range);
     cmd.AddValue("flows", "Number of CBR flows", nFlows);
     cmd.AddValue("cbrBps", "Per-flow CBR rate (bits/s)", cbrBps);
+    cmd.AddValue("offTime", "Source off-phase in s (#521). 0 (default) = "
+                            "constant bit rate; 1 = the pre-#521 schedule "
+                            "(ns-3's default 1 s on / 1 s off, half the "
+                            "stated rate), for paired A/B only", offTime);
     cmd.AddValue("sink", "If >=0, all flows converge on this node (gateway "
                          "hotspot, #71) instead of i->(n-1-i) pairing", sink);
     cmd.AddValue("runs", "Number of RNG runs to average (seeds 1..runs); unset "
@@ -3104,6 +3123,7 @@ int main(int argc, char* argv[]) {
     P.range   = range >= 0 ? range : (thesis ? 250.0 : paper ? 300.0 : fanet ? 350.0 : 0.0);
     P.nFlows  = nFlows > 0 ? static_cast<uint32_t>(nFlows) : (paper ? 20 : fanet ? 10 : 5);
     P.cbrBps  = cbrBps >= 0 ? cbrBps : ((thesis || fanet) ? 2048.0 : paper ? 512.0 : 8000.0);
+    P.offTime = offTime;
     P.startWindow = (paper || fanet) ? 180.0 : 5.0;
     if (mobilityModel.empty()) mobilityModel = fanet ? "gaussmarkov" : "rwp";
     // #506: the oracle control re-derives its graph every RecomputeInterval
@@ -3283,6 +3303,9 @@ int main(int argc, char* argv[]) {
               << " mobility=" << P.mobility
               << " transport=" << P.transport
               << " flows=" << P.nFlows << " cbrBps=" << P.cbrBps
+              // #521: always named, so a post-fix row is distinguishable
+              // from the pre-#521 corpus, whose rows lack the key.
+              << " offTime=" << P.offTime
               << " rateManager=" << P.rateManager
               << " protocols=" << protocols << '\n';
     // Every AntHocNet attribute at its *effective* value. ns-3 routes

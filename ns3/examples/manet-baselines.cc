@@ -394,6 +394,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                           InetSocketAddress(ifs.GetAddress(dst), kDataPort));
         onoff.SetAttribute("DataRate", StringValue(rate.str()));
         onoff.SetAttribute("PacketSize", UintegerValue(64));
+        // #521: constant bit rate. ns-3's OnOff default is 1 s on / 1 s off,
+        // which halves the offered rate.
+        onoff.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+        onoff.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
         onoff.SetAttribute("StartTime", TimeValue(Seconds(startVar->GetValue())));
         onoff.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
         ApplicationContainer srcApp = onoff.Install(nodes.Get(src));

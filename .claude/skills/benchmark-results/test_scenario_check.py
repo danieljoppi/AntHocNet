@@ -2329,6 +2329,23 @@ def _route_tcp_fires():
            f"a TCP ##ROUTE## row was not flagged\n{out}")
 
 
+# --- #521 source schedule -----------------------------------------------------
+
+@case("#521 a ##CONFIG## row without offTime WARNs as pre-#521, offTime=1 "
+      "WARNs as legacy, offTime=0 is quiet")
+def _source_schedule():
+    cfg0 = ROUTE_CONFIG_STATIC.replace("cbrBps=512", "cbrBps=512 offTime=0")
+    _levels, out = run_cell(ISL_CELL + cfg0)
+    expect("#521" not in out, "sched-cbr", f"a CBR cell was flagged\n{out}")
+    _levels, out = run_cell(ISL_CELL + ROUTE_CONFIG_STATIC)
+    expect("pre-#521 cell" in out, "sched-pre",
+           f"a cell without offTime was not flagged\n{out}")
+    cfg1 = ROUTE_CONFIG_STATIC.replace("cbrBps=512", "cbrBps=512 offTime=1")
+    _levels, out = run_cell(ISL_CELL + cfg1)
+    expect("offTime=1 — the legacy" in out, "sched-legacy",
+           f"a legacy-schedule cell was not flagged\n{out}")
+
+
 def main():
     for name, fn in CASES:
         fn()

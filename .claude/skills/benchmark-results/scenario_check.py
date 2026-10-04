@@ -1283,6 +1283,35 @@ def check_provenance(path):
                    "unknown.")
 
 
+def check_source_schedule(path):
+    """#521: did the cell's CBR sources actually run at constant bit rate?
+
+    Before #521 every OnOff source kept ns-3's default 1 s on / 1 s off duty,
+    so the offered rate was half of `cbrBps`. The fix names `offTime=` in
+    the ##CONFIG## scenario row, so a row WITHOUT the key is pre-#521, and
+    `offTime` > 0 is the legacy schedule reproduced on purpose (paired A/B
+    only). Both WARN rather than FAIL. Within one cell every arm saw the same
+    schedule, so cross-protocol comparisons stand; absolute levels, the
+    offered-load fraction and any paper-parity claim do not.
+    """
+    with open(path) as fh:
+        text = fh.read()
+    cfg = re.search(r"^##CONFIG## scenario=.*$", text, re.MULTILINE)
+    if not cfg:
+        return
+    base = os.path.basename(path)
+    m = re.search(r"\boffTime=([-\d.e+]+)", cfg.group(0))
+    if m is None:
+        report("WARN", f"{base}: pre-#521 cell — the sources ran ns-3's "
+                       "default 1 s on / 1 s off, so the offered rate was HALF "
+                       "of cbrBps. Within-cell comparisons stand; absolute "
+                       "levels and offered-load claims do not")
+    elif float(m.group(1)) > 0.0:
+        report("WARN", f"{base}: offTime={m.group(1)} — the legacy "
+                       "on/off source schedule (#521), for paired A/B against "
+                       "the pre-#521 corpus only; not a publishable cell")
+
+
 def check_drop_identity(path):
     """#377: the drop-cause books must not overlap.
 
@@ -1932,6 +1961,7 @@ def cmd_results(a):
     n = 0
     for path in a.files:
         check_provenance(path)
+        check_source_schedule(path)
         check_drop_identity(path)
         check_reinj(path)
         check_route(path)
