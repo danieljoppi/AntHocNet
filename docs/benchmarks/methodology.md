@@ -1059,6 +1059,22 @@ per-merge scenario taxonomy re-measures itself on the next refresh. The
 restated pages are re-measured on the fix in follow-ups, each carrying an
 `--offTime=1` paired arm where the attribution matters.
 
+**Restatements done (all at `d26ae640`, 20 seeds, the published knobs):**
+- the [satellite suite](satellite/isl-grid.md#restated-on-cbr-sources-521);
+- [FANET](scenarios/fanet.md#restated-on-cbr-sources-521);
+- the [static mesh](static-mesh.md#restated-on-cbr-sources-521);
+- the [grid](grid.md#restated-on-cbr-sources-521).
+
+Verdicts that changed:
+- satellite failcell: AntHocNet alone sits on the oracle's reconvergence
+  floor;
+- grid two-ray: AntHocNet's delivery exceeds the `approx=1` oracle's;
+- grid Nakagami: DSDV's NRL is below AntHocNet's;
+- FANET main: OLSR now separates from AOMDV;
+- static mesh: AntHocNet's tail is above the oracle's.
+
+The pinned `v1.3.0` sweeps are not re-measured.
+
 ### Run ID → commit
 
 Every campaign CSV under `docs/benchmarks/campaign/` is named after the Actions

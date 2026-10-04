@@ -1620,6 +1620,31 @@ def _oracle_refusals_booked_quiet():
            f"a correctly booked partitioned cell was flagged\n{out}")
 
 
+@case("#521 a booked refusal share below print precision stays quiet; "
+      "one that would print still FAILs")
+def _oracle_refusals_below_precision():
+    # The rwp x nakagami grid cell on CBR sources: 5 origin refusals on one
+    # seed, ~17k offered packets per seed, so the share is ~0.03 % of that
+    # seed and ~0.0015 % of the cell, and the cell's route column prints 0.00
+    # honestly. One seed shown: 5 / (16400 / 0.9609) = 0.029 % prints as 0.03,
+    # so the single-seed fixture must FAIL; scaled to 1 refusal in 160000
+    # offered it must stay quiet.
+    def cell(no_route, delivered):
+        line = ORACLE_LINE_OK.replace(
+            "noRoute=0 nrl=0.00",
+            f"noRoute={no_route} noRouteOrigin={no_route} noRouteFwd=0 nrl=0.00")
+        body = ORACLE_REFUSAL_CELL.replace("87.40", "96.09").replace(
+            "@PDR@", "96.09").replace("@ROUTE@", "0.00")
+        return (line + body
+                + f"##MATCH## 1 oracle {delivered} {delivered} 7.5 7.5\n")
+    _levels, out = run_cell(cell(1, 153744))
+    expect("route column reads" not in out, "oracle-refusal-precision-quiet",
+           f"a sub-precision booked refusal was flagged\n{out}")
+    _levels, out = run_cell(cell(5, 16400))
+    expect("route column reads" in out, "oracle-refusal-precision-fires",
+           f"a printable unbooked refusal share was not flagged\n{out}")
+
+
 @case("#464 a split that does not sum to the total FAILs")
 def _oracle_refusal_split_broken():
     line = ORACLE_LINE_OK.replace(

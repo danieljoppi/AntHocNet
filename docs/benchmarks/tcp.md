@@ -95,7 +95,10 @@ holds in five of the six [grid](grid.md) cells, including the `rwp × tworay`
 cell this arm re-ran as its control. Since [#510](https://github.com/danieljoppi/AntHocNet/issues/510) made OLSR's
 PDR offered-based, `gaussmarkov × tworay` reads `anthocnet > aodv > olsr >
 dsdv`. The control cell keeps OLSR over AODV (88.41 vs 85.48), so the
-inversion below stands. TCP goodput counts delivered bytes, which #510 does
+inversion below stands. On CBR sources ([#521](https://github.com/danieljoppi/AntHocNet/issues/521)) the control
+cell reads OLSR 88.31 vs AODV 87.71, still OLSR first (+0.59 pp
+[+0.22, +0.97], p = 0.0062) but narrowly. The TCP cells themselves use
+`BulkSend`, not OnOff, and are unaffected by #521. TCP goodput counts delivered bytes, which #510 does
 not touch. Under TCP the goodput ordering is
 `anthocnet ≈ olsr > dsdv > aodv`:
 
