@@ -152,6 +152,79 @@ column is therefore an efficiency restatement of delivery
 because its ordering agrees with the PDR ordering in both cells, not as
 independent evidence.
 
+### Restated on CBR sources (#521)
+
+> **Both cells were re-measured on constant-bit-rate sources.** Until
+> [#521](https://github.com/danieljoppi/AntHocNet/issues/521) the sources ran ns-3's default 1 s on / 1 s off,
+> so each FANET flow was offered 2 pkt/s in bursts of four, not the
+> configured 4 pkt/s. The cell offered 10 kbps, not the 20 kbps in the
+> configuration table.
+>
+> **Provenance.** Six arms, 20 seeds, 900 s, `3.42-opt`, at `main` @
+> `d26ae640`. The knobs are identical to the published dispatch, and the
+> oracle's 100 ms recompute is the preset default.
+> Main cell: [37172235137](https://github.com/danieljoppi/AntHocNet/actions/runs/37172235137).
+> Sparse cell: [37172236293](https://github.com/danieljoppi/AntHocNet/actions/runs/37172236293).
+> Cells: `docs/benchmarks/cells/fanet-{main,sparse}-cbr521.txt`.
+> `scenario_check.py results`: 0 FAIL; the WARNs are the expected oracle
+> no-path partitions and the 3-D hop-check note. `bench_parse` column
+> mapping is OK (30 checks) on both. OLSR's PDR is offered-based (#510).
+>
+> **Main cell:**
+>
+> | metric | anthocnet | aodv | olsr | dsdv | aomdv | oracle (100 ms) |
+> |---|---|---|---|---|---|---|
+> | PDR % | **94.43 ± 0.55** | 86.11 ± 1.01 | 47.86 ± 1.05 | 42.40 ± 0.95 | 46.23 ± 0.97 | 96.88 ± 0.42 |
+> | `delay99` (ms) | 207.9 [203.4, 213.1] | 500.8 [352.4, 667.4] | 31.1 [28.8, 33.9] | 45.0 [41.4, 48.7] | 7981.4 [7878.5, 8081.5] | 16.0 [15.4, 16.6] |
+> | NRL | 3.71 ± 0.10 | 4.07 ± 0.09 | 1.35 ± 0.03 | 3.63 ± 0.10 | 6.63 ± 0.23 | 0.00 |
+> | energy (mJ/bit) | **1.438 ± 0.015** | 1.573 ± 0.026 | 2.826 ± 0.060 | 3.197 ± 0.081 | 2.924 ± 0.064 | 1.389 ± 0.014 |
+>
+> | comparison | ΔPDR (pp) | ΔNRL | Δ`delay99` (ms) | Δenergy (mJ/bit) |
+> |---|---|---|---|---|
+> | anthocnet − aodv | **+8.32** [+7.41, +9.23] | **−0.36** [−0.44, −0.29] | **−293** [−465, −121] | **−0.135** [−0.152, −0.118] |
+> | anthocnet − olsr | **+46.56** [+45.70, +47.43] | +2.35 [+2.27, +2.44] | +177 [+171, +182] | **−1.388** [−1.443, −1.333] |
+> | anthocnet − dsdv | **+52.02** [+51.10, +52.95] | +0.07 [−0.04, +0.19], p = 0.29 | +163 [+157, +169] | **−1.759** [−1.833, −1.685] |
+> | anthocnet − aomdv | **+48.20** [+47.18, +49.22] | **−2.93** [−3.14, −2.72] | **−7774** [−7884, −7663] | **−1.487** [−1.548, −1.425] |
+>
+> **Verdicts, main cell:**
+> - AntHocNet still leads every protocol. It is **2.45 pp** below the
+>   oracle (was 2.70).
+> - It still beats AODV on all four metrics (p ≤ 7.1 × 10⁻⁴), by a smaller
+>   delivery margin: **+8.32 pp** (was +11.48). AODV gains most from CBR,
+>   82.92 → 86.11.
+> - Two orderings change:
+>   - AntHocNet's NRL edge over DSDV is now a tie (+0.07, p = 0.29).
+>   - OLSR now separates from AOMDV: +1.64 pp [+0.76, +2.51], p = 0.0027,
+>     15/20 seeds. It was a tie. The delivery order is
+>     `anthocnet > aodv > olsr > aomdv > dsdv`.
+> - The failure mechanisms are unchanged:
+>   - OLSR fails at the MAC (`mac=36.87`) and refuses 8.62 % at the source.
+>   - DSDV fails at the MAC (`mac=50.04`).
+>   - AOMDV fails in routing (`route=46.45`).
+>   - AntHocNet's loss is mostly reconvergence (`route=3.99 [reconv=3.69]`).
+>
+> **Sparse cell:**
+>
+> | metric | anthocnet | aodv | olsr | dsdv | aomdv | oracle (100 ms) |
+> |---|---|---|---|---|---|---|
+> | PDR % | **52.71 ± 1.73** | 50.05 ± 1.80 | 16.56 ± 0.77 | 17.79 ± 0.79 | 25.57 ± 0.82 | 60.27 ± 1.85 |
+> | `delay99` (ms) | 293.9 [286.2, 302.4] | 4962.5 [4615.7, 5378.9] | 19.6 [17.6, 22.2] | 39.0 [35.2, 43.5] | 8666.4 [8573.5, 8757.7] | 21.3 [20.7, 21.9] |
+> | NRL | 10.75 ± 0.48 | 4.60 ± 0.11 | 3.59 ± 0.16 | 6.33 ± 0.27 | 9.00 ± 0.29 | 0.00 |
+> | energy (mJ/bit) | **2.582 ± 0.085** | 2.709 ± 0.101 | 8.194 ± 0.391 | 7.646 ± 0.330 | 5.286 ± 0.171 | 2.237 ± 0.069 |
+>
+> **Verdicts, sparse cell:**
+> - The ordering is unchanged: `anthocnet > aodv > aomdv > dsdv > olsr`,
+>   every adjacent gap significant. The narrowest is DSDV over OLSR,
+>   +1.22 pp [+0.93, +1.51], 20/20 seeds.
+> - AntHocNet over AODV: **+2.65 pp** [+1.91, +3.39] (was +3.87), with
+>   `delay99` −4669 ms and energy per bit −0.127 mJ.
+> - AntHocNet still pays in overhead: NRL 10.75 vs AODV's 4.60.
+> - AntHocNet is 7.57 pp below the oracle (was 7.74). The oracle's book
+>   still puts 38.24 points in "no path existed".
+>
+> The tables below are the dated pre-#521 record. Where they disagree with
+> this block, this block is current.
+
 ### Main cell (`fanet`, 350 m)
 
 | metric | anthocnet | aodv | olsr | dsdv | aomdv | oracle (100 ms) |

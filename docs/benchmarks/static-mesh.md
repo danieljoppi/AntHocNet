@@ -48,6 +48,47 @@ around ([network-regimes.md](../network-regimes.md)):
 
 Whatever AntHocNet loses here, it loses to its own machinery.
 
+## Restated on CBR sources (#521)
+
+> **Re-measured on constant-bit-rate sources.** Until
+> [#521](https://github.com/danieljoppi/AntHocNet/issues/521) every source ran ns-3's default 1 s on / 1 s off,
+> so this field was offered 0.5 pkt/s per flow, not the stated 1 pkt/s.
+>
+> **Provenance.** Run [37172238042](https://github.com/danieljoppi/AntHocNet/actions/runs/37172238042) at `main`
+> @ `d26ae640`, with the knobs of the published dispatch: 20 seeds, 900 s,
+> `pause=900`, disk, `3.42-opt`. Cell:
+> `docs/benchmarks/cells/static-mesh-cbr521.txt`. `scenario_check.py
+> results`: 0 FAIL (the #230 path-diversity WARN only). `bench_parse` column
+> mapping is OK (25 checks). OLSR's PDR is offered-based (#510).
+>
+> | protocol | PDR % | mean delay (ms) | delay99 (ms, bootstrap) | NRL | energy (mJ/bit) |
+> |---|---:|---:|---:|---:|---:|
+> | **anthocnet** | **99.34 ± 0.34** | 3.55 ± 0.39 | 10.3 [9.2, 11.6] | 4.51 ± 0.18 | 4.534 ± 0.040 |
+> | aodv | 97.28 ± 0.40 | 14.38 ± 1.74 | 215.7 [188.8, 246.1] | 17.53 ± 1.20 | 4.644 ± 0.048 |
+> | dsdv | 99.66 ± 0.12 | 7.72 ± 0.93 | 122.8 [108.5, 136.3] | 8.55 ± 0.18 | 4.511 ± 0.035 |
+> | olsr | 99.82 ± 0.16 | 2.47 ± 0.24 | 7.3 [6.4, 8.3] | 1.78 ± 0.03 | 4.492 ± 0.035 |
+> | oracle (exact) | 99.94 ± 0.09 | 2.56 ± 0.28 | 6.0 [5.0, 7.0] | 0.00 | 4.475 ± 0.036 |
+>
+> **Verdicts:**
+> - **AntHocNet still beats AODV on every metric**, paired per seed:
+>   - PDR **+2.05 pp** [+1.70, +2.40];
+>   - `delay99` **−205 ms** [−237, −174];
+>   - NRL **−13.03** [−14.21, −11.84];
+>   - energy per bit −0.110 mJ [−0.128, −0.092];
+>   - all p ≤ 9.6 × 10⁻⁵.
+> - **OLSR still wins the static mesh:** +0.49 pp over AntHocNet
+>   [+0.19, +0.78] at 1.78 NRL.
+> - DSDV also delivers marginally more than AntHocNet (+0.32 pp
+>   [+0.02, +0.62], p = 0.029).
+> - **One claim changes.** AntHocNet's `delay99` is no longer inside the
+>   oracle's interval: 10.3 vs 6.0 ms, paired +4.35 ms [+3.51, +5.19]. It
+>   stays far below DSDV's 122.8 ms.
+> - AntHocNet's drop book is `route=0.37 [setup=0.09 reconv=0.27]`,
+>   `chan=0.31`.
+>
+> The tables below are the dated pre-#521 record (`ce81eefe`). Where they
+> disagree with this block, this block is current.
+
 ## Results (20 seeds, 95 % CIs)
 
 Current defaults (`TimerJitter = 0.05`, `ReconvHoldCap = 200 ms`):
