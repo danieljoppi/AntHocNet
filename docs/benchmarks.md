@@ -12,6 +12,13 @@ A number is only comparable **within** its regime — the regimes differ in what
 routing even has to solve ([network-regimes.md](network-regimes.md)). Everything
 below this table is the **MANET** suite.
 
+> **Offered load before [#521](https://github.com/danieljoppi/AntHocNet/issues/521).** Until the #521 fix, every
+> source ran ns-3's default 1 s on / 1 s off, so each cell was offered **half**
+> its stated CBR rate. Comparisons between protocols within a cell stand,
+> because every arm saw the same schedule. Absolute values on pages measured
+> before the fix are not "at the stated load". See
+> [methodology § #521](benchmarks/methodology.md#521-the-sources-were-not-cbr-before-the-fix).
+
 AntHocNet measured against the standard NS-3 MANET routing protocols
 (**AODV**, **OLSR**, **DSDV**) on identical scenarios — same node layout,
 mobility and traffic, driven from the same RNG runs so every protocol sees the

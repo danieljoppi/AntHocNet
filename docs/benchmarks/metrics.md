@@ -954,11 +954,12 @@ That is the source followed by every forwarder. It is fixed at the packet's
 | `hopsMean` | The #217 TTL-based mean, repeated here so the identity below is readable from one row. |
 
 **Read `setup*` relative to the oracle, not as an absolute.** The latency
-includes the source's own schedule: on the harness's current `OnOffApplication`
-settings the first packet leaves 2 s after the start time
-([#521](https://github.com/danieljoppi/AntHocNet/issues/521)). The oracle, which
-needs no discovery, reads 2.01–2.04 s on the paper field. The excess over the
-oracle is the discovery cost.
+includes the source's own schedule: a CBR source sends its first packet one
+packet interval after its start time (1 s at the paper's 512 bps). The oracle,
+which needs no discovery, reads 1.01–1.04 s on the paper field. The excess over
+the oracle is the discovery cost. On a pre-[#521](https://github.com/danieljoppi/AntHocNet/issues/521) cell, or one
+run with `--offTime=1`, the source waited a further 1 s off-phase first, and
+the oracle read 2.01–2.04 s.
 
 **Read `pathChg` for AntHocNet as spreading, not instability.** A multipath
 protocol changes path on purpose from packet to packet, so its `pathChg`

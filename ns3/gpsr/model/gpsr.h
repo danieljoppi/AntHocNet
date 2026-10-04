@@ -169,7 +169,8 @@ private:
   //Calls SendPacketFromQueue and re-schedules
   void CheckQueue ();
 
-  void RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCallback ucb, Ipv4Header header);
+  void RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCallback ucb, Ipv4Header header,
+                    ErrorCallback ecb);
 
   /**
    * GOD location service, inlined (port change): every node reads any node's

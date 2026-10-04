@@ -1006,6 +1006,59 @@ value. The difference grows with how often the source has no route: about
 0 on a static or converged field, and up to 23.5 pp on the partition-bound
 sparse FANET cell.
 
+### #521: the sources were not CBR before the fix
+
+This is a harness defect, not a protocol-behaviour change. It was found on
+2026-10-03 by the [#294](https://github.com/danieljoppi/AntHocNet/issues/294) `##ROUTE##` setup-latency column: the
+oracle, which needs no discovery, took 2.01 s to deliver each flow's first
+packet.
+
+**The defect.** Every data source is an ns-3 `OnOffApplication`, and none set
+`OnTime` / `OffTime`. ns-3's defaults are 1 s and 1 s, so a source alternated
+one second on with one second off:
+- at 512 bps / 64 B, one packet every **2 s** rather than every 1 s;
+- at 2048 bps, four packets in the on-second, then a second of silence.
+
+The offered rate was therefore **half** of `cbrBps` on every cell, and bursty
+above 1 pkt/s. The #352 comments said "a CBR source is always on"; that was
+the premise, not the behaviour.
+
+`isl-grid`'s corridor background load had already set `OffTime=0` for this
+reason (#216); the data flows had not.
+
+**The fix ([#521](https://github.com/danieljoppi/AntHocNet/issues/521)).** Every data source now sets `OnTime=1`,
+`OffTime=0`: `anthocnet-compare`, `manet-baselines`, `isl-grid` (data and
+probe flows) and `anthocnet-example`.
+
+- Constant variables draw nothing, so the #352/#431 stream layout is unchanged.
+- `anthocnet-compare --offTime=1` reproduces the old schedule; the output is
+  byte-identical to the pre-fix binary apart from the `##CONFIG##` key. Use
+  it for paired A/B only.
+- The `##CONFIG##` scenario row now always names `offTime=`.
+  `scenario_check results` WARNs on a cell whose row lacks the key
+  (pre-#521) or has `offTime` > 0.
+
+**What it measures on the fix.** Paper field, static, 200 s, seed 1:
+- oracle goodput 3.400 → **6.825 kbps** (×2.007);
+- oracle first-delivery latency 2.01 → **1.01 s**.
+
+All four validation anchors still pass: single-hop 100 %, Broch AODV 94.0 %,
+satellite single-ISL 100 %, hop delay 10.3 ms.
+
+**What it affects.** Every MANET, FANET, grid, sweep, static-mesh, TCP-control
+and satellite number measured before the fix was taken at half the documented
+offered load. Within one cell all arms saw the same schedule, so
+**cross-protocol comparisons inside a cell stand**. Absolute levels, the
+offered-load fraction `scenario_check preflight` prints, and paper parity
+(the paper's base scenario is 1 pkt/s CBR) do not.
+
+**Quoting rule.** Pages measured before the fix stay as dated records, under
+the same policy as #496 and #510. Quote their orderings and paired deltas
+within a cell, not their absolute values as "at the stated load". The
+per-merge scenario taxonomy re-measures itself on the next refresh. The
+restated pages are re-measured on the fix in follow-ups, each carrying an
+`--offTime=1` paired arm where the attribution matters.
+
 ### Run ID → commit
 
 Every campaign CSV under `docs/benchmarks/campaign/` is named after the Actions

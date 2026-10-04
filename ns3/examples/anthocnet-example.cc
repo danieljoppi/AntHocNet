@@ -88,6 +88,10 @@ int main(int argc, char* argv[]) {
                       InetSocketAddress(interfaces.GetAddress(nNodes - 1), port));
     onoff.SetAttribute("DataRate", StringValue("8kbps"));
     onoff.SetAttribute("PacketSize", UintegerValue(64));
+    // #521: constant bit rate. ns-3's OnOff default is 1 s on / 1 s off,
+    // which halves the offered rate.
+    onoff.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+    onoff.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
     onoff.SetAttribute("StartTime", TimeValue(Seconds(5.0)));
     onoff.SetAttribute("StopTime", TimeValue(Seconds(simTime - 1.0)));
     ApplicationContainer apps = onoff.Install(nodes.Get(0));

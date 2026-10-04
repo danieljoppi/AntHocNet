@@ -732,6 +732,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                           InetSocketAddress(nodeAddr[dst], kDataPort));
         onoff.SetAttribute("DataRate", StringValue(rate.str()));
         onoff.SetAttribute("PacketSize", UintegerValue(64));
+        // #521: constant bit rate, like the background load below. ns-3's
+        // OnOff default is 1 s on / 1 s off, which halves the offered rate.
+        onoff.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+        onoff.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
         onoff.SetAttribute("StartTime", TimeValue(Seconds(startVar->GetValue())));
         onoff.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
         apps.Add(onoff.Install(nodes.Get(src)));
@@ -748,6 +752,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                           InetSocketAddress(nodeAddr[corridorDstIdx], kDataPort));
         probe.SetAttribute("DataRate", StringValue(rate.str()));
         probe.SetAttribute("PacketSize", UintegerValue(64));
+        // #521: constant bit rate, like the background load below. ns-3's
+        // OnOff default is 1 s on / 1 s off, which halves the offered rate.
+        probe.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+        probe.SetAttribute("OffTime", StringValue("ns3::ConstantRandomVariable[Constant=0]"));
         probe.SetAttribute("StartTime", TimeValue(Seconds(startVar->GetValue())));
         probe.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
         apps.Add(probe.Install(nodes.Get(Idx(0, 0, P))));
