@@ -1,0 +1,130 @@
+# isl-grid base cell, all four arms, 20 seeds @d26ae640 run 37172251221 (#521: CBR sources, OffTime=0).
+# Shared algorithm core (headers + sources compiled into the module).
+##RUN## 1 anthocnet 100.00 10.15 11.00 46.71 1.15 1.89 0.00
+# diag anthocnet seed=1 ctrlTx=65770 antTx[1=14397,2=184,4=6171,] antRx[1=57588,2=208,4=6553,]
+##RUN## 2 anthocnet 100.00 10.15 11.00 46.78 1.17 1.91 0.00
+# diag anthocnet seed=2 ctrlTx=67144 antTx[1=14402,2=184,4=6955,] antRx[1=57608,2=208,4=7481,]
+##RUN## 3 anthocnet 100.00 10.15 11.00 46.67 1.17 1.92 0.00
+# diag anthocnet seed=3 ctrlTx=66999 antTx[1=14404,2=207,4=6968,] antRx[1=57616,2=234,4=7431,]
+##RUN## 4 anthocnet 100.00 10.15 11.00 46.86 1.16 1.90 0.00
+# diag anthocnet seed=4 ctrlTx=66605 antTx[1=14399,2=207,4=6630,] antRx[1=57596,2=234,4=7087,]
+##RUN## 5 anthocnet 100.00 10.15 11.00 46.81 1.17 1.91 0.00
+# diag anthocnet seed=5 ctrlTx=66958 antTx[1=14400,2=184,4=6957,] antRx[1=57600,2=208,4=7439,]
+##RUN## 6 anthocnet 100.00 10.15 11.00 46.68 1.16 1.90 0.00
+# diag anthocnet seed=6 ctrlTx=65945 antTx[1=14395,2=184,4=6324,] antRx[1=57576,2=208,4=6713,]
+##RUN## 7 anthocnet 100.00 10.15 11.00 46.76 1.16 1.90 0.00
+# diag anthocnet seed=7 ctrlTx=66159 antTx[1=14400,2=184,4=6530,] antRx[1=57600,2=208,4=6915,]
+##RUN## 8 anthocnet 100.00 10.15 11.00 46.64 1.16 1.90 0.00
+# diag anthocnet seed=8 ctrlTx=66001 antTx[1=14404,2=207,4=6270,] antRx[1=57616,2=234,4=6666,]
+##RUN## 9 anthocnet 100.00 10.15 11.00 46.77 1.15 1.89 0.00
+# diag anthocnet seed=9 ctrlTx=65997 antTx[1=14400,2=207,4=6324,] antRx[1=57600,2=234,4=6705,]
+##RUN## 10 anthocnet 100.00 10.15 11.00 46.63 1.17 1.92 0.00
+# diag anthocnet seed=10 ctrlTx=66844 antTx[1=14406,2=184,4=6735,] antRx[1=57624,2=208,4=7245,]
+##RUN## 11 anthocnet 100.00 10.15 11.00 46.73 1.17 1.91 0.00
+# diag anthocnet seed=11 ctrlTx=66749 antTx[1=14402,2=230,4=6832,] antRx[1=57608,2=260,4=7258,]
+##RUN## 12 anthocnet 100.00 10.15 11.00 46.77 1.17 1.91 0.00
+# diag anthocnet seed=12 ctrlTx=66852 antTx[1=14394,2=184,4=6863,] antRx[1=57576,2=208,4=7347,]
+##RUN## 13 anthocnet 100.00 10.15 11.00 46.75 1.17 1.91 0.00
+# diag anthocnet seed=13 ctrlTx=66834 antTx[1=14404,2=184,4=6901,] antRx[1=57616,2=208,4=7362,]
+##RUN## 14 anthocnet 100.00 10.15 11.00 46.72 1.17 1.91 0.00
+# diag anthocnet seed=14 ctrlTx=66609 antTx[1=14396,2=184,4=6705,] antRx[1=57584,2=208,4=7171,]
+##RUN## 15 anthocnet 100.00 10.15 11.00 46.77 1.16 1.90 0.00
+# diag anthocnet seed=15 ctrlTx=66259 antTx[1=14407,2=184,4=6551,] antRx[1=57628,2=208,4=6949,]
+##RUN## 16 anthocnet 100.00 10.15 11.00 46.73 1.16 1.90 0.00
+# diag anthocnet seed=16 ctrlTx=66041 antTx[1=14401,2=184,4=6354,] antRx[1=57604,2=208,4=6749,]
+##RUN## 17 anthocnet 100.00 10.15 11.00 46.74 1.16 1.90 0.00
+# diag anthocnet seed=17 ctrlTx=66518 antTx[1=14406,2=184,4=6625,] antRx[1=57624,2=208,4=7070,]
+##RUN## 18 anthocnet 100.00 10.15 11.00 46.77 1.15 1.89 0.00
+# diag anthocnet seed=18 ctrlTx=66021 antTx[1=14406,2=207,4=6357,] antRx[1=57624,2=234,4=6732,]
+##RUN## 19 anthocnet 100.00 10.15 11.00 46.63 1.17 1.91 0.00
+# diag anthocnet seed=19 ctrlTx=66699 antTx[1=14396,2=184,4=6834,] antRx[1=57584,2=208,4=7284,]
+##RUN## 20 anthocnet 100.00 10.15 11.00 46.79 1.16 1.90 0.00
+# diag anthocnet seed=20 ctrlTx=66342 antTx[1=14401,2=207,4=6545,] antRx[1=57604,2=234,4=6957,]
+##RUN## 1 aodv 99.97 10.16 11.00 46.62 1.02 0.53 0.00
+##RUN## 2 aodv 99.97 10.16 11.00 46.83 1.01 0.53 0.00
+##RUN## 3 aodv 99.97 10.15 11.00 46.75 1.01 0.53 0.00
+##RUN## 4 aodv 99.98 10.17 11.00 46.74 1.01 0.53 0.01
+##RUN## 5 aodv 99.97 10.15 11.00 46.70 1.01 0.53 0.00
+##RUN## 6 aodv 99.97 10.15 11.00 46.77 1.02 0.53 0.00
+##RUN## 7 aodv 99.98 10.16 11.00 46.72 1.01 0.53 0.01
+##RUN## 8 aodv 99.98 10.16 11.00 46.67 1.02 0.53 0.01
+##RUN## 9 aodv 99.98 10.16 11.00 46.78 1.01 0.53 0.00
+##RUN## 10 aodv 99.97 10.15 11.00 46.67 1.02 0.53 0.00
+##RUN## 11 aodv 99.98 10.16 11.00 46.66 1.02 0.53 0.00
+##RUN## 12 aodv 99.99 10.17 11.00 46.74 1.01 0.53 0.01
+##RUN## 13 aodv 99.97 10.15 11.00 46.78 1.01 0.53 0.00
+##RUN## 14 aodv 99.97 10.15 11.00 46.74 1.01 0.53 0.00
+##RUN## 15 aodv 99.98 10.16 11.00 46.73 1.01 0.53 0.01
+##RUN## 16 aodv 99.98 10.16 11.00 46.74 1.01 0.53 0.01
+##RUN## 17 aodv 99.97 10.15 11.00 46.77 1.01 0.53 0.00
+##RUN## 18 aodv 99.98 10.17 11.00 46.71 1.02 0.53 0.01
+##RUN## 19 aodv 99.98 10.16 11.00 46.66 1.02 0.53 0.00
+##RUN## 20 aodv 99.98 10.16 11.00 46.73 1.01 0.53 0.00
+##RUN## 1 olsr 99.87 10.15 11.00 46.57 0.98 2.48 0.00
+##RUN## 2 olsr 99.51 10.15 11.00 46.61 0.97 2.48 0.00
+##RUN## 3 olsr 99.60 10.15 11.00 46.58 0.96 2.33 0.00
+##RUN## 4 olsr 99.63 10.15 11.00 46.58 1.00 2.49 0.00
+##RUN## 5 olsr 99.70 10.15 11.00 46.57 0.96 2.33 0.00
+##RUN## 6 olsr 99.58 10.15 11.00 46.59 0.93 2.22 0.00
+##RUN## 7 olsr 99.68 10.15 11.00 46.58 0.98 2.48 0.00
+##RUN## 8 olsr 99.75 10.15 11.00 46.56 0.97 2.48 0.00
+##RUN## 9 olsr 99.58 10.15 11.00 46.59 0.99 2.48 0.00
+##RUN## 10 olsr 99.82 10.15 11.00 46.59 0.95 2.33 0.00
+##RUN## 11 olsr 99.76 10.15 11.00 46.56 0.95 2.33 0.00
+##RUN## 12 olsr 99.68 10.15 11.00 46.59 0.96 2.33 0.00
+##RUN## 13 olsr 99.57 10.15 11.00 46.60 0.93 2.18 0.00
+##RUN## 14 olsr 99.62 10.15 11.00 46.57 0.93 2.19 0.00
+##RUN## 15 olsr 99.64 10.15 11.00 46.57 0.98 2.48 0.00
+##RUN## 16 olsr 99.69 10.15 11.00 46.60 0.95 2.33 0.00
+##RUN## 17 olsr 99.64 10.15 11.00 46.62 0.93 2.18 0.00
+##RUN## 18 olsr 99.67 10.15 11.00 46.57 0.97 2.48 0.00
+##RUN## 19 olsr 99.80 10.15 11.00 46.58 0.97 2.48 0.00
+##RUN## 20 olsr 99.64 10.15 11.00 46.57 0.98 2.48 0.00
+##ORACLE## 1 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 1 oracle 100.00 10.15 11.00 46.79 0.00 0.00 0.00
+##ORACLE## 2 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 2 oracle 100.00 10.15 11.00 46.78 0.00 0.00 0.00
+##ORACLE## 3 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 3 oracle 100.00 10.15 11.00 46.72 0.00 0.00 0.00
+##ORACLE## 4 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 4 oracle 100.00 10.15 11.00 46.69 0.00 0.00 0.00
+##ORACLE## 5 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 5 oracle 100.00 10.15 11.00 46.86 0.00 0.00 0.00
+##ORACLE## 6 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 6 oracle 100.00 10.15 11.00 46.67 0.00 0.00 0.00
+##ORACLE## 7 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 7 oracle 100.00 10.15 11.00 46.78 0.00 0.00 0.00
+##ORACLE## 8 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 8 oracle 100.00 10.15 11.00 46.70 0.00 0.00 0.00
+##ORACLE## 9 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 9 oracle 100.00 10.15 11.00 46.77 0.00 0.00 0.00
+##ORACLE## 10 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 10 oracle 100.00 10.15 11.00 46.69 0.00 0.00 0.00
+##ORACLE## 11 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 11 oracle 100.00 10.15 11.00 46.72 0.00 0.00 0.00
+##ORACLE## 12 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 12 oracle 100.00 10.15 11.00 46.79 0.00 0.00 0.00
+##ORACLE## 13 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 13 oracle 100.00 10.15 11.00 46.64 0.00 0.00 0.00
+##ORACLE## 14 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 14 oracle 100.00 10.15 11.00 46.87 0.00 0.00 0.00
+##ORACLE## 15 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 15 oracle 100.00 10.15 11.00 46.73 0.00 0.00 0.00
+##ORACLE## 16 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 16 oracle 100.00 10.15 11.00 46.79 0.00 0.00 0.00
+##ORACLE## 17 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 17 oracle 100.00 10.15 11.00 46.64 0.00 0.00 0.00
+##ORACLE## 18 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 18 oracle 100.00 10.15 11.00 46.77 0.00 0.00 0.00
+##ORACLE## 19 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 19 oracle 100.00 10.15 11.00 46.72 0.00 0.00 0.00
+##ORACLE## 20 oracle mode=wired approx=0 nodes=16 edges=64 recomputes=900 changes=1 range=-1.0 noRoute=0 nrl=0.00
+##RUN## 20 oracle 100.00 10.15 11.00 46.77 0.00 0.00 0.00
++Grid torus 4x4 = 16 satellites, 32 ISLs (mean degree 4.00) @ 5.00 ms 10Mbps, 8 flows, 900.00 s, mean of 20 run(s)
+protocol          PDR%  delay(ms)  delay99(ms)  thrput(kbps)     NRL   NRLbytes  jitter(ms)
+-------------------------------------------------------------------------------------------
+anthocnet        100.0       10.2         11.0         46.74    1.16       1.90        0.00
+aodv             100.0       10.2         11.0         46.73    1.01       0.53        0.00
+olsr              99.7       10.2         11.0         46.58    0.96       2.38        0.00
+oracle           100.0       10.2         11.0         46.74    0.00       0.00        0.00
+##PROV## commit=d26ae64026fcd15d100c0c20567c0651a472cd95 ref=main run_id=37172251221 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=isl-grid

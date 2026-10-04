@@ -25,6 +25,77 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 > carry their own provenance (corridor/failcell `820f5cf`, seam cell
 > `5220bd0`).
 
+## Restated on CBR sources (#521)
+
+> **Every cell below was re-measured on constant-bit-rate sources.** Until
+> [#521](https://github.com/danieljoppi/AntHocNet/issues/521) every data flow ran ns-3's default OnOff schedule,
+> 1 s on and 1 s off. That halved the offered rate. On this harness it also
+> put a 1 s silence into every recovery window. The corridor's background
+> load was already continuous (#216); its probe flow was not.
+>
+> **Provenance.** Four `satellite-benchmark.yml` dispatches at `main` @
+> `d26ae640` (the #524 merge), image `ns3:3.42-opt`, `profile=release`, 900 s,
+> seeds 1–20, `protocols=anthocnet,aodv,olsr,oracle`. Knobs are identical to
+> each cell's published dispatch:
+> base [37172251221](https://github.com/danieljoppi/AntHocNet/actions/runs/37172251221),
+> failcell [37172253492](https://github.com/danieljoppi/AntHocNet/actions/runs/37172253492),
+> corridor [37172255336](https://github.com/danieljoppi/AntHocNet/actions/runs/37172255336),
+> seam [37172257652](https://github.com/danieljoppi/AntHocNet/actions/runs/37172257652).
+> Cells: `docs/benchmarks/cells/sat-{base,failcell,corridor,seam}-cbr521.txt`.
+> `scenario_check.py results`: OK (0 fail, 0 warn) on all four. Means and
+> intervals are by script (`bench_parse.py`, `stats_util`); `±` is a 95 %
+> t-CI half-width and `[lo, hi]` a paired per-seed 95 % t-CI.
+>
+> **Base, seam: unchanged verdicts.** Every arm still sits on the bound for
+> delay and `delay99`:
+> - base 10.15 ms / 11.0 ms;
+> - seam 21.57–21.64 ms / 31.0 ms.
+>
+> PDR still sits within 0.5 pp of the bound:
+>
+> | cell | anthocnet | aodv | olsr | oracle |
+> |---|---|---|---|---|
+> | base PDR | 100.00 | 99.98 | 99.67 ±0.04 | 100.00 |
+> | base NRL | 1.16 | 1.01 | 0.96 | 0.00 |
+> | seam PDR | 100.00 | 99.95 ±0.01 | 99.50 ±0.05 | 100.00 |
+> | seam NRL | 2.43 | 2.13 | 2.34 | 0.00 |
+>
+> Throughput doubles, as the offered rate does: base 23.35 → 46.74 kbps.
+> NRL roughly halves, because the same control traffic now carries twice the
+> data. The NRL ordering on base (`olsr < aodv < anthocnet`) is unchanged.
+>
+> **Corridor: the claim holds, slightly stronger.** AntHocNet's probe delay
+> is below the congestion-blind bound by a paired **−49.6 ms [−68.6, −30.6]**
+> (Wilcoxon p = 1.1 × 10⁻⁴). It was −41.6 before. AntHocNet locks
+> clean-west in 12/20 seeds, against 10/20 before; the mechanism is the same
+> initial-choice lottery plus lock-in, and no seed shifts corridors after the
+> load. OLSR (7/20 clean) is −28.4 [−47.2, −9.6] below the bound. AntHocNet
+> vs OLSR is still not separated: −21.2 ms [−45.5, +3.1] on the t-CI, while
+> Wilcoxon gives p = 0.01, the bimodal per-seed distribution again. AODV
+> takes clean-west once (1/20) and ties the bound: −4.0 [−12.5, +4.6].
+>
+> **Failcell: the reconvergence verdict changes.** With the 1 s off-phase
+> gone, the reconvergence proxy measures routing rather than the source
+> schedule. The pre-#521 floor of 0.86 s, and the "AntHocNet and AODV on
+> the floor" reading, were mostly the sources' silence.
+>
+> | protocol | tReconverge (s) | paired vs oracle (s) |
+> |---|---|---|
+> | anthocnet | 0.111 ±0.009 | −0.000 [−0.012, +0.011], p = 0.96 |
+> | aodv | 0.268 ±0.046 | **+0.157 [+0.108, +0.206]**, p = 4.8 × 10⁻⁵ |
+> | olsr | 4.245 ±1.083 | **+4.134 [+3.053, +5.216]**, p = 1.9 × 10⁻⁵ |
+> | **oracle** | **0.111 ±0.007** | — |
+>
+> **AntHocNet reconverges at the oracle's floor. AODV is 2.4× slower,
+> separated from the floor at 20 seeds. OLSR is 38× slower.** AntHocNet's
+> `tDetect` is 0.000 on every seed, as before: the interface-down fast path
+> is the detection. Headline metrics still do not separate the arms on this
+> cell. PDR is 100.00 / 99.97 / 99.60 / 100.00 and delay 10.15–10.16 ms.
+>
+> The sections below keep the pre-#521 numbers as the dated record
+> (`0f7a3ab`, `820f5cf`, `5220bd0`). Where they disagree with this block,
+> this block is current.
+
 ## The headline result: the base torus does not discriminate
 
 **The [#216](https://github.com/danieljoppi/AntHocNet/issues/216) control now
@@ -188,7 +259,9 @@ congestion-blind bound on it (with a mechanism caveat that belongs in every
 quote of that claim); the failcell still cannot separate anyone on headline
 metrics, but its reconvergence instrument now discriminates — OLSR
 reconverges 5× slower than the oracle's floor while AntHocNet and AODV sit
-statistically on it. A third cell — the [#432 item 3 **seam
+statistically on it. *(Pre-#521. On CBR sources AntHocNet alone sits on the
+floor; AODV is 2.4× slower and OLSR 38× slower — see the
+[restatement](#restated-on-cbr-sources-521).)* A third cell — the [#432 item 3 **seam
 cell**](#the-seam-cell-static-irregularity-also-ties-the-floor-432-item-3),
 measured after these two — closes the adversarial-design question for the
 *static* suite: even genuine topological irregularity does not move the
@@ -268,6 +341,12 @@ into 20/20 is exactly the #216/#180 mechanism ladder, deliberately not part
 of this dispatch.
 
 ### The failcell: reconvergence at the oracle floor (#260)
+
+> **Superseded by the [#521 restatement](#restated-on-cbr-sources-521).** On
+> CBR sources AntHocNet still sits on the oracle's floor (0.111 vs 0.111 s),
+> but AODV separates from it (+0.157 s [+0.108, +0.206]). The paragraph
+> below, where both sit on a 0.86 s floor, describes the pre-#521 on/off
+> sources.
 
 Cell: the published base-torus cell exactly (4×4, 8 flows) plus one scripted
 break — `--breakLink=0,0,3,0 --breakAt=450` cuts the ISL `(0,0)–(3,0)`,
