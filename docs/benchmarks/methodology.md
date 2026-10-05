@@ -1065,6 +1065,12 @@ restated pages are re-measured on the fix in follow-ups, each carrying an
 - the [static mesh](static-mesh.md#restated-on-cbr-sources-521);
 - the [grid](grid.md#restated-on-cbr-sources-521).
 
+**Sweeps restated** (at `3edbab6a`, 20 seeds per point; these also carry
+#327/#352 against their pinned `v1.3.0` tables, so they are restatements,
+not CBR-only A/Bs):
+- [area](sweeps/area.md#restated-on-cbr-sources-521);
+- [pause](sweeps/pause.md#restated-on-cbr-sources-521).
+
 Verdicts that changed:
 - satellite failcell: AntHocNet alone sits on the oracle's reconvergence
   floor;
@@ -1072,6 +1078,10 @@ Verdicts that changed:
 - grid Nakagami: DSDV's NRL is below AntHocNet's;
 - FANET main: OLSR now separates from AOMDV;
 - static mesh: AntHocNet's tail is above the oracle's.
+- area: AntHocNet's NRL is below AODV's at every point (pinned, they
+  crossed at 2500 m), and its tail is no longer the worst;
+- pause: AntHocNet ties AODV at 600 s (pinned, it trailed every baseline
+  there), and still trails every baseline when static.
 
 The pinned `v1.3.0` sweeps are not re-measured.
 
