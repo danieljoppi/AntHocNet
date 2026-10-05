@@ -1069,7 +1069,8 @@ restated pages are re-measured on the fix in follow-ups, each carrying an
 #327/#352 against their pinned `v1.3.0` tables, so they are restatements,
 not CBR-only A/Bs):
 - [area](sweeps/area.md#restated-on-cbr-sources-521);
-- [pause](sweeps/pause.md#restated-on-cbr-sources-521).
+- [pause](sweeps/pause.md#restated-on-cbr-sources-521);
+- [scale](sweeps/scale.md#restated-on-cbr-sources-521).
 
 Verdicts that changed:
 - satellite failcell: AntHocNet alone sits on the oracle's reconvergence
@@ -1081,7 +1082,9 @@ Verdicts that changed:
 - area: AntHocNet's NRL is below AODV's at every point (pinned, they
   crossed at 2500 m), and its tail is no longer the worst;
 - pause: AntHocNet ties AODV at 600 s (pinned, it trailed every baseline
-  there), and still trails every baseline when static.
+  there), and still trails every baseline when static;
+- scale: AntHocNet's lead over AODV widens through f = 2.0 (pinned, it
+  narrowed there).
 
 The pinned `v1.3.0` sweeps are not re-measured.
 
