@@ -1073,8 +1073,10 @@ not CBR-only A/Bs):
 - [scale](sweeps/scale.md#restated-on-cbr-sources-521).
 
 Verdicts that changed:
-- satellite failcell: AntHocNet alone sits on the oracle's reconvergence
-  floor;
+- satellite failcell: AntHocNet reconverges near the oracle's floor and
+  well ahead of AODV; since the [#517 re-measure](satellite/isl-grid.md#re-measured-with-arm-independent-flow-schedules-517)
+  (identical flow schedules per arm) it is +0.011 s above the floor, not on
+  it;
 - grid two-ray: AntHocNet's delivery exceeds the `approx=1` oracle's;
 - grid Nakagami: DSDV's NRL is below AntHocNet's;
 - FANET main: OLSR now separates from AOMDV;
