@@ -17,6 +17,11 @@
 > [Provenance](../methodology.md#provenance-which-version-a-number-was-measured-at)
 > and [#365](https://github.com/danieljoppi/AntHocNet/issues/365).
 
+> **Restated on CBR sources ([#521](https://github.com/danieljoppi/AntHocNet/issues/521)).** The pinned table below was
+> measured at half the documented offered load. A 20-seed re-measure on
+> `main` is under [Restated on CBR sources](#restated-on-cbr-sources-521)
+> at the end of this page.
+
 > **OLSR's PDR column is inflated ([#510](https://github.com/danieljoppi/AntHocNet/issues/510)).** These cells
 > predate the fix that counts a send stock OLSR *refuses* at the source as an
 > offered packet ([PR #511](https://github.com/danieljoppi/AntHocNet/pull/511), `f480d0ae`). Before it, OLSR's PDR
@@ -114,3 +119,81 @@ _Sweep `area` — mean of 20 run(s) per point, every baseline on identical reali
 | 2500 | dsdv | 54.0 ± 1.5 | 16.0 ± 1.8 | 185.4 ± 42.4 | 3.58 | 31.533 ± 0.90 | 22.27 | inf |
 
 <!-- BENCHMARK-TABLE-END -->
+
+## Restated on CBR sources (#521)
+
+> **Re-measured on constant-bit-rate sources.** Until
+> [#521](https://github.com/danieljoppi/AntHocNet/issues/521) every source ran ns-3's default 1 s on / 1 s off, so the
+> pinned table above was taken at half the documented offered load. That
+> table stays as the dated `v1.3.0` record.
+>
+> **Provenance.** `main` @ `3edbab6a`, `3.42-opt`, 900 s, range/disk PHY,
+> 20 seeds per point, one point per `scenario-matrix` job: runs
+> [37233283127](https://github.com/danieljoppi/AntHocNet/actions/runs/37233283127) (1500), [37233284897](https://github.com/danieljoppi/AntHocNet/actions/runs/37233284897) (1900), [37233286413](https://github.com/danieljoppi/AntHocNet/actions/runs/37233286413) (2100), [37233288164](https://github.com/danieljoppi/AntHocNet/actions/runs/37233288164) (2300) and
+> [37233289720](https://github.com/danieljoppi/AntHocNet/actions/runs/37233289720) (2500).
+> Rescued as `../campaign/<run>-run.csv` (aggregate) and
+> `<run>-run-runs.csv` (per seed).
+> `scenario_check.py results`: 0 FAIL; the WARNs are the #230 path-diversity
+> window caveat and route-flap reorder notes. OLSR's PDR is offered-based
+> ([#510](https://github.com/danieljoppi/AntHocNet/issues/510)), so the estimate table at the top of this page does not apply
+> to this block.
+>
+> **Attribution.** This is not a CBR-only A/B. `3edbab6a` also carries
+> every change after `v1.3.0` that the provenance note names (#327
+> pheromone weighting, #352 RNG streams), plus #510 (OLSR accounting) and
+> #522 (TTL compensation). `sweep_summary.py --vs` the pinned CSVs reports
+> its baseline control as FAIL, as expected: every arm's offered load
+> doubled. Quote this block's within-point orderings and paired deltas,
+> not its difference from the pinned table.
+>
+> _Sweep `area` — mean of 20 run(s) per point, every baseline on identical realisations; ± is the 95% CI half-width (#293). Rendered with `update-benchmarks.py`'s sweep builder from the rescued CSVs._
+>
+> | area long edge (m) | protocol | PDR % ±95 | mean delay (ms) ±95 | 99th delay (ms) ±95 | throughput (kbps) | NRL ±95 | jitter (ms) | dOff90 (ms) |
+> |---:|----------|----------:|--------------------:|--------------------:|------------------:|--------:|------------:|------------:|
+> | 1500 | anthocnet | 97.2 ± 0.2 | 18.4 ± 0.7 | 247.0 ± 10.0 | 12.80 | 9.660 ± 0.26 | 27.64 | 47.2 |
+> | 1500 | aodv | 86.9 ± 0.6 | 24.4 ± 0.7 | 380.1 ± 13.1 | 11.45 | 27.531 ± 0.38 | 36.85 | inf |
+> | 1500 | olsr | 73.2 ± 1.1 | 6.1 ± 0.5 | 23.6 ± 0.8 | 9.64 | 2.620 ± 0.04 | 7.94 | inf |
+> | 1500 | dsdv | 69.6 ± 0.9 | 14.7 ± 0.8 | 357.7 ± 83.2 | 9.17 | 13.566 ± 0.17 | 23.25 | inf |
+> | 1900 | anthocnet | 95.0 ± 0.4 | 23.3 ± 1.0 | 321.4 ± 23.0 | 12.52 | 11.293 ± 0.34 | 34.93 | 137.3 |
+> | 1900 | aodv | 84.7 ± 0.7 | 22.0 ± 0.8 | 309.2 ± 19.0 | 11.16 | 24.679 ± 0.49 | 31.52 | inf |
+> | 1900 | olsr | 65.6 ± 1.3 | 6.1 ± 0.5 | 25.4 ± 1.0 | 8.64 | 3.026 ± 0.07 | 7.51 | inf |
+> | 1900 | dsdv | 62.3 ± 1.2 | 13.4 ± 0.7 | 258.3 ± 82.2 | 8.21 | 14.639 ± 0.30 | 20.24 | inf |
+> | 2100 | anthocnet | 93.6 ± 0.5 | 26.5 ± 1.5 | 381.9 ± 33.1 | 12.32 | 12.403 ± 0.47 | 39.50 | 166.2 |
+> | 2100 | aodv | 82.4 ± 1.0 | 22.8 ± 1.5 | 287.4 ± 27.6 | 10.85 | 23.749 ± 0.54 | 30.95 | inf |
+> | 2100 | olsr | 60.7 ± 1.6 | 6.5 ± 0.5 | 27.0 ± 1.3 | 7.99 | 3.313 ± 0.08 | 7.95 | inf |
+> | 2100 | dsdv | 58.3 ± 1.6 | 13.9 ± 1.0 | 221.7 ± 45.2 | 7.67 | 15.314 ± 0.41 | 20.23 | inf |
+> | 2300 | anthocnet | 91.7 ± 0.5 | 28.8 ± 1.0 | 454.9 ± 37.3 | 12.08 | 13.316 ± 0.35 | 42.75 | inf |
+> | 2300 | aodv | 81.0 ± 1.1 | 25.1 ± 1.8 | 378.6 ± 73.0 | 10.68 | 22.878 ± 0.50 | 32.53 | inf |
+> | 2300 | olsr | 57.3 ± 1.3 | 6.0 ± 0.5 | 27.6 ± 1.0 | 7.54 | 3.544 ± 0.08 | 7.06 | inf |
+> | 2300 | dsdv | 55.3 ± 1.2 | 14.0 ± 1.3 | 189.8 ± 41.2 | 7.28 | 15.810 ± 0.39 | 19.61 | inf |
+> | 2500 | anthocnet | 90.0 ± 0.8 | 30.2 ± 1.5 | 500.8 ± 47.1 | 11.85 | 14.088 ± 0.53 | 44.81 | inf |
+> | 2500 | aodv | 79.8 ± 1.3 | 28.1 ± 1.8 | 492.5 ± 87.0 | 10.51 | 21.933 ± 0.53 | 34.47 | inf |
+> | 2500 | olsr | 54.6 ± 1.8 | 6.1 ± 0.6 | 27.8 ± 1.7 | 7.19 | 3.756 ± 0.12 | 7.39 | inf |
+> | 2500 | dsdv | 52.7 ± 1.4 | 14.7 ± 1.6 | 226.9 ± 101.5 | 6.94 | 16.231 ± 0.43 | 19.64 | inf |
+>
+> **Paired per-seed deltas** (mean ± 95 % CI half-width, 20 seeds; *ns* =
+> the CI spans zero):
+>
+> | long edge (m) | ΔPDR anthocnet − aodv (pp) | Δ`delay99` anthocnet − aodv (ms) | ΔNRL anthocnet − aodv | ΔPDR olsr − dsdv (pp) |
+> |---:|---|---|---|---|
+> | 1500 | **+10.3 ± 0.6** | **−133 ± 13** | **−17.87 ± 0.41** | +3.52 ± 0.47 |
+> | 1900 | **+10.3 ± 0.6** | +12 ± 31 (ns) | **−13.39 ± 0.49** | +3.25 ± 0.58 |
+> | 2100 | **+11.2 ± 0.9** | +95 ± 39 | **−11.35 ± 0.48** | +2.37 ± 0.60 |
+> | 2300 | **+10.7 ± 1.2** | +76 ± 92 (ns) | **−9.56 ± 0.45** | +2.00 ± 0.53 |
+> | 2500 | **+10.2 ± 0.9** | +8 ± 76 (ns) | **−7.85 ± 0.34** | +1.86 ± 0.52 |
+>
+> **What holds and what changed versus the pinned table:**
+> - **The delivery ordering holds:** AntHocNet > AODV > OLSR > DSDV at
+>   every point. AntHocNet's lead over AODV is +10.2 to +11.2 pp, against
+>   +10.3 to +12.1 pp pinned. It leads OLSR by +24.0 to +35.4 pp and DSDV
+>   by +27.5 to +37.3 pp.
+> - **OLSR over DSDV is significant but small** (+1.9 to +3.5 pp). On the
+>   pinned page, the #510 estimate put it within ~2 pp at 2100 and 2500 m.
+> - **AntHocNet's tail is no longer the worst.** Its `delay99` is 247 to
+>   501 ms, against 878 to 975 ms pinned. It is below AODV's at 1500 m,
+>   level at 1900/2300/2500 m, and above only at 2100 m. Against DSDV it is
+>   below at 1500 m (−111 ± 87 ms), level at 1900 m, and above from
+>   2100 m. It is above OLSR's at every point.
+> - **AntHocNet's NRL is below AODV's at every point.** Pinned, the two
+>   crossed at 2500 m. NRL is per delivered packet, so doubling the offered
+>   data lowers every arm's NRL.

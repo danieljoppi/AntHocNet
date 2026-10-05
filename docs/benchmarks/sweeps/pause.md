@@ -17,6 +17,11 @@
 > [Provenance](../methodology.md#provenance-which-version-a-number-was-measured-at)
 > and [#365](https://github.com/danieljoppi/AntHocNet/issues/365).
 
+> **Restated on CBR sources ([#521](https://github.com/danieljoppi/AntHocNet/issues/521)).** The pinned table below was
+> measured at half the documented offered load. A 20-seed re-measure on
+> `main` is under [Restated on CBR sources](#restated-on-cbr-sources-521)
+> at the end of this page.
+
 > **OLSR's PDR column is inflated ([#510](https://github.com/danieljoppi/AntHocNet/issues/510)).** These cells
 > predate the fix that counts a send stock OLSR *refuses* at the source as an
 > offered packet ([PR #511](https://github.com/danieljoppi/AntHocNet/pull/511), `f480d0ae`). Before it, OLSR's PDR
@@ -116,3 +121,85 @@ _Sweep `pause` — mean of 20 run(s) per point, every baseline on identical real
 | 900 | dsdv | 98.7 ± 1.3 | 13.6 ± 2.3 | 52.9 ± 10.1 | 6.56 | 14.524 ± 0.34 | 10.18 | inf |
 
 <!-- BENCHMARK-TABLE-END -->
+
+## Restated on CBR sources (#521)
+
+> **Re-measured on constant-bit-rate sources.** Until
+> [#521](https://github.com/danieljoppi/AntHocNet/issues/521) every source ran ns-3's default 1 s on / 1 s off, so the
+> pinned table above was taken at half the documented offered load. That
+> table stays as the dated `v1.3.0` record.
+>
+> **Provenance.** `main` @ `3edbab6a`, `3.42-opt`, 900 s, range/disk PHY,
+> 20 seeds per point, one point per `scenario-matrix` job: runs
+> [37233291212](https://github.com/danieljoppi/AntHocNet/actions/runs/37233291212) (0), [37233292762](https://github.com/danieljoppi/AntHocNet/actions/runs/37233292762) (100), [37233294241](https://github.com/danieljoppi/AntHocNet/actions/runs/37233294241) (300), [37233296147](https://github.com/danieljoppi/AntHocNet/actions/runs/37233296147) (600) and
+> [37233298023](https://github.com/danieljoppi/AntHocNet/actions/runs/37233298023) (900).
+> Rescued as `../campaign/<run>-run.csv` (aggregate) and
+> `<run>-run-runs.csv` (per seed).
+> `scenario_check.py results`: 0 FAIL; the WARNs are the #230 path-diversity
+> window caveat and route-flap reorder notes. OLSR's PDR is offered-based
+> ([#510](https://github.com/danieljoppi/AntHocNet/issues/510)), so the estimate table at the top of this page does not apply
+> to this block.
+>
+> **Attribution.** This is not a CBR-only A/B. `3edbab6a` also carries
+> every change after `v1.3.0` that the provenance note names (#327
+> pheromone weighting, #352 RNG streams), plus #510 (OLSR accounting) and
+> #522 (TTL compensation). `sweep_summary.py --vs` the pinned CSVs reports
+> its baseline control as FAIL, as expected: every arm's offered load
+> doubled. Quote this block's within-point orderings and paired deltas,
+> not its difference from the pinned table.
+>
+> _Sweep `pause` — mean of 20 run(s) per point, every baseline on identical realisations; ± is the 95% CI half-width (#293). Rendered with `update-benchmarks.py`'s sweep builder from the rescued CSVs._
+>
+> | pause time (s) | protocol | PDR % ±95 | mean delay (ms) ±95 | 99th delay (ms) ±95 | throughput (kbps) | NRL ±95 | jitter (ms) | dOff90 (ms) |
+> |---:|----------|----------:|--------------------:|--------------------:|------------------:|--------:|------------:|------------:|
+> | 0 | anthocnet | 91.0 ± 0.5 | 30.5 ± 1.1 | 490.6 ± 35.6 | 11.99 | 13.986 ± 0.38 | 45.83 | inf |
+> | 0 | aodv | 79.8 ± 1.0 | 27.5 ± 2.6 | 426.8 ± 93.6 | 10.51 | 23.235 ± 0.25 | 34.34 | inf |
+> | 0 | olsr | 55.4 ± 1.1 | 6.2 ± 0.6 | 26.9 ± 1.7 | 7.30 | 3.709 ± 0.08 | 7.61 | inf |
+> | 0 | dsdv | 53.0 ± 1.0 | 14.3 ± 1.1 | 238.9 ± 58.1 | 6.99 | 16.528 ± 0.32 | 20.64 | inf |
+> | 100 | anthocnet | 88.3 ± 0.9 | 25.7 ± 1.3 | 388.6 ± 32.3 | 11.63 | 13.461 ± 0.61 | 36.37 | inf |
+> | 100 | aodv | 81.2 ± 1.4 | 25.8 ± 2.2 | 488.2 ± 104.7 | 10.69 | 18.523 ± 0.48 | 31.67 | inf |
+> | 100 | olsr | 57.4 ± 1.7 | 6.0 ± 0.4 | 27.0 ± 1.4 | 7.56 | 3.522 ± 0.10 | 6.55 | inf |
+> | 100 | dsdv | 57.8 ± 1.5 | 16.0 ± 2.2 | 200.2 ± 83.1 | 7.61 | 14.230 ± 0.28 | 19.32 | inf |
+> | 300 | anthocnet | 88.5 ± 2.4 | 16.5 ± 1.5 | 214.2 ± 23.0 | 11.65 | 11.587 ± 1.49 | 19.80 | inf |
+> | 300 | aodv | 85.4 ± 2.8 | 19.6 ± 2.2 | 261.4 ± 79.5 | 11.25 | 12.867 ± 0.79 | 22.47 | inf |
+> | 300 | olsr | 72.0 ± 3.2 | 5.4 ± 0.5 | 23.4 ± 1.2 | 9.49 | 2.768 ± 0.12 | 4.28 | inf |
+> | 300 | dsdv | 73.2 ± 2.9 | 13.7 ± 2.0 | 100.2 ± 19.0 | 9.64 | 10.524 ± 0.33 | 14.44 | inf |
+> | 600 | anthocnet | 89.7 ± 4.3 | 12.3 ± 1.5 | 165.2 ± 20.5 | 11.83 | 11.028 ± 3.01 | 12.07 | inf |
+> | 600 | aodv | 89.9 ± 4.3 | 14.6 ± 2.4 | 146.5 ± 69.5 | 11.85 | 9.592 ± 1.25 | 14.72 | inf |
+> | 600 | olsr | 84.2 ± 4.6 | 4.7 ± 0.4 | 18.0 ± 1.0 | 11.09 | 2.334 ± 0.14 | 2.29 | inf |
+> | 600 | dsdv | 83.8 ± 4.4 | 13.7 ± 2.2 | 68.5 ± 9.6 | 11.05 | 8.743 ± 0.26 | 11.50 | inf |
+> | 900 | anthocnet | 90.5 ± 6.6 | 6.2 ± 0.7 | 17.1 ± 4.9 | 11.93 | 11.217 ± 5.35 | 2.07 | inf |
+> | 900 | aodv | 93.4 ± 6.7 | 6.9 ± 1.1 | 45.6 ± 13.4 | 12.31 | 6.503 ± 1.54 | 4.58 | inf |
+> | 900 | olsr | 94.1 ± 6.7 | 3.8 ± 0.4 | 9.7 ± 1.5 | 12.40 | 2.073 ± 0.18 | 0.24 | inf |
+> | 900 | dsdv | 93.0 ± 6.5 | 11.0 ± 2.2 | 46.5 ± 9.2 | 12.26 | 7.444 ± 0.22 | 7.54 | inf |
+>
+> **Paired per-seed deltas,** AntHocNet minus each baseline (mean ± 95 %
+> CI half-width, 20 seeds; *ns* = the CI spans zero):
+>
+> | pause (s) | ΔPDR − aodv (pp) | ΔPDR − olsr (pp) | ΔPDR − dsdv (pp) | Δ`delay99` − aodv (ms) | Δ`delay99` − olsr (ms) | Δ`delay99` − dsdv (ms) |
+> |---:|---|---|---|---|---|---|
+> | 0 | **+11.2 ± 1.1** | **+35.6 ± 1.0** | **+38.0 ± 0.8** | +64 ± 101 (ns) | +464 ± 36 | +252 ± 63 |
+> | 100 | **+7.1 ± 1.0** | **+30.9 ± 1.3** | **+30.5 ± 1.0** | −100 ± 101 (ns) | +362 ± 32 | +188 ± 69 |
+> | 300 | **+3.1 ± 1.1** | **+16.4 ± 1.6** | **+15.3 ± 1.3** | −47 ± 79 (ns) | +191 ± 22 | +114 ± 27 |
+> | 600 | −0.1 ± 1.5 (ns) | **+5.6 ± 1.4** | **+5.9 ± 1.2** | +19 ± 53 (ns) | +147 ± 20 | +97 ± 17 |
+> | 900 | −2.9 ± 1.9 | −3.6 ± 1.9 | −2.5 ± 1.7 | **−29 ± 14** | +7.5 ± 5.0 | **−29 ± 11** |
+>
+> **What holds and what changed versus the pinned table:**
+> - **The mobility crossover holds and moves later.** AntHocNet's delivery
+>   lead shrinks as motion stops. Pinned, it was already below all three
+>   baselines at 600 s. On CBR it ties AODV at 600 s and still leads OLSR
+>   and DSDV by ~6 pp.
+> - **The static point (900 s) is still a loss.** AntHocNet is 2.5 to
+>   3.6 pp below every baseline, each significant. Pinned, the gaps were
+>   3.5 (AODV), 13.2 (OLSR, pre-#510) and 11.9 (DSDV) pp. The ±6.6 pp
+>   aggregate CIs are placement-driven: each static seed is one fixed
+>   topology, which the paired deltas cancel.
+> - **AntHocNet's static tail is now short.** Its `delay99` at 900 s is
+>   17.1 ms, against 788 ms pinned. That is below AODV's and DSDV's
+>   (−29 ms each) and 7.5 ± 5.0 ms above OLSR's.
+> - **NRL:** AntHocNet's is below AODV's from 0 to 300 s
+>   (−9.25 ± 0.28 / −5.06 ± 0.49 / −1.28 ± 1.19), level at 600 s, and above
+>   at 900 s (+4.71 ± 4.14).
+> - **OLSR versus DSDV:** OLSR leads at 0 s (+2.38 ± 0.55 pp) and 900 s
+>   (+1.07 ± 0.62 pp), DSDV leads at 300 s (+1.14 ± 0.65 pp), and they are
+>   level at 100 and 600 s.
