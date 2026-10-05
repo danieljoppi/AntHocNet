@@ -25,6 +25,20 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 > carry their own provenance (corridor/failcell `820f5cf`, seam cell
 > `5220bd0`).
 
+> **Cross-arm pairing caveat ([#517](https://github.com/danieljoppi/AntHocNet/issues/517)).** Every number on this page
+> predates the fix that pins the harness's application streams (flow start
+> times, OnOff variables) to a fixed, arm-independent block, as #431 did for
+> `anthocnet-compare`. Before it, the start-time draw sat on the running
+> stream counter after the routing helpers, so on the same seed each arm
+> started its flows at different times and was offered a different number of
+> packets. Measured on the fixed harness (300 s, seeds 1–3, all four cells),
+> the arms' offered counts are now identical; before, they differed by up to
+> ~1 % (4×4 base, seed 1: 18619 to 18814). Each arm's own PDR, delay and NRL
+> remain valid realisations of their seeds. The "paired per seed" cross-arm
+> deltas below paired runs whose flows started at different times; on the
+> corridor cell that is the single probe flow's start, on the others all
+> eight flows'. A re-measure on the fixed harness supersedes them.
+
 ## Restated on CBR sources (#521)
 
 > **Every cell below was re-measured on constant-bit-rate sources.** Until

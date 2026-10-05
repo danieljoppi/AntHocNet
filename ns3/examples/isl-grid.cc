@@ -112,13 +112,38 @@ constexpr uint16_t kLoadPort = 10;
 // generous. TakeStreams() aborts if a run ever overruns its block.
 constexpr int64_t kStreamStride = 1000000;
 
+// #517: the application sub-block, ported from anthocnet-compare (#431; the
+// comment on its kAppStreamOffset has the full story). The routing helpers
+// consume a protocol-dependent number of streams (the oracle none, the others
+// one or more per node), so a draw taken from the running counter after them
+// lands on a different stream in every arm. The flow start times were such a
+// draw, so on the same seed every arm started its flows at different times
+// and was offered a different number of packets (4x4 base cell, seed 1: OLSR
+// 28496 vs oracle 28593). The application streams therefore sit at a FIXED
+// offset at the top of the seed block, independent of the routing arm.
+constexpr int64_t kAppStreamOffset = kStreamStride - 10000;
+
+// Advance `next` by the number of streams a helper's AssignStreams() reported,
+// and abort if this run has overrun the running counter's part of its block,
+// which ends where the fixed application sub-block begins.
 void TakeStreams(int64_t& next, int64_t base, int64_t used, const char* what) {
     next += used;
-    NS_ABORT_MSG_IF(next - base >= kStreamStride,
+    NS_ABORT_MSG_IF(next - base >= kAppStreamOffset,
                     "RNG stream budget exhausted after assigning " << what
                     << ": this run has consumed " << (next - base)
-                    << " streams but kStreamStride is " << kStreamStride
-                    << " — seed blocks would overlap (#352). Raise the stride.");
+                    << " streams but the application sub-block starts at "
+                    << kAppStreamOffset
+                    << " — blocks would overlap (#352/#517). Raise the stride.");
+}
+
+// Advance the application counter and abort if the fixed sub-block is full.
+void TakeAppStreams(int64_t& next, int64_t base, int64_t used, const char* what) {
+    next += used;
+    NS_ABORT_MSG_IF(next - base >= kStreamStride,
+                    "RNG stream budget exhausted assigning " << what
+                    << ": the application sub-block (kStreamStride - "
+                    "kAppStreamOffset streams) is too small for this flow "
+                    "count (#517).");
 }
 
 // #352: DsdvHelper has no AssignStreams() wrapper in any ns-3 of the 3.36-3.48
@@ -720,8 +745,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // #352: pinned before the flow loop reads it (start times are drawn there).
     // The point-to-point devices and channels configured above carry no error
     // model and draw no random numbers, so there is nothing to pin below IP.
-    startVar->SetStream(stream);
-    TakeStreams(stream, streamBase, 1, "flow start times");
+    // #517: pinned at the fixed application offset, not the running counter,
+    // so every arm draws the same start times on the same seed.
+    int64_t appStream = streamBase + kAppStreamOffset;
+    startVar->SetStream(appStream);
+    TakeAppStreams(appStream, streamBase, 1, "flow start times");
 
     ApplicationContainer apps, sinks;
     for (uint32_t i = 0; i < P.nFlows && i < nNodes; ++i) {
@@ -794,8 +822,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     for (uint32_t i = 0; i < apps.GetN(); ++i) {
         Ptr<OnOffApplication> onoffApp = DynamicCast<OnOffApplication>(apps.Get(i));
         if (onoffApp) {
-            TakeStreams(stream, streamBase, onoffApp->AssignStreams(stream),
-                        "onoff application");
+            TakeAppStreams(appStream, streamBase, onoffApp->AssignStreams(appStream),
+                           "onoff application");
         }
     }
 
