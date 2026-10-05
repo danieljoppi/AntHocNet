@@ -25,19 +25,68 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 > carry their own provenance (corridor/failcell `820f5cf`, seam cell
 > `5220bd0`).
 
-> **Cross-arm pairing caveat ([#517](https://github.com/danieljoppi/AntHocNet/issues/517)).** Every number on this page
-> predates the fix that pins the harness's application streams (flow start
-> times, OnOff variables) to a fixed, arm-independent block, as #431 did for
-> `anthocnet-compare`. Before it, the start-time draw sat on the running
-> stream counter after the routing helpers, so on the same seed each arm
-> started its flows at different times and was offered a different number of
-> packets. Measured on the fixed harness (300 s, seeds 1–3, all four cells),
-> the arms' offered counts are now identical; before, they differed by up to
-> ~1 % (4×4 base, seed 1: 18619 to 18814). Each arm's own PDR, delay and NRL
-> remain valid realisations of their seeds. The "paired per seed" cross-arm
-> deltas below paired runs whose flows started at different times; on the
-> corridor cell that is the single probe flow's start, on the others all
-> eight flows'. A re-measure on the fixed harness supersedes them.
+## Re-measured with arm-independent flow schedules (#517)
+
+> **Every cell was re-measured after the #517 fix.** Before it, the harness
+> drew flow start times from a stream that depended on the routing arm, so on
+> the same seed each arm started its flows at different times and was offered
+> a different number of packets (up to ~1 % apart). Since
+> [#517](https://github.com/danieljoppi/AntHocNet/issues/517) (PR #531) the application streams sit at a fixed,
+> arm-independent offset, as #431 did for `anthocnet-compare`, and every arm
+> on a seed is offered the identical packet sequence. Each arm's own metrics
+> in the #521 block below were valid; its **cross-arm paired deltas were
+> not**, and this block supersedes them.
+>
+> **Provenance.** Four `satellite-benchmark.yml` dispatches at `main` @
+> `324063f8` (the #531 merge), image `ns3:3.42-opt`, `profile=release`, 900 s,
+> seeds 1–20, `protocols=anthocnet,aodv,olsr,oracle`, CBR sources, knobs
+> identical to the #521 dispatches:
+> base [37319129653](https://github.com/danieljoppi/AntHocNet/actions/runs/37319129653),
+> failcell [37319142249](https://github.com/danieljoppi/AntHocNet/actions/runs/37319142249),
+> corridor [37319154658](https://github.com/danieljoppi/AntHocNet/actions/runs/37319154658),
+> seam [37319168168](https://github.com/danieljoppi/AntHocNet/actions/runs/37319168168).
+> Cells: `docs/benchmarks/cells/sat-{base,failcell,corridor,seam}-app517.txt`.
+> `scenario_check.py results`: OK (0 fail, 0 warn) on all four. `±` is a
+> 95 % t-CI half-width; `[lo, hi]` a paired per-seed 95 % t-CI; p is
+> Wilcoxon signed-rank.
+>
+> **Base, seam: unchanged.** Every arm sits on the bound for delay and
+> `delay99` (base 10.15–10.16 ms / 11.0 ms; seam 21.57–21.63 ms / 31.0 ms).
+> PDR: base 100.00 / 99.98 / 99.69 ±0.05 / 100.00 and seam 100.00 / 99.95 /
+> 99.51 ±0.06 / 100.00 (anthocnet / aodv / olsr / oracle). NRL: base 1.16 /
+> 1.01 / 0.96, seam 2.44 / 2.14 / 2.34. The base NRL ordering
+> (`olsr < aodv < anthocnet`) holds.
+>
+> **Corridor: the claim holds, smaller.** AntHocNet's probe delay is below
+> the congestion-blind bound by a paired **−37.8 ms [−57.0, −18.5]**
+> (p = 9.5 × 10⁻⁵), against −49.6 in the #521 block. It locks clean-west in
+> 9/20 seeds (12/20 before). OLSR (7/20 clean) is −28.5 [−47.4, −9.7]
+> below the bound. **AntHocNet vs OLSR is not separated:** −9.2 ms
+> [−33.7, +15.2] on the t-CI, Wilcoxon p = 0.047, the bimodal per-seed
+> distribution again. AODV now takes the loaded corridor on every seed and
+> sits exactly on the bound: −0.01 ms [−0.02, +0.00]. AntHocNet beats AODV
+> by −37.8 ms [−57.0, −18.5].
+>
+> **Failcell: AntHocNet is close to the floor, not on it.**
+>
+> | protocol | tReconverge (s) | paired vs oracle (s) |
+> |---|---|---|
+> | anthocnet | 0.125 ±0.007 | **+0.011 [+0.004, +0.018]**, p = 0.0039 |
+> | aodv | 0.255 ±0.052 | **+0.142 [+0.092, +0.191]**, p = 1.2 × 10⁻⁴ |
+> | olsr | 4.255 ±1.083 | **+4.141 [+3.058, +5.224]**, p = 3.1 × 10⁻⁵ |
+> | **oracle** | **0.114 ±0.007** | — |
+>
+> On identical flow schedules AntHocNet ties the oracle on 10 of 20 seeds,
+> is above it on 9 and below on 1, so the #521 block's "AntHocNet sits on
+> the oracle's floor" (−0.000, p = 0.96) does not hold: it reconverges
+> 11 ms later on average. It is still well ahead of AODV
+> (−0.131 s [−0.181, −0.080], p = 2.1 × 10⁻⁴), which is 2.2× the oracle,
+> and OLSR at 37×. `tDetect` stays 0.000 on every seed. Headline metrics do
+> not separate the arms on this cell (PDR 100.00 / 99.98 / 99.62 / 100.00,
+> delay 10.15–10.16 ms).
+>
+> The #521 block below and the sections after it are the dated record.
+> Where they disagree with this block, this block is current.
 
 ## Restated on CBR sources (#521)
 
@@ -356,11 +405,12 @@ of this dispatch.
 
 ### The failcell: reconvergence at the oracle floor (#260)
 
-> **Superseded by the [#521 restatement](#restated-on-cbr-sources-521).** On
-> CBR sources AntHocNet still sits on the oracle's floor (0.111 vs 0.111 s),
-> but AODV separates from it (+0.157 s [+0.108, +0.206]). The paragraph
-> below, where both sit on a 0.86 s floor, describes the pre-#521 on/off
-> sources.
+> **Superseded by the [#517 re-measure](#re-measured-with-arm-independent-flow-schedules-517).**
+> On CBR sources with identical flow schedules, AntHocNet reconverges
+> +0.011 s [+0.004, +0.018] after the oracle's floor and AODV
+> +0.142 s [+0.092, +0.191]. The #521 block's tie (0.111 vs 0.111 s) paired
+> runs with different flow start times. The paragraph below, where both sit
+> on a 0.86 s floor, describes the pre-#521 on/off sources.
 
 Cell: the published base-torus cell exactly (4×4, 8 flows) plus one scripted
 break — `--breakLink=0,0,3,0 --breakAt=450` cuts the ISL `(0,0)–(3,0)`,
