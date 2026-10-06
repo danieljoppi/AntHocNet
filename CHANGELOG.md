@@ -8,6 +8,20 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v1.8.0 (2026-10-06)
+
+### Feat
+
+- **bench**: emit route stability per seed as ##ROUTE## (#294 item 4) (#523)
+- **bench**: make --scenario=fanet set the oracle's 100 ms recompute, and scope the matched-hop check off 3-D fields (#519)
+
+### Fix
+
+- **isl-grid**: pin application streams to a fixed, arm-independent block (#517) (#531)
+- **ns3**: compensate the loopback TTL decrement on deferred source packets (#522) (#525)
+- **bench**: make the CBR sources constant bit rate, as documented (#521) (#524)
+- **bench**: count OLSR's source-refused sends as offered packets in isl-grid (#516)
+
 ## v1.7.0 (2026-10-02)
 
 ### Feat
