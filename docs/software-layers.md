@@ -164,7 +164,7 @@ flowchart TB
     subgraph FAM["FANET / VANET — mobility families (FANET in progress)"]
         direction TB
         FA["◇ FANET: 3-D harness + preflight landed (#480/#481); preset + campaign next (#482/#483)"]:::plan
-        FD["◇ VANET: ns-3 Manhattan measured arm (#488) + Veins confirmation (#485) — v1.9.0"]:::plan
+        FD["◇ VANET: ns-3 Manhattan measured arm (#488) — v1.9.0; Veins arm (#485) deferred"]:::plan
         FB["● all MANET mechanisms transfer unchanged (same Wi-Fi stack)"]:::live
         FC["◇ knob watchlist: hello rate, hold caps, a1/a2 vs churn — A/B only"]:::plan
     end
