@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       scenario:
-        description: "Preset (#482): paper (the default, and every published cell) | fanet (3-D Gauss-Markov UAV field; pass mobility=gaussmarkov, and the preset's areaZ/speedMin/flows/cbrBps apply because no input overrides them). Every numeric input below still overrides the preset."
+        description: "Preset (#482): paper (the default, and every published cell) | fanet (3-D Gauss-Markov UAV field; pass mobility=gaussmarkov, and the preset's areaZ/speedMin/flows/cbrBps apply because no input overrides them) | vanet (#488 Manhattan street grid with urban building shadowing; pass mobility=manhattan, propagation=urban, nNodes=100, areaX=800, areaY=800, pause=0, speed=20, time=900 — those inputs are always passed — and the preset's grid/speedMin/flows/cbrBps apply). Every numeric input below still overrides the preset."
         required: false
         default: 'paper'
       version:

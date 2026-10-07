@@ -6,11 +6,12 @@
 # regression (like the #51 IdealWifiManager ~50% single-hop loss) fails CI
 # loudly instead of silently corrupting every published number.
 #
-# Usage: check-anchors.sh <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d>
+# Usage: check-anchors.sh <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building>
 #
-# The two fanet-* anchors (#482) run on anthocnet-compare instead, because
-# manet-baselines has no 3-D field; they still route only stock AODV and the
-# oracle control, so no AntHocNet code is under test.
+# The two fanet-* anchors (#482) and the two vanet-* anchors (#488) run on
+# anthocnet-compare instead, because manet-baselines has neither a 3-D field
+# nor a street grid; they still route only stock AODV and the oracle control,
+# so no AntHocNet code is under test.
 #
 # The ns-3 tree must already be configured + built with the anthocnet module's
 # examples enabled (manet-baselines builds as part of the module's examples).
@@ -19,7 +20,7 @@ set -euo pipefail
 NS3DIR=${1:-}
 ANCHOR=${2:-}
 if [ -z "$NS3DIR" ] || [ -z "$ANCHOR" ]; then
-    echo "usage: $0 <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d>" >&2
+    echo "usage: $0 <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building>" >&2
     exit 2
 fi
 
@@ -81,8 +82,34 @@ case "$ANCHOR" in
         floor=$(floor_for fanet_vertical_3d_pdr_min)
         hops_min=$(floor_for fanet_vertical_3d_oracle_hops_min)
         ;;
+    vanet-single-hop)
+        # #488, the VANET family's analytic anchor: --scenario=vanet shrunk to
+        # one 280 x 280 m block whose building is 1 m wide (street width
+        # 279 m). The block diagonal, 396 m, is inside the two-ray decode
+        # radius (423.3 m) and no line of sight is blocked, so every flow is
+        # one hop: AODV must deliver ~everything and the oracle's mean hop
+        # count must be 1.00. A street-grid, mobility or channel regression
+        # breaks one or the other.
+        harness=anthocnet-compare
+        args="--scenario=vanet --nNodes=20 --area=280 --blocksX=1 --blocksY=1 --streetWidth=279 --flows=4 --time=120 --runs=2"
+        protocols="aodv,oracle"
+        floor=$(floor_for vanet_single_hop_pdr_min)
+        hops_max=$(floor_for vanet_single_hop_oracle_hops_max)
+        ;;
+    vanet-building)
+        # #488, the check that buildings are honoured: the same block with a
+        # 180 x 180 m building (street width 100 m). Vehicles on opposite
+        # streets lose line of sight and relay around a corner, so the
+        # oracle's mean hop count must exceed 1.2; a channel that ignored the
+        # building reads the single-hop 1.00 (measured 1.34).
+        harness=anthocnet-compare
+        args="--scenario=vanet --nNodes=20 --area=280 --blocksX=1 --blocksY=1 --streetWidth=100 --flows=4 --time=120 --runs=2"
+        protocols="aodv,oracle"
+        floor=$(floor_for vanet_building_pdr_min)
+        hops_min=$(floor_for vanet_building_oracle_hops_min)
+        ;;
     *)
-        echo "unknown anchor '$ANCHOR' (want: single-hop | broch-low-mobility | fanet-single-hop-3d | fanet-vertical-3d)" >&2
+        echo "unknown anchor '$ANCHOR' (want: single-hop | broch-low-mobility | fanet-single-hop-3d | fanet-vertical-3d | vanet-single-hop | vanet-building)" >&2
         exit 2
         ;;
 esac

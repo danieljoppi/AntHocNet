@@ -490,6 +490,66 @@ FANET_3D = {"nodes": 30, "areaX": 1000.0, "areaY": 1000.0, "areaZ": 300.0,
             "mobility": "gaussmarkov", "flows": 5, "pathWindowS": 2.0}
 
 
+# #488: a VANET cell as the harness smoke runs it: 30 vehicles on a 5x5 grid
+# over 1 km^2, urban channel, no pauses. Each refusal mutates one knob.
+VANET = {"nodes": 30, "areaX": 1000.0, "areaY": 1000.0, "range": 300.0,
+         "speed": 20.0, "pause": 0.0, "mobility": "manhattan",
+         "propagation": "urban", "flows": 4, "pathWindowS": 2.0,
+         "blocksX": 5, "blocksY": 5, "streetWidth": 20.0}
+
+
+@case("#488 street_in_range_prob: disk limits and buildings only remove links")
+def _street_prob():
+    # Range beyond the field diagonal: every street pair is in range.
+    expect(sc.street_in_range_prob(1000, 1000, 5, 5, 1500) == 1.0,
+           "street-prob", "r > diagonal should give probability 1")
+    disk = sc.street_in_range_prob(1000, 1000, 5, 5, sc.TWO_RAY_DECODE_RADIUS_M)
+    urb = sc.street_in_range_prob(1000, 1000, 5, 5, sc.TWO_RAY_DECODE_RADIUS_M,
+                                  urban=True)
+    expect(0 < urb < disk, "street-prob",
+           f"urban {urb:.3f} must be > 0 and below the disk {disk:.3f}")
+    # Two points on one street, 300 m apart: line of sight, no loss.
+    expect(sc.urban_obstacle_db((0, 0), (300, 0), 1000, 1000, 5, 5, 20) == 0,
+           "street-prob", "a pair on the same street crossed a building")
+    # Across one block's diagonal: two walls plus the inside length.
+    loss = sc.urban_obstacle_db((0, 0), (200, 200), 1000, 1000, 5, 5, 20)
+    # The building spans 10..190 m on both axes, so the line runs 180*sqrt(2)
+    # m inside it.
+    expect(abs(loss - (2 * 9 + 0.4 * 180 * 2 ** 0.5)) < 1e-6, "street-prob",
+           f"one-block diagonal loss {loss:.3f} dB")
+
+
+@case("#488 preflight's urban degree matches the harness's measured graph")
+def _pre_vanet_degree():
+    levels, out = run_preflight(**VANET)
+    expect("street grid (road network; urban" in out, "pre-vanet-degree", out)
+    deg = float(out.split("expected mean degree ~")[1].split()[0])
+    # check-manhattan.sh's field: the oracle measured 66 directed edges over
+    # 30 nodes (mean degree 2.2) on the decode-los-approx rule this mirrors.
+    expect(1.5 < deg < 3.0, "pre-vanet-degree", f"degree {deg}\n{out}")
+    expect("partitioned" in out, "pre-vanet-degree",
+           f"30 vehicles in 1 km^2 urban must read as partitioned\n{out}")
+
+
+@case("#488 preflight mirrors the harness's Manhattan/urban refusals")
+def _pre_vanet_refusals():
+    for knob, msg in (({"pause": 5.0}, "pause is inert"),
+                      ({"mobility": "rwp"}, "--propagation=urban needs"),
+                      ({"areaZ": 100.0}, "--mobility=manhattan with --areaZ"),
+                      ({"streetWidth": 250.0}, "narrower than a block")):
+        levels, out = run_preflight(**dict(VANET, **knob))
+        expect("FAIL" in levels and msg in out, "pre-vanet-refusals",
+               f"{knob} was not refused with '{msg}'\n{out}")
+
+
+@case("#488 preflight labels a disk-channel Manhattan cell validation-only")
+def _pre_vanet_disk():
+    _, out = run_preflight(**dict(VANET, propagation="range", nodes=60))
+    expect("harness validation only" in out, "pre-vanet-disk", out)
+    _, out = run_preflight(**VANET)
+    expect("harness validation only" not in out, "pre-vanet-disk", out)
+
+
 @case("#481 box_in_range_prob matches its closed-form limits")
 def _box_prob_limits():
     import math

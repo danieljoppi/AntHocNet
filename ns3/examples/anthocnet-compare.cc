@@ -114,7 +114,7 @@ namespace {
 // the line inside buildings. Defaults are Veins' shipped building type
 // (db-per-cut 9, db-per-meter 0.4), the values the paper fitted at 5.9 GHz;
 // this harness keeps its 2.4 GHz 802.11b radio (ADR-0019: a family changes the
-// scenario, not the stack), which docs/benchmarks/vanet.md records as a threat
+// scenario, not the stack), which docs/benchmarks/scenarios/vanet.md records as a threat
 // to validity.
 //
 // Buildings are the blocks of the Manhattan grid --mobility=manhattan drives
@@ -1316,7 +1316,7 @@ struct Params {
 //     field is redrawn among the valid ones, and a dead end turns it back.
 //   * Each block-to-block leg is driven at a speed drawn U(speedMin, speed).
 //     BonnMotion instead perturbs speed every update interval; a per-leg draw
-//     is the harness's simplification, recorded in docs/benchmarks/vanet.md.
+//     is the harness's simplification, recorded in docs/benchmarks/scenarios/vanet.md.
 //   * There is no pause: --pause is inert under this model.
 // All draws come from `u`, one stream pinned by the caller, consumed in node
 // order -- so the schedule is identical in every arm on a seed.
@@ -3180,7 +3180,7 @@ int main(int argc, char* argv[]) {
     double   simTime = -1, area = -1, areaX = -1, areaY = -1, areaZ = -1;
     double   speed = -1, speedMin = -1, pause = -1, range = -1, cbrBps = -1;
     double   offTime = 0.0;  // #521
-    uint32_t blocksX = 5, blocksY = 5;  // #488 Manhattan grid / urban buildings
+    uint32_t blocksX = 0, blocksY = 0;  // #488 grid; 0 = preset (4 vanet, else 5)
     double   streetWidth = 20.0;        // #488
     int32_t  nFlows = 0;
     int32_t  sink = -1;
@@ -3199,9 +3199,12 @@ int main(int argc, char* argv[]) {
     CommandLine cmd(__FILE__);
     cmd.AddValue("scenario", "Preset: 'paper' (Broch/CMU calibration field), "
                              "'thesis' (AntHocNet's own evaluation field, "
-                             "Ducatelle PhD 2007 §5.1.3 — #58) or 'fanet' "
+                             "Ducatelle PhD 2007 §5.1.3 — #58), 'fanet' "
                              "(3-D Gauss-Markov UAV field, #482; provenance in "
-                             "docs/benchmarks/scenarios/fanet.md)", scenario);
+                             "docs/benchmarks/scenarios/fanet.md) or 'vanet' "
+                             "(Manhattan street grid with urban building "
+                             "shadowing, #488; provenance in "
+                             "docs/benchmarks/scenarios/vanet.md)", scenario);
     cmd.AddValue("nNodes", "Number of nodes", nNodes);
     cmd.AddValue("time", "Simulation time (s)", simTime);
     cmd.AddValue("area", "Square area side (m); shorthand for areaX=areaY", area);
@@ -3246,7 +3249,7 @@ int main(int argc, char* argv[]) {
                           "signal? (#73)", g_qdiag);
     std::string mobilityModel;  // "" = preset default: gaussmarkov for fanet, else rwp
     std::string transport = "udp";
-    std::string propagation = "range";
+    std::string propagation;  // "" = preset default: urban for vanet, else range
     cmd.AddValue("transport",
                  "Transport (#63): 'udp' (CBR OnOff, default — what every "
                  "published number was measured under) | 'tcp' (saturating "
@@ -3263,9 +3266,10 @@ int main(int argc, char* argv[]) {
                  "grid, Bai et al. 2003; --pause is inert under it)",
                  mobilityModel);
     cmd.AddValue("blocksX", "Manhattan grid / urban channel: blocks along x "
-                            "(#488; streets on the block edges)", blocksX);
+                            "(#488; streets on the block edges). Default 5 "
+                            "(4 for --scenario=vanet)", blocksX);
     cmd.AddValue("blocksY", "Manhattan grid / urban channel: blocks along y "
-                            "(#488)", blocksY);
+                            "(#488). Default 5 (4 for --scenario=vanet)", blocksY);
     cmd.AddValue("streetWidth", "Urban channel: street width (m); buildings are "
                                 "the blocks inset by half of it (#488)", streetWidth);
     cmd.AddValue("propagation",
@@ -3345,9 +3349,10 @@ int main(int argc, char* argv[]) {
     // defaults under a label that claims otherwise (a typo'd "fanet" would
     // otherwise produce a planar 20-node RWP run tagged scenario=fanet).
     NS_ABORT_MSG_UNLESS(scenario.empty() || scenario == "paper" ||
-                            scenario == "thesis" || scenario == "fanet",
+                            scenario == "thesis" || scenario == "fanet" ||
+                            scenario == "vanet",
                         "unknown --scenario='" << scenario
-                        << "' (expected paper|thesis|fanet, or omit it)");
+                        << "' (expected paper|thesis|fanet|vanet, or omit it)");
     const bool thesis = (scenario == "thesis");
     const bool paper = (scenario == "paper") || thesis;
     // #482 FANET preset (family #300). Scenario knobs ONLY (ADR-0019): no
@@ -3369,33 +3374,54 @@ int main(int argc, char* argv[]) {
     //                                  thesis's (Ducatelle 2007 §5.1.3)
     //   time      900 s                the paper/thesis horizon
     const bool fanet = (scenario == "fanet");
+    // #488 VANET preset (family #301). Scenario knobs ONLY (ADR-0019). Each
+    // value and its source is tabulated in docs/benchmarks/scenarios/vanet.md; in short:
+    //   field     800 x 800 m, 4 x 4 blocks of 200 m
+    //                                  Bai & Helmy's Manhattan setup is 1000 x
+    //                                  1000 m (IMPORTANT, INFOCOM 2003); shrunk
+    //                                  so the urban channel is connected at an
+    //                                  affordable vehicle count (block size: a
+    //                                  recorded assumption, see vanet.md)
+    //   vehicles  100                  chosen for density: #488 preflight's
+    //                                  road-network degree 9.6 clears
+    //                                  2 ln(100) = 9.2 under the buildings
+    //   mobility  manhattan            Bai & Helmy 2003 (turns 0.5/0.25/0.25)
+    //   speed     U(10, 20) m/s        36-72 km/h urban; inside #298's 10-40
+    //   channel   urban                two-ray + Sommer et al. 2011 shadowing
+    //   traffic   20 CBR flows, 4 x 64 B/s (2048 bps), start in [0, 180] s
+    //                                  Bai & Helmy 2003 (20 CBR sources,
+    //                                  4 pkt/s, 64 B)
+    //   time      900 s                Bai & Helmy 2003; the paper horizon
+    const bool vanet = (scenario == "vanet");
     // #58: the thesis averages 20 repetitions; everything else keeps the
     // historical default of 1. Explicit --runs=N always overrides.
     if (runs < 1) runs = thesis ? 20 : 1;
     Params P;
     P.nNodes  = nNodes > 0 ? static_cast<uint32_t>(nNodes)
-                           : (thesis ? 100 : paper ? 50 : fanet ? 30 : 20);
-    P.simTime = simTime >= 0 ? simTime : ((paper || fanet) ? 900.0 : 40.0);
+                           : (thesis ? 100 : paper ? 50 : fanet ? 30 : vanet ? 100 : 20);
+    P.simTime = simTime >= 0 ? simTime : ((paper || fanet || vanet) ? 900.0 : 40.0);
     P.areaX   = areaX >= 0 ? areaX
-                           : (area >= 0 ? area : (thesis ? 2400.0 : paper ? 1500.0 : fanet ? 1000.0 : 300.0));
+                           : (area >= 0 ? area : (thesis ? 2400.0 : paper ? 1500.0 : fanet ? 1000.0 : vanet ? 800.0 : 300.0));
     P.areaY   = areaY >= 0 ? areaY
-                           : (area >= 0 ? area : (thesis ? 800.0 : paper ? 300.0 : fanet ? 1000.0 : 300.0));
+                           : (area >= 0 ? area : (thesis ? 800.0 : paper ? 300.0 : fanet ? 1000.0 : vanet ? 800.0 : 300.0));
     // -1 = unset (the preset decides); an explicit --areaZ=0 forces planar.
     NS_ABORT_MSG_UNLESS(areaZ >= 0.0 || areaZ == -1.0,
                         "--areaZ must be >= 0 (got " << areaZ << ")");
     P.areaZ   = areaZ >= 0 ? areaZ : (fanet ? 300.0 : 0.0);
-    P.speed   = speed >= 0 ? speed : (thesis ? 10.0 : paper ? 20.0 : fanet ? 30.0 : 5.0);
-    P.speedMin = speedMin >= 0 ? speedMin : (fanet ? 10.0 : 1.0);
+    P.speed   = speed >= 0 ? speed : (thesis ? 10.0 : paper ? 20.0 : fanet ? 30.0 : vanet ? 20.0 : 5.0);
+    P.speedMin = speedMin >= 0 ? speedMin : ((fanet || vanet) ? 10.0 : 1.0);
     NS_ABORT_MSG_UNLESS(P.speedMin <= P.speed,
                         "--speedMin=" << P.speedMin << " exceeds the max speed "
                         << P.speed << ": U(speedMin, speed) would be empty (#482)");
-    P.pause   = pause >= 0 ? pause : (paper ? 30.0 : fanet ? 0.0 : 1.0);
+    P.pause   = pause >= 0 ? pause : (paper ? 30.0 : (fanet || vanet) ? 0.0 : 1.0);
     P.range   = range >= 0 ? range : (thesis ? 250.0 : paper ? 300.0 : fanet ? 350.0 : 0.0);
-    P.nFlows  = nFlows > 0 ? static_cast<uint32_t>(nFlows) : (paper ? 20 : fanet ? 10 : 5);
-    P.cbrBps  = cbrBps >= 0 ? cbrBps : ((thesis || fanet) ? 2048.0 : paper ? 512.0 : 8000.0);
+    P.nFlows  = nFlows > 0 ? static_cast<uint32_t>(nFlows) : ((paper || vanet) ? 20 : fanet ? 10 : 5);
+    P.cbrBps  = cbrBps >= 0 ? cbrBps : ((thesis || fanet || vanet) ? 2048.0 : paper ? 512.0 : 8000.0);
     P.offTime = offTime;
-    P.startWindow = (paper || fanet) ? 180.0 : 5.0;
-    if (mobilityModel.empty()) mobilityModel = fanet ? "gaussmarkov" : "rwp";
+    P.startWindow = (paper || fanet || vanet) ? 180.0 : 5.0;
+    if (mobilityModel.empty()) mobilityModel = fanet ? "gaussmarkov" : vanet ? "manhattan" : "rwp";
+    if (blocksX == 0) blocksX = vanet ? 4 : 5;
+    if (blocksY == 0) blocksY = vanet ? 4 : 5;
     // #506: the oracle control re-derives its graph every RecomputeInterval
     // (1 s by default). At FANET closing speeds (up to 60 m/s) a 1 s-old graph
     // routes over links that have already broken, and the oracle stops being a
@@ -3406,7 +3432,12 @@ int main(int argc, char* argv[]) {
     // default ADR-0019 forbids. An explicit
     // --ns3::oracle::Topology::RecomputeInterval=... on the command line
     // still wins; no other scenario is touched.
-    if (fanet) {
+    // #488: the same instrument rule for VANET. Measured on the
+    // vanet-building anchor cell (one 280 m block, 20 vehicles, urban): at the
+    // 1 s default the oracle delivered 48.3 % against AODV's 50.5 % on 10
+    // vehicles -- a 1 s-old graph misses every corner a vehicle has just
+    // turned. At 100 ms it delivers 99.6 % on the anchor cell.
+    if (fanet || vanet) {
         bool explicitRecompute = false;
         for (int k = 1; k < argc; ++k) {
             if (std::string(argv[k]).find("oracle::Topology::RecomputeInterval")
@@ -3422,7 +3453,7 @@ int main(int argc, char* argv[]) {
     // An explicitly empty --propagation= has always meant "the default", and
     // scenario-matrix.yml documents its blank input that way; normalise it
     // rather than letting the guard below reject a working dispatch.
-    if (propagation.empty()) propagation = "range";
+    if (propagation.empty()) propagation = vanet ? "urban" : "range";
     P.propagation = propagation;
     NS_ABORT_MSG_UNLESS(propagation == "range" || propagation == "tworay" ||
                             propagation == "nakagami" || propagation == "urban",
