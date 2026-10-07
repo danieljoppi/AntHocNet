@@ -189,7 +189,10 @@ The same protocol binary runs in two very different networks: the **MANET
 fields** (paper + thesis, via `anthocnet-compare`) and a **satellite ISL +Grid
 snapshot** (via `isl-grid`). Two more families are supported as of v1.7.0: a **static
 Wi-Fi mesh** ([results](docs/benchmarks/static-mesh.md)) and **FANET**, a 3-D UAV swarm run by
-`--scenario=fanet` ([results](docs/benchmarks/scenarios/fanet.md)). VANET is planned for v1.9.0. What
+`--scenario=fanet` ([results](docs/benchmarks/scenarios/fanet.md)). As of v1.9.0, **VANET**: vehicles on a
+Manhattan street grid with building shadowing, run by `--scenario=vanet`
+([results](docs/benchmarks/scenarios/vanet.md), with the four-family ranking
+statement). What
 is *unknown* in each regime decides which of AntHocNet's mechanisms matter
 there — the family table, the side-by-side harness comparison, and the
 mechanism-by-mechanism live/inert map are all in

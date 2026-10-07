@@ -1785,6 +1785,23 @@ def _oracle_common_hops_3d_warns():
            f"a 3-D cell still FAILed the matched-hop bound\n{out}")
 
 
+@case("#488 a moving street grid scopes the matched-hop excess; a static one keeps the FAIL")
+def _oracle_common_hops_grid():
+    def cfg(speed):
+        return ("##CONFIG## scenario=vanet nNodes=40 time=900 runs=1 firstRun=1 "
+                f"areaX=800 areaY=800 speed={speed} speedMin=0.01 pause=0 "
+                "range=0 propagation=urban mobility=manhattan blocksX=4 "
+                "blocksY=4 streetWidth=20 transport=udp flows=20 cbrBps=2048 "
+                "offTime=0 rateManager=constant2 protocols=aodv,oracle\n")
+    _levels, out = run_cell(cfg(20) + TWORAY_300_ORACLE_CELL)
+    expect("#488" in out and "1 seed x arm" in out
+           and "on the common packet set, where survivorship" not in out,
+           "oracle-common-hops-grid", f"a moving grid still FAILed\n{out}")
+    levels, out = run_cell(cfg(0.02) + TWORAY_300_ORACLE_CELL)
+    expect("FAIL" in levels and "+0.450" in out, "oracle-common-hops-grid-static",
+           f"a near-static grid lost its control FAIL\n{out}")
+
+
 @case("#506 a planar ##CONFIG## (areaZ=0) keeps the matched-hop FAIL")
 def _oracle_common_hops_planar_fails():
     cell = ("##CONFIG## scenario=paper nNodes=20 time=120 runs=1 firstRun=1 "

@@ -171,5 +171,198 @@ per-family protocol default ADR-0019 forbids.
 
 ## Results
 
-The 20-seed campaign (every arm, both cells) is the next step of #488 and
-lands on this page with the cross-family ranking-stability statement.
+**Provenance.** `paper-benchmark.yml` at `main` @ `1a923576` (the #536
+merge), image `3.42-opt`, 900 s, seven arms (anthocnet, aodv, olsr, dsdv,
+aomdv, gpsr, oracle), seeds 1–20 per cell, `--scenario=vanet` with the
+inputs `nNodes`, `areaX=800`, `areaY=800`, `pause=0`, `speed=20`,
+`propagation=urban`, `mobility=manhattan`; seeds split with
+`extraArgs=--firstRun=N`.
+
+| cell | runs |
+|---|---|
+| main (100 vehicles, 4 seeds per job) | [37638802518](https://github.com/danieljoppi/AntHocNet/actions/runs/37638802518) (1–4), [37638813699](https://github.com/danieljoppi/AntHocNet/actions/runs/37638813699) (5–8), [37638825144](https://github.com/danieljoppi/AntHocNet/actions/runs/37638825144) (9–12), [37638836620](https://github.com/danieljoppi/AntHocNet/actions/runs/37638836620) (13–16), [37638847225](https://github.com/danieljoppi/AntHocNet/actions/runs/37638847225) (17–20) |
+| sparse (40 vehicles, 10 seeds per job) | [37638857489](https://github.com/danieljoppi/AntHocNet/actions/runs/37638857489) (1–10), [37638868141](https://github.com/danieljoppi/AntHocNet/actions/runs/37638868141) (11–20) |
+
+Cells: `docs/benchmarks/cells/vanet-{main,sparse}.txt`, 140 `##RUN##` rows
+each (20 seeds × 7 arms). A main-cell job took 3.5–4 h (about 50 min per
+seed, seven arms); a sparse-cell job 1.2–2 h.
+
+**`scenario_check.py results`:** WARN only, 0 FAIL, on both cells. The WARNs
+are the oracle's `approx=1` and partition notes, the #230 path-diversity
+caveat, and the matched-hop note below. One rule did FAIL on the first read
+and is now scoped, with its evidence:
+
+> **The oracle matched-hop check is not a bound on a moving street grid.**
+> On the packets every arm delivered, the oracle took 2.1–3.0 hops against
+> every arm's ~1.0–1.2 (sparse cell, 20/20 seeds). That is the #506
+> mechanism #519 scoped off 3-D fields: the "same" packet is forwarded at
+> different instants in each arm (AODV's matched `delay99` is 8.8 s), and
+> the oracle re-routes per hop over a graph whose links flip at every
+> corner. **Control:** the same cell nearly static (0.01–0.02 m/s, 3 seeds)
+> gives oracle 2.400 against AntHocNet 2.400, AODV 2.405, OLSR 2.411 — no
+> excess, so the per-pair building rule is not missing links.
+> `scenario_check.py` now reports the excess once per file as a WARN when
+> `##CONFIG##` names `mobility=manhattan` above 1 m/s; a near-static grid
+> keeps the FAIL as its control.
+
+Means ± 95 % t-CI half-width over 20 seeds; paired deltas are per seed
+(t-CI, Wilcoxon p). Energy is per delivered bit.
+
+### Main cell (`vanet`, 100 vehicles)
+
+| protocol | PDR % | mean delay (ms) | `delay99` (ms) | NRL | energy (mJ/bit) |
+|---|---|---|---|---|---|
+| **anthocnet** | **42.10 ± 0.66** | 166.5 ± 3.7 | 1848 ± 43 | 73.59 ± 1.94 | 5.52 ± 0.11 |
+| aodv | **42.26 ± 0.60** | 318.9 ± 11.2 | 3749 ± 48 | 60.45 ± 1.27 | 5.43 ± 0.09 |
+| gpsr | 25.95 ± 0.50 | 34.5 ± 1.4 | 764 ± 42 | 5.39 ± 0.13 | 8.80 ± 0.21 |
+| aomdv | 18.87 ± 0.48 | 1060.4 ± 28.9 | 9028 ± 49 | 73.60 ± 2.07 | 11.97 ± 0.35 |
+| dsdv | 11.81 ± 0.38 | 23.5 ± 1.3 | 834 ± 44 | 66.64 ± 2.48 | 19.22 ± 0.72 |
+| olsr | 9.19 ± 0.38 | 15.4 ± 1.7 | 184 ± 134 | 11.23 ± 0.52 | 24.53 ± 1.14 |
+| oracle (100 ms) | 81.70 ± 0.45 | 18.8 ± 1.1 | 609 ± 71 | 0.00 | 2.74 ± 0.03 |
+
+| AntHocNet minus | ΔPDR (pp) | ΔNRL | Δ`delay99` (ms) | Δenergy (mJ/bit) |
+|---|---|---|---|---|
+| aodv | −0.16 [−0.58, +0.26], p = 0.34 | +13.14 [+11.39, +14.89] | **−1901** [−1953, −1849] | +0.092 [+0.033, +0.151] |
+| gpsr | **+16.15** [+15.77, +16.52] | +68.19 [+66.31, +70.08] | +1084 [+1023, +1145] | **−3.277** [−3.401, −3.153] |
+| aomdv | **+23.23** [+22.77, +23.68] | −0.01 [−2.32, +2.30], p = 0.99 | **−7180** [−7250, −7110] | **−6.444** [−6.712, −6.175] |
+| dsdv | **+30.28** [+29.83, +30.74] | +6.95 [+4.58, +9.32] | +1014 [+939, +1089] | **−13.698** [−14.337, −13.059] |
+| olsr | **+32.91** [+32.47, +33.34] | +62.35 [+60.60, +64.11] | +1664 [+1538, +1790] | **−19.003** [−20.051, −17.955] |
+| oracle | −39.60 [−40.19, −39.01] | +73.59 | +1239 [+1151, +1326] | +2.780 [+2.688, +2.871] |
+
+Every interval that excludes zero has Wilcoxon p ≤ 9.6 × 10⁻⁵.
+
+### Sparse cell (`--nNodes=40`, the partition regime)
+
+| protocol | PDR % | mean delay (ms) | `delay99` (ms) | NRL | energy (mJ/bit) |
+|---|---|---|---|---|---|
+| **anthocnet** | **23.90 ± 0.56** | 35.1 ± 1.2 | 632 ± 35 | 27.22 ± 0.93 | 3.79 ± 0.09 |
+| aodv | **23.79 ± 0.65** | 906.0 ± 22.9 | 8583 ± 101 | 7.06 ± 0.19 | 3.78 ± 0.10 |
+| aomdv | 18.09 ± 0.52 | 1162.5 ± 32.2 | 9302 ± 50 | 10.39 ± 0.30 | 4.95 ± 0.14 |
+| gpsr | 16.29 ± 0.46 | 99.4 ± 6.8 | 1712 ± 143 | 3.44 ± 0.10 | 5.80 ± 0.16 |
+| dsdv | 10.90 ± 0.45 | 13.4 ± 2.0 | 69 ± 49 | 8.71 ± 0.36 | 8.31 ± 0.34 |
+| olsr | 8.68 ± 0.39 | 6.0 ± 1.3 | 16 ± 1 | 4.19 ± 0.19 | 10.38 ± 0.46 |
+| oracle (100 ms) | 30.79 ± 0.52 | 6.1 ± 0.3 | 26 ± 1 | 0.00 | 2.90 ± 0.05 |
+
+AntHocNet minus AODV: ΔPDR +0.11 [−0.20, +0.42] (p = 0.32), ΔNRL +20.16
+[+19.36, +20.95], Δ`delay99` **−7951 ms** [−8058, −7844]. AntHocNet leads
+AOMDV, GPSR, DSDV and OLSR by +5.81, +7.60, +13.01 and +15.21 pp (all
+20/20 seeds). Even the oracle delivers only 30.8 %: 40 vehicles on this grid
+are partitioned most of the time, which is the cell's purpose.
+
+### What the numbers say
+
+- **AntHocNet ties AODV on delivery in both cells**, and every other arm
+  trails both. This is the first family where AntHocNet does not lead
+  delivery outright (see the four-family statement below).
+- **The tail is AntHocNet's clear win over AODV**: half of AODV's
+  `delay99` in the main cell and a thirteenth of it in the sparse cell. AODV
+  buffers packets for seconds during route discovery; AntHocNet delivers or
+  drops them sooner.
+- **Overhead is AntHocNet's cost.** Its NRL is the highest of the arms that
+  deliver comparably: +13.1 over AODV in the main cell, 3.9× AODV's in the
+  sparse cell. It ties AOMDV's in the main cell. Energy per delivered bit is
+  level with AODV (+0.09 mJ/bit) and far below every other arm.
+- **The gap to the oracle is the widest of any family: 39.6 pp.** The oracle
+  delivers 81.7 % on the same field, so the network is connected most of the
+  time; the protocols lose the difference.
+
+**Where AntHocNet's losses go** (drop decomposition, % of offered, mean over
+the jobs' compact blocks):
+
+| main cell | route (reconv / repair) | queue | MAC | channel | TTL |
+|---|---|---|---|---|---|
+| anthocnet | **39.9** (36.2 / 3.9) | 0.0 | 7.1 | 10.3 | 0.7 |
+| aodv | 13.2 | 5.6 | 21.4 | 16.7 | 0.7 |
+| oracle | 7.5 (partition) | 0.0 | 6.1 | 4.7 | 0.0 |
+
+AntHocNet loses **36 % of its traffic to reconvergence**: packets that
+arrive while a route is being re-established and outlive the 200 ms
+`ReconvHoldCap`. The route-stability metrics (`##ROUTE##`, #294) show why:
+
+| main cell | median route setup (s) | `pathChg` | median path lifetime (s) | mean hops |
+|---|---|---|---|---|
+| anthocnet | 1.17 ± 0.18 | 0.38 | **0.75** | 4.83 |
+| aodv | 1.76 ± 0.33 | 0.23 | 1.32 | 3.56 |
+| oracle | 0.27 | 0.42 | 0.50 | 3.72 |
+
+Read the single-path arms for churn: AntHocNet's `pathChg` and path
+lifetime also count its deliberate multipath spreading
+([metrics.md](../metrics.md#route-stability-route-294-item-4-ns-3-only-udp-only)). The oracle's
+shortest path changes every **0.50 s** (median) and AODV's routes live
+**1.32 s**: the topology turns over in about one hello period. Buildings cut
+line of sight the moment a vehicle turns a corner, so links die far sooner
+than distance alone predicts. The #488 preflight's link-lifetime rule
+(range / 2·speed = 10.6 hello periods) reasons from distance and
+**overestimates link life on this channel**: it passed a cell whose shortest
+paths change twice per hello period. AntHocNet's routes are also longer than
+AODV's (4.83 against 3.56 hops), so each crosses more of those breaks.
+
+This is the knob-watchlist item #301 named (`HelloInterval` vs link
+lifetime, hold caps under corridor-shaped reconvergence). ADR-0019 forbids
+retuning per family before a measured A/B, so it is recorded as a follow-up,
+[#537](https://github.com/danieljoppi/AntHocNet/issues/537), not changed here: a paired `HelloInterval` / `ReconvHoldCap` A/B on
+this cell, and a corner-aware link-lifetime rule for the preflight.
+
+### Threats to validity
+
+- **Radio.** 802.11b at 2.4 GHz with Sommer constants fitted at 5.9 GHz
+  (Provenance). Buildings here are, if anything, slightly too opaque.
+- **Mobility.** One speed per block leg and no stops (traffic lights,
+  queues): real urban traffic clusters at intersections, which this model
+  does not.
+- **The oracle.** `approx=1`, and its matched-hop numbers are not a bound on
+  a moving grid (above). Its delivery is a bound here: it leads every arm on
+  every seed in both cells.
+- **No Veins confirmation.** The Veins/SUMO arm (#485) is deferred with the
+  OMNeT++ adapter; these numbers are ns-3 only.
+
+## Ranking stability across four families
+
+ADR-0019 keeps the protocol configuration identical across families, so a
+ranking that changes between them is a property of the network. Every number
+below is on CBR sources (#521) with OLSR's PDR offered-based (#510):
+[MANET grid](../grid.md#restated-on-cbr-sources-521) (six cells),
+[static mesh](../static-mesh.md#restated-on-cbr-sources-521),
+[FANET](fanet.md#restated-on-cbr-sources-521) (main cell) and this page's
+VANET main cell.
+
+| | MANET grid (6 cells) | static mesh | FANET main | VANET main |
+|---|---|---|---|---|
+| delivery leader | **AntHocNet**, every cell | **OLSR** (+0.49 pp over AntHocNet), DSDV +0.32 | **AntHocNet** (+8.32 pp over AODV) | **AntHocNet = AODV** (−0.16 pp, p = 0.34) |
+| AntHocNet vs AODV, PDR | +10.8 … +21.0 pp | +2.05 pp | +8.32 pp | tie |
+| AntHocNet vs AODV, NRL | −23.9 … −28.0 | −13.0 | −0.36 | **+13.1** |
+| AntHocNet vs AODV, `delay99` | −164 … −372 ms | −205 ms | −293 ms | −1901 ms |
+| gap to the oracle (PDR) | AntHocNet above it on two-ray; 4.2–8.0 pp below on Nakagami | 0.6 pp | 2.45 pp | **39.6 pp** |
+| OLSR | 78–89 % | **leads** | 47.9 % | 9.2 % (last) |
+
+**What holds in every family:**
+- **AntHocNet beats AODV on the tail.** `delay99` is lower in every cell of
+  every family, from −164 ms (MANET) to −1901 ms (VANET).
+- **AntHocNet delivers at least as much as AODV** everywhere, and strictly
+  more everywhere except VANET.
+
+**What does not hold:**
+- **"AntHocNet delivers most" is a claim about open mobile fields.** It
+  holds on every MANET cell and both FANET cells. It fails on the static mesh
+  (OLSR and DSDV lead) and becomes a tie with AODV on the street grid.
+- **AntHocNet's overhead advantage over AODV vanishes and reverses as links
+  shorten.** −24 to −28 NRL on MANET, −13 on the static mesh, −0.4 on FANET,
+  **+13.1 on VANET**: its proactive ants and repair keep sampling links that
+  live under one hello period.
+- **OLSR is the family-sensitive protocol.** It leads the static mesh,
+  delivers 78–89 % on MANET, 47.9 % on FANET and 9.2 % on VANET: its
+  topology tables hold next hops that a corner or a fast flight has already
+  broken.
+- **The distance to the oracle grows with how abruptly links break**: none
+  on two-ray MANET, a few points on Nakagami and FANET, 39.6 pp when
+  buildings cut links at every corner. VANET is where a better protocol has
+  the most room, and where AntHocNet's reconvergence (36 % of its losses) is
+  the measured place to look.
+
+## Provenance of the numbers
+
+Per-seed rows: `docs/benchmarks/cells/vanet-{main,sparse}.txt`. Statistics
+from `stats_util` (t-CI, Wilcoxon signed-rank). Drop decomposition from the
+`# drops` compact blocks, `##ROUTE##` from the per-seed rows. Reproduce with
+`paper-benchmark.yml` at `1a923576` and the inputs in the provenance block
+above.

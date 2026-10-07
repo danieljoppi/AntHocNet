@@ -2043,8 +2043,20 @@ def check_oracle(path, rows):
     # speed back at or below it. The excess is therefore not evidence of a
     # missing link there, and is reported once per file as a WARN instead of a
     # FAIL per seed; the planar corpus keeps the FAIL.
+    #
+    # #488: a moving Manhattan street grid (VANET) breaks the same premise,
+    # harder: links appear and vanish at every corner turn. Measured on the
+    # sparse vanet cell (40 vehicles, 10-20 m/s): oracle matched hops 2.1-3.0
+    # against every arm's ~1.0-1.2 on 20/20 seeds. The control is the same
+    # cell nearly static (0.01-0.02 m/s, 3 seeds): oracle 2.400 against
+    # anthocnet 2.400, aodv 2.405, olsr 2.411 -- no excess, so the per-pair
+    # building rule is not missing links. Scoped like 3-D when the grid
+    # moves (speed > 1 m/s); a near-static grid keeps the FAIL as its control.
     m_z = re.search(r"^##CONFIG## .*\bareaZ=([0-9.]+)", text, re.MULTILINE)
-    moving_3d = bool(m_z) and float(m_z.group(1)) > 0
+    m_grid = re.search(r"^##CONFIG## .*\bspeed=([0-9.]+)\b.*\bmobility=manhattan\b",
+                       text, re.MULTILINE)
+    moving_3d = ((bool(m_z) and float(m_z.group(1)) > 0)
+                 or (bool(m_grid) and float(m_grid.group(1)) > 1.0))
     skipped_3d = 0
     for run in sorted(common_hops):
         o_hops_c = common_hops[run].get(ORACLE_PROTO)
@@ -2089,7 +2101,8 @@ def check_oracle(path, rows):
     if skipped_3d:
         report("WARN", f"{os.path.basename(path)}: oracle identity-matched "
                        f"hops exceed an arm's on {skipped_3d} seed x arm "
-                       "pair(s) of a 3-D field. Not a hop bound here (#506): "
+                       "pair(s) of a moving 3-D or street-grid field. Not a "
+                       "hop bound here (#506, #488): "
                        "matched packets are forwarded at different instants "
                        "and the oracle re-routes per hop over a moving graph, "
                        "so quote no hop or latency bound for this family")
