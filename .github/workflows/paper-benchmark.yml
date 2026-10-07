@@ -39,10 +39,10 @@ on:
         description: 'Comma-separated protocol list'
         default: 'anthocnet,aodv,olsr,dsdv'
       propagation:
-        description: 'Propagation model: range (disk) | tworay (#24) | nakagami (#60 — the same two-ray path loss plus Nakagami-m fading, so tworay-vs-nakagami isolates fading alone). range is inert under the latter two.'
+        description: 'Propagation model: range (disk) | tworay (#24) | nakagami (#60 — the same two-ray path loss plus Nakagami-m fading, so tworay-vs-nakagami isolates fading alone) | urban (#488 — the same two-ray path loss plus building shadowing over the Manhattan grid; needs mobility=manhattan; grid knobs --blocksX/--blocksY/--streetWidth via extraArgs). range is inert under the latter three.'
         default: 'range'
       mobility:
-        description: 'Mobility model (#61): rwp (Random Waypoint — the model every published number was measured under) | ssrwp (steady-state RWP, no speed-decay transient) | gaussmarkov (smooth correlated tracks; pause is inert under it, so pass pause=0)'
+        description: 'Mobility model (#61): rwp (Random Waypoint — the model every published number was measured under) | ssrwp (steady-state RWP, no speed-decay transient) | gaussmarkov (smooth correlated tracks; pause is inert under it, so pass pause=0) | manhattan (#488 — vehicles on a street grid; pause is inert; grid size via extraArgs --blocksX/--blocksY)'
         default: 'rwp'
       transport:
         description: 'Transport (#63): udp (CBR OnOff — what every published number was measured under) | tcp (saturating BulkSend). A TCP cell is its own regime, not a variant of the base scenario: pdr/thrput/nrl change meaning and the reorder columns go absent. Read ##GOODPUT##.'

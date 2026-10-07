@@ -35,6 +35,13 @@
  *   received power is Gamma-distributed, so P(decode | d) has a closed form
  *   and the P = 1/2 crossing is computed from it with zero RNG draws.
  *   **Approximate** — a probabilistic link has no true radius at all.
+ * - **WifiNetDevice** on two-ray + `UrbanObstacleShadowingLossModel`
+ *   (`urban`, the VANET family, #488): the two-ray decode disk is a
+ *   prefilter (buildings only ever add loss), and each pair inside it is
+ *   admitted iff the chain's received power reaches the same decode floor.
+ *   Both models are deterministic, so evaluating the chain takes no RNG draw
+ *   — the one case where a model IS evaluated rather than mirrored.
+ *   **Approximate** for the same interference reason as `tworay`.
  * - **Any other wifi channel**: no derivation exists, so the topology
  *   refuses to invent one. It uses the explicit `LinkRangeM` radius, which
  *   the scenario must then set, and flags itself **approximate**; with no
@@ -224,6 +231,14 @@ class Topology : public Object
         double range = 0.0;   //!< cutoff radius in metres
         bool approx = false;  //!< true unless the channel itself defines the radius
         std::string tag;      //!< the mode tag this rule contributes (see GetMode)
+        /// #488: when set, `range` is only a prefilter and each pair inside it
+        /// is admitted iff this deterministic chain's received power, plus
+        /// `rxGainDb`, reaches `thresholdDbm`. Set only for chains the topology
+        /// knows draw no random numbers (two-ray + urban building shadowing).
+        Ptr<PropagationLossModel> evaluate;
+        double txDbm = 0.0;        //!< TxPowerEnd + TxGain
+        double rxGainDb = 0.0;     //!< RxGain
+        double thresholdDbm = 0.0; //!< the decode floor (DecodeThresholdDbm)
     };
 
     void Recompute();

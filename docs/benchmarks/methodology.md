@@ -317,6 +317,7 @@ derived per interface from the simulator's own objects; every oracle row carries
 | MANET, `--propagation=range` | the channel's own `RangePropagationLossModel` cutoff | **yes** — a disk has a crisp cutoff |
 | MANET, `--propagation=tworay` | the **decode disk** ([#431](https://github.com/danieljoppi/AntHocNet/issues/431)): the two-ray power's crossing of the PHY's decode floor, derived from the installed objects | **no** — flagged `approx=1` (propagation-exact, interference-blind), WARNed on every read |
 | MANET, `--propagation=nakagami` | the **median disk** (#431): the closed-form Gamma fading law's P = 1/2 crossing at the same decode floor | **no** — flagged `approx=1`, WARNed on every read |
+| VANET, `--propagation=urban` | **per pair** ([#488](https://github.com/danieljoppi/AntHocNet/issues/488)): inside the two-ray decode disk, a pair is a link iff the deterministic two-ray + building-shadowing chain reaches the decode floor (`decode-los-approx`) | **no** — flagged `approx=1` (propagation-exact, interference-blind, as `tworay`) |
 
 **What it is not exact for**, stated so no reader over-reads it later:
 
@@ -562,7 +563,7 @@ rather than assumed permanent:
 
 ## Mobility models (`--mobility`, [#61](https://github.com/danieljoppi/AntHocNet/issues/61))
 
-`anthocnet-compare` takes `--mobility=rwp|ssrwp|gaussmarkov`. `paper-benchmark.yml`
+`anthocnet-compare` takes `--mobility=rwp|ssrwp|gaussmarkov|manhattan`. `paper-benchmark.yml`
 exposes it as a dispatch input.
 
 | value | model | why it exists |
@@ -570,10 +571,11 @@ exposes it as a dispatch input.
 | **`rwp`** (default) | `RandomWaypointMobilityModel` | The original evaluation's model, and **the model every published number in this repo was measured under.** The default does not change. |
 | `ssrwp` | `SteadyStateRandomWaypointMobilityModel` | Draws initial speed and position from RWP's *stationary* distribution, removing the speed-decay and density transients that make long RWP runs slower than their nominal speed (Yoon et al., INFOCOM 2003). The closest honest comparison to `rwp`. |
 | `gaussmarkov` | `GaussMarkovMobilityModel` (α = 0.85) | Temporally correlated velocity/direction, so tracks are smooth rather than sharp waypoint turns. The qualitatively different model, and the one aerial/FANET claims require. |
+| `manhattan` | `WaypointMobilityModel`, waypoints built in the harness ([#488](https://github.com/danieljoppi/AntHocNet/issues/488)) | The Manhattan-grid model of Bai, Sadagopan & Helmy (INFOCOM 2003; BonnMotion's ManhattanGrid) for the VANET family: vehicles drive a `--blocksX` × `--blocksY` street grid, go straight with p = 0.5 and turn left/right with 0.25 each at intersections, and draw each block-to-block leg's speed `U(speedMin, speed)`. Built from one pinned RNG stream rather than imported from a BonnMotion trace, so a run stays a function of its seed alone (#352). No pauses. Pairs with `--propagation=urban`, whose buildings are the grid's blocks (Sommer et al., WONS 2011: 9 dB per wall, 0.4 dB/m inside, Veins' defaults). |
 
 Three things worth knowing before dispatching a non-default arm:
 
-- **`--pause` is inert under `gaussmarkov`** — a Gauss-Markov node never stops.
+- **`--pause` is inert under `gaussmarkov` and `manhattan`** — neither model stops a node.
   `scenario_check.py preflight` **FAILs** the combination rather than letting a
   pause sweep produce N identical cells and read as "pause has no effect".
   Pass `--pause=0` to state it explicitly.
