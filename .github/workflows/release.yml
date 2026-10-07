@@ -40,9 +40,18 @@ jobs:
         # bump from commit history and rewrites the version strings, and this
         # workflow is never exercised by PR CI, so a float would first be
         # noticed as a wrong release number.
+        #
+        # cmake and g++ come with the GitHub-hosted Ubuntu image, so there is
+        # no apt step: on 2026-10-07 `apt-get update` hung on the Ubuntu
+        # archive for 26+ minutes in two consecutive v1.9.0 release runs
+        # (37673285198, 37681037542), before anything was committed or tagged.
+        # The version checks fail fast if a future image drops either tool, and
+        # the timeout bounds any other hang here.
+        timeout-minutes: 10
         run: |
           pip install -c requirements-dev.txt commitizen
-          sudo apt-get update && sudo apt-get install -y cmake g++
+          cmake --version
+          g++ --version
 
       - name: Configure git
         run: |
