@@ -8,6 +8,13 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v1.9.0 (2026-10-07)
+
+### Feat
+
+- **bench**: --scenario=vanet preset, road-aware preflight and two VANET anchors (#488) (#536)
+- **bench**: add Manhattan-grid mobility and an urban building channel for the VANET family (#488) (#535)
+
 ## v1.8.0 (2026-10-06)
 
 ### Feat
