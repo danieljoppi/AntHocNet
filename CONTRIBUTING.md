@@ -138,6 +138,7 @@ table is that record.
 | v1.6.0 | `10.5281/zenodo.22970218` | [record 22970218](https://zenodo.org/records/22970218) |
 | v1.7.0 | `10.5281/zenodo.23108019` | [record 23108019](https://zenodo.org/records/23108019) — the FANET + static-mesh family release |
 | v1.8.0 | `10.5281/zenodo.23187497` | [record 23187497](https://zenodo.org/records/23187497) — the CBR-source fix-and-restatement roll-up ([#521](https://github.com/danieljoppi/AntHocNet/issues/521)) |
+| v1.9.0 | `10.5281/zenodo.23223132` | [record 23223132](https://zenodo.org/records/23223132) — the VANET family release ([#301](https://github.com/danieljoppi/AntHocNet/issues/301)) |
 
 **Adding a row is the whole per-release chore.** Append the new version DOI
 here; do **not** touch the README badge or `CITATION.cff`, which already point
