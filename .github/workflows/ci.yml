@@ -367,6 +367,15 @@ jobs:
         # check while the mobility bounds clamped every node back to z = 0.
         if: matrix.version == '3.42'
         run: bash ns3/tools/check-3d-field.sh /opt/ns-3
+      - name: Manhattan / urban smoke (#488, the VANET family)
+        # --mobility=manhattan must keep every vehicle on the street grid
+        # (`# road` diagnostic at t=0 and mid-run); every arm must deliver on
+        # the urban channel; the oracle must read the building chain per pair
+        # (mode decode-los-approx) and keep fewer edges than plain tworay; a
+        # same-seed rerun is byte-identical; and the four unhonourable
+        # combinations are refused.
+        if: matrix.version == '3.42'
+        run: bash ns3/tools/check-manhattan.sh /opt/ns-3
       - name: Validation-anchor gate (single-hop PDR floor, #59)
         # Blocking anchor from docs/benchmarks/methodology.md "Validation
         # anchors": on a static, in-range 2-node link the *stock* stack

@@ -284,6 +284,15 @@ Topology::BuildLinks(std::vector<std::vector<Link>>& out)
                 {
                     continue;
                 }
+                // #488: a per-pair rule on a deterministic chain. The urban
+                // loss is symmetric, so one direction decides both.
+                if (model.evaluate &&
+                    model.evaluate->CalcRxPower(model.txDbm, parts[a].mob, parts[b].mob) +
+                            model.rxGainDb <
+                        model.thresholdDbm)
+                {
+                    continue;
+                }
                 Link l;
                 l.to = parts[b].u;
                 l.iface = parts[a].iface;
@@ -423,7 +432,10 @@ Topology::ChannelModel(Ptr<Channel> channel, Ptr<WifiNetDevice> dev)
         model.tag = "disk-approx";
     }
     else if (headType == "ns3::TwoRayGroundPropagationLossModel" &&
-             (!next || (nextType == "ns3::NakagamiPropagationLossModel" && !next->GetNext())))
+             (!next ||
+              ((nextType == "ns3::NakagamiPropagationLossModel" ||
+                nextType == "ns3::UrbanObstacleShadowingLossModel") &&
+               !next->GetNext())))
     {
         // #431: the fading channels' adjacency, derived — not guessed — from
         // the installed objects. Everything below is read off the live model
@@ -461,7 +473,21 @@ Topology::ChannelModel(Ptr<Channel> channel, Ptr<WifiNetDevice> dev)
         budget.heightM = v.Get() + (mob ? mob->GetPosition().z : 0.0);
         const double threshold = DecodeThresholdDbm(dev);
 
-        if (!next)
+        if (nextType == "ns3::UrbanObstacleShadowingLossModel")
+        {
+            // #488: the urban channel. The two-ray decode disk bounds every
+            // link (buildings only add loss); the chain itself then decides
+            // each pair inside it. Two-ray and the Sommer et al. building
+            // model are both deterministic, so CalcRxPower draws nothing and
+            // the other arms' channel realisation is untouched (#352).
+            model.range = oracle::TwoRayDecodeRadius(budget, threshold);
+            model.evaluate = head;
+            model.txDbm = budget.txPowerDbm + budget.txGainDb;
+            model.rxGainDb = budget.rxGainDb;
+            model.thresholdDbm = threshold;
+            model.tag = "decode-los-approx";
+        }
+        else if (!next)
         {
             // Deterministic two-ray: received power crosses the decode floor
             // at exactly one distance, so the decode disk IS the set of pairs
@@ -516,8 +542,9 @@ Topology::ChannelModel(Ptr<Channel> channel, Ptr<WifiNetDevice> dev)
                      << headType
                      << ") has no adjacency derivation — the oracle can derive a "
                         "radius only from a RangePropagationLossModel (exact), a lone "
-                        "TwoRayGroundPropagationLossModel (decode disk, #431) or "
-                        "two-ray + NakagamiPropagationLossModel (median disk, #431). "
+                        "TwoRayGroundPropagationLossModel (decode disk, #431), "
+                        "two-ray + NakagamiPropagationLossModel (median disk, #431) or "
+                        "two-ray + UrbanObstacleShadowingLossModel (per pair, #488). "
                         "Set the LinkRangeM attribute to the radius the control "
                         "should be held to and the result will be flagged "
                         "approximate. The oracle will not invent one (#296).");

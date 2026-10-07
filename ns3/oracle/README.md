@@ -60,6 +60,7 @@ control with no extra plumbing.
 | Wifi whose loss chain is exactly one `RangePropagationLossModel` (`--propagation=range`) | that model's own `MaxRange`, read off the live channel | `disk` | **Yes.** A disk model has a crisp cutoff and this is it. |
 | Wifi on a lone `TwoRayGroundPropagationLossModel` (`--propagation=tworay`) | the **decode disk** ([#431](https://github.com/danieljoppi/AntHocNet/issues/431)): the distance at which the deterministic two-ray received power crosses the PHY's decode floor, every parameter read off the installed objects | `decode-approx` | **No — flagged `approx=1`** (propagation-exact, interference-blind; below). |
 | Wifi on two-ray + `NakagamiPropagationLossModel` (`--propagation=nakagami`) | the **median disk** (#431): under Nakagami the received power is Gamma-distributed, so P(decode\|d) has a closed form; the P = 1/2 crossing of that form, zero RNG draws | `p50-approx` | **No — flagged `approx=1`** (a probabilistic link has no true radius). |
+| Wifi on two-ray + `UrbanObstacleShadowingLossModel` (`--propagation=urban`, the VANET family, [#488](https://github.com/danieljoppi/AntHocNet/issues/488)) | **per pair**: the two-ray decode disk is a prefilter (buildings only add loss), and each pair inside it is admitted iff the chain's received power (`TxPowerEnd + TxGain`, through two-ray and the building shadowing, `+ RxGain`) reaches the same decode floor. Both models are deterministic, so evaluating the chain takes no RNG draw — the one case where a model is *evaluated* rather than mirrored | `decode-los-approx` | **No — flagged `approx=1`** (propagation-exact, interference-blind, as `decode-approx`). |
 | Any other wifi channel | the explicit `LinkRangeM` radius — **required** here, an **override** everywhere above | `disk-approx` | **No — flagged `approx=1`.** |
 
 With neither a derivation nor `LinkRangeM` the oracle **aborts** at `t = 0`
@@ -196,7 +197,7 @@ Each harness prints one line per (seed, oracle) run:
 ```
 
 `mode` is the "+"-joined set of adjacency rules in force (`wired`, `disk`,
-`decode-approx`, `p50-approx`, `disk-approx`); `range` is −1 on an all-wired
+`decode-approx`, `decode-los-approx`, `p50-approx`, `disk-approx`); `range` is −1 on an all-wired
 topology and the derived (or overridden) radius otherwise; `noRoute` counts
 lookups that found no path, i.e. the field partitioned under the oracle's own
 topology. `scenario_check.py results` asserts on this row (NRL exactly 0, the

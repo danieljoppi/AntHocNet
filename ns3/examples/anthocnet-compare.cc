@@ -104,6 +104,118 @@ using namespace ns3;
 
 namespace {
 
+// --- Urban building shadowing (#488, the VANET family #301) ------------------
+// The obstacle model of Sommer, Eckhoff, German & Dressler, "A computationally
+// inexpensive empirical model of IEEE 802.11p radio shadowing in urban
+// environments", WONS 2011 -- the model Veins ships. Each building the
+// line of sight crosses adds
+//     L_obs = DbPerCut * n + DbPerMeter * d_m
+// where n is the number of building walls the line cuts and d_m the length of
+// the line inside buildings. Defaults are Veins' shipped building type
+// (db-per-cut 9, db-per-meter 0.4), the values the paper fitted at 5.9 GHz;
+// this harness keeps its 2.4 GHz 802.11b radio (ADR-0019: a family changes the
+// scenario, not the stack), which docs/benchmarks/vanet.md records as a threat
+// to validity.
+//
+// Buildings are the blocks of the Manhattan grid --mobility=manhattan drives
+// on: BlocksX x BlocksY blocks over AreaX x AreaY, each inset by half a
+// StreetWidth from the street centre lines the vehicles travel. The model is
+// deterministic (no RNG), so it pins no stream and the oracle may evaluate it
+// per pair (ns3/oracle: "decode-los-approx").
+class UrbanObstacleShadowingLossModel : public PropagationLossModel {
+public:
+    static TypeId GetTypeId() {
+        static TypeId tid =
+            TypeId("ns3::UrbanObstacleShadowingLossModel")
+                .SetParent<PropagationLossModel>()
+                .SetGroupName("Propagation")
+                .AddConstructor<UrbanObstacleShadowingLossModel>()
+                .AddAttribute("AreaX", "Field width (m)", DoubleValue(1000.0),
+                              MakeDoubleAccessor(&UrbanObstacleShadowingLossModel::m_areaX),
+                              MakeDoubleChecker<double>(0.0))
+                .AddAttribute("AreaY", "Field height (m)", DoubleValue(1000.0),
+                              MakeDoubleAccessor(&UrbanObstacleShadowingLossModel::m_areaY),
+                              MakeDoubleChecker<double>(0.0))
+                .AddAttribute("BlocksX", "Blocks along x", UintegerValue(5),
+                              MakeUintegerAccessor(&UrbanObstacleShadowingLossModel::m_blocksX),
+                              MakeUintegerChecker<uint32_t>(1))
+                .AddAttribute("BlocksY", "Blocks along y", UintegerValue(5),
+                              MakeUintegerAccessor(&UrbanObstacleShadowingLossModel::m_blocksY),
+                              MakeUintegerChecker<uint32_t>(1))
+                .AddAttribute("StreetWidth", "Street width (m); buildings are "
+                              "inset by half of it from each street centre line",
+                              DoubleValue(20.0),
+                              MakeDoubleAccessor(&UrbanObstacleShadowingLossModel::m_street),
+                              MakeDoubleChecker<double>(0.0))
+                .AddAttribute("DbPerCut", "Loss per building wall crossed (dB)",
+                              DoubleValue(9.0),
+                              MakeDoubleAccessor(&UrbanObstacleShadowingLossModel::m_dbPerCut),
+                              MakeDoubleChecker<double>(0.0))
+                .AddAttribute("DbPerMeter", "Loss per metre inside buildings (dB)",
+                              DoubleValue(0.4),
+                              MakeDoubleAccessor(&UrbanObstacleShadowingLossModel::m_dbPerMeter),
+                              MakeDoubleChecker<double>(0.0));
+        return tid;
+    }
+
+    // Obstacle loss (dB) on the straight line a -> b. Public so the CI smoke
+    // can print it; the channel only ever reaches it through DoCalcRxPower.
+    double ObstacleLossDb(const Vector& a, const Vector& b) const {
+        const double bx = m_areaX / m_blocksX, by = m_areaY / m_blocksY;
+        const double h = m_street / 2.0;
+        const double dx = b.x - a.x, dy = b.y - a.y;
+        const double len = std::sqrt(dx * dx + dy * dy);
+        if (len <= 0.0) return 0.0;
+        // Only the blocks the segment's bounding box touches can be crossed.
+        auto clampIdx = [](double v, double size, uint32_t n) {
+            const double k = std::floor(v / size);
+            return static_cast<uint32_t>(std::min(std::max(k, 0.0), n - 1.0));
+        };
+        const uint32_t i0 = clampIdx(std::min(a.x, b.x), bx, m_blocksX);
+        const uint32_t i1 = clampIdx(std::max(a.x, b.x), bx, m_blocksX);
+        const uint32_t j0 = clampIdx(std::min(a.y, b.y), by, m_blocksY);
+        const uint32_t j1 = clampIdx(std::max(a.y, b.y), by, m_blocksY);
+        double loss = 0.0;
+        for (uint32_t i = i0; i <= i1; ++i) {
+            for (uint32_t j = j0; j <= j1; ++j) {
+                const double xmin = i * bx + h, xmax = (i + 1) * bx - h;
+                const double ymin = j * by + h, ymax = (j + 1) * by - h;
+                if (xmin >= xmax || ymin >= ymax) continue;
+                // Liang-Barsky clip of the segment against the building.
+                double t0 = 0.0, t1 = 1.0;
+                const double pq[4][2] = {{-dx, a.x - xmin}, {dx, xmax - a.x},
+                                         {-dy, a.y - ymin}, {dy, ymax - a.y}};
+                bool outside = false;
+                for (const auto& e : pq) {
+                    if (e[0] == 0.0) {
+                        if (e[1] < 0.0) { outside = true; break; }
+                    } else {
+                        const double t = e[1] / e[0];
+                        if (e[0] < 0.0) t0 = std::max(t0, t);
+                        else t1 = std::min(t1, t);
+                    }
+                }
+                if (outside || t0 >= t1) continue;
+                const int cuts = (t0 > 0.0 ? 1 : 0) + (t1 < 1.0 ? 1 : 0);
+                loss += m_dbPerCut * cuts + m_dbPerMeter * (t1 - t0) * len;
+            }
+        }
+        return loss;
+    }
+
+private:
+    double DoCalcRxPower(double txPowerDbm, Ptr<MobilityModel> a,
+                         Ptr<MobilityModel> b) const override {
+        return txPowerDbm - ObstacleLossDb(a->GetPosition(), b->GetPosition());
+    }
+    int64_t DoAssignStreams(int64_t) override { return 0; }
+
+    double m_areaX = 1000.0, m_areaY = 1000.0;
+    uint32_t m_blocksX = 5, m_blocksY = 5;
+    double m_street = 20.0, m_dbPerCut = 9.0, m_dbPerMeter = 0.4;
+};
+NS_OBJECT_ENSURE_REGISTERED(UrbanObstacleShadowingLossModel);
+
 // Data traffic uses this UDP port; every other UDP packet seen at the IP layer
 // is routing control (AntHocNet 6900, AODV 654, OLSR 698, DSDV 269, ...), which
 // is how we count routing overhead uniformly across protocols.
@@ -1182,7 +1294,101 @@ struct Params {
     // number was measured under) | "tcp" (saturating BulkSend). Read the
     // metric-semantics warning above the flow loop before quoting a TCP cell.
     std::string transport;
+    // #488: the Manhattan grid (--mobility=manhattan) and the buildings of the
+    // urban channel (--propagation=urban) share one geometry: blocksX x blocksY
+    // blocks over areaX x areaY, streets on the block edges.
+    uint32_t blocksX, blocksY;
+    double   streetWidth;
 };
+
+// #488: Manhattan-grid mobility (the VANET family, #301). The model of Bai,
+// Sadagopan & Helmy, "IMPORTANT: a framework to systematically analyze the
+// Impact of Mobility on Performance of RouTing protocols for Adhoc NeTworks",
+// INFOCOM 2003 -- the model BonnMotion's ManhattanGrid implements -- built
+// here as waypoints rather than imported as a BonnMotion trace, so a run needs
+// no external tool and stays a function of its seed alone (#352).
+//   * Streets are the block edges: x = i*areaX/blocksX, y = j*areaY/blocksY,
+//     border streets included.
+//   * A vehicle starts at a uniform point of the street network (placement is
+//     length-weighted over all streets) heading either way along its street.
+//   * At each intersection it goes straight with probability 0.5 and turns
+//     left or right with 0.25 each (Bai 2003); a choice that would leave the
+//     field is redrawn among the valid ones, and a dead end turns it back.
+//   * Each block-to-block leg is driven at a speed drawn U(speedMin, speed).
+//     BonnMotion instead perturbs speed every update interval; a per-leg draw
+//     is the harness's simplification, recorded in docs/benchmarks/vanet.md.
+//   * There is no pause: --pause is inert under this model.
+// All draws come from `u`, one stream pinned by the caller, consumed in node
+// order -- so the schedule is identical in every arm on a seed.
+void BuildManhattanWaypoints(Ptr<WaypointMobilityModel> wp,
+                             Ptr<UniformRandomVariable> u, const Params& P) {
+    const double bx = P.areaX / P.blocksX, by = P.areaY / P.blocksY;
+    const double hLen = (P.blocksY + 1) * P.areaX;  // all horizontal streets
+    const double vLen = (P.blocksX + 1) * P.areaY;  // all vertical streets
+    double x, y;
+    int dx, dy;
+    const double r = u->GetValue(0.0, hLen + vLen);
+    if (r < hLen) {
+        const uint32_t j = std::min<uint32_t>(static_cast<uint32_t>(r / P.areaX), P.blocksY);
+        x = std::fmod(r, P.areaX);
+        y = j * by;
+        dx = u->GetValue() < 0.5 ? 1 : -1;
+        dy = 0;
+    } else {
+        const double rv = r - hLen;
+        const uint32_t i = std::min<uint32_t>(static_cast<uint32_t>(rv / P.areaY), P.blocksX);
+        x = i * bx;
+        y = std::fmod(rv, P.areaY);
+        dx = 0;
+        dy = u->GetValue() < 0.5 ? 1 : -1;
+    }
+    double t = 0.0;
+    wp->AddWaypoint(Waypoint(Seconds(t), Vector(x, y, 0.0)));
+    // A direction is valid from an intersection if one more block stays on
+    // the field.
+    auto valid = [&](double px, double py, int ddx, int ddy) {
+        const double nx = px + ddx * bx, ny = py + ddy * by;
+        return nx > -1e-6 && nx < P.areaX + 1e-6 && ny > -1e-6 && ny < P.areaY + 1e-6;
+    };
+    constexpr double eps = 1e-9;
+    while (t < P.simTime) {
+        // Drive to the next intersection along (dx, dy).
+        double nx = x, ny = y;
+        if (dx != 0) {
+            const double k = dx > 0 ? std::floor((x + eps) / bx) + 1 : std::ceil((x - eps) / bx) - 1;
+            nx = std::min(std::max(k * bx, 0.0), P.areaX);
+        } else {
+            const double k = dy > 0 ? std::floor((y + eps) / by) + 1 : std::ceil((y - eps) / by) - 1;
+            ny = std::min(std::max(k * by, 0.0), P.areaY);
+        }
+        const double dist = std::abs(nx - x) + std::abs(ny - y);
+        const double v = u->GetValue(P.speedMin, P.speed);
+        if (dist > 0.0) {
+            t += dist / v;
+            wp->AddWaypoint(Waypoint(Seconds(t), Vector(nx, ny, 0.0)));
+        }
+        x = nx;
+        y = ny;
+        // Turn: straight 0.5, left 0.25, right 0.25 (Bai 2003).
+        const int opt[3][2] = {{dx, dy}, {-dy, dx}, {dy, -dx}};
+        const double c = u->GetValue();
+        int pick = c < 0.5 ? 0 : (c < 0.75 ? 1 : 2);
+        if (!valid(x, y, opt[pick][0], opt[pick][1])) {
+            int ok[3], n = 0;
+            for (int k = 0; k < 3; ++k) {
+                if (valid(x, y, opt[k][0], opt[k][1])) ok[n++] = k;
+            }
+            if (n == 0) {
+                dx = -dx;  // dead end: turn back
+                dy = -dy;
+                continue;
+            }
+            pick = ok[std::min(n - 1, static_cast<int>(u->GetValue() * n))];
+        }
+        dx = opt[pick][0];
+        dy = opt[pick][1];
+    }
+}
 
 struct Result {
     std::string proto;
@@ -1397,6 +1603,23 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                                    "Frequency", DoubleValue(2.4e9),
                                    "HeightAboveZ", DoubleValue(1.5));
         channel.AddPropagationLoss("ns3::NakagamiPropagationLossModel");
+    } else if (P.propagation == "urban") {
+        // #488: the VANET channel. The same two-ray path loss as the tworay
+        // arm (identical Frequency/HeightAboveZ, so {tworay, urban} isolates
+        // the buildings alone), plus the deterministic building shadowing of
+        // Sommer et al. 2011 over the Manhattan grid's blocks. Requires
+        // --mobility=manhattan (main() refuses otherwise): vehicles must drive
+        // the streets the buildings line, or they would sit inside them.
+        channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
+        channel.AddPropagationLoss("ns3::TwoRayGroundPropagationLossModel",
+                                   "Frequency", DoubleValue(2.4e9),
+                                   "HeightAboveZ", DoubleValue(1.5));
+        channel.AddPropagationLoss("ns3::UrbanObstacleShadowingLossModel",
+                                   "AreaX", DoubleValue(P.areaX),
+                                   "AreaY", DoubleValue(P.areaY),
+                                   "BlocksX", UintegerValue(P.blocksX),
+                                   "BlocksY", UintegerValue(P.blocksY),
+                                   "StreetWidth", DoubleValue(P.streetWidth));
     } else if (P.range > 0.0) {
         // A clean disk model at the paper's transmission range (reproducible
         // connectivity, independent of tx-power/sensitivity defaults).
@@ -1563,6 +1786,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             StringValue(P.areaZ > 0.0
                             ? "ns3::NormalRandomVariable[Mean=0.0|Variance=0.02|Bound=0.04]"
                             : "ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"));
+    } else if (P.mobility == "manhattan") {
+        // #488: waypoints are filled in after Install(), below.
+        mobility.SetMobilityModel("ns3::WaypointMobilityModel");
     } else {
         // With --areaZ > 0 the waypoints come from the 3-D box allocator above,
         // so RWP legs are straight 3-D segments with no further change (#480).
@@ -1580,6 +1806,37 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     mobility.Install(nodes);
     TakeStreams(stream, streamBase, mobility.AssignStreams(nodes, stream),
                 "mobility");
+    if (P.mobility == "manhattan") {
+        // #488: one pinned stream for the whole grid schedule, drawn in node
+        // order. Mobility is installed before routing, so the stream index
+        // (and hence every vehicle's route) is the same in every arm.
+        Ptr<UniformRandomVariable> mh = CreateObject<UniformRandomVariable>();
+        mh->SetStream(stream);
+        TakeStreams(stream, streamBase, 1, "manhattan mobility");
+        for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+            BuildManhattanWaypoints(nodes.Get(i)->GetObject<WaypointMobilityModel>(), mh, P);
+        }
+        // Evidence the vehicles drive the streets (the CI smoke reads it):
+        // under --diag, every node's position at t=0 and mid-run, as the
+        // distance to the nearest street centre line (0 on the grid).
+        if (g_diag) {
+            auto road = [nodes, proto, seed, P]() {
+                const double bx = P.areaX / P.blocksX, by = P.areaY / P.blocksY;
+                double worst = 0.0;
+                for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+                    const Vector q = nodes.Get(i)->GetObject<MobilityModel>()->GetPosition();
+                    const double ox = std::abs(q.x - bx * std::round(q.x / bx));
+                    const double oy = std::abs(q.y - by * std::round(q.y / by));
+                    worst = std::max(worst, std::min(ox, oy));
+                }
+                std::cout << std::fixed << std::setprecision(3) << "# road " << proto
+                          << " seed=" << seed << " t=" << Simulator::Now().GetSeconds()
+                          << " offStreetMaxM=" << worst << '\n';
+            };
+            Simulator::Schedule(Seconds(0.0), road);
+            Simulator::Schedule(Seconds(P.simTime / 2.0), road);
+        }
+    }
     // #480: evidence that a 3-D field is really 3-D. Under --diag, a 3-D run
     // prints the altitude span of the nodes at t=0 and at mid-run (the second
     // shows the mobility model actually moves them vertically, not just the
@@ -2923,6 +3180,8 @@ int main(int argc, char* argv[]) {
     double   simTime = -1, area = -1, areaX = -1, areaY = -1, areaZ = -1;
     double   speed = -1, speedMin = -1, pause = -1, range = -1, cbrBps = -1;
     double   offTime = 0.0;  // #521
+    uint32_t blocksX = 5, blocksY = 5;  // #488 Manhattan grid / urban buildings
+    double   streetWidth = 20.0;        // #488
     int32_t  nFlows = 0;
     int32_t  sink = -1;
     uint32_t runs = 0;  // 0 = unset; resolved below (preset-dependent, #58)
@@ -2999,13 +3258,24 @@ int main(int argc, char* argv[]) {
                  "Mobility model (#61): 'rwp' (Random Waypoint, default — the "
                  "model every published number was measured under) | 'ssrwp' "
                  "(steady-state RWP, no speed-decay transient) | 'gaussmarkov' "
-                 "(smooth correlated tracks; --pause is inert under it)",
+                 "(smooth correlated tracks; --pause is inert under it) | "
+                 "'manhattan' (#488: vehicles on a --blocksX x --blocksY street "
+                 "grid, Bai et al. 2003; --pause is inert under it)",
                  mobilityModel);
+    cmd.AddValue("blocksX", "Manhattan grid / urban channel: blocks along x "
+                            "(#488; streets on the block edges)", blocksX);
+    cmd.AddValue("blocksY", "Manhattan grid / urban channel: blocks along y "
+                            "(#488)", blocksY);
+    cmd.AddValue("streetWidth", "Urban channel: street width (m); buildings are "
+                                "the blocks inset by half of it (#488)", streetWidth);
     cmd.AddValue("propagation",
                  "Propagation loss model: 'range' (disk) | 'tworay' (#24) | "
                  "'nakagami' (#60: the same two-ray path loss plus Nakagami-m "
-                 "fading, so tworay-vs-nakagami isolates fading alone). "
-                 "--range is inert under tworay and nakagami.",
+                 "fading, so tworay-vs-nakagami isolates fading alone) | "
+                 "'urban' (#488: the same two-ray path loss plus building "
+                 "shadowing over the Manhattan grid's blocks, Sommer et al. "
+                 "2011; requires --mobility=manhattan). "
+                 "--range is inert under tworay, nakagami and urban.",
                  propagation);
     std::string rateManager = "constant2";
     cmd.AddValue("rateManager",
@@ -3155,9 +3425,9 @@ int main(int argc, char* argv[]) {
     if (propagation.empty()) propagation = "range";
     P.propagation = propagation;
     NS_ABORT_MSG_UNLESS(propagation == "range" || propagation == "tworay" ||
-                            propagation == "nakagami",
+                            propagation == "nakagami" || propagation == "urban",
                         "unknown --propagation='" << propagation
-                        << "' (expected range|tworay|nakagami). Refusing rather "
+                        << "' (expected range|tworay|nakagami|urban). Refusing rather "
                            "than falling through to a default channel: the "
                            "silent fallback would produce a plausible run of "
                            "the wrong channel (#60).");
@@ -3169,9 +3439,10 @@ int main(int argc, char* argv[]) {
                            "defaulting to udp: a typo would silently produce a "
                            "UDP run labelled as a TCP one (#63).");
     NS_ABORT_MSG_UNLESS(mobilityModel == "rwp" || mobilityModel == "ssrwp" ||
-                            mobilityModel == "gaussmarkov",
+                            mobilityModel == "gaussmarkov" ||
+                            mobilityModel == "manhattan",
                         "unknown --mobility='" << mobilityModel
-                        << "' (expected rwp|ssrwp|gaussmarkov). Refusing rather "
+                        << "' (expected rwp|ssrwp|gaussmarkov|manhattan). Refusing rather "
                            "than silently falling back to rwp: a typo would "
                            "otherwise produce a plausible run of the wrong "
                            "model (#61).");
@@ -3192,6 +3463,34 @@ int main(int argc, char* argv[]) {
                             << ": ns-3's SteadyStateRandomWaypointMobilityModel "
                             "is planar (a fixed Z), so it would silently "
                             "flatten the field. Use rwp or gaussmarkov (#480).");
+    }
+    // #488: the street grid both the Manhattan model and the urban buildings
+    // live on. Refusals, never silent fallbacks: each would otherwise produce a
+    // plausible run of the wrong geometry.
+    P.blocksX = blocksX;
+    P.blocksY = blocksY;
+    P.streetWidth = streetWidth;
+    NS_ABORT_MSG_UNLESS(blocksX >= 1 && blocksY >= 1,
+                        "--blocksX/--blocksY must be >= 1 (#488)");
+    if (mobilityModel == "manhattan") {
+        NS_ABORT_MSG_UNLESS(P.areaZ == 0.0,
+                            "--mobility=manhattan with --areaZ=" << P.areaZ
+                            << ": a street grid is planar (#488)");
+        NS_ABORT_MSG_UNLESS(P.speedMin > 0.0,
+                            "--mobility=manhattan needs --speedMin > 0: each leg's "
+                            "duration is its length over a speed drawn "
+                            "U(speedMin, speed) (#488)");
+    }
+    if (propagation == "urban") {
+        NS_ABORT_MSG_UNLESS(mobilityModel == "manhattan",
+                            "--propagation=urban needs --mobility=manhattan: the "
+                            "buildings are the street grid's blocks, and vehicles "
+                            "off the streets would sit inside them (#488)");
+        NS_ABORT_MSG_UNLESS(streetWidth > 0.0 &&
+                                streetWidth < std::min(P.areaX / blocksX, P.areaY / blocksY),
+                            "--streetWidth=" << streetWidth << " must be > 0 and "
+                            "narrower than a block (" << P.areaX / blocksX << " x "
+                            << P.areaY / blocksY << " m) (#488)");
     }
     P.rateManager = rateManager;
     P.sink = sink;
@@ -3300,8 +3599,14 @@ int main(int argc, char* argv[]) {
     if (P.speedMin != 1.0) std::cout << " speedMin=" << P.speedMin;
     std::cout << " pause=" << P.pause
               << " range=" << P.range << " propagation=" << P.propagation
-              << " mobility=" << P.mobility
-              << " transport=" << P.transport
+              << " mobility=" << P.mobility;
+    // #488: the grid geometry, named only when a grid is in use, so every
+    // other row stays byte-identical.
+    if (P.mobility == "manhattan" || P.propagation == "urban") {
+        std::cout << " blocksX=" << P.blocksX << " blocksY=" << P.blocksY;
+    }
+    if (P.propagation == "urban") std::cout << " streetWidth=" << P.streetWidth;
+    std::cout << " transport=" << P.transport
               << " flows=" << P.nFlows << " cbrBps=" << P.cbrBps
               // #521: always named, so a post-fix row is distinguishable
               // from the pre-#521 corpus, whose rows lack the key.
