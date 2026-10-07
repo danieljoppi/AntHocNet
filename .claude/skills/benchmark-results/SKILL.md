@@ -195,6 +195,9 @@ python3 $S preflight                              # paper base defaults, OK
 python3 $S preflight --areaX 2500 --flows 40      # override what you'd dispatch
 python3 $S preflight --areaX 1000 --areaY 1000 --areaZ 300 --range 250 \
     --speed 20 --pause 0 --mobility gaussmarkov --nodes 30 --pathWindowS 2  # 3-D cell (#481)
+python3 $S preflight --areaX 1000 --areaY 1000 --mobility manhattan \
+    --propagation urban --blocksX 5 --blocksY 5 --speed 20 --pause 0 \
+    --nodes 60 --pathWindowS 2  # VANET street grid: road-network degree (#488)
 python3 $S preflight --harness isl-grid --rows 4 --cols 4 --flows 8 \
     --time 900 --breakLink 0,0,3,0 --breakAt 450  # satellite cell (#444)
 python3 $S results cell.txt                       # ##BENCH## cell or campaign CSV

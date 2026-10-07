@@ -62,7 +62,10 @@ ANCHOR_KEY = {"single-hop": "single_hop_pdr_min",
               "grid-nakagami": "grid_nakagami_aodv_pdr_min",
               # #482 FANET anchors: analytic (geometry), see anchors.yml.
               "fanet-single-hop-3d": "fanet_single_hop_3d_pdr_min",
-              "fanet-vertical-3d": "fanet_vertical_3d_pdr_min"}
+              "fanet-vertical-3d": "fanet_vertical_3d_pdr_min",
+              # #488 VANET anchors: analytic (geometry), see anchors.yml.
+              "vanet-single-hop": "vanet_single_hop_pdr_min",
+              "vanet-building": "vanet_building_pdr_min"}
 
 # #217: core Config::maxPathLength — the cap on the visited path an ant carries
 # and therefore on any path the protocol can lay. A delivered data packet
@@ -773,6 +776,105 @@ def box_in_range_prob(ax, ay, az, r, samples=BOX_DEGREE_SAMPLES):
     return hits / samples
 
 
+# #488: the VANET street grid. Same fixed-seed Monte Carlo as the box rule,
+# over pairs of points drawn uniformly on the street network.
+STREET_DEGREE_SAMPLES = 50_000
+# The harness PHY's two-ray decode radius (#431): where the deterministic
+# two-ray power at the shipped radio crosses the -82 dBm decode floor. Read
+# off a live run (`##ORACLE## ... range=423.3`); the oracle derives the same
+# number from the installed objects.
+TWO_RAY_DECODE_RADIUS_M = 423.3
+# Two-ray crossover 4*pi*ht*hr/lambda at the harness's 1.5 m antennas and
+# 2.4 GHz: Friis (1/d^2) inside it, 1/d^4 beyond.
+TWO_RAY_CROSSOVER_M = 4 * math.pi * 1.5 * 1.5 * 2.4e9 / 299_792_458.0
+# Sommer et al. (WONS 2011) building shadowing at Veins' shipped defaults,
+# the harness's --propagation=urban (UrbanObstacleShadowingLossModel).
+URBAN_DB_PER_CUT = 9.0
+URBAN_DB_PER_M = 0.4
+
+
+def two_ray_margin_db(d):
+    """dB by which two-ray power at distance d exceeds the decode floor."""
+    big_r, dc = TWO_RAY_DECODE_RADIUS_M, TWO_RAY_CROSSOVER_M
+    if d >= dc:
+        return 40 * math.log10(big_r / d)
+    return 40 * math.log10(big_r / dc) + 20 * math.log10(dc / max(d, 0.5))
+
+
+def urban_obstacle_db(p, q, ax, ay, bx, by, street):
+    """The harness's building loss on segment p->q (mirrors the C++ model)."""
+    wx, wy, h = ax / bx, ay / by, street / 2.0
+    dx, dy = q[0] - p[0], q[1] - p[1]
+    length = math.hypot(dx, dy)
+    if length <= 0:
+        return 0.0
+
+    def idx(v, size, n):
+        return int(min(max(math.floor(v / size), 0), n - 1))
+
+    loss = 0.0
+    for i in range(idx(min(p[0], q[0]), wx, bx), idx(max(p[0], q[0]), wx, bx) + 1):
+        for j in range(idx(min(p[1], q[1]), wy, by), idx(max(p[1], q[1]), wy, by) + 1):
+            xmin, xmax = i * wx + h, (i + 1) * wx - h
+            ymin, ymax = j * wy + h, (j + 1) * wy - h
+            if xmin >= xmax or ymin >= ymax:
+                continue
+            t0, t1, out = 0.0, 1.0, False
+            for pp, qq in ((-dx, p[0] - xmin), (dx, xmax - p[0]),
+                           (-dy, p[1] - ymin), (dy, ymax - p[1])):
+                if pp == 0:
+                    if qq < 0:
+                        out = True
+                        break
+                else:
+                    t = qq / pp
+                    if pp < 0:
+                        t0 = max(t0, t)
+                    else:
+                        t1 = min(t1, t)
+            if out or t0 >= t1:
+                continue
+            cuts = (1 if t0 > 0 else 0) + (1 if t1 < 1 else 0)
+            loss += URBAN_DB_PER_CUT * cuts + URBAN_DB_PER_M * (t1 - t0) * length
+    return loss
+
+
+def street_in_range_prob(ax, ay, bx, by, r, urban=False, street=20.0,
+                         samples=STREET_DEGREE_SAMPLES):
+    """P(two uniform street points are linked) on a bx*by Manhattan grid.
+
+    Nodes live on the 1-D streets of a 2-D grid (#488), so the strip/disk
+    area rules do not apply: two vehicles 300 m apart on parallel streets may
+    be in range of a disk but blocked by a building. Disk mode: link iff
+    within r. Urban mode: link iff the two-ray margin at the pair's distance
+    covers the building loss on the line between them -- the oracle's
+    decode-los-approx rule at the harness's shipped PHY.
+    """
+    import random
+    rng = random.Random(488)
+    h_len, v_len = (by + 1) * ax, (bx + 1) * ay
+    wx, wy = ax / bx, ay / by
+
+    def point():
+        u = rng.random() * (h_len + v_len)
+        if u < h_len:
+            return (u % ax, min(int(u // ax), by) * wy)
+        u -= h_len
+        return (min(int(u // ay), bx) * wx, u % ay)
+
+    hits = 0
+    for _ in range(samples):
+        p, q = point(), point()
+        d = math.hypot(p[0] - q[0], p[1] - q[1])
+        if urban:
+            if d < r and two_ray_margin_db(d) >= urban_obstacle_db(
+                    p, q, ax, ay, bx, by, street):
+                hits += 1
+        elif d < r:
+            hits += 1
+    return hits / samples
+
+
 def cmd_preflight(a):
     # #444: the satellite harness has its own geometry; everything below this
     # dispatch is MANET field arithmetic and would be meaningless for it.
@@ -812,7 +914,25 @@ def cmd_preflight(a):
         report("FAIL", f"--areaZ={area_z}: must be >= 0 (the harness aborts "
                        "on a negative extent, #480)")
         area_z = 0.0
-    if area_z > 0:
+    mobility = getattr(a, "mobility", "rwp")
+    blocks_x = getattr(a, "blocksX", 5) or 5
+    blocks_y = getattr(a, "blocksY", 5) or 5
+    street = getattr(a, "streetWidth", 20.0) or 20.0
+    urban = a.propagation == "urban"
+    # #488: the radius the link-lifetime rules below reason with. Under the
+    # urban channel --range is inert and the shipped radio's two-ray decode
+    # radius bounds every link.
+    eff_range = TWO_RAY_DECODE_RADIUS_M if urban else a.range
+    if mobility == "manhattan" and area_z == 0:
+        # #488: nodes on the street network, not uniform over the area.
+        prob = street_in_range_prob(a.areaX, a.areaY, blocks_x, blocks_y,
+                                    eff_range, urban=urban, street=street)
+        degree = (a.nodes - 1) * prob
+        what = ("urban: two-ray margin vs building loss" if urban
+                else f"disk {a.range} m")
+        print(f"field {a.areaX}x{a.areaY} m, {blocks_x}x{blocks_y} street grid "
+              f"(road network; {what}), {a.nodes} nodes")
+    elif area_z > 0:
         # Mean node degree in a box: (n-1) * P(two uniform nodes in range),
         # measured rather than approximated, because the sphere is clipped by
         # up to three faces (#481).
@@ -833,7 +953,7 @@ def cmd_preflight(a):
         print(f"field {a.areaX}x{a.areaY} m, {a.nodes} nodes, range {a.range} m")
     print(f"  expected mean degree ~{degree:.1f} "
           f"(connectivity wants >~{math.log(max(a.nodes, 2)):.1f})")
-    if a.range >= max(a.areaX, a.areaY, area_z):
+    if not urban and a.range >= max(a.areaX, a.areaY, area_z):
         report("WARN", "range >= long edge — effectively single-hop "
                        "(fine only for an anchor scenario)")
     if degree < math.log(max(a.nodes, 2)):
@@ -871,6 +991,26 @@ def cmd_preflight(a):
                        "pause sweep under this model would produce N identical "
                        "cells and read as 'pause has no effect' (#61); pass "
                        "--pause=0 to state that explicitly")
+    # #488: the Manhattan grid and the urban channel, mirroring the harness's
+    # refusals so a bad VANET cell fails here at zero dispatches.
+    if mobility == "manhattan" and a.pause != 0:
+        report("FAIL", f"--pause={a.pause}s with --mobility=manhattan: the "
+                       "Manhattan model never pauses, so pause is inert; a "
+                       "pause sweep would produce N identical cells (#488). "
+                       "Pass --pause=0")
+    if urban and mobility != "manhattan":
+        report("FAIL", "--propagation=urban needs --mobility=manhattan: the "
+                       "buildings are the street grid's blocks, and vehicles "
+                       "off the streets would sit inside them; the harness "
+                       "refuses it (#488)")
+    if mobility == "manhattan" and area_z > 0:
+        report("FAIL", f"--mobility=manhattan with --areaZ={area_z:g}: a "
+                       "street grid is planar; the harness refuses it (#488)")
+    if urban and not 0 < street < min(a.areaX / blocks_x, a.areaY / blocks_y):
+        report("FAIL", f"--streetWidth={street:g} must be > 0 and narrower "
+                       f"than a block ({a.areaX / blocks_x:g} x "
+                       f"{a.areaY / blocks_y:g} m); the harness refuses it "
+                       "(#488)")
     if a.mobility == "ssrwp" and a.speed <= 0:
         report("FAIL", "--mobility=ssrwp needs a positive speed: the "
                        "steady-state distribution divides by speed and is "
@@ -882,7 +1022,7 @@ def cmd_preflight(a):
     # that — so `range` bounds nothing and the estimate is indicative only.
     # Pre-existing for tworay; stated now rather than left for the fading arm
     # to discover.
-    if a.propagation != "range":
+    if a.propagation != "range" and not (urban and mobility == "manhattan"):
         report("WARN", f"--propagation={a.propagation}: --range is inert (no "
                        "hard cutoff), so the node-degree and connectivity "
                        "figures above are a disk-model estimate and do not "
@@ -924,7 +1064,8 @@ def cmd_preflight(a):
             report("WARN", f"--propagation={a.propagation} with the oracle "
                            "arm: adjacency is auto-derived from the installed "
                            "PHY's decode threshold (#431 — decode disk on "
-                           "tworay, fading-median disk on nakagami) and the "
+                           "tworay, fading-median disk on nakagami, per pair "
+                           "through the buildings on urban, #488) and the "
                            "arm is flagged approx=1: a calibrated reference "
                            "point, not a proven upper bound. --range does not "
                            "pin the oracle's radius any more; to force one, "
@@ -955,6 +1096,16 @@ def cmd_preflight(a):
                        "floors. The gaussmarkov pitch values are a recorded "
                        "assumption, not a citation: see "
                        "docs/benchmarks/scenarios/fanet.md (#482)")
+    elif mobility == "manhattan":
+        report("WARN", "--mobility=manhattan: a VANET cell (#301), not "
+                       "comparable to the published MANET corpus. The Broch "
+                       "and grid floors do not apply; validate against the "
+                       "analytic VANET anchors, --anchor vanet-single-hop / "
+                       "vanet-building (check-anchors.sh; docs/benchmarks/scenarios/"
+                       "vanet.md, #488)" + ("" if urban else
+                       ". The disk channel erases the buildings that make it "
+                       "VANET: label this cell harness validation only and "
+                       "use --propagation=urban for any claim"))
     elif a.mobility != "rwp":
         report("WARN", f"--mobility={a.mobility} is not the model the "
                        "published corpus was measured under (rwp), so its "
@@ -974,7 +1125,7 @@ def cmd_preflight(a):
     # This is the rule that would have caught #230 before spending a campaign:
     # at the paper-base defaults it fires on the shipped 10 s default.
     if a.pause < a.time and a.speed > 0:
-        churn = a.range / (2 * a.speed)
+        churn = eff_range / (2 * a.speed)
         # #481: hello interval vs link lifetime. Neighbour loss is detected by
         # missed hellos (detector A), so when a link lives only a few hello
         # periods the protocol spends much of each link's life not yet knowing
@@ -998,7 +1149,7 @@ def cmd_preflight(a):
                            "treat a HelloInterval change as an A/B follow-up "
                            "(#300 watchlist), not a pre-tuning (#481)")
         print(f"  path-diversity window {a.pathWindowS}s vs ~{churn:.1f}s "
-              f"link lifetime at {a.speed} m/s over {a.range} m")
+              f"link lifetime at {a.speed} m/s over {eff_range:g} m")
         if a.pathWindowS > churn:
             report("FAIL", f"pathWindowS={a.pathWindowS}s exceeds the ~"
                            f"{churn:.1f}s link lifetime — route replacement "
@@ -2425,10 +2576,16 @@ def main():
     p.add_argument("--rateMbps", type=float, default=2)
     # kDefaultPathWindowS in ns3/examples/anthocnet-compare.cc (#217).
     p.add_argument("--pathWindowS", type=float, default=10)
-    p.add_argument("--mobility", choices=("rwp", "ssrwp", "gaussmarkov"),
+    p.add_argument("--mobility",
+                   choices=("rwp", "ssrwp", "gaussmarkov", "manhattan"),
                    default="rwp")
-    p.add_argument("--propagation", choices=("range", "tworay", "nakagami"),
+    p.add_argument("--propagation",
+                   choices=("range", "tworay", "nakagami", "urban"),
                    default="range")
+    # #488: the street grid (--mobility=manhattan) and the urban buildings.
+    p.add_argument("--blocksX", type=int, default=5)
+    p.add_argument("--blocksY", type=int, default=5)
+    p.add_argument("--streetWidth", type=float, default=20.0)
     p.add_argument("--transport", choices=("udp", "tcp"), default="udp")
     # #296: which arms the dispatch names. In MANET mode only the oracle rules
     # read it; in isl-grid mode the #420/#296/#362 arm rules do. None = the

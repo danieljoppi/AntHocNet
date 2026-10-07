@@ -85,3 +85,25 @@ fanet_single_hop_3d_oracle_hops_max: 1.0
 # multi-hop path, so it is looser.
 fanet_vertical_3d_pdr_min: 90.0
 fanet_vertical_3d_oracle_hops_min: 1.2
+
+# --- VANET anchors (#488, consumed by check-anchors.sh) ----------------------
+# Analytic, like the FANET ones: geometry decides the answer. The Broch floor
+# is RWP-only and no published value exists for this harness's street grid.
+# Both shrink --scenario=vanet (Manhattan mobility, urban channel) to a single
+# 280 x 280 m block, 20 vehicles, 120 s, oracle at the preset's 100 ms.
+
+# Street width 279 m leaves a 1 m building: the block diagonal (396 m) is
+# inside the two-ray decode radius (423.3 m) and nothing blocks the line, so
+# every flow is one hop. Measured at this exact invocation: AODV 99.5 %,
+# oracle 99.9 % at hopsMean 1.00; 99.0 mirrors the planar single-hop floor.
+vanet_single_hop_pdr_min: 99.0
+vanet_single_hop_oracle_hops_max: 1.05
+
+# Street width 100 m leaves a 180 x 180 m building: vehicles on opposite
+# streets lose line of sight and must relay around a corner. Measured at this
+# exact invocation: oracle hopsMean 1.36 and PDR 99.6 %, AODV 80.4 %. A channel
+# that ignored the building reads exactly the single-hop 1.00, so the hop floor
+# proves the buildings are honoured; the PDR floor only catches a broken relay
+# path, so it sits ~10 pp under AODV.
+vanet_building_pdr_min: 70.0
+vanet_building_oracle_hops_min: 1.2
