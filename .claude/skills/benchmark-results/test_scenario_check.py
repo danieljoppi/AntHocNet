@@ -521,7 +521,7 @@ def _street_prob():
 
 @case("#488 preflight's urban degree matches the harness's measured graph")
 def _pre_vanet_degree():
-    levels, out = run_preflight(**VANET)
+    _, out = run_preflight(**VANET)
     expect("street grid (road network; urban" in out, "pre-vanet-degree", out)
     deg = float(out.split("expected mean degree ~")[1].split()[0])
     # check-manhattan.sh's field: the oracle measured 66 directed edges over
