@@ -76,6 +76,10 @@ markdown_extensions:
 # When that map changes, change this with it.
 nav:
   - README.md
+  # Built next to the docs by pages.yml (#542): the WASM playground and the
+  # Doxygen reference. Absolute URLs: they are not mkdocs pages.
+  - Learn by playing: https://danieljoppi.github.io/AntHocNet/learn/
+  - API reference: https://danieljoppi.github.io/AntHocNet/api/
   - Understand the protocol:
       - ant-colony-routing.md
       - ant-types.md
@@ -103,6 +107,7 @@ nav:
           - benchmarks/scenarios/heavy-load.md
           - benchmarks/scenarios/large-scale.md
           - benchmarks/scenarios/fanet.md
+          - benchmarks/scenarios/vanet.md
       - Sweeps:
           - benchmarks/sweeps/area.md
           - benchmarks/sweeps/pause.md
@@ -138,6 +143,7 @@ nav:
           - adr/0018-emission-gate-compares-per-link.md
           - adr/0019-network-families-change-the-evaluation-not-the-protocol.md
           - adr/0020-security-is-a-default-off-profile.md
+          - adr/0021-the-browser-is-an-adapter.md
       - Handoffs:
           - handoffs/2026-06-28-detector-d-link-failure.md
           - handoffs/2026-08-15-ns3-dsdv-null-route-upstream.md

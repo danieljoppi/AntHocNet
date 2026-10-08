@@ -1,0 +1,50 @@
+# API reference for the AntHocNet core and its adapters (#543).
+# Built by .github/workflows/pages.yml into site/api/ after mkdocs; run locally
+# from the repository root:   doxygen api/Doxyfile   (-> build/api/html)
+# Only non-default settings are listed; everything else is Doxygen's default.
+PROJECT_NAME           = "AntHocNet"
+PROJECT_BRIEF          = "Paper-faithful ant-colony ad hoc routing: the shared core and its adapters"
+PROJECT_NUMBER         = $(AHN_VERSION)
+OUTPUT_DIRECTORY       = build/api
+CREATE_SUBDIRS         = NO
+FULL_PATH_NAMES        = YES
+STRIP_FROM_PATH        = .
+STRIP_FROM_INC_PATH    = core/include web/include
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = YES
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+HIDE_UNDOC_RELATIONS   = NO
+SORT_MEMBER_DOCS       = NO
+WARN_IF_UNDOCUMENTED   = YES
+WARN_NO_PARAMDOC       = NO
+WARN_AS_ERROR          = NO
+WARN_LOGFILE           = build/api/warnings.log
+# Public headers only: the core's API and the adapters' entry points. ns2/ is
+# left out -- it is removed at v2.0.0 (#307).
+INPUT                  = api/mainpage.md \
+                         core/include/anthocnet/core \
+                         ns3/model/anthocnet-routing-protocol.h \
+                         ns3/model/anthocnet-adapters.h \
+                         ns3/model/anthocnet-packet.h \
+                         ns3/helper \
+                         web/include/ahn_web
+FILE_PATTERNS          = *.h *.md
+RECURSIVE              = YES
+USE_MDFILE_AS_MAINPAGE = api/mainpage.md
+SOURCE_BROWSER         = YES
+STRIP_CODE_COMMENTS    = NO
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_EXTRA_STYLESHEET  = api/theme.css
+HTML_COLORSTYLE        = TOGGLE
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+SEARCHENGINE           = YES
+GENERATE_LATEX         = NO
+HAVE_DOT               = NO
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = NO

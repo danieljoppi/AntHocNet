@@ -1,16 +1,26 @@
 name: Pages
 
 # Renders docs/ as a mkdocs-material site and publishes it to GitHub Pages
-# (#331). The repository tree stays canonical — this job only renders it, so a
-# failure here never blocks a merge; ci.yml/lint.yml remain the gates.
+# (#331), with two more builds in the same artifact (#542): the Doxygen API
+# reference at /api/ (#543) and the learn site -- core/ compiled to
+# WebAssembly plus its front end -- at /learn/ (#545-#548). The repository
+# tree stays canonical -- this job only renders it, so a failure here never
+# blocks a merge; ci.yml/lint.yml remain the gates (ci.yml's web-parity job
+# runs the same WASM build and the learn-site smoke on every PR).
 on:
   push:
     branches: [main]
-    # docs/ and the site config are the only inputs; a core/ or ns3/ change
-    # cannot alter the rendered output.
+    # Every input of the three builds: the docs, the headers Doxygen reads,
+    # and the core + adapter + front end the learn site compiles.
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - 'api/**'
+      - 'core/**'
+      - 'ns3/model/*.h'
+      - 'ns3/helper/*.h'
+      - 'web/**'
+      - 'VERSION'
       - '.github/workflows/pages.yml'
   # The bots that refresh published results push with GITHUB_TOKEN, and a
   # GITHUB_TOKEN push never triggers another workflow -- so the push trigger
@@ -68,6 +78,24 @@ jobs:
         # page) fail the build instead of silently shipping a 404. It passes
         # today; keep it passing rather than dropping the flag.
         run: mkdocs build --strict
+      - name: API reference (/api/)
+        # Doxygen from the runner's apt (1.9.8 on ubuntu-24.04), version logged.
+        # Undocumented public symbols are reported, not fatal (#543).
+        run: |
+          sudo apt-get install -y --no-install-recommends doxygen >/dev/null
+          doxygen --version
+          mkdir -p build/api
+          AHN_VERSION="$(cat VERSION)" doxygen api/Doxyfile
+          cp -r build/api/html site/api
+      - name: Install emsdk (pinned, as ci.yml)
+        run: |
+          git clone --depth 1 --branch 4.0.10 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install 4.0.10
+          "$RUNNER_TEMP/emsdk/emsdk" activate 4.0.10
+      - name: Learn site (/learn/)
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          web/build-site.sh site/learn
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

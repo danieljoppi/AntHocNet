@@ -34,7 +34,7 @@ jobs:
         run: make test
 
   web-parity:
-    name: browser adapter — native vs WASM parity (#544)
+    name: browser adapter — native vs WASM parity + learn-site smoke (#544, #548)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # ADR-0021: the learn site runs core/ as WebAssembly. This job builds the
@@ -54,6 +54,21 @@ jobs:
         run: |
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           web/test/parity.sh 120 "1 2 7 42"
+      - name: Assemble the learn site
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          web/build-site.sh web/build-site/learn
+      - name: Learn-site browser smoke (#548)
+        # Every world runs with no console error, a backward ant and a delivery;
+        # all worlds share the protocol defaults (ADR-0019); mission 2 plays to
+        # the end; axe-core finds no serious/critical violations, day or night.
+        # playwright-core / axe-core pinned; Chromium from Playwright's own CDN.
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright-core@1.56.1 axe-core@4.10.2
+          npx --no-install playwright-core install --with-deps chromium
+          node "$GITHUB_WORKSPACE/web/test/smoke.mjs" "$GITHUB_WORKSPACE/web/build-site"
 
   core-sanitizers:
     name: core under ASan + UBSan

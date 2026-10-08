@@ -1,0 +1,19 @@
+/* Nudge stock Doxygen toward the mkdocs-material site it sits under (#543):
+   same typeface family, the site's indigo accent, quieter chrome. Light and
+   dark both come from Doxygen's own HTML_COLORSTYLE = TOGGLE; this only
+   overrides a handful of tokens in each. */
+html {
+  --font-family-normal: Roboto, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-family-monospace: "Roboto Mono", SFMono-Regular, Consolas, monospace;
+  --primary-color: #4051b5;
+  --primary-dark-color: #303fa1;
+  --primary-light-color: #7986cb;
+  --page-link-color: #4051b5;
+}
+html.dark-mode {
+  --primary-color: #7986cb;
+  --primary-dark-color: #9fa8da;
+  --primary-light-color: #5c6bc0;
+  --page-link-color: #9fa8da;
+}
+#projectname { font-weight: 600; }

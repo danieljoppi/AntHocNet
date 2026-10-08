@@ -5,6 +5,11 @@ Where to find things in `docs/`. Repo-level orientation is one directory up:
 (project orientation + glossary), [`AGENTS.md`](../AGENTS.md) (build/verify,
 golden rules, where-to-look), [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
+**Learn by playing:** [the interactive site](https://danieljoppi.github.io/AntHocNet/learn/) runs the real core as
+WebAssembly, with missions for every mechanism and a world per network family
+([ADR-0021](adr/0021-the-browser-is-an-adapter.md)). The code reference is the
+[API documentation](https://danieljoppi.github.io/AntHocNet/api/).
+
 ## Understand the protocol
 
 | Page | What it is |

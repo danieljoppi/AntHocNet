@@ -13,6 +13,9 @@ protocol by running **the** protocol, not a look-alike.
 | `src/bindings.cpp` | the Embind API the site's JavaScript calls (WASM build only) |
 | `src/trace_main.cpp` | `ahn-web-trace`: runs every scenario and prints the full event log |
 | `test/parity.sh` | the native-vs-WASM byte-identical trace gate (CI job `web-parity`) |
+| `site/` | the learn site's front end (#545–#547): `index.html`, `css/learn.css`, and plain ES modules — `engine.js` (the WASM module + event vocabulary), `iso.js` (isometric city-builder renderer), `app.js` (tools, camera, status bar, news ticker, ant log, query window), `worlds.js`, `missions.js` + `missions-data.js` |
+| `build-site.sh` | assembles `site/` + the WASM build into one servable directory, with content-hashed core URLs (used by `pages.yml` and CI) |
+| `test/smoke.mjs` | the learn-site browser smoke (#548): every world, the shared protocol defaults (ADR-0019), a mission played to the end, axe-core day and night |
 
 ## Build
 
@@ -27,7 +30,16 @@ emcmake cmake -S web -B web/build-wasm && cmake --build web/build-wasm -j
 #   -> web/build-wasm/ahn-web-trace.js:    the parity runner (node)
 
 web/test/parity.sh            # both builds, 4 seeds x 6 scenarios, cmp
+
+# the learn site, served locally
+web/build-site.sh                       # -> web/build-site/learn/
+python3 -m http.server -d web/build-site 8000   # open http://localhost:8000/learn/
+# browser smoke (playwright-core + axe-core installed in the working directory)
+node web/test/smoke.mjs web/build-site
 ```
+
+The live site is built by `.github/workflows/pages.yml` into `/learn/`, next to
+the docs and the Doxygen API reference at `/api/` (`api/Doxyfile`).
 
 ## Using the module
 
