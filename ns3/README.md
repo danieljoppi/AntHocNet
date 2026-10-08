@@ -148,7 +148,10 @@ silently skipped.
 
 - **ISLs:** +grid (two in-plane, two cross-plane), point-to-point, one /30 each;
   each channel's `Delay` is re-read from the satellites' ECEF distance every
-  `--delayUpdate` s (default 0.1).
+  `--delayUpdate` s (default 0.1). Cross-plane partners are paired by one
+  constant slot shift — the one with the shortest mean link over the shell
+  (`# anchor isl`), not "same slot": Walker phasing and the RAAN rotation
+  both move the nearest partner along track.
 - **Ground stations:** six cities, four fixed pairs (New York–London,
   London–Tokyo, São Paulo–Johannesburg, Tokyo–Sydney). Each station sits on its
   own CSMA segment with every satellite ever visible from it; only the serving

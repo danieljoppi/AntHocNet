@@ -14,6 +14,13 @@
 #    here independently. The t=T/2 chord is the load-bearing one: a model
 #    that placed satellites correctly and then moved them off their orbit
 #    would pass a t=0-only check (the #480 lesson).
+# 1b. Cross-plane pairing (`# anchor isl`): the chosen constant slot shift
+#    must give cross-plane ISLs no longer on average than same-slot pairing,
+#    and shorter than the in-plane chord. Same-slot pairing is what the
+#    first leo-walker shipped: on Starlink S1 it made every cross link the
+#    farther of two candidates (1470 km vs 637 km mean) and nearly tripled
+#    the Paris-Luanda RTT Hypatia publishes; on this 16 x 16 shell it is
+#    2527 km vs 1838 km.
 # 2. Every ground station sees at least one satellite above --minElevation
 #    (`# visibility`). Zero is how the topocentric-vs-ECEF frame bug showed
 #    itself: three cities silently had no service at all.
@@ -84,6 +91,24 @@ else
         fail=1
     else
         say "ok: shell radius, in-plane chord (t=0 and t=T/2) and period match the analytic Walker shell"
+    fi
+fi
+
+islA=$(printf '%s\n' "$out" | grep '^# anchor isl' || true)
+if [ -z "$islA" ]; then
+    say "FAIL: no '# anchor isl' line"
+    fail=1
+else
+    bad=$(printf '%s\n' "$islA" | awk '{
+        for (i = 1; i <= NF; ++i) { k = $i; sub(/=[^=]*$/, "", k); x = $i; sub(/.*=/, "", x); v[k] = x }
+        if (v["crossMeanKm"] + 0 > v["sameSlotMeanKm"] + 0.001) print "crossMeanKm " v["crossMeanKm"] " > sameSlotMeanKm " v["sameSlotMeanKm"]
+        if (v["crossMeanKm"] + 0 >= v["inPlaneKm"] + 0) print "crossMeanKm " v["crossMeanKm"] " >= inPlaneKm " v["inPlaneKm"]
+    }')
+    if [ -n "$bad" ]; then
+        say "FAIL: cross-plane ISL pairing: $bad"
+        fail=1
+    else
+        say "ok: cross-plane ISLs paired at the shortest constant slot shift ($islA)"
     fi
 fi
 

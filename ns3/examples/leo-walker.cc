@@ -763,9 +763,39 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
 
     // +grid ISLs. Node i is plane i / S, slot i % S (LeoCircularOrbitAllocator
     // order). In-plane: slot s <-> s+1. Cross-plane: plane p slot s <-> plane
-    // p+1 slot s; across the seam (last plane -> plane 0) the Walker phasing
-    // shifts the slots, so the partner is the nearest plane-0 satellite at t=0.
+    // p+1 slot (s + shift) % S, one constant shift for the whole shell (a
+    // pairing that never changes, as on a real +grid), chosen as the shift
+    // that minimises the mean cross-link length over every (p, s) at t=0 --
+    // the slots of a plane sample the whole orbit, so that mean is the
+    // orbit average. It is NOT simply "same slot": the Walker phasing F and
+    // the RAAN rotation between neighbouring planes both move the along-track
+    // position of the nearest partner. Same-slot pairing wired Starlink S1's
+    // cross links at a median 1470 km instead of ~640 km and put
+    // Paris-Luanda at ~270 ms RTT against Hypatia's 85-117 ms; on the 16 x 16
+    // shell it chose a mean 2527 km over 1838 km. Across the seam (last plane
+    // -> plane 0) the offset wraps through the whole shell, so the partner is
+    // the nearest plane-0 satellite at t=0.
     const uint32_t S = P.sats, Pn = P.planes;
+    auto crossMeanKm = [&](uint32_t k) {
+        double sum = 0;
+        uint32_t n = 0;
+        for (uint32_t p = 0; p + 1 < Pn; ++p) {
+            for (uint32_t s = 0; s < S; ++s) {
+                sum += Dist(PosOf(w.sats.Get(p * S + s)), PosOf(w.sats.Get((p + 1) * S + (s + k) % S)));
+                ++n;
+            }
+        }
+        return n ? sum / n / 1000.0 : 0.0;
+    };
+    uint32_t shift = 0;
+    double bestMean = 1e300;
+    for (uint32_t k = 0; k < S && Pn > 1; ++k) {
+        const double m = crossMeanKm(k);
+        if (m < bestMean - 1e-9) {
+            bestMean = m;
+            shift = k;
+        }
+    }
     for (uint32_t p = 0; p < Pn; ++p) {
         for (uint32_t s = 0; s < S; ++s) {
             const uint32_t i = p * S + s;
@@ -774,7 +804,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
             if (Pn < 2) continue;
             uint32_t j;
             if (p + 1 < Pn) {
-                j = (p + 1) * S + s;
+                j = (p + 1) * S + (s + shift) % S;
             } else {
                 j = 0;
                 double best = 1e30;
@@ -786,6 +816,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
             if (Pn == 2 && p == 1) continue;  // two planes: one cross link per slot
             w.isls.push_back(build(isl, w.sats.Get(i), w.sats.Get(j), i, j));
         }
+    }
+    static bool islAnchorPrinted = false;  // pure geometry: identical every run
+    if (!islAnchorPrinted && Pn > 2) {
+        islAnchorPrinted = true;
+        std::cout << std::fixed << std::setprecision(3) << "# anchor isl crossShiftSlots=" << shift
+                  << " crossMeanKm=" << bestMean << " sameSlotMeanKm=" << crossMeanKm(0)
+                  << " inPlaneKm=" << Dist(PosOf(w.sats.Get(0)), PosOf(w.sats.Get(1))) / 1000.0
+                  << "\n";
     }
 
     // GSL candidates (from the probe pass in main -- it must run before any
