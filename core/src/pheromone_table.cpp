@@ -145,6 +145,38 @@ NodeAddress PheromoneTable::nextNeighborNode(NodeAddress dest, bool isProactiveA
     return chosen;
 }
 
+std::vector<std::pair<NodeAddress, double>> PheromoneTable::nextHopDistribution(
+    NodeAddress dest, bool isProactiveAnt, double beta, NodeAddress exclude) const {
+    // Mirrors nextNeighborNode() term for term: the same known-destination
+    // rule, the same normaliser, the same per-neighbour weight, the same A1
+    // fallback -- so p_i is exactly the step the sampler subtracts from r.
+    std::vector<std::pair<NodeAddress, double>> out;
+    const bool known = destRegular_.find(dest) != destRegular_.end() ||
+                       (isProactiveAnt && destVirtual_.find(dest) != destVirtual_.end());
+    if (!known) return out;
+    const double phSum = isProactiveAnt ? sumMaxProbability(dest, beta, exclude)
+                                        : sumProbability(pheromoneRegular_, dest, beta, exclude);
+    if (phSum == 0.0) {
+        if (exclude != kInvalidAddress) {
+            return nextHopDistribution(dest, isProactiveAnt, beta, kInvalidAddress);
+        }
+        return out;
+    }
+    for (NodeAddress neighbor : neighborTable_) {
+        if (neighbor == exclude) continue;
+        auto itR = pheromoneRegular_.find({neighbor, dest});
+        auto itV = pheromoneVirtual_.find({neighbor, dest});
+        const bool useR = itR != pheromoneRegular_.end();
+        const bool useV = (itV != pheromoneVirtual_.end()) && isProactiveAnt;
+        const double phR = useR ? itR->second : 0.0;
+        const double phV = useV ? itV->second : 0.0;
+        const double weight = phR > phV ? phR : phV;
+        const double p = std::pow(weight, beta) / phSum;
+        if (p > 0.0) out.emplace_back(neighbor, p);
+    }
+    return out;
+}
+
 NodeAddress PheromoneTable::lookup(NodeAddress dest, double beta, IRng& rng,
                                    NodeAddress exclude) const {
     return nextNeighborNode(dest, false, beta, rng, exclude);

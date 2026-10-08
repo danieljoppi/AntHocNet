@@ -158,6 +158,7 @@ results.
 | Change the wire format | `docs/wire-format.md` → `core/include/.../ant_message_codec.h` (+ both adapters; bump `kWireVersion`) |
 | Work on the NS-2 adapter | `ns2/src/`, `ns2/tcl/` |
 | Work on the NS-3 adapter | `ns3/model/`, `ns3/helper/`, `ns3/examples/` |
+| Work on the browser adapter (the learn site's simulation) | `web/` ([README](web/README.md), [ADR-0021](docs/adr/0021-the-browser-is-an-adapter.md)); `web/test/parity.sh` must stay byte-identical native vs WASM (CI job `web-parity`) |
 | Run / read benchmarks | `docs/benchmarks.md` (index → `docs/benchmarks/{metrics,methodology}.md`, `scenarios/<name>.md`, `sweeps/<name>.md`), `ns3/tools/run-scenarios.py` + `make-charts.py` + `update-benchmarks.py`; family/cross-family + sweep charts from committed data: `ns3/tools/family-charts.py` (re-rendered and committed by `charts.yml`), `anthocnet-compare --diag` |
 | Inspect protocol internals | NS-3 `Tx`/`Rx`/`RouteChanged` trace sources; core counters via `IRouterObserver` |
 | Run the benchmark campaign loop (dispatch → fetch → parse) | `benchmark-results` skill (SKILL.md documents the whole procedure) |

@@ -17,6 +17,7 @@
 #include <map>
 #include <set>
 #include <utility>
+#include <vector>
 
 #include "anthocnet/core/config.h"
 #include "anthocnet/core/ports.h"
@@ -84,6 +85,15 @@ public:
     NodeAddress nextNeighborNode(NodeAddress dest, bool isProactiveAnt, double beta,
                                  IRng& rng, NodeAddress exclude = kInvalidAddress) const;
 
+    /// The probability distribution nextNeighborNode() samples from, for the
+    /// same arguments: one (neighbour, probability) pair per candidate, in
+    /// neighbour order, summing to 1 (empty when there is no route). Applies
+    /// the same A1 fallback (the excluded hop is reconsidered when it is the
+    /// only option). Read-only: for inspection and teaching (#546), never a
+    /// second routing path -- it consumes no randomness.
+    std::vector<std::pair<NodeAddress, double>> nextHopDistribution(
+        NodeAddress dest, bool isProactiveAnt, double beta,
+        NodeAddress exclude = kInvalidAddress) const;
     /// Reactive lookup == nextNeighborNode(dest, false, beta).
     NodeAddress lookup(NodeAddress dest, double beta, IRng& rng,
                        NodeAddress exclude = kInvalidAddress) const;

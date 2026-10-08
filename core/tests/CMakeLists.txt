@@ -26,6 +26,7 @@ set(ANTHOCNET_TESTS
   test_reactive_source_band
   test_ant_type_gates
   test_shortest_path
+  test_next_hop_distribution
 )
 
 foreach(test ${ANTHOCNET_TESTS})
