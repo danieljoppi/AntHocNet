@@ -9,13 +9,24 @@ name: Satellite benchmark (manual)
 # gate and the ISL determinism gate on the 3.42 leg — see ci.yml and
 # ns3/tools/check-sat-anchors.sh).
 #
-# Results interpretation lives in docs/benchmarks/satellite/isl-grid.md.
+# harness=leo-walker (#297, ADR-0022) runs the MOVING constellation instead:
+# a Walker shell on stock ns-3.48's LEO model with GSL handover and a failure
+# overlay. It needs version >= 3.48; the shell, failure overlay and oracle
+# cadence go in extraArgs (rows/cols/torus/islDelayMs are isl-grid-only), and
+# the compact block prints every # / ## line the handover metric family and
+# scenario_check.py's #297 rules read.
+#
+# Results interpretation lives in docs/benchmarks/satellite/isl-grid.md and
+# docs/benchmarks/satellite/leo-walker.md.
 # The precomputed-shortest-path control row this suite ultimately needs is
 # #216's scope and does not exist yet: until it lands, AODV/OLSR/DSDV are
 # secondary references, not the claim.
 on:
   workflow_dispatch:
     inputs:
+      harness:
+        description: 'isl-grid (static +Grid torus, the default) | leo-walker (moving Walker shell, ns-3 >= 3.48; shape via extraArgs, e.g. --shell=starlink1 --islDown=0.01)'
+        default: 'isl-grid'
       version:
         description: 'ns-3 image tag. Suffix -opt (e.g. 3.42-opt) selects the optimized-profile image (#123); use it for campaign runs.'
         default: '3.42'
@@ -100,12 +111,24 @@ jobs:
             --enable-modules='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
       - name: Build
         run: cd /opt/ns-3 && ./ns3 build && ./ns3 show profile
-      - name: Run isl-grid scenario
+      - name: Run satellite scenario
         # bash explicitly: container jobs default to sh, where pipefail is an
         # illegal option (the paper-benchmark run 29664072922 lesson).
         shell: bash
         run: |
           cd /opt/ns-3
+          harness="${{ github.event.inputs.harness }}"
+          if [ "$harness" = "leo-walker" ]; then
+            # One arm per dispatch keeps a 1584-satellite cell inside the job
+            # timeout and sidesteps AODV's arm-order dependence (#362).
+            cmd="leo-walker \
+              --time=${{ github.event.inputs.time }} \
+              --runs=${{ github.event.inputs.runs }} \
+              --flows=${{ github.event.inputs.flows }} \
+              --cbrBps=${{ github.event.inputs.cbrBps }} \
+              --islRate=${{ github.event.inputs.islRate }} \
+              --protocols=${{ github.event.inputs.protocols }}"
+          elif [ "$harness" = "isl-grid" ]; then
           cmd="isl-grid \
             --rows=${{ github.event.inputs.rows }} \
             --cols=${{ github.event.inputs.cols }} \
@@ -117,6 +140,9 @@ jobs:
             --flows=${{ github.event.inputs.flows }} \
             --cbrBps=${{ github.event.inputs.cbrBps }} \
             --diag --protocols=${{ github.event.inputs.protocols }}"
+          else
+            echo "unknown harness '$harness' (isl-grid | leo-walker)"; exit 1
+          fi
           if [ -n "${{ github.event.inputs.extraArgs }}" ]; then
             cmd="$cmd ${{ github.event.inputs.extraArgs }}"
           fi
@@ -157,14 +183,21 @@ jobs:
         # captures the numbers, mirroring paper-benchmark's contract.
         shell: bash
         run: |
-          tail -n 30 "$GITHUB_WORKSPACE/satellite-results.txt"
+          if [ "${{ github.event.inputs.harness }}" = "leo-walker" ]; then
+            # Every # / ## line (minus the --series samples) plus the table:
+            # the books scenario_check.py's #297 rules close need all of them.
+            grep -E '^(#|protocol|[a-z][a-z-]+ +[0-9])' "$GITHUB_WORKSPACE/satellite-results.txt" \
+              | grep -v '^# series'
+          else
+            tail -n 30 "$GITHUB_WORKSPACE/satellite-results.txt"
+          fi
           if [ -f "$GITHUB_WORKSPACE/time-v.log" ]; then
             wall=$(grep -oP 'Elapsed \(wall clock\) time.*: \K.*' "$GITHUB_WORKSPACE/time-v.log" || true)
             rss=$(grep -oP 'Maximum resident set size \(kbytes\): \K\d+' "$GITHUB_WORKSPACE/time-v.log" || true)
-            echo "##PERF## isl-grid all ${wall:-?} ${rss:-?}"
+            echo "##PERF## ${{ github.event.inputs.harness }} all ${wall:-?} ${rss:-?}"
           fi
           # #365: the commit these numbers were measured at. Same contract and
           # same reason as paper-benchmark's ##PROV## — the harness cannot know
           # its own commit, and a run ID stops resolving to one once the run's
           # logs expire. Emitted last so a cheap tail keeps it.
-          echo "##PROV## commit=$GITHUB_SHA ref=$GITHUB_REF_NAME run_id=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT image=ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }} profile=$NS3_PROFILE harness=isl-grid"
+          echo "##PROV## commit=$GITHUB_SHA ref=$GITHUB_REF_NAME run_id=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT image=ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }} profile=$NS3_PROFILE harness=${{ github.event.inputs.harness }}"

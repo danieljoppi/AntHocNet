@@ -27,7 +27,12 @@
 #    AODV is the arm that used to abort here (interface-down race in stock
 #    AODV, see SetLink in leo-walker.cc), so it is part of the smoke.
 # 6. The delay oracle reports mode=wired+delay: the latency bound is really
-#    the Dijkstra-on-channel-delay mode, not the hop-count one.
+#    the Dijkstra-on-channel-delay mode, not the hop-count one. geo-greedy
+#    (the idealised geographic comparator) sends no control packet.
+# 6b. scenario_check.py's #297 rules pass on this very output: the handover
+#    clock ticked as ##CONFIG## says, and every flow's books close
+#    (offered = delivered + outageLost + scatteredLost, classes = flows,
+#    ##RUN## PDR = the books' delivered/offered).
 # 7. Determinism: the same seed twice is byte-identical for AntHocNet. The
 #    failure schedule and the mass-failure draw sit on pinned application
 #    streams; an unpinned one would make every arm see different failures.
@@ -47,7 +52,7 @@ cd "$NS3DIR"
 fail=0
 say() { printf '%s\n' "$*"; }
 
-ARMS=oracle-delay,anthocnet,aodv
+ARMS=oracle-delay,anthocnet,aodv,geo-greedy
 SHELL_ARGS="--planes=16 --sats=16 --altitude=1150 --inclination=53 --minElevation=25
             --time=60 --islDown=0.02 --massFailAt=30 --massFailFrac=0.05"
 
@@ -110,6 +115,22 @@ done
 # --- 6. the latency bound is the delay oracle --------------------------------
 printf '%s\n' "$out" | grep -q '^##ORACLE## .* oracle-delay mode=wired+delay ' \
     || { say "FAIL: oracle-delay did not run the delay metric (mode wired+delay)"; fail=1; }
+
+printf '%s\n' "$out" | grep -q '^# geo geo-greedy seed=1 ' \
+    || { say "FAIL: geo-greedy printed no '# geo' line"; fail=1; }
+
+# --- 6b. the #297 scenario_check rules on this output --------------------------
+SC="$(cd "$(dirname "$0")/../.." && pwd)/.claude/skills/benchmark-results/scenario_check.py"
+cell=$(mktemp)
+printf '%s\n' "$out" > "$cell"
+if python3 "$SC" results "$cell" > "$cell.check" 2>&1; then
+    say "ok: scenario_check.py #297 rules (handover clock, outage books) pass"
+else
+    say "FAIL: scenario_check.py on the smoke output:"
+    grep '^FAIL' "$cell.check" || cat "$cell.check"
+    fail=1
+fi
+rm -f "$cell" "$cell.check"
 
 # --- 7. determinism ------------------------------------------------------------
 a=$(./ns3 run "$(echo leo-walker --csv --protocols=anthocnet $SHELL_ARGS)" 2>/dev/null)
