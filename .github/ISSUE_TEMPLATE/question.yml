@@ -26,5 +26,5 @@ body:
     attributes:
       label: Environment
       description: >
-        Simulator and version (ns-3.x / ns-2.3x), OS, and the AntHocNet release
+        Simulator and version (ns-3.x), OS, and the AntHocNet release
         or commit — if the question involves running anything.

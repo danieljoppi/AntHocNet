@@ -1,6 +1,7 @@
 # ADR-0002: One simulator-agnostic core, thin per-simulator adapters
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0023](0023-one-core-one-simulator-adapter.md)
+  (v2.0.0, #307: the NS-2 adapter is removed; the core/adapter split stays)
 - **Date:** 2026-06-25
 
 ## Context

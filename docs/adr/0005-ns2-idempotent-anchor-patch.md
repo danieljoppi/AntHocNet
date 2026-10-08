@@ -1,6 +1,8 @@
 # ADR-0005: Install on NS-2 via an idempotent, anchor-based source patch
 
-- **Status:** Accepted
+- **Status:** Historical — the NS-2 adapter was removed in v2.0.0 (#307,
+  [ADR-0023](0023-one-core-one-simulator-adapter.md)). This records how v1.x
+  installed on NS-2; it governs nothing on `main`.
 - **Date:** 2026-06-25
 
 ## Context

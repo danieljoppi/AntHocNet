@@ -49,6 +49,12 @@ Remaining paper TODOs, for whenever submission resumes:
 - [ ] Preview the PDF with `inara` and proof the citations.
 - [x] Tag a release to submit against (v1.0.0 is out) and have the Zenodo DOI
       ready: 10.5281/zenodo.20981979 (concept DOI, resolves to latest) — #107.
+- [ ] **Scope the draft to a version (#307).** `paper.md` describes the v1.x
+      line — both adapters, with CI compiling the NS-2 one against
+      ns-2.34/2.35. v2.0.0 removed NS-2. Papers are version-scoped (the
+      maintainer decision on #307), so either submit against a v1.x tag and
+      say so in the paper, or revise the Summary, tags and CI sentence for
+      v2.x (one simulator adapter plus the browser adapter, ADR-0023).
 - [ ] Submit at <https://joss.theoj.org/papers/new> (points JOSS at the repo).
 
 No affiliation TODO: the author has no research-organization affiliation,

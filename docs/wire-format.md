@@ -3,9 +3,10 @@
 Canonical, simulator-agnostic on-wire layout of an ant packet. This is the
 single source of truth referenced by [`AGENTS.md`](../AGENTS.md) golden rule #4
 and by [`docs/porting-notes.md`](porting-notes.md). The encoder/decoder lives in
-`core/src/ant_message_codec.cpp`; the NS-2 header (`ns2/src/ant_packet_ns2`) and
-the NS-3 `AntHeader` (`ns3/model/anthocnet-packet`) both delegate to it, so a
-byte produced on one simulator is interpreted identically on the other.
+`core/src/ant_message_codec.cpp`; the NS-3 `AntHeader`
+(`ns3/model/anthocnet-packet`) delegates to it (as the NS-2 header did through
+v1.9.0, so a byte produced on one simulator was interpreted identically on the
+other).
 
 All multi-byte integers and `double`s are **little-endian**. Variable arrays are
 **length-prefixed** with a `uint16` count. There is exactly one layout — see
@@ -98,8 +99,8 @@ increments it. Do not hard-code a number; use `current + 1`.
 - `deserialize` checks it **first** and returns `false` on any unknown value —
   before reading any length field — so foreign, corrupt, or stale-version frames
   are rejected in O(1) at the trust boundary.
-- The constant is defined once in the codec and asserted identical by the NS-2
-  and NS-3 headers and the round-trip test. **Any change to field order,
+- The constant is defined once in the codec and asserted identical by the NS-3
+  header and the round-trip test. **Any change to field order,
   width, units, or semantics bumps `kWireVersion`** (see the maintenance rule in
   [ADR-0006](adr/0006-on-wire-protocol-version.md)).
 - We do **not** negotiate or translate between versions. A mismatched version is
@@ -169,7 +170,6 @@ When you change `AntMessage` fields, update **in the same field order** and bump
 
 1. `core/include/anthocnet/core/ant_message.h` (the struct).
 2. `core/src/ant_message_codec.cpp` (serialize + deserialize + size constants).
-3. `ns2/src/ant_packet_ns2` (NS-2 POD header + `wireSize()`).
-4. `ns3/model/anthocnet-packet` (`AntHeader` Serialize/Deserialize/GetSerializedSize).
-5. `core/tests/test_codec.cpp` (round-trip + the version-mismatch rejection test).
-6. This table and the offsets above.
+3. `ns3/model/anthocnet-packet` (`AntHeader` Serialize/Deserialize/GetSerializedSize).
+4. `core/tests/test_codec.cpp` (round-trip + the version-mismatch rejection test).
+5. This table and the offsets above.

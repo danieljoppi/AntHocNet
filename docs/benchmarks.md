@@ -145,8 +145,9 @@ multi-run averaging. AntHocNet is a research protocol; AODV/OLSR/DSDV are
 mature, heavily-tuned implementations. The point of this harness is a fair,
 repeatable **re-validation** that AntHocNet routes and delivers in the same
 regime as the established protocols, not a claim that any one protocol always
-wins. Cross-simulator (NS-2 vs NS-3) parity is likewise not claimed — the
-MAC/PHY models differ (see [cross-validation.md](cross-validation.md)).
+wins. Cross-simulator parity was never claimed while an NS-2 adapter existed
+either — the MAC/PHY models differ (see [cross-validation.md](cross-validation.md),
+now historical).
 
 Absolute numbers carry a further caveat: they are gated on the validation
 anchors, and the *relative* comparison (identical per-protocol realisations) is

@@ -9,14 +9,17 @@ structure in the [ADRs](docs/adr/).
 ## What this repo is
 
 AntHocNet — an ant-colony-optimization MANET routing protocol — implemented
-**once** as a simulator-agnostic algorithm core, with thin adapters for **NS-2**
-and **NS-3**. The repo does **not** vendor a simulator; the adapters install
-onto *your* NS-2 / NS-3 tree.
+**once** as a simulator-agnostic algorithm core, with a thin **NS-3** adapter
+(and a browser adapter for the learn site). The repo does **not** vendor a
+simulator; the module installs onto *your* NS-3 tree. The NS-2 adapter was
+removed in v2.0.0 ([#307](https://github.com/danieljoppi/AntHocNet/issues/307),
+[ADR-0023](docs/adr/0023-one-core-one-simulator-adapter.md)); it lives on at the
+v1.2.0–v1.9.0 tags.
 
 ```
-core/   simulator-agnostic C++ (no NS-2/NS-3 headers) + unit tests
-ns2/    NS-2 Agent adapter + idempotent anchor-based source patch
+core/   simulator-agnostic C++ (no simulator headers) + unit tests
 ns3/    native ns3::Ipv4RoutingProtocol contrib module
+web/    browser adapter (core/ as WebAssembly) + the learn site
 docs/   architecture.md, porting-notes.md, adr/ — full map in docs/README.md
 ```
 
@@ -24,8 +27,6 @@ docs/   architecture.md, porting-notes.md, adr/ — full map in docs/README.md
 
 ```bash
 make test                                  # build core (CMake) + run ctest — fast, no simulator
-bash ns2/patch/selftest.sh                 # NS-2 patch apply/revert round-trip on a synthetic tree
-make install-ns2  NS2DIR=/path/to/ns-2.3x  # install onto a real NS-2 tree
 make install-ns3  NS3DIR=/path/to/ns-3-dev # install onto a real NS-3 tree
 make clean                                 # remove core/build
 ```
@@ -48,30 +49,27 @@ artifact). It is **report-only — there is no threshold** ([#162](https://githu
 chosen from evidence later. Read it as a map of untested paths to aim tests at,
 not as a number to chase (CLAUDE.md rule 2).
 
-`make test` and the NS-2 patch self-test are the two checks that run in CI
-(`.github/workflows/ci.yml`) on every push/PR and are runnable here. An actual
-NS-2/NS-3 build needs an external simulator tree and is **not** possible from
-this repo alone. **Always run `make test` before committing a core change**, and
-`bash ns2/patch/selftest.sh` before touching `ns2/patch/`.
+`make test` is the check that runs in CI (`.github/workflows/ci.yml`) on every
+push/PR and is runnable here. An actual NS-3 build needs an external simulator
+tree and is **not** possible from this repo alone. **Always run `make test`
+before committing a core change.**
 
-### Validating adapter (NS-2 / NS-3) changes — use CI
+### Validating adapter (NS-3) changes — use CI
 
 Because you cannot build a simulator here, the **CI matrix is how you validate
 an adapter change**: develop, push a branch, open a PR, and read the job
 results.
 
 - `ci.yml` builds the **NS-3 module against the prebuilt GHCR images across
-  ns-3.36–3.48** (e2e delivery smoke) and **compiles + runs the NS-2 adapter on
-  real ns-2.34 / 2.35 trees**. Iterate on failures from the job logs —
+  ns-3.36–3.48** (e2e delivery smoke). Iterate on failures from the job logs —
   cross-version API drift is the usual cause (e.g. ns-3.36's non-`const`
   `Histogram` accessors, `RouteInput` by-value vs const-ref, scoped TestSuite
   enums). The `AHN_*`/`ANTHOCNET_NS3_*` macros in the NS-3 headers + CMake
   already gate several of these by version — extend that pattern, don't fork.
-- Sanitizer passes on the adapters (#130): the `ns3-asan` job rebuilds the
-  ns-3 module under ASan/LSan (suppressions: `ns3/tools/lsan.supp`) and the
-  ns-2.35 leg of `ns2-compile` re-runs the smoke under valgrind
-  (`ns2/tools/valgrind.supp`). Both are `continue-on-error` while suppression
-  calibration accumulates — read their logs even when they show green.
+- Sanitizer pass on the adapter (#130): the `ns3-asan` job rebuilds the
+  ns-3 module under ASan/LSan (suppressions: `ns3/tools/lsan.supp`). It is
+  `continue-on-error` while suppression calibration accumulates — read its log
+  even when it shows green.
 - Validate the **core** half locally first (`make test`); only the adapter/build
   half needs CI.
 - Heavier, manual workflows: `paper-benchmark` and `scenario-matrix` (taxonomy +
@@ -82,14 +80,16 @@ results.
 
 ## Golden rules (invariants — do not break)
 
-1. **`core/` must never include an NS-2 or NS-3 header.** Time comes through
+1. **`core/` must never include a simulator header** (ns-3, or the NS-2 it
+   once also ran on). Time comes through
    `IClock`, randomness through `IRng`, neighbours through `INeighborProvider`,
    deferred work through `ITimerScheduler` (see `core/include/.../ports.h`).
-   This is the property that keeps one algorithm working on both simulators.
+   This is the property that keeps one algorithm working on every adapter —
+   ns-3 and the browser today (ADR-0021, ADR-0023).
 2. **Adapters must not reimplement routing logic.** An adapter only: converts
    its packet header ⇄ `core::AntMessage`, carries out the `RouteDecision`s the
-   core returns, owns the periodic timers and the pending-packet queue (and,
-   for NS-2, the link-failure callback). Behaviour belongs in `core/`.
+   core returns, owns the periodic timers and the pending-packet queue.
+   Behaviour belongs in `core/`.
 3. **All randomness via `IRng`, all time via `IClock`.** Never call libc
    `rand()` or read the simulator clock directly from shared logic —
    reproducibility depends on this.
@@ -97,31 +97,28 @@ results.
  little-endian layout, prefixed by a 1-byte `kWireVersion` (see
  `docs/wire-format.md` and ADR-0006). If you change `AntMessage` fields — or the
  units/semantics of an existing field — you must **bump `kWireVersion`** and
- update, in the same field order: the codec, the NS-2 header
- (`ns2/src/ant_packet_ns2`), the NS-3 header (`ns3/model/anthocnet-packet`
+ update, in the same field order: the codec, the NS-3 header (`ns3/model/anthocnet-packet`
  `AntHeader`), the round-trip tests (`core/tests/test_codec.cpp`, NS-3 test
  suite), and the layout table in `docs/wire-format.md`.
 5. **Keep bounded structures bounded.** The visited path and the `(src,seq)`
    dedup history are capped by `Config::maxPathLength` / `maxHistory`; do not
    reintroduce unbounded growth.
-6. **NS-2 patching is anchor-based, never line-numbered.** Edits live as
-   fragments under `ns2/patch/fragments/` and inject at stable text anchors
-   with `ANTHOCNET-BEGIN/END` markers (or grep-guarded where a comment is
-   illegal). Apply must stay idempotent and revert must restore byte-for-byte;
-   `selftest.sh` enforces both.
+6. *(Retired at v2.0.0.)* NS-2 patching was anchor-based, never line-numbered
+   ([ADR-0005](docs/adr/0005-ns2-idempotent-anchor-patch.md), now historical);
+   the NS-2 adapter is gone. The number is kept so "golden rule 7" keeps
+   meaning what every existing reference says.
 7. **Cover core logic changes with a core unit test** in `core/tests/`.
 
 ## Conventions
 
-- C++14 for `core/` (aggregate init with default member initializers); see the
-  `-std=c++14` caveat for old NS-2 toolchains in `docs/porting-notes.md`.
+- C++14 for `core/` (aggregate init with default member initializers).
 - Namespace `anthocnet::core` for shared code.
 - Make minimal, reviewable changes; update the relevant doc/ADR when you change
   a documented decision.
 - When you open or update an issue, apply the label taxonomy from
   [ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md#labelling-convention):
   one type label (`bug`/`enhancement`/`chore`/`documentation`/`verification`,
-  plus `epic` for umbrellas), area label(s) (`protocol`/`adapter`/`ns2`/`ns3`/
+  plus `epic` for umbrellas), area label(s) (`protocol`/`adapter`/`ns3`/
   `benchmark`/`observability`/`packaging`), one `model:*` recommendation, and
   one `priority:P1|P2|P3` label on non-epic issues.
   The `.github/ISSUE_TEMPLATE/` forms preset the type label for issues filed
@@ -151,12 +148,12 @@ results.
 | **Add support for a new network family** (FANET, VANET, …) | [ADR-0019](docs/adr/0019-network-families-change-the-evaluation-not-the-protocol.md) — a family is a *scenario* concern: mobility model, preset, preflight rules, anchor, metrics. **Never** family-specific protocol defaults; a mis-sized constant is an issue + A/B, not a preset. Tracks: [#300](https://github.com/danieljoppi/AntHocNet/issues/300), [#301](https://github.com/danieljoppi/AntHocNet/issues/301) |
 | Work on security / trust mechanisms | [ADR-0020](docs/adr/0020-security-is-a-default-off-profile.md) — same implementation, behind attributes, **default off**, default path provably byte-identical; no fork. Track: [#302](https://github.com/danieljoppi/AntHocNet/issues/302) (v3.0.0) |
 | Record a bug / finding, or hand off across sessions | [ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md) (always open/update an issue) + [`docs/handoffs/`](docs/handoffs/) |
-| Maintain the NS-2 patch / wire format | `docs/porting-notes.md`, `ns2/patch/` |
+| Maintain the wire format | `docs/wire-format.md`, `docs/porting-notes.md` |
 | Change the algorithm | `core/src/`, `core/include/anthocnet/core/` |
 | Change routing policy / decision flow | `core/src/ant_router_logic.cpp` |
 | Change pheromone math | `core/src/pheromone_engine.cpp`, `pheromone_table.cpp` |
-| Change the wire format | `docs/wire-format.md` → `core/include/.../ant_message_codec.h` (+ both adapters; bump `kWireVersion`) |
-| Work on the NS-2 adapter | `ns2/src/`, `ns2/tcl/` |
+| Change the wire format | `docs/wire-format.md` → `core/include/.../ant_message_codec.h` (+ the ns-3 header; bump `kWireVersion`) |
+| Find the removed NS-2 adapter | [`docs/ns2-support.md`](docs/ns2-support.md) — the v1.2.0 / v1.9.0 tags and images |
 | Work on the NS-3 adapter | `ns3/model/`, `ns3/helper/`, `ns3/examples/` |
 | Work on the browser adapter (the learn site's simulation) | `web/` ([README](web/README.md), [ADR-0021](docs/adr/0021-the-browser-is-an-adapter.md)); `web/test/parity.sh` must stay byte-identical native vs WASM (CI job `web-parity`) |
 | Run / read benchmarks | `docs/benchmarks.md` (index → `docs/benchmarks/{metrics,methodology}.md`, `scenarios/<name>.md`, `sweeps/<name>.md`), `ns3/tools/run-scenarios.py` + `make-charts.py` + `update-benchmarks.py`; family/cross-family + sweep charts from committed data: `ns3/tools/family-charts.py` (re-rendered and committed by `charts.yml`), `anthocnet-compare --diag` |
@@ -171,4 +168,4 @@ results.
 | **Understand why satellite ≠ MANET** (before assuming a MANET intuition transfers) | [`docs/network-regimes.md`](docs/network-regimes.md) — the inversion in one line: MANET hides the *topology* and gives you the traffic; a constellation gives you the topology and hides the *traffic*. Diagrams, and a difference table where every row traces to a defect, parameter or control in this repo |
 | Cut a release | run the `Release` workflow (Commitizen); see `CONTRIBUTING.md`. **Post-release, record the version DOI** — Zenodo mints it async a few minutes after publish; read it from the public API (`curl -s "https://zenodo.org/api/records/20981980/versions?size=25&sort=version"`; address it through a *version* record — the concept ID 20981979 returns 404 on that endpoint), or ask the maintainer if `zenodo.org` is proxy-blocked (403, as it was until 2026-09). Never invent one. Then append a row to the DOI table in `CONTRIBUTING.md` via a `docs:` PR — the README badge and `CITATION.cff` stay on the concept DOI (#116) |
 | Tune defaults | `core/include/anthocnet/core/config.h` |
-| **Look up a parameter's default, its provenance, or how to calibrate it** | [`docs/configuration.md`](docs/configuration.md) — all 38 `Config` fields with a `source` column ([1] §/thesis/repo choice/**unknown**), the ns-3 attribute + NS-2 bind for each, the sweep→A/B→noise loop, and the checklist for adding a parameter. The `unknown` rows in §3.2 are the next #88/#169 candidates |
+| **Look up a parameter's default, its provenance, or how to calibrate it** | [`docs/configuration.md`](docs/configuration.md) — all 38 `Config` fields with a `source` column ([1] §/thesis/repo choice/**unknown**), the ns-3 attribute for each, the sweep→A/B→noise loop, and the checklist for adding a parameter. The `unknown` rows in §3.2 are the next #88/#169 candidates |

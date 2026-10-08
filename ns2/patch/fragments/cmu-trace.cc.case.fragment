@@ -1,3 +1,0 @@
-	case PT_ANT:
-		format_anthocnet(p, offset);
-		break;

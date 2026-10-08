@@ -1,6 +1,9 @@
 # Porting notes
 
-Reference for maintaining the two adapters and the NS-2 patch.
+Reference for maintaining the adapters and for writing a new one. The NS-2
+adapter was removed in v2.0.0 ([#307](https://github.com/danieljoppi/AntHocNet/issues/307));
+its rows below are kept because they show the contract met by a second, very
+different simulator, and the patch-anchor section is historical.
 
 ## Bugs fixed during extraction
 
@@ -23,7 +26,7 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 5. **`randomDestination` never randomised.** Integer division `count/size` was
    0 for every entry but the last. Now a proper uniform draw.
 
-## What an adapter actually does (NS-2 vs NS-3)
+## What an adapter actually does (as NS-2 and NS-3 did it)
 
 The same three steps in both: **decode to `AntMessage` → call the core →
 execute the returned `RouteDecision`s**. Only the simulator-facing calls
@@ -62,22 +65,27 @@ sequenceDiagram
 Ports the adapter must supply for the core to stay I/O-free — the whole seam,
 and the entire porting checklist:
 
-| Port | NS-2 | NS-3 |
+| Port | NS-2 (≤ v1.9.0) | NS-3 |
 |---|---|---|
 | `IClock` | `Scheduler::instance().clock()` | `Simulator::Now()` |
 | `IRng` | `Random` | `UniformRandomVariable` |
 | `ITimerScheduler` | `Scheduler::schedule` | `Simulator::Schedule` |
 | `INeighborProvider` | pheromone-table view (**advisory only** — never evicts, [ADR-0008](adr/0008-neighbour-liveness-two-detectors.md)) | same |
 
-The asymmetry that makes NS-2 the harder target is not in this diagram: NS-3
-receives an additive `contrib/` module, while NS-2 needs **edits inside the
-simulator's own tree**, which is why that side ships as an idempotent
+The asymmetry that made NS-2 the harder target is not in this diagram: NS-3
+receives an additive `contrib/` module, while NS-2 needed **edits inside the
+simulator's own tree**, which is why that side shipped as an idempotent
 anchor-based patch ([ADR-0005](adr/0005-ns2-idempotent-anchor-patch.md)) rather
-than a drop-in — see the anchors below.
+than a drop-in — see the anchors below. It is also the main reason it was
+retired.
 
-## NS-2 patch anchors
+## NS-2 patch anchors (historical, ≤ v1.9.0)
 
-`ns2/patch/apply-patch.sh` injects by these stable anchors (never line
+> The installer lives at the
+> [v1.9.0 tag](https://github.com/danieljoppi/AntHocNet/tree/v1.9.0/ns2/patch);
+> this section documents how it worked.
+
+`ns2/patch/apply-patch.sh` injected by these stable anchors (never line
 numbers). If an upstream release moves one, the script fails loudly (missing
 anchor) rather than corrupting the file.
 
@@ -125,16 +133,14 @@ original implementation and the protocol papers live in
 
 In short: `core/include/anthocnet/core/ant_message_codec.h` defines the canonical
 little-endian layout, prefixed by a 1-byte `kWireVersion`
-([ADR-0006](adr/0006-on-wire-protocol-version.md)). The NS-2 header
-(`ant_packet_ns2`) and the NS-3 header (`AntHeader`) follow the same field order.
-The NS-3 header serializes directly against `Buffer::Iterator`; the NS-2 header
-is a fixed-capacity POD whose `wireSize()` reports the same byte count the codec
-would emit. **Any field or semantic change bumps `kWireVersion`.**
+([ADR-0006](adr/0006-on-wire-protocol-version.md)). The NS-3 header
+(`AntHeader`) follows the same field order and serializes directly against
+`Buffer::Iterator` (through v1.9.0 the NS-2 header did too, as a fixed-capacity
+POD whose `wireSize()` reported the codec's byte count). **Any field or semantic
+change bumps `kWireVersion`.**
 
 ## Version caveats
 
 - The core uses C++14 (aggregate init with default member initializers). Modern
-  g++ defaults to C++14+. For an old NS-2 toolchain, add `-std=c++14` to
-  `CCOPT` in `$(NS2DIR)/Makefile`.
+  g++ defaults to C++14+.
 - NS-3 module targets 3.36+ (CMake); the `wscript` covers waf-era ns-3.
-- Cross-simulator metric parity is not guaranteed — the MAC/PHY models differ.

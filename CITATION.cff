@@ -1,10 +1,11 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata below."
-title: "AntHocNet for NS-2 and NS-3"
+title: "AntHocNet for NS-3"
 abstract: >-
   A simulator-agnostic C++ implementation of the AntHocNet ant-colony-optimization
-  routing protocol for mobile ad hoc networks, with thin adapters for the NS-2 and
-  NS-3 network simulators and a shared, testable algorithm core.
+  routing protocol for mobile ad hoc networks, with a thin adapter for the NS-3
+  network simulator and a shared, testable algorithm core (releases through
+  v1.9.0 also ship an NS-2 adapter).
 type: software
 authors:
   - family-names: Joppi
@@ -30,7 +31,6 @@ keywords:
   - swarm intelligence
   - routing protocol
   - ns-3
-  - ns-2
 references:
   - type: conference-paper
     title: "AntHocNet: an ant-based hybrid routing algorithm for mobile ad hoc networks"

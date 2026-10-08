@@ -1,6 +1,6 @@
 # Security Policy
 
-AntHocNet is a **research routing protocol** for simulation (NS-2 / NS-3). This
+AntHocNet is a **research routing protocol** for simulation (NS-3; the NS-2 adapter shipped through v1.9.0). This
 document records its security posture honestly rather than promising guarantees
 the protocol does not provide.
 

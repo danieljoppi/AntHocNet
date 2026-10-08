@@ -1189,8 +1189,8 @@ depended on the breakdown and are unaffected either way.
 
 ### Caveats
 
-- **NS-3 only.** The NS-2 adapter has no equivalent instrumentation; see
-  [cross-validation.md](../cross-validation.md).
+- **NS-3 only.** The NS-2 adapter (removed in v2.0.0) never had equivalent
+  instrumentation; see [cross-validation.md](../cross-validation.md).
 - The human table prints these on a `# drops` line (like `# energy`) rather
   than widening the fixed-width table; the CSV carries all eight columns.
 - `# drops` also prints `other=`, the L3 drops in none of the five buckets
@@ -1414,8 +1414,8 @@ not a blank column.
   in a window contributes a 1 whatever the source is doing. That is the
   intended reading — AntHocNet spreads at every hop — but it means the mean is
   diluted by relays that saw only one packet in a window.
-- **NS-3 only.** The NS-2 adapter has no equivalent instrumentation; see
-  [cross-validation.md](../cross-validation.md).
+- **NS-3 only.** The NS-2 adapter (removed in v2.0.0) never had equivalent
+  instrumentation; see [cross-validation.md](../cross-validation.md).
 
 ## Energy (#209, NS-3 only)
 
@@ -1507,8 +1507,8 @@ every ns-3 release the CI matrix covers (3.36–3.48).
   dominates the absolute totals and the residual *level*. The
   routing-attributable component is the *difference* between arms — read deltas
   and the residual spread, not the absolute joule figure.
-- **NS-3 only.** The NS-2 adapter has no energy instrumentation; see
-  [cross-validation.md](../cross-validation.md).
+- **NS-3 only.** The NS-2 adapter (removed in v2.0.0) never had energy
+  instrumentation; see [cross-validation.md](../cross-validation.md).
 
 ## Packet reordering (#212, NS-3 only)
 
@@ -1687,7 +1687,8 @@ documentation and check work.
   `# reorder` line** rather than as table columns, because the table's field
   positions are a parsing contract for `bench_parse.py` and the workflows'
   `##BENCH##` re-emit.
-- **NS-3 only.** The NS-2 adapter has no equivalent instrumentation.
+- **NS-3 only.** The NS-2 adapter (removed in v2.0.0) never had equivalent
+  instrumentation.
 
 Aggregates are means over the RNG runs; the CSV also carries per-metric sample
 stddev across runs (`pdr_sd`, `delay_sd`, `delay99_sd`, `nrl_sd`), which the

@@ -2,8 +2,8 @@
 // Copyright (C) 2026 Daniel Henrique Joppi
 
 /**
- * The browser adapter (#544, ADR-0021): a third adapter for the shared
- * AntHocNet core, next to NS-2 and NS-3. It owns what an adapter owns -- the
+ * The browser adapter (#544, ADR-0021): an adapter for the shared AntHocNet
+ * core, next to the ns-3 one (and NS-2's, through v1.9.0). It owns what an adapter owns -- the
  * clock, the RNGs, the timers, the pending-packet queue, a radio -- and
  * carries out the RouteDecisions the core returns. It never decides a route.
  *

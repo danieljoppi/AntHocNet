@@ -1,8 +1,10 @@
 # Architecture
 
-AntHocNet is implemented as one simulator-agnostic algorithm core with a thin
-adapter per simulator. The core never includes an NS-2 or NS-3 header; the
-adapters never reimplement routing logic.
+AntHocNet is implemented as one simulator-agnostic algorithm core with thin
+adapters around it: one for ns-3, one for the browser. The core never includes a
+simulator header; the adapters never reimplement routing logic. (An NS-2
+adapter shipped through v1.9.0 and was removed in v2.0.0 —
+[ADR-0023](adr/0023-one-core-one-simulator-adapter.md).)
 
 ```
                 +-------------------------------------------+
@@ -21,17 +23,17 @@ adapters never reimplement routing logic.
                                  |
         +------------------------+------------------------+
         |                                                 |
-+-------v---------+                             +---------v---------+
-|     ns2/        |                             |       ns3/        |
-| AntHocNetAgent  |                             | RoutingProtocol : |
-|  : Agent        |                             | Ipv4RoutingProtocol|
-| AntPacketHeader |                             | AntHeader:ns3::Hdr |
-| Ns2Clock/Ns2Rng |                             | Ns3Clock/Ns3Rng   |
-| + source patch  |                             | + contrib module  |
-+-----------------+                             +-------------------+
++-------v-----------+                           +---------v---------+
+|       ns3/        |                           |       web/        |
+| RoutingProtocol : |                           | ahn_web::Node     |
+| Ipv4RoutingProtocol|                          | (IClock, IRng)    |
+| AntHeader:ns3::Hdr |                          | event-queue World |
+| Ns3Clock/Ns3Rng   |                           | -> WebAssembly    |
+| + contrib module  |                           | + learn site      |
++-------------------+                           +-------------------+
 ```
 
-A third adapter, **`web/`** ([ADR-0021](adr/0021-the-browser-is-an-adapter.md)),
+The second adapter, **`web/`** ([ADR-0021](adr/0021-the-browser-is-an-adapter.md)),
 runs the same core compiled to WebAssembly for the learn site: it implements
 the ports over a small discrete-event teaching radio and carries out the
 RouteDecisions exactly as the ns-3 adapter does. A CI gate holds its native and
@@ -197,7 +199,7 @@ Three relationships carry the architecture:
   the simulator, clock, or RNG.
 - **`metrics::find` / `metrics::get`** (`link_metric_registry.h`) — the shared
   name → instance mapping both adapters resolve through, so `"classic"` means
-  the same thing on NS-2 and NS-3. Lookup returns a **non-owning** pointer to a
+  the same thing on every adapter. Lookup returns a **non-owning** pointer to a
   process-lifetime instance (metrics are stateless, so one instance is shared by
   every node, and `AntRouterLogic`'s raw `const ILinkMetric*` can never dangle).
   An unknown name is an error — `find` returns `nullptr`, `get` throws — never a
@@ -208,12 +210,16 @@ Three relationships carry the architecture:
 
 The adapters implement these so the core stays I/O-free:
 
-| Port | NS-2 | NS-3 |
-|------|------|------|
-| `IClock` | `Scheduler::instance().clock()` | `Simulator::Now()` |
-| `IRng` | `Random` | `UniformRandomVariable` |
-| `INeighborProvider` | pheromone-table view | pheromone-table view |
-| `ITimerScheduler` | `Scheduler::schedule` | `Simulator::Schedule` |
+| Port | NS-3 |
+|------|------|
+| `IClock` | `Simulator::Now()` |
+| `IRng` | `UniformRandomVariable` |
+| `INeighborProvider` | pheromone-table view |
+| `ITimerScheduler` | `Simulator::Schedule` |
+
+The browser adapter implements `IClock` (the World's event-queue time) and
+`IRng` (a per-node SplitMix64 stream) on `ahn_web::Node`; its timers run on the
+World's own event queue.
 
 ## Decision flow
 
@@ -272,4 +278,4 @@ The adapters do only what is intrinsically simulator-specific:
 - convert packet headers ⇄ `AntMessage`;
 - carry out `RouteDecision`s (send/queue/deliver/drop);
 - own the periodic timers (hello, proactive, maintenance);
-- hold the pending-packet queue and, for NS-2, the link-failure callback.
+- hold the pending-packet queue.
