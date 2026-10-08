@@ -13,6 +13,8 @@
 #include "ns3/mobility-model.h"
 #include "ns3/node.h"
 #include "ns3/pointer.h"
+#include "ns3/string.h"
+#include "ns3/nstime.h"
 #include "ns3/simulator.h"
 #include "ns3/wifi-net-device.h"
 #include "ns3/wifi-phy.h"
@@ -66,7 +68,21 @@ Topology::GetTypeId()
                           "than guess.",
                           DoubleValue(0.0),
                           MakeDoubleAccessor(&Topology::m_linkRangeM),
-                          MakeDoubleChecker<double>(0.0));
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("Metric",
+                          "What the oracle's shortest path minimises. 'hops' (the "
+                          "default) makes it the delivery and hop-count bound every "
+                          "suite quotes. 'delay' weights each WIRED link by its "
+                          "channel's current propagation delay (re-read and re-solved "
+                          "every RecomputeInterval), making it the latency bound on a "
+                          "moving constellation, where links of the same hop count "
+                          "differ in length (#297). A delay-metric oracle is not a hop "
+                          "bound, and GetMode() appends '+delay' so results say so. "
+                          "Only wired topologies have a delay to read: on a shared "
+                          "medium the oracle aborts.",
+                          StringValue("hops"),
+                          MakeStringAccessor(&Topology::m_metric),
+                          MakeStringChecker());
     return tid;
 }
 
@@ -118,7 +134,11 @@ Topology::Recompute()
     // The rebuild above is the cheap half and always runs; the all-pairs solve
     // is the expensive half and only runs when the graph actually moved. On the
     // static ISL grid that is exactly one solve for the whole simulation.
-    bool changed = links.size() != m_links.size();
+    NS_ABORT_MSG_IF(m_metric != "hops" && m_metric != "delay",
+                    "oracle Metric must be 'hops' or 'delay', got '" << m_metric << "'");
+    // Delay weights drift continuously on a moving constellation, so with
+    // Metric=delay every recompute is a re-solve.
+    bool changed = links.size() != m_links.size() || m_metric == "delay";
     for (std::size_t u = 0; !changed && u < links.size(); ++u)
     {
         changed = links[u].size() != m_links[u].size();
@@ -140,10 +160,11 @@ Topology::Recompute()
         {
             for (const Link& l : m_links[static_cast<std::size_t>(u)])
             {
-                // Unit weight: the oracle minimises HOP COUNT, which is what
-                // makes "the oracle's path is no longer than any protocol's"
-                // an assertion rather than a hope.
-                graph.addEdge(u, l.to, 1.0);
+                // Unit weight by default: the oracle minimises HOP COUNT, which
+                // is what makes "the oracle's path is no longer than any
+                // protocol's" an assertion rather than a hope. Metric=delay
+                // weights by propagation delay instead (the latency bound).
+                graph.addEdge(u, l.to, l.weight);
             }
         }
         m_nextHop.assign(static_cast<std::size_t>(n), std::vector<NextHop>(static_cast<std::size_t>(n)));
@@ -309,6 +330,13 @@ Topology::BuildLinks(std::vector<std::vector<Link>>& out)
         mode += (mode.empty() ? "" : "+") + t;
     }
     m_mode = mode.empty() ? "empty" : mode;
+    if (m_metric == "delay")
+    {
+        NS_ABORT_MSG_IF(m_mode != "wired" && m_mode != "empty",
+                        "oracle Metric=delay needs an all-wired topology (mode was '" << m_mode
+                        << "'): a shared medium has no per-link delay to read");
+        m_mode += "+delay";
+    }
 }
 
 void
@@ -352,6 +380,15 @@ Topology::AddWiredLinks(int u,
         l.to = it->second;
         l.iface = iface;
         l.gateway = pIpv4->GetAddress(static_cast<uint32_t>(pIface), 0).GetLocal();
+        if (m_metric == "delay")
+        {
+            // The channel's current propagation delay (a moving constellation
+            // rewrites it as the satellites move). A strictly positive floor
+            // keeps Dijkstra's tie-breaking deterministic on a 0-delay link.
+            TimeValue d;
+            l.weight = ch->GetAttributeFailSafe("Delay", d) ? std::max(d.Get().GetSeconds(), 1e-9)
+                                                            : 1e-9;
+        }
         out[static_cast<std::size_t>(u)].push_back(l);
         ++m_edgeCount;
     }

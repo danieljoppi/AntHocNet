@@ -29,6 +29,7 @@ detail.
 | [0019](0019-network-families-change-the-evaluation-not-the-protocol.md) | A network family (FANET, VANET, …) is a scenario concern: mobility models, presets, preflight rules, anchors and metrics — never family-specific protocol defaults. |
 | [0020](0020-security-is-a-default-off-profile.md) | Security ships inside the same implementation behind attributes, default **off**, with the default path provably byte-identical — no fork, no second binary. |
 | [0021](0021-the-browser-is-an-adapter.md) | The learn site runs `core/` compiled to WebAssembly behind a third (browser) adapter, held to native by a byte-identical decision-trace parity gate — never a JavaScript re-implementation. |
+| [0022](0022-satellite-substrate-is-stock-ns3-leo.md) | The satellite substrate is stock ns-3.48's LEO mobility model (ns3-leo, upstreamed) with harness-driven ISL/GSL links; 3.48-only, no substrate image. Decides #193; refines ADR-0015. |
 
 ## Adding an ADR
 

@@ -144,6 +144,7 @@ nav:
           - adr/0019-network-families-change-the-evaluation-not-the-protocol.md
           - adr/0020-security-is-a-default-off-profile.md
           - adr/0021-the-browser-is-an-adapter.md
+          - adr/0022-satellite-substrate-is-stock-ns3-leo.md
       - Handoffs:
           - handoffs/2026-06-28-detector-d-link-failure.md
           - handoffs/2026-08-15-ns3-dsdv-null-route-upstream.md

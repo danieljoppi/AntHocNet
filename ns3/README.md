@@ -125,9 +125,64 @@ exists for — a 4×4 delivery smoke runs in CI on every matrix leg. Options:
 --protocols --csv --diag`.
 
 This is a **scenario, not a satellite module**: no orbital mobility, no link
-budget, no handover. Those belong to the satellite track
-([#192](https://github.com/danieljoppi/AntHocNet/issues/192)) and its substrate
-decision ([#193](https://github.com/danieljoppi/AntHocNet/issues/193)).
+budget, no handover. The moving constellation is `leo-walker`, below.
+
+## Moving LEO constellation (`leo-walker`, ns-3.48+)
+
+A Walker-delta shell that actually flies, on stock ns-3.48's
+`LeoCircularOrbitMobilityModel` — the substrate decision
+([ADR-0022](../docs/adr/0022-satellite-substrate-is-stock-ns3-leo.md), #193).
+The example is built only where that header exists, so on 3.36–3.47 it is
+silently skipped.
+
+```bash
+./ns3 configure --enable-examples \
+  --enable-modules='anthocnet;oracle;applications;aodv;olsr;flow-monitor;point-to-point;csma;mobility'
+./ns3 build
+
+./ns3 run "leo-walker --planes=16 --sats=16 --altitude=1150 --time=60 \
+           --protocols=anthocnet,aodv,oracle-delay"
+./ns3 run "leo-walker --shell=starlink1 --protocols=anthocnet,oracle-delay"   # 72 x 22 at 550 km
+./ns3 run "leo-walker --islDown=0.02 --massFailAt=30 --massFailFrac=0.05"     # failure overlay
+```
+
+- **ISLs:** +grid (two in-plane, two cross-plane), point-to-point, one /30 each;
+  each channel's `Delay` is re-read from the satellites' ECEF distance every
+  `--delayUpdate` s (default 0.1).
+- **Ground stations:** six cities, four fixed pairs (New York–London,
+  London–Tokyo, São Paulo–Johannesburg, Tokyo–Sydney). Each station sits on its
+  own CSMA segment with every satellite ever visible from it; only the serving
+  satellite's device can send or receive there.
+- **Handover:** to the highest-elevation satellite on a 15 s clock at second 12
+  (`--clock`, `--clockOffset`; the Starlink reconfiguration clock), forced
+  off-clock when the serving satellite drops below `--minElevation`.
+- **Failures:** an independent per-ISL on/off overlay (`--islDown`
+  unavailability, `--islMeanDown` mean outage) and an optional mass failure
+  (`--massFailAt`, `--massFailFrac`), drawn from pinned application streams so
+  every arm sees the same events.
+- **Links are gated at the device, never at IP**, for every routing arm: each
+  protocol learns of a handover or failure only from its own signalling. The
+  oracle arms alone also see `Ipv4::SetDown` — reading link state is their
+  bound. (Interface-down for every arm also crashes stock AODV: a jittered
+  hello/RERR on a socket whose interface went down meanwhile hits its
+  `LoopbackRoute` assertion.)
+- **Arms:** `anthocnet`, `aodv`, `olsr`, `oracle` (hop bound), `oracle-delay`
+  (latency bound: the oracle with `Metric=delay`, re-solved every 0.1 s). OLSR
+  is impractically slow above a few hundred satellites.
+
+Output adds, per arm and seed, the handover metric family (#297): `# handover`
+(scheduled / forced / ISL failures), `# outage` (delivery gaps per flow,
+classified `scheduled` / `unplanned` / `massfail` / `other` — never pooled),
+`# churn` (hop-count changes per flow per minute) and, with `--series`, the
+per-second one-way delay of flow 0 against geodesic and fiber baselines.
+`# anchor` checks the geometry (shell radius, in-plane chord at t=0 and t=T/2,
+period vs `2π√(a³/μ)`); `ns3/tools/check-leo-walker.sh` asserts it all on the
+CI's 3.48 leg.
+
+Results are 3.48-only and are claims about routing over Walker-shell geometry
+and delay — not orbital precision (circular orbits, spherical Earth) and not RF.
+AODV's results depend on arm order in one process (#362); run it in its own
+invocation for campaign numbers.
 
 ## Uninstall
 
@@ -165,6 +220,8 @@ ns3/
   examples/anthocnet-compare.cc        vs AODV/AOMDV/OLSR/DSDV (FlowMonitor metrics;
                                        aomdv is opt-in via --protocols, #296)
   examples/isl-grid.cc                 +Grid torus of point-to-point ISLs (#214)
+  examples/leo-walker.cc               moving Walker shell, GSL handover, failures
+                                       (ns-3.48+, ADR-0022)
   test/anthocnet-test-suite.cc         header round-trip + multi-hop delivery
   CMakeLists.txt                       ns-3.36+ build
   wscript                              ns-3 < 3.36 build
