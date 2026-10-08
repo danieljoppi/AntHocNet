@@ -184,10 +184,13 @@ jobs:
         shell: bash
         run: |
           if [ "${{ github.event.inputs.harness }}" = "leo-walker" ]; then
-            # Every # / ## line (minus the --series samples) plus the table:
-            # the books scenario_check.py's #297 rules close need all of them.
+            # Every # / ## line plus the table: the books scenario_check.py's
+            # #297 rules close need all of them. The --series samples only
+            # when asked for (the Hypatia calibration reads them).
+            keep='^# series'
+            case "${{ github.event.inputs.extraArgs }}" in *--series*) keep='^$' ;; esac
             grep -E '^(#|protocol|[a-z][a-z-]+ +[0-9])' "$GITHUB_WORKSPACE/satellite-results.txt" \
-              | grep -v '^# series'
+              | grep -v "$keep"
           else
             tail -n 30 "$GITHUB_WORKSPACE/satellite-results.txt"
           fi

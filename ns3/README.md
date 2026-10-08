@@ -197,6 +197,10 @@ Output adds, per arm and seed, the handover metric family (#297):
 - With `--series`, the per-second one-way delay of flow 0 against geodesic and
   fiber baselines.
 
+`--pairs=hypatia` replaces the six cities with Paris and Luanda, the pair whose
+Starlink-S1 RTT range Hypatia publishes (85–117 ms over 200 s; Kassing et al.,
+IMC 2020, Fig. 13), for the #297 calibration; the default set is unchanged.
+
 `scenario_check.py results` checks the clock against `##CONFIG##` and that
 every book closes (#297).
 `# anchor` checks the geometry (shell radius, in-plane chord at t=0 and t=T/2,

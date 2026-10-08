@@ -111,6 +111,14 @@ const City kCities[] = {
     {"Tokyo", 35.6762, 139.6503},     {"Sydney", -33.8688, 151.2093},
 };
 const std::pair<int, int> kPairs[] = {{0, 1}, {1, 4}, {2, 3}, {4, 5}};
+// --pairs=hypatia: the one city pair whose RTT range Hypatia publishes on
+// Starlink's first shell (Kassing et al., IMC 2020, Fig. 13: Paris-Luanda
+// varies between 85 and 117 ms over 200 s) -- the #297 item 5 calibration.
+const City kHypatiaCities[] = {{"Paris", 48.8566, 2.3522}, {"Luanda", -8.8390, 13.2894}};
+const std::pair<int, int> kHypatiaPairs[] = {{0, 1}};
+// The stations and pairs in force (the default set unless --pairs=hypatia).
+std::vector<City> g_cities(std::begin(kCities), std::end(kCities));
+std::vector<std::pair<int, int>> g_pairs(std::begin(kPairs), std::end(kPairs));
 
 struct Params {
     uint32_t planes = 12, sats = 12, phasing = 1;
@@ -128,6 +136,7 @@ struct Params {
     double oracleInterval = 0;  ///< oracle-delay re-solve period (s); 0 = --delayUpdate
     bool csv = false, series = false;
     std::string shell;
+    std::string pairs = "default";
 };
 
 struct Result {
@@ -587,12 +596,12 @@ std::vector<std::set<uint32_t>> VisibleCandidates(const Params& P) {
     LeoOrbitNodeHelper orbit;
     NodeContainer sats = orbit.CreateNodesAndInstallMobility(
         LeoOrbitalShell(P.altKm, P.incDeg, P.planes, P.sats, P.phasing, 360.0));
-    const uint32_t nGs = sizeof(kCities) / sizeof(kCities[0]);
+    const uint32_t nGs = static_cast<uint32_t>(g_cities.size());
     std::vector<Vector> gs(nGs);
     for (uint32_t g = 0; g < nGs; ++g) {
         Ptr<GeocentricConstantPositionMobilityModel> m =
             CreateObject<GeocentricConstantPositionMobilityModel>();
-        m->SetGeographicPosition(Vector(kCities[g].lat, kCities[g].lon, 0));
+        m->SetGeographicPosition(Vector(g_cities[g].lat, g_cities[g].lon, 0));
         gs[g] = m->GetGeocentricPosition();
     }
     std::vector<std::set<uint32_t>> cand(nGs);
@@ -688,12 +697,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
         LeoOrbitalShell(P.altKm, P.incDeg, P.planes, P.sats, P.phasing, 360.0));
     const uint32_t nSat = w.sats.GetN();
     w.satUp.assign(nSat, true);
-    const uint32_t nGs = sizeof(kCities) / sizeof(kCities[0]);
+    const uint32_t nGs = static_cast<uint32_t>(g_cities.size());
     w.ground.Create(nGs);
     for (uint32_t g = 0; g < nGs; ++g) {
         Ptr<GeocentricConstantPositionMobilityModel> m =
             CreateObject<GeocentricConstantPositionMobilityModel>();
-        m->SetGeographicPosition(Vector(kCities[g].lat, kCities[g].lon, 0));
+        m->SetGeographicPosition(Vector(g_cities[g].lat, g_cities[g].lon, 0));
         w.ground.Get(g)->AggregateObject(m);
     }
 
@@ -888,7 +897,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
     startVar->SetAttribute("Min", DoubleValue(1.0));
     startVar->SetAttribute("Max", DoubleValue(5.0));
     startVar->SetStream(appStream++);
-    const uint32_t nPairs = sizeof(kPairs) / sizeof(kPairs[0]);
+    const uint32_t nPairs = static_cast<uint32_t>(g_pairs.size());
     const uint32_t nFlows = std::min(P.nFlows, nPairs);
     g_rxTimes.assign(nFlows, {});
     g_rxHops.assign(nFlows, {});
@@ -900,9 +909,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
     g_rxPath.assign(nFlows, {});
     ApplicationContainer apps;
     for (uint32_t f = 0; f < nFlows; ++f) {
-        const uint32_t src = kPairs[f].first, dst = kPairs[f].second;
+        const uint32_t src = g_pairs[f].first, dst = g_pairs[f].second;
         NS_ABORT_MSG_IF(w.gsl[src].empty() || w.gsl[dst].empty(),
-                        "station " << kCities[w.gsl[src].empty() ? src : dst].name
+                        "station " << g_cities[w.gsl[src].empty() ? src : dst].name
                         << " never sees a satellite above " << P.minElevDeg
                         << " deg: lower --minElevation or densify the shell");
         const Ipv4Address dstAddr = w.gsl[dst][0].ipA->GetAddress(w.gsl[dst][0].ifA, 0).GetLocal();
@@ -1089,13 +1098,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
         for (int h : g_rxHops[f]) meanHops += h;
         if (!g_rxHops[f].empty()) meanHops /= g_rxHops[f].size();
         std::cout << "# churn " << proto << " seed=" << seed << " flow=" << f << " "
-                  << kCities[kPairs[f].first].name << "-" << kCities[kPairs[f].second].name
+                  << g_cities[g_pairs[f].first].name << "-" << g_cities[g_pairs[f].second].name
                   << " hopChangesPerMin=" << (span > 0 ? 60.0 * changes / span : 0)
                   << " meanHops=" << meanHops << " delivered=" << g_rxTimes[f].size() << "\n";
     }
     if (P.series && !g_rxTimes.empty()) {
-        const City& a = kCities[kPairs[0].first];
-        const City& b = kCities[kPairs[0].second];
+        const City& a = g_cities[g_pairs[0].first];
+        const City& b = g_cities[g_pairs[0].second];
         const double geo = GreatCircle(a.lat, a.lon, b.lat, b.lon);
         std::map<int, std::pair<double, int>> perSec;
         for (size_t k = 0; k < g_rxTimes[0].size(); ++k) {
@@ -1142,6 +1151,10 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("inclination", "inclination (degrees)", P.incDeg);
     cmd.AddValue("shell", "preset: 'starlink1' = 72 x 22 at 550 km, 53 deg (overrides the above)",
                  P.shell);
+    cmd.AddValue("pairs",
+                 "ground stations and flows: 'default' (six cities, four pairs) or 'hypatia' "
+                 "(Paris-Luanda only: Hypatia's published Starlink-S1 RTT range, #297 calibration)",
+                 P.pairs);
     cmd.AddValue("time", "simulated seconds", P.simTime);
     cmd.AddValue("runs", "seeds per protocol", P.runs);
     cmd.AddValue("firstRun", "first seed", P.firstRun);
@@ -1170,6 +1183,12 @@ int main(int argc, char* argv[]) {
         P.planes = 72; P.sats = 22; P.altKm = 550; P.incDeg = 53; P.phasing = 39;
     }
     NS_ABORT_MSG_IF(P.planes < 2 || P.sats < 3, "need >= 2 planes and >= 3 satellites per plane");
+    if (P.pairs == "hypatia") {
+        g_cities.assign(std::begin(kHypatiaCities), std::end(kHypatiaCities));
+        g_pairs.assign(std::begin(kHypatiaPairs), std::end(kHypatiaPairs));
+    } else {
+        NS_ABORT_MSG_IF(P.pairs != "default", "--pairs must be 'default' or 'hypatia'");
+    }
 
     std::vector<std::string> protos;
     {
@@ -1185,12 +1204,13 @@ int main(int argc, char* argv[]) {
               << " islMeanDown=" << P.islMeanDown << " massFailAt=" << P.massFailAt
               << " massFailFrac=" << P.massFailFrac << " delayUpdate=" << P.delayUpdate
               << " oracleInterval=" << P.oracleInterval
-              << " protocols=" << P.protocols << "\n";
+              << " protocols=" << P.protocols
+              << (P.pairs == "default" ? "" : " pairs=" + P.pairs) << "\n";
     Anchors(P);
     const std::vector<std::set<uint32_t>> cand = VisibleCandidates(P);
     {
         std::cout << "# visibility minElevation=" << P.minElevDeg;
-        for (uint32_t g = 0; g < cand.size(); ++g) std::cout << ' ' << kCities[g].name << '=' << cand[g].size();
+        for (uint32_t g = 0; g < cand.size(); ++g) std::cout << ' ' << g_cities[g].name << '=' << cand[g].size();
         std::cout << "\n";
     }
 
