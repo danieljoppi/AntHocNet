@@ -33,6 +33,28 @@ jobs:
       - name: Build and test core
         run: make test
 
+  web-parity:
+    name: browser adapter — native vs WASM parity (#544)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # ADR-0021: the learn site runs core/ as WebAssembly. This job builds the
+    # browser adapter natively and with Emscripten, runs every built-in
+    # scenario for four seeds in both, and requires byte-identical decision
+    # traces -- so the game can never drift from the protocol it teaches.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install emsdk (pinned)
+        # The toolchain is part of the parity claim: pin the emsdk checkout and
+        # the SDK to the same exact version (tag 4.0.10 = commit 62a853cd).
+        run: |
+          git clone --depth 1 --branch 4.0.10 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install 4.0.10
+          "$RUNNER_TEMP/emsdk/emsdk" activate 4.0.10
+      - name: Native vs WASM decision-trace parity
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          web/test/parity.sh 120 "1 2 7 42"
+
   core-sanitizers:
     name: core under ASan + UBSan
     runs-on: ubuntu-latest

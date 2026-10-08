@@ -31,6 +31,12 @@ adapters never reimplement routing logic.
 +-----------------+                             +-------------------+
 ```
 
+A third adapter, **`web/`** ([ADR-0021](adr/0021-the-browser-is-an-adapter.md)),
+runs the same core compiled to WebAssembly for the learn site: it implements
+the ports over a small discrete-event teaching radio and carries out the
+RouteDecisions exactly as the ns-3 adapter does. A CI gate holds its native and
+WASM builds to byte-identical decision traces.
+
 ## The core
 
 ### Types and how they relate

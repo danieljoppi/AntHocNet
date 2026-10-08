@@ -32,6 +32,9 @@ build/
 core/build/
 core/build-*/
 ns3/build/
+# browser adapter builds (#544): native, WASM, assembled site
+web/build/
+web/build-*/
 *.cmake
 CMakeCache.txt
 CMakeFiles/
