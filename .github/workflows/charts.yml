@@ -1,0 +1,103 @@
+name: Charts
+
+# Keeps every chart drawn from *committed* data in step with that data:
+# the family results charts (docs/benchmarks/charts/) and the sweep charts
+# (docs/benchmarks/sweep-*.png), all rendered by ns3/tools/family-charts.py
+# from docs/benchmarks/cells/ and docs/benchmarks/campaign/.
+#
+# Before this workflow those charts were rendered by hand, so a re-measured
+# cell or a restyled chart script left the published figure stale until
+# someone remembered. The per-merge taxonomy chart (discrete-summary.png) is
+# not this workflow's: it is measured, not committed, and benchmarks.yml
+# renders it from the run it just made.
+#
+# On main: re-render and commit the result (only when a PNG actually changed;
+# rendering is deterministic, so an unchanged input is no commit). On a PR:
+# render as a check, so a broken chart script or an unparsable cell fails
+# before merge, and upload the PNGs for the reviewer.
+#
+# Re-measuring a sweep: rescue its CSV into docs/benchmarks/campaign/, cite it
+# on the sweep page, and point SWEEP_SOURCES in family-charts.py at it. A
+# scenario-matrix run with commit=true writes sweep PNGs from its own fresh
+# CSV; the next run here re-renders them from the cited CSVs, which is what
+# the pages say they show.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/benchmarks/cells/**'
+      - 'docs/benchmarks/campaign/**'
+      - 'ns3/tools/family-charts.py'
+      - 'ns3/tools/make-charts.py'
+      - '.claude/skills/benchmark-results/bench_parse.py'
+      - '.claude/skills/benchmark-results/stats_util.py'
+      - 'requirements-dev.txt'
+      - '.github/workflows/charts.yml'
+  pull_request:
+    paths:
+      - 'docs/benchmarks/cells/**'
+      - 'docs/benchmarks/campaign/**'
+      - 'ns3/tools/family-charts.py'
+      - 'ns3/tools/make-charts.py'
+      - '.claude/skills/benchmark-results/bench_parse.py'
+      - '.claude/skills/benchmark-results/stats_util.py'
+      - 'requirements-dev.txt'
+      - '.github/workflows/charts.yml'
+  workflow_dispatch:
+
+# contents: write only to push the refreshed PNGs back to main.
+permissions:
+  contents: write
+
+# Pushes queue rather than cancel: each run renders the tree it checked out,
+# so a cancelled run could leave main's charts one change behind.
+concurrency:
+  group: charts-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  render:
+    name: Render charts from committed data
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install matplotlib
+        # Pinned in requirements-dev.txt: a matplotlib release changes the
+        # rendered pixels, so a float here would recommit every PNG.
+        run: pip install -c requirements-dev.txt matplotlib
+      - name: Render
+        run: python3 ns3/tools/family-charts.py
+      - name: Show what changed
+        run: git status --short docs/benchmarks
+      - name: Upload charts (PR review)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: charts
+          path: |
+            docs/benchmarks/charts/*.png
+            docs/benchmarks/sweep-*.png
+          retention-days: 7
+      - name: Commit refreshed charts (main only, if changed)
+        if: github.event_name != 'pull_request'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/benchmarks/charts docs/benchmarks/sweep-*.png
+          if git diff --cached --quiet; then
+            echo "Charts unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "docs: refresh charts from committed data [skip ci]"
+          # benchmarks.yml also pushes to main; rebase onto whatever landed
+          # meanwhile (the two touch disjoint files) and retry a few times.
+          for i in 1 2 3 4; do
+            git push && exit 0
+            sleep $((i * 5))
+            git pull --rebase
+          done
+          exit 1

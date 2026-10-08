@@ -12,6 +12,16 @@ on:
       - 'docs/**'
       - 'mkdocs.yml'
       - '.github/workflows/pages.yml'
+  # The bots that refresh published results push with GITHUB_TOKEN, and a
+  # GITHUB_TOKEN push never triggers another workflow -- so the push trigger
+  # above cannot see them, and the live site kept serving the previous
+  # tables and charts until the next human merge touched docs/. Redeploy
+  # whenever one of those workflows finishes on main. A run that committed
+  # nothing just redeploys the same tree, which is harmless.
+  workflow_run:
+    workflows: ["Benchmarks", "Charts", "Scenario matrix + charts (manual)"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 # Least privilege: the build reads the tree, the deploy needs `pages: write`
@@ -33,12 +43,17 @@ jobs:
   build:
     name: Build site
     runs-on: ubuntu-latest
+    # After a refresh workflow, deploy only if it succeeded (a failed
+    # benchmark run commits nothing, so there is nothing new to publish).
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     steps:
       # Every action is SHA-pinned with the tag in a trailing comment, matching
       # the repo-wide pinning done in #338: a tag is a moving pointer, so an
       # unpinned action lets a third party change what runs in a job that holds
       # `pages: write` and an OIDC token. checkout/setup-python reuse the exact
       # SHAs already pinned in ci.yml and lint.yml.
+      # On workflow_run this checks out the default branch's tip, which
+      # includes the bot's refresh commit -- the state to publish.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:

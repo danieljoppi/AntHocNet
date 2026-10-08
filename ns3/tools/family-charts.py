@@ -21,6 +21,13 @@ output is deterministic (the bootstrap is seeded by stats_util).
   * families-vs-aodv.png -- the cross-family ranking-stability statement
     as a forest plot: AntHocNet - AODV paired per-seed difference with its
     95 % t-CI, for every family cell.
+  * ../sweep-<name>.png -- the area / pause / scale sweep charts, re-rendered
+    by make-charts.py from the committed campaign CSVs each sweep page's
+    current block cites (SWEEP_SOURCES below).
+
+Every chart here is drawn from data committed in the repository, so the
+Charts workflow (.github/workflows/charts.yml) re-runs this on every change
+to the cells, the campaign CSVs or the chart code and commits the result.
 
 Error bars are 95 % CIs over seeds (#293): t-intervals for PDR and NRL, a
 percentile bootstrap for delay99 (a t-CI on a p99 is not defensible), and
@@ -105,6 +112,18 @@ FAMILY_ROWS = ([("MANET", lab, f) for lab, f in GRID_CELLS]
                   ("VANET", "sparse", "vanet-sparse.txt")])
 SAT_CORRIDOR = "sat-corridor-app517.txt"
 SAT_FAILCELL = "sat-failcell-app517.txt"
+
+# The CBR (#521) restatement block of each sweep page cites these campaign
+# CSVs (docs/benchmarks/sweeps/<name>.md, "Provenance"). When a sweep is
+# re-measured, point its entry at the new files.
+SWEEP_SOURCES = {
+    "area": [f"{r}-run.csv" for r in (37233283127, 37233284897, 37233286413,
+                                       37233288164, 37233289720)],
+    "pause": [f"{r}-run.csv" for r in (37233291212, 37233292762, 37233294241,
+                                        37233296147, 37233298023)],
+    "scale": ["37233299992-run.csv"] + [f"pooled-scale-{x}-20261005.csv"
+                                        for x in ("1.4", "1.8", "2.0")],
+}
 
 
 def read(cells, name):
@@ -371,6 +390,27 @@ def plot_families(cells_dir, outdir):
     return out
 
 
+def plot_sweeps(campaign_dir, outdir):
+    """Re-render the sweep charts with make-charts.py's own sweep plot."""
+    spec = importlib.util.spec_from_file_location(
+        "make_charts", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                    "make-charts.py"))
+    mc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mc)
+    written = []
+    for name, files in SWEEP_SOURCES.items():
+        rows = []
+        for f in files:
+            rows += [r for r in mc.load(os.path.join(campaign_dir, f))
+                     if r["kind"] == "sweep" and r["group"] == name]
+        # make-charts styles its own figures: render them outside this
+        # module's rcParams so a sweep looks the same from either script.
+        with matplotlib.rc_context():
+            matplotlib.rcdefaults()
+            written.append(mc.plot_sweep(name, rows, outdir))
+    return written
+
+
 def main():
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
     ap = argparse.ArgumentParser(description="Render family results charts.")
@@ -378,12 +418,17 @@ def main():
                                                     "cells"))
     ap.add_argument("--outdir", default=os.path.join(root, "docs", "benchmarks",
                                                      "charts"))
+    ap.add_argument("--campaign", default=os.path.join(root, "docs", "benchmarks",
+                                                       "campaign"))
+    ap.add_argument("--sweep-outdir", default=os.path.join(root, "docs",
+                                                           "benchmarks"))
     args = ap.parse_args()
     os.makedirs(args.outdir, exist_ok=True)
     written = [plot_family(n, args.cells, args.outdir) for n in CELLS]
     written.append(plot_grid(args.cells, args.outdir))
     written.append(plot_satellite(args.cells, args.outdir))
     written.append(plot_families(args.cells, args.outdir))
+    written += plot_sweeps(args.campaign, args.sweep_outdir)
     for w in written:
         print(os.path.relpath(w))
 
