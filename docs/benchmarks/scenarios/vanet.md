@@ -205,6 +205,10 @@ and is now scoped, with its evidence:
 > `##CONFIG##` names `mobility=manhattan` above 1 m/s; a near-static grid
 > keeps the FAIL as its control.
 
+![VANET main and sparse cells: AntHocNet and AODV tie on delivery, AntHocNet's delay99 is about half of AODV's (main) and far lower (sparse), and its NRL is the highest of the arms that deliver comparably; the oracle line sits far above every arm on delivery](../charts/family-vanet.png)
+
+_Bars: mean of 20 seeds per arm, AntHocNet highlighted; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99). The vertical line is the oracle control (not drawn for NRL, where it is 0 by construction). Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `vanet-{main,sparse}.txt`; the tables below carry every value._
+
 Means ± 95 % t-CI half-width over 20 seeds; paired deltas are per seed
 (t-CI, Wilcoxon p). Energy is per delivered bit.
 
@@ -325,6 +329,10 @@ below is on CBR sources (#521) with OLSR's PDR offered-based (#510):
 [static mesh](../static-mesh.md#restated-on-cbr-sources-521),
 [FANET](fanet.md#restated-on-cbr-sources-521) (main cell) and this page's
 VANET main cell.
+
+![AntHocNet minus AODV, paired per seed, across eleven cells in four families: delivery gains on every MANET, static-mesh and FANET cell and a tie on both VANET cells; delay99 lower in every cell; NRL lower on MANET and static mesh, near zero on FANET main, higher on FANET sparse and both VANET cells](../charts/families-vs-aodv.png)
+
+_Each dot is AntHocNet − AODV averaged over 20 paired seeds, with its 95 % paired t-CI; filled = the CI excludes 0. delay99 is per-seed relative to AODV's (%), since its scale differs by an order of magnitude between families. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells listed in the paragraph above._
 
 | | MANET grid (6 cells) | static mesh | FANET main | VANET main |
 |---|---|---|---|---|

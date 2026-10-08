@@ -50,6 +50,10 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 > 95 % t-CI half-width; `[lo, hi]` a paired per-seed 95 % t-CI; p is
 > Wilcoxon signed-rank.
 >
+> ![ISL grid corridor and failcell, every seed as a dot: in the corridor AntHocNet and OLSR split between the clean route near 15 ms and the loaded one near 97 ms while AODV takes the loaded route every time; in the failcell AntHocNet reconverges next to the oracle, AODV about twice as slow and OLSR about four seconds later](../charts/satellite.png)
+>
+> _One dot per seed (20 per arm), with a short bar at the mean: a mean alone would hide the corridor's bimodal split. Vertical line: the oracle (the congestion-blind bound in the corridor, the exact floor in the failcell). Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `sat-{corridor,failcell}-app517.txt`._
+>
 > **Base, seam: unchanged.** Every arm sits on the bound for delay and
 > `delay99` (base 10.15–10.16 ms / 11.0 ms; seam 21.57–21.63 ms / 31.0 ms).
 > PDR: base 100.00 / 99.98 / 99.69 ±0.05 / 100.00 and seam 100.00 / 99.95 /

@@ -43,12 +43,17 @@ def _load_stats_util():
 
 su = _load_stats_util()
 
-# Stable protocol order + colours so every figure is consistent.
+# Stable protocol order + colours so every figure is consistent. The
+# colours are the CVD-validated categorical slots family-charts.py also
+# uses (adjacent-pair CVD dE >= 8); the per-protocol marker is the
+# secondary encoding the fourth slot (yellow beside orange) needs.
 PROTO_ORDER = ["anthocnet", "aodv", "olsr", "dsdv", "dsr"]
 PROTO_COLOR = {
-    "anthocnet": "#d62728", "aodv": "#1f77b4", "olsr": "#2ca02c",
-    "dsdv": "#ff7f0e", "dsr": "#9467bd",
+    "anthocnet": "#2a78d6", "aodv": "#eb6834", "olsr": "#1baf7a",
+    "dsdv": "#eda100", "dsr": "#e87ba4",
 }
+PROTO_MARKER = {"anthocnet": "o", "aodv": "s", "olsr": "D", "dsdv": "v",
+                "dsr": "P"}
 
 
 def load(csv_path):
@@ -115,17 +120,18 @@ def plot_sweep(name, rows, outdir):
     for p in protos:
         c = PROTO_COLOR.get(p, None)
         pdr = series[p]["pdr_pct"]
+        mk = PROTO_MARKER.get(p, "o")
         if pdr:
-            draw(ax1, pdr, c, p)
+            draw(ax1, pdr, c, p, marker=mk)
         d = series[p]["delay_ms"]
         if d:
-            draw(ax2, d, c, p)
+            draw(ax2, d, c, p, marker=mk)
         d99 = series[p]["delay99_ms"]
         if d99:
             draw(ax2, d99, c, f"{p} 99%", marker="^", linestyle="--")
         nrl = series[p]["nrl"]
         if nrl:
-            draw(ax3, nrl, c, p)
+            draw(ax3, nrl, c, p, marker=mk)
 
     ax1.set_title("Packet delivery ratio")
     ax1.set_ylabel("PDR (%)")

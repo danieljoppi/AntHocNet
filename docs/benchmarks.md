@@ -109,6 +109,28 @@ _Measured at [`7b87cda`](https://github.com/danieljoppi/AntHocNet/commit/7b87cda
 
 <!-- BENCHMARK-TABLE-END -->
 
+## Results by family
+
+The scenario table above is the MANET taxonomy. Each supported family has its
+own results page; the chart below puts them side by side as AntHocNet − AODV,
+paired per seed, with the same protocol configuration everywhere (ADR-0019).
+The ranking-stability statement that reads it is on the
+[VANET page](benchmarks/scenarios/vanet.md#ranking-stability-across-four-families).
+
+![AntHocNet minus AODV across four families: delivery gains on MANET, static mesh and FANET and a tie on VANET; a shorter tail in every cell; the overhead advantage shrinks and reverses as links get shorter-lived](benchmarks/charts/families-vs-aodv.png)
+
+| family | page | chart |
+|---|---|---|
+| MANET grid (3 mobility × 2 channel) | [grid.md](benchmarks/grid.md#restated-on-cbr-sources-521) | [grid.png](benchmarks/charts/grid.png) |
+| static Wi-Fi mesh | [static-mesh.md](benchmarks/static-mesh.md#restated-on-cbr-sources-521) | [family-static-mesh.png](benchmarks/charts/family-static-mesh.png) |
+| FANET | [fanet.md](benchmarks/scenarios/fanet.md#restated-on-cbr-sources-521) | [family-fanet.png](benchmarks/charts/family-fanet.png) |
+| VANET | [vanet.md](benchmarks/scenarios/vanet.md) | [family-vanet.png](benchmarks/charts/family-vanet.png) |
+| satellite ISL grid | [isl-grid.md](benchmarks/satellite/isl-grid.md#re-measured-with-arm-independent-flow-schedules-517) | [satellite.png](benchmarks/charts/satellite.png) |
+
+These charts are drawn from the committed cells under
+[`benchmarks/cells/`](benchmarks/cells/) by `ns3/tools/family-charts.py`, not by
+a workflow: re-run it after a results page is re-measured.
+
 ## How to read this
 
 These are MANET results: PDR and delay depend heavily on node density,
