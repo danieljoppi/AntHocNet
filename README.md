@@ -198,6 +198,8 @@ there — the family table, the side-by-side harness comparison, and the
 mechanism-by-mechanism live/inert map are all in
 [docs/network-regimes.md](docs/network-regimes.md).
 
+![AntHocNet minus AODV across the four families, paired per seed with 95 % CIs: delivery gains on MANET, static mesh and FANET and a tie on VANET, a shorter delay tail in every cell, and an overhead advantage that reverses on VANET](docs/benchmarks/charts/families-vs-aodv.png)
+
 ## What changed from the original
 
 The original project was a whole vendored `ns-allinone-2.34` snapshot with the
