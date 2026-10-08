@@ -13,6 +13,11 @@
 [![Docs](https://img.shields.io/badge/docs-site-blue)](https://danieljoppi.github.io/AntHocNet/)
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/danieljoppi/AntHocNet?quickstart=1)
 
+**▶ [Learn it by playing](https://danieljoppi.github.io/AntHocNet/learn/)** — a city-builder for networks and ants
+that runs this repository's routing core, compiled to WebAssembly, in your
+browser: build radio towers, break links, and watch the ants find the way.
+Code reference: [API docs](https://danieljoppi.github.io/AntHocNet/api/).
+
 **A paper-faithful AntHocNet you can install on a stock ns-3 tree in three
 commands** — a drop-in `contrib/` module, no forked simulator. It is benchmarked
 against AODV / OLSR / DSDV on identical scenarios under a fixed methodology

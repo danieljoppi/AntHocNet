@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learn AntHocNet</title>
+  <meta name="description" content="A city-builder for networks and ants: build radio towers, launch flows, and watch the real AntHocNet routing core, compiled to WebAssembly, find and repair routes.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/learn.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#map">Skip to the map</a>
+
+  <header class="menubar">
+    <a class="brand" href="../" title="Back to the documentation"><span class="logo" aria-hidden="true"></span>AntHocNet <span class="sub">Colony&nbsp;Net</span></a>
+    <label class="menu">World
+      <select id="world" aria-describedby="worldBlurb"></select>
+    </label>
+    <label class="menu">Seed
+      <input id="seed" type="number" min="1" max="999999" value="1" inputmode="numeric">
+    </label>
+    <div class="speeds" role="radiogroup" aria-label="Simulation speed">
+      <button type="button" class="bevel" data-speed="0" aria-pressed="false" title="Pause (space)">❚❚</button>
+      <button type="button" class="bevel" data-speed="0.05" aria-pressed="false" title="Ant pace: 0.05×">▶</button>
+      <button type="button" class="bevel" data-speed="0.25" aria-pressed="true" title="Slow: 0.25×">▶▶</button>
+      <button type="button" class="bevel" data-speed="1" aria-pressed="false" title="Real time: 1×">▶▶▶</button>
+      <button type="button" class="bevel" data-speed="5" aria-pressed="false" title="Fast: 5×">⏩</button>
+    </div>
+    <button id="step" type="button" class="bevel" title="Step to the next ant or packet (.)">Step</button>
+    <nav class="links" aria-label="Elsewhere">
+      <a href="../">Docs</a>
+      <a href="../api/">API</a>
+      <a href="https://github.com/danieljoppi/AntHocNet">GitHub</a>
+    </nav>
+    <button id="theme" type="button" class="bevel" aria-label="Switch day and night" title="Day / night">☾</button>
+  </header>
+
+  <main class="desk">
+    <nav class="toolbox window" aria-label="Tools">
+      <div class="titlebar">Tools</div>
+      <div class="tools" role="toolbar" aria-label="Map tools" id="tools">
+        <button type="button" class="tool bevel" data-tool="inspect" aria-pressed="true" title="Inspect (1): click a node to read its routing table"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg><span>Inspect</span></button>
+        <button type="button" class="tool bevel" data-tool="move" aria-pressed="false" title="Move (2): drag a node; drag the ground to pan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg><span>Move</span></button>
+        <button type="button" class="tool bevel" data-tool="build" aria-pressed="false" title="Build (3): put a new node on the map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l-5 18M12 3l5 18M8.5 15h7M10 9h4"/><circle cx="12" cy="3" r="1.5"/></svg><span>Build</span></button>
+        <button type="button" class="tool bevel" data-tool="bulldoze" aria-pressed="false" title="Bulldoze (4): switch a node off or on; cut a satellite link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h12l3-6h3M5 17v3h8v-3M15 11V7H8v4"/></svg><span>Bulldoze</span></button>
+        <button type="button" class="tool bevel" data-tool="flow" aria-pressed="false" title="Flow (5): click a source, then a destination"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><path d="M8 12h8M13 9l3 3-3 3"/></svg><span>Flow</span></button>
+      </div>
+      <div class="titlebar">View</div>
+      <div class="tools small">
+        <button type="button" class="bevel" id="rotL" title="Rotate left (Q)" aria-label="Rotate view left">⟲</button>
+        <button type="button" class="bevel" id="rotR" title="Rotate right (E)" aria-label="Rotate view right">⟳</button>
+        <button type="button" class="bevel" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">＋</button>
+        <button type="button" class="bevel" id="zoomOut" title="Zoom out (−)" aria-label="Zoom out">－</button>
+        <button type="button" class="bevel" id="center" title="Centre the map (0)" aria-label="Centre the map">◎</button>
+      </div>
+      <div class="titlebar">Overlays</div>
+      <div class="overlays">
+        <label><input type="checkbox" id="ovPheromone" checked> pheromone</label>
+        <label><input type="checkbox" id="ovLinks" checked> radio links</label>
+        <label><input type="checkbox" id="ovHello" checked> hellos</label>
+        <label><input type="checkbox" id="ovLabels"> all labels</label>
+      </div>
+    </nav>
+
+    <section class="mapwin window" aria-label="Map">
+      <div class="titlebar" id="mapTitle">Ad hoc MANET</div>
+      <div class="map" id="map" tabindex="0" role="application" aria-label="Network map" aria-describedby="mapHelp">
+        <canvas id="view"></canvas>
+        <p class="toast" id="toast" role="status" aria-live="polite" hidden></p>
+      </div>
+      <p class="sr" id="mapHelp">Keyboard: 1 to 5 pick a tool; [ and ] select the previous or next node; arrow keys move the selected node (or pan); o switches it off or on; Q and E rotate; plus and minus zoom; space pauses. Every event is also written to the ant log below the map.</p>
+      <div class="status" aria-live="off">
+        <span id="clock" title="Simulated time">t 0:00.00</span>
+        <span id="stDelivered" title="Data packets delivered / sent">✓ 0</span>
+        <span id="stDropped" title="Data packets dropped">✕ 0</span>
+        <span id="stBudget" title="Control budget: ant transmissions per delivered packet (the routing overhead, NRL)">ants 0</span>
+        <span class="health" title="Network health: delivery ratio over the last 10 s"><span class="meter"><span id="healthBar"></span></span><span id="health">—</span></span>
+      </div>
+      <div class="ticker" aria-label="Network news"><span class="mast">The Daily Pheromone</span><span id="news">Reporters are in place. Build, break and watch.</span></div>
+    </section>
+
+    <aside class="panels">
+      <section class="window" id="missionWin" aria-labelledby="missionTitle">
+        <div class="titlebar" id="missionTitle">Missions</div>
+        <div class="body" id="missionBody"></div>
+      </section>
+      <section class="window" aria-labelledby="inspTitle">
+        <div class="titlebar" id="inspTitle">Query</div>
+        <div class="body">
+          <p class="muted small" id="inspHint">Pick <b>Inspect</b> and click a node to read what its routing table holds.</p>
+          <div id="inspBody"></div>
+        </div>
+      </section>
+      <section class="window" aria-labelledby="worldTitle">
+        <div class="titlebar" id="worldTitle">World</div>
+        <div class="body">
+          <p id="worldBlurb"></p>
+          <p class="muted small" id="worldHonest"></p>
+          <p class="small">Pheromone to <select id="watch" aria-label="Show pheromone toward"></select></p>
+        </div>
+      </section>
+      <section class="window" aria-labelledby="legendTitle">
+        <div class="titlebar" id="legendTitle">Legend</div>
+        <ul class="body legend" id="legend"></ul>
+      </section>
+    </aside>
+  </main>
+
+  <section class="window logwin" aria-labelledby="logTitle">
+    <div class="titlebar"><span id="logTitle">Ant log</span>
+      <span class="filters">
+        <label><input type="checkbox" id="logHello"> hellos</label>
+        <label><input type="checkbox" id="logData" checked> data</label>
+        <label><input type="checkbox" id="logAnts" checked> ants</label>
+        <label><input type="checkbox" id="logRoutes"> routes</label>
+      </span>
+      <button type="button" id="share" class="bevel">Share this run</button>
+      <button type="button" id="reset" class="bevel">Restart</button>
+    </div>
+    <ol class="log" id="log"></ol>
+  </section>
+
+  <noscript><p class="window body">This game runs the AntHocNet routing core as WebAssembly and needs JavaScript. The <a href="../">documentation</a> explains the protocol without it.</p></noscript>
+</body>
+</html>

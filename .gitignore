@@ -41,7 +41,7 @@ CMakeFiles/
 
 # Rendered docs site (`mkdocs build` default site_dir; CI publishes it, the
 # repo never carries it — see mkdocs.yml, #331)
-site/
+/site/
 
 # Coverage output (gcov counters + gcovr reports)
 coverage/
