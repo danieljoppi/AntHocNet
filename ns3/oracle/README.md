@@ -34,7 +34,7 @@ one table.
 | No route | **immediate drop** | `ERROR_NOROUTETOHOST`, no queue, no retry, no discovery. A packet the oracle cannot place is one the network could not have carried. |
 | Learning | **none** | Nothing a node knows came from another node. |
 | Randomness | **none** | `AssignStreams` returns 0. The arm is bit-reproducible without a seed. |
-| Metric | **hop count** (unit edge weight) | Makes "no protocol routes the same packet in fewer hops" an assertion, not a hope. |
+| Metric | **hop count** (unit edge weight) by default; `Metric=delay` on a wired topology | Hop count makes "no protocol routes the same packet in fewer hops" an assertion, not a hope. On a moving constellation two paths of equal hop count differ in length, so the hop oracle is a delivery bound and not a latency bound; `Metric=delay` weights each link by its channel's **current** `Delay` attribute and re-solves on every recompute (the edge set may not change while the weights do). `mode` gains `+delay`, so a delay-oracle row never passes for a hop bound. A shared (wireless) medium has no per-link delay to read, and the oracle aborts. Covered by `DelayMetricTest` in the module's test suite (#297). |
 
 The Dijkstra + first-hop layer is not in this module: it is
 `core/shortest_path.{h,cpp}`, simulator-agnostic and covered by
@@ -197,7 +197,8 @@ Each harness prints one line per (seed, oracle) run:
 ```
 
 `mode` is the "+"-joined set of adjacency rules in force (`wired`, `disk`,
-`decode-approx`, `decode-los-approx`, `p50-approx`, `disk-approx`); `range` is −1 on an all-wired
+`decode-approx`, `decode-los-approx`, `p50-approx`, `disk-approx`), with
+`+delay` appended under `Metric=delay`; `range` is −1 on an all-wired
 topology and the derived (or overridden) radius otherwise; `noRoute` counts
 lookups that found no path, i.e. the field partitioned under the oracle's own
 topology. `scenario_check.py results` asserts on this row (NRL exactly 0, the

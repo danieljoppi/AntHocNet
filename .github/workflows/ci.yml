@@ -413,6 +413,17 @@ jobs:
         # combinations are refused.
         if: matrix.version == '3.42'
         run: bash ns3/tools/check-manhattan.sh /opt/ns-3
+      - name: Moving-constellation smoke (#192/#297, ADR-0022, leo-walker)
+        # A 16x16 Walker shell on stock ns-3.48's LEO mobility model: the
+        # geometry must match the analytic shell at t=0 and half an orbit
+        # later, every ground station must be served, scheduled handovers,
+        # the ISL failure overlay and a mass failure must all fire, every
+        # arm (delay oracle, AntHocNet, AODV) must deliver through them, and
+        # a same-seed rerun must be byte-identical and order-independent.
+        # 3.48 only: the stock LEO model first ships there (ADR-0022), and
+        # leo-walker is not built on older trees. ~45 s.
+        if: matrix.version == '3.48'
+        run: bash ns3/tools/check-leo-walker.sh /opt/ns-3
       - name: Validation-anchor gate (single-hop PDR floor, #59)
         # Blocking anchor from docs/benchmarks/methodology.md "Validation
         # anchors": on a static, in-range 2-node link the *stock* stack

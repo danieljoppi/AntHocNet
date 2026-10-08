@@ -223,6 +223,7 @@ class Topology : public Object
         int to;               //!< index into m_nodes
         uint32_t iface;       //!< local Ipv4 interface index
         Ipv4Address gateway;  //!< peer address on that link
+        double weight = 1.0;  //!< edge cost: 1 (hops) or the channel delay in s (Metric=delay)
     };
 
     /// The adjacency rule derived for one shared-medium channel, built once.
@@ -264,6 +265,7 @@ class Topology : public Object
 
     Time m_interval;
     double m_linkRangeM = 0.0;
+    std::string m_metric = "hops";  //!< "hops" (default) or "delay" (wired topologies only)
     bool m_started = false;
     bool m_approx = false;
     std::string m_mode = "unset";

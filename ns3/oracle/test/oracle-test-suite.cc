@@ -3,7 +3,7 @@
 
 /**
  * Unit tests for the oracle's #431 fading-channel adjacency derivations
- * (oracle-decode-budget.{h,cc}). Every expected value below is hand-computed
+ * (oracle-decode-budget.{h,cc}), and for its Metric=delay mode (#297). Every expected value below is hand-computed
  * from the stated closed form — never from running the code under test — so
  * a regression in the math cannot re-derive its own expectation.
  *
@@ -17,6 +17,15 @@
  */
 
 #include "ns3/oracle-decode-budget.h"
+#include "ns3/oracle-helper.h"
+#include "ns3/oracle-topology.h"
+
+#include "ns3/internet-stack-helper.h"
+#include "ns3/ipv4-address-helper.h"
+#include "ns3/simple-channel.h"
+#include "ns3/simple-net-device.h"
+#include "ns3/simulator.h"
+#include "ns3/string.h"
 #include "ns3/test.h"
 
 #include <cmath>
@@ -215,6 +224,104 @@ class NakagamiMedianTest : public TestCase
     }
 };
 
+/**
+ * Metric=delay (#297): the latency bound picks the faster path, not the
+ * shorter one, and re-reads the channel delay when it changes.
+ *
+ * Topology (all wired, one SimpleChannel per link):
+ *     A --(50 ms)-- D        direct: 1 hop, 50 ms
+ *     A --(5 ms)--- B --(5 ms)-- D   2 hops, 10 ms
+ * Metric=hops must send A->D direct (1 < 2 hops); Metric=delay must send it
+ * via B (10 < 50 ms). After the direct link's delay is lowered to 1 ms the
+ * next recompute must switch the delay oracle back to direct (1 < 10 ms) --
+ * the "re-read every recompute" half, which a solve cached on an unchanged
+ * edge set would miss.
+ */
+class DelayMetricTest : public TestCase
+{
+  public:
+    DelayMetricTest()
+        : TestCase("Metric=delay: fastest path, re-read on every recompute")
+    {
+    }
+
+  private:
+    struct Net
+    {
+        NodeContainer n;
+        Ptr<SimpleChannel> direct;
+        Ipv4Address bOnAB, dOnAD, dAddr;
+    };
+
+    static Ptr<SimpleChannel> Wire(Ptr<Node> x, Ptr<Node> y, double ms, Ipv4AddressHelper& addr,
+                                   Ipv4InterfaceContainer& ifc)
+    {
+        Ptr<SimpleChannel> ch = CreateObject<SimpleChannel>();
+        ch->SetAttribute("Delay", TimeValue(MilliSeconds(ms)));
+        NetDeviceContainer d;
+        for (Ptr<Node> node : {x, y})
+        {
+            Ptr<SimpleNetDevice> dev = CreateObject<SimpleNetDevice>();
+            dev->SetAddress(Mac48Address::Allocate());
+            dev->SetChannel(ch);
+            node->AddDevice(dev);
+            d.Add(dev);
+        }
+        ifc = addr.Assign(d);
+        addr.NewNetwork();
+        return ch;
+    }
+
+    /// Next-hop gateway from A to D under `metric`, at t=0.5 s and, after the
+    /// direct link's delay drops to 1 ms at t=1.2 s, at t=2.5 s.
+    static std::pair<Ipv4Address, Ipv4Address> Probe(const std::string& metric, Net& net)
+    {
+        net.n = NodeContainer();
+        net.n.Create(3); // A, B, D
+        OracleHelper oracle;
+        oracle.Set("Metric", StringValue(metric));
+        InternetStackHelper internet;
+        internet.SetRoutingHelper(oracle);
+        internet.Install(net.n);
+        Ipv4AddressHelper addr("10.1.0.0", "255.255.255.252");
+        Ipv4InterfaceContainer ad, ab, bd;
+        net.direct = Wire(net.n.Get(0), net.n.Get(2), 50, addr, ad);
+        Wire(net.n.Get(0), net.n.Get(1), 5, addr, ab);
+        Wire(net.n.Get(1), net.n.Get(2), 5, addr, bd);
+        net.dOnAD = ad.GetAddress(1);
+        net.bOnAB = ab.GetAddress(1);
+        net.dAddr = bd.GetAddress(1); // D's address on the B-D link
+
+        Ptr<oracle::Topology> topo = oracle.GetTopology();
+        Ptr<Node> a = net.n.Get(0);
+        std::pair<Ipv4Address, Ipv4Address> gw;
+        Simulator::Schedule(Seconds(0.5), [&] { gw.first = topo->Lookup(a, net.dAddr).gateway; });
+        Simulator::Schedule(Seconds(1.2), [&] {
+            net.direct->SetAttribute("Delay", TimeValue(MilliSeconds(1)));
+        });
+        Simulator::Schedule(Seconds(2.5), [&] { gw.second = topo->Lookup(a, net.dAddr).gateway; });
+        Simulator::Stop(Seconds(3));
+        Simulator::Run();
+        Simulator::Destroy();
+        return gw;
+    }
+
+    void DoRun() override
+    {
+        Net hops;
+        const auto h = Probe("hops", hops);
+        NS_TEST_ASSERT_MSG_EQ(h.first, hops.dOnAD, "Metric=hops: A->D goes direct (1 hop)");
+        NS_TEST_ASSERT_MSG_EQ(h.second, hops.dOnAD, "Metric=hops: still direct");
+
+        Net delay;
+        const auto d = Probe("delay", delay);
+        NS_TEST_ASSERT_MSG_EQ(d.first, delay.bOnAB, "Metric=delay: A->D via B (10 ms < 50 ms)");
+        NS_TEST_ASSERT_MSG_EQ(d.second,
+                              delay.dOnAD,
+                              "Metric=delay: direct once its delay drops to 1 ms");
+    }
+};
+
 class OracleTestSuite : public TestSuite
 {
   public:
@@ -225,6 +332,7 @@ class OracleTestSuite : public TestSuite
         AddTestCase(new TwoRayRxPowerTest, ORACLE_TEST_QUICK);
         AddTestCase(new GammaQTest, ORACLE_TEST_QUICK);
         AddTestCase(new NakagamiMedianTest, ORACLE_TEST_QUICK);
+        AddTestCase(new DelayMetricTest, ORACLE_TEST_QUICK);
     }
 };
 

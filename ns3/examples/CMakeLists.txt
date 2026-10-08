@@ -94,3 +94,26 @@ build_lib_example(
     ${libolsr}
     ${libdsdv}
 )
+
+# #192/#297: the time-varying LEO constellation. Its substrate is stock ns-3's
+# LeoCircularOrbitMobilityModel (the #193 decision), new in ns-3.48, so it is
+# built only where that header exists; on 3.36-3.47 the example is skipped.
+if(EXISTS ${PROJECT_SOURCE_DIR}/src/mobility/model/leo-circular-orbit-mobility-model.h)
+  build_lib_example(
+    NAME leo-walker
+    SOURCE_FILES leo-walker.cc
+    LIBRARIES_TO_LINK
+      ${libanthocnet}
+      ${libcore}
+      ${libnetwork}
+      ${libinternet}
+      ${libmobility}
+      ${libapplications}
+      ${libpoint-to-point}
+      ${libcsma}
+      ${libflow-monitor}
+      ${libaodv}
+      ${libolsr}
+      ${liboracle}
+  )
+endif()
