@@ -187,7 +187,8 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
         .function("setNodeUp", &World::setNodeUp)
         .function("nodeCount", &World::nodeCount)
         .function("pendingCount", &World::pendingCount)
-        .function("antTransmissions", &World::antTransmissions)
+        // As a double: a uint64 would reach JS as a BigInt and poison arithmetic.
+        .function("antTransmissions", optional_override([](const World& w) { return static_cast<double>(w.antTransmissions()); }))
         .function("range", &World::range)
         .function("channel", optional_override([](const World& w) { return static_cast<int>(w.channel()); }))
         .function("blocksX", &World::urbanBlocksX)
