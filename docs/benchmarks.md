@@ -128,8 +128,11 @@ The ranking-stability statement that reads it is on the
 | satellite ISL grid | [isl-grid.md](benchmarks/satellite/isl-grid.md#re-measured-with-arm-independent-flow-schedules-517) | [satellite.png](benchmarks/charts/satellite.png) |
 
 These charts are drawn from the committed cells under
-[`benchmarks/cells/`](benchmarks/cells/) by `ns3/tools/family-charts.py`, not by
-a workflow: re-run it after a results page is re-measured.
+[`benchmarks/cells/`](benchmarks/cells/) by `ns3/tools/family-charts.py`. The
+**Charts** workflow re-renders them (and the sweep charts, from the campaign
+CSVs their pages cite) on every change to that data or to the chart code, and
+commits the result; the Pages site redeploys after it. Re-measuring a page
+means committing the new cell and pointing the script's cell table at it.
 
 ## How to read this
 
