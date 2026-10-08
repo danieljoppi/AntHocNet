@@ -1,6 +1,7 @@
 # web/ — the browser adapter
 
-The third adapter for the shared AntHocNet core, next to `ns3/` and `ns2/`
+The second adapter for the shared AntHocNet core, next to `ns3/` (a third,
+`ns2/`, shipped through v1.9.0)
 ([ADR-0021](../docs/adr/0021-the-browser-is-an-adapter.md), [#544](https://github.com/danieljoppi/AntHocNet/issues/544)).
 It compiles `core/` to WebAssembly so the learn site
 ([#542](https://github.com/danieljoppi/AntHocNet/issues/542)) teaches the

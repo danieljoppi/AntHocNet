@@ -222,9 +222,10 @@ be split before anyone deviates per ant type.
    *fidelity* runnable). #244 measures it; #245 tracks the open hazard that a
    stale gradient can strand the single steered ant where a flood would not have
    been.
-7. **Cross-simulator parity is not guaranteed** — NS-2 and NS-3 have different
-   MAC/PHY; the NS-2 adapter also has no pending-queue hold cap yet. Treat
-   cross-sim comparison as behaviour re-validation, not a bit-for-bit port.
+7. **Cross-simulator parity was never guaranteed** — while the NS-2 adapter
+   shipped (through v1.9.0), NS-2 and NS-3 had different MAC/PHY and the NS-2
+   adapter had no pending-queue hold cap. Cross-sim comparison was behaviour
+   re-validation, not a bit-for-bit port. Every number on `main` is ns-3.
 8. **Hello advert selection is best-first, not random** (#186). The thesis caps
    a hello at k destinations — k = 10, which we match (`maxHelloAdverts`) — and
    *"if more than k destinations are available, k of them are picked out
@@ -259,7 +260,8 @@ be split before anyone deviates per ant type.
 ## Verification status
 
 - **Algorithm mechanisms**: ✅ covered by `core/tests` (unit + randomized
-  property/invariant sweeps), NS-2/NS-3 e2e delivery smokes in CI.
+  property/invariant sweeps), ns-3 e2e delivery smokes in CI (and NS-2 through
+  v1.9.0), and the native-vs-WASM decision-trace parity gate.
 - **Parameters vs [1] (2004 paper)**: ✅ verified — see the digest table.
 - **Parameters vs 2007 thesis**: 🟡 partial — thesis obtained 2026-07-25.
   `T_hop` ✅ adopted (3 ms). Jitter estimator ✅ *defined* in the thesis

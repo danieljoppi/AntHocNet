@@ -1263,7 +1263,6 @@ flowchart TB
         direction TB
         C1["core unit tests · ASan+UBSan"]
         C2["codec fuzz (libFuzzer 60 s)"]
-        C3["NS-2 patch round-trip · adapter e2e + valgrind"]
         C4["NS-3 build + module tests<br/>3.36 · 3.41 · 3.42 · 3.47 · 3.48"]
         C5["<b>check-determinism.sh</b><br/>same seed twice ⇒ byte-identical<br/>(wifi + isl-grid, #129)"]
         C9["<b>check-seed-independence.py</b><br/>same seed ⇒ same row across split<br/>structures and protocol order (#352)<br/>compare · manet-baselines"]

@@ -18,16 +18,8 @@ innocent input gets ignored and then is not a gate (#229's lesson): it asks one
 question — does ``SPDX-License-Identifier`` appear in the file's first few lines
 — and says nothing about the copyright line, the comment style, or the licence
 name. Only tracked files under the covered roots and with a covered extension
-are looked at, so build files, Tcl scenarios, docs and the binary fuzz corpus
+are looked at, so build files, docs and the binary fuzz corpus
 are none of its business.
-
-``ns2/patch/fragments/`` is covered by neither this gate nor #332's sweep, on
-purpose: those files are inserted **verbatim** into a user-supplied NS-2 tree by
-the anchor-based patch, and several are reverted by pattern rather than by
-marker, so a prepended comment line would survive ``revert-patch.sh`` and break
-its byte-for-byte round-trip (and, in the Tcl switch body and the Makefile.in
-object list, a ``#`` is not even a comment). ``ns2/patch/NOTICE`` states the
-licensing posture for that directory instead.
 
 Usage:
     python3 docs/tools/check-headers.py            # scan git-tracked sources
@@ -50,7 +42,6 @@ CXX = (".cpp", ".cc", ".h")
 COVERED = (
     ("core/", CXX),
     ("ns3/", CXX),
-    ("ns2/src/", CXX),
     ("ns3/tools/", (".py",)),
     ("docs/tools/", (".py",)),
     (".claude/skills/", (".py",)),
@@ -111,19 +102,14 @@ def self_test() -> int:
         "core/src/pheromone_table.cpp",
         "core/include/anthocnet/core/ports.h",
         "ns3/model/anthocnet-packet.cc",
-        "ns2/src/ahn_router.h",
         "docs/tools/check-headers.py",
         "ns3/tools/run-scenarios.py",
         ".claude/skills/benchmark-results/stats_util.py",
     ]
     covered_no = [
-        # Build files, Tcl, docs and the binary fuzz corpus are out of scope,
-        # and so are the NS-2 patch fragments (see the module docstring).
+        # Build files, docs and the binary fuzz corpus are out of scope.
         "core/CMakeLists.txt",
         "core/tests/fuzz_corpus/seed-hello.bin",
-        "ns2/tcl/scenario1/scenario1.tcl",
-        "ns2/patch/fragments/cmu-trace.cc.impl.fragment",
-        "ns2/patch/apply-patch.sh",
         "docs/architecture.md",
         "README.md",
     ]

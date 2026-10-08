@@ -1,15 +1,9 @@
-# Generated ns-2 mobility + CBR traffic scenario files are machine-produced
-# (setdest / cbrgen output), not authored source. Exclude them from GitHub's
-# language statistics and collapse them in diffs/reviews. Without this, ~160k
-# lines of generated Tcl dominate the repo and mislabel this C++ project as Tcl.
-ns2/tcl/scenario*/sim-*.tcl linguist-generated=true
-
 # Auto-generated benchmark charts (produced by the benchmarks workflow).
 docs/benchmarks/*.png linguist-generated=true
 
 # Keep repo-only tooling/CI dirs out of `git archive` — i.e. GitHub's
 # auto-generated "Source code (zip/tar.gz)" release archives. They are not part
 # of a release package. (The custom install-bundle in release.yml already omits
-# them: it copies only core/ ns2/ ns3/ docs/ + the top-level docs files.)
+# them: it copies only core/ ns3/ docs/ + the top-level docs files.)
 /.github export-ignore
 /.claude export-ignore

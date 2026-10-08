@@ -263,6 +263,3 @@ ns3/
 ## Notes
 
 - Ant control packets use UDP port 6900.
-- Metric parity with the NS-2 build is **not** guaranteed: the MAC/PHY models
-  differ. Treat cross-simulator comparison as a re-validation of behaviour, not
-  a bit-for-bit port.

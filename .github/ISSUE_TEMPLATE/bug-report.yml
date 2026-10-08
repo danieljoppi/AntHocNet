@@ -12,9 +12,8 @@ body:
         are not auto-applied as labels).
       options:
         - protocol (core algorithm)
-        - adapter (NS-2/NS-3 translation layer)
+        - adapter (NS-3 translation layer)
         - ns3
-        - ns2
         - benchmark / harness
         - observability
         - packaging / CI

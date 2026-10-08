@@ -9,10 +9,10 @@ detail.
 | ADR | Decision |
 |---|---|
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions as ADRs in `docs/adr/`. |
-| [0002](0002-one-core-two-adapters.md) | One simulator-agnostic algorithm core; thin per-simulator adapters (NS-2, NS-3). The repo's load-bearing invariant. |
+| [0002](0002-one-core-two-adapters.md) | One simulator-agnostic algorithm core; thin per-simulator adapters (NS-2, NS-3). *Superseded by ADR-0023 at v2.0.0.* |
 | [0003](0003-pure-core-returns-route-decisions.md) | The core is pure: it returns `RouteDecision`s and performs no I/O; adapters execute them. |
 | [0004](0004-pod-ant-messages-and-codec.md) | Ants are POD value types (`AntMessage`) with a single canonical wire codec — no header-resident pointers. |
-| [0005](0005-ns2-idempotent-anchor-patch.md) | NS-2 installation is an idempotent, anchor-based source patch — never a forked simulator tree or line-numbered diff. |
+| [0005](0005-ns2-idempotent-anchor-patch.md) | NS-2 installation is an idempotent, anchor-based source patch — never a forked simulator tree or line-numbered diff. *Historical: NS-2 removed at v2.0.0.* |
 | [0006](0006-on-wire-protocol-version.md) | A 1-byte on-wire protocol version (`kWireVersion`), no negotiation — golden rule 4's foundation. |
 | [0007](0007-proactive-diffusion-gated.md) | Keep virtual pheromone / proactive diffusion, but config-gate it so the ablation is runnable. *Partly superseded on one point by ADR-0016.* |
 | [0008](0008-neighbour-liveness-two-detectors.md) | Neighbour liveness via two detectors (hello timeout + MAC transmit-failure fast path); `INeighborProvider` is advisory. |
@@ -30,6 +30,7 @@ detail.
 | [0020](0020-security-is-a-default-off-profile.md) | Security ships inside the same implementation behind attributes, default **off**, with the default path provably byte-identical — no fork, no second binary. |
 | [0021](0021-the-browser-is-an-adapter.md) | The learn site runs `core/` compiled to WebAssembly behind a third (browser) adapter, held to native by a byte-identical decision-trace parity gate — never a JavaScript re-implementation. |
 | [0022](0022-satellite-substrate-is-stock-ns3-leo.md) | The satellite substrate is stock ns-3.48's LEO mobility model (ns3-leo, upstreamed) with harness-driven ISL/GSL links; 3.48-only, no substrate image. Decides #193; refines ADR-0015. |
+| [0023](0023-one-core-one-simulator-adapter.md) | One core, one simulator adapter (ns-3) after NS-2's removal — the ports seam, codec and "no NS headers in `core/`" rule stay; the browser adapter keeps the core's second consumer. Supersedes ADR-0002. |
 
 ## Adding an ADR
 

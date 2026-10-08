@@ -21,8 +21,7 @@ WARN_IF_UNDOCUMENTED   = YES
 WARN_NO_PARAMDOC       = NO
 WARN_AS_ERROR          = NO
 WARN_LOGFILE           = build/api/warnings.log
-# Public headers only: the core's API and the adapters' entry points. ns2/ is
-# left out -- it is removed at v2.0.0 (#307).
+# Public headers only: the core's API and the adapters' entry points.
 INPUT                  = api/mainpage.md \
                          core/include/anthocnet/core \
                          ns3/model/anthocnet-routing-protocol.h \

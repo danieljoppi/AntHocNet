@@ -3,13 +3,14 @@
 # Copyright (C) 2026 Daniel Henrique Joppi
 """Cross-tree Config default parity check (issue #258).
 
-The same protocol default lives in up to four places:
+The same protocol default lives in two places:
 
   core   core/include/anthocnet/core/config.h      (default member initializers)
-  ns2.h  ns2/src/ahn_router.h                      (AHN_* compile-time macros)
-  ns2.cc ns2/src/ahn_router.cc                     (tcl-bound constructor initializers)
-  ns2.tcl ns2/patch/fragments/ns-default.tcl.fragment (Agent/AntHocNet set ...)
   ns3    ns3/model/anthocnet-routing-protocol.cc   (constructor initializers)
+
+(Through v1.9.0 it also lived in three NS-2 files -- ahn_router.h macros,
+ahn_router.cc initializers and ns-default.tcl.fragment -- and this check
+compared all of them. The NS-2 adapter was removed in v2.0.0, #307.)
 
 PR #252 leaked proactiveInterval 10 -> 2 in one tree while claiming not to;
 tracing the resulting benchmark regression cost two days (#254). This script
@@ -32,60 +33,36 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 
 CONFIG_H = REPO / "core/include/anthocnet/core/config.h"
-NS2_H = REPO / "ns2/src/ahn_router.h"
-NS2_CC = REPO / "ns2/src/ahn_router.cc"
-NS2_TCL = REPO / "ns2/patch/fragments/ns-default.tcl.fragment"
 NS3_CC = REPO / "ns3/model/anthocnet-routing-protocol.cc"
 
-# core field -> identifier per tree. Omitted key = field absent from that tree.
-# ns2_var covers both the ahn_router.cc constructor initializer and (where
-# present) the ns-default.tcl.fragment line, which share the tcl variable name.
+# core field -> its ns-3 constructor initializer.
 FIELDS = {
     "alpha": {"ns3": "m_alpha"},
     "gamma": {"ns3": "m_gamma"},
-    # #185: ns-3 only — the NS-2 adapter is frozen and uses the core default.
     "hopCountAlpha": {"ns3": "m_hopCountAlpha"},
-    "betaAnts": {"ns2_var": "beta_ants_", "ns3": "m_betaAnts"},
-    "betaData": {"ns2_var": "beta_data_", "ns3": "m_betaData"},
+    "betaAnts": {"ns3": "m_betaAnts"},
+    "betaData": {"ns3": "m_betaData"},
     "hopTimeSec": {"ns3": "m_hopTime"},
-    "enableMacMetric": {"ns2_var": "enable_mac_metric_", "ns3": "m_enableMacMetric"},
-    "enableProactive": {"ns2_var": "enable_proactive_", "ns3": "m_enableProactive"},
-    "enableDiffusion": {"ns2_var": "enable_diffusion_", "ns3": "m_enableDiffusion"},
-    "enableReactive": {"ns2_var": "enable_reactive_", "ns3": "m_enableReactive"},
-    "enableRepair": {"ns2_var": "enable_repair_", "ns3": "m_enableRepair"},
-    "enableLinkFail": {"ns2_var": "enable_linkfail_", "ns3": "m_enableLinkFail"},
-    "enableDirectedReactive": {
-        "ns2_var": "enable_directed_reactive_",
-        "ns3": "m_enableDirectedReactive",
-    },
-    "proactiveBroadcastProb": {
-        "ns2_var": "proactive_bcast_prob_",
-        "ns3": "m_proactiveBroadcastProb",
-    },
-    "proactiveVirtualMargin": {
-        "ns2_var": "proactive_virtual_margin_",
-        "ns3": "m_proactiveVirtualMargin",
-    },
-    # #186: ns-3 only — the NS-2 adapter is frozen and uses the core default.
+    "enableMacMetric": {"ns3": "m_enableMacMetric"},
+    "enableProactive": {"ns3": "m_enableProactive"},
+    "enableDiffusion": {"ns3": "m_enableDiffusion"},
+    "enableReactive": {"ns3": "m_enableReactive"},
+    "enableRepair": {"ns3": "m_enableRepair"},
+    "enableLinkFail": {"ns3": "m_enableLinkFail"},
+    "enableDirectedReactive": {"ns3": "m_enableDirectedReactive"},
+    "proactiveBroadcastProb": {"ns3": "m_proactiveBroadcastProb"},
+    "proactiveVirtualMargin": {"ns3": "m_proactiveVirtualMargin"},
     "maxHelloAdverts": {"ns3": "m_maxHelloAdverts"},
-    "sessionTtl": {"ns2_var": "session_ttl_", "ns3": "m_sessionTtl"},
-    "helloInterval": {"ns2_macro": "AHN_HELLO_INTERVAL", "ns3": "m_helloInterval"},
-    "proactiveInterval": {
-        "ns2_macro": "AHN_PROACTIVE_INTERVAL",
-        "ns3": "m_proactiveInterval",
-    },
-    "lifeAnt": {"ns2_macro": "AHN_LIFE_ANT"},
-    "networkDiameter": {"ns2_macro": "AHN_NETWORK_DIAMETER"},
+    "sessionTtl": {"ns3": "m_sessionTtl"},
+    "helloInterval": {"ns3": "m_helloInterval"},
+    "proactiveInterval": {"ns3": "m_proactiveInterval"},
     "linkfailNotifyInterval": {"ns3": "m_linkfailNotifyInterval"},
-    "txFailureThreshold": {
-        "ns2_var": "tx_failure_threshold_",
-        "ns3": "m_txFailureThreshold",
-    },
+    "txFailureThreshold": {"ns3": "m_txFailureThreshold"},
     "enableMultipath": {"ns3": "m_enableMultipath"},
     "antAcceptanceFactor": {"ns3": "m_antAcceptanceFactor"},
     "antAcceptanceFactorNewHop": {"ns3": "m_antAcceptanceFactorNewHop"},
-    "repairWaitFactor": {"ns2_var": "repair_wait_factor_", "ns3": "m_repairWaitFactor"},
-    "repairTimeout": {"ns2_var": "repair_timeout_", "ns3": "m_repairTimeout"},
+    "repairWaitFactor": {"ns3": "m_repairWaitFactor"},
+    "repairTimeout": {"ns3": "m_repairTimeout"},
 }
 
 
@@ -107,32 +84,6 @@ def parse_config_h(text):
     return {name: norm(value) for name, value in pat.findall(text)}
 
 
-def parse_ns2_macros(text):
-    # e.g. "#define AHN_HELLO_INTERVAL      1.0"
-    pat = re.compile(r"^#define\s+(AHN_\w+)\s+([-\d.]+)", re.MULTILINE)
-    return {name: norm(value) for name, value in pat.findall(text)}
-
-
-def parse_ns2_ctor(text):
-    # Constructor initializers, e.g. "      beta_ants_(1.0)," — restricted to
-    # the identifiers named in FIELDS, so unrelated calls never match.
-    out = {}
-    for spec in FIELDS.values():
-        var = spec.get("ns2_var")
-        if var is None:
-            continue
-        m = re.search(rf"^\s*{re.escape(var)}\(([-\d.]+)\)", text, re.MULTILINE)
-        if m:
-            out[var] = norm(m.group(1))
-    return out
-
-
-def parse_ns2_tcl(text):
-    # e.g. "Agent/AntHocNet set beta_ants_ 1.0"
-    pat = re.compile(r"^Agent/AntHocNet\s+set\s+(\w+)\s+([-\d.]+)", re.MULTILINE)
-    return {name: norm(value) for name, value in pat.findall(text)}
-
-
 def parse_ns3_ctor(text):
     # e.g. "      m_helloInterval(Seconds(1.0))," / "m_alpha(0.7)," /
     #      "m_enableProactive(true),"
@@ -142,9 +93,6 @@ def parse_ns3_ctor(text):
 
 def main():
     core = parse_config_h(CONFIG_H.read_text())
-    ns2_macros = parse_ns2_macros(NS2_H.read_text())
-    ns2_ctor = parse_ns2_ctor(NS2_CC.read_text())
-    ns2_tcl = parse_ns2_tcl(NS2_TCL.read_text())
     ns3_ctor = parse_ns3_ctor(NS3_CC.read_text())
 
     errors = []
@@ -158,24 +106,6 @@ def main():
             )
             continue
         values = [("core", core[field])]
-
-        macro = spec.get("ns2_macro")
-        if macro is not None:
-            if macro in ns2_macros:
-                values.append((f"ns2.h {macro}", ns2_macros[macro]))
-            else:
-                errors.append(f"{field}: macro {macro} not found in ns2/src/ahn_router.h")
-
-        var = spec.get("ns2_var")
-        if var is not None:
-            if var in ns2_ctor:
-                values.append((f"ns2.cc {var}", ns2_ctor[var]))
-            else:
-                errors.append(f"{field}: initializer {var} not found in ns2/src/ahn_router.cc")
-            # Not every bound variable has an ns-default.tcl.fragment line;
-            # compare only when present.
-            if var in ns2_tcl:
-                values.append((f"ns2.tcl {var}", ns2_tcl[var]))
 
         ns3 = spec.get("ns3")
         if ns3 is not None:

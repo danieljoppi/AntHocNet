@@ -442,8 +442,9 @@ The whole conceptual model above lives, simulator-independent, in
 | Regular vs **virtual** pheromone (diffusion) | two maps in `PheromoneTable`; gated by `enableDiffusion` |
 
 The pure core returns **`RouteDecision`s** (`Unicast` / `Broadcast` / `Queue` /
-`Deliver` / `Drop` / `None`); the thin **NS-2** and **NS-3** adapters translate
-real packets into `AntMessage`s and carry those decisions out. See
+`Deliver` / `Drop` / `None`); the thin **NS-3** adapter (and, on the learn
+site, the browser adapter) translates real packets into `AntMessage`s and
+carries those decisions out. See
 [`architecture.md`](architecture.md) for the full decision flow.
 
 > **A note on fidelity.** This repository follows the canonical AntHocNet

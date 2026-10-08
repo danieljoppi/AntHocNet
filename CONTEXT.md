@@ -11,11 +11,13 @@
 
 AntHocNet is an **Ant Colony Optimization (ACO)** routing protocol for mobile
 ad-hoc networks. This repository implements it **once**, as a
-**simulator-agnostic algorithm core** (`core/`), and ships **thin adapters**
-that install the protocol onto an existing **NS-2** (source patch) or **NS-3**
-(additive contrib module) tree. The core has no simulator dependency and is
-covered by unit tests; the adapters translate packets and execute the
-decisions the core returns.
+**simulator-agnostic algorithm core** (`core/`), and ships a **thin adapter**
+that installs the protocol onto an existing **NS-3** tree (additive contrib
+module), plus a browser adapter that runs the same core as WebAssembly on the
+learn site. The core has no simulator dependency and is covered by unit tests;
+the adapters translate packets and execute the decisions the core returns. An
+NS-2 adapter (source patch) shipped through v1.9.0 and was removed
+in v2.0.0 (#307, ADR-0023).
 
 ## 2. Why this project exists / history
 
@@ -27,7 +29,9 @@ decisions the core returns.
   vendored simulator tree was removed, and NS-2/NS-3 adapters were added. The
   refactor also fixed several latent bugs (see §6).
 - The motivation: one maintained algorithm, runnable on two simulators, with no
-  forked simulator tree to carry.
+  forked simulator tree to carry. v2.0.0 dropped NS-2 (#307) and kept the
+  core/adapter split — the browser adapter is the core's second consumer
+  (ADR-0021, ADR-0023).
 
 ## 3. Domain background (enough to follow the code)
 
@@ -66,9 +70,9 @@ A ports-and-adapters (hexagonal) design — full diagram in
                          ▲                      ▲
         implements ports │  returns decisions   │
               ┌──────────┴──────────┐ ┌─────────┴───────────┐
-              │        ns2/         │ │        ns3/          │
-              │ Agent adapter +     │ │ Ipv4RoutingProtocol  │
-              │ source patch        │ │ contrib module       │
+              │        ns3/         │ │        web/          │
+              │ Ipv4RoutingProtocol │ │ browser adapter      │
+              │ contrib module      │ │ (WebAssembly)        │
               └─────────────────────┘ └──────────────────────┘
 ```
 
@@ -77,7 +81,7 @@ A ports-and-adapters (hexagonal) design — full diagram in
   each `RouteDecision { action ∈ {Unicast,Broadcast,Queue,Deliver,Drop,None},
   nextHop, message }`.
 - **Adapters** convert headers ⇄ `AntMessage`, carry out decisions, own the
-  timers and pending-packet queue (and the NS-2 link-failure callback).
+  timers and pending-packet queue.
 
 ## 5. Repository map
 
@@ -85,12 +89,12 @@ A ports-and-adapters (hexagonal) design — full diagram in
 README.md                 ← start here: what/why, quick start, what changed
 CONTEXT.md                ← this file
 AGENTS.md                 ← build/verify/conventions for AI agents
-Makefile                  ← make test | install-ns2 | install-ns3 | clean
+Makefile                  ← make test | install-ns3 | clean
 docs/
   README.md               ← docs map (every page, grouped by task)
   architecture.md         ← design + decision flow
   configuration.md        ← every tunable, its default's provenance, how to calibrate
-  porting-notes.md        ← bugs fixed, NS-2 patch anchors, wire format, caveats
+  porting-notes.md        ← bugs fixed, wire format, caveats
   wire-format.md          ← canonical ant byte layout, version byte, diffs vs original/spec
   adr/*.md                ← architecture decision records
 core/
@@ -98,13 +102,10 @@ core/
   src/                    ← implementation (.cpp)
   tests/                  ← ctest unit tests (codec, pheromone, history, logic)
   CMakeLists.txt
-ns2/
-  src/                    ← Agent adapter (ahn_router, ant_packet_ns2, ahn_adapters)
-  patch/                  ← idempotent anchor-based installer + fragments + selftest
-  tcl/                    ← example scenarios
 ns3/
   model/ helper/ examples/ test/   ← native NS-3 module
-.github/workflows/ci.yml  ← core tests + NS-2 patch round-trip (+ optional NS-3 build)
+web/                      ← browser adapter (core/ as WebAssembly) + learn site
+.github/workflows/ci.yml  ← core tests + NS-3 matrix + WASM parity
 ```
 
 ## 6. Bugs fixed during the extraction (see `docs/porting-notes.md`)
@@ -124,12 +125,6 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 
 - **`core/` builds and all unit tests pass** (`make test`), including
   randomized property/invariant tests (`test_properties`).
-- **NS-2 patch apply/revert round-trips** on a synthetic tree
-  (`bash ns2/patch/selftest.sh`, in CI), and the **NS-2 adapter is compiled
-  against real ns-2.34 / ns-2.35 trees in CI** (the `ns2-compile` job, run
-  inside the published plain ns-2 image), which then **runs a small static
-  AntHocNet simulation and asserts non-zero CBR delivery** over a forced 2-hop
-  route (`ns2/tcl/ci-smoke.tcl`).
 - **NS-3 module** builds and tests across **ns-3.36 / 3.41 / 3.42 / 3.47 / 3.48**
   on every push/PR (the `ns3-build` matrix runs inside the prebuilt plain ns-3
   images), running the module test suite and an **asserted end-to-end delivery
@@ -175,16 +170,10 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 
 ## 8. What is missing / caveats
 
-- **Cross-simulator metric parity is not guaranteed.** NS-2 and NS-3 have
-  different MAC/PHY models; treat a cross-sim comparison as behaviour
-  re-validation, not a bit-for-bit port.
 - **The e2e smokes are loose "delivers something" gates**, not performance
-  gates — both the NS-2 and NS-3 smoke just assert non-zero delivery in a small
-  connected scenario. Performance comparison (multi-seed PDR/delay/overhead) is
-  manual, in items 07/08.
-- The NS-2 patch depends on **stable text anchors** in upstream files; a future
-  NS-2 release that moves an anchor makes the installer fail loudly (by design)
-  and the fragment must be updated.
+  gates — the NS-3 smoke just asserts non-zero delivery in a small connected
+  scenario. Performance comparison (multi-seed PDR/delay/overhead) is manual,
+  in items 07/08.
 - **The delay tail (#21, closed) is a priced trade, not a defect.** The #308
   hold-cap ablation showed the tail and the delivery advantage are one
   mechanism: reconvergence holds turn would-be drops into late deliveries, so
@@ -194,15 +183,14 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   documented in `docs/configuration.md`. Any tail claim must name the channel
   (the ranking inverts under fading — `docs/benchmarks/grid.md`) and the
   transport (`docs/benchmarks/tcp.md`). The `RepairHoldCap` half of the
-  frontier is still unmeasured (#433). NS-3 only; the NS-2 adapter has no
-  equivalent cap yet.
+  frontier is still unmeasured (#433).
 
 ## 9. Glossary
 
 | Term | Meaning |
 |------|---------|
 | Core | the simulator-agnostic algorithm library in `core/`. |
-| Adapter | the thin NS-2 or NS-3 layer that wires the core to a simulator. |
+| Adapter | the thin layer that wires the core to a simulator (ns-3) or to the browser (`web/`). |
 | Port | an interface the core depends on, implemented by adapters (`IClock`, `IRng`, `INeighborProvider`, `ITimerScheduler`). |
 | `AntMessage` | the POD value type describing an ant (replaces header-resident pointers). |
 | `RouteDecision` | the verb the core returns for the adapter to execute. |

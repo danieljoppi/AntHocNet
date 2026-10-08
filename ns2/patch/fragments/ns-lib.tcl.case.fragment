@@ -1,3 +1,0 @@
-	AntHocNet {
-	    set ragent [$self create-ahn-agent $node]
-	}

@@ -114,8 +114,8 @@ jitter, so all 50 nodes beaconed at exactly t = 1, 2, 3 … s. Hidden terminals
 collided on the same broadcasts every second. Two lost hellos in a row evict a
 live neighbour, so the field tore down every link about every 15 s while no
 node moved: about 93k spurious evictions per run. Each eviction pruned routes,
-flooded LinkFail notes, and held data as `HOLD_RECONV`. The NS-2 adapter has
-always jittered this timer; the ns-3 port lost it.
+flooded LinkFail notes, and held data as `HOLD_RECONV`. The NS-2 adapter
+(removed in v2.0.0) always jittered this timer; the ns-3 port lost it.
 
 Paired AntHocNet, fixed timer vs the old one, same seeds and same 200 ms cap
 (`bench_parse --ab`, n = 20):

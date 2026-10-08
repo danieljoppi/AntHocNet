@@ -1,7 +1,7 @@
 <!--
 Title: conventional-commit style, lowercase subject — `feat(core): add the …`,
 not `feat(core): Add the …` (lint-title enforces this).
-Scopes in use: core, ns2, ns3, bench, ci, docs.
+Scopes in use: core, ns3, bench, ci, docs.
 -->
 
 ## What & why

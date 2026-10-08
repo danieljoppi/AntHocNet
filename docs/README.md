@@ -25,11 +25,11 @@ WebAssembly, with missions for every mechanism and a world per network family
 
 | Page | What it is |
 |---|---|
-| [porting-notes.md](porting-notes.md) | Bugs fixed in extraction, NS-2 patch anchors, version caveats. |
-| [ns2-support.md](ns2-support.md) | **The deprecated NS-2 target in one place** — frozen at v1.2.0, still ships through `v1.x`, removed at v2.0.0 ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)); install, images, rationale. |
+| [porting-notes.md](porting-notes.md) | Bugs fixed in extraction, what an adapter does, wire-format and version caveats. |
+| [ns2-support.md](ns2-support.md) | **The removed NS-2 target in one place** — frozen at v1.2.0, shipped through v1.9.0, removed at v2.0.0 ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)): which tags and images still carry it, and why it was retired. |
 | [wire-format.md](wire-format.md) | Canonical on-wire ant layout and the `kWireVersion` rules (golden rule 4). |
-| [configuration.md](configuration.md) | Every tunable, its default's **provenance**, the ns-3/NS-2 surface for it, and the calibration loop. |
-| [cross-validation.md](cross-validation.md) | NS-2 vs NS-3 behaviour re-validation (not bit-for-bit parity). |
+| [configuration.md](configuration.md) | Every tunable, its default's **provenance**, the ns-3 attribute for it, and the calibration loop. |
+| [cross-validation.md](cross-validation.md) | *Retired:* the NS-2 vs NS-3 behaviour re-validation, kept as a historical note. |
 
 ## Measure & reproduce
 

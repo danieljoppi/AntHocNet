@@ -34,29 +34,25 @@ bars: 95% CI) — current numbers and per-scenario pages in
 [docs/benchmarks.md](docs/benchmarks.md).*
 
 An ant-colony-optimization routing protocol for mobile ad-hoc networks,
-implemented once as a **simulator-agnostic algorithm core** with thin adapters
-for **NS-2** and **NS-3**.
+implemented once as a **simulator-agnostic algorithm core** with a thin
+**NS-3** adapter (and a browser adapter that runs the same core as WebAssembly
+on the [learn site](https://danieljoppi.github.io/AntHocNet/learn/)).
 
-The repository no longer bundles a copy of any simulator. You install AntHocNet
-onto *your own* NS-2 or NS-3 tree:
-
-- **NS-3** — installed as an additive `contrib/` module (ns-3.36+, with a
-  `wscript` for older waf builds).
-- **NS-2** — installed as an idempotent source patch (`ns-2.34` / `ns-2.35`).
+The repository does not bundle a copy of any simulator. You install AntHocNet
+onto *your own* NS-3 tree as an additive `contrib/` module (ns-3.36+, with a
+`wscript` for older waf builds).
 
 > [!NOTE]
-> **NS-2 is deprecated and frozen at
-> [v1.2.0](https://github.com/danieljoppi/AntHocNet/releases/tag/v1.2.0)** — it
-> still ships through the rest of `v1.x` and is removed at v2.0.0
-> ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)). Everything
-> NS-2 — status, install, images, rationale — lives in
-> **[docs/ns2-support.md](docs/ns2-support.md)**. ns-3 is the supported target
-> and is what the rest of this README describes.
+> **NS-2 support was removed in v2.0.0**
+> ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)). It was frozen at
+> [v1.2.0](https://github.com/danieljoppi/AntHocNet/releases/tag/v1.2.0) and
+> shipped through v1.9.0; where to get it, the images and the rationale are in
+> **[docs/ns2-support.md](docs/ns2-support.md)**.
 
 ```
-core/   simulator-agnostic C++ (no NS-2/NS-3 dependency) + unit tests
-ns2/    thin Agent adapter + anchor-based source patch installer
+core/   simulator-agnostic C++ (no simulator dependency) + unit tests
 ns3/    native Ipv4RoutingProtocol module
+web/    browser adapter: core/ compiled to WebAssembly + the learn site
 docs/   architecture, configuration, benchmarks, fidelity, ADRs — map in docs/README.md
 ```
 
@@ -67,8 +63,8 @@ algorithm (pheromone table, evaporation/reinforcement, ant construction,
 routing decisions) lives in [`core/`](core) and is shared verbatim; each
 simulator gets only a thin adapter that converts packets and executes the
 decisions the core returns. See [docs/architecture.md](docs/architecture.md)
-(and [docs/ns2-support.md](docs/ns2-support.md) for how the NS-2 adapter
-differs).
+and [ADR-0023](docs/adr/0023-one-core-one-simulator-adapter.md) for why the
+split stays with one simulator adapter.
 
 ```mermaid
 flowchart TB
@@ -77,8 +73,8 @@ flowchart TB
     subgraph NS3["ns3/ — contrib module (supported)"]
         A3["RoutingProtocol : Ipv4RoutingProtocol<br/>~30 attributes = the config surface"]
     end
-    subgraph NS2["ns2/ — source patch (frozen at v1.2.0)"]
-        A2["AntHocNetAgent : Agent"]
+    subgraph WEB["web/ — browser adapter (WebAssembly)"]
+        AW["ahn_web::World<br/>held to native by a trace parity gate"]
     end
 
     P["Ports: IClock · IRng · INeighborProvider · ITimerScheduler"]
@@ -91,7 +87,7 @@ flowchart TB
 
     H --> A3
     A3 --> P
-    A2 --> P
+    AW --> P
     P --> C1
     C1 --- C2 --- C3
 
@@ -184,9 +180,9 @@ track the default branch; the `-<release>` tier is fixed to a release.
 |-------|----------|----------|
 | `ghcr.io/danieljoppi/ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | plain ns-3 with the comparison protocols (AODV/OLSR/DSDV/…) |
 
-NS-2 images (`anthocnet-ns2`, `ns2`) are listed in
-[docs/ns2-support.md](docs/ns2-support.md). Build them yourself or see the full
-matrix in [docker/README.md](docker/README.md).
+Build them yourself or see the full matrix in [docker/README.md](docker/README.md).
+The NS-2 images built through v1.9.0 stay pullable; see
+[docs/ns2-support.md](docs/ns2-support.md).
 
 ## Supported network regimes
 
@@ -216,18 +212,18 @@ protocol buried inside it. This refactor:
   incorrect serialized packet size;
 - fixes the pheromone-evaporation bug (competing links were never aged),
   widens the ant sequence number past 8 bits, and bounds the dedup history;
-- ships the NS-2 integration as an idempotent, anchor-based patch instead of a
-  forked simulator tree;
+- shipped the NS-2 integration as an idempotent, anchor-based patch instead of a
+  forked simulator tree (through v1.9.0; removed in v2.0.0);
 - adds a native NS-3 module.
 
 History of the work is in the per-phase commits; design rationale is in
 [docs/](docs):
 
 - [architecture.md](docs/architecture.md) — core/ports design and decision flow
-- [porting-notes.md](docs/porting-notes.md) — bug fixes, NS-2 anchors, caveats
+- [porting-notes.md](docs/porting-notes.md) — bug fixes, wire-format and version caveats
 - [configuration.md](docs/configuration.md) — every parameter, its provenance, how to calibrate
 - [benchmarks.md](docs/benchmarks.md) — AntHocNet vs AODV/OLSR/DSDV (auto-updated)
-- [ns2-support.md](docs/ns2-support.md) — the deprecated NS-2 target: status, install, images, rationale
+- [ns2-support.md](docs/ns2-support.md) — the removed NS-2 target: where to get it, images, rationale
 
 ## Documentation
 
@@ -239,19 +235,19 @@ History of the work is in the per-phase commits; design rationale is in
 | [docs/architecture.md](docs/architecture.md) | Design, the core/adapter split, and the decision flow. |
 | [docs/roadmap.md](docs/roadmap.md) | Where the project is going: release ladder, epic dependency graph, exit criteria per release, and what is deliberately not planned. |
 | [docs/software-layers.md](docs/software-layers.md) | Diagrams: the software stack, ant mechanisms + their config switches, and what runs (live/inert/planned) in each network regime. |
-| [docs/porting-notes.md](docs/porting-notes.md) | Bugs fixed in extraction, NS-2 patch anchors, wire format, version caveats. |
-| [docs/configuration.md](docs/configuration.md) | **Every tunable parameter, its default and where that default came from**, the ns-3 attribute / NS-2 bind for it, and the calibration loop. Read before changing a knob or trusting one. |
+| [docs/porting-notes.md](docs/porting-notes.md) | Bugs fixed in extraction, wire format, version caveats. |
+| [docs/configuration.md](docs/configuration.md) | **Every tunable parameter, its default and where that default came from**, the ns-3 attribute for it, and the calibration loop. Read before changing a knob or trusting one. |
 | [docs/benchmarks.md](docs/benchmarks.md) | Results index → [metrics](docs/benchmarks/metrics.md), [methodology](docs/benchmarks/methodology.md), per-scenario and per-sweep pages. |
 | [docs/fidelity.md](docs/fidelity.md) | What v1.0 reproduces from the 2004 paper and where it deliberately deviates. |
 | [docs/wire-format.md](docs/wire-format.md) | Canonical on-wire ant layout, version byte, and diff vs. the original and the papers. |
 | [docs/publications/](docs/publications/README.md) | Source-of-truth digests of the 2004 paper and 2007 thesis — what every fidelity claim is checked against. |
 | [docs/network-regimes.md](docs/network-regimes.md) | Why MANET and satellite/ISL routing are different problems (the satellite research track's ground rules), and which AntHocNet mechanism is live/inert in each regime (§6). |
-| [docs/adr/](docs/adr/README.md) | Architecture Decision Records 0001–0020, indexed — the "why" behind the structure. |
+| [docs/adr/](docs/adr/README.md) | Architecture Decision Records 0001–0023, indexed — the "why" behind the structure. |
 | [paper/](paper/) | JOSS software-paper draft (`paper.md`/`paper.bib`), for submission against this repo. |
 | [CONTEXT.md](CONTEXT.md) | Project orientation: domain background, repo map, current state, glossary, open questions. |
 | [AGENTS.md](AGENTS.md) | Build/verify/conventions and invariants for contributors and AI agents. |
-| [docs/ns2-support.md](docs/ns2-support.md) | **The deprecated NS-2 target, end to end** — status and what "frozen" means, install, images, why it is retired. |
-| [ns2/README.md](ns2/README.md) · [ns3/README.md](ns3/README.md) | Per-adapter install/run details. |
+| [docs/ns2-support.md](docs/ns2-support.md) | **The removed NS-2 target** — which tags and images still carry it, and why it was retired. |
+| [ns3/README.md](ns3/README.md) · [web/README.md](web/README.md) | Per-adapter install/run details. |
 | [docker/README.md](docker/README.md) | Pre-built container images (plain vs. AntHocNet, per simulator version). |
 
 ## Releases & citing
@@ -260,8 +256,8 @@ Versioning follows [SemVer](https://semver.org); see [CHANGELOG.md](CHANGELOG.md
 Tagging `vX.Y.Z` builds a lean **install bundle** zip and publishes a GitHub
 [Release](https://github.com/danieljoppi/AntHocNet/releases) (via
 `.github/workflows/release.yml`). There is no prebuilt simulator `.so`/installer
-by design — an ns-2/ns-3 module is ABI/version-locked to the user's tree, so it
-is distributed as **source** (`make install-ns3` / `make install-ns2`) plus the
+by design — an ns-3 module is ABI/version-locked to the user's tree, so it
+is distributed as **source** (`make install-ns3`) plus the
 pre-built **Docker images** on GHCR (see [docker/README.md](docker/README.md)).
 
 To cite this implementation, use the “Cite this repository” button (from

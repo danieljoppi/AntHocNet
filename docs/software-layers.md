@@ -32,8 +32,8 @@ flowchart TB
         subgraph NS3["ns3/ contrib module"]
             A3["RoutingProtocol : Ipv4RoutingProtocol<br/>AntHeader : ns3::Header<br/>Ns3Clock / Ns3Rng<br/><b>~30 attributes</b> (the config surface)"]
         end
-        subgraph NS2["ns2/ source patch"]
-            A2["AntHocNetAgent : Agent<br/>AntPacketHeader (POD)<br/>Ns2Clock / Ns2Rng<br/>TCL binds"]
+        subgraph WEB["web/ browser adapter"]
+            AW["ahn_web::Node (IClock, IRng)<br/>event-queue World<br/>core/ as WebAssembly<br/>learn site"]
         end
     end
 
