@@ -8,6 +8,20 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v2.0.0 (2026-10-08)
+
+### BREAKING CHANGE
+
+- the NS-2 adapter is no longer shipped; ns-3 is the only simulator target. Use v1.9.0 or earlier for NS-2.
+
+### Feat
+
+- remove the NS-2 adapter — ns-3 is the one simulator target from v2.0.0 (#554)
+- **ns3**: moving-constellation results — geographic comparator, outage books, and the #297 campaign (#553)
+- **ns3**: a moving LEO constellation on stock ns-3.48, with a delay-metric oracle bound (#552)
+- **learn**: a city-builder for networks and ants on GitHub Pages, plus the API reference (#551)
+- **web**: the browser is an adapter — core/ compiled to WebAssembly, held to native by a decision-trace parity gate (#550)
+
 ## v1.9.0 (2026-10-07)
 
 ### Feat
