@@ -65,7 +65,7 @@ The two supported regimes in detail:
 | Loss | collisions, retry exhaustion, mobility | same | none on the link; any loss indicts the stack |
 | Traffic | 20 CBR flows × 512 bps | 20 CBR flows × 2048 bps | 4 CBR flows × 4096 bps + adversarial cells (scripted link cut, corridor congestion) |
 | Baselines | AODV / OLSR / DSDV on identical seeds | same | same, plus (planned) precomputed shortest-path control ([#216](https://github.com/danieljoppi/AntHocNet/issues/216)) |
-| Results | [benchmarks.md](benchmarks.md) | [benchmarks.md](benchmarks.md) | [benchmarks/satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) |
+| Results | [benchmarks.md](benchmarks.md) | [benchmarks.md](benchmarks.md) | [benchmarks/satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) (static torus), [benchmarks/satellite/leo-walker.md](benchmarks/satellite/leo-walker.md) (moving Walker shell) |
 
 ## 2. The two topologies
 

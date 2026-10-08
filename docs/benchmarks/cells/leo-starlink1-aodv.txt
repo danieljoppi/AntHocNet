@@ -1,0 +1,308 @@
+# leo-walker starlink1 cell (Starlink S1 72x22 @550 km, 53 deg, phasing 39, minElev 25, ISL overlay 1 %, oracle re-solve 1 s, 300 s), aodv, 20 seed(s) @0b5a65ad run 37827430778
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=20 firstRun=1 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=-1 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=aodv
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork=30 London=38 SaoPaulo=19 Johannesburg=20 Tokyo=25 Sydney=23
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover aodv seed=1 scheduled=30 forced=0 islFailures=4776 ticks=20
+# account aodv seed=1 flow=0 offered=1183 refused=0 delivered=601 received=601 dup=0 outageLost=573 scatteredLost=9
+# account aodv seed=1 flow=1 offered=1181 refused=0 delivered=718 received=718 dup=0 outageLost=454 scatteredLost=9
+# account aodv seed=1 flow=2 offered=1190 refused=0 delivered=636 received=636 dup=0 outageLost=551 scatteredLost=3
+# account aodv seed=1 flow=3 offered=1192 refused=0 delivered=721 received=721 dup=0 outageLost=463 scatteredLost=8
+# outage aodv seed=1 class=startup n=1 lost=84 p50=21.000 p90=21.000 max=21.000
+# outage aodv seed=1 class=scheduled n=23 lost=900 p50=4.000 p90=32.000 max=42.750
+# outage aodv seed=1 class=unplanned n=45 lost=559 p50=2.000 p90=5.000 max=30.750
+# outage aodv seed=1 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=1 class=other n=16 lost=498 p50=1.500 p90=30.500 max=36.250
+# churn aodv seed=1 flow=0 NewYork-London hopChangesPerMin=2.728 meanHops=14.884 delivered=601
+# churn aodv seed=1 flow=1 London-Tokyo hopChangesPerMin=4.271 meanHops=33.450 delivered=718
+# churn aodv seed=1 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.596 meanHops=24.137 delivered=636
+# churn aodv seed=1 flow=3 Tokyo-Sydney hopChangesPerMin=0.406 meanHops=13.454 delivered=721
+##RUN## 1 aodv 56.38 112.41 1679.00 6.57 807.36 425.88 15.83
+# handover aodv seed=2 scheduled=30 forced=0 islFailures=4760 ticks=20
+# account aodv seed=2 flow=0 offered=1179 refused=0 delivered=473 received=473 dup=0 outageLost=700 scatteredLost=6
+# account aodv seed=2 flow=1 offered=1187 refused=0 delivered=469 received=469 dup=0 outageLost=706 scatteredLost=12
+# account aodv seed=2 flow=2 offered=1184 refused=0 delivered=499 received=499 dup=0 outageLost=680 scatteredLost=5
+# account aodv seed=2 flow=3 offered=1181 refused=0 delivered=740 received=740 dup=0 outageLost=436 scatteredLost=5
+# outage aodv seed=2 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=2 class=scheduled n=17 lost=1066 p50=9.500 p90=33.250 max=84.500
+# outage aodv seed=2 class=unplanned n=47 lost=946 p50=2.250 p90=13.750 max=32.750
+# outage aodv seed=2 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=2 class=other n=15 lost=510 p50=3.750 p90=18.000 max=48.000
+# churn aodv seed=2 flow=0 NewYork-London hopChangesPerMin=2.241 meanHops=12.195 delivered=473
+# churn aodv seed=2 flow=1 London-Tokyo hopChangesPerMin=2.868 meanHops=31.836 delivered=469
+# churn aodv seed=2 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.918 meanHops=22.635 delivered=499
+# churn aodv seed=2 flow=3 Tokyo-Sydney hopChangesPerMin=0.614 meanHops=14.526 delivered=740
+##RUN## 2 aodv 46.10 118.96 1894.00 5.35 1029.86 543.80 21.65
+# handover aodv seed=3 scheduled=30 forced=0 islFailures=4712 ticks=20
+# account aodv seed=3 flow=0 offered=1191 refused=0 delivered=596 received=596 dup=0 outageLost=589 scatteredLost=6
+# account aodv seed=3 flow=1 offered=1177 refused=0 delivered=642 received=642 dup=0 outageLost=517 scatteredLost=18
+# account aodv seed=3 flow=2 offered=1182 refused=0 delivered=499 received=499 dup=0 outageLost=679 scatteredLost=4
+# account aodv seed=3 flow=3 offered=1182 refused=0 delivered=720 received=720 dup=0 outageLost=458 scatteredLost=4
+# outage aodv seed=3 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=3 class=scheduled n=21 lost=1297 p50=5.000 p90=41.750 max=77.000
+# outage aodv seed=3 class=unplanned n=45 lost=662 p50=1.750 p90=7.750 max=25.500
+# outage aodv seed=3 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=3 class=other n=14 lost=284 p50=3.250 p90=16.000 max=17.250
+# churn aodv seed=3 flow=0 NewYork-London hopChangesPerMin=2.302 meanHops=16.770 delivered=596
+# churn aodv seed=3 flow=1 London-Tokyo hopChangesPerMin=2.459 meanHops=31.022 delivered=642
+# churn aodv seed=3 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.919 meanHops=22.563 delivered=499
+# churn aodv seed=3 flow=3 Tokyo-Sydney hopChangesPerMin=0.614 meanHops=13.689 delivered=720
+##RUN## 3 aodv 51.92 116.51 1747.00 6.03 894.08 471.88 19.47
+# handover aodv seed=4 scheduled=30 forced=0 islFailures=4692 ticks=20
+# account aodv seed=4 flow=0 offered=1186 refused=0 delivered=547 received=547 dup=0 outageLost=630 scatteredLost=9
+# account aodv seed=4 flow=1 offered=1192 refused=0 delivered=418 received=418 dup=0 outageLost=766 scatteredLost=8
+# account aodv seed=4 flow=2 offered=1180 refused=0 delivered=527 received=527 dup=0 outageLost=652 scatteredLost=1
+# account aodv seed=4 flow=3 offered=1188 refused=0 delivered=697 received=697 dup=0 outageLost=487 scatteredLost=4
+# outage aodv seed=4 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=4 class=scheduled n=18 lost=1201 p50=14.250 p90=32.750 max=47.750
+# outage aodv seed=4 class=unplanned n=45 lost=917 p50=4.000 p90=9.250 max=30.250
+# outage aodv seed=4 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=4 class=other n=15 lost=417 p50=3.750 p90=20.250 max=36.250
+# churn aodv seed=4 flow=0 NewYork-London hopChangesPerMin=3.703 meanHops=15.157 delivered=547
+# churn aodv seed=4 flow=1 London-Tokyo hopChangesPerMin=2.246 meanHops=29.672 delivered=418
+# churn aodv seed=4 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.613 meanHops=23.896 delivered=527
+# churn aodv seed=4 flow=3 Tokyo-Sydney hopChangesPerMin=0.814 meanHops=13.420 delivered=697
+##RUN## 4 aodv 46.12 95.50 1327.00 5.37 1034.50 546.82 17.82
+# handover aodv seed=5 scheduled=30 forced=0 islFailures=4724 ticks=20
+# account aodv seed=5 flow=0 offered=1191 refused=0 delivered=591 received=591 dup=0 outageLost=592 scatteredLost=8
+# account aodv seed=5 flow=1 offered=1186 refused=0 delivered=566 received=566 dup=0 outageLost=614 scatteredLost=6
+# account aodv seed=5 flow=2 offered=1186 refused=0 delivered=479 received=479 dup=0 outageLost=703 scatteredLost=4
+# account aodv seed=5 flow=3 offered=1184 refused=0 delivered=763 received=763 dup=0 outageLost=420 scatteredLost=1
+# outage aodv seed=5 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=5 class=scheduled n=24 lost=1500 p50=9.000 p90=47.000 max=75.000
+# outage aodv seed=5 class=unplanned n=31 lost=653 p50=2.250 p90=13.250 max=30.500
+# outage aodv seed=5 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=5 class=other n=8 lost=176 p50=3.500 p90=14.000 max=14.000
+# churn aodv seed=5 flow=0 NewYork-London hopChangesPerMin=1.512 meanHops=14.205 delivered=591
+# churn aodv seed=5 flow=1 London-Tokyo hopChangesPerMin=3.060 meanHops=32.599 delivered=566
+# churn aodv seed=5 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.449 meanHops=22.459 delivered=479
+# churn aodv seed=5 flow=3 Tokyo-Sydney hopChangesPerMin=1.226 meanHops=14.512 delivered=763
+##RUN## 5 aodv 50.54 100.43 1665.00 5.89 889.72 469.38 16.81
+# handover aodv seed=6 scheduled=30 forced=0 islFailures=4834 ticks=20
+# account aodv seed=6 flow=0 offered=1188 refused=0 delivered=558 received=558 dup=0 outageLost=619 scatteredLost=11
+# account aodv seed=6 flow=1 offered=1189 refused=0 delivered=574 received=574 dup=0 outageLost=605 scatteredLost=10
+# account aodv seed=6 flow=2 offered=1183 refused=0 delivered=628 received=628 dup=0 outageLost=548 scatteredLost=7
+# account aodv seed=6 flow=3 offered=1189 refused=0 delivered=824 received=824 dup=0 outageLost=360 scatteredLost=5
+# outage aodv seed=6 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=6 class=scheduled n=22 lost=938 p50=4.500 p90=32.000 max=33.250
+# outage aodv seed=6 class=unplanned n=37 lost=788 p50=2.000 p90=14.500 max=32.250
+# outage aodv seed=6 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=6 class=other n=13 lost=406 p50=3.500 p90=18.750 max=34.250
+# churn aodv seed=6 flow=0 NewYork-London hopChangesPerMin=2.162 meanHops=14.099 delivered=558
+# churn aodv seed=6 flow=1 London-Tokyo hopChangesPerMin=2.645 meanHops=28.976 delivered=574
+# churn aodv seed=6 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.837 meanHops=23.002 delivered=628
+# churn aodv seed=6 flow=3 Tokyo-Sydney hopChangesPerMin=1.017 meanHops=14.405 delivered=824
+##RUN## 6 aodv 54.41 112.72 1862.00 6.34 855.81 451.60 18.88
+# handover aodv seed=7 scheduled=30 forced=0 islFailures=4720 ticks=20
+# account aodv seed=7 flow=0 offered=1177 refused=0 delivered=453 received=453 dup=0 outageLost=715 scatteredLost=9
+# account aodv seed=7 flow=1 offered=1179 refused=0 delivered=516 received=516 dup=0 outageLost=650 scatteredLost=13
+# account aodv seed=7 flow=2 offered=1191 refused=0 delivered=760 received=760 dup=0 outageLost=423 scatteredLost=8
+# account aodv seed=7 flow=3 offered=1177 refused=0 delivered=760 received=760 dup=0 outageLost=414 scatteredLost=3
+# outage aodv seed=7 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=7 class=scheduled n=18 lost=809 p50=11.250 p90=22.500 max=34.250
+# outage aodv seed=7 class=unplanned n=35 lost=869 p50=3.000 p90=20.250 max=34.750
+# outage aodv seed=7 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=7 class=other n=14 lost=524 p50=1.500 p90=38.750 max=40.250
+# churn aodv seed=7 flow=0 NewYork-London hopChangesPerMin=2.222 meanHops=15.514 delivered=453
+# churn aodv seed=7 flow=1 London-Tokyo hopChangesPerMin=3.488 meanHops=32.824 delivered=516
+# churn aodv seed=7 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.628 meanHops=23.770 delivered=760
+# churn aodv seed=7 flow=3 Tokyo-Sydney hopChangesPerMin=0.822 meanHops=14.680 delivered=760
+##RUN## 7 aodv 52.69 104.35 1614.00 6.11 901.71 476.10 18.01
+# handover aodv seed=8 scheduled=30 forced=0 islFailures=4734 ticks=20
+# account aodv seed=8 flow=0 offered=1181 refused=0 delivered=586 received=586 dup=0 outageLost=585 scatteredLost=10
+# account aodv seed=8 flow=1 offered=1183 refused=0 delivered=551 received=551 dup=0 outageLost=627 scatteredLost=5
+# account aodv seed=8 flow=2 offered=1190 refused=0 delivered=622 received=622 dup=0 outageLost=565 scatteredLost=3
+# account aodv seed=8 flow=3 offered=1190 refused=0 delivered=768 received=768 dup=0 outageLost=415 scatteredLost=7
+# outage aodv seed=8 class=startup n=1 lost=168 p50=42.000 p90=42.000 max=42.000
+# outage aodv seed=8 class=scheduled n=16 lost=1038 p50=8.000 p90=34.250 max=70.000
+# outage aodv seed=8 class=unplanned n=50 lost=724 p50=1.750 p90=11.000 max=20.000
+# outage aodv seed=8 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=8 class=other n=14 lost=262 p50=1.500 p90=11.250 max=15.750
+# churn aodv seed=8 flow=0 NewYork-London hopChangesPerMin=2.273 meanHops=12.637 delivered=586
+# churn aodv seed=8 flow=1 London-Tokyo hopChangesPerMin=3.658 meanHops=29.151 delivered=551
+# churn aodv seed=8 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.423 meanHops=23.510 delivered=622
+# churn aodv seed=8 flow=3 Tokyo-Sydney hopChangesPerMin=1.219 meanHops=13.882 delivered=768
+##RUN## 8 aodv 53.27 105.33 1659.00 6.20 874.83 462.05 15.42
+# handover aodv seed=9 scheduled=30 forced=0 islFailures=4704 ticks=20
+# account aodv seed=9 flow=0 offered=1184 refused=0 delivered=578 received=578 dup=0 outageLost=602 scatteredLost=4
+# account aodv seed=9 flow=1 offered=1182 refused=0 delivered=587 received=587 dup=0 outageLost=581 scatteredLost=14
+# account aodv seed=9 flow=2 offered=1184 refused=0 delivered=545 received=545 dup=0 outageLost=632 scatteredLost=7
+# account aodv seed=9 flow=3 offered=1181 refused=0 delivered=675 received=675 dup=0 outageLost=504 scatteredLost=2
+# outage aodv seed=9 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=9 class=scheduled n=23 lost=1234 p50=4.500 p90=34.000 max=44.000
+# outage aodv seed=9 class=unplanned n=38 lost=821 p50=2.500 p90=12.500 max=40.250
+# outage aodv seed=9 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=9 class=other n=18 lost=264 p50=1.500 p90=10.500 max=18.750
+# churn aodv seed=9 flow=0 NewYork-London hopChangesPerMin=2.754 meanHops=15.398 delivered=578
+# churn aodv seed=9 flow=1 London-Tokyo hopChangesPerMin=2.464 meanHops=32.123 delivered=587
+# churn aodv seed=9 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.383 meanHops=22.941 delivered=545
+# churn aodv seed=9 flow=3 Tokyo-Sydney hopChangesPerMin=0.614 meanHops=13.733 delivered=675
+##RUN## 9 aodv 50.41 93.91 1587.00 5.85 895.59 472.07 16.34
+# handover aodv seed=10 scheduled=30 forced=0 islFailures=4744 ticks=20
+# account aodv seed=10 flow=0 offered=1192 refused=0 delivered=499 received=499 dup=0 outageLost=690 scatteredLost=3
+# account aodv seed=10 flow=1 offered=1177 refused=0 delivered=492 received=492 dup=0 outageLost=674 scatteredLost=11
+# account aodv seed=10 flow=2 offered=1182 refused=0 delivered=742 received=742 dup=0 outageLost=436 scatteredLost=4
+# account aodv seed=10 flow=3 offered=1190 refused=0 delivered=768 received=768 dup=0 outageLost=420 scatteredLost=2
+# outage aodv seed=10 class=startup n=1 lost=42 p50=10.500 p90=10.500 max=10.500
+# outage aodv seed=10 class=scheduled n=23 lost=758 p50=5.250 p90=19.500 max=38.750
+# outage aodv seed=10 class=unplanned n=49 lost=1089 p50=2.750 p90=10.000 max=39.000
+# outage aodv seed=10 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=10 class=other n=16 lost=331 p50=4.000 p90=15.750 max=18.500
+# churn aodv seed=10 flow=0 NewYork-London hopChangesPerMin=3.117 meanHops=11.224 delivered=499
+# churn aodv seed=10 flow=1 London-Tokyo hopChangesPerMin=2.882 meanHops=31.866 delivered=492
+# churn aodv seed=10 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.849 meanHops=23.526 delivered=742
+# churn aodv seed=10 flow=3 Tokyo-Sydney hopChangesPerMin=0.610 meanHops=13.993 delivered=768
+##RUN## 10 aodv 52.75 121.66 1999.00 6.14 896.30 473.73 22.77
+# handover aodv seed=11 scheduled=30 forced=0 islFailures=4751 ticks=20
+# account aodv seed=11 flow=0 offered=1183 refused=0 delivered=539 received=539 dup=0 outageLost=629 scatteredLost=15
+# account aodv seed=11 flow=1 offered=1192 refused=0 delivered=516 received=516 dup=0 outageLost=667 scatteredLost=9
+# account aodv seed=11 flow=2 offered=1184 refused=0 delivered=674 received=674 dup=0 outageLost=505 scatteredLost=5
+# account aodv seed=11 flow=3 offered=1179 refused=0 delivered=652 received=652 dup=0 outageLost=525 scatteredLost=2
+# outage aodv seed=11 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=11 class=scheduled n=19 lost=857 p50=3.750 p90=34.000 max=42.500
+# outage aodv seed=11 class=unplanned n=49 lost=1057 p50=2.750 p90=17.500 max=48.750
+# outage aodv seed=11 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=11 class=other n=11 lost=412 p50=1.500 p90=25.750 max=43.750
+# churn aodv seed=11 flow=0 NewYork-London hopChangesPerMin=2.380 meanHops=13.217 delivered=539
+# churn aodv seed=11 flow=1 London-Tokyo hopChangesPerMin=2.639 meanHops=28.884 delivered=516
+# churn aodv seed=11 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.606 meanHops=24.423 delivered=674
+# churn aodv seed=11 flow=3 Tokyo-Sydney hopChangesPerMin=0.826 meanHops=13.316 delivered=652
+##RUN## 11 aodv 50.25 121.73 2008.00 5.84 923.03 487.96 22.62
+# handover aodv seed=12 scheduled=30 forced=0 islFailures=4857 ticks=20
+# account aodv seed=12 flow=0 offered=1187 refused=0 delivered=540 received=540 dup=0 outageLost=638 scatteredLost=9
+# account aodv seed=12 flow=1 offered=1178 refused=0 delivered=599 received=599 dup=0 outageLost=575 scatteredLost=4
+# account aodv seed=12 flow=2 offered=1184 refused=0 delivered=498 received=498 dup=0 outageLost=680 scatteredLost=6
+# account aodv seed=12 flow=3 offered=1182 refused=0 delivered=708 received=708 dup=0 outageLost=474 scatteredLost=0
+# outage aodv seed=12 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=12 class=scheduled n=17 lost=1193 p50=11.500 p90=46.500 max=81.250
+# outage aodv seed=12 class=unplanned n=32 lost=667 p50=3.500 p90=8.000 max=33.750
+# outage aodv seed=12 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=12 class=other n=16 lost=507 p50=4.500 p90=17.750 max=21.250
+# churn aodv seed=12 flow=0 NewYork-London hopChangesPerMin=2.845 meanHops=12.635 delivered=540
+# churn aodv seed=12 flow=1 London-Tokyo hopChangesPerMin=2.867 meanHops=31.402 delivered=599
+# churn aodv seed=12 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.817 meanHops=23.143 delivered=498
+# churn aodv seed=12 flow=3 Tokyo-Sydney hopChangesPerMin=0.409 meanHops=13.486 delivered=708
+##RUN## 12 aodv 49.57 104.55 1495.00 5.75 939.32 495.94 20.36
+# handover aodv seed=13 scheduled=30 forced=0 islFailures=4788 ticks=20
+# account aodv seed=13 flow=0 offered=1183 refused=0 delivered=512 received=512 dup=0 outageLost=665 scatteredLost=6
+# account aodv seed=13 flow=1 offered=1178 refused=0 delivered=582 received=582 dup=0 outageLost=596 scatteredLost=0
+# account aodv seed=13 flow=2 offered=1190 refused=0 delivered=532 received=532 dup=0 outageLost=652 scatteredLost=6
+# account aodv seed=13 flow=3 offered=1180 refused=0 delivered=760 received=760 dup=0 outageLost=416 scatteredLost=4
+# outage aodv seed=13 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=13 class=scheduled n=17 lost=1147 p50=12.750 p90=41.250 max=46.500
+# outage aodv seed=13 class=unplanned n=53 lost=763 p50=2.000 p90=7.500 max=20.000
+# outage aodv seed=13 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=13 class=other n=17 lost=419 p50=1.750 p90=16.750 max=33.000
+# churn aodv seed=13 flow=0 NewYork-London hopChangesPerMin=1.960 meanHops=17.998 delivered=512
+# churn aodv seed=13 flow=1 London-Tokyo hopChangesPerMin=2.684 meanHops=33.385 delivered=582
+# churn aodv seed=13 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.140 meanHops=23.312 delivered=532
+# churn aodv seed=13 flow=3 Tokyo-Sydney hopChangesPerMin=1.031 meanHops=14.043 delivered=760
+##RUN## 13 aodv 50.43 126.35 2007.00 5.85 901.77 475.86 22.00
+# handover aodv seed=14 scheduled=30 forced=0 islFailures=4639 ticks=20
+# account aodv seed=14 flow=0 offered=1183 refused=0 delivered=543 received=543 dup=0 outageLost=628 scatteredLost=12
+# account aodv seed=14 flow=1 offered=1184 refused=0 delivered=617 received=617 dup=0 outageLost=563 scatteredLost=4
+# account aodv seed=14 flow=2 offered=1189 refused=0 delivered=595 received=595 dup=0 outageLost=589 scatteredLost=5
+# account aodv seed=14 flow=3 offered=1185 refused=0 delivered=732 received=732 dup=0 outageLost=450 scatteredLost=3
+# outage aodv seed=14 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=14 class=scheduled n=19 lost=943 p50=3.750 p90=33.000 max=43.500
+# outage aodv seed=14 class=unplanned n=40 lost=768 p50=2.500 p90=7.000 max=49.000
+# outage aodv seed=14 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=14 class=other n=13 lost=519 p50=1.500 p90=33.750 max=44.750
+# churn aodv seed=14 flow=0 NewYork-London hopChangesPerMin=2.455 meanHops=14.921 delivered=543
+# churn aodv seed=14 flow=1 London-Tokyo hopChangesPerMin=2.655 meanHops=31.050 delivered=617
+# churn aodv seed=14 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.141 meanHops=24.652 delivered=595
+# churn aodv seed=14 flow=3 Tokyo-Sydney hopChangesPerMin=0.408 meanHops=13.893 delivered=732
+##RUN## 14 aodv 52.46 104.64 1668.00 6.10 876.52 462.47 16.99
+# handover aodv seed=15 scheduled=30 forced=0 islFailures=4752 ticks=20
+# account aodv seed=15 flow=0 offered=1189 refused=0 delivered=570 received=570 dup=0 outageLost=607 scatteredLost=12
+# account aodv seed=15 flow=1 offered=1180 refused=0 delivered=599 received=599 dup=0 outageLost=576 scatteredLost=5
+# account aodv seed=15 flow=2 offered=1187 refused=0 delivered=545 received=545 dup=0 outageLost=636 scatteredLost=6
+# account aodv seed=15 flow=3 offered=1178 refused=0 delivered=695 received=695 dup=0 outageLost=483 scatteredLost=0
+# outage aodv seed=15 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=15 class=scheduled n=26 lost=1023 p50=4.750 p90=24.250 max=34.500
+# outage aodv seed=15 class=unplanned n=58 lost=1122 p50=2.250 p90=9.750 max=50.750
+# outage aodv seed=15 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=15 class=other n=14 lost=157 p50=1.500 p90=6.750 max=8.750
+# churn aodv seed=15 flow=0 NewYork-London hopChangesPerMin=3.492 meanHops=14.577 delivered=570
+# churn aodv seed=15 flow=1 London-Tokyo hopChangesPerMin=2.870 meanHops=31.790 delivered=599
+# churn aodv seed=15 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.372 meanHops=22.011 delivered=545
+# churn aodv seed=15 flow=3 Tokyo-Sydney hopChangesPerMin=0.821 meanHops=14.768 delivered=695
+##RUN## 15 aodv 50.89 120.38 1849.00 5.91 902.27 476.31 22.83
+# handover aodv seed=16 scheduled=30 forced=0 islFailures=4800 ticks=20
+# account aodv seed=16 flow=0 offered=1177 refused=0 delivered=543 received=543 dup=0 outageLost=632 scatteredLost=2
+# account aodv seed=16 flow=1 offered=1183 refused=0 delivered=695 received=695 dup=0 outageLost=478 scatteredLost=10
+# account aodv seed=16 flow=2 offered=1184 refused=0 delivered=385 received=385 dup=0 outageLost=797 scatteredLost=2
+# account aodv seed=16 flow=3 offered=1190 refused=0 delivered=693 received=693 dup=0 outageLost=485 scatteredLost=12
+# outage aodv seed=16 class=startup n=1 lost=168 p50=42.000 p90=42.000 max=42.000
+# outage aodv seed=16 class=scheduled n=24 lost=1340 p50=3.750 p90=34.250 max=122.250
+# outage aodv seed=16 class=unplanned n=34 lost=455 p50=2.250 p90=7.250 max=22.250
+# outage aodv seed=16 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=16 class=other n=14 lost=429 p50=3.750 p90=26.750 max=33.000
+# churn aodv seed=16 flow=0 NewYork-London hopChangesPerMin=2.357 meanHops=13.157 delivered=543
+# churn aodv seed=16 flow=1 London-Tokyo hopChangesPerMin=3.053 meanHops=32.324 delivered=695
+# churn aodv seed=16 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.051 meanHops=23.551 delivered=385
+# churn aodv seed=16 flow=3 Tokyo-Sydney hopChangesPerMin=0.628 meanHops=13.856 delivered=693
+##RUN## 16 aodv 48.92 85.58 356.00 5.68 925.40 487.91 11.26
+# handover aodv seed=17 scheduled=30 forced=0 islFailures=4781 ticks=20
+# account aodv seed=17 flow=0 offered=1190 refused=0 delivered=570 received=570 dup=0 outageLost=613 scatteredLost=7
+# account aodv seed=17 flow=1 offered=1190 refused=0 delivered=598 received=598 dup=0 outageLost=582 scatteredLost=10
+# account aodv seed=17 flow=2 offered=1177 refused=0 delivered=589 received=589 dup=0 outageLost=587 scatteredLost=1
+# account aodv seed=17 flow=3 offered=1179 refused=0 delivered=812 received=812 dup=0 outageLost=365 scatteredLost=2
+# outage aodv seed=17 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=17 class=scheduled n=15 lost=561 p50=3.750 p90=31.250 max=33.000
+# outage aodv seed=17 class=unplanned n=53 lost=1224 p50=3.000 p90=9.000 max=51.750
+# outage aodv seed=17 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=17 class=other n=13 lost=362 p50=1.750 p90=22.000 max=29.750
+# churn aodv seed=17 flow=0 NewYork-London hopChangesPerMin=2.714 meanHops=16.461 delivered=570
+# churn aodv seed=17 flow=1 London-Tokyo hopChangesPerMin=2.643 meanHops=31.826 delivered=598
+# churn aodv seed=17 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.500 meanHops=24.278 delivered=589
+# churn aodv seed=17 flow=3 Tokyo-Sydney hopChangesPerMin=0.615 meanHops=14.365 delivered=812
+##RUN## 17 aodv 54.24 116.67 1967.00 6.30 850.83 448.83 19.42
+# handover aodv seed=18 scheduled=30 forced=0 islFailures=4785 ticks=20
+# account aodv seed=18 flow=0 offered=1184 refused=0 delivered=488 received=488 dup=0 outageLost=692 scatteredLost=4
+# account aodv seed=18 flow=1 offered=1177 refused=0 delivered=678 received=678 dup=0 outageLost=487 scatteredLost=12
+# account aodv seed=18 flow=2 offered=1181 refused=0 delivered=434 received=434 dup=0 outageLost=738 scatteredLost=9
+# account aodv seed=18 flow=3 offered=1184 refused=0 delivered=796 received=796 dup=0 outageLost=382 scatteredLost=6
+# outage aodv seed=18 class=startup n=1 lost=149 p50=37.250 p90=37.250 max=37.250
+# outage aodv seed=18 class=scheduled n=18 lost=571 p50=4.000 p90=25.250 max=32.000
+# outage aodv seed=18 class=unplanned n=43 lost=1064 p50=2.000 p90=16.750 max=79.000
+# outage aodv seed=18 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=18 class=other n=16 lost=515 p50=5.250 p90=13.750 max=42.750
+# churn aodv seed=18 flow=0 NewYork-London hopChangesPerMin=2.024 meanHops=11.426 delivered=488
+# churn aodv seed=18 flow=1 London-Tokyo hopChangesPerMin=3.064 meanHops=31.406 delivered=678
+# churn aodv seed=18 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.027 meanHops=23.343 delivered=434
+# churn aodv seed=18 flow=3 Tokyo-Sydney hopChangesPerMin=0.817 meanHops=14.160 delivered=796
+##RUN## 18 aodv 50.70 100.89 1602.00 5.88 906.82 478.61 18.35
+# handover aodv seed=19 scheduled=30 forced=0 islFailures=4694 ticks=20
+# account aodv seed=19 flow=0 offered=1181 refused=0 delivered=509 received=509 dup=0 outageLost=662 scatteredLost=10
+# account aodv seed=19 flow=1 offered=1178 refused=0 delivered=578 received=578 dup=0 outageLost=592 scatteredLost=8
+# account aodv seed=19 flow=2 offered=1180 refused=0 delivered=599 received=599 dup=0 outageLost=574 scatteredLost=7
+# account aodv seed=19 flow=3 offered=1185 refused=0 delivered=742 received=742 dup=0 outageLost=442 scatteredLost=1
+# outage aodv seed=19 class=startup n=1 lost=209 p50=52.250 p90=52.250 max=52.250
+# outage aodv seed=19 class=scheduled n=20 lost=1133 p50=5.250 p90=43.250 max=46.750
+# outage aodv seed=19 class=unplanned n=47 lost=700 p50=2.500 p90=8.000 max=23.250
+# outage aodv seed=19 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=19 class=other n=8 lost=228 p50=2.250 p90=24.000 max=24.000
+# churn aodv seed=19 flow=0 NewYork-London hopChangesPerMin=1.863 meanHops=11.405 delivered=509
+# churn aodv seed=19 flow=1 London-Tokyo hopChangesPerMin=2.861 meanHops=31.737 delivered=578
+# churn aodv seed=19 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.844 meanHops=24.170 delivered=599
+# churn aodv seed=19 flow=3 Tokyo-Sydney hopChangesPerMin=0.408 meanHops=13.482 delivered=742
+##RUN## 19 aodv 51.40 91.07 1064.00 5.96 886.13 467.63 14.61
+# handover aodv seed=20 scheduled=30 forced=0 islFailures=4733 ticks=20
+# account aodv seed=20 flow=0 offered=1184 refused=0 delivered=469 received=469 dup=0 outageLost=702 scatteredLost=13
+# account aodv seed=20 flow=1 offered=1192 refused=0 delivered=635 received=635 dup=0 outageLost=551 scatteredLost=6
+# account aodv seed=20 flow=2 offered=1181 refused=0 delivered=551 received=551 dup=0 outageLost=626 scatteredLost=4
+# account aodv seed=20 flow=3 offered=1181 refused=0 delivered=773 received=773 dup=0 outageLost=403 scatteredLost=5
+# outage aodv seed=20 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=20 class=scheduled n=19 lost=1196 p50=6.000 p90=46.750 max=67.250
+# outage aodv seed=20 class=unplanned n=43 lost=853 p50=2.000 p90=8.000 max=35.500
+# outage aodv seed=20 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage aodv seed=20 class=other n=11 lost=233 p50=1.500 p90=10.750 max=24.250
+# churn aodv seed=20 flow=0 NewYork-London hopChangesPerMin=1.612 meanHops=11.597 delivered=469
+# churn aodv seed=20 flow=1 London-Tokyo hopChangesPerMin=3.267 meanHops=30.233 delivered=635
+# churn aodv seed=20 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.151 meanHops=23.770 delivered=551
+# churn aodv seed=20 flow=3 Tokyo-Sydney hopChangesPerMin=0.618 meanHops=14.113 delivered=773
+##RUN## 20 aodv 51.25 115.89 1833.00 5.96 891.38 470.48 18.85
+aodv           51.24     108.48      1644.10          5.95   904.16     477.26       18.51
+##PROV## commit=0b5a65ad6c61fa79149b6a1d20e26865c5a66a51 ref=claude/anthocnet-project-review-2brrrv run_id=37827430778 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker

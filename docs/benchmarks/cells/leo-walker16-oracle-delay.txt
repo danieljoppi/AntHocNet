@@ -1,0 +1,328 @@
+# leo-walker walker16 cell (16x16 @1150 km, 53 deg, minElev 25, ISL overlay 1 %, 300 s), oracle-delay, 20 seed(s) @0b5a65ad run 37827405771
+##CONFIG## harness=leo-walker planes=16 sats=16 phasing=1 altitude=1150 inclination=53 time=300 runs=20 firstRun=1 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=-1 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=0 protocols=oracle-delay
+# anchor shell radiusKm=7521.000 altitudeKm(sphere)=1150.000 radiusSpreadM=0.000 chordKm=2934.549 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=108.187
+# visibility minElevation=25.000 NewYork=14 London=9 SaoPaulo=5 Johannesburg=7 Tokyo=9 Sydney=9
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=15 crossMeanKm=1838.432 sameSlotMeanKm=2527.281 inPlaneKm=2934.549
+# handover oracle-delay seed=1 scheduled=11 forced=0 islFailures=790 ticks=20
+# account oracle-delay seed=1 flow=0 offered=1183 refused=0 delivered=1183 received=1183 dup=0 outageLost=0 scatteredLost=0
+# account oracle-delay seed=1 flow=1 offered=1181 refused=0 delivered=1179 received=1179 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=1 flow=2 offered=1190 refused=0 delivered=1188 received=1188 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=1 flow=3 offered=1192 refused=0 delivered=1191 received=1191 dup=0 outageLost=0 scatteredLost=1
+# outage oracle-delay seed=1 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=1 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=1 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=1 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=1 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=1 flow=0 NewYork-London hopChangesPerMin=0.812 meanHops=6.973 delivered=1183
+# churn oracle-delay seed=1 flow=1 London-Tokyo hopChangesPerMin=0.814 meanHops=14.064 delivered=1179
+# churn oracle-delay seed=1 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1188
+# churn oracle-delay seed=1 flow=3 Tokyo-Sydney hopChangesPerMin=2.418 meanHops=7.022 delivered=1191
+##ORACLE## 1 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1012 recomputes=3000 changes=3000 noRoute=0
+##RUN## 1 oracle-delay 99.89 61.82 107.00 11.63 0.00 0.00 0.26
+# handover oracle-delay seed=2 scheduled=11 forced=0 islFailures=763 ticks=20
+# account oracle-delay seed=2 flow=0 offered=1179 refused=0 delivered=1177 received=1177 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=2 flow=1 offered=1187 refused=0 delivered=1181 received=1181 dup=0 outageLost=0 scatteredLost=6
+# account oracle-delay seed=2 flow=2 offered=1184 refused=0 delivered=1179 received=1179 dup=0 outageLost=0 scatteredLost=5
+# account oracle-delay seed=2 flow=3 offered=1181 refused=0 delivered=1181 received=1181 dup=0 outageLost=0 scatteredLost=0
+# outage oracle-delay seed=2 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=2 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=2 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=2 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=2 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=2 flow=0 NewYork-London hopChangesPerMin=1.223 meanHops=6.956 delivered=1177
+# churn oracle-delay seed=2 flow=1 London-Tokyo hopChangesPerMin=0.810 meanHops=14.065 delivered=1181
+# churn oracle-delay seed=2 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.217 meanHops=7.026 delivered=1179
+# churn oracle-delay seed=2 flow=3 Tokyo-Sydney hopChangesPerMin=2.237 meanHops=7.015 delivered=1181
+##ORACLE## 2 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1024 recomputes=3000 changes=3000 noRoute=0
+##RUN## 2 oracle-delay 99.73 61.56 103.00 11.57 0.00 0.00 0.22
+# handover oracle-delay seed=3 scheduled=11 forced=0 islFailures=770 ticks=20
+# account oracle-delay seed=3 flow=0 offered=1191 refused=0 delivered=1191 received=1191 dup=0 outageLost=0 scatteredLost=0
+# account oracle-delay seed=3 flow=1 offered=1177 refused=0 delivered=1171 received=1171 dup=0 outageLost=0 scatteredLost=6
+# account oracle-delay seed=3 flow=2 offered=1182 refused=0 delivered=1182 received=1182 dup=0 outageLost=0 scatteredLost=0
+# account oracle-delay seed=3 flow=3 offered=1182 refused=0 delivered=1180 received=1180 dup=0 outageLost=0 scatteredLost=2
+# outage oracle-delay seed=3 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=3 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=3 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=3 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=3 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=3 flow=0 NewYork-London hopChangesPerMin=0.807 meanHops=7.000 delivered=1191
+# churn oracle-delay seed=3 flow=1 London-Tokyo hopChangesPerMin=1.225 meanHops=14.073 delivered=1171
+# churn oracle-delay seed=3 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1182
+# churn oracle-delay seed=3 flow=3 Tokyo-Sydney hopChangesPerMin=1.219 meanHops=6.978 delivered=1180
+##ORACLE## 3 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1014 recomputes=3000 changes=3000 noRoute=0
+##RUN## 3 oracle-delay 99.83 61.58 103.00 11.59 0.00 0.00 0.21
+# handover oracle-delay seed=4 scheduled=11 forced=0 islFailures=778 ticks=20
+# account oracle-delay seed=4 flow=0 offered=1186 refused=0 delivered=1185 received=1185 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=4 flow=1 offered=1192 refused=0 delivered=1191 received=1191 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=4 flow=2 offered=1180 refused=0 delivered=1177 received=1177 dup=0 outageLost=0 scatteredLost=3
+# account oracle-delay seed=4 flow=3 offered=1188 refused=0 delivered=1186 received=1186 dup=0 outageLost=0 scatteredLost=2
+# outage oracle-delay seed=4 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=4 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=4 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=4 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=4 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=4 flow=0 NewYork-London hopChangesPerMin=0.810 meanHops=6.980 delivered=1185
+# churn oracle-delay seed=4 flow=1 London-Tokyo hopChangesPerMin=0.806 meanHops=14.073 delivered=1191
+# churn oracle-delay seed=4 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.221 meanHops=7.009 delivered=1177
+# churn oracle-delay seed=4 flow=3 Tokyo-Sydney hopChangesPerMin=2.427 meanHops=7.029 delivered=1186
+##ORACLE## 4 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1018 recomputes=3000 changes=3000 noRoute=0
+##RUN## 4 oracle-delay 99.85 61.67 103.00 11.63 0.00 0.00 0.20
+# handover oracle-delay seed=5 scheduled=11 forced=0 islFailures=747 ticks=20
+# account oracle-delay seed=5 flow=0 offered=1191 refused=0 delivered=1190 received=1190 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=5 flow=1 offered=1186 refused=0 delivered=1180 received=1180 dup=0 outageLost=0 scatteredLost=6
+# account oracle-delay seed=5 flow=2 offered=1186 refused=0 delivered=1185 received=1185 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=5 flow=3 offered=1184 refused=0 delivered=1183 received=1183 dup=0 outageLost=0 scatteredLost=1
+# outage oracle-delay seed=5 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=5 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=5 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=5 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=5 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=5 flow=0 NewYork-London hopChangesPerMin=1.210 meanHops=6.998 delivered=1190
+# churn oracle-delay seed=5 flow=1 London-Tokyo hopChangesPerMin=1.215 meanHops=14.069 delivered=1180
+# churn oracle-delay seed=5 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1185
+# churn oracle-delay seed=5 flow=3 Tokyo-Sydney hopChangesPerMin=2.841 meanHops=7.021 delivered=1183
+##ORACLE## 5 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1024 recomputes=3000 changes=3000 noRoute=0
+##RUN## 5 oracle-delay 99.81 61.54 103.00 11.62 0.00 0.00 0.21
+# handover oracle-delay seed=6 scheduled=11 forced=0 islFailures=749 ticks=20
+# account oracle-delay seed=6 flow=0 offered=1188 refused=0 delivered=1187 received=1187 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=6 flow=1 offered=1189 refused=0 delivered=1183 received=1183 dup=0 outageLost=0 scatteredLost=6
+# account oracle-delay seed=6 flow=2 offered=1183 refused=0 delivered=1183 received=1183 dup=0 outageLost=0 scatteredLost=0
+# account oracle-delay seed=6 flow=3 offered=1189 refused=0 delivered=1188 received=1188 dup=0 outageLost=0 scatteredLost=1
+# outage oracle-delay seed=6 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=6 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=6 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=6 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=6 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=6 flow=0 NewYork-London hopChangesPerMin=1.213 meanHops=7.013 delivered=1187
+# churn oracle-delay seed=6 flow=1 London-Tokyo hopChangesPerMin=0.808 meanHops=14.077 delivered=1183
+# churn oracle-delay seed=6 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1183
+# churn oracle-delay seed=6 flow=3 Tokyo-Sydney hopChangesPerMin=1.818 meanHops=6.997 delivered=1188
+##ORACLE## 6 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1030 recomputes=3000 changes=3000 noRoute=0
+##RUN## 6 oracle-delay 99.83 61.54 103.00 11.63 0.00 0.00 0.20
+# handover oracle-delay seed=7 scheduled=11 forced=0 islFailures=773 ticks=20
+# account oracle-delay seed=7 flow=0 offered=1177 refused=0 delivered=1174 received=1174 dup=0 outageLost=0 scatteredLost=3
+# account oracle-delay seed=7 flow=1 offered=1179 refused=0 delivered=1175 received=1175 dup=0 outageLost=0 scatteredLost=4
+# account oracle-delay seed=7 flow=2 offered=1191 refused=0 delivered=1188 received=1188 dup=0 outageLost=0 scatteredLost=3
+# account oracle-delay seed=7 flow=3 offered=1177 refused=0 delivered=1174 received=1174 dup=0 outageLost=0 scatteredLost=3
+# outage oracle-delay seed=7 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=7 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=7 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=7 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=7 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=7 flow=0 NewYork-London hopChangesPerMin=0.816 meanHops=6.945 delivered=1174
+# churn oracle-delay seed=7 flow=1 London-Tokyo hopChangesPerMin=1.223 meanHops=14.071 delivered=1175
+# churn oracle-delay seed=7 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1188
+# churn oracle-delay seed=7 flow=3 Tokyo-Sydney hopChangesPerMin=0.816 meanHops=6.986 delivered=1174
+##ORACLE## 7 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1032 recomputes=3000 changes=3000 noRoute=0
+##RUN## 7 oracle-delay 99.72 61.40 103.00 11.56 0.00 0.00 0.18
+# handover oracle-delay seed=8 scheduled=11 forced=0 islFailures=772 ticks=20
+# account oracle-delay seed=8 flow=0 offered=1181 refused=0 delivered=1180 received=1180 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=8 flow=1 offered=1183 refused=0 delivered=1178 received=1178 dup=0 outageLost=0 scatteredLost=5
+# account oracle-delay seed=8 flow=2 offered=1190 refused=0 delivered=1189 received=1189 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=8 flow=3 offered=1190 refused=0 delivered=1187 received=1187 dup=0 outageLost=0 scatteredLost=3
+# outage oracle-delay seed=8 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=8 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=8 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=8 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=8 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=8 flow=0 NewYork-London hopChangesPerMin=1.627 meanHops=6.990 delivered=1180
+# churn oracle-delay seed=8 flow=1 London-Tokyo hopChangesPerMin=0.812 meanHops=14.065 delivered=1178
+# churn oracle-delay seed=8 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1189
+# churn oracle-delay seed=8 flow=3 Tokyo-Sydney hopChangesPerMin=2.826 meanHops=7.035 delivered=1187
+##ORACLE## 8 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1030 recomputes=3000 changes=3000 noRoute=0
+##RUN## 8 oracle-delay 99.79 61.57 103.00 11.61 0.00 0.00 0.21
+# handover oracle-delay seed=9 scheduled=11 forced=0 islFailures=785 ticks=20
+# account oracle-delay seed=9 flow=0 offered=1184 refused=0 delivered=1181 received=1181 dup=0 outageLost=0 scatteredLost=3
+# account oracle-delay seed=9 flow=1 offered=1182 refused=0 delivered=1178 received=1178 dup=0 outageLost=0 scatteredLost=4
+# account oracle-delay seed=9 flow=2 offered=1184 refused=0 delivered=1180 received=1180 dup=0 outageLost=0 scatteredLost=4
+# account oracle-delay seed=9 flow=3 offered=1181 refused=0 delivered=1180 received=1180 dup=0 outageLost=0 scatteredLost=1
+# outage oracle-delay seed=9 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=9 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=9 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=9 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=9 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=9 flow=0 NewYork-London hopChangesPerMin=1.217 meanHops=6.982 delivered=1181
+# churn oracle-delay seed=9 flow=1 London-Tokyo hopChangesPerMin=0.813 meanHops=14.059 delivered=1178
+# churn oracle-delay seed=9 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1180
+# churn oracle-delay seed=9 flow=3 Tokyo-Sydney hopChangesPerMin=1.220 meanHops=6.979 delivered=1180
+##ORACLE## 9 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1024 recomputes=3000 changes=3000 noRoute=0
+##RUN## 9 oracle-delay 99.75 61.69 103.00 11.58 0.00 0.00 0.21
+# handover oracle-delay seed=10 scheduled=11 forced=0 islFailures=794 ticks=20
+# account oracle-delay seed=10 flow=0 offered=1192 refused=0 delivered=1192 received=1192 dup=0 outageLost=0 scatteredLost=0
+# account oracle-delay seed=10 flow=1 offered=1177 refused=0 delivered=1166 received=1166 dup=0 outageLost=0 scatteredLost=11
+# account oracle-delay seed=10 flow=2 offered=1182 refused=0 delivered=1180 received=1180 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=10 flow=3 offered=1190 refused=0 delivered=1188 received=1188 dup=0 outageLost=0 scatteredLost=2
+# outage oracle-delay seed=10 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=10 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=10 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=10 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=10 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=10 flow=0 NewYork-London hopChangesPerMin=0.806 meanHops=7.003 delivered=1192
+# churn oracle-delay seed=10 flow=1 London-Tokyo hopChangesPerMin=0.816 meanHops=14.057 delivered=1166
+# churn oracle-delay seed=10 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1180
+# churn oracle-delay seed=10 flow=3 Tokyo-Sydney hopChangesPerMin=2.624 meanHops=7.055 delivered=1188
+##ORACLE## 10 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1024 recomputes=3000 changes=3000 noRoute=0
+##RUN## 10 oracle-delay 99.68 61.50 103.00 11.59 0.00 0.00 0.19
+# handover oracle-delay seed=11 scheduled=11 forced=0 islFailures=760 ticks=20
+# account oracle-delay seed=11 flow=0 offered=1183 refused=0 delivered=1181 received=1181 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=11 flow=1 offered=1192 refused=0 delivered=1186 received=1186 dup=0 outageLost=0 scatteredLost=6
+# account oracle-delay seed=11 flow=2 offered=1184 refused=0 delivered=1182 received=1182 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=11 flow=3 offered=1179 refused=0 delivered=1176 received=1176 dup=0 outageLost=0 scatteredLost=3
+# outage oracle-delay seed=11 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=11 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=11 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=11 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=11 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=11 flow=0 NewYork-London hopChangesPerMin=0.812 meanHops=6.965 delivered=1181
+# churn oracle-delay seed=11 flow=1 London-Tokyo hopChangesPerMin=0.806 meanHops=14.077 delivered=1186
+# churn oracle-delay seed=11 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1182
+# churn oracle-delay seed=11 flow=3 Tokyo-Sydney hopChangesPerMin=2.038 meanHops=6.976 delivered=1176
+##ORACLE## 11 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1034 recomputes=3000 changes=3000 noRoute=0
+##RUN## 11 oracle-delay 99.73 61.53 103.00 11.59 0.00 0.00 0.19
+# handover oracle-delay seed=12 scheduled=11 forced=0 islFailures=803 ticks=20
+# account oracle-delay seed=12 flow=0 offered=1187 refused=0 delivered=1187 received=1187 dup=0 outageLost=0 scatteredLost=0
+# account oracle-delay seed=12 flow=1 offered=1178 refused=0 delivered=1173 received=1173 dup=0 outageLost=0 scatteredLost=5
+# account oracle-delay seed=12 flow=2 offered=1184 refused=0 delivered=1182 received=1182 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=12 flow=3 offered=1182 refused=0 delivered=1181 received=1181 dup=0 outageLost=0 scatteredLost=1
+# outage oracle-delay seed=12 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=12 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=12 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=12 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=12 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=12 flow=0 NewYork-London hopChangesPerMin=1.214 meanHops=7.032 delivered=1187
+# churn oracle-delay seed=12 flow=1 London-Tokyo hopChangesPerMin=0.816 meanHops=14.055 delivered=1173
+# churn oracle-delay seed=12 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1182
+# churn oracle-delay seed=12 flow=3 Tokyo-Sydney hopChangesPerMin=2.439 meanHops=7.020 delivered=1181
+##ORACLE## 12 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1030 recomputes=3000 changes=3000 noRoute=0
+##RUN## 12 oracle-delay 99.83 61.57 103.00 11.59 0.00 0.00 0.21
+# handover oracle-delay seed=13 scheduled=11 forced=0 islFailures=779 ticks=20
+# account oracle-delay seed=13 flow=0 offered=1183 refused=0 delivered=1181 received=1181 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=13 flow=1 offered=1178 refused=0 delivered=1175 received=1175 dup=0 outageLost=0 scatteredLost=3
+# account oracle-delay seed=13 flow=2 offered=1190 refused=0 delivered=1189 received=1189 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=13 flow=3 offered=1180 refused=0 delivered=1180 received=1180 dup=0 outageLost=0 scatteredLost=0
+# outage oracle-delay seed=13 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=13 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=13 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=13 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=13 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=13 flow=0 NewYork-London hopChangesPerMin=1.218 meanHops=6.988 delivered=1181
+# churn oracle-delay seed=13 flow=1 London-Tokyo hopChangesPerMin=0.816 meanHops=14.055 delivered=1175
+# churn oracle-delay seed=13 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1189
+# churn oracle-delay seed=13 flow=3 Tokyo-Sydney hopChangesPerMin=1.221 meanHops=6.975 delivered=1180
+##ORACLE## 13 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1018 recomputes=3000 changes=3000 noRoute=0
+##RUN## 13 oracle-delay 99.87 61.41 103.00 11.59 0.00 0.00 0.17
+# handover oracle-delay seed=14 scheduled=11 forced=0 islFailures=751 ticks=20
+# account oracle-delay seed=14 flow=0 offered=1183 refused=0 delivered=1182 received=1182 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=14 flow=1 offered=1184 refused=0 delivered=1179 received=1179 dup=0 outageLost=0 scatteredLost=5
+# account oracle-delay seed=14 flow=2 offered=1189 refused=0 delivered=1188 received=1188 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=14 flow=3 offered=1185 refused=0 delivered=1184 received=1184 dup=0 outageLost=0 scatteredLost=1
+# outage oracle-delay seed=14 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=14 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=14 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=14 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=14 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=14 flow=0 NewYork-London hopChangesPerMin=0.812 meanHops=6.970 delivered=1182
+# churn oracle-delay seed=14 flow=1 London-Tokyo hopChangesPerMin=1.217 meanHops=14.070 delivered=1179
+# churn oracle-delay seed=14 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1188
+# churn oracle-delay seed=14 flow=3 Tokyo-Sydney hopChangesPerMin=3.244 meanHops=7.020 delivered=1184
+##ORACLE## 14 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1024 recomputes=3000 changes=3000 noRoute=0
+##RUN## 14 oracle-delay 99.83 61.51 103.00 11.61 0.00 0.00 0.20
+# handover oracle-delay seed=15 scheduled=11 forced=0 islFailures=728 ticks=20
+# account oracle-delay seed=15 flow=0 offered=1189 refused=0 delivered=1189 received=1189 dup=0 outageLost=0 scatteredLost=0
+# account oracle-delay seed=15 flow=1 offered=1180 refused=0 delivered=1177 received=1177 dup=0 outageLost=0 scatteredLost=3
+# account oracle-delay seed=15 flow=2 offered=1187 refused=0 delivered=1185 received=1185 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=15 flow=3 offered=1178 refused=0 delivered=1176 received=1176 dup=0 outageLost=0 scatteredLost=2
+# outage oracle-delay seed=15 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=15 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=15 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=15 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=15 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=15 flow=0 NewYork-London hopChangesPerMin=0.808 meanHops=6.993 delivered=1189
+# churn oracle-delay seed=15 flow=1 London-Tokyo hopChangesPerMin=0.814 meanHops=14.067 delivered=1177
+# churn oracle-delay seed=15 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1185
+# churn oracle-delay seed=15 flow=3 Tokyo-Sydney hopChangesPerMin=2.039 meanHops=7.000 delivered=1176
+##ORACLE## 15 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1022 recomputes=3000 changes=3000 noRoute=0
+##RUN## 15 oracle-delay 99.85 61.56 103.00 11.60 0.00 0.00 0.19
+# handover oracle-delay seed=16 scheduled=11 forced=0 islFailures=769 ticks=20
+# account oracle-delay seed=16 flow=0 offered=1177 refused=0 delivered=1174 received=1174 dup=0 outageLost=0 scatteredLost=3
+# account oracle-delay seed=16 flow=1 offered=1183 refused=0 delivered=1180 received=1180 dup=0 outageLost=0 scatteredLost=3
+# account oracle-delay seed=16 flow=2 offered=1184 refused=0 delivered=1182 received=1182 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=16 flow=3 offered=1190 refused=0 delivered=1189 received=1189 dup=0 outageLost=0 scatteredLost=1
+# outage oracle-delay seed=16 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=16 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=16 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=16 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=16 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=16 flow=0 NewYork-London hopChangesPerMin=0.816 meanHops=6.951 delivered=1174
+# churn oracle-delay seed=16 flow=1 London-Tokyo hopChangesPerMin=1.218 meanHops=14.070 delivered=1180
+# churn oracle-delay seed=16 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.812 meanHops=7.009 delivered=1182
+# churn oracle-delay seed=16 flow=3 Tokyo-Sydney hopChangesPerMin=1.615 meanHops=6.994 delivered=1189
+##ORACLE## 16 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1032 recomputes=3000 changes=3000 noRoute=0
+##RUN## 16 oracle-delay 99.81 61.55 103.00 11.59 0.00 0.00 0.22
+# handover oracle-delay seed=17 scheduled=11 forced=0 islFailures=769 ticks=20
+# account oracle-delay seed=17 flow=0 offered=1190 refused=0 delivered=1188 received=1188 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=17 flow=1 offered=1190 refused=0 delivered=1183 received=1183 dup=0 outageLost=0 scatteredLost=7
+# account oracle-delay seed=17 flow=2 offered=1177 refused=0 delivered=1176 received=1176 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=17 flow=3 offered=1179 refused=0 delivered=1177 received=1177 dup=0 outageLost=0 scatteredLost=2
+# outage oracle-delay seed=17 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=17 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=17 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=17 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=17 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=17 flow=0 NewYork-London hopChangesPerMin=1.211 meanHops=7.003 delivered=1188
+# churn oracle-delay seed=17 flow=1 London-Tokyo hopChangesPerMin=1.413 meanHops=14.072 delivered=1183
+# churn oracle-delay seed=17 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.408 meanHops=7.002 delivered=1176
+# churn oracle-delay seed=17 flow=3 Tokyo-Sydney hopChangesPerMin=1.630 meanHops=6.978 delivered=1177
+##ORACLE## 17 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1020 recomputes=3000 changes=3000 noRoute=0
+##RUN## 17 oracle-delay 99.75 61.54 103.00 11.59 0.00 0.00 0.20
+# handover oracle-delay seed=18 scheduled=11 forced=0 islFailures=725 ticks=20
+# account oracle-delay seed=18 flow=0 offered=1184 refused=0 delivered=1181 received=1181 dup=0 outageLost=0 scatteredLost=3
+# account oracle-delay seed=18 flow=1 offered=1177 refused=0 delivered=1169 received=1169 dup=0 outageLost=0 scatteredLost=8
+# account oracle-delay seed=18 flow=2 offered=1181 refused=0 delivered=1178 received=1178 dup=0 outageLost=0 scatteredLost=3
+# account oracle-delay seed=18 flow=3 offered=1184 refused=0 delivered=1182 received=1182 dup=0 outageLost=0 scatteredLost=2
+# outage oracle-delay seed=18 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=18 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=18 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=18 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=18 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=18 flow=0 NewYork-London hopChangesPerMin=0.812 meanHops=6.970 delivered=1181
+# churn oracle-delay seed=18 flow=1 London-Tokyo hopChangesPerMin=1.225 meanHops=14.063 delivered=1169
+# churn oracle-delay seed=18 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1178
+# churn oracle-delay seed=18 flow=3 Tokyo-Sydney hopChangesPerMin=3.449 meanHops=7.005 delivered=1182
+##ORACLE## 18 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1030 recomputes=3000 changes=3000 noRoute=0
+##RUN## 18 oracle-delay 99.66 61.42 103.00 11.56 0.00 0.00 0.22
+# handover oracle-delay seed=19 scheduled=11 forced=0 islFailures=752 ticks=20
+# account oracle-delay seed=19 flow=0 offered=1181 refused=0 delivered=1180 received=1180 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=19 flow=1 offered=1178 refused=0 delivered=1170 received=1170 dup=0 outageLost=0 scatteredLost=8
+# account oracle-delay seed=19 flow=2 offered=1180 refused=0 delivered=1179 received=1179 dup=0 outageLost=0 scatteredLost=1
+# account oracle-delay seed=19 flow=3 offered=1185 refused=0 delivered=1184 received=1184 dup=0 outageLost=0 scatteredLost=1
+# outage oracle-delay seed=19 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=19 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=19 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=19 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=19 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=19 flow=0 NewYork-London hopChangesPerMin=0.814 meanHops=6.962 delivered=1180
+# churn oracle-delay seed=19 flow=1 London-Tokyo hopChangesPerMin=0.816 meanHops=14.054 delivered=1170
+# churn oracle-delay seed=19 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=7.000 delivered=1179
+# churn oracle-delay seed=19 flow=3 Tokyo-Sydney hopChangesPerMin=1.216 meanHops=6.983 delivered=1184
+##ORACLE## 19 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1014 recomputes=3000 changes=3000 noRoute=0
+##RUN## 19 oracle-delay 99.77 61.66 103.00 11.56 0.00 0.00 0.21
+# handover oracle-delay seed=20 scheduled=11 forced=0 islFailures=779 ticks=20
+# account oracle-delay seed=20 flow=0 offered=1184 refused=0 delivered=1182 received=1182 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=20 flow=1 offered=1192 refused=0 delivered=1189 received=1189 dup=0 outageLost=0 scatteredLost=3
+# account oracle-delay seed=20 flow=2 offered=1181 refused=0 delivered=1179 received=1179 dup=0 outageLost=0 scatteredLost=2
+# account oracle-delay seed=20 flow=3 offered=1181 refused=0 delivered=1180 received=1180 dup=0 outageLost=0 scatteredLost=1
+# outage oracle-delay seed=20 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=20 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=20 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=20 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage oracle-delay seed=20 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn oracle-delay seed=20 flow=0 NewYork-London hopChangesPerMin=1.217 meanHops=6.989 delivered=1182
+# churn oracle-delay seed=20 flow=1 London-Tokyo hopChangesPerMin=0.806 meanHops=14.077 delivered=1189
+# churn oracle-delay seed=20 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.627 meanHops=7.009 delivered=1179
+# churn oracle-delay seed=20 flow=3 Tokyo-Sydney hopChangesPerMin=1.831 meanHops=6.984 delivered=1180
+##ORACLE## 20 oracle-delay mode=wired+delay approx=0 nodes=262 edges=1030 recomputes=3000 changes=3000 noRoute=0
+##RUN## 20 oracle-delay 99.83 61.62 103.00 11.60 0.00 0.00 0.22
+oracle-delay   99.79      61.56       103.20         11.60     0.00       0.00        0.21
+##PROV## commit=0b5a65ad6c61fa79149b6a1d20e26865c5a66a51 ref=claude/anthocnet-project-review-2brrrv run_id=37827405771 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker

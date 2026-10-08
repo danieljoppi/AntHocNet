@@ -7,6 +7,7 @@ Two regimes, two suites, one protocol build ([ADR-0015](adr/0015-satellite-subst
 |---|---|---|---|
 | **MANET** (original) | this page — discrete taxonomy + sweeps, wifi field | AODV / OLSR / DSDV, plus the **oracle** upper bound ([#415](https://github.com/danieljoppi/AntHocNet/issues/415)) on the [grid](benchmarks/grid.md#the-oracle-control-how-much-of-the-shortfall-is-routing) | per-merge refresh + manual campaigns |
 | **Satellite** (ISL) | [satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) — +Grid torus, point-to-point ISLs | same, plus the **exact** (`approx=0`) oracle control — the [#216](https://github.com/danieljoppi/AntHocNet/issues/216) gap, now closed by v1.5.0 phase 3 | manual dispatch + per-PR analytic anchor/determinism gates; results published on that page |
+| **Satellite** (moving LEO) | [satellite/leo-walker.md](benchmarks/satellite/leo-walker.md) — Walker shells on stock ns-3.48 LEO mobility, scheduled handovers, ISL failures | AODV, an idealised greedy-geographic arm, the hop oracle and the **delay oracle** latency bound; calibrated against Hypatia and LENS | manual dispatch + the 3.48 CI smoke (geometry anchors, outage books, determinism) |
 
 A number is only comparable **within** its regime — the regimes differ in what
 routing even has to solve ([network-regimes.md](network-regimes.md)). Everything
@@ -53,6 +54,7 @@ index: the headline cross-scenario summary, plus a link to every detail page.
 | [v1.5.0 re-baseline](benchmarks/v1.5.0-campaign.md) | The campaign — how the hold-cap flip, the re-injection cap sweep, the publishable detector A/B and the oracle control folded into **one** ordered set of dispatches instead of three overlapping ones. **Complete (2026-08-14): all three measurement phases published.** Flip merged as #411, grid re-baselined at `a1daa7a`, cap × detector measured at `7471447` with no default change ([reinjection.md](benchmarks/reinjection.md)), and [phase 3](benchmarks/v1.5.0-campaign.md#phase-3-the-oracle-control) — the oracle control at `40b434d`, six grid cells plus the satellite torus, three a-priori assertions passing at 20 seeds, the hop rule passing *vacuously* where a naive version would have failed. |
 | **Satellite suite** | |
 | [satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) | The ISL-grid regime: harness, analytic anchors, how to dispatch — and the [#216](https://github.com/danieljoppi/AntHocNet/issues/216) result, including the **only cell where the oracle is exact** (`mode=wired approx=0`: the graph *is* the wiring, so the bound is proven rather than approximate). The MANET grid's oracle numbers are `approx=1` and cannot be read that strongly. |
+| [satellite/leo-walker.md](benchmarks/satellite/leo-walker.md) | The moving constellation ([#297](https://github.com/danieljoppi/AntHocNet/issues/297)): walker16, Starlink S1 and an S1 mass-failure storm at 20 seeds. AntHocNet beats AODV by +15.5 / +28.2 / +32.3 pp PDR and loses 9–11 packets per scheduled handover against AODV's 35–58; the handover metric family, the geo-greedy verdict, and the Hypatia and LENS calibration deltas. |
 | [benchmarks/README.md](benchmarks/README.md) | How the figures and this folder are generated. |
 
 ## Results
@@ -126,6 +128,7 @@ The ranking-stability statement that reads it is on the
 | FANET | [fanet.md](benchmarks/scenarios/fanet.md#restated-on-cbr-sources-521) | [family-fanet.png](benchmarks/charts/family-fanet.png) |
 | VANET | [vanet.md](benchmarks/scenarios/vanet.md) | [family-vanet.png](benchmarks/charts/family-vanet.png) |
 | satellite ISL grid | [isl-grid.md](benchmarks/satellite/isl-grid.md#re-measured-with-arm-independent-flow-schedules-517) | [satellite.png](benchmarks/charts/satellite.png) |
+| moving LEO constellation | [leo-walker.md](benchmarks/satellite/leo-walker.md) | [constellation.png](benchmarks/charts/constellation.png), [calibration-hypatia.png](benchmarks/charts/calibration-hypatia.png) |
 
 These charts are drawn from the committed cells under
 [`benchmarks/cells/`](benchmarks/cells/) by `ns3/tools/family-charts.py`. The
