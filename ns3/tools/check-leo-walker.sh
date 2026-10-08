@@ -47,6 +47,8 @@
 set -euo pipefail
 
 NS3DIR=${1:?usage: check-leo-walker.sh <ns3-dir>}
+# Resolve the repo before leaving it: CI calls this by a relative path.
+REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$NS3DIR"
 
 fail=0
@@ -120,7 +122,7 @@ printf '%s\n' "$out" | grep -q '^# geo geo-greedy seed=1 ' \
     || { say "FAIL: geo-greedy printed no '# geo' line"; fail=1; }
 
 # --- 6b. the #297 scenario_check rules on this output --------------------------
-SC="$(cd "$(dirname "$0")/../.." && pwd)/.claude/skills/benchmark-results/scenario_check.py"
+SC="$REPO/.claude/skills/benchmark-results/scenario_check.py"
 cell=$(mktemp)
 printf '%s\n' "$out" > "$cell"
 if python3 "$SC" results "$cell" > "$cell.check" 2>&1; then
