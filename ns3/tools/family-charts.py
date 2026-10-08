@@ -76,7 +76,8 @@ PROTO_COLOR = {"anthocnet": "#2a78d6", "aodv": "#eb6834", "olsr": "#1baf7a"}
 PROTO_MARKER = {"anthocnet": "o", "aodv": "s", "olsr": "D"}
 ARMS = ["anthocnet", "aodv", "olsr", "dsdv", "aomdv", "gpsr"]
 LABEL = {"anthocnet": "AntHocNet", "aodv": "AODV", "olsr": "OLSR",
-         "dsdv": "DSDV", "aomdv": "AOMDV", "gpsr": "GPSR", "oracle": "oracle"}
+         "dsdv": "DSDV", "aomdv": "AOMDV", "gpsr": "GPSR", "oracle": "oracle",
+         "geo-greedy": "geo-greedy", "oracle-delay": "oracle-delay"}
 
 plt.rcParams.update({
     "figure.facecolor": SURFACE, "axes.facecolor": SURFACE,
@@ -111,6 +112,17 @@ FAMILY_ROWS = ([("MANET", lab, f) for lab, f in GRID_CELLS]
                   ("VANET", "main", "vanet-main.txt"),
                   ("VANET", "sparse", "vanet-sparse.txt")])
 SAT_CORRIDOR = "sat-corridor-app517.txt"
+# The moving-constellation campaign (#297): one cell file per arm,
+# leo-<cell>-<arm>.txt. LEO_ARMS order is the bar order; the oracles are
+# bounds and are drawn as reference lines, never as bars.
+LEO_CELLS = [("walker16", "16 × 16 Walker\n1150 km"),
+             ("starlink1", "Starlink S1\n72 × 22, 550 km"),
+             ("starlink1-storm", "Starlink S1\n+ 10 % mass failure")]
+LEO_ARMS = ["anthocnet", "aodv", "olsr", "geo-greedy"]
+LEO_CALIB = "leo-hypatia-calib-oracle-delay.txt"
+# Hypatia (Kassing et al., IMC 2020, Fig. 13): Starlink S1, Paris-Luanda RTT
+# "varies between 117 ms and 85 ms" over its 200 s simulation.
+HYPATIA_RTT_MS = (85.0, 117.0)
 SAT_FAILCELL = "sat-failcell-app517.txt"
 
 # The CBR (#521) restatement block of each sweep page cites these campaign
@@ -339,6 +351,133 @@ def plot_satellite(cells_dir, outdir):
     return out
 
 
+def leo_lost_per_handover(text):
+    """Packets lost in scheduled-handover outages per scheduled handover."""
+    lost = ho = 0
+    for line in text.splitlines():
+        m = re.match(r"^# outage \S+ seed=\d+ class=scheduled n=\d+ lost=(\d+)", line)
+        if m:
+            lost += int(m.group(1))
+        m = re.match(r"^# handover \S+ seed=\d+ scheduled=(\d+)", line)
+        if m:
+            ho += int(m.group(1))
+    return lost / ho if ho else None
+
+
+def plot_constellation(cells_dir, outdir):
+    """Moving-constellation cells: PDR | packets lost per scheduled handover
+    | delay99, one bar per routing arm, the delay oracle as a reference line."""
+    rows = []
+    for cell, title in LEO_CELLS:
+        texts = {}
+        for arm in LEO_ARMS + ["oracle-delay"]:
+            path = os.path.join(cells_dir, f"leo-{cell}-{arm}.txt")
+            if os.path.exists(path):
+                texts[arm] = read(cells_dir, f"leo-{cell}-{arm}.txt")
+        if any(a in texts for a in LEO_ARMS):
+            rows.append((title, texts))
+    if not rows:
+        return None
+    metrics = [("pdr", "PDR (%)  →  higher is better"),
+               ("lost", "packets lost per scheduled handover  ←  lower is better"),
+               ("delay99", "delay99 (ms)  ←  lower is better")]
+    arms = [a for a in LEO_ARMS if any(a in t for _, t in rows)]
+    fig, axes = plt.subplots(len(rows), 3, squeeze=False,
+                             figsize=(12, 0.42 * len(arms) * len(rows) + 1.6))
+    fig.suptitle("Moving LEO constellation (leo-walker): mean of 20 seeds, 95 % CI",
+                 x=0.01, ha="left", fontsize=12, fontweight="bold")
+    for row, (title, texts) in enumerate(rows):
+        present = [a for a in arms if a in texts]
+        ys = list(range(len(present)))[::-1]
+        st = {a: cell_stats(t).get(a, {}) for a, t in texts.items()}
+        for col, (metric, mlabel) in enumerate(metrics):
+            ax = axes[row][col]
+            style_axis(ax)
+            vmax = 0.0
+            for y, arm in zip(ys, present):
+                if metric == "lost":
+                    v = leo_lost_per_handover(texts[arm])
+                    if v is None:
+                        continue
+                    m, lo, hi = v, v, v
+                else:
+                    m, lo, hi = st[arm][metric]
+                vmax = max(vmax, hi)
+                color = PROTO_COLOR["anthocnet"] if arm == "anthocnet" else CONTEXT
+                ax.barh(y, m, height=0.62, color=color, linewidth=0)
+                if hi > lo:
+                    ax.plot([lo, hi], [y, y], color=INK2, linewidth=1.0)
+                ax.text(hi, y, "  " + ("{:.1f}" if metric != "delay99" else "{:.0f}").format(m),
+                        va="center", ha="left", fontsize=8, color=INK2,
+                        fontweight="bold" if arm == "anthocnet" else "normal")
+            ref = None
+            if "oracle-delay" in texts:
+                ref = (leo_lost_per_handover(texts["oracle-delay"]) if metric == "lost"
+                       else st["oracle-delay"].get(metric, (None,))[0])
+            if ref is not None:
+                vmax = max(vmax, ref)
+                ax.axvline(ref, color=INK, linewidth=1.0)
+                ax.text(ref, len(present) - 0.45, f" delay oracle {ref:.1f}",
+                        fontsize=8, color=INK, va="bottom", ha="left")
+            ax.set_xlim(0, (min(115, vmax * 1.18) if metric == "pdr" else vmax * 1.25) or 1)
+            ax.set_ylim(-0.6, len(present) - 0.1)
+            ax.set_yticks(ys)
+            ax.set_yticklabels([LABEL[a] for a in present] if col == 0 else [])
+            if col == 0:
+                for tick, arm in zip(ax.get_yticklabels(), present):
+                    if arm == "anthocnet":
+                        tick.set_fontweight("bold")
+                ax.set_ylabel(title, fontsize=9, color=INK, fontweight="bold")
+            if row == 0:
+                ax.set_title(mlabel, fontsize=9, color=INK2, fontweight="normal")
+    fig.tight_layout(rect=(0, 0, 1, 0.965 if len(rows) > 1 else 0.93))
+    out = os.path.join(outdir, "constellation.png")
+    fig.savefig(out, dpi=130)
+    plt.close(fig)
+    return out
+
+
+def plot_calibration(cells_dir, outdir):
+    """Paris-Luanda RTT on Starlink S1 against Hypatia's published range."""
+    path = os.path.join(cells_dir, LEO_CALIB)
+    if not os.path.exists(path):
+        return None
+    t, rtt, geo, fib = [], [], [], []
+    for line in read(cells_dir, LEO_CALIB).splitlines():
+        m = re.match(r"^# series \S+ seed=\d+ t=(\d+) delayMs=([\d.]+) "
+                     r"geodesicMs=([\d.]+) fiberMs=([\d.]+)", line)
+        if m:
+            t.append(int(m.group(1)))
+            rtt.append(2 * float(m.group(2)))
+            geo.append(2 * float(m.group(3)))
+            fib.append(2 * float(m.group(4)))
+    if not t:
+        return None
+    fig, ax = plt.subplots(figsize=(12, 3.0))
+    fig.suptitle("Calibration: Paris–Luanda RTT on Starlink S1 (delay oracle) vs "
+                 "Hypatia's published range", x=0.01, ha="left", fontsize=12,
+                 fontweight="bold")
+    ax.axhspan(*HYPATIA_RTT_MS, color=GRID, linewidth=0)
+    ax.text(t[0], HYPATIA_RTT_MS[1], " Hypatia (IMC 2020, Fig. 13): 85–117 ms over 200 s",
+            fontsize=8, color=INK2, va="bottom")
+    ax.plot(t, rtt, color=PROTO_COLOR["anthocnet"], linewidth=1.4,
+            label="leo-walker RTT (2 × one-way)")
+    ax.plot(t, fib, color=CONTEXT, linewidth=1.0, linestyle="--",
+            label="great-circle fiber (2c/3)")
+    ax.plot(t, geo, color=INK2, linewidth=1.0, linestyle=":",
+            label="great-circle at c")
+    ax.set_xlabel("simulated time (s)")
+    ax.set_ylabel("RTT (ms)")
+    ax.grid(True, axis="y", color=GRID, linewidth=1.0)
+    ax.set_axisbelow(True)
+    ax.legend(frameon=False, fontsize=8, loc="lower right")
+    fig.tight_layout(rect=(0, 0, 1, 0.9))
+    out = os.path.join(outdir, "calibration-hypatia.png")
+    fig.savefig(out, dpi=130)
+    plt.close(fig)
+    return out
+
+
 def plot_families(cells_dir, outdir):
     """Forest plot: AntHocNet - AODV, paired per seed, every family cell."""
     rows = []
@@ -428,6 +567,8 @@ def main():
     written.append(plot_grid(args.cells, args.outdir))
     written.append(plot_satellite(args.cells, args.outdir))
     written.append(plot_families(args.cells, args.outdir))
+    written += [w for w in (plot_constellation(args.cells, args.outdir),
+                            plot_calibration(args.cells, args.outdir)) if w]
     written += plot_sweeps(args.campaign, args.sweep_outdir)
     for w in written:
         print(os.path.relpath(w))

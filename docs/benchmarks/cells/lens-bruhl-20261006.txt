@@ -1,0 +1,21 @@
+# LENS calibration: Starlink dish 'bruhl' (Bruhl, Germany; PoP Frankfurt, frntdeu1), 10 ms IPv6 ping to the PoP, 24 hourly traces 2026-10-05T23:00Z .. 2026-10-06T22:00Z
+# source: https://lens-starlink.jinwei.me/bruhl/ping/2026/10/2026-10-06/ (LENS, Zhao & Pan, MMSys 2024, doi 10.1145/3625468.3652170; dataset CC BY-SA 4.0). Derived statistics only; the traces are not redistributed.
+# command: python3 ns3/tools/lens-calibration.py ping-frntdeu1-*-10ms-1h-2026-10-0{5-23,6-*}.txt
+files 24  pings 5955127  replies 5944033  loss 0.186 %  (ping's own summaries: 5955151 sent, 0.187 % loss)
+RTT ms  min 11.4  p5 16.0  p50 20.8  p95 33.6  p99 47.2
+phase (UTC s mod 15) | loss % | median RTT ms
+ 0 |  0.165 |   20.9
+ 1 |  0.158 |   20.9
+ 2 |  0.185 |   20.7
+ 3 |  0.170 |   20.7
+ 4 |  0.173 |   20.7
+ 5 |  0.160 |   20.7
+ 6 |  0.163 |   20.6
+ 7 |  0.162 |   20.6
+ 8 |  0.163 |   20.6
+ 9 |  0.155 |   20.8
+10 |  0.160 |   20.7
+11 |  0.399 |   20.8
+12 |  0.230 |   21.2
+13 |  0.180 |   20.8
+14 |  0.170 |   20.8

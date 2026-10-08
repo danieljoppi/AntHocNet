@@ -2448,6 +2448,91 @@ def _source_schedule():
            f"a legacy-schedule cell was not flagged\n{out}")
 
 
+# --- #297 leo-walker dynamics: handover clock + outage accounting --------------
+
+# A real leo-walker cell (16x16 at 1150 km, 60 s, ISL overlay 2 %, mass failure
+# at 30 s), one arm and seed: the ticks at 12/27/42/57 s are the 15 s clock at
+# second 12, and every # account line closes (222 = 215 + 7 + 0, ...).
+LEO_CELL = """\
+##CONFIG## harness=leo-walker planes=16 sats=16 phasing=1 altitude=1150 inclination=53 time=60 runs=1 firstRun=1 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.02 islMeanDown=2 massFailAt=30 massFailFrac=0.05 delayUpdate=0.1 oracleInterval=0 protocols=anthocnet
+# visibility minElevation=25.000 NewYork=9 London=7 SaoPaulo=3 Johannesburg=5 Tokyo=6 Sydney=7
+# handover anthocnet seed=1 scheduled=3 forced=1 islFailures=317 ticks=4
+# account anthocnet seed=1 flow=0 offered=222 refused=0 delivered=215 received=215 dup=0 outageLost=7 scatteredLost=0
+# account anthocnet seed=1 flow=1 offered=224 refused=0 delivered=172 received=172 dup=0 outageLost=51 scatteredLost=1
+# account anthocnet seed=1 flow=2 offered=231 refused=0 delivered=204 received=204 dup=0 outageLost=25 scatteredLost=2
+# account anthocnet seed=1 flow=3 offered=229 refused=0 delivered=155 received=155 dup=0 outageLost=70 scatteredLost=4
+# outage anthocnet seed=1 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=1 class=scheduled n=5 lost=40 p50=2.000 p90=2.500 max=2.500
+# outage anthocnet seed=1 class=unplanned n=13 lost=93 p50=1.750 p90=2.500 max=4.000
+# outage anthocnet seed=1 class=massfail n=2 lost=20 p50=2.750 p90=2.750 max=2.750
+# outage anthocnet seed=1 class=other n=0 lost=0 p50=nan p90=nan max=nan
+##RUN## 1 anthocnet 82.34 80.72 199.00 9.15 147.31 266.27 5.34
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+anthocnet      82.34      80.72       199.00          9.15   147.31     266.27        5.34
+"""
+
+
+def _leo_fails(text):
+    _levels, out = run_cell(text)
+    return [ln for ln in out.splitlines() if ln.startswith("FAIL")], out
+
+
+@case("#297 a real leo-walker cell passes both dynamics rules")
+def _leo_clean():
+    fails, out = _leo_fails(LEO_CELL)
+    expect(not fails, "leo-clean", f"a coherent leo-walker cell FAILed\n{out}")
+
+
+@case("#297 a handover clock that ticked a different number of times FAILs; "
+      "the t=time boundary tick may be missing")
+def _leo_clock():
+    fails, out = _leo_fails(LEO_CELL.replace("ticks=4", "ticks=3"))
+    expect(any("handover clock ticked 3 times" in f for f in fails), "leo-ticks",
+           f"a 3-tick clock on a 4-tick config was not flagged\n{out}")
+    # time=57: ticks at 12/27/42 and exactly at 57 — 3 or 4 both legitimate.
+    edge = LEO_CELL.replace("time=60", "time=57").replace("ticks=4", "ticks=3")
+    fails, out = _leo_fails(edge)
+    expect(not any("handover clock" in f for f in fails), "leo-boundary",
+           f"the t=time boundary tick was flagged\n{out}")
+
+
+@case("#297 more scheduled handovers than ticks x stations FAILs (double counting)")
+def _leo_double_count():
+    fails, out = _leo_fails(LEO_CELL.replace("scheduled=3", "scheduled=25"))
+    expect(any("exceed ticks x stations = 24" in f for f in fails), "leo-sched",
+           f"25 scheduled handovers on 4 ticks x 6 stations was not flagged\n{out}")
+
+
+@case("#297 an account line that does not close FAILs, and so does "
+      "delivered != received")
+def _leo_books():
+    bad = LEO_CELL.replace("delivered=215 received=215 dup=0 outageLost=7",
+                           "delivered=215 received=215 dup=0 outageLost=6")
+    fails, out = _leo_fails(bad)
+    expect(any("the outage books do not close" in f for f in fails), "leo-close",
+           f"222 != 215 + 6 + 0 was not flagged\n{out}")
+    bad = LEO_CELL.replace("delivered=172 received=172", "delivered=172 received=171")
+    fails, out = _leo_fails(bad)
+    expect(any("distinct sequence numbers received 171" in f for f in fails), "leo-recv",
+           f"delivered != received was not flagged\n{out}")
+
+
+@case("#297 # outage classes that lose a different count than the flows FAIL")
+def _leo_classes():
+    fails, out = _leo_fails(LEO_CELL.replace("class=massfail n=2 lost=20",
+                                             "class=massfail n=2 lost=0"))
+    expect(any("an outage is missing from or double counted" in f for f in fails),
+           "leo-classes", f"classes summing to 133 vs 153 was not flagged\n{out}")
+
+
+@case("#297 a ##RUN## PDR that disagrees with the # account books FAILs")
+def _leo_pdr():
+    fails, out = _leo_fails(LEO_CELL.replace("##RUN## 1 anthocnet 82.34",
+                                             "##RUN## 1 anthocnet 84.10"))
+    expect(any("100 x delivered/offered = 82.340" in f for f in fails), "leo-pdr",
+           f"a PDR off the books was not flagged\n{out}")
+
+
 def main():
     for name, fn in CASES:
         fn()

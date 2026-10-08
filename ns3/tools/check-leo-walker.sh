@@ -14,6 +14,13 @@
 #    here independently. The t=T/2 chord is the load-bearing one: a model
 #    that placed satellites correctly and then moved them off their orbit
 #    would pass a t=0-only check (the #480 lesson).
+# 1b. Cross-plane pairing (`# anchor isl`): the chosen constant slot shift
+#    must give cross-plane ISLs no longer on average than same-slot pairing,
+#    and shorter than the in-plane chord. Same-slot pairing is what the
+#    first leo-walker shipped: on Starlink S1 it made every cross link the
+#    farther of two candidates (1470 km vs 637 km mean) and nearly tripled
+#    the Paris-Luanda RTT Hypatia publishes; on this 16 x 16 shell it is
+#    2527 km vs 1838 km.
 # 2. Every ground station sees at least one satellite above --minElevation
 #    (`# visibility`). Zero is how the topocentric-vs-ECEF frame bug showed
 #    itself: three cities silently had no service at all.
@@ -27,7 +34,12 @@
 #    AODV is the arm that used to abort here (interface-down race in stock
 #    AODV, see SetLink in leo-walker.cc), so it is part of the smoke.
 # 6. The delay oracle reports mode=wired+delay: the latency bound is really
-#    the Dijkstra-on-channel-delay mode, not the hop-count one.
+#    the Dijkstra-on-channel-delay mode, not the hop-count one. geo-greedy
+#    (the idealised geographic comparator) sends no control packet.
+# 6b. scenario_check.py's #297 rules pass on this very output: the handover
+#    clock ticked as ##CONFIG## says, and every flow's books close
+#    (offered = delivered + outageLost + scatteredLost, classes = flows,
+#    ##RUN## PDR = the books' delivered/offered).
 # 7. Determinism: the same seed twice is byte-identical for AntHocNet. The
 #    failure schedule and the mass-failure draw sit on pinned application
 #    streams; an unpinned one would make every arm see different failures.
@@ -42,12 +54,14 @@
 set -euo pipefail
 
 NS3DIR=${1:?usage: check-leo-walker.sh <ns3-dir>}
+# Resolve the repo before leaving it: CI calls this by a relative path.
+REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$NS3DIR"
 
 fail=0
 say() { printf '%s\n' "$*"; }
 
-ARMS=oracle-delay,anthocnet,aodv
+ARMS=oracle-delay,anthocnet,aodv,geo-greedy
 SHELL_ARGS="--planes=16 --sats=16 --altitude=1150 --inclination=53 --minElevation=25
             --time=60 --islDown=0.02 --massFailAt=30 --massFailFrac=0.05"
 
@@ -77,6 +91,24 @@ else
         fail=1
     else
         say "ok: shell radius, in-plane chord (t=0 and t=T/2) and period match the analytic Walker shell"
+    fi
+fi
+
+islA=$(printf '%s\n' "$out" | grep '^# anchor isl' || true)
+if [ -z "$islA" ]; then
+    say "FAIL: no '# anchor isl' line"
+    fail=1
+else
+    bad=$(printf '%s\n' "$islA" | awk '{
+        for (i = 1; i <= NF; ++i) { k = $i; sub(/=[^=]*$/, "", k); x = $i; sub(/.*=/, "", x); v[k] = x }
+        if (v["crossMeanKm"] + 0 > v["sameSlotMeanKm"] + 0.001) print "crossMeanKm " v["crossMeanKm"] " > sameSlotMeanKm " v["sameSlotMeanKm"]
+        if (v["crossMeanKm"] + 0 >= v["inPlaneKm"] + 0) print "crossMeanKm " v["crossMeanKm"] " >= inPlaneKm " v["inPlaneKm"]
+    }')
+    if [ -n "$bad" ]; then
+        say "FAIL: cross-plane ISL pairing: $bad"
+        fail=1
+    else
+        say "ok: cross-plane ISLs paired at the shortest constant slot shift ($islA)"
     fi
 fi
 
@@ -110,6 +142,22 @@ done
 # --- 6. the latency bound is the delay oracle --------------------------------
 printf '%s\n' "$out" | grep -q '^##ORACLE## .* oracle-delay mode=wired+delay ' \
     || { say "FAIL: oracle-delay did not run the delay metric (mode wired+delay)"; fail=1; }
+
+printf '%s\n' "$out" | grep -q '^# geo geo-greedy seed=1 ' \
+    || { say "FAIL: geo-greedy printed no '# geo' line"; fail=1; }
+
+# --- 6b. the #297 scenario_check rules on this output --------------------------
+SC="$REPO/.claude/skills/benchmark-results/scenario_check.py"
+cell=$(mktemp)
+printf '%s\n' "$out" > "$cell"
+if python3 "$SC" results "$cell" > "$cell.check" 2>&1; then
+    say "ok: scenario_check.py #297 rules (handover clock, outage books) pass"
+else
+    say "FAIL: scenario_check.py on the smoke output:"
+    grep '^FAIL' "$cell.check" || cat "$cell.check"
+    fail=1
+fi
+rm -f "$cell" "$cell.check"
 
 # --- 7. determinism ------------------------------------------------------------
 a=$(./ns3 run "$(echo leo-walker --csv --protocols=anthocnet $SHELL_ARGS)" 2>/dev/null)

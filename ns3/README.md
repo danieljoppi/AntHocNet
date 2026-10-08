@@ -148,7 +148,10 @@ silently skipped.
 
 - **ISLs:** +grid (two in-plane, two cross-plane), point-to-point, one /30 each;
   each channel's `Delay` is re-read from the satellites' ECEF distance every
-  `--delayUpdate` s (default 0.1).
+  `--delayUpdate` s (default 0.1). Cross-plane partners are paired by one
+  constant slot shift — the one with the shortest mean link over the shell
+  (`# anchor isl`), not "same slot": Walker phasing and the RAAN rotation
+  both move the nearest partner along track.
 - **Ground stations:** six cities, four fixed pairs (New York–London,
   London–Tokyo, São Paulo–Johannesburg, Tokyo–Sydney). Each station sits on its
   own CSMA segment with every satellite ever visible from it; only the serving
@@ -167,14 +170,42 @@ silently skipped.
   hello/RERR on a socket whose interface went down meanwhile hits its
   `LoopbackRoute` assertion.)
 - **Arms:** `anthocnet`, `aodv`, `olsr`, `oracle` (hop bound), `oracle-delay`
-  (latency bound: the oracle with `Metric=delay`, re-solved every 0.1 s). OLSR
-  is impractically slow above a few hundred satellites.
+  (latency bound: the oracle with `Metric=delay`, re-solved every
+  `--oracleInterval` s, default `--delayUpdate`), and `geo-greedy` — the
+  geographic comparator: each hop forwards to the up neighbour nearest (ECEF)
+  the destination's access satellite, a station always uplinks, and a packet
+  with no strictly closer neighbour is dropped (no perimeter mode — face
+  routing planarises a 2-D graph, and a shell is not one). It is idealised
+  like the oracle (positions from the mobility models, link state from
+  `Ipv4::IsUp`, zero control packets), so its losses are pure greedy dead
+  ends; on a Walker-delta +grid those are structural, because planes cross.
+  OLSR is impractically slow above a few hundred satellites.
 
-Output adds, per arm and seed, the handover metric family (#297): `# handover`
-(scheduled / forced / ISL failures), `# outage` (delivery gaps per flow,
-classified `scheduled` / `unplanned` / `massfail` / `other` — never pooled),
-`# churn` (hop-count changes per flow per minute) and, with `--series`, the
-per-second one-way delay of flow 0 against geodesic and fiber baselines.
+Output adds, per arm and seed, the handover metric family (#297):
+
+- `# handover` — scheduled / forced handovers, ISL failures, and the clock's
+  `ticks`.
+- `# account` per flow — `offered` (send *attempts*, counted from the
+  client's `Tx` trace, because UdpClient itself counts and numbers only
+  accepted sends and would drop every packet an arm refuses at its source
+  from the denominator), `refused`, `delivered`, and the identity
+  `offered = delivered + outageLost + scatteredLost`.
+- `# outage` — runs of ≥ 3 consecutive lost attempts on the sender's timeline
+  (the Starlink/LENS probe-loss convention), classed `startup` (from a flow's
+  first packet) / `scheduled` (a handover at one of the flow's stations) /
+  `unplanned` (an ISL failure **on the flow's last delivered path**) /
+  `massfail` (a victim on that path) / `other`, with packets lost and duration
+  quantiles. Classes are never pooled.
+- `# churn` — hop-count changes per flow per minute.
+- With `--series`, the per-second one-way delay of flow 0 against geodesic and
+  fiber baselines.
+
+`--pairs=hypatia` replaces the six cities with Paris and Luanda, the pair whose
+Starlink-S1 RTT range Hypatia publishes (85–117 ms over 200 s; Kassing et al.,
+IMC 2020, Fig. 13), for the #297 calibration; the default set is unchanged.
+
+`scenario_check.py results` checks the clock against `##CONFIG##` and that
+every book closes (#297).
 `# anchor` checks the geometry (shell radius, in-plane chord at t=0 and t=T/2,
 period vs `2π√(a³/μ)`); `ns3/tools/check-leo-walker.sh` asserts it all on the
 CI's 3.48 leg.

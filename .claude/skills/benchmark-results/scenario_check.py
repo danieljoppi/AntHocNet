@@ -2153,6 +2153,127 @@ def check_oracle(path, rows):
                                "control is broken (#216)")
 
 
+# #297: leo-walker's dynamics lines.
+#   # handover <proto> seed=N scheduled=S forced=F islFailures=I ticks=K
+#   # account  <proto> seed=N flow=f offered=O refused=R delivered=D received=V
+#              dup=U outageLost=L scatteredLost=Z
+#   # outage   <proto> seed=N class=C n=.. lost=X p50=.. p90=.. max=..
+LEO_HANDOVER = re.compile(
+    r"^#\s+handover\s+([a-z][\w-]*)\s+seed=(\d+)\s+scheduled=(\d+)\s+forced=(\d+)"
+    r"\s+islFailures=(\d+)(?:\s+ticks=(\d+))?")
+LEO_ACCOUNT = re.compile(
+    r"^#\s+account\s+([a-z][\w-]*)\s+seed=(\d+)\s+flow=(\d+)\s+offered=(\d+)"
+    r"\s+refused=(\d+)\s+delivered=(\d+)\s+received=(\d+)\s+dup=(\d+)"
+    r"\s+outageLost=(\d+)\s+scatteredLost=(\d+)")
+LEO_OUTAGE = re.compile(
+    r"^#\s+outage\s+([a-z][\w-]*)\s+seed=(\d+)\s+class=(\w+)\s+n=(\d+)\s+lost=(\d+)")
+
+
+def check_leo_dynamics(path):
+    """#297: a leo-walker cell's handover clock and outage books must close.
+
+    Two rules, both FAIL, because the handover metric family is read from
+    exactly these lines and a broken one publishes wrong numbers silently:
+
+    1. Clock coherence. The GSL reconfiguration clock fires at
+       clockOffset mod clock (or clock, if that is 0) and every `clock` s
+       after, while t < time — so `ticks` is fixed by ##CONFIG##. A different
+       count means the clock never started, stopped, or ran on a different
+       period than the cell claims, and every `scheduled` outage class is
+       then measured against the wrong events. A tick exactly at t=time may
+       or may not run (event order at Simulator::Stop), so that boundary
+       allows one fewer. And at most one scheduled handover per station per
+       tick: `scheduled` > ticks x stations is double counting.
+    2. Outage accounting identity. Every send attempt is exactly one of
+       delivered / lost inside an outage / lost scattered:
+       offered = delivered + outageLost + scatteredLost, per flow. Each
+       delivered attempt maps to one distinct received sequence number
+       (delivered = received). Per (arm, seed), the packets the # outage
+       classes report lost must equal the flows' outageLost — otherwise an
+       outage was dropped from, or double counted into, the classes. And the
+       ##RUN## PDR must equal 100 x sum(delivered) / sum(offered), which ties
+       the headline number to the same books.
+    """
+    with open(path) as fh:
+        text = fh.read()
+    cfg = re.search(r"^##CONFIG## harness=leo-walker\b.*$", text, re.MULTILINE)
+    if not cfg:
+        return
+    base = os.path.basename(path)
+    kv = dict(re.findall(r"(\w+)=(\S+)", cfg.group(0)))
+    vis = re.search(r"^# visibility .*$", text, re.MULTILINE)
+    stations = (len(re.findall(r"\b[A-Z]\w*=\d+", vis.group(0))) if vis else 6) or 6
+
+    # --- 1. clock coherence ---------------------------------------------------
+    t_end, clock, offset = float(kv["time"]), float(kv["clock"]), float(kv["clockOffset"])
+    first = offset % clock or clock
+    span = (t_end - first) / clock
+    want = int(span) + 1 if t_end > first else 0
+    boundary = t_end > first and abs(span - round(span)) < 1e-9
+    seen = 0
+    for line in text.splitlines():
+        m = LEO_HANDOVER.match(line)
+        if not m:
+            continue
+        seen += 1
+        proto, seed, sched = m.group(1), m.group(2), int(m.group(3))
+        if m.group(6) is None:
+            report("FAIL", f"{base}/{proto}: seed {seed} # handover has no ticks= — "
+                           "a pre-#297-rules cell; the clock cannot be checked")
+            continue
+        ticks = int(m.group(6))
+        if ticks != want and not (boundary and ticks == want - 1):
+            report("FAIL", f"{base}/{proto}: seed {seed} handover clock ticked {ticks} "
+                           f"times, ##CONFIG## (time={kv['time']} clock={kv['clock']} "
+                           f"clockOffset={kv['clockOffset']}) says {want} — the "
+                           "scheduled-handover class is measured against the wrong events")
+        if sched > ticks * stations:
+            report("FAIL", f"{base}/{proto}: seed {seed} scheduled={sched} handovers "
+                           f"exceed ticks x stations = {ticks * stations} — double counting")
+    if seen == 0:
+        report("FAIL", f"{base}: leo-walker cell with no # handover lines")
+
+    # --- 2. outage accounting identity ------------------------------------------
+    flows, classes = {}, {}
+    for line in text.splitlines():
+        m = LEO_ACCOUNT.match(line)
+        if m:
+            proto, seed, flow = m.group(1), m.group(2), m.group(3)
+            off, ref, dlv, rcv, _dup, olost, slost = (int(m.group(i)) for i in range(4, 11))
+            tag = f"{base}/{proto}: seed {seed} flow {flow}"
+            if off != dlv + olost + slost:
+                report("FAIL", f"{tag}: offered {off} != delivered {dlv} + outageLost "
+                               f"{olost} + scatteredLost {slost} — the outage books do not close")
+            if dlv != rcv:
+                report("FAIL", f"{tag}: delivered attempts {dlv} != distinct sequence "
+                               f"numbers received {rcv}")
+            if ref > off:
+                report("FAIL", f"{tag}: refused {ref} > offered {off}")
+            agg = flows.setdefault((proto, seed), [0, 0, 0])
+            agg[0] += off
+            agg[1] += dlv
+            agg[2] += olost
+            continue
+        m = LEO_OUTAGE.match(line)
+        if m:
+            key = (m.group(1), m.group(2))
+            classes[key] = classes.get(key, 0) + int(m.group(5))
+    for key, (off, dlv, olost) in sorted(flows.items()):
+        proto, seed = key
+        if classes.get(key, 0) != olost:
+            report("FAIL", f"{base}/{proto}: seed {seed} # outage classes lost "
+                           f"{classes.get(key, 0)} packets, the flows' outageLost sums to "
+                           f"{olost} — an outage is missing from or double counted in the classes")
+        run = re.search(rf"^##RUN## {seed} {re.escape(proto)} ([-\d.]+)", text, re.MULTILINE)
+        if run and off:
+            want_pdr = 100.0 * dlv / off
+            if abs(float(run.group(1)) - want_pdr) > 0.006:
+                report("FAIL", f"{base}/{proto}: seed {seed} ##RUN## PDR {run.group(1)} != "
+                               f"100 x delivered/offered = {want_pdr:.3f} from the # account books")
+    if seen and not flows:
+        report("FAIL", f"{base}: leo-walker cell with no # account lines")
+
+
 def cmd_results(a):
     floor = anchor_floor(a.anchor) if a.anchor else None
     n = 0
@@ -2162,6 +2283,7 @@ def cmd_results(a):
         check_drop_identity(path)
         check_reinj(path)
         check_route(path)
+        check_leo_dynamics(path)
         rows = list(parse_results(path))
         check_path_diversity(rows)
         check_oracle(path, rows)

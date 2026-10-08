@@ -40,10 +40,14 @@
  * Output: the isl-grid / anthocnet-compare row format (PDR, delays, NRL, ...)
  * and ##RUN## per-seed rows, plus the handover metric family (#297 item 3):
  *   # handover   scheduled/forced GSL handovers, ISL failure events
- *   # outage     delivery gaps per flow, classified by the event that preceded
- *                them (scheduled handover / unplanned failure / other), with
- *                count, median, 90th percentile and max -- the two classes are
- *                different claims and are never pooled
+ *   # outage     runs of >= 3 consecutive lost send attempts per flow (the
+ *                sender's timeline), classified by the event that preceded
+ *                them (startup / scheduled handover / unplanned failure /
+ *                mass failure / other), with count, packets lost, median,
+ *                90th percentile and max -- the classes are different claims
+ *                and are never pooled
+ *   # account    per flow: offered (send attempts) = delivered + outageLost +
+ *                scatteredLost, with refused-at-source and duplicates shown
  *   # churn      hop-count changes per flow per minute (a lower bound on path
  *                changes: an equal-length reroute is invisible to it)
  *   # anchor     geometry checks: in-plane ISL length vs 2(R+h)sin(pi/S), and
@@ -107,6 +111,14 @@ const City kCities[] = {
     {"Tokyo", 35.6762, 139.6503},     {"Sydney", -33.8688, 151.2093},
 };
 const std::pair<int, int> kPairs[] = {{0, 1}, {1, 4}, {2, 3}, {4, 5}};
+// --pairs=hypatia: the one city pair whose RTT range Hypatia publishes on
+// Starlink's first shell (Kassing et al., IMC 2020, Fig. 13: Paris-Luanda
+// varies between 85 and 117 ms over 200 s) -- the #297 item 5 calibration.
+const City kHypatiaCities[] = {{"Paris", 48.8566, 2.3522}, {"Luanda", -8.8390, 13.2894}};
+const std::pair<int, int> kHypatiaPairs[] = {{0, 1}};
+// The stations and pairs in force (the default set unless --pairs=hypatia).
+std::vector<City> g_cities(std::begin(kCities), std::end(kCities));
+std::vector<std::pair<int, int>> g_pairs(std::begin(kPairs), std::end(kPairs));
 
 struct Params {
     uint32_t planes = 12, sats = 12, phasing = 1;
@@ -121,8 +133,10 @@ struct Params {
     double islDown = 0.0, islMeanDown = 2.0;
     double massFailAt = -1, massFailFrac = 0.1;
     double delayUpdate = 0.1;
+    double oracleInterval = 0;  ///< oracle-delay re-solve period (s); 0 = --delayUpdate
     bool csv = false, series = false;
     std::string shell;
+    std::string pairs = "default";
 };
 
 struct Result {
@@ -140,7 +154,42 @@ std::vector<std::vector<double>> g_rxDelay;  // per flow: one-way delay per deli
 std::vector<std::pair<double, int>> g_events; // (time, kind): 1 scheduled HO, 2 forced HO, 3 ISL fail, 4 mass fail
 std::vector<std::vector<int>> g_flowGs;      // per flow: its two ground-station indices
 std::vector<int> g_eventGs;                  // per event: the ground station (handovers), else -1
+std::vector<int> g_eventLink;                // per event: the ISL index (ISL failures), else -1
+std::set<uint32_t> g_massVictimIds;          // node ids of the satellites the mass failure took
+/// Forwarding path (node ids that forwarded it) of every data packet in
+/// flight, by packet UID, and per flow (send time, path) of every delivered
+/// one. An outage is blamed on an ISL failure or the mass failure only if it
+/// touched the flow's last delivered path: with ~5 ISL failures a second
+/// across a shell, "some failure in the last second" is always true and
+/// would class every outage as unplanned.
+std::map<uint64_t, std::vector<uint32_t>> g_pktPath;
+std::vector<std::vector<std::pair<double, std::vector<uint32_t>>>> g_rxPath;
 uint32_t g_scheduledHo = 0, g_forcedHo = 0, g_islFailures = 0;
+uint32_t g_clockTicks = 0;                   // HandoverClock firings (coherence rule)
+std::vector<std::set<uint32_t>> g_rxSeq;     // per flow: distinct sequence numbers received
+std::vector<uint64_t> g_rxDup;               // per flow: duplicate deliveries
+/// One send attempt by a flow's UdpClient: when, and the sequence number it
+/// went out with, or -1 if the source's stack refused it (no route). UdpClient
+/// itself counts and numbers only ACCEPTED sends -- GetTotalTx() and the
+/// SeqTs sequence never see a refused one -- so an offered load read from the
+/// client drops exactly the packets an arm refuses at its origin and inflates
+/// that arm's PDR (the #464 / #510 defect class). Attempts are counted here
+/// instead, from the client's Tx trace, which fires before every Send.
+struct Attempt {
+    double t;
+    int64_t seq;
+};
+std::vector<std::vector<Attempt>> g_attempts;
+
+void OnClientTx(uint32_t f, Ptr<UdpClient> c, Ptr<const Packet>) {
+    const uint64_t before = c->GetTotalTx();
+    g_attempts[f].push_back({Simulator::Now().GetSeconds(), -1});
+    const size_t idx = g_attempts[f].size() - 1;
+    // Send() has returned by the time this runs: TotalTx grew iff accepted.
+    Simulator::ScheduleNow([f, c, before, idx] {
+        if (c->GetTotalTx() > before) g_attempts[f][idx].seq = static_cast<int64_t>(before / 64);
+    });
+}
 
 void CountControlTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t) {
     // Ported from isl-grid (keep the two in step): overhead counted at the IP
@@ -267,6 +316,147 @@ Vector PosOf(Ptr<Node> n) {
     return n->GetObject<GeocentricConstantPositionMobilityModel>()->GetGeocentricPosition();
 }
 
+/// geo-greedy: the geographic comparator (#297 acceptance, baselines epic).
+/// Each hop forwards to the up neighbour whose ECEF position is closest to the
+/// destination node's, if strictly closer than itself (a ground station
+/// always uplinks to its serving satellite); otherwise the packet is
+/// dropped (a local minimum -- there is no perimeter mode: GPSR's face routing
+/// planarises a 2-D graph, and a shell is not one). It is IDEALISED in the
+/// same way the oracle is: positions are read from the mobility models (a
+/// perfect location service) and link state from Ipv4::IsUp (it gets the
+/// oracle's IP gate), so it sends no control traffic at all. It therefore
+/// bounds what greedy position-based forwarding can do here from above, and
+/// its losses are pure greedy dead ends, never stale beacons. On a
+/// Walker-delta +grid those dead ends are structural, not rare: planes cross,
+/// so a satellite can pass a few hundred km from the goal while every one of
+/// its four ISL neighbours is farther (traced: 387 km from the goal, its
+/// neighbours 2290-3180 km) -- the local minimum DRA-style grid routing
+/// exists to avoid.
+std::map<uint32_t, Ptr<Node>> g_addrToNode;  ///< every assigned address -> node
+/// ground node id -> its serving satellite (null when unserved): the
+/// location service also knows each station's access satellite, as LEO
+/// geographic schemes assume (route to the satellite covering the
+/// destination, then down) -- greedy towards the station itself dead-ends
+/// at whichever satellite is nearest it but holds no GSL.
+std::map<uint32_t, Ptr<Node>> g_servingSat;
+uint64_t g_geoNoRouteOrigin = 0, g_geoNoRouteForward = 0;
+
+class GeoGreedy : public Ipv4RoutingProtocol {
+  public:
+    static TypeId GetTypeId() {
+        static TypeId tid = TypeId("ns3::LeoWalkerGeoGreedy")
+                                .SetParent<Ipv4RoutingProtocol>()
+                                .SetGroupName("Internet")
+                                .AddConstructor<GeoGreedy>();
+        return tid;
+    }
+
+    Ptr<Ipv4Route> RouteOutput(Ptr<Packet>, const Ipv4Header& header, Ptr<NetDevice>,
+                               Socket::SocketErrno& sockerr) override {
+        sockerr = Socket::ERROR_NOTERROR;
+        const Ipv4Address dst = header.GetDestination();
+        if (m_ipv4->GetInterfaceForAddress(dst) >= 0 || dst == Ipv4Address::GetLoopback()) {
+            Ptr<Ipv4Route> r = Create<Ipv4Route>();
+            r->SetDestination(dst);
+            r->SetGateway(Ipv4Address::GetLoopback());
+            r->SetSource(dst);
+            r->SetOutputDevice(m_ipv4->GetNetDevice(0));
+            return r;
+        }
+        Ptr<Ipv4Route> r = dst.IsBroadcast() || dst.IsMulticast() ? nullptr : Next(dst);
+        if (!r) {
+            ++g_geoNoRouteOrigin;
+            sockerr = Socket::ERROR_NOROUTETOHOST;
+        }
+        return r;
+    }
+
+    bool RouteInput(Ptr<const Packet> p, const Ipv4Header& header, Ptr<const NetDevice> idev,
+                    const UnicastForwardCallback& ucb, const MulticastForwardCallback&,
+                    const LocalDeliverCallback& lcb, const ErrorCallback& ecb) override {
+        const int32_t iif = m_ipv4->GetInterfaceForDevice(idev);
+        if (iif < 0) return false;
+        const Ipv4Address dst = header.GetDestination();
+        if (m_ipv4->IsDestinationAddress(dst, static_cast<uint32_t>(iif))) {
+            if (!lcb.IsNull()) lcb(p, header, static_cast<uint32_t>(iif));
+            return true;
+        }
+        if (dst.IsMulticast()) return false;
+        Ptr<Ipv4Route> r = Next(dst);
+        if (r) {
+            ucb(r, p, header);
+        } else {
+            ++g_geoNoRouteForward;
+            ecb(p, header, Socket::ERROR_NOROUTETOHOST);
+        }
+        return true;
+    }
+
+    void NotifyInterfaceUp(uint32_t) override {}
+    void NotifyInterfaceDown(uint32_t) override {}
+    void NotifyAddAddress(uint32_t, Ipv4InterfaceAddress) override {}
+    void NotifyRemoveAddress(uint32_t, Ipv4InterfaceAddress) override {}
+    void SetIpv4(Ptr<Ipv4> ipv4) override { m_ipv4 = ipv4; }
+    void PrintRoutingTable(Ptr<OutputStreamWrapper>, Time::Unit) const override {}
+
+  private:
+    /// The greedy step. Interfaces and channel devices are walked in index
+    /// order and a tie keeps the first, so the choice is deterministic.
+    Ptr<Ipv4Route> Next(Ipv4Address dst) const {
+        auto it = g_addrToNode.find(dst.Get());
+        if (it == g_addrToNode.end()) return nullptr;
+        Ptr<Node> self = m_ipv4->GetObject<Node>();
+        Ptr<Node> goal = it->second;
+        auto sv = g_servingSat.find(goal->GetId());
+        if (sv != g_servingSat.end()) {
+            if (!sv->second) return nullptr;  // destination station unserved
+            if (sv->second != self) goal = sv->second;
+        }
+        const Vector target = PosOf(goal);
+        // A ground station's one up link is its uplink, not a routing choice:
+        // it is always taken (from the ground, the serving satellite is
+        // usually FARTHER from a distant destination than the station is, so
+        // a strict greedy step would refuse every packet at its source).
+        // Greedy applies in the space segment.
+        const bool ground = !self->GetObject<LeoCircularOrbitMobilityModel>();
+        double bestD = ground ? 1e300 : Dist(PosOf(self), target);
+        Ptr<Ipv4Route> best;
+        for (uint32_t i = 1; i < m_ipv4->GetNInterfaces(); ++i) {
+            if (!m_ipv4->IsUp(i) || m_ipv4->GetNAddresses(i) == 0) continue;
+            Ptr<NetDevice> dev = m_ipv4->GetNetDevice(i);
+            Ptr<Channel> ch = dev->GetChannel();
+            if (!ch) continue;
+            for (std::size_t k = 0; k < ch->GetNDevices(); ++k) {
+                Ptr<NetDevice> peer = ch->GetDevice(k);
+                if (peer == dev) continue;
+                Ptr<Ipv4> pIp = peer->GetNode()->GetObject<Ipv4>();
+                const int32_t pIf = pIp->GetInterfaceForDevice(peer);
+                if (pIf < 0 || !pIp->IsUp(static_cast<uint32_t>(pIf))) continue;
+                const bool isDst = peer->GetNode() == it->second || peer->GetNode() == goal;
+                const double d = isDst ? -1.0 : Dist(PosOf(peer->GetNode()), target);
+                if (d < bestD) {
+                    bestD = d;
+                    best = Create<Ipv4Route>();
+                    best->SetDestination(dst);
+                    best->SetGateway(pIp->GetAddress(static_cast<uint32_t>(pIf), 0).GetLocal());
+                    best->SetSource(m_ipv4->GetAddress(i, 0).GetLocal());
+                    best->SetOutputDevice(dev);
+                }
+            }
+        }
+        return best;
+    }
+
+    Ptr<Ipv4> m_ipv4;
+};
+NS_OBJECT_ENSURE_REGISTERED(GeoGreedy);
+
+class GeoGreedyHelper : public Ipv4RoutingHelper {
+  public:
+    GeoGreedyHelper* Copy() const override { return new GeoGreedyHelper(*this); }
+    Ptr<Ipv4RoutingProtocol> Create(Ptr<Node>) const override { return CreateObject<GeoGreedy>(); }
+};
+
 void UpdateDelays(World* w, double every) {
     for (Link& l : w->isls) {
         const double d = Dist(PosOf(w->sats.Get(l.a)), PosOf(w->sats.Get(l.b)));
@@ -305,12 +495,15 @@ void Handover(World* w, uint32_t g, int to, int kind) {
     if (from >= 0) SetLink(w->gsl[g][from], false);
     if (to >= 0) SetLink(w->gsl[g][to], true);
     w->serving[g] = to;
+    g_servingSat[w->ground.Get(g)->GetId()] = to >= 0 ? w->sats.Get(w->gsl[g][to].b) : nullptr;
     g_events.emplace_back(Simulator::Now().GetSeconds(), kind);
     g_eventGs.push_back(static_cast<int>(g));
+    g_eventLink.push_back(-1);
     (kind == 1 ? g_scheduledHo : g_forcedHo)++;
 }
 
 void HandoverClock(World* w, const Params* P) {
+    ++g_clockTicks;
     for (uint32_t g = 0; g < w->ground.GetN(); ++g) Handover(w, g, BestGsl(w, g, P->minElevDeg), 1);
     Simulator::Schedule(Seconds(P->clock), &HandoverClock, w, P);
 }
@@ -340,6 +533,7 @@ void IslFail(World* w, uint32_t i, bool down, double meanDown, double meanUp,
         if (w->satUp[l.a] && w->satUp[l.b]) SetLink(l, false);
         g_events.emplace_back(Simulator::Now().GetSeconds(), 3);
         g_eventGs.push_back(-1);
+        g_eventLink.push_back(static_cast<int>(i));
         ++g_islFailures;
         Simulator::Schedule(Seconds(downVar->GetValue(meanDown, 0)), &IslFail, w, i, false,
                             meanDown, meanUp, downVar, upVar);
@@ -351,12 +545,16 @@ void IslFail(World* w, uint32_t i, bool down, double meanDown, double meanUp,
 }
 
 void MassFail(World* w, std::vector<uint32_t> victims) {
-    for (uint32_t s : victims) w->satUp[s] = false;
+    for (uint32_t s : victims) {
+        w->satUp[s] = false;
+        g_massVictimIds.insert(w->sats.Get(s)->GetId());
+    }
     for (Link& l : w->isls) {
         if (!w->satUp[l.a] || !w->satUp[l.b]) SetLink(l, false);
     }
     g_events.emplace_back(Simulator::Now().GetSeconds(), 4);
     g_eventGs.push_back(-1);
+    g_eventLink.push_back(-1);
 }
 
 /// Per-delivery bookkeeping at the destination's IP layer: time, hop count
@@ -377,6 +575,17 @@ void LocalDeliver(const Ipv4Header& ip, Ptr<const Packet> p, uint32_t) {
     g_rxTimes[f].push_back(now);
     g_rxHops[f].push_back(kInitialTtl - ip.GetTtl());
     g_rxDelay[f].push_back(now - ts.GetTs().GetSeconds());
+    if (!g_rxSeq[f].insert(ts.GetSeq()).second) ++g_rxDup[f];
+    auto path = g_pktPath.find(p->GetUid());
+    g_rxPath[f].emplace_back(ts.GetTs().GetSeconds(),
+                             path == g_pktPath.end() ? std::vector<uint32_t>{} : path->second);
+    if (path != g_pktPath.end()) g_pktPath.erase(path);
+}
+
+/// Every forwarding hop of a data packet (UnicastForward at each node).
+void OnForward(uint32_t node, const Ipv4Header& ip, Ptr<const Packet> p, uint32_t) {
+    if (ip.GetProtocol() != 17 || !g_dstAddrToFlow.count(ip.GetDestination().Get())) return;
+    g_pktPath[p->GetUid()].push_back(node);
 }
 
 /// Probe pass: build the shell and the stations alone, sample which
@@ -387,12 +596,12 @@ std::vector<std::set<uint32_t>> VisibleCandidates(const Params& P) {
     LeoOrbitNodeHelper orbit;
     NodeContainer sats = orbit.CreateNodesAndInstallMobility(
         LeoOrbitalShell(P.altKm, P.incDeg, P.planes, P.sats, P.phasing, 360.0));
-    const uint32_t nGs = sizeof(kCities) / sizeof(kCities[0]);
+    const uint32_t nGs = static_cast<uint32_t>(g_cities.size());
     std::vector<Vector> gs(nGs);
     for (uint32_t g = 0; g < nGs; ++g) {
         Ptr<GeocentricConstantPositionMobilityModel> m =
             CreateObject<GeocentricConstantPositionMobilityModel>();
-        m->SetGeographicPosition(Vector(kCities[g].lat, kCities[g].lon, 0));
+        m->SetGeographicPosition(Vector(g_cities[g].lat, g_cities[g].lon, 0));
         gs[g] = m->GetGeocentricPosition();
     }
     std::vector<std::set<uint32_t>> cand(nGs);
@@ -470,9 +679,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
     int64_t stream = streamBase;
     int64_t appStream = streamBase + kAppStreamOffset;
     g_controlPkts = g_controlBytes = 0;
+    g_geoNoRouteOrigin = g_geoNoRouteForward = 0;
+    g_addrToNode.clear();
+    g_servingSat.clear();
     g_events.clear();
     g_eventGs.clear();
+    g_eventLink.clear();
+    g_massVictimIds.clear();
+    g_pktPath.clear();
     g_scheduledHo = g_forcedHo = g_islFailures = 0;
+    g_clockTicks = 0;
     g_dstAddrToFlow.clear();
 
     World w;
@@ -481,12 +697,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
         LeoOrbitalShell(P.altKm, P.incDeg, P.planes, P.sats, P.phasing, 360.0));
     const uint32_t nSat = w.sats.GetN();
     w.satUp.assign(nSat, true);
-    const uint32_t nGs = sizeof(kCities) / sizeof(kCities[0]);
+    const uint32_t nGs = static_cast<uint32_t>(g_cities.size());
     w.ground.Create(nGs);
     for (uint32_t g = 0; g < nGs; ++g) {
         Ptr<GeocentricConstantPositionMobilityModel> m =
             CreateObject<GeocentricConstantPositionMobilityModel>();
-        m->SetGeographicPosition(Vector(kCities[g].lat, kCities[g].lon, 0));
+        m->SetGeographicPosition(Vector(g_cities[g].lat, g_cities[g].lon, 0));
         w.ground.Get(g)->AggregateObject(m);
     }
 
@@ -498,28 +714,31 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
     AodvHelper aodv;
     OlsrHelper olsr;
     OracleHelper oracleHelper;
+    GeoGreedyHelper geoHelper;
     if (proto == "anthocnet") internet.SetRoutingHelper(ahn);
     else if (proto == "aodv") internet.SetRoutingHelper(aodv);
     else if (proto == "olsr") internet.SetRoutingHelper(olsr);
     else if (proto == "oracle") internet.SetRoutingHelper(oracleHelper);
+    else if (proto == "geo-greedy") internet.SetRoutingHelper(geoHelper);
     else if (proto == "oracle-delay") {
         // The latency bound: the oracle with propagation-delay edge weights.
         // Links of one hop count differ in length on a moving shell, so the
         // hop-count oracle is a delivery bound, not a delay bound (#297).
         oracleHelper.Set("Metric", StringValue("delay"));
-        oracleHelper.Set("RecomputeInterval", TimeValue(Seconds(P.delayUpdate)));
+        oracleHelper.Set("RecomputeInterval",
+                         TimeValue(Seconds(P.oracleInterval > 0 ? P.oracleInterval : P.delayUpdate)));
         internet.SetRoutingHelper(oracleHelper);
     }
-    else NS_ABORT_MSG("unknown protocol '" << proto << "' (anthocnet, aodv, olsr, oracle, oracle-delay)");
+    else NS_ABORT_MSG("unknown protocol '" << proto << "' (anthocnet, aodv, olsr, oracle, oracle-delay, geo-greedy)");
     internet.Install(all);
     stream += internet.AssignStreams(all, stream);
     if (proto == "anthocnet") stream += ahn.AssignStreams(all, stream);
     else if (proto == "aodv") stream += aodv.AssignStreams(all, stream);
     else if (proto == "olsr") stream += olsr.AssignStreams(all, stream);
-    else stream += oracleHelper.AssignStreams(all, stream);  // oracle, oracle-delay: 0 streams
+    else if (proto != "geo-greedy") stream += oracleHelper.AssignStreams(all, stream);  // oracle, oracle-delay: 0 streams
     NS_ABORT_MSG_IF(stream - streamBase >= kAppStreamOffset, "RNG stream budget exhausted (#352)");
 
-    g_ipGate = proto == "oracle" || proto == "oracle-delay";
+    g_ipGate = proto == "oracle" || proto == "oracle-delay" || proto == "geo-greedy";
     g_dropAll = CreateObject<DropAll>();
     PointToPointHelper isl;
     isl.SetDeviceAttribute("DataRate", StringValue(P.islRate));
@@ -544,9 +763,39 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
 
     // +grid ISLs. Node i is plane i / S, slot i % S (LeoCircularOrbitAllocator
     // order). In-plane: slot s <-> s+1. Cross-plane: plane p slot s <-> plane
-    // p+1 slot s; across the seam (last plane -> plane 0) the Walker phasing
-    // shifts the slots, so the partner is the nearest plane-0 satellite at t=0.
+    // p+1 slot (s + shift) % S, one constant shift for the whole shell (a
+    // pairing that never changes, as on a real +grid), chosen as the shift
+    // that minimises the mean cross-link length over every (p, s) at t=0 --
+    // the slots of a plane sample the whole orbit, so that mean is the
+    // orbit average. It is NOT simply "same slot": the Walker phasing F and
+    // the RAAN rotation between neighbouring planes both move the along-track
+    // position of the nearest partner. Same-slot pairing wired Starlink S1's
+    // cross links at a median 1470 km instead of ~640 km and put
+    // Paris-Luanda at ~270 ms RTT against Hypatia's 85-117 ms; on the 16 x 16
+    // shell it chose a mean 2527 km over 1838 km. Across the seam (last plane
+    // -> plane 0) the offset wraps through the whole shell, so the partner is
+    // the nearest plane-0 satellite at t=0.
     const uint32_t S = P.sats, Pn = P.planes;
+    auto crossMeanKm = [&](uint32_t k) {
+        double sum = 0;
+        uint32_t n = 0;
+        for (uint32_t p = 0; p + 1 < Pn; ++p) {
+            for (uint32_t s = 0; s < S; ++s) {
+                sum += Dist(PosOf(w.sats.Get(p * S + s)), PosOf(w.sats.Get((p + 1) * S + (s + k) % S)));
+                ++n;
+            }
+        }
+        return n ? sum / n / 1000.0 : 0.0;
+    };
+    uint32_t shift = 0;
+    double bestMean = 1e300;
+    for (uint32_t k = 0; k < S && Pn > 1; ++k) {
+        const double m = crossMeanKm(k);
+        if (m < bestMean - 1e-9) {
+            bestMean = m;
+            shift = k;
+        }
+    }
     for (uint32_t p = 0; p < Pn; ++p) {
         for (uint32_t s = 0; s < S; ++s) {
             const uint32_t i = p * S + s;
@@ -555,7 +804,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
             if (Pn < 2) continue;
             uint32_t j;
             if (p + 1 < Pn) {
-                j = (p + 1) * S + s;
+                j = (p + 1) * S + (s + shift) % S;
             } else {
                 j = 0;
                 double best = 1e30;
@@ -567,6 +816,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
             if (Pn == 2 && p == 1) continue;  // two planes: one cross link per slot
             w.isls.push_back(build(isl, w.sats.Get(i), w.sats.Get(j), i, j));
         }
+    }
+    static bool islAnchorPrinted = false;  // pure geometry: identical every run
+    if (!islAnchorPrinted && Pn > 2) {
+        islAnchorPrinted = true;
+        std::cout << std::fixed << std::setprecision(3) << "# anchor isl crossShiftSlots=" << shift
+                  << " crossMeanKm=" << bestMean << " sameSlotMeanKm=" << crossMeanKm(0)
+                  << " inPlaneKm=" << Dist(PosOf(w.sats.Get(0)), PosOf(w.sats.Get(1))) / 1000.0
+                  << "\n";
     }
 
     // GSL candidates (from the probe pass in main -- it must run before any
@@ -612,10 +869,24 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
 
     NS_ABORT_MSG_IF(stream - streamBase >= kAppStreamOffset, "RNG stream budget exhausted (#352)");
 
+    // Every assigned address -> its node (geo-greedy's location service).
+    for (uint32_t i = 0; i < all.GetN(); ++i) {
+        Ptr<Ipv4> ip = all.Get(i)->GetObject<Ipv4>();
+        for (uint32_t k = 1; k < ip->GetNInterfaces(); ++k) {
+            for (uint32_t a = 0; a < ip->GetNAddresses(k); ++a) {
+                g_addrToNode[ip->GetAddress(k, a).GetLocal().Get()] = all.Get(i);
+            }
+        }
+    }
+
     // Overhead counted at the IP layer, as the other harnesses do.
     for (uint32_t i = 0; i < all.GetN(); ++i) {
         Ptr<Ipv4L3Protocol> l3 = all.Get(i)->GetObject<Ipv4L3Protocol>();
         if (l3) l3->TraceConnectWithoutContext("Tx", MakeCallback(&CountControlTx));
+        if (l3) {
+            l3->TraceConnectWithoutContext("UnicastForward",
+                                           MakeBoundCallback(&OnForward, all.Get(i)->GetId()));
+        }
     }
 
     // Dynamics: delays follow positions; the handover clock and the
@@ -628,6 +899,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
             const int best = BestGsl(&w, g, P.minElevDeg);
             if (best >= 0) SetLink(w.gsl[g][best], true);
             w.serving[g] = best;
+            g_servingSat[w.ground.Get(g)->GetId()] =
+                best >= 0 ? w.sats.Get(w.gsl[g][best].b) : nullptr;
         }
     });
     const double firstTick = std::fmod(P.clockOffset, P.clock);
@@ -662,17 +935,21 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
     startVar->SetAttribute("Min", DoubleValue(1.0));
     startVar->SetAttribute("Max", DoubleValue(5.0));
     startVar->SetStream(appStream++);
-    const uint32_t nPairs = sizeof(kPairs) / sizeof(kPairs[0]);
+    const uint32_t nPairs = static_cast<uint32_t>(g_pairs.size());
     const uint32_t nFlows = std::min(P.nFlows, nPairs);
     g_rxTimes.assign(nFlows, {});
     g_rxHops.assign(nFlows, {});
     g_rxDelay.assign(nFlows, {});
     g_flowGs.assign(nFlows, {});
+    g_rxSeq.assign(nFlows, {});
+    g_rxDup.assign(nFlows, 0);
+    g_attempts.assign(nFlows, {});
+    g_rxPath.assign(nFlows, {});
     ApplicationContainer apps;
     for (uint32_t f = 0; f < nFlows; ++f) {
-        const uint32_t src = kPairs[f].first, dst = kPairs[f].second;
+        const uint32_t src = g_pairs[f].first, dst = g_pairs[f].second;
         NS_ABORT_MSG_IF(w.gsl[src].empty() || w.gsl[dst].empty(),
-                        "station " << kCities[w.gsl[src].empty() ? src : dst].name
+                        "station " << g_cities[w.gsl[src].empty() ? src : dst].name
                         << " never sees a satellite above " << P.minElevDeg
                         << " deg: lower --minElevation or densify the shell");
         const Ipv4Address dstAddr = w.gsl[dst][0].ipA->GetAddress(w.gsl[dst][0].ifA, 0).GetLocal();
@@ -687,6 +964,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
         client.SetAttribute("MaxPackets", UintegerValue(0));
         ApplicationContainer a = client.Install(w.ground.Get(src));
         a.Start(Seconds(startVar->GetValue()));
+        Ptr<UdpClient> uc = DynamicCast<UdpClient>(a.Get(0));
+        uc->TraceConnectWithoutContext("Tx", MakeBoundCallback(&OnClientTx, f, uc));
         a.Stop(Seconds(P.simTime - 1.0));
         apps.Add(a);
         UdpServerHelper server(kDataPort);
@@ -728,14 +1007,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
             bins[b] += h.GetBinCount(b);
         }
     }
-    // Sends a station refused because its stack had no route at all (OLSR
-    // before convergence, or with every GSL down) never reach FlowMonitor; the
-    // UdpClient counted them, so the offered load comes from the clients.
+    // Sends a station refused because its stack had no route at all (the
+    // oracles and geo-greedy with no path, OLSR before convergence) never
+    // reach FlowMonitor, and UdpClient does not count them either: the offered
+    // load is the attempts counted from the client's Tx trace (OnClientTx).
     uint64_t offered = 0;
-    for (uint32_t i = 0; i < apps.GetN(); ++i) {
-        Ptr<UdpClient> c = DynamicCast<UdpClient>(apps.Get(i));
-        if (c) offered += c->GetTotalTx() / 64;
-    }
+    for (const auto& a : g_attempts) offered += a.size();
     if (offered > r.txPackets) r.txPackets = offered;
     r.pdr = r.txPackets ? 100.0 * r.rxPackets / r.txPackets : 0;
     r.meanDelayMs = r.rxPackets ? 1000.0 * totalDelay / r.rxPackets : 0;
@@ -755,38 +1032,99 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
     // --- handover metric family (#297 item 3) ---------------------------------
     std::cout << std::fixed << std::setprecision(3);
     std::cout << "# handover " << proto << " seed=" << seed << " scheduled=" << g_scheduledHo
-              << " forced=" << g_forcedHo << " islFailures=" << g_islFailures << "\n";
+              << " forced=" << g_forcedHo << " islFailures=" << g_islFailures
+              << " ticks=" << g_clockTicks << "\n";
     const double interval = 64.0 * 8.0 / P.cbrBps;
-    // An outage is a gap between consecutive deliveries of a flow longer than
-    // 3 packet intervals. Classify it by the most recent event in the 1 s
-    // before it began: a GSL handover at one of the flow's own stations
-    // (scheduled or forced), an ISL failure, a mass failure, or none.
+    // Outages on the SENDER's timeline, from the sequence numbers UdpClient
+    // stamps (the Starlink / LENS measurement convention: a run of lost
+    // probes). An outage is a run of >= kOutageRun consecutive lost sequence
+    // numbers; its duration is run x interval. The run that starts at a
+    // flow's first packet is class "startup" (initial route acquisition, a
+    // different claim from losing an established path); every other run is
+    // classed by the most recent event in the 1 s before its first lost
+    // packet was sent: a GSL handover at one of the flow's own stations
+    // (scheduled or forced), an ISL failure, a mass failure, or "other".
+    // Every offered packet is accounted for exactly once:
+    //   offered = delivered + outageLost + scatteredLost
+    // (# account per flow; scenario_check.py re-checks the identity).
+    constexpr uint32_t kOutageRun = 3;
     std::map<std::string, std::vector<double>> outages;
-    for (uint32_t f = 0; f < g_rxTimes.size(); ++f) {
-        const auto& t = g_rxTimes[f];
-        for (size_t k = 1; k < t.size(); ++k) {
-            const double gap = t[k] - t[k - 1];
-            if (gap <= 3 * interval) continue;
-            const double begin = t[k - 1];
-            std::string cls = "other";
+    std::map<std::string, uint64_t> lostByClass;
+    for (uint32_t f = 0; f < g_rxSeq.size(); ++f) {
+        const auto& at = g_attempts[f];
+        const uint64_t offeredF = at.size();
+        auto lost = [&](uint64_t i) {
+            return at[i].seq < 0 || !g_rxSeq[f].count(static_cast<uint32_t>(at[i].seq));
+        };
+        uint64_t outageLost = 0, scatteredLost = 0, refused = 0, delivered = 0;
+        for (const Attempt& x : at) {
+            refused += x.seq < 0;
+            delivered += x.seq >= 0 && g_rxSeq[f].count(static_cast<uint32_t>(x.seq));
+        }
+        uint64_t k = 0;
+        while (k < offeredF) {
+            if (!lost(k)) { ++k; continue; }
+            uint64_t e = k;
+            while (e < offeredF && lost(e)) ++e;
+            const uint64_t run = e - k;
+            if (run < kOutageRun) {
+                scatteredLost += run;
+                k = e;
+                continue;
+            }
+            outageLost += run;
+            const double begin = at[k].t;
+            std::string cls = k == 0 ? "startup" : "other";
+            // The path the flow was using: that of the latest-sent delivered
+            // packet sent before the outage began.
+            const std::vector<uint32_t>* lastPath = nullptr;
+            double lastSend = -1;
+            for (const auto& rp : g_rxPath[f]) {
+                if (rp.first < begin && rp.first > lastSend) {
+                    lastSend = rp.first;
+                    lastPath = &rp.second;
+                }
+            }
+            auto onPath = [&](int kind, int ev) {
+                if (!lastPath) return false;
+                const auto& pth = *lastPath;
+                if (kind == 4) {
+                    for (uint32_t n : pth) if (g_massVictimIds.count(n)) return true;
+                    return false;
+                }
+                const Link& l = w.isls[static_cast<size_t>(g_eventLink[ev])];
+                const uint32_t a = w.sats.Get(l.a)->GetId(), b = w.sats.Get(l.b)->GetId();
+                for (size_t h = 1; h < pth.size(); ++h) {
+                    if ((pth[h - 1] == a && pth[h] == b) || (pth[h - 1] == b && pth[h] == a)) return true;
+                }
+                return false;
+            };
             double bestT = -1;
-            for (size_t e = 0; e < g_events.size(); ++e) {
-                const double et = g_events[e].first;
+            for (size_t ev = 0; k > 0 && ev < g_events.size(); ++ev) {
+                const double et = g_events[ev].first;
                 if (et < begin - 1.0 || et > begin + interval || et < bestT) continue;
-                const int kind = g_events[e].second;
-                const int gs = g_eventGs[e];
+                const int kind = g_events[ev].second;
+                const int gs = g_eventGs[ev];
                 if ((kind == 1 || kind == 2) && gs != g_flowGs[f][0] && gs != g_flowGs[f][1]) continue;
+                if ((kind == 3 || kind == 4) && !onPath(kind, static_cast<int>(ev))) continue;
                 bestT = et;
                 cls = kind <= 2 ? "scheduled" : kind == 3 ? "unplanned" : "massfail";
             }
-            outages[cls].push_back(gap - interval);
+            outages[cls].push_back(static_cast<double>(run) * interval);
+            lostByClass[cls] += run;
+            k = e;
         }
+        std::cout << "# account " << proto << " seed=" << seed << " flow=" << f
+                  << " offered=" << offeredF << " refused=" << refused
+                  << " delivered=" << delivered << " received=" << g_rxSeq[f].size()
+                  << " dup=" << g_rxDup[f] << " outageLost=" << outageLost
+                  << " scatteredLost=" << scatteredLost << "\n";
     }
-    for (const char* cls : {"scheduled", "unplanned", "massfail", "other"}) {
+    for (const char* cls : {"startup", "scheduled", "unplanned", "massfail", "other"}) {
         const auto& v = outages[cls];
         std::cout << "# outage " << proto << " seed=" << seed << " class=" << cls
-                  << " n=" << v.size() << " p50=" << Quantile(v, 0.5)
-                  << " p90=" << Quantile(v, 0.9)
+                  << " n=" << v.size() << " lost=" << lostByClass[cls]
+                  << " p50=" << Quantile(v, 0.5) << " p90=" << Quantile(v, 0.9)
                   << " max=" << (v.empty() ? std::nan("") : *std::max_element(v.begin(), v.end()))
                   << "\n";
     }
@@ -798,13 +1136,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
         for (int h : g_rxHops[f]) meanHops += h;
         if (!g_rxHops[f].empty()) meanHops /= g_rxHops[f].size();
         std::cout << "# churn " << proto << " seed=" << seed << " flow=" << f << " "
-                  << kCities[kPairs[f].first].name << "-" << kCities[kPairs[f].second].name
+                  << g_cities[g_pairs[f].first].name << "-" << g_cities[g_pairs[f].second].name
                   << " hopChangesPerMin=" << (span > 0 ? 60.0 * changes / span : 0)
                   << " meanHops=" << meanHops << " delivered=" << g_rxTimes[f].size() << "\n";
     }
     if (P.series && !g_rxTimes.empty()) {
-        const City& a = kCities[kPairs[0].first];
-        const City& b = kCities[kPairs[0].second];
+        const City& a = g_cities[g_pairs[0].first];
+        const City& b = g_cities[g_pairs[0].second];
         const double geo = GreatCircle(a.lat, a.lon, b.lat, b.lon);
         std::map<int, std::pair<double, int>> perSec;
         for (size_t k = 0; k < g_rxTimes[0].size(); ++k) {
@@ -829,6 +1167,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
                   << " changes=" << topo->GetTopologyChanges()
                   << " noRoute=" << topo->GetNoRouteCount() << "\n";
     }
+    if (proto == "geo-greedy") {
+        NS_ABORT_MSG_IF(g_controlPkts != 0, "geo-greedy transmitted control packets");
+        std::cout << "# geo " << proto << " seed=" << seed
+                  << " noRouteOrigin=" << g_geoNoRouteOrigin
+                  << " noRouteForward=" << g_geoNoRouteForward << "\n";
+    }
     Simulator::Destroy();
     return r;
 }
@@ -845,11 +1189,15 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("inclination", "inclination (degrees)", P.incDeg);
     cmd.AddValue("shell", "preset: 'starlink1' = 72 x 22 at 550 km, 53 deg (overrides the above)",
                  P.shell);
+    cmd.AddValue("pairs",
+                 "ground stations and flows: 'default' (six cities, four pairs) or 'hypatia' "
+                 "(Paris-Luanda only: Hypatia's published Starlink-S1 RTT range, #297 calibration)",
+                 P.pairs);
     cmd.AddValue("time", "simulated seconds", P.simTime);
     cmd.AddValue("runs", "seeds per protocol", P.runs);
     cmd.AddValue("firstRun", "first seed", P.firstRun);
     cmd.AddValue("flows", "ground-station flows (city pairs, max 4)", P.nFlows);
-    cmd.AddValue("protocols", "comma list: anthocnet, aodv, olsr, oracle (hop bound), oracle-delay (latency bound)", P.protocols);
+    cmd.AddValue("protocols", "comma list: anthocnet, aodv, olsr, oracle (hop bound), oracle-delay (latency bound), geo-greedy (idealised greedy geographic)", P.protocols);
     cmd.AddValue("islRate", "ISL data rate", P.islRate);
     cmd.AddValue("gslRate", "GSL data rate", P.gslRate);
     cmd.AddValue("cbrBps", "per-flow CBR rate (bit/s), 64 B packets", P.cbrBps);
@@ -861,6 +1209,11 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("massFailAt", "mass satellite failure at this time (s; <0 = off)", P.massFailAt);
     cmd.AddValue("massFailFrac", "fraction of satellites lost in the mass failure", P.massFailFrac);
     cmd.AddValue("delayUpdate", "propagation-delay refresh period (s)", P.delayUpdate);
+    cmd.AddValue("oracleInterval",
+                 "oracle-delay re-solve period (s; 0 = --delayUpdate). Its all-pairs solve "
+                 "dominates the run time on a 1584-satellite shell; a longer period bounds "
+                 "the oracle's staleness by that period",
+                 P.oracleInterval);
     cmd.AddValue("series", "print the per-second delay series of flow 0", P.series);
     cmd.AddValue("csv", "machine-readable rows", P.csv);
     cmd.Parse(argc, argv);
@@ -868,6 +1221,12 @@ int main(int argc, char* argv[]) {
         P.planes = 72; P.sats = 22; P.altKm = 550; P.incDeg = 53; P.phasing = 39;
     }
     NS_ABORT_MSG_IF(P.planes < 2 || P.sats < 3, "need >= 2 planes and >= 3 satellites per plane");
+    if (P.pairs == "hypatia") {
+        g_cities.assign(std::begin(kHypatiaCities), std::end(kHypatiaCities));
+        g_pairs.assign(std::begin(kHypatiaPairs), std::end(kHypatiaPairs));
+    } else {
+        NS_ABORT_MSG_IF(P.pairs != "default", "--pairs must be 'default' or 'hypatia'");
+    }
 
     std::vector<std::string> protos;
     {
@@ -882,12 +1241,14 @@ int main(int argc, char* argv[]) {
               << " clock=" << P.clock << " clockOffset=" << P.clockOffset << " islDown=" << P.islDown
               << " islMeanDown=" << P.islMeanDown << " massFailAt=" << P.massFailAt
               << " massFailFrac=" << P.massFailFrac << " delayUpdate=" << P.delayUpdate
-              << " protocols=" << P.protocols << "\n";
+              << " oracleInterval=" << P.oracleInterval
+              << " protocols=" << P.protocols
+              << (P.pairs == "default" ? "" : " pairs=" + P.pairs) << "\n";
     Anchors(P);
     const std::vector<std::set<uint32_t>> cand = VisibleCandidates(P);
     {
         std::cout << "# visibility minElevation=" << P.minElevDeg;
-        for (uint32_t g = 0; g < cand.size(); ++g) std::cout << ' ' << kCities[g].name << '=' << cand[g].size();
+        for (uint32_t g = 0; g < cand.size(); ++g) std::cout << ' ' << g_cities[g].name << '=' << cand[g].size();
         std::cout << "\n";
     }
 
