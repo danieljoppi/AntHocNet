@@ -26,6 +26,7 @@ Usage:
 """
 import argparse
 import importlib.util
+import math
 import os
 import re
 import statistics
@@ -54,7 +55,9 @@ KV = re.compile(r"(\w+)=(\S+)")
 def parse(path):
     """One arm's cell: per-seed rows, accounts, outages, handovers, churn."""
     runs, acct, outage, ho, churn = {}, {}, {}, {}, []
-    for line in open(path):
+    with open(path) as fh:
+        lines = fh.readlines()
+    for line in lines:
         m = RUN.match(line)
         if m:
             v = [float(x) for x in m.groups()[2:]]
@@ -90,7 +93,7 @@ def ci(xs):
 def fnum(s):
     try:
         v = float(s)
-        return None if v != v else v
+        return None if math.isnan(v) else v
     except ValueError:
         return None
 

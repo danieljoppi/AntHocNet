@@ -91,9 +91,9 @@ def main(paths):
     print(f"files {len(paths)}  pings {sent}  replies {len(rtts)}  "
           f"loss {100.0 * lost / sent:.3f} %  (ping's own summaries: "
           f"{tx_summary} sent, {100.0 * (tx_summary - rx_summary) / tx_summary:.3f} % loss)")
-    print("RTT ms  min {:.1f}  p5 {:.1f}  p50 {:.1f}  p95 {:.1f}  p99 {:.1f}".format(
-        rtts[0], quantile(rtts, 0.05), quantile(rtts, 0.5), quantile(rtts, 0.95),
-        quantile(rtts, 0.99)))
+    print(f"RTT ms  min {rtts[0]:.1f}  p5 {quantile(rtts, 0.05):.1f}  "
+          f"p50 {quantile(rtts, 0.5):.1f}  p95 {quantile(rtts, 0.95):.1f}  "
+          f"p99 {quantile(rtts, 0.99):.1f}")
     print("phase (UTC s mod 15) | loss % | median RTT ms")
     for ph in range(15):
         loss = 100.0 * phase_lost[ph] / phase_sent[ph] if phase_sent[ph] else 0.0
