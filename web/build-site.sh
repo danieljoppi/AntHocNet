@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Assemble the learn site (#545/#548): build the WASM core and copy it next to
-# the static front end. Output: <out>/ (default web/build-site/learn), ready to
-# serve or to drop into the Pages artifact at site/learn/.
+# the static front end. Output: <out>/ (default web/build-site), ready to serve
+# or to be the Pages artifact's root (site/; the docs go in under site/docs/).
 # Needs an activated emsdk (emcmake) — pinned in ci.yml / pages.yml.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-OUT=${1:-web/build-site/learn}
+OUT=${1:-web/build-site}
 emcmake cmake -S web -B web/build-wasm -DCMAKE_BUILD_TYPE=Release >/dev/null
 cmake --build web/build-wasm -j"$(nproc)" --target anthocnet >/dev/null
 rm -rf "$OUT"

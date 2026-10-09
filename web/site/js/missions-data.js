@@ -9,8 +9,8 @@
 // writing one would be a second implementation of something else, so the boss
 // level scores the player's network against a delivery target instead.
 
-const DOC = '../';
-const API = '../api/';
+const DOC = 'docs/';
+const API = 'api/';
 const PT = API + 'classanthocnet_1_1core_1_1PheromoneTable.html';
 const ARL = API + 'classanthocnet_1_1core_1_1AntRouterLogic.html';
 
@@ -227,8 +227,8 @@ export const MISSIONS = [
   {
     id: 'boss', n: 8, group: 'Academy', title: 'Run the city', world: 'manet', seed: 7, speed: 1, tool: 'build',
     intro: 'Three flows cross a moving network that is not always connected. You are the network planner.',
-    goal: 'From t = 10 s to t = 70 s, deliver at least 95% of all packets. You may build up to 4 towers.',
-    hints: ['Watch where packets are dropped (✕) and build a tower to bridge that gap.', 'A tower in a crowded middle area helps every flow.'],
+    goal: 'From t = 10 s to t = 70 s, deliver at least 95% of all packets. You may place up to 4 relay phones (they stay where you put them).',
+    hints: ['Watch where packets are dropped (✕) and place a relay phone to bridge that gap.', 'A relay in a crowded middle area helps every flow.'],
     debrief: 'Partitions, not routing, cap delivery on sparse mobile networks: no protocol can cross a gap with no radio in it. That is why the measured results include an oracle that knows the whole topology.',
     links: [['MANET results with the oracle', DOC + 'benchmarks/grid/'], ['Methodology', DOC + 'benchmarks/methodology/']],
     async run(ctx) {
@@ -237,7 +237,7 @@ export const MISSIONS = [
       const built = ctx.world.nodeCount() - n0;
       let score = r.ratio >= 0.95 ? 3 : r.ratio >= 0.9 ? 2 : 1;
       if (built > 4) score = 1;
-      ctx.complete(score, `${pct(r.ratio)} delivered (${r.delivered} of ${r.sent}) with ${built} tower(s) built${built > 4 ? ' — over the limit of 4' : ''}.`);
+      ctx.complete(score, `${pct(r.ratio)} delivered (${r.delivered} of ${r.sent}) with ${built} relay(s) placed${built > 4 ? ' — over the limit of 4' : ''}.`);
     },
   },
 

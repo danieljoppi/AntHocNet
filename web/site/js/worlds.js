@@ -2,22 +2,22 @@
 // mobility, channel, size -- never the protocol defaults (ADR-0019). Every
 // comparative claim is a link to the measured results page, never a number
 // from this teaching radio.
-const RESULTS = '../benchmarks/';
+const RESULTS = 'docs/benchmarks/';
 export const WORLDS = [
   {
-    id: 'line', title: 'Six in a row',
+    id: 'line', title: 'Six in a row', sprite: 'phone',
     blurb: 'Six nodes that each hear only their neighbours, and one flow from end to end. The smallest network where routing is a question at all.',
     honest: 'Teaching radio: unit disk, 250 m range, 2 Mbit/s, no collisions.',
     results: null,
   },
   {
-    id: 'manet', title: 'Ad hoc MANET (default)',
-    blurb: '30 nodes moving by random waypoint over an open field: the network the AntHocNet papers were written for. Links appear and break as nodes move; the ants have to keep up.',
+    id: 'manet', title: 'Ad hoc MANET (default)', sprite: 'phone',
+    blurb: '30 phones on an open field: the network the AntHocNet papers were written for. Twenty are carried around (random waypoint, 2–10 m/s) and leave footprints; ten stay put. Links appear and break as people walk; the ants have to keep up.',
     honest: 'Teaching radio: unit disk, 250 m range. The measured MANET results use ns-3 two-ray and Nakagami channels.',
     results: { href: RESULTS + 'grid/', label: 'MANET grid results' },
   },
   {
-    id: 'mesh', title: 'Static Wi-Fi mesh',
+    id: 'mesh', title: 'Static Wi-Fi mesh', sprite: 'tower',
     blurb: 'A community mesh: nothing moves. Every link that exists stays. Watch what the ants keep spending once the routes are found.',
     honest: 'Teaching radio: unit disk, 250 m range.',
     results: { href: RESULTS + 'static-mesh/', label: 'Static mesh results' },

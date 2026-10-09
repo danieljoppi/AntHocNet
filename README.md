@@ -10,12 +10,12 @@
 [![Simulators](https://img.shields.io/badge/simulators-ns--2%20%C2%B7%20ns--3-informational)](#)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow)](https://www.conventionalcommits.org)
 [![Top language](https://img.shields.io/github/languages/top/danieljoppi/AntHocNet)](#)
-[![Docs](https://img.shields.io/badge/docs-site-blue)](https://danieljoppi.github.io/AntHocNet/)
+[![Docs](https://img.shields.io/badge/docs-site-blue)](https://danieljoppi.github.io/AntHocNet/docs/)
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/danieljoppi/AntHocNet?quickstart=1)
 
-**▶ [Learn it by playing](https://danieljoppi.github.io/AntHocNet/learn/)** — a city-builder for networks and ants
+**▶ [Learn it by playing](https://danieljoppi.github.io/AntHocNet/)** — a city-builder for networks and ants
 that runs this repository's routing core, compiled to WebAssembly, in your
-browser: build radio towers, break links, and watch the ants find the way.
+browser: place and move phones, break links, and watch the ants find the way.
 Code reference: [API docs](https://danieljoppi.github.io/AntHocNet/api/).
 
 **A paper-faithful AntHocNet you can install on a stock ns-3 tree in three
@@ -36,7 +36,7 @@ bars: 95% CI) — current numbers and per-scenario pages in
 An ant-colony-optimization routing protocol for mobile ad-hoc networks,
 implemented once as a **simulator-agnostic algorithm core** with a thin
 **NS-3** adapter (and a browser adapter that runs the same core as WebAssembly
-on the [learn site](https://danieljoppi.github.io/AntHocNet/learn/)).
+on the [learn site](https://danieljoppi.github.io/AntHocNet/), the project's front page).
 
 The repository does not bundle a copy of any simulator. You install AntHocNet
 onto *your own* NS-3 tree as an additive `contrib/` module (ns-3.36+, with a

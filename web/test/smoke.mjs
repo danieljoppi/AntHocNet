@@ -3,9 +3,11 @@
 //   1. opens every world, runs it, and requires no console errors and at
 //      least one backward ant and one delivered packet in the event stream;
 //   2. plays mission 2 ("Send the scouts") to completion with scripted input;
-//   3. runs axe-core on the page and fails on serious or critical violations.
+//   3. runs axe-core on the front page as a first visit sees it (welcome
+//      card up, default world) and fails on serious or critical violations;
+//   4. checks the default world is mixed: some phones walk, some stand still.
 //
-// Usage: node web/test/smoke.mjs <site-root-containing-learn/>
+// Usage: node web/test/smoke.mjs <assembled-site-root>   (web/build-site.sh's output)
 // Env:   CHROMIUM=/path/to/chrome (default: Playwright's pre-installed one)
 // Needs: playwright-core and axe-core resolvable from the working directory
 //        (CI installs both, pinned, with npm in a scratch directory).
@@ -29,7 +31,7 @@ const server = http.createServer((req, res) => {
   fs.createReadStream(f).pipe(res);
 }).listen(0);
 const port = server.address().port;
-const base = `http://127.0.0.1:${port}/learn/`;
+const base = `http://127.0.0.1:${port}/`;
 
 // CHROMIUM wins; else the pre-installed dev-container browser if present;
 // else whatever `playwright install chromium` put in Playwright's cache (CI).
@@ -109,14 +111,36 @@ for (const world of ['line', 'manet', 'mesh', 'fanet', 'vanet', 'satellite']) {
 // 3. Accessibility: no serious or critical axe violations (day and night).
 for (const scheme of ['light', 'dark']) {
   const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: scheme });
-  await p.goto(base + '#manet?seed=1');
+  await p.goto(base);
   await p.waitForTimeout(2500);
+  if (await p.locator('#welcome').isHidden()) fail(`front page (${scheme}): welcome card not shown on a first visit`);
   await p.addScriptTag({ content: axeSource });
   const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
     .filter((v) => v.impact === 'serious' || v.impact === 'critical')
     .map((v) => `${v.id} (${v.impact}): ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join('; ')}`));
   if (result.length) fail(`axe (${scheme}): ${result.join(' | ')}`);
   else console.log(`ok: axe (${scheme}) — no serious or critical violations`);
+  await p.close();
+}
+
+// 4. The default ad hoc world mixes walking and standing phones (#542 follow-up).
+{
+  const { p, errors } = await page('#manet?seed=1');
+  await p.waitForFunction(() => document.getElementById('clock')?.textContent.includes('t 0:0'), null, { timeout: 15000 });
+  const moved = await p.evaluate(async () => {
+    const { playground } = await import('./js/app.js');
+    playground.setSpeed(0);
+    const w = playground.world;
+    const a = Array.from(w.positions());
+    w.advanceTo(w.now() + 20);
+    const b = Array.from(w.positions());
+    let walk = 0, still = 0;
+    for (let i = 0; i < a.length / 4; i++) (Math.hypot(a[4 * i] - b[4 * i], a[4 * i + 1] - b[4 * i + 1]) > 1e-9 ? walk++ : still++);
+    return { walk, still };
+  });
+  if (errors.length) fail(`mixed mobility: console errors: ${errors.join(' | ')}`);
+  if (!moved.walk || moved.still < 10) fail(`manet: expected walkers and >= 10 still phones, got ${JSON.stringify(moved)}`);
+  else console.log(`ok: manet — ${moved.walk} phones moved in 20 s, ${moved.still} stood still`);
   await p.close();
 }
 

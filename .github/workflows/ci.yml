@@ -57,7 +57,7 @@ jobs:
       - name: Assemble the learn site
         run: |
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
-          web/build-site.sh web/build-site/learn
+          web/build-site.sh web/build-site
       - name: Learn-site browser smoke (#548)
         # Every world runs with no console error, a backward ant and a delivery;
         # all worlds share the protocol defaults (ADR-0019); mission 2 plays to

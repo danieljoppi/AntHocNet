@@ -1,9 +1,10 @@
 name: Pages
 
-# Renders docs/ as a mkdocs-material site and publishes it to GitHub Pages
-# (#331), with two more builds in the same artifact (#542): the Doxygen API
-# reference at /api/ (#543) and the learn site -- core/ compiled to
-# WebAssembly plus its front end -- at /learn/ (#545-#548). The repository
+# Publishes three builds as one GitHub Pages artifact (#331, #542): the learn
+# site -- core/ compiled to WebAssembly plus its front end (#545-#548) -- as
+# the front page at /, docs/ rendered by mkdocs-material at /docs/, and the
+# Doxygen API reference at /api/ (#543). Stubs at the old docs URLs and at
+# /learn/ forward to the new ones (ADR-0021, amendment 2026-10-09). The repository
 # tree stays canonical -- this job only renders it, so a failure here never
 # blocks a merge; ci.yml/lint.yml remain the gates (ci.yml's web-parity job
 # runs the same WASM build and the learn-site smoke on every PR).
@@ -68,16 +69,26 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.x'
+      - name: Install emsdk (pinned, as ci.yml)
+        run: |
+          git clone --depth 1 --branch 4.0.10 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install 4.0.10
+          "$RUNNER_TEMP/emsdk/emsdk" activate 4.0.10
+      - name: Learn site (the front page, /)
+        # First: build-site.sh empties its output directory.
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          web/build-site.sh site
       - name: Install mkdocs-material
         # Pinned for the same reason ruff is pinned in lint.yml: an unpinned
         # docs toolchain turns an upstream release into a red main-branch run.
         # The pin lives in requirements-dev.txt so Dependabot can see it.
         run: pip install -c requirements-dev.txt mkdocs-material
-      - name: Build
+      - name: Docs (/docs/)
         # --strict: warnings (broken internal links, nav pointing at a missing
         # page) fail the build instead of silently shipping a 404. It passes
         # today; keep it passing rather than dropping the flag.
-        run: mkdocs build --strict
+        run: mkdocs build --strict --site-dir site/docs
       - name: API reference (/api/)
         # Doxygen from the runner's apt (1.9.8 on ubuntu-24.04), version logged.
         # Undocumented public symbols are reported, not fatal (#543).
@@ -87,15 +98,8 @@ jobs:
           mkdir -p build/api
           AHN_VERSION="$(cat VERSION)" doxygen api/Doxyfile
           cp -r build/api/html site/api
-      - name: Install emsdk (pinned, as ci.yml)
-        run: |
-          git clone --depth 1 --branch 4.0.10 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
-          "$RUNNER_TEMP/emsdk/emsdk" install 4.0.10
-          "$RUNNER_TEMP/emsdk/emsdk" activate 4.0.10
-      - name: Learn site (/learn/)
-        run: |
-          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
-          web/build-site.sh site/learn
+      - name: Redirects from the old URLs (/<page>/ -> /docs/<page>/, /learn/ -> /)
+        run: web/site-redirects.sh site
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

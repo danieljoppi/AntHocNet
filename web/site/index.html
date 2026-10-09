@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Learn AntHocNet</title>
-  <meta name="description" content="A city-builder for networks and ants: build radio towers, launch flows, and watch the real AntHocNet routing core, compiled to WebAssembly, find and repair routes.">
+  <title>AntHocNet — learn ant-colony routing by playing</title>
+  <meta name="description" content="A city-builder for networks and ants: place phones, move them, launch flows, and watch the real AntHocNet routing core, compiled to WebAssembly, find and repair routes.">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="css/learn.css">
   <script type="module" src="js/app.js"></script>
@@ -13,7 +13,7 @@
   <a class="skip" href="#map">Skip to the map</a>
 
   <header class="menubar">
-    <a class="brand" href="../" title="Back to the documentation"><span class="logo" aria-hidden="true"></span>AntHocNet <span class="sub">Colony&nbsp;Net</span></a>
+    <a class="brand" href="./" title="AntHocNet: the game"><span class="logo" aria-hidden="true"></span>AntHocNet <span class="sub">Colony&nbsp;Net</span></a>
     <label class="menu">World
       <select id="world" aria-describedby="worldBlurb"></select>
     </label>
@@ -29,8 +29,9 @@
     </div>
     <button id="step" type="button" class="bevel" title="Step to the next ant or packet (.)">Step</button>
     <nav class="links" aria-label="Elsewhere">
-      <a href="../">Docs</a>
-      <a href="../api/">API</a>
+      <a href="docs/">Docs</a>
+      <a href="docs/benchmarks/">Results</a>
+      <a href="api/">API</a>
       <a href="https://github.com/danieljoppi/AntHocNet">GitHub</a>
     </nav>
     <button id="theme" type="button" class="bevel" aria-label="Switch day and night" title="Day / night">☾</button>
@@ -40,11 +41,11 @@
     <nav class="toolbox window" aria-label="Tools">
       <div class="titlebar">Tools</div>
       <div class="tools" role="toolbar" aria-label="Map tools" id="tools">
-        <button type="button" class="tool bevel" data-tool="inspect" aria-pressed="true" title="Inspect (1): click a node to read its routing table"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg><span>Inspect</span></button>
-        <button type="button" class="tool bevel" data-tool="move" aria-pressed="false" title="Move (2): drag a node; drag the ground to pan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg><span>Move</span></button>
-        <button type="button" class="tool bevel" data-tool="build" aria-pressed="false" title="Build (3): put a new node on the map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l-5 18M12 3l5 18M8.5 15h7M10 9h4"/><circle cx="12" cy="3" r="1.5"/></svg><span>Build</span></button>
-        <button type="button" class="tool bevel" data-tool="bulldoze" aria-pressed="false" title="Bulldoze (4): switch a node off or on; cut a satellite link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h12l3-6h3M5 17v3h8v-3M15 11V7H8v4"/></svg><span>Bulldoze</span></button>
-        <button type="button" class="tool bevel" data-tool="flow" aria-pressed="false" title="Flow (5): click a source, then a destination"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><path d="M8 12h8M13 9l3 3-3 3"/></svg><span>Flow</span></button>
+        <button type="button" class="tool bevel" data-tool="inspect" aria-pressed="true" title="Inspect (1): click a node to read its routing table"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg><span>Inspect</span><kbd aria-hidden="true">1</kbd></button>
+        <button type="button" class="tool bevel" data-tool="move" aria-pressed="false" title="Move (2): drag a node; drag the ground to pan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg><span>Move</span><kbd aria-hidden="true">2</kbd></button>
+        <button type="button" class="tool bevel" data-tool="build" aria-pressed="false" title="Build (3): put a new node on the map (in the ad hoc world: a phone that stays put)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l-5 18M12 3l5 18M8.5 15h7M10 9h4"/><circle cx="12" cy="3" r="1.5"/></svg><span>Build</span><kbd aria-hidden="true">3</kbd></button>
+        <button type="button" class="tool bevel" data-tool="bulldoze" aria-pressed="false" title="Bulldoze (4): switch a node off or on; cut a satellite link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h12l3-6h3M5 17v3h8v-3M15 11V7H8v4"/></svg><span>Bulldoze</span><kbd aria-hidden="true">4</kbd></button>
+        <button type="button" class="tool bevel" data-tool="flow" aria-pressed="false" title="Flow (5): click a source, then a destination"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><path d="M8 12h8M13 9l3 3-3 3"/></svg><span>Flow</span><kbd aria-hidden="true">5</kbd></button>
       </div>
       <div class="titlebar">View</div>
       <div class="tools small">
@@ -68,6 +69,16 @@
       <div class="map" id="map" tabindex="0" role="application" aria-label="Network map" aria-describedby="mapHelp">
         <canvas id="view"></canvas>
         <p class="toast" id="toast" role="status" aria-live="polite" hidden></p>
+        <section class="welcome" id="welcome" aria-labelledby="welcomeTitle" hidden>
+          <h1 id="welcomeTitle">Route like an ant colony</h1>
+          <p>Every phone on this field is running the real AntHocNet routing core, compiled to WebAssembly. Some walk, some stand still; links come and go, and the ants keep finding the way.</p>
+          <div class="row">
+            <button type="button" class="bevel primary" id="welcomePlay">Start mission 1</button>
+            <button type="button" class="bevel" id="welcomeExplore">Just explore</button>
+            <a class="small" href="docs/">Read the docs</a>
+          </div>
+          <button type="button" class="bevel close" id="welcomeClose" aria-label="Close the welcome card">✕</button>
+        </section>
       </div>
       <p class="sr" id="mapHelp">Keyboard: 1 to 5 pick a tool; [ and ] select the previous or next node; arrow keys move the selected node (or pan); o switches it off or on; Q and E rotate; plus and minus zoom; space pauses. Every event is also written to the ant log below the map.</p>
       <div class="status" aria-live="off">
@@ -121,6 +132,24 @@
     <ol class="log" id="log"></ol>
   </section>
 
-  <noscript><p class="window body">This game runs the AntHocNet routing core as WebAssembly and needs JavaScript. The <a href="../">documentation</a> explains the protocol without it.</p></noscript>
+  <section class="about" aria-labelledby="aboutTitle">
+    <h2 id="aboutTitle">How the colony routes</h2>
+    <p>AntHocNet is an ant-colony routing protocol for networks with no fixed infrastructure — phones, drones, cars, satellites. This repository implements it once, in a simulator-independent core, and runs that core in ns-3 and in this page.</p>
+    <ol class="steps">
+      <li class="window"><h3><span class="dot" style="background:var(--c-reactive)"></span>Ants search</h3><p>A node with data and no route sends reactive forward ants. Each one that reaches the destination turns into a backward ant.</p></li>
+      <li class="window"><h3><span class="dot" style="background:var(--c-backward)"></span>Ants lay pheromone</h3><p>The backward ant walks the path home and leaves pheromone on every hop: more on short, fast paths, less on slow ones.</p></li>
+      <li class="window"><h3><span class="dot" style="background:var(--c-data)"></span>Packets follow the scent</h3><p>Each data packet picks its next hop at random, weighted by pheromone raised to β = 20 — so the best trail almost always wins.</p></li>
+      <li class="window"><h3><span class="dot" style="background:var(--c-proactive)"></span>The colony keeps it fresh</h3><p>Hellos find neighbours, proactive ants re-sample routes in use, and link-failure notices and repair ants patch a route when a phone walks away.</p></li>
+    </ol>
+  </section>
+  <footer class="foot">
+    <a href="docs/">Documentation</a>
+    <a href="docs/benchmarks/">Measured results</a>
+    <a href="api/">API reference</a>
+    <a href="https://github.com/danieljoppi/AntHocNet">Source on GitHub</a>
+    <span>Nothing measured in this game is a benchmark number; the results pages are.</span>
+  </footer>
+
+  <noscript><p class="window body">This game runs the AntHocNet routing core as WebAssembly and needs JavaScript. The <a href="docs/">documentation</a> explains the protocol without it.</p></noscript>
 </body>
 </html>
