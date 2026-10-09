@@ -9,19 +9,19 @@ hand over, ISLs fail and recover. The static ISL torus that came first is
 [← Benchmark index](../../benchmarks.md) · [Metrics](../metrics.md) ·
 [Methodology](../methodology.md)
 
-> **Provenance — measured at `0b5a65ad`.** Sixteen `satellite-benchmark.yml`
+> **Provenance — measured at `0b5a65ad`.** Seventeen `satellite-benchmark.yml`
 > dispatches with `harness=leo-walker`, one arm per dispatch, on
 > `ghcr.io/danieljoppi/ns3:3.48` (default profile), 20 seeds each. Every cell
 > carries its run id on its first line and its full `##CONFIG##` line, and
 > every cell passes `scenario_check.py` (the #297 handover-clock and
 > outage-accounting rules) as committed.
 >
-> | cell | anthocnet | aodv | geo-greedy | oracle | oracle-delay |
-> |---|---|---|---|---|---|
-> | `walker16` | [37827387100](https://github.com/danieljoppi/AntHocNet/actions/runs/37827387100) | [37827390737](https://github.com/danieljoppi/AntHocNet/actions/runs/37827390737) | [37827410383](https://github.com/danieljoppi/AntHocNet/actions/runs/37827410383) | [37827401516](https://github.com/danieljoppi/AntHocNet/actions/runs/37827401516) | [37827405771](https://github.com/danieljoppi/AntHocNet/actions/runs/37827405771) |
-> | `starlink1` | [37827426356](https://github.com/danieljoppi/AntHocNet/actions/runs/37827426356) | [37827430778](https://github.com/danieljoppi/AntHocNet/actions/runs/37827430778) | [37827443695](https://github.com/danieljoppi/AntHocNet/actions/runs/37827443695) | [37827433965](https://github.com/danieljoppi/AntHocNet/actions/runs/37827433965) | [37827439616](https://github.com/danieljoppi/AntHocNet/actions/runs/37827439616) |
-> | `starlink1-storm` | [37827449496](https://github.com/danieljoppi/AntHocNet/actions/runs/37827449496) | [37827453949](https://github.com/danieljoppi/AntHocNet/actions/runs/37827453949) | [37827467035](https://github.com/danieljoppi/AntHocNet/actions/runs/37827467035) | [37827458721](https://github.com/danieljoppi/AntHocNet/actions/runs/37827458721) | [37827462965](https://github.com/danieljoppi/AntHocNet/actions/runs/37827462965) |
-> | `hypatia` calibration | | | | | [37827470132](https://github.com/danieljoppi/AntHocNet/actions/runs/37827470132) |
+> | cell | anthocnet | aodv | olsr | geo-greedy | oracle | oracle-delay |
+> |---|---|---|---|---|---|---|
+> | `walker16` | [37827387100](https://github.com/danieljoppi/AntHocNet/actions/runs/37827387100) | [37827390737](https://github.com/danieljoppi/AntHocNet/actions/runs/37827390737) | [37827395914](https://github.com/danieljoppi/AntHocNet/actions/runs/37827395914) | [37827410383](https://github.com/danieljoppi/AntHocNet/actions/runs/37827410383) | [37827401516](https://github.com/danieljoppi/AntHocNet/actions/runs/37827401516) | [37827405771](https://github.com/danieljoppi/AntHocNet/actions/runs/37827405771) |
+> | `starlink1` | [37827426356](https://github.com/danieljoppi/AntHocNet/actions/runs/37827426356) | [37827430778](https://github.com/danieljoppi/AntHocNet/actions/runs/37827430778) |  | [37827443695](https://github.com/danieljoppi/AntHocNet/actions/runs/37827443695) | [37827433965](https://github.com/danieljoppi/AntHocNet/actions/runs/37827433965) | [37827439616](https://github.com/danieljoppi/AntHocNet/actions/runs/37827439616) |
+> | `starlink1-storm` | [37827449496](https://github.com/danieljoppi/AntHocNet/actions/runs/37827449496) | [37827453949](https://github.com/danieljoppi/AntHocNet/actions/runs/37827453949) |  | [37827467035](https://github.com/danieljoppi/AntHocNet/actions/runs/37827467035) | [37827458721](https://github.com/danieljoppi/AntHocNet/actions/runs/37827458721) | [37827462965](https://github.com/danieljoppi/AntHocNet/actions/runs/37827462965) |
+> | `hypatia` calibration | | | | | | [37827470132](https://github.com/danieljoppi/AntHocNet/actions/runs/37827470132) |
 >
 > Cells: `docs/benchmarks/cells/leo-<cell>-<arm>.txt`. **Every leo-walker
 > number measured before `0b5a65ad` is superseded** — see
@@ -46,6 +46,8 @@ Arms:
 
 - **anthocnet** — this repository, defaults.
 - **aodv** — stock ns-3 AODV, the reactive baseline every other suite uses.
+- **olsr** — stock ns-3 OLSR, the proactive link-state baseline. walker16
+  only (see below).
 - **geo-greedy** — an *idealised* greedy geographic comparator: each hop goes
   to the neighbour nearest the destination's serving satellite, with perfect
   global position knowledge and no control traffic. It stands for the
@@ -58,8 +60,9 @@ Arms:
   follows `--delayUpdate`) and every 1 s on S1 to keep CI time bounded. This
   is the latency bound, and the Hypatia-style control.
 
-OLSR is not in this campaign: on 1584 nodes its topology flooding is the
-practical limit of the harness, not of the substrate (ADR-0022, criterion 5).
+OLSR runs on walker16 only. On S1's 1584 nodes its topology flooding is the
+practical limit of the harness, not of the substrate (ADR-0022, criterion 5):
+even the 256-node walker16 cell took 5 h 54 min of CI for 20 seeds.
 
 ## Headline
 
@@ -88,6 +91,7 @@ unedited; rerun it on the committed cells to reproduce every number.
 |---|---|---|---|---|---|---|
 | anthocnet | 20 | 92.84 ± 0.40 | 67.33 ± 1.18 | 140.5 [131.4, 150.9] | 97.63 ± 1.69 | 0.00 |
 | aodv | 20 | 77.34 ± 2.58 | 71.97 ± 0.95 | 125.4 [123.0, 128.6] | 92.84 ± 3.24 | 0.00 |
+| olsr | 20 | 83.88 ± 0.53 | 67.37 ± 0.47 | 124.7 [123.5, 125.8] | 306.59 ± 1.87 | 2.91 |
 | geo-greedy | 20 | 41.35 ± 0.19 | 76.91 ± 2.07 | 417.3 [396.9, 432.2] | 0.00 ± 0.00 | 0.00 |
 | *oracle* (bound) | 20 | 98.35 ± 0.12 | 69.85 ± 0.09 | 123.2 [123.0, 123.5] | 0.00 ± 0.00 | 0.00 |
 | *oracle-delay* (bound) | 20 | 99.79 ± 0.03 | 61.56 ± 0.05 | 103.2 [103.0, 103.6] | 0.00 ± 0.00 | 0.00 |
@@ -97,6 +101,7 @@ AntHocNet − arm, paired per seed (95 % t-CI, Wilcoxon p):
 | vs | n | Δ PDR (pp) | Δ mean delay (ms) |
 |---|---|---|---|
 | aodv | 20 | +15.50 [+12.91, +18.09], p=1.9e-06 | -4.64 [-6.20, -3.07], p=1.3e-05 |
+| olsr | 20 | +8.96 [+8.36, +9.56], p=9.6e-05 | -0.04 [-1.34, +1.26], p=0.94 |
 | geo-greedy | 20 | +51.50 [+51.06, +51.94], p=9.6e-05 | -9.57 [-12.09, -7.05], p=3.8e-06 |
 
 Handover metric family (sums over seeds; outage = ≥ 3 consecutive lost send attempts):
@@ -105,6 +110,7 @@ Handover metric family (sums over seeds; outage = ≥ 3 consecutive lost send at
 |---|---|---|---|---|---|---|---|---|
 | anthocnet | 1 / 3 | 257 / 2062 | 649 / 4329 | 0 / 0 | 10 / 74 | 9.37 | 2.00 | 1.75 |
 | aodv | 2 / 17 | 232 / 12695 | 509 / 7256 | 0 / 0 | 106 / 1223 | 57.70 | 3.25 | 2.25 |
+| olsr | 80 / 2789 | 259 / 6009 | 551 / 5685 | 0 / 0 | 55 / 543 | 27.31 | 5.25 | 2.12 |
 | geo-greedy | 80 / 41274 | 41 / 13236 | 75 / 998 | 0 / 0 | 0 / 0 | 60.16 | 92.00 | 2.12 |
 | oracle | 0 / 0 | 1 / 4 | 252 / 830 | 0 / 0 | 4 / 15 | 0.02 | 1.00 | 0.75 |
 | oracle-delay | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0.00 | — | — |
@@ -113,13 +119,24 @@ Handover metric family (sums over seeds; outage = ≥ 3 consecutive lost send at
 |---|---|---|
 | anthocnet | 2.07 | 9.29 |
 | aodv | 0.76 | 9.05 |
+| olsr | 0.83 | 8.65 |
 | geo-greedy | 0.84 | 6.33 |
 | oracle | 1.02 | 8.72 |
 | oracle-delay | 1.08 | 8.76 |
 
-AODV's lower delay99 on walker16 (125 vs 140 ms) is survivorship: it delivers
-15.5 pp fewer packets, and the ones it drops are the ones a detour would have
-made late.
+AODV's and OLSR's lower delay99 on walker16 (125 vs 140 ms) is survivorship:
+they deliver 15.5 and 9.0 pp fewer packets, and the ones they drop are the
+ones a detour would have made late.
+
+**OLSR, the proactive baseline, sits between AODV and AntHocNet.** AntHocNet
+delivers +8.96 pp more (20 of 20 seeds, p = 9.6e-05) at the same mean delay
+(−0.04 ms, p = 0.94), with a third of OLSR's routing overhead (NRL 97.6 vs
+306.6). OLSR loses 27.3 packets per scheduled handover — half of AODV's 57.7,
+three times AntHocNet's 9.4 — consistent with its topology view lagging each 15 s
+reconfiguration by its TC interval. It is also the only arm that refuses
+packets at the source (2.91 %: no route yet), and every one of its 80 flows
+(4 × 20 seeds) opens with a startup outage while the first topology floods
+converge.
 
 ### `starlink1`
 
@@ -334,7 +351,8 @@ on this page.
   reachability-under-motion test, not a capacity one. Congestion on ISLs is
   [#206](https://github.com/danieljoppi/AntHocNet/issues/206)'s question.
 - **No OLSR on S1.** Proactive link-state flooding on 1584 nodes exceeds the
-  CI budget; walker16 is where it would be measured.
+  CI budget; it is measured on walker16 only, where 20 seeds already took
+  5 h 54 min.
 
 ## Reproduce
 
