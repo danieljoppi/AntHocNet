@@ -29,8 +29,8 @@ on:
       - 'docs/benchmarks/campaign/**'
       - 'ns3/tools/family-charts.py'
       - 'ns3/tools/make-charts.py'
-      - '.claude/skills/benchmark-results/bench_parse.py'
-      - '.claude/skills/benchmark-results/stats_util.py'
+      - 'tools/bench/bench_parse.py'
+      - 'tools/bench/stats_util.py'
       - 'requirements-dev.txt'
       - '.github/workflows/charts.yml'
   pull_request:
@@ -39,8 +39,8 @@ on:
       - 'docs/benchmarks/campaign/**'
       - 'ns3/tools/family-charts.py'
       - 'ns3/tools/make-charts.py'
-      - '.claude/skills/benchmark-results/bench_parse.py'
-      - '.claude/skills/benchmark-results/stats_util.py'
+      - 'tools/bench/bench_parse.py'
+      - 'tools/bench/stats_util.py'
       - 'requirements-dev.txt'
       - '.github/workflows/charts.yml'
   workflow_dispatch:

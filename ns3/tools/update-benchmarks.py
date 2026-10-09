@@ -55,9 +55,9 @@ _PROVENANCE = ""
 
 
 def _load_stats_util():
-    """Load the skill-side stats module (single source for the CI math)."""
+    """Load tools/bench/stats_util.py (single source for the CI math)."""
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..",
-                        ".claude", "skills", "benchmark-results", "stats_util.py")
+                        "tools", "bench", "stats_util.py")
     spec = importlib.util.spec_from_file_location("stats_util", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

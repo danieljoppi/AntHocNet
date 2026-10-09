@@ -1,9 +1,13 @@
 # Auto-generated benchmark charts (produced by the benchmarks workflow).
 docs/benchmarks/*.png linguist-generated=true
 
-# Keep repo-only tooling/CI dirs out of `git archive` — i.e. GitHub's
-# auto-generated "Source code (zip/tar.gz)" release archives. They are not part
-# of a release package. (The custom install-bundle in release.yml already omits
-# them: it copies only core/ ns3/ docs/ + the top-level docs files.)
+# Keep repo-only tooling/CI dirs and agent-only material out of `git archive` —
+# i.e. GitHub's auto-generated "Source code (zip/tar.gz)" release archives, which
+# Zenodo archives too. They are not part of a release package. The install
+# bundle applies the same exclusions (tools/release/assemble-bundle.sh), and
+# tools/release/check-bundle.sh checks both in CI (#604).
 /.github export-ignore
 /.claude export-ignore
+/AGENTS.md export-ignore
+/CLAUDE.md export-ignore
+/docs/handoffs export-ignore

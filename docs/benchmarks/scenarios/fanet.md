@@ -81,7 +81,7 @@ unlabelled: unsourced constants were the root cause of #88, #169 and #173.
 **Preflight** (#481): both cells pass with WARNs only.
 
 ```
-python3 .claude/skills/benchmark-results/scenario_check.py preflight \
+python3 tools/bench/scenario_check.py preflight \
   --nodes 30 --areaX 1000 --areaY 1000 --areaZ 300 --range 350 \
   --speed 30 --pause 0 --mobility gaussmarkov --flows 10 --cbrBps 2048 \
   --pathWindowS 2

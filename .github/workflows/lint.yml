@@ -34,25 +34,34 @@ jobs:
         # there, fixing new findings in the same PR.
         run: pip install -c requirements-dev.txt ruff
       - name: Lint
-        # The whole skill dir is linted: the per-file list this replaces (#336)
+        # Whole directories are linted: the per-file list this replaces (#336)
         # existed only because bench_parse.py and sweep_summary.py carried
         # pre-existing findings, and a list that must be extended by hand is
-        # how a new script ships unlinted. Those findings are fixed; new skill
-        # scripts are covered the moment they land.
-        run: ruff check ns3/tools docs/tools .claude/skills/benchmark-results/
+        # how a new script ships unlinted. tools/ holds the benchmark scripts
+        # since #604 (they used to live in .claude/skills/, which releases
+        # exclude).
+        run: ruff check ns3/tools docs/tools tools/
+      - name: Release-package gate (#604)
+        # Assembles the install bundle exactly as release.yml does and fails on
+        # agent-only files (.claude/, AGENTS.md, CLAUDE.md, docs/handoffs/),
+        # caches, a shipped script that depends on .claude/, or a missing
+        # tools/bench dependency; also checks git archive's export-ignore.
+        # The v2.0.0 bundle shipped tools that imported .claude/ scripts it
+        # excluded; this is the gate that would have caught it. ~1 s.
+        run: tools/release/check-bundle.sh
       - name: Statistics self-test (#293)
         # stats_util.py computes the 95% CIs and paired tests every published
         # number will carry; bench_parse.py's column-mapping check decides
         # whether a cell's numbers may be trusted at all. Same reasoning as
         # the gate below: a rule that can't fire isn't a gate.
-        run: python3 .claude/skills/benchmark-results/test_stats.py
+        run: python3 tools/bench/test_stats.py
       - name: Benchmark-gate self-test
         # scenario_check.py decides whether a campaign's numbers may be read or
         # published, and it was itself untested until #229/#230 showed what that
         # costs: a metric can ship six merged campaigns' worth of numbers while
         # failing the self-check its own documentation defines. Cheap (no
         # simulator, no network, ~1 s) and it runs on every PR.
-        run: python3 .claude/skills/benchmark-results/test_scenario_check.py
+        run: python3 tools/bench/test_scenario_check.py
       - name: Mermaid render gate (docs)
         # A sequenceDiagram message carrying &lt;/&gt; parses as balanced text
         # locally but is a hard parse error in Mermaid's sequence grammar, so

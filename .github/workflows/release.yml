@@ -84,17 +84,16 @@ jobs:
           git push origin HEAD:main
           git push origin "${TAG}"
 
+      - name: Check the package contents
+        # The same gate CI runs on PRs (#604): no agent files, no caches, the
+        # shipped tools' dependencies present, git archive clean.
+        run: tools/release/check-bundle.sh
+
       - name: Assemble install bundle
+        # One definition of what ships, shared with the gate above (#604).
         run: |
           name="anthocnet-${VER}"
-          dest="dist/${name}"
-          mkdir -p "$dest"
-          for f in Makefile README.md LICENSE CHANGELOG.md CITATION.cff \
-                   CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md CONTEXT.md AGENTS.md; do
-            [ -e "$f" ] && cp "$f" "$dest/"
-          done
-          cp -r core ns3 docs "$dest/"
-          find "$dest" -type d -name build -prune -exec rm -rf {} +
+          tools/release/assemble-bundle.sh "$VER" dist
           ( cd dist && zip -qr "${name}.zip" "${name}" )
           ls -lh "dist/${name}.zip"
 

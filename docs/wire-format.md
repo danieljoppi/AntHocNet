@@ -111,7 +111,7 @@ increments it. Do not hard-code a number; use `current + 1`.
 
 This makes the "one canonical wire format" invariant machine-checkable: the
 field layout and its version move together, in lockstep, across the codec and
-both adapters.
+the ns-3 header (the browser adapter serializes through the core codec itself).
 
 ## vs. the original implementation
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (C) 2026 Daniel Henrique Joppi
-"""Shared statistics for the benchmark-results skill (#293).
+"""Shared statistics for the benchmark tools in tools/bench/ (#293).
 
 Stdlib-only (ADR-0014: these scripts must run anywhere with bare python3).
 Provides the 95% confidence-interval and paired-test primitives that

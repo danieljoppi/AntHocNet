@@ -4,6 +4,12 @@
 where-to-look) and [`CONTEXT.md`](CONTEXT.md) — read those first.** The
 guidelines below are general behavioural defaults layered on top.
 
+**Skills** (`.claude/skills/`): `protocol-review` (golden-rule checks on a diff),
+`benchmark-results` (dispatch → fetch → validate → compare), `learn-site`
+(WASM parity, browser smoke, README figures). Skills are procedures only —
+scripts that anything shipped depends on live in `tools/` (ADR-0014), and
+nothing under `.claude/` reaches a release package (#604).
+
 <!-- Vendored from https://github.com/forrestchang/andrej-karpathy-skills (CLAUDE.md).
      Kept as a reviewed, version-pinned copy rather than fetched at runtime. -->
 

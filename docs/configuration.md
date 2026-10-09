@@ -410,7 +410,7 @@ Golden rule 5 territory: these exist so a long simulation cannot grow a
 structure without limit. They are not performance knobs and should not be tuned
 for results. `maxPathLength` is pinned to the wire format
 (`kMaxVisitedOnWire == 100`) — changing it is a wire-format change and requires
-a `kWireVersion` bump plus both adapters (golden rule 4). `maxHistory` too small
+a `kWireVersion` bump plus the ns-3 header (golden rule 4). `maxHistory` too small
 aliases `(src,seq)` dedup and lets old ants back in. `networkDiameter` and
 `lifeAnt` are currently inert (§3.3).
 
@@ -424,7 +424,7 @@ by eye.
 that look like a protocol result:
 
 ```bash
-S=.claude/skills/benchmark-results/scenario_check.py
+S=tools/bench/scenario_check.py
 python3 $S preflight                              # paper base defaults
 python3 $S preflight --areaX 2500 --flows 40      # exactly what you intend to dispatch
 ```
@@ -448,7 +448,7 @@ Core-only parameters (`—` in §3.1) cannot be swept this way; they need a
 **2. Parse with a script, never by eye.**
 
 ```bash
-D=.claude/skills/benchmark-results
+D=tools/bench
 python3 $D/bench_parse.py --ab off1.txt on1.txt off2.txt on2.txt   # the money mode
 python3 $D/sweep_summary.py docs/benchmarks/campaign/*.csv         # campaign CSVs
 ```
@@ -461,8 +461,8 @@ context).
 **3. Validate the results before believing them.**
 
 ```bash
-python3 .claude/skills/benchmark-results/scenario_check.py results cell.txt
-python3 .claude/skills/benchmark-results/scenario_check.py results --anchor broch-low-mobility cell.txt
+python3 tools/bench/scenario_check.py results cell.txt
+python3 tools/bench/scenario_check.py results --anchor broch-low-mobility cell.txt
 ```
 
 A FAIL is a harness regression (#51-class), not a protocol finding: do not
@@ -549,7 +549,7 @@ The checklist that would have prevented #88 and #169:
    table if it corresponds to a paper parameter.
 6. **Wire format**: if the parameter changes what goes on the wire or the units
    of an existing field, golden rule 4 applies — bump `kWireVersion` and update
-   the codec, both adapters, the round-trip tests and
+   the codec, the ns-3 header, the round-trip tests and
    [`wire-format.md`](wire-format.md).
 
 ### Adding a link metric instead of a parameter

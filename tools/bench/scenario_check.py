@@ -52,7 +52,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ANCHORS_YML = os.path.normpath(
-    os.path.join(HERE, "..", "..", "..", "ns3", "tools", "anchors.yml"))
+    os.path.join(HERE, "..", "..", "ns3", "tools", "anchors.yml"))
 ANCHOR_KEY = {"single-hop": "single_hop_pdr_min",
               "broch-low-mobility": "broch_low_mobility_aodv_pdr_min",
               # #61/#60 grid arms. Regression floors from our own 20-seed

@@ -119,7 +119,7 @@ ln(40) = 3.7) additionally WARNs that partitions are likely, which is its
 purpose.
 
 ```
-python3 .claude/skills/benchmark-results/scenario_check.py preflight \
+python3 tools/bench/scenario_check.py preflight \
   --nodes 100 --areaX 800 --areaY 800 --blocksX 4 --blocksY 4 \
   --mobility manhattan --propagation urban --speed 20 --pause 0 \
   --flows 20 --cbrBps 2048 --time 900 --pathWindowS 2

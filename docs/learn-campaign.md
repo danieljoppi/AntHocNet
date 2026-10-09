@@ -222,6 +222,12 @@ rules). Each one extends the native-vs-WASM parity gate.
   as today. Terrain needs canopy, a fire front, jam fields and ridges.
 - **Accessibility:** the existing axe gate (day and night). Every level must be
   playable by keyboard; placement accepts the selected-node arrow keys.
+- **Translations** ([#622](https://github.com/danieljoppi/AntHocNet/issues/622)): all text goes through a string layer from the
+  first campaign level, so briefings and debriefs are never hard-coded in
+  English. Portuguese (pt-BR) is the first second language.
+- **Offline and size budget** ([#624](https://github.com/danieljoppi/AntHocNet/issues/624)): the game is cached for offline use
+  (classrooms with poor Wi-Fi), and CI fails if the game download grows past
+  its budget (starting at 512 KB raw / 160 KB gzipped; 378 KB raw today).
 
 ## 7. User interface
 
@@ -385,8 +391,8 @@ HTML file in the repository's style.
 
 | release | learn-site work |
 |---|---|
-| **v2.2.0** | the game UI (title, campaign map, briefing, in-level HUD with device dock, debrief; the sandbox kept as Free play); campaign engine (level format, budget, objectives); device classes + per-node range in the adapter; **Chapter 1: Ad hoc town** (absorbs the Academy) and **Chapter 2: Neighbourhood mesh** |
-| **v2.3.0** | **Chapter 3: City streets**, **Chapter 4: Forest**, **Chapter 5: Orbit** (the three families already measured), with attenuation zones, battery, fixed-route mobility, ground stations and the orbit binding; the **upgrades** screen, wired to the gated mechanisms that ship in v2.3.0 |
+| **v2.2.0** | the game UI (title, campaign map, briefing, in-level HUD with device dock, debrief; the sandbox kept as Free play); campaign engine (level format, budget, objectives); device classes + per-node range in the adapter; **Chapter 1: Ad hoc town** (absorbs the Academy) and **Chapter 2: Neighbourhood mesh**; translations (pt-BR first); offline play and the size budget |
+| **v2.3.0** | **Chapter 3: City streets**, **Chapter 4: Forest**, **Chapter 5: Orbit** (the three families already measured), with attenuation zones, battery, fixed-route mobility, ground stations and the orbit binding; the **upgrades** screen, wired to the gated mechanisms that ship in v2.3.0; the **classroom pack** (lab worksheets built on the missions) |
 | **v2.4.0** | **Chapter 6: Disaster zone**, **Chapter 7: Contested zone** (7.1–7.3) and **Chapter 8: Sky to space**: the same release as the disaster/tactical and SAGIN families they draw on |
 | **v3.0.0** | Contested level **7.4** and the **Shield** upgrade, on the security profile |
 | **v3.3.0** | **Chapter 9: Red team.** The player places attackers (blackhole, wormhole, Sybil, pheromone poisoner) to break a working network, then switches defences on and watches delivery recover. Every attack and defence is a real gated mechanism from v3.0.0–v3.3.0. |
@@ -406,6 +412,9 @@ HTML file in the repository's style.
 | Ch 6 Disaster · Ch 7 Contested · Ch 8 Sky to space | [#583](https://github.com/danieljoppi/AntHocNet/issues/583) · [#584](https://github.com/danieljoppi/AntHocNet/issues/584) · [#585](https://github.com/danieljoppi/AntHocNet/issues/585) |
 | level 7.4 + Shield | [#590](https://github.com/danieljoppi/AntHocNet/issues/590) |
 | Ch 9 Red team | [#602](https://github.com/danieljoppi/AntHocNet/issues/602) |
+| translations (pt-BR first) | [#622](https://github.com/danieljoppi/AntHocNet/issues/622) |
+| offline play + download-size budget | [#624](https://github.com/danieljoppi/AntHocNet/issues/624) |
+| classroom pack (lab worksheets) | [#623](https://github.com/danieljoppi/AntHocNet/issues/623) |
 
 Each chapter lands with the release that measures its network type. That
 way every debrief links to a measured page, not a promise.

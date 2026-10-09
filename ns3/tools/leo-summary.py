@@ -7,7 +7,7 @@ leo-summary.py [--cells docs/benchmarks/cells] CELL...
 Summarise the moving-constellation campaign (#297) from the committed
 leo-walker cells (docs/benchmarks/cells/leo-<cell>-<arm>.txt, one arm per
 file, 20 seeds each) as the Markdown tables the results page carries. Stdlib
-plus the benchmark-results skill's stats_util, so the numbers on the page are
+plus tools/bench/stats_util.py, so the numbers on the page are
 recomputed by anyone with python3 and never typed by hand.
 
 Per cell it prints:
@@ -39,7 +39,7 @@ CLASSES = ["startup", "scheduled", "unplanned", "massfail", "other"]
 
 
 def _load_stats_util():
-    path = os.path.join(ROOT, ".claude", "skills", "benchmark-results", "stats_util.py")
+    path = os.path.join(ROOT, "tools", "bench", "stats_util.py")
     spec = importlib.util.spec_from_file_location("stats_util", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

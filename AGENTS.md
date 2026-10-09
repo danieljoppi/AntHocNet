@@ -17,10 +17,14 @@ removed in v2.0.0 ([#307](https://github.com/danieljoppi/AntHocNet/issues/307),
 v1.2.0–v1.9.0 tags.
 
 ```
-core/   simulator-agnostic C++ (no simulator headers) + unit tests
-ns3/    native ns3::Ipv4RoutingProtocol contrib module
-web/    browser adapter (core/ as WebAssembly) + the learn site
-docs/   architecture.md, porting-notes.md, adr/ — full map in docs/README.md
+core/    simulator-agnostic C++ (no simulator headers) + unit tests
+ns3/     native ns3::Ipv4RoutingProtocol contrib module, baselines, harnesses, ns3/tools
+web/     browser adapter (core/ as WebAssembly) + the learn site (the Pages front page)
+tools/   shipped scripts: bench/ (stats, parsing, scenario_check), release/ (package)
+docs/    architecture.md, porting-notes.md, adr/, benchmarks/ — full map in docs/README.md
+api/     Doxygen config for the API reference (/api/)
+paper/   JOSS-style paper source
+.claude/ agent skills (procedures only; never shipped in a release)
 ```
 
 ## Build & verify
@@ -73,10 +77,36 @@ results.
 - Validate the **core** half locally first (`make test`); only the adapter/build
   half needs CI.
 - Heavier, manual workflows: `paper-benchmark` and `scenario-matrix` (taxonomy +
-  charts), `release.yml` (Commitizen bump + install-bundle), `images.yml`
-  (republish simulator images). Releases are version-bumped by Commitizen from
+  charts), `satellite-benchmark` (isl-grid / leo-walker cells),
+  `release.yml` (Commitizen bump + install-bundle), `images.yml`
+  (republish simulator images). Automatic: `charts.yml` (re-renders charts from
+  committed data), `pages.yml` (game at `/`, docs at `/docs/`, API at `/api/`). Releases are version-bumped by Commitizen from
   Conventional-Commit history; **PR titles must be Conventional Commits** (CI
   enforces it — see `CONTRIBUTING.md`).
+
+### Validating the browser adapter and the learn site
+
+The `web-parity` CI job is the gate; locally (needs an activated emsdk, pinned
+in `ci.yml`):
+
+```bash
+web/test/parity.sh 120 "1 2 7 42"      # native vs WASM decision traces, byte-identical
+web/build-site.sh                       # -> web/build-site/ (the Pages root)
+node web/test/smoke.mjs web/build-site  # needs playwright-core + axe-core in cwd
+```
+
+The `learn-site` skill has the full procedure, including regenerating the README
+figures from the game.
+
+### Docs and release-package checks (run before pushing a docs or packaging change)
+
+```bash
+python3 docs/tools/check-links.py .     # relative links resolve
+python3 docs/tools/check-mermaid.py .   # mermaid blocks render on GitHub
+python3 docs/tools/check-headers.py .   # SPDX headers on every source file
+mkdocs build --strict                   # nav + anchors (pages.yml builds it into /docs/)
+tools/release/check-bundle.sh           # release package: no agent files, tools present
+```
 
 ## Golden rules (invariants — do not break)
 
@@ -108,6 +138,18 @@ results.
    the NS-2 adapter is gone. The number is kept so "golden rule 7" keeps
    meaning what every existing reference says.
 7. **Cover core logic changes with a core unit test** in `core/tests/`.
+8. **Per-network behaviour is a gated mechanism, never a preset** (ADR-0019,
+   ADR-0020). A new mechanism ships behind a default-off `Config` switch, the
+   default path stays byte-identical (determinism check), and it is A/B'd on
+   identical seeds in *every* family before any default moves.
+9. **The browser adapter stays deterministic and decision-free** (ADR-0021).
+   No routing logic in `web/`. Draw randomness into named locals (argument
+   evaluation order differs between compilers), keep mobility to arithmetic
+   (`detSin`/`detCos`, never libm trig), keep `-ffp-contract=off`.
+   `web/test/parity.sh` must stay byte-identical.
+10. **Nothing shipped depends on `.claude/`** (ADR-0014 amendment, #604). A
+    script that a shipped tool, workflow or doc needs lives in `tools/`; skills
+    hold procedures. `tools/release/check-bundle.sh` enforces it in CI.
 
 ## Conventions
 
@@ -119,8 +161,17 @@ results.
   [ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md#labelling-convention):
   one type label (`bug`/`enhancement`/`chore`/`documentation`/`verification`,
   plus `epic` for umbrellas), area label(s) (`protocol`/`adapter`/`ns3`/
-  `benchmark`/`observability`/`packaging`), one `model:*` recommendation, and
-  one `priority:P1|P2|P3` label on non-epic issues.
+  `benchmark`/`observability`/`packaging`/`learn-site`), one `model:*`
+  recommendation, one `priority:P1|P2|P3` label on non-epic issues, and a
+  `release:vX.Y.Z` label only when the roadmap ladder gates the issue.
+- Issue bodies follow one shape: **Context** (the evidence, with numbers and
+  links), **Scope**, **Acceptance criteria** (checkboxes), **Depends on**
+  (issue numbers), **References**. Children of an epic say "Part of #N" and are
+  linked as sub-issues. Comments you post end with the Claude Code footer.
+- A new comparator arm (a protocol we did not design) must clear three gates
+  before its numbers count: a fidelity sheet from its paper, the per-PR
+  delivery smoke (#439), and an anchor reproducing its own paper's trend. If it
+  cannot, it ships as a written infeasibility verdict (see #563).
   The `.github/ISSUE_TEMPLATE/` forms preset the type label for issues filed
   from the GitHub UI.
 - Do not open a pull request unless explicitly asked.
@@ -142,7 +193,10 @@ results.
 | See what v1.0 reproduces / deviates from the paper | `docs/fidelity.md` |
 | Understand a structural decision / its "why" | `docs/adr/` |
 | **Pick up open work** | GitHub issues — start with the highest open `priority:P*` label (query live; see `CONTEXT.md` §10) |
-| **Know which release a piece of work serves, or why something is *not* planned** | [#298](https://github.com/danieljoppi/AntHocNet/issues/298) — the 2026 roadmap: literature gap analysis → epics #293–#297, #300–#302 → release goals v1.3.0…v3.0.0, plus the non-goals with the reasoning that would reverse each |
+| **Know which release a piece of work serves, or why something is *not* planned** | [`docs/roadmap.md`](docs/roadmap.md) — the ladder v2.1.0 → v3.3.0 ([replan accepted 2026-10-09](docs/roadmap.md#replan-after-v200-accepted-2026-10-09)), per-release exit criteria and the non-goals; issues carry `release:` labels. Epics: #562 game campaign, #563 comparators, #564 wider threat model, #603 infrastructure. History and the original gap analysis: [#298](https://github.com/danieljoppi/AntHocNet/issues/298) |
+| Know what research a plan item rests on (families, mechanisms, comparators, secure protocols) | [`docs/research-landscape-2026.md`](docs/research-landscape-2026.md) — abstract-level; read the paper before citing a number |
+| Work on the learn-site game / campaign | [`docs/learn-campaign.md`](docs/learn-campaign.md) (design, levels, UI, adapter features) + the `learn-site` skill; epic #562 |
+| Change what a release ships, or the install path | `tools/release/` (assemble + gate), `release.yml`, `ns3/Makefile`; infrastructure epic #603 |
 | Understand the ant types (what each one is for, what it writes, which switch gates it) | [`docs/ant-types.md`](docs/ant-types.md) — comparison table + lifecycle diagrams for Hello / Reactive / Proactive / Repair / LinkFail and the backward ant |
 | See the whole stack, or which mechanism is live/inert in a given regime | [`docs/software-layers.md`](docs/software-layers.md) — core → ports → adapters → harnesses, mechanisms × their config switches, and per-regime support |
 | **Add support for a new network family** (FANET, VANET, …) | [ADR-0019](docs/adr/0019-network-families-change-the-evaluation-not-the-protocol.md) — a family is a *scenario* concern: mobility model, preset, preflight rules, anchor, metrics. **Never** family-specific protocol defaults; a mis-sized constant is an issue + A/B, not a preset. Tracks: [#300](https://github.com/danieljoppi/AntHocNet/issues/300), [#301](https://github.com/danieljoppi/AntHocNet/issues/301) |
@@ -159,9 +213,10 @@ results.
 | Run / read benchmarks | `docs/benchmarks.md` (index → `docs/benchmarks/{metrics,methodology}.md`, `scenarios/<name>.md`, `sweeps/<name>.md`), `ns3/tools/run-scenarios.py` + `make-charts.py` + `update-benchmarks.py`; family/cross-family + sweep charts from committed data: `ns3/tools/family-charts.py` (re-rendered and committed by `charts.yml`), `anthocnet-compare --diag` |
 | Inspect protocol internals | NS-3 `Tx`/`Rx`/`RouteChanged` trace sources; core counters via `IRouterObserver` |
 | Run the benchmark campaign loop (dispatch → fetch → parse) | `benchmark-results` skill (SKILL.md documents the whole procedure) |
-| Compare benchmark A/B runs (deltas + noise verdict) | `benchmark-results` skill (`.claude/skills/benchmark-results/bench_parse.py`) |
-| Summarize / export campaign sweep CSVs | `benchmark-results` skill (`sweep_summary.py`; `--export-sweeps` feeds the papers repo) |
-| Validate a scenario config or result plausibility | `benchmark-results` skill (`scenario_check.py`, #134): `preflight` before dispatching, `results [--anchor …]` before trusting numbers |
+| Compare benchmark A/B runs (deltas + noise verdict) | `benchmark-results` skill (`tools/bench/bench_parse.py`) |
+| Build, test or screenshot the learn site | `learn-site` skill (parity, smoke, README figures) |
+| Summarize / export campaign sweep CSVs | `benchmark-results` skill (`tools/bench/sweep_summary.py`; `--export-sweeps` feeds the papers repo) |
+| Validate a scenario config or result plausibility | `benchmark-results` skill (`tools/bench/scenario_check.py`, #134): `preflight` before dispatching, `results [--anchor …]` before trusting numbers |
 | Pre-push invariant check on a diff | `protocol-review` skill (`.claude/skills/protocol-review/check_invariants.sh`) |
 | Understand why skills are script-first (and add a new analysis loop) | [ADR-0014](docs/adr/0014-agent-skills-are-script-first.md) — raw data stays out of LLM context; extend a skill script, don't eyeball |
 | Work on satellite / ISL topologies | [ADR-0015](docs/adr/0015-satellite-substrate-lives-in-the-image.md) — **there is no separate satellite build**: one binary, scenario differences live in examples and flags (`isl-grid` static, `leo-walker` moving). [ADR-0022](docs/adr/0022-satellite-substrate-is-stock-ns3-leo.md) — the substrate is stock ns-3.48's LEO model, so moving-constellation work is 3.48-only. Track: [#192](https://github.com/danieljoppi/AntHocNet/issues/192) |

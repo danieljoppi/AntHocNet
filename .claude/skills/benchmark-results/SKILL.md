@@ -5,8 +5,14 @@ description: Run the full AntHocNet benchmark loop — pre-flight-validate scena
 
 # benchmark-results
 
+> **Where the scripts live:** `tools/bench/` — not in this skill directory. They
+> ship with every release (the shipped `ns3/tools/` harness tools import them),
+> while `.claude/` is excluded from release packages (#604). This file is the
+> *procedure*; the scripts are product code with their own CI (ruff, the two
+> self-tests in `lint.yml`).
+
 Turns raw `anthocnet-compare` output into a compact delta grid with a noise
-verdict, using `bench_parse.py` (in this skill dir). All arithmetic and the
+verdict, using `bench_parse.py`. All arithmetic and the
 noise call happen in the script — your context only sees the summary.
 
 ## Getting the numbers out of CI (the constraint)
@@ -24,6 +30,11 @@ fetch cheap:
   saved file self-describing after the run's logs expire.
 - Otherwise fetch ~55 tail lines (the human table sits just above the
   upload/cleanup noise) and save it.
+- **Whole log to a file, not to context:** `mcp__github__get_job_logs` with
+  `return_content: false` returns a short-lived signed URL; `curl -sSL "$URL"
+  -o job.log` then works (the signed host is reachable even though `gh api`
+  cannot follow the blob redirect). Use it for long cells (leo-walker,
+  campaign logs) and grep/extract by script.
 
 Save each run's text to a file (one file per run); a leading `# <label>` line
 names the cell. Then run the parser — never eyeball tables or compute deltas by
@@ -32,7 +43,7 @@ hand.
 ## Commands
 
 ```bash
-S=.claude/skills/benchmark-results/bench_parse.py
+S=tools/bench/bench_parse.py
 python3 $S off.txt on.txt                 # deltas of every cell vs the first
 python3 $S --ab off1 on1 off2 on2         # (off,on) pairs; flags cross-pair sign
 python3 $S --all a.txt b.txt              # every protocol, not just anthocnet
@@ -127,7 +138,7 @@ per-point deltas, and the stddev-aware noise call happen in the script; only
 its compact grid should reach context.
 
 ```bash
-S=.claude/skills/benchmark-results/sweep_summary.py
+S=tools/bench/sweep_summary.py
 python3 $S docs/benchmarks/campaign/*.csv        # anthocnet vs aodv per point
 python3 $S --baseline olsr --group pause FILE    # other baseline / one group
 python3 $S AFTER.csv --vs BEFORE.csv             # same sweep, two code
@@ -184,13 +195,30 @@ pre-#319 campaigns still compare exactly as before.
 `--export-sweeps` is the bridge to the papers repo's `figures` skill
 (`plot_sweeps.py` reads that schema directly).
 
+## Satellite constellation cells (`ns3/tools/leo-summary.py`, #297)
+
+The leo-walker cells (`docs/benchmarks/cells/leo-<cell>-<arm>.txt`, one arm per
+file, 20 seeds) are summarised by script into the tables on
+`docs/benchmarks/satellite/leo-walker.md` — headline per arm with CIs, paired
+AntHocNet-vs-arm differences (oracles excluded: they are bounds), the handover
+family and route churn:
+
+```bash
+python3 ns3/tools/leo-summary.py walker16 starlink1 starlink1-storm
+```
+
+Paste its output; never retype the numbers. Validate each cell with
+`scenario_check.py results` first. The CI smoke for the harness itself
+(geometry, handover, every arm delivers, reproducibility) is
+`ns3/tools/check-leo-walker.sh <ns3-dir>`.
+
 ## Scenario validation (`scenario_check.py`, #134)
 
 Pre-flight a config before dispatching; sanity-check results after fetching.
 Both exit non-zero on FAIL.
 
 ```bash
-S=.claude/skills/benchmark-results/scenario_check.py
+S=tools/bench/scenario_check.py
 python3 $S preflight                              # paper base defaults, OK
 python3 $S preflight --areaX 2500 --flows 40      # override what you'd dispatch
 python3 $S preflight --areaX 1000 --areaY 1000 --areaZ 300 --range 250 \
@@ -300,7 +328,7 @@ through — which is how a gate stops being read.
 ### Testing the gate itself (`test_scenario_check.py`)
 
 ```bash
-python3 .claude/skills/benchmark-results/test_scenario_check.py
+python3 tools/bench/test_scenario_check.py
 ```
 
 No pytest, no simulator, ~1 s; runs on every PR from `lint.yml`. Every rule
