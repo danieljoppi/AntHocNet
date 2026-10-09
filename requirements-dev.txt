@@ -28,7 +28,7 @@
 #                     release.yml is never exercised by PR CI.
 #   - matplotlib      charts.yml commits the PNGs it renders; a release that
 #                     moves a pixel would recommit every chart on main.
-ruff==0.16.9
+ruff==0.16.10
 gcovr==8.6
 mkdocs-material==9.7.7
 commitizen==4.19.0
