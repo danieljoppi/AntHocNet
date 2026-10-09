@@ -55,7 +55,7 @@ flowchart LR
     V22["<b>v2.2.0</b><br/>close the<br/>measured gaps"]
     V23["<b>v2.3.0</b><br/>regime-gated<br/>mechanisms"]
     V24["<b>v2.4.0</b><br/>family axis III:<br/>disaster + SAGIN"]
-    V25["<b>v2.5.0</b><br/>learned-routing<br/>comparator"]
+    V25["<b>v2.5.0</b><br/>adaptive-routing<br/>comparators"]
     V30["<b>v3.0.0</b><br/>secured<br/>AntHocNet"]
 
     V13 --> V14 --> V15 --> V16 --> V17 --> V18 --> V19 --> V20 --> V21 --> V22 --> V23 --> V24 --> V25 --> V30
@@ -153,7 +153,7 @@ otherwise independent of the epic chain.
 | **v2.2.0** *(proposed)* | **Close the measured gaps** — the weak spots v1.9.0 and v2.0.0 measured, fixed in **one** re-baseline so nothing is measured twice:<br/>• [#537](https://github.com/danieljoppi/AntHocNet/issues/537): 36 % of VANET traffic lost to reconvergence.<br/>• [#433](https://github.com/danieljoppi/AntHocNet/issues/433): `RepairHoldCap`, about 168 ms of tail.<br/>• [#181](https://github.com/danieljoppi/AntHocNet/issues/181): the SINR link metric the thesis headline results use, through the [#142](https://github.com/danieljoppi/AntHocNet/issues/142)/[#144](https://github.com/danieljoppi/AntHocNet/issues/144) seam.<br/>Exit criteria:<br/>• each change A/B'd on identical seeds in **every** family;<br/>• a default moves only where the delta holds everywhere (ADR-0019); otherwise it ships gated and off;<br/>• every family page restated on the result. |
 | **v2.3.0** *(proposed)* | **Regime-gated mechanisms** — per-regime improvements, as ADR-0019 allows them: default-off switches, byte-identical when off (the ADR-0020 check).<br/>The mechanisms:<br/>• propagation-dominated timing ([#205](https://github.com/danieljoppi/AntHocNet/issues/205));<br/>• ISL hello suppression ([#204](https://github.com/danieljoppi/AntHocNet/issues/204));<br/>• a quiet mode for stable topologies (new);<br/>• adaptive evaporation (new);<br/>• link-lifetime prediction (new — needs a position port and its own ADR);<br/>• an energy-aware metric ([#145](https://github.com/danieljoppi/AntHocNet/issues/145)).<br/>Exit criteria:<br/>• the mechanism × regime table in [network-regimes.md](network-regimes.md) gains a measured row per mechanism;<br/>• each mechanism shows a paired improvement in its target family, with no significant regression in the others. |
 | **v2.4.0** *(proposed)* | **Family axis III — disaster/emergency response and space-air-ground (SAGIN).** Both run on the ns-3 substrate already in use.<br/>• **Disaster:** partitioned first-responder teams, composite rescue mobility and indoor/outdoor shadowing, building on [#62](https://github.com/danieljoppi/AntHocNet/issues/62). It includes one tactical narrowband cell.<br/>• **SAGIN:** the `leo-walker` shell with a HAPS/UAV relay layer.<br/>Exit criteria:<br/>• for each family: a `--scenario` preset, preflight rules, an anchor and a results page with CIs;<br/>• a six-family ranking-stability statement;<br/>• a learn-site world for each family. |
-| **v2.5.0** *(proposed)* | **Learned-routing comparator.** This lifts the "planned but gated" DRL non-goal under the conditions that gate it:<br/>• a tabular Q-routing arm, then a multi-agent DRL arm via ns3-gym/ns3-ai;<br/>• training and test seeds disjoint, one held-out family, and the training budget reported.<br/>Exit criteria:<br/>• both arms pass the per-PR delivery smoke ([#439](https://github.com/danieljoppi/AntHocNet/pull/439));<br/>• a paired comparison on every family page. |
+| **v2.5.0** *(proposed)* | **Adaptive-routing comparators** — the families of adaptive routing compared under identical conditions, which no published study has done:<br/>• **swarm:** ARA (Güneş et al. 2002, purely reactive ants);<br/>• **stigmergic:** Termite (Roth & Wicker 2005, routing state carried inside data packets, no control ants);<br/>• **learned:** tabular Q-routing, then a multi-agent DRL arm via ns3-gym/ns3-ai. This lifts the "planned but gated" DRL non-goal under its conditions: training and test seeds disjoint, one held-out family, training budget reported.<br/>Stretch, not exit criteria: BeeAdHoc (Wedde et al. 2005, bee-inspired source routing; a much larger implementation) and HOPNET (ants + zone routing; a 2007 thesis claiming better scaling than AntHocNet).<br/>Every new arm must, before its numbers count (the #425/#416 lesson: two vendored arms once compiled, passed CI and forwarded nothing):<br/>• live in its own ns-3 module, like `ns3/aomdv` and `ns3/gpsr`, written from the original paper with a fidelity sheet of its parameters;<br/>• pass the per-PR delivery smoke ([#439](https://github.com/danieljoppi/AntHocNet/pull/439));<br/>• reproduce its own paper's headline trend against AODV as an anchor.<br/>The #244 ant-type ablation (AntHocNet with proactive/repair ants off) is a cheap complement, never reported as ARA.<br/>Exit criteria: ARA, Termite and both learned arms pass the gates above; a paired comparison on every family page. |
 | **v3.0.0** | Four-protocol vulnerability table under blackhole/grayhole; defense profile recovering PDR under attack while reading **NOISE** in benign scenarios; `EnableSecurity=false` path proven byte-identical. |
 
 ### What the v1.5.0 campaign left behind
@@ -206,9 +206,11 @@ acceptance. The sources behind every choice are in
 2. **Mechanisms before families.** v2.3.0's gated mechanisms come before
    v2.4.0's families, so the new families can evaluate them from their first
    campaign.
-3. **The comparator spans every family.** The learned comparator comes after
-   the families, so it can be measured on all six. It is also the riskiest
-   credibility item, and the families give it a held-out test set.
+3. **The comparators span every family.** The swarm, stigmergic and learned
+   comparators come after the families, so they can be measured on all six.
+   They are also the riskiest credibility item — a weak re-implementation of a
+   competitor is a strawman — and the families give the learned arm a
+   held-out test set.
 4. **Security stays last.** v3.0.0 keeps its place: it wants the high-churn
    cells (FANET, disaster) as trust evidence.
 
@@ -306,7 +308,7 @@ NR-V2X sidelink (a different L2/PHY stack) are out. The OMNeT++/INET adapter
 and its Veins arm are **deferred**, not out, with the trigger that would bring
 them back recorded [above](#why-omnet-32-is-deferred). The
 [post-v2.0.0 replan](#replan-after-v200-proposed-2026-10-09) proposes lifting
-the DRL gate at v2.5.0 under stated conditions, and records the trigger that
+the DRL gate at v2.5.0 under stated conditions, alongside swarm comparators, and records the trigger that
 would reopen DTN.
 
 Security was a non-goal and was **reversed** by converting the objection into a

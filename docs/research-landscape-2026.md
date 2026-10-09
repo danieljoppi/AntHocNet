@@ -94,6 +94,28 @@ deserves its own ADR before code.
 
 ## 4. Comparators the literature now expects
 
+- **Other swarm protocols.** These are the natural "is it the ants, or this
+  design of ants?" control. As of this search, none has a maintained ns-3
+  implementation; past comparisons ran on NS-2 or OMNeT++, pairwise, in
+  scenarios that cannot be lined up. No study was found that compares them all
+  under identical conditions.
+
+  | protocol | design | what it tests against AntHocNet | plan |
+  |---|---|---|---|
+  | **ARA** (Güneş et al. 2002) | purely reactive ACO, built to cut overhead (roots in ABC and AntNet) | whether proactive sampling and repair pay for themselves | v2.5.0 |
+  | **Termite** (Roth & Wicker, SIDM 2005) | stigmergy: routing information rides inside data packets, no control ants; randomised multipath | a different overhead model; its authors report it beats AODV on primary metrics | v2.5.0 |
+  | **BeeAdHoc** (Wedde et al., GECCO 2005) | bee-inspired source routing, scouts and foragers; low energy from fewer control packets | a second swarm family, and the energy-per-bit metric | stretch |
+  | **HOPNET** (Wang, 2007 thesis) | ants hopping between routing zones | the only result found benchmarking against AntHocNet directly; it claims better scaling | stretch |
+  | AntNet (Di Caro & Dorigo 1998) | ACO for wired networks | — | skip: AntHocNet's ancestor, not a competitor |
+
+  The risk is a strawman: a quickly written competitor loses for the wrong
+  reason. This repository has paid for that once (#425/#416: two vendored arms
+  compiled, passed CI and forwarded nothing). Each arm therefore needs a
+  fidelity sheet from its paper, the per-PR delivery smoke (#439), and an
+  anchor reproducing its own paper's headline trend against AODV before its
+  numbers are published. An NS-2 thesis from Thapar University that compared
+  an ant scheme with ARA and AntHocNet is the closest earlier attempt found.
+
 - **Learned routing (DRL / MARL).** This is the most-cited new comparator family:
   - DeepCQ+ (Kaviani et al., arXiv 2101.03273) reports 10–15 % over Q-routing
     and robustness outside the training range;
@@ -169,6 +191,13 @@ Every entry was retrieved on 2026-10-09 at abstract or summary level.
 - ACO + sparrow search for LEO routing (2024) — [BUAA](https://research.buaa.edu.cn/en/publications/a-novel-ant-colony-and-sparrow-search-optimization-based-routing-/)
 - SAT-IACO (2025) — [Springer](https://link.springer.com/article/10.1007/s44443-025-00286-x)
 - Zhang et al., ACO-based MANET routing survey, IEEE Access 2017 — [IEEE Xplore](https://ieeexplore.ieee.org/abstract/document/8066299)
+
+**Swarm comparators**
+- Güneş et al., ARA — the ant-colony based routing algorithm for MANETs (2002) — [FU Berlin](https://cst-pub.imp.fu-berlin.de/Guenes2002e.html)
+- Roth & Wicker, Termite (SIDM 2005) — [PDF](https://forum.cone.informatik.uni-freiburg.de/teaching/seminar/adhoc-s08/mobiPapers/SIDM2005.pdf); Roth thesis — [Cornell eCommons](https://ecommons.cornell.edu/bitstream/handle/1813/240/thesis2.pdf;sequence=1); seminar critique — [Freiburg](https://forum.cone.informatik.uni-freiburg.de/teaching/seminar/adhoc-s08/finalTalks/05fin_Termite_Max_Fechner.pdf)
+- Wang, HOPNET (2007 thesis) — [UManitoba MSpace](https://mspace.lib.umanitoba.ca/bitstream/1993/20935/1/Wang_HOPNET_a.pdf)
+- Ducatelle, AntHocNet thesis (2007) — [USI](https://susi.usi.ch/rerodoc/9027/files/2007INFO001.pdf)
+- *Performance Analysis of Swarm Based Routing Protocols for MANETs* (NS-2 thesis, Thapar University) — [TUDR](https://tudr.thapar.edu/items/22361eb3-790e-4330-bfe9-1bb009c24e4c)
 
 **DTN**
 - Routing in delay-tolerant networking (overview) — [Wikipedia](https://en.wikipedia.org/wiki/Routing_in_delay-tolerant_networking)
