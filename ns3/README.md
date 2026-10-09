@@ -27,13 +27,25 @@ layout is the same as before the #608 move: `contrib/anthocnet`,
 
 ```bash
 # from the repository root
-make install-ns3 NS3DIR=/path/to/ns-3-dev
+make doctor      NS3DIR=/path/to/ns-3-dev   # check the tree before a long build
+make install-ns3 NS3DIR=/path/to/ns-3-dev   # add BASELINES=0 for AntHocNet alone
 
 # then (re)configure and build ns-3
 cd /path/to/ns-3-dev
 ./ns3 configure --enable-examples --enable-tests
 ./ns3 build
 ```
+
+`make doctor` checks that the tree is ns-3.36–3.48 with CMake, a C++17
+compiler, Python and a writable `contrib/`, and reports what is installed. It
+ends with one machine-readable `##DOCTOR##` line (versioned, fields only ever
+added). `BASELINES=0` skips the `aomdv`, `gpsr` and `oracle` comparison
+modules: the module, its test suite and `anthocnet-example` build as usual,
+and ns-3 skips the comparison harnesses that link those modules.
+
+No checkout? Each release ships `anthocnet-ns3-modules-<version>.tar.gz`,
+the four modules exactly as installed:
+`tar -xzf anthocnet-ns3-modules-<version>.tar.gz -C /path/to/ns-3/contrib`.
 
 ## Run
 

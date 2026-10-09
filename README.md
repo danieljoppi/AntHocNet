@@ -125,14 +125,22 @@ make test
 
 ### Install on NS-3
 
+From a checkout:
+
 ```bash
-make install-ns3 NS3DIR=/path/to/ns-3-dev
-cd /path/to/ns-3-dev && ./ns3 configure --enable-examples --enable-tests && ./ns3 build
+make doctor      NS3DIR=/path/to/ns-3      # checks the tree, ns-3 version, CMake, compiler
+make install-ns3 NS3DIR=/path/to/ns-3      # BASELINES=0: AntHocNet alone, no comparison arms
+cd /path/to/ns-3 && ./ns3 configure --enable-examples --enable-tests && ./ns3 build
 ./ns3 run anthocnet-example
 ```
 
-Uninstall: `make uninstall-ns3 NS3DIR=...`. Details in
-[ns3/README.md](ns3/README.md).
+Without a checkout: download `anthocnet-ns3-modules-<version>.tar.gz` from the
+[latest release](https://github.com/danieljoppi/AntHocNet/releases/latest), then
+`tar -xzf anthocnet-ns3-modules-<version>.tar.gz -C /path/to/ns-3/contrib` and
+build as above. The same files are on the generated `ns3-module` branch.
+
+Uninstall: `make uninstall-ns3 NS3DIR=...`. Supported: ns-3.36 to ns-3.48.
+Details in [ns3/README.md](ns3/README.md).
 
 The NS-3 module also ships `anthocnet-compare`, which benchmarks AntHocNet
 against AODV / OLSR / DSDV on an identical scenario (delivery ratio, delay,
@@ -282,8 +290,9 @@ History of the work is in the per-phase commits; design rationale is in
 ## Releases & citing
 
 Versioning follows [SemVer](https://semver.org); see [CHANGELOG.md](CHANGELOG.md).
-Tagging `vX.Y.Z` builds a lean **install bundle** zip and publishes a GitHub
-[Release](https://github.com/danieljoppi/AntHocNet/releases) (via
+Each release publishes a lean **install bundle** zip and the **drop-in ns-3
+modules** tarball on GitHub
+[Releases](https://github.com/danieljoppi/AntHocNet/releases) (via
 `.github/workflows/release.yml`). There is no prebuilt simulator `.so`/installer
 by design — an ns-3 module is ABI/version-locked to the user's tree, so it
 is distributed as **source** (`make install-ns3`) plus the

@@ -31,7 +31,8 @@ paper/   JOSS-style paper source
 
 ```bash
 make test                                  # build core (CMake) + run ctest — fast, no simulator
-make install-ns3  NS3DIR=/path/to/ns-3-dev # install onto a real NS-3 tree
+make doctor       NS3DIR=/path/to/ns-3-dev # check the tree (##DOCTOR## line)
+make install-ns3  NS3DIR=/path/to/ns-3-dev # install onto a real NS-3 tree (BASELINES=0: alone)
 make clean                                 # remove core/build
 ```
 
@@ -99,6 +100,11 @@ The `learn-site` skill has the full procedure, including regenerating the README
 figures from the game.
 
 ### Docs and release-package checks (run before pushing a docs or packaging change)
+
+In a Claude Code on the web session, `.claude/hooks/session-start.sh` (#618)
+already installed these tools at CI's pins; set `AHN_WEB=1` in the environment
+to also get emsdk and playwright for the browser checks above. CI's one
+required check is the `CI gate` job; docs-only PRs skip the heavy jobs (#607).
 
 ```bash
 python3 docs/tools/check-links.py .     # relative links resolve

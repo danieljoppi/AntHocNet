@@ -22,6 +22,10 @@ gates protect that claim — keep both green before pushing a `web/` change.
 
 ## Setup (once per container)
 
+In a cloud session with `AHN_WEB=1` set, the SessionStart hook (#618) has
+already done this: emsdk is in `~/.cache/emsdk`, and playwright-core and
+axe-core are in `~/.cache/ahn-node`. Otherwise:
+
 ```bash
 git clone --depth 1 --branch 4.0.10 https://github.com/emscripten-core/emsdk.git /tmp/emsdk
 /tmp/emsdk/emsdk install 4.0.10 && /tmp/emsdk/emsdk activate 4.0.10
