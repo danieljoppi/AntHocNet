@@ -1,3 +1,11 @@
+---
+# Try it in the game (#629): rendered as a rail above the page on the site.
+try:
+  - world: satellite
+    seed: 1
+    title: "Satellite links: stable, delay changes"
+---
+
 # Satellite suite: the ISL grid
 
 **Regime:** satellite / inter-satellite-link mesh — the second of the two

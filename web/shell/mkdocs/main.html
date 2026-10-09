@@ -1,0 +1,7 @@
+{#- The site shell (#627): the site's one top bar (injected after <body> by
+    docs/tools/mkdocs_hooks.py) replaces Material's header and tabs. The header
+    stays in the page, hidden by web/shell/docs.css, because Material's own
+    JavaScript expects it; the tabs are dropped. Search lives in the top bar
+    (web/shell/shell.js, over search_index.json). -#}
+{% extends "base.html" %}
+{% block tabs %}{% endblock %}

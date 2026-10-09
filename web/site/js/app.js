@@ -7,6 +7,7 @@ import { engine, events, Ev, antKind, KIND_LABEL, DropReason } from './engine.js
 import { IsoRenderer } from './iso.js';
 import { WORLDS, worldById } from './worlds.js';
 import { initMissions } from './missions.js';
+import { initSearch } from '../shell/shell.js';
 
 const $ = (id) => document.getElementById(id);
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -703,25 +704,28 @@ function buildLegend() {
   }
 }
 
-// The front-page welcome card: shown until dismissed once (per browser).
-function welcome(fresh) {
-  const card = $('welcome');
-  if (!fresh || safeStore('get', 'ahn-welcome') === 'seen') return;
-  const close = () => { card.hidden = true; safeStore('set', 'ahn-welcome', 'seen'); };
-  card.hidden = false;
-  $('welcomeClose').addEventListener('click', close);
-  $('welcomeExplore').addEventListener('click', () => { close(); mapEl.focus({ preventScroll: true }); });
-  $('welcomePlay').addEventListener('click', () => {
+// The hub (#628): the site's home, over the running world. A plain visit to
+// the front page shows it; the top bar's Play (#play), a shared world link or
+// "Free play" goes straight to the game. The brand link (./) brings it back.
+function hub(fresh) {
+  const card = $('hub');
+  const close = () => { card.hidden = true; document.body.classList.remove('hub-open'); };
+  const open = () => { card.hidden = false; document.body.classList.add('hub-open'); $('hubMission').focus({ preventScroll: true }); };
+  $('hubFree').addEventListener('click', () => { close(); mapEl.focus({ preventScroll: true }); });
+  $('hubMission').addEventListener('click', () => {
     close();
     const first = document.querySelector('#missionBody .missions button');
     if (first) first.click();
     $('missionWin').scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'nearest' });
   });
+  card.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  addEventListener('hashchange', () => { if (location.hash === '#play') close(); });
+  if (fresh) open(); else close();
 }
 
 // --- boot ---------------------------------------------------------------------------------
 function parseHash() {
-  const m = /^#([a-z]+)(?:\?seed=(\d+))?/.exec(location.hash);
+  const m = /^#([a-z]+)(?:\?seed=(\d+))?/.exec(location.hash === '#play' ? '' : location.hash);
   return m ? { world: m[1], seed: Number(m[2] || 1) } : { world: 'manet', seed: 1 };
 }
 
@@ -736,7 +740,8 @@ async function boot() {
   const h = parseHash();
   await load(h.world, h.seed);
   initMissions(playground);
-  welcome(fresh);
+  hub(fresh);
+  initSearch(null);
   requestAnimationFrame(frame);
 }
 boot().catch((err) => {

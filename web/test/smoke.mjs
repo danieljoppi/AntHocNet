@@ -3,8 +3,12 @@
 //   1. opens every world, runs it, and requires no console errors and at
 //      least one backward ant and one delivered packet in the event stream;
 //   2. plays mission 2 ("Send the scouts") to completion with scripted input;
-//   3. runs axe-core on the front page as a first visit sees it (welcome
-//      card up, default world) and fails on serious or critical violations;
+//   3. runs axe-core on the front page as a first visit sees it (the hub up
+//      over the default world) and fails on serious or critical violations;
+//   3b. the site shell (#626): the hub's buttons and #play, the one top bar
+//      with its five places, and -- when the docs and API are assembled in
+//      (web/build-pages.sh) -- the bar, the Try-it rail and axe on a docs
+//      page and an API page, day and night;
 //   4. checks the default world is mixed (some phones walk, some stand still)
 //      and that every satellite moves along its orbit.
 //
@@ -22,7 +26,7 @@ if (!root) { console.error('usage: smoke.mjs <site-root>'); process.exit(2); }
 const require = createRequire(path.join(process.cwd(), 'noop.js'));
 const { chromium } = require('playwright-core');
 const axeSource = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm' };
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
 const server = http.createServer((req, res) => {
   let p = decodeURIComponent(req.url.split('?')[0].split('#')[0]);
   if (p.endsWith('/')) p += 'index.html';
@@ -114,7 +118,7 @@ for (const scheme of ['light', 'dark']) {
   const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: scheme });
   await p.goto(base);
   await p.waitForTimeout(2500);
-  if (await p.locator('#welcome').isHidden()) fail(`front page (${scheme}): welcome card not shown on a first visit`);
+  if (await p.locator('#hub').isHidden()) fail(`front page (${scheme}): hub not shown on a first visit`);
   await p.addScriptTag({ content: axeSource });
   const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
     .filter((v) => v.impact === 'serious' || v.impact === 'critical')
@@ -122,6 +126,63 @@ for (const scheme of ['light', 'dark']) {
   if (result.length) fail(`axe (${scheme}): ${result.join(' | ')}`);
   else console.log(`ok: axe (${scheme}) — no serious or critical violations`);
   await p.close();
+}
+
+// 3b. The site shell (#626/#627/#628/#629/#632).
+{
+  const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.goto(base);
+  const places = await p.locator('.ahn-bar .ahn-place').allTextContents();
+  if (places.map((t) => t.trim()).join('|') !== 'Play|Field guide|Lab|Workshop|Archive') fail(`top bar places: ${places}`);
+  await p.getByRole('button', { name: 'Free play' }).click();
+  if (await p.locator('#hub').isVisible()) fail('hub: Free play did not close it');
+  await p.goto(base + '#play');
+  await p.waitForTimeout(500);
+  if (await p.locator('#hub').isVisible()) fail('hub: #play should open the game directly');
+  if (errors.length) fail(`shell: console errors: ${errors.join(' | ')}`);
+  else console.log('ok: hub opens on a first visit, closes on Free play, #play skips it; top bar has the five places');
+  await p.close();
+}
+if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
+  const surfaces = [
+    ['docs page', 'docs/benchmarks/scenarios/vanet/', 'lab'],
+    ['place page', 'docs/places/workshop/', 'shop'],
+    ['API page', 'api/classanthocnet_1_1core_1_1PheromoneTable.html', 'shop'],
+  ];
+  for (const scheme of ['light', 'dark']) {
+    for (const [name, url, place] of surfaces) {
+      const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: scheme });
+      const errors = [];
+      p.on('pageerror', (e) => errors.push(e.message));
+      await p.goto(base + url);
+      await p.waitForTimeout(400);
+      const current = await p.locator('.ahn-bar .ahn-place[aria-current="page"]').getAttribute('data-place').catch(() => null);
+      if (current !== place) fail(`${name}: active place ${current}, expected ${place}`);
+      if (name === 'docs page') {
+        const href = await p.locator('.ahn-try a').first().getAttribute('href');
+        if (!href || !href.endsWith('#vanet?seed=1')) fail(`docs page: Try-it link ${href}`);
+      }
+      await p.addScriptTag({ content: axeSource });
+      const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+        .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+        .map((v) => `${v.id} (${v.impact}): ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join('; ')}`));
+      if (result.length) fail(`axe ${name} (${scheme}): ${result.join(' | ')}`);
+      if (errors.length) fail(`${name} (${scheme}): page errors: ${errors.join(' | ')}`);
+      if (!result.length && !errors.length) console.log(`ok: ${name} (${scheme}) — top bar on ${place}, axe clean`);
+      await p.close();
+    }
+  }
+  // Search from the bar finds a page and shows its place.
+  const p = await browser.newPage();
+  await p.goto(base + 'docs/');
+  await p.fill('#ahn-q', 'pheromone evaporation');
+  await p.locator('#ahn-results a').first().waitFor({ timeout: 5000 });
+  console.log(`ok: search — first hit "${(await p.locator('#ahn-results a').first().textContent()).trim().slice(0, 60)}"`);
+  await p.close();
+} else {
+  console.log('skip: docs/API not assembled (web/build-site.sh only); web/build-pages.sh adds them');
 }
 
 // 4. The default ad hoc world mixes walking and standing phones (#542 follow-up).

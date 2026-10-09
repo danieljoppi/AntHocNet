@@ -1,3 +1,14 @@
+---
+# Try it in the game (#629): rendered as a rail above the page on the site.
+try:
+  - world: manet
+    seed: 1
+    title: "The ad hoc regime"
+  - world: satellite
+    seed: 1
+    title: "The satellite regime"
+---
+
 # MANET and satellite are not the same problem
 
 Both are multi-hop wireless networks without fixed infrastructure. Almost every

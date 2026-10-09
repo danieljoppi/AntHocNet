@@ -40,7 +40,7 @@ jobs:
         # how a new script ships unlinted. tools/ holds the benchmark scripts
         # since #604 (they used to live in .claude/skills/, which releases
         # exclude).
-        run: ruff check ns3/tools docs/tools tools/
+        run: ruff check ns3/tools docs/tools tools/ web/shell
       - name: Release-package gate (#604)
         # Assembles the install bundle exactly as release.yml does and fails on
         # agent-only files (.claude/, AGENTS.md, CLAUDE.md, docs/handoffs/),

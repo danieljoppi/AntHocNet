@@ -41,7 +41,14 @@ hooks:
 
 theme:
   name: material
+  # The site shell (#627): Material's header and tabs are replaced by the
+  # site's one top bar (web/shell/, injected by docs/tools/mkdocs_hooks.py).
+  # With navigation.tabs the left sidebar lists only the current place.
+  custom_dir: web/shell/mkdocs
+  # No Google Fonts request: the shell sets a system font stack (web/shell/).
+  font: false
   features:
+    - navigation.tabs
     - navigation.sections
     - navigation.top
     - content.code.copy
@@ -64,6 +71,7 @@ markdown_extensions:
       permalink: true
   - admonition
   - attr_list
+  - md_in_html
   # Mermaid: the docs carry many diagrams and CI already gates that they parse
   # (docs/tools/check-mermaid.py in lint.yml), so they must render here too.
   - pymdownx.superfences:
@@ -75,31 +83,26 @@ markdown_extensions:
 # Nav transcribed from docs/README.md — same groups, same order, same pages.
 # When that map changes, change this with it.
 nav:
-  - README.md
-  # Built next to the docs by pages.yml (#542): the WASM game (the site's
-  # front page) and the Doxygen reference. Absolute URLs: not mkdocs pages.
-  - Learn by playing: https://danieljoppi.github.io/AntHocNet/
-  - API reference: https://danieljoppi.github.io/AntHocNet/api/
-  - Understand the protocol:
+  # The five places of the site (#627): Play is the game at the site root;
+  # the other four group every docs page. The top bar links each place's
+  # overview page (docs/places/); the API reference lives in the Workshop.
+  - Home: README.md
+  - Play: https://danieljoppi.github.io/AntHocNet/
+  - Field guide:
+      - Overview: places/field-guide.md
       - ant-colony-routing.md
       - ant-types.md
       - architecture.md
-      - roadmap.md
-      - research-landscape-2026.md
-      - learn-campaign.md
       - software-layers.md
       - network-regimes.md
-  - Build, port, extend:
-      - porting-notes.md
-      - ns2-support.md
-      - wire-format.md
-      - configuration.md
-      - cross-validation.md
-  - Measure & reproduce:
+  - Lab:
+      - Overview: places/lab.md
       - benchmarks.md
       - benchmarks/metrics.md
       - benchmarks/methodology.md
       - benchmarks/README.md
+      - benchmarks/grid.md
+      - benchmarks/static-mesh.md
       - benchmarks/satellite/isl-grid.md
       - benchmarks/satellite/leo-walker.md
       - Scenarios:
@@ -115,15 +118,24 @@ nav:
           - benchmarks/sweeps/area.md
           - benchmarks/sweeps/pause.md
           - benchmarks/sweeps/scale.md
-      - benchmarks/grid.md
-      - benchmarks/static-mesh.md
-  - Research provenance & fidelity:
+  - Workshop:
+      - Overview: places/workshop.md
+      - API reference: https://danieljoppi.github.io/AntHocNet/api/
+      - configuration.md
+      - wire-format.md
+      - porting-notes.md
+      - ns2-support.md
+      - cross-validation.md
+  - Archive:
+      - Overview: places/archive.md
+      - roadmap.md
+      - learn-campaign.md
+      - research-landscape-2026.md
       - fidelity.md
       - publications/README.md
       - publications/papers/2004-ppsn-anthocnet.md
       - publications/thesis/README.md
       - satellite-routing-prior-art.md
-  - Decisions & process:
       - adr/README.md
       - Architecture Decision Records:
           - adr/0001-record-architecture-decisions.md
@@ -152,3 +164,5 @@ nav:
       - Handoffs:
           - handoffs/2026-06-28-detector-d-link-failure.md
           - handoffs/2026-08-15-ns3-dsdv-null-route-upstream.md
+not_in_nav: |
+  /places/search.md

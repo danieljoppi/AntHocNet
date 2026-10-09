@@ -13,7 +13,10 @@ gates protect that claim — keep both green before pushing a `web/` change.
 |---|---|
 | `web/src/`, `web/include/ahn_web/` | the C++ browser adapter (scheduler, radio, mobility, scenarios) |
 | `web/site/` | the game: `index.html`, `js/app.js` (playground), `js/iso.js` (renderer), `js/worlds.js`, `js/missions-data.js`, `css/learn.css` |
-| `web/build-site.sh` | assembles `web/build-site/` (WASM + site), the Pages root |
+| `web/build-site.sh` | assembles `web/build-site/` (WASM + the game) |
+| `web/build-pages.sh` | the whole Pages site: game + docs (`/docs/`) + API (`/api/`) + redirects; `pages.yml` and CI's smoke both use it |
+| `web/shell/` | the site's one top bar (`topbar.html`, `shell.css`, `shell.js`), `docs.css` / `api.css`, the mkdocs theme override, and `inject.py`, which puts the bar on the game, every docs page (via `docs/tools/mkdocs_hooks.py`) and every API page |
+| `docs/places/` | the four docs places' overview pages (Field guide, Lab, Workshop, Archive) |
 | `web/site-redirects.sh` | old-URL redirects (docs moved to `/docs/`) |
 | `web/test/parity.sh` | native vs WASM decision traces — **byte-identical** |
 | `web/test/smoke.mjs` | headless Chromium: every world delivers, a mission completes, axe finds nothing serious |
@@ -40,8 +43,8 @@ scripts find it, or take `CHROMIUM=<path>`. Never run `playwright install` there
 
 ```bash
 web/test/parity.sh 120 "1 2 7 42"                  # 1. parity (the gate CI runs)
-web/build-site.sh                                   # 2. assemble web/build-site/
-(cd /tmp/pw && node "$OLDPWD/web/test/smoke.mjs" "$OLDPWD/web/build-site")   # 3. smoke + a11y
+web/build-pages.sh web/build-site                   # 2. game + docs + API (needs mkdocs-material, doxygen)
+(cd /tmp/pw && node "$OLDPWD/web/test/smoke.mjs" "$OLDPWD/web/build-site")   # 3. smoke + a11y on all three
 ```
 
 `node` resolves `playwright-core` from the **current directory**, hence the `cd`.

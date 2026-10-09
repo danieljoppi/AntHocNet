@@ -12,8 +12,8 @@
 <body>
   <a class="skip" href="#map">Skip to the map</a>
 
-  <header class="menubar">
-    <a class="brand" href="./" title="AntHocNet: the game"><span class="logo" aria-hidden="true"></span>AntHocNet <span class="sub">Colony&nbsp;Net</span></a>
+  <!--AHN-TOPBAR-->
+  <div class="menubar" role="toolbar" aria-label="Game controls">
     <label class="menu">World
       <select id="world" aria-describedby="worldBlurb"></select>
     </label>
@@ -28,14 +28,42 @@
       <button type="button" class="bevel" data-speed="5" aria-pressed="false" title="Fast: 5×">⏩</button>
     </div>
     <button id="step" type="button" class="bevel" title="Step to the next ant or packet (.)">Step</button>
-    <nav class="links" aria-label="Elsewhere">
-      <a href="docs/">Docs</a>
-      <a href="docs/benchmarks/">Results</a>
-      <a href="api/">API</a>
-      <a href="https://github.com/danieljoppi/AntHocNet">GitHub</a>
-    </nav>
-    <button id="theme" type="button" class="bevel" aria-label="Switch day and night" title="Day / night">☾</button>
-  </header>
+  </div>
+
+  <section class="hub" id="hub" aria-labelledby="hubTitle" hidden>
+    <div class="hub-grid">
+      <article class="hub-card hub-play">
+        <div class="k">Play</div>
+        <h1 id="hubTitle">Help the ants find the way</h1>
+        <p>Every device on this field runs the real AntHocNet routing core, compiled to WebAssembly. Fix a broken network, and the ants do the routing.</p>
+        <ul class="hub-list">
+          <li><b>Academy</b> one mission per thing the ants do</li>
+          <li><b>Free play</b> phones, mesh, cars, drones, satellites</li>
+          <li><b>Campaign</b> eight chapters, from ad hoc town to space <span class="soon">v2.2.0</span></li>
+        </ul>
+        <div class="row">
+          <button type="button" class="bevel primary" id="hubMission">▶ Start mission 1</button>
+          <button type="button" class="bevel" id="hubFree">Free play</button>
+        </div>
+      </article>
+      <a class="hub-card" data-place="guide" href="docs/places/field-guide/">
+        <div class="k">Field guide</div><h2>How the colony routes</h2>
+        <p>Ant colony routing, the five ant types, how the code is built, and why each kind of network is different.</p>
+      </a>
+      <a class="hub-card" data-place="lab" href="docs/places/lab/">
+        <div class="k">Lab</div><h2>What we measured</h2>
+        <p>Results per network type in ns-3, with confidence intervals, and how every number is made.</p>
+      </a>
+      <a class="hub-card" data-place="shop" href="docs/places/workshop/">
+        <div class="k">Workshop</div><h2>Build it into ns-3</h2>
+        <p>Install with <code>make doctor</code> and <code>make install-ns3</code>, every setting, the wire format, the API.</p>
+      </a>
+      <a class="hub-card" data-place="arch" href="docs/places/archive/">
+        <div class="k">Archive</div><h2>Decisions and what's next</h2>
+        <p>The roadmap, every decision record, fidelity to the paper, and the research behind the plan.</p>
+      </a>
+    </div>
+  </section>
 
   <main class="desk">
     <nav class="toolbox window" aria-label="Tools">
@@ -70,16 +98,6 @@
       <div class="map" id="map" tabindex="0" role="application" aria-label="Network map" aria-describedby="mapHelp">
         <canvas id="view"></canvas>
         <p class="toast" id="toast" role="status" aria-live="polite" hidden></p>
-        <section class="welcome" id="welcome" aria-labelledby="welcomeTitle" hidden>
-          <h1 id="welcomeTitle">Route like an ant colony</h1>
-          <p>Every phone on this field is running the real AntHocNet routing core, compiled to WebAssembly. Some walk, some stand still; links come and go, and the ants keep finding the way.</p>
-          <div class="row">
-            <button type="button" class="bevel primary" id="welcomePlay">Start mission 1</button>
-            <button type="button" class="bevel" id="welcomeExplore">Just explore</button>
-            <a class="small" href="docs/">Read the docs</a>
-          </div>
-          <button type="button" class="bevel close" id="welcomeClose" aria-label="Close the welcome card">✕</button>
-        </section>
       </div>
       <p class="sr" id="mapHelp">Keyboard: 1 to 5 pick a tool; [ and ] select the previous or next node; arrow keys move the selected node (or pan); o switches it off or on; Q and E rotate; plus and minus zoom; space pauses. Every event is also written to the ant log below the map.</p>
       <div class="status" aria-live="off">

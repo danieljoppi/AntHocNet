@@ -1,0 +1,21 @@
+<!-- The one top bar of the site (#627): the game, every docs page and the API
+     reference carry this markup, injected by web/shell/inject.py. {ROOT} is the
+     relative path to the site root; {ON:<place>} becomes ' aria-current="page"'
+     on the active place. Edit here only. -->
+<header class="ahn-bar" role="banner">
+  <a class="ahn-brand" href="{ROOT}" title="AntHocNet: home"><span class="ahn-logo" aria-hidden="true"></span>AntHocNet <span class="ahn-sub">Colony&nbsp;Net</span></a>
+  <nav class="ahn-places" aria-label="Places">
+    <a class="ahn-place" data-place="play" href="{ROOT}#play"{ON:play}><i aria-hidden="true"></i>Play</a>
+    <a class="ahn-place" data-place="guide" href="{ROOT}docs/places/field-guide/"{ON:guide}><i aria-hidden="true"></i>Field guide</a>
+    <a class="ahn-place" data-place="lab" href="{ROOT}docs/places/lab/"{ON:lab}><i aria-hidden="true"></i>Lab</a>
+    <a class="ahn-place" data-place="shop" href="{ROOT}docs/places/workshop/"{ON:shop}><i aria-hidden="true"></i>Workshop</a>
+    <a class="ahn-place" data-place="arch" href="{ROOT}docs/places/archive/"{ON:arch}><i aria-hidden="true"></i>Archive</a>
+  </nav>
+  <form class="ahn-search" role="search" action="{ROOT}docs/places/search/" data-root="{ROOT}">
+    <label class="ahn-sr" for="ahn-q">Search the docs</label>
+    <input id="ahn-q" name="q" type="search" placeholder="Search the colony…" autocomplete="off" spellcheck="false">
+    <ol class="ahn-results" id="ahn-results" hidden></ol>
+  </form>
+  <button id="theme" type="button" class="ahn-btn" aria-label="Switch day and night" title="Day / night">☾</button>
+  <a class="ahn-btn" href="https://github.com/danieljoppi/AntHocNet" title="Source on GitHub" aria-label="Source on GitHub">⌥</a>
+</header>

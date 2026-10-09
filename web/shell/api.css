@@ -1,0 +1,31 @@
+/* The API reference in the game's chrome (#632): Doxygen's own HTML under the
+   shell's top bar, its colours mapped to the shell tokens, day and night. */
+body { background: var(--ahn-card-2); color: var(--ahn-ink); }
+#top { margin: 0 12px; border-radius: 14px; overflow: hidden; border: 1px solid var(--ahn-border); }
+#titlearea { display: none; }
+div.contents, div.header {
+  margin-left: 12px; margin-right: 12px; background: var(--ahn-card);
+}
+div.contents { border: 1px solid var(--ahn-border); border-radius: 0 0 14px 14px; padding: 8px 20px 20px; }
+div.header { border: 1px solid var(--ahn-border); border-bottom: 0; border-radius: 14px 14px 0 0; background-image: none; }
+a, a.el, a.code { color: var(--ahn-accent); }
+.memname, .memitem, .memproto, .memdoc { color: var(--ahn-ink); }
+/* axe colour contrast (#632): Doxygen's defaults sit under 4.5:1 */
+.memname a.el, .memproto a.el { color: #1d4ed8; }
+#MSearchField { color: #1f2937; }
+span.mlabel { background: #475569; color: #ffffff; border-color: #475569; }
+.navpath li.footer, ul > .footer { color: #374151; }
+
+:root[data-night="1"] body, :root[data-night="1"] div.contents, :root[data-night="1"] div.header,
+:root[data-night="1"] .memproto, :root[data-night="1"] .memdoc, :root[data-night="1"] table.memberdecls,
+:root[data-night="1"] .memItemLeft, :root[data-night="1"] .memItemRight, :root[data-night="1"] .mdescLeft,
+:root[data-night="1"] .mdescRight, :root[data-night="1"] .fieldtable td, :root[data-night="1"] .fieldtable th,
+:root[data-night="1"] div.fragment, :root[data-night="1"] .navpath ul, :root[data-night="1"] #nav-tree,
+:root[data-night="1"] .tabs, :root[data-night="1"] .tabs2, :root[data-night="1"] .sm-dox, :root[data-night="1"] .sm-dox a {
+  background: #101a2d !important; background-image: none !important; color: #e6edf7 !important; border-color: #23324d !important;
+  text-shadow: none !important;
+}
+:root[data-night="1"] h1, :root[data-night="1"] h2, :root[data-night="1"] h3, :root[data-night="1"] .title,
+:root[data-night="1"] .memname, :root[data-night="1"] .groupheader { color: #eef3fa !important; }
+:root[data-night="1"] a, :root[data-night="1"] a.el { color: #93c5fd !important; }
+:root[data-night="1"] .footer, :root[data-night="1"] #MSearchField { color: #cbd5e1 !important; background: transparent !important; }
