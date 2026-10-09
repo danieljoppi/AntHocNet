@@ -8,6 +8,23 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v2.1.0 (2026-10-09)
+
+### Feat
+
+- **learn-site**: the in-game reader, two-way game<->docs links, the Nest, the install quest, and page tests in the PR pipeline (#644)
+- **learn-site**: the whole site is the game: one top bar, the hub, docs as game windows, the API in the game's chrome (#643)
+- **web**: orbiting satellites, visible walkers, and the strongest pheromone route on the map (#559)
+- **web**: make the game the site's front page, with walking phones and real device icons (#558)
+
+### Fix
+
+- **packaging**: keep agent files out of release packages, ship the bench tools, refresh agent docs (#617)
+
+### Refactor
+
+- **ns3**: new ns3/ layout, make doctor, BASELINES=0, drop-in module tarball, docs-only CI gate (#642)
+
 ## v2.0.0 (2026-10-08)
 
 ### BREAKING CHANGE
