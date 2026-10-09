@@ -1,0 +1,11 @@
+AntHocNet 2.1.0 — drop-in ns-3 modules
+
+  tar -xzf anthocnet-ns3-modules-2.1.0.tar.gz -C /path/to/ns-3/contrib
+  cd /path/to/ns-3
+  ./ns3 configure --enable-examples --enable-tests && ./ns3 build
+  ./test.py -s anthocnet && ./ns3 run anthocnet-example
+
+Contents: contrib/anthocnet (the module + harnesses) and the comparison
+modules contrib/aomdv, contrib/gpsr, contrib/oracle. Delete those three to
+build AntHocNet alone; ns-3 then skips the comparison harnesses.
+Tested on ns-3.36 to ns-3.48. Docs: https://danieljoppi.github.io/AntHocNet/docs/

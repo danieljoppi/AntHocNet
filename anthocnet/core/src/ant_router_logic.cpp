@@ -1,0 +1,808 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
+#include "anthocnet/core/ant_router_logic.h"
+#include "anthocnet/core/ant_message_codec.h"  // kMaxHelloOnWire (#186)
+
+#include <algorithm>
+#include <cmath>
+
+namespace anthocnet {
+namespace core {
+
+AntRouterLogic::AntRouterLogic(NodeAddress address, const Config& config, IClock& clock,
+                               IRng& rng, const ILinkMetric* metric,
+                               const ILinkState* linkState)
+    : address_(address),
+      config_(config),
+      clock_(clock),
+      rng_(rng),
+      engine_(config_),
+      metric_(metric ? metric : &defaultMetric_),
+      linkState_(linkState),
+      history_(config_.maxHistory),
+      genQuality_(config_.maxHistory) {}
+
+// --- neighbour learning -----------------------------------------------------
+
+void AntRouterLogic::learnNeighbor(NodeAddress neighbor) {
+    if (neighbor == address_ || neighbor == kInvalidAddress) return;
+    const bool isNew = lastSeen_.find(neighbor) == lastSeen_.end();
+    table_.addNeighbor(neighbor);
+    // A reception is direct evidence of a live 1-hop path, so it refreshes the
+    // (neighbor, neighbor) entry — at the metric's UNLOADED 1-HOP value, not
+    // the legacy constant 1.0 (#279). The constant gamma-blended the entry
+    // ~100x below its backward-ant value on every packet, corrupting every
+    // 1-hop hello advert (measured: hub pinned at 0.78 vs 74.24 refreshed).
+    // But the per-reception refresh itself is load-bearing: seeding only new
+    // neighbours let 1-hop entries evaporate between backward-ant refreshes,
+    // and the resulting route flaps collapsed the ISL field into a reactive
+    // discovery storm (NRL 37 -> 10801; A/B recorded on the issue). So:
+    // refresh every reception, in the same units backward ants deposit.
+    LinkObservation obs;
+    obs.hops = 1;
+    obs.pathTime = config_.hopTimeSec;
+    obs.hopTime = config_.hopTimeSec;
+    engine_.updateRegular(table_, neighbor, neighbor, metric_->pheromone(obs));
+    lastSeen_[neighbor] = clock_.now();  // liveness: any reception refreshes it
+    txFailures_.erase(neighbor);         // a reception clears the tx-failure streak (#19)
+    if (isNew && observer_) observer_->onRouteChanged(neighbor, neighbor, true);
+}
+
+void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
+    const bool had = lastSeen_.find(neighbor) != lastSeen_.end();
+    engine_.cleanNeighbor(table_, neighbor);
+    lastSeen_.erase(neighbor);
+    for (auto it = hopEstimate_.begin(); it != hopEstimate_.end();) {  // #185
+        if (it->first.second == neighbor) it = hopEstimate_.erase(it);
+        else ++it;
+    }
+    txFailures_.erase(neighbor);
+    if (had && observer_) observer_->onRouteChanged(neighbor, neighbor, false);
+}
+
+std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
+    std::vector<RouteDecision> out;
+    const double now = clock_.now();
+
+    // Single-sourced, time-proportional aging (ADR-0012), gated for the
+    // paper-faithful ablation. dt is taken from the clock, never wall time.
+    if (config_.enableEvaporation) {
+        engine_.evaporateAll(table_, now - lastEvaporation_);
+        lastEvaporation_ = now;
+    }
+
+    const double maxIdle = config_.helloInterval * config_.allowedHelloLoss;
+
+    std::vector<NodeAddress> expired;
+    for (const auto& kv : lastSeen_) {
+        if (now - kv.second > maxIdle) expired.push_back(kv.first);
+    }
+    for (NodeAddress n : expired) {
+        std::vector<RouteDecision> notes = reportNeighborLoss(n);
+        out.insert(out.end(), notes.begin(), notes.end());
+    }
+
+    // Local-repair wait/discard ([1] §3.5, D6): a repair that got no backward
+    // ant within its window has failed — tell the adapter to discard the
+    // packets buffered for that destination (the paper trades PDR for a bounded
+    // delay tail here) and send the deferred link-failure notification. If a
+    // route reappeared some other way (reactive ant, diffusion), just forget
+    // the deadline; the normal flush path handles the queue.
+    for (auto it = repairDeadline_.begin(); it != repairDeadline_.end();) {
+        if (now < it->second) { ++it; continue; }
+        const NodeAddress dest = it->first;
+        it = repairDeadline_.erase(it);
+        if (table_.bestRegular(dest) > config_.minPheromone) continue;
+
+        out.push_back({RouteAction::DiscardPending, dest, false, {}});
+        ++repairDiscards_;  // #215 drop cause "repair discard" (event count)
+
+        // Ablation gate: the DiscardPending above is the packets' fate and
+        // always happens; only the deferred notification is suppressed.
+        if (!config_.enableLinkFail) continue;
+
+        // Same origin cooldown as reportNeighborLoss (issue #20): the break
+        // that armed this repair usually already advertised dest's loss.
+        if (config_.linkfailNotifyInterval > 0.0) {
+            auto itN = lastLinkfailNotify_.find(dest);
+            if (itN != lastLinkfailNotify_.end() &&
+                now - itN->second < config_.linkfailNotifyInterval) {
+                ++linkfailOriginsSuppressed_;
+                continue;
+            }
+            lastLinkfailNotify_[dest] = now;
+        }
+
+        AntMessage note;
+        note.type            = AntType::LinkFail;
+        note.direction       = AntDirection::Up;
+        note.src             = address_;
+        note.dst             = kInvalidAddress;
+        note.seqNum          = nextSeq();
+        note.timeStart       = now;
+        note.broadcastBudget = config_.repairMaxBroadcasts;
+        note.helloDests.push_back({dest, 0.0});  // repair failed: no path left
+        out.push_back(broadcastForward(note));
+    }
+    return out;
+}
+
+RouteDecision AntRouterLogic::broadcastForward(AntMessage& ant) {
+    if (ant.broadcastBudget == 0) return RouteDecision::drop();  // budget exhausted
+    if (ant.broadcastBudget > 0) ant.broadcastBudget -= 1;       // -1 == untracked
+    return sendAnt(RouteAction::Broadcast, kInvalidAddress, ant);
+}
+
+RouteDecision AntRouterLogic::sendAnt(RouteAction action, NodeAddress nextHop,
+                                      const AntMessage& ant) {
+    antsSent_[ant.type] += 1;
+    if (observer_) {
+        observer_->onAntSent(ant.type, ant.direction, action == RouteAction::Broadcast);
+    }
+    return {action, nextHop, true, ant};
+}
+
+std::uint64_t AntRouterLogic::antsSent(AntType type) const {
+    auto it = antsSent_.find(type);
+    return it == antsSent_.end() ? 0 : it->second;
+}
+
+std::uint64_t AntRouterLogic::antsReceived(AntType type) const {
+    auto it = antsReceived_.find(type);
+    return it == antsReceived_.end() ? 0 : it->second;
+}
+
+std::uint64_t AntRouterLogic::controlPacketsSent() const {
+    std::uint64_t total = 0;
+    for (const auto& kv : antsSent_) total += kv.second;
+    return total;
+}
+
+std::vector<RouteDecision> AntRouterLogic::reportNeighborLoss(NodeAddress n) {
+    // Snapshot the destinations whose best path ran through n (pre-removal).
+    std::vector<std::pair<NodeAddress, double>> affected;  // (dest, best-before)
+    for (NodeAddress d : table_.regularDestinations()) {
+        const double viaN = table_.getPheromoneRegular(d, n);
+        if (viaN <= config_.minPheromone) continue;
+        const double before = table_.bestRegular(d);
+        if (viaN >= before - 1e-12) affected.push_back({d, before});  // n was (a) best
+    }
+
+    loseNeighbor(n);  // prune n from the table + last-seen
+
+    // Ablation gate: the pruning above is the *correctness* half and always
+    // runs; only the outbound notification is suppressed.
+    if (!config_.enableLinkFail) return {};
+
+    AntMessage note;
+    const double now = clock_.now();
+    for (const auto& pr : affected) {
+        const double after = table_.bestRegular(pr.first);
+        if (after >= pr.second) continue;  // no ground lost
+        // Multipath churn bound (#96 option 1): with multipath on, losing the
+        // best hop while a usable alternate next-hop survives is the expected
+        // case — data keeps flowing over the alternate, so don't turn every
+        // such break into a LinkFail flood (the #96 runs showed 2-3x linkfail
+        // volume eating the PDR). Only a destination left with NO usable path
+        // is advertised. Single-path (gate off) keeps the pre-#96 behaviour.
+        if (config_.enableMultipath && after > config_.minPheromone) {
+            ++linkfailOriginsSuppressed_;
+            continue;
+        }
+        // Origin cooldown (issue #20): under link flapping, re-advertising the
+        // same destination every evict/re-learn cycle is what turns breaks into
+        // a notification storm; neighbours already applied the first note.
+        if (config_.linkfailNotifyInterval > 0.0) {
+            auto it = lastLinkfailNotify_.find(pr.first);
+            if (it != lastLinkfailNotify_.end() &&
+                now - it->second < config_.linkfailNotifyInterval) {
+                ++linkfailOriginsSuppressed_;
+                continue;
+            }
+            lastLinkfailNotify_[pr.first] = now;
+        }
+        note.helloDests.push_back({pr.first, after});
+    }
+    if (note.helloDests.empty()) return {};
+
+    note.type           = AntType::LinkFail;
+    note.direction      = AntDirection::Up;
+    note.src            = address_;
+    note.dst            = kInvalidAddress;
+    note.seqNum         = nextSeq();
+    note.timeStart      = clock_.now();
+    note.broadcastBudget = config_.repairMaxBroadcasts;
+    return {broadcastForward(note)};
+}
+
+std::vector<RouteDecision> AntRouterLogic::reportTxFailure(NodeAddress next,
+                                                          NodeAddress dataDest) {
+    if (next == kInvalidAddress) return {};
+
+    // Debounce (issue #19): a single retry-limit drop in a dense/contended
+    // network is usually a collision, not a topology change. Evicting the
+    // neighbour on it destroys valid routes and triggers rediscovery floods
+    // (proactive ants re-broadcast unbounded when no route survives), which add
+    // contention and cause more drops — a positive-feedback storm. So only treat
+    // the link as broken after txFailureThreshold consecutive failures with no
+    // intervening reception (any reception resets the counter via learnNeighbor).
+    if (++txFailures_[next] < config_.txFailureThreshold) return {};
+    txFailures_.erase(next);
+
+    // Estimated end-to-end delay of the path we are about to lose, for the
+    // repair wait window ([1] §3.5: wait ~5× that delay). Pheromone is inverse
+    // goodness in time units (item 03), so delay ≈ 1/pheromone; captured before
+    // the prune below removes the entry.
+    double lostPathDelay = 0.0;
+    if (dataDest != kInvalidAddress) {
+        const double best = table_.bestRegular(dataDest);
+        if (best > config_.minPheromone) lostPathDelay = 1.0 / best;
+    }
+
+    // Real break: prune `next` and emit any LinkFail notifications (detector A
+    // and D converge on this path).
+    std::vector<RouteDecision> out = reportNeighborLoss(next);
+
+    // Bounded local repair ([1] §3.5): only "if there is no other path
+    // available" — after the loss, if a route to dataDest survives via another
+    // neighbour, skip the repair ant. Rate-limit per destination so a burst of
+    // failures to one dest can't spawn a stream of repair ants. broadcastForward
+    // counts the ant (--diag repair>0) and caps re-broadcasts (repairMaxBroadcasts).
+    if (config_.enableRepair && dataDest != kInvalidAddress && dataDest != address_ &&
+        table_.bestRegular(dataDest) <= config_.minPheromone) {
+        const double now = clock_.now();
+        auto it = lastRepair_.find(dataDest);
+        if (it == lastRepair_.end() || now - it->second >= config_.reactiveRetryInterval) {
+            lastRepair_[dataDest] = now;
+            AntMessage rrfa = createForwardAnt(AntType::Repair, dataDest);
+            rrfa.lifeAnt = config_.lifeAnt;
+            out.push_back(broadcastForward(rrfa));
+            // Arm the wait/discard window (D6): a backward ant from dataDest
+            // cancels it; onMaintenanceTick fires it.
+            const double wait = lostPathDelay > 0.0
+                                    ? config_.repairWaitFactor * lostPathDelay
+                                    : config_.repairTimeout;
+            repairDeadline_[dataDest] = now + wait;
+        }
+    }
+    return out;
+}
+
+std::vector<RouteDecision> AntRouterLogic::handleLinkFail(const AntMessage& note,
+                                                          NodeAddress reporter) {
+    AntMessage prop;
+    prop.broadcastBudget = note.broadcastBudget;  // broadcastForward decrements
+    for (const HelloDest& adv : note.helloDests) {
+        const NodeAddress d = adv.node;
+        if (d == address_) continue;  // not about routes to ourselves
+        const double before = table_.bestRegular(d);
+        const bool viaReporter = table_.getPheromoneRegular(d, reporter) > config_.minPheromone;
+
+        if (adv.pheromone <= config_.minPheromone) {
+            table_.removePheromoneRegular(d, reporter);  // reporter has no path now
+        } else {
+            // Reporter's new best, discounted one hop to this node (item 03 units).
+            const double bootstrapped = 1.0 / (1.0 / adv.pheromone + config_.hopTimeSec);
+            table_.setPheromoneRegular(d, reporter, bootstrapped);
+        }
+
+        const double after = table_.bestRegular(d);
+        if (viaReporter && after < before) {
+            // Multipath churn bound (#96 option 1), mirroring the origin side:
+            // if a usable alternate next-hop survives here, absorb the note
+            // instead of re-flooding it — the pheromone update above already
+            // happened, and data still has a path through this node.
+            if (config_.enableMultipath && after > config_.minPheromone) continue;
+            prop.helloDests.push_back({d, after});
+        }
+    }
+    if (prop.helloDests.empty()) return {};  // absorbed: our best path is intact
+    // Ablation gate: the pheromone updates above (applying what the note told
+    // us) already happened — only onward propagation is suppressed.
+    if (!config_.enableLinkFail) return {};
+
+    prop.type      = AntType::LinkFail;
+    prop.direction = AntDirection::Up;
+    prop.src       = address_;
+    prop.dst       = kInvalidAddress;
+    prop.seqNum    = nextSeq();
+    prop.timeStart = clock_.now();
+    RouteDecision d = broadcastForward(prop);
+    if (d.action == RouteAction::Broadcast) ++linkfailPropagations_;
+    else ++linkfailBudgetDrops_;
+    return {d};
+}
+
+// --- active sessions (item 04) ----------------------------------------------
+
+void AntRouterLogic::noteDataSession(NodeAddress dest) {
+    if (dest == kInvalidAddress || dest == address_) return;
+    activeSessions_[dest] = clock_.now();
+}
+
+std::vector<NodeAddress> AntRouterLogic::activeDestinations() const {
+    std::vector<NodeAddress> dests;
+    const double now = clock_.now();
+    for (const auto& kv : activeSessions_) {
+        if (now - kv.second <= config_.sessionTtl) dests.push_back(kv.first);
+    }
+    return dests;
+}
+
+// The thesis's emission gate (#180): "the actual sending of a proactive forward
+// ant is conditional to the availability of good new virtual pheromone: only if
+// the best virtual pheromone is significantly better (in our experiments: at
+// least 10% better) than the best regular pheromone, a proactive forward ant is
+// sent out" (Ducatelle 2007, lines 4084-4088). This is what makes the 2 s rate
+// affordable: without it, every session emits on every tick.
+//
+// The comparison is PER LINK, not best-vs-best (ADR-0018, the #180
+// re-derivation). The scalar form the thesis literally states compares two
+// estimators of *different paths*, and its ratio has a hard structural ceiling
+// tau(h-1)/tau(h) ~ h/(h-1) — measured byte-exact on the uniformity probe — so
+// a fixed margin m silently disables the gate for every destination farther
+// than 1 + 1/m hops. Comparing v and r on the SAME link cancels that
+// systematic: both describe the same path, and the ratio is degree- and
+// hop-independent (probe: centred 0.97-1.06, p90 1.3-2.2).
+bool AntRouterLogic::shouldSendProactive(NodeAddress dest) const {
+    // Margin <= 0 means "no margin required": the gate is off and behaviour is
+    // exactly pre-#180 (unconditional emission), so the ablation is runnable.
+    if (config_.proactiveVirtualMargin <= 0.0) return true;
+
+    // With diffusion off (ADR-0007 ablation) the virtual table is never
+    // populated, so the thesis's condition cannot be evaluated at all. Falling
+    // back to unconditional emission keeps that ablation meaning what it has
+    // always meant — "proactive ants without virtual-pheromone guidance" —
+    // instead of silently turning it into "no proactive ants".
+    if (!config_.enableDiffusion) return true;
+
+    // Boundary case A — no regular route at all. Send. The gate is an
+    // *efficiency* filter over an existing good path; with no path, the
+    // comparison is degenerate and, more importantly, this is the session that
+    // needs an ant most: data is actively being sent to a destination we
+    // cannot currently route to. Suppressing here would be the exact opposite
+    // of the thesis's intent. minPheromone is the repo's "a route exists"
+    // threshold, used the same way in selectNextHop.
+    if (table_.bestRegular(dest) <= config_.minPheromone) return true;
+
+    // Pass iff some neighbour's virtual pheromone beats the regular pheromone
+    // ON THAT SAME LINK by the margin. A virtual hint on a link whose regular
+    // entry sits at/below the floor passes trivially — that is the genuine
+    // "diffusion turned up something the sampling never priced" case (an
+    // unsampled or evicted link), the strongest reason to go and check.
+    // No virtual pheromone anywhere for `dest` suppresses: "conditional to the
+    // availability of good new virtual pheromone" — none, nothing to check.
+    // (That makes the gate a no-op-suppressor when diffusion is off, which is
+    // why that ablation should also set proactiveVirtualMargin=0.)
+    for (NodeAddress n : table_.neighbors()) {
+        const double v = table_.getPheromoneVirtual(dest, n);
+        if (v <= config_.minPheromone) continue;  // no usable hint on this link
+        const double r = table_.getPheromoneRegular(dest, n);
+        if (r <= config_.minPheromone) return true;  // hint on an unsampled link
+        if (v >= r * (1.0 + config_.proactiveVirtualMargin)) return true;
+    }
+    return false;
+}
+
+std::vector<AntMessage> AntRouterLogic::createProactiveAnts() {
+    std::vector<AntMessage> ants;
+    if (!config_.enableProactive) return ants;
+    const double now = clock_.now();
+    for (auto it = activeSessions_.begin(); it != activeSessions_.end();) {
+        if (now - it->second > config_.sessionTtl) {
+            it = activeSessions_.erase(it);  // expired session
+            continue;
+        }
+        if (!shouldSendProactive(it->first)) {
+            ++it;  // session stays active; we just skip this tick's ant
+            continue;
+        }
+        ants.push_back(createForwardAnt(AntType::Proactive, it->first));
+        // Origination: the adapter sends these directly (they don't pass
+        // through a RouteDecision here), so count them at the source.
+        antsSent_[AntType::Proactive] += 1;
+        if (observer_) observer_->onAntSent(AntType::Proactive, AntDirection::Up, false);
+        ++it;
+    }
+    return ants;
+}
+
+// --- ant construction -------------------------------------------------------
+
+AntMessage AntRouterLogic::createForwardAnt(AntType type, NodeAddress dest) {
+    AntMessage m;
+    m.type      = type;
+    m.direction = AntDirection::Up;
+    m.src       = address_;
+    m.dst       = dest;
+    m.seqNum    = nextSeq();
+    m.timeStart = clock_.now();
+    // Repair and proactive ants carry a per-path broadcast budget, decremented
+    // at each hop ([1] §3.2/§3.5, and proactive per issue #45 — an unbounded
+    // proactive budget let route gaps turn the path monitor into a network-wide
+    // flood). Both are *maintenance* ants exploring near a known path, so
+    // bounding the path is the right unit for them.
+    //
+    // A reactive ant carries **no** per-path budget (#169): it broadcasts at
+    // every node lacking pheromone, so decrementing per hop is a hop limit on
+    // discovery. Its flood is bounded per (node, generation) instead, at the
+    // broadcast site in onReceiveAnt (#173) — config_.reactiveMaxBroadcasts is
+    // consumed there, not here.
+    if (type == AntType::Repair)        m.broadcastBudget = config_.repairMaxBroadcasts;
+    else if (type == AntType::Reactive) m.broadcastBudget = -1;  // see above
+    else                                m.broadcastBudget = config_.proactiveMaxBroadcasts;
+    m.visited.push_back({address_, 0.0});  // source node enters the stack
+    return m;
+}
+
+AntMessage AntRouterLogic::createHelloAnt() {
+    return createHelloAnt(config_.maxHelloAdverts);
+}
+
+AntMessage AntRouterLogic::createHelloAnt(std::size_t maxAdverts) {
+    // Never emit more adverts than the codec accepts on decode (#186): an
+    // over-long list would make every receiver drop the whole hello.
+    maxAdverts = std::min<std::size_t>(maxAdverts, codec::kMaxHelloOnWire);
+    AntMessage m;
+    m.type      = AntType::Hello;
+    m.direction = AntDirection::Up;
+    m.src       = address_;
+    m.dst       = kInvalidAddress;  // adapter maps to its broadcast address
+    m.seqNum    = nextSeq();
+    m.timeStart = clock_.now();
+
+    // Origination: the adapter broadcasts every hello on its timer, so count it
+    // here (hellos are consumed locally at the receiver, never re-forwarded).
+    antsSent_[AntType::Hello] += 1;
+    if (observer_) observer_->onAntSent(AntType::Hello, AntDirection::Up, true);
+
+    // Diffusion adverts are gated (ADR-0007); a hello with no adverts still
+    // serves neighbour discovery / liveness.
+    if (!config_.enableProactive || !config_.enableDiffusion) return m;
+
+    // Advertise this node's *best real pheromone* per destination so the
+    // receiver can bootstrap a goodness-ordered virtual table (D3), skipping
+    // destinations we have no usable path to. Advert slots are filled
+    // deterministically — active sessions first, the remainder by best
+    // pheromone — not by a coin flip (issue #26, item 6.5).
+    std::vector<HelloDest> candidates;
+    for (NodeAddress dest : table_.regularDestinations()) {
+        const double best = table_.bestRegular(dest);
+        if (best <= config_.minPheromone) continue;
+        candidates.push_back({dest, best});
+    }
+    const std::vector<NodeAddress> active = activeDestinations();
+    auto isActive = [&active](NodeAddress d) {
+        return std::find(active.begin(), active.end(), d) != active.end();
+    };
+    std::stable_sort(candidates.begin(), candidates.end(),
+                     [&isActive](const HelloDest& a, const HelloDest& b) {
+                         const bool activeA = isActive(a.node);
+                         const bool activeB = isActive(b.node);
+                         if (activeA != activeB) return activeA;
+                         return a.pheromone > b.pheromone;
+                     });
+    if (candidates.size() > maxAdverts) candidates.resize(maxAdverts);
+    m.helloDests = std::move(candidates);
+    return m;
+}
+
+AntMessage AntRouterLogic::createBackAnt(const AntMessage& forward) {
+    AntMessage b;
+    b.type      = forward.type;
+    b.direction = AntDirection::Down;
+    b.src       = address_;          // swap: this node originates the back ant
+    b.dst       = forward.src;       // ...heading to the forward ant's source
+    b.seqNum    = nextSeq();
+    b.timeStart = clock_.now();
+    b.lifeAnt   = forward.lifeAnt;
+    b.visited   = forward.visited;   // retrace the path
+    return b;
+}
+
+// --- routing primitives -----------------------------------------------------
+
+NodeAddress AntRouterLogic::selectNextHop(NodeAddress dest, bool proactive) {
+    return table_.nextNeighborNode(dest, proactive, config_.betaAnts, rng_);
+}
+
+NodeAddress AntRouterLogic::nextHopForData(NodeAddress dest, NodeAddress prevHop) {
+    return table_.lookup(dest, config_.betaData, rng_, prevHop);
+}
+
+NodeAddress AntRouterLogic::randomDestination() {
+    return table_.randomDestination(rng_);
+}
+
+void AntRouterLogic::stampForward(AntMessage& ant, NodeAddress nextHop) const {
+    if (ant.visited.size() >= config_.maxPathLength) return;
+    ant.visited.push_back({address_, localHopCost(ant, nextHop)});
+}
+
+double AntRouterLogic::localHopCost(const AntMessage& ant, NodeAddress nextHop) const {
+    // Congestion-aware per-hop cost (item 10/A2, [1] §3.2): when the MAC metric
+    // is enabled and a link-state signal is available, this node contributes its
+    // *expected time to send one packet given its current queue* — (Q_mac+1) *
+    // T̂_mac — so the summed path time T̂_d reflects sustained MAC load and data
+    // shifts off congested nodes. The h*T_hop term in ClassicMetric stays the
+    // unloaded-reference regulariser, so this only changes the T̂_d term.
+    //
+    // NOTE(#55): the exact (Q+1)*T̂_mac expression follows the repo's §3.2
+    // interpretation in docs/improvements/10 plus a queue-occupancy refinement;
+    // the primary source (Ducatelle thesis / ETT 2005) was network-blocked at
+    // implementation time, so it is isolated here and flagged for a maintainer
+    // cross-check. Any correction is a one-line change in this function.
+    if (config_.enableMacMetric && linkState_) {
+        const double tmac = linkState_->macServiceTime(nextHop);
+        if (tmac > 0.0) {
+            const int q = linkState_->macQueueLength(nextHop);
+            return (static_cast<double>(q > 0 ? q : 0) + 1.0) * tmac;
+        }
+        return config_.hopTimeSec;  // no MAC sample yet: unloaded reference hop
+    }
+
+    // Fallback (unchanged, item 02): the ant's own wall-clock transit — this
+    // hop's *delta* (seconds since the previous stamp), derived from the elapsed
+    // time since generation minus the deltas already on the stack. The back-ant
+    // metric sums these to recover the path time.
+    const double cumulative = clock_.now() - ant.timeStart;
+    double prior = 0.0;
+    for (const AntHop& h : ant.visited) prior += h.time;
+    return cumulative - prior;
+}
+
+NodeAddress AntRouterLogic::advanceBackAnt(AntMessage& ant) const {
+    if (ant.visited.empty()) return kInvalidAddress;
+
+    // Pure path management (ADR-0009): move this node from the still-to-retrace
+    // `visited` stack onto `history`, and peek the next hop. The deposit state
+    // (prevHop/hops/pathTime/pheromone) is recomputed at the receiver from
+    // `history`, not carried on the wire.
+    const AntHop current = ant.visited.back();
+    ant.history.push_back(current);
+    ant.visited.pop_back();
+
+    if (ant.visited.empty()) return kInvalidAddress;
+    return ant.visited.back().node;  // next hop (left for it to pop)
+}
+
+double AntRouterLogic::backAntPheromone(const AntMessage& ant) const {
+    // Reconstruct T̂_d^i and the hop count from the retraced path carried in
+    // `history` (the per-hop deltas summed = path time to the destination).
+    LinkObservation obs;
+    obs.hops = static_cast<double>(ant.history.size());
+    double t = 0.0;
+    for (const AntHop& h : ant.history) t += h.time;
+    obs.pathTime = t;
+    obs.hopTime = config_.hopTimeSec;
+    return metric_->pheromone(obs);
+}
+
+void AntRouterLogic::computeBackAntState(AntMessage& ant) const {
+    // The neighbour that forwarded this back ant is the last node it retraced.
+    ant.prevHop  = ant.history.empty() ? kInvalidAddress : ant.history.back().node;
+    ant.hops     = static_cast<int>(ant.history.size());
+    double t = 0.0;
+    for (const AntHop& h : ant.history) t += h.time;
+    ant.pathTime = t;
+    ant.pheromone = backAntPheromone(ant);
+}
+
+void AntRouterLogic::reinforceFromBackAnt(const AntMessage& ant) {
+    double deposit = ant.pheromone;
+    // #185, thesis eq. 4.2: smooth the hop count per (destination, next hop)
+    // before it enters the metric, h <- a*h + (1-a)*h_ant. At the default a = 0
+    // this branch is skipped and the deposit is byte-identical to before.
+    if (config_.hopCountAlpha > 0.0 && ant.prevHop != kInvalidAddress) {
+        const auto key = std::make_pair(ant.src, ant.prevHop);
+        const double sample = static_cast<double>(ant.hops);
+        auto it = hopEstimate_.find(key);
+        // Seed from the first sample, and re-seed when the route itself has
+        // lapsed (no regular pheromone left): an estimate for a path that no
+        // longer exists must not bias the one that replaces it.
+        if (it == hopEstimate_.end() ||
+            table_.getPheromoneRegular(ant.src, ant.prevHop) <= 0.0) {
+            hopEstimate_[key] = sample;
+        } else {
+            it->second = config_.hopCountAlpha * it->second +
+                         (1.0 - config_.hopCountAlpha) * sample;
+        }
+        LinkObservation obs;
+        obs.hops = hopEstimate_[key];
+        obs.pathTime = ant.pathTime;
+        obs.hopTime = config_.hopTimeSec;
+        deposit = metric_->pheromone(obs);
+    }
+    engine_.updateRegular(table_, ant.src, ant.prevHop, deposit);
+}
+
+// --- consolidated receive ---------------------------------------------------
+
+std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incoming,
+                                                        NodeAddress prevHop) {
+    // Duplicate / loop detection. With multipath on (#96, [1] §3.1) a reactive
+    // forward ant uses the per-generation acceptance filter: a later
+    // same-generation ant is forwarded when both its hops and its travel time
+    // are within an acceptance factor of the best seen, so several good paths
+    // get laid down instead of only the first-arriving one — antAcceptanceFactor
+    // (a1) normally, the looser antAcceptanceFactorNewHop (a2) when the ant
+    // reached us over a first hop no accepted ant of this generation used
+    // (#177). Every other ant
+    // (backward, hello, linkfail, proactive/repair forward) — and every ant
+    // when multipath is off — keeps strict (src,seq) dedup.
+    if (config_.enableMultipath && incoming.isForward() &&
+        incoming.type == AntType::Reactive) {
+        const auto hops = static_cast<std::uint32_t>(incoming.visited.size());
+        Time travel = 0.0;
+        for (const AntHop& h : incoming.visited) travel += h.time;
+        // The ant's *first hop*: the node it travelled to immediately after the
+        // source. `visited` is built source-first (createAnt pushes the source,
+        // then each forwarder appends itself in stampForward), so it is
+        // visited[1]. If the ant has not been forwarded yet — visited holds only
+        // the source, i.e. this node is receiving the source's own broadcast —
+        // then *this node* is the first hop the path will have, so use our own
+        // address. Both readings agree that distinct branches out of the source
+        // get distinct first hops, which is all the a2 rule needs.
+        const NodeAddress firstHop = incoming.visited.size() >= 2
+                                         ? incoming.visited[1].node
+                                         : address_;
+        if (!genQuality_.accept(incoming.src, incoming.seqNum, hops, travel,
+                                firstHop, config_.antAcceptanceFactor,
+                                config_.antAcceptanceFactorNewHop)) {
+            return {RouteDecision::drop()};
+        }
+    } else if (!history_.record(incoming.src, incoming.seqNum)) {
+        return {RouteDecision::drop()};
+    }
+
+    // Count the non-duplicate reception (observability, item 15).
+    antsReceived_[incoming.type] += 1;
+    if (observer_) observer_->onAntReceived(incoming.type, incoming.direction);
+
+    // Link-layer neighbour detection from the previous hop.
+    if (prevHop != kInvalidAddress) {
+        learnNeighbor(prevHop);
+    }
+
+    if (incoming.type == AntType::Hello) {
+        learnNeighbor(incoming.src);
+        engine_.updateVirtual(table_, incoming);
+        return {};  // hello is consumed locally
+    }
+
+    if (incoming.type == AntType::LinkFail) {
+        return handleLinkFail(incoming, prevHop);  // apply + maybe propagate
+    }
+
+    AntMessage ant = incoming;  // mutable working copy
+    const bool proactive = (ant.type == AntType::Proactive);
+
+    if (ant.isForward()) {
+        // 6.2 hop cap ([1] §4.2): an ant that has already traversed
+        // maxPathLength hops is dropped rather than forwarded further. This is
+        // the explicit per-ant hop ceiling the spec calls for, and — living in
+        // the core — it caps ant reach on every adapter without a per-simulator
+        // TTL. It is not, on its own, a flood bound: a *reactive* forward ant
+        // under multipath bypasses (src,seq) dedup (see the acceptance filter
+        // above) and carries no broadcast budget since #169, so its flood is
+        // bounded per (node, generation) at the broadcast site below (#173).
+        if (ant.visited.size() >= config_.maxPathLength) {
+            return {RouteDecision::drop()};
+        }
+
+        // The stamp happens where the outgoing interface is known (#206): the
+        // unicast branch stamps with its chosen next hop so the congestion
+        // signal reads the queue the ant will actually wait in; the broadcast
+        // and destination branches have no single outgoing interface and stamp
+        // kInvalidAddress (ILinkState aggregates). A looped-back own ant is
+        // dropped unstamped — its stamp never reached the wire anyway.
+
+        if (ant.dst == address_) {
+            // Destination reached: stamp our own contribution — the backward
+            // ant's path time includes the destination's load — then spawn it
+            // and send it home.
+            stampForward(ant, kInvalidAddress);
+            AntMessage back = createBackAnt(ant);
+            NodeAddress next = advanceBackAnt(back);
+            if (next == kInvalidAddress) return {RouteDecision::drop()};
+            return {sendAnt(RouteAction::Unicast, next, back)};
+        }
+        if (ant.src == address_) {
+            return {RouteDecision::drop()};  // our own forward ant looped back
+        }
+
+        NodeAddress next = selectNextHop(ant.dst, proactive);
+        if (next == kInvalidAddress && ant.type == AntType::Reactive &&
+            config_.enableDirectedReactive) {
+            // Directed reactive discovery (config-gated, default off): before
+            // flooding, consult the *virtual* table — the diffusion gradient
+            // built from hello adverts (ADR-0007). selectNextHop blends it in
+            // only for proactive ants, so an unmodified reactive ant floods
+            // straight past a usable hint the node already holds.
+            next = selectNextHop(ant.dst, /*blendVirtual=*/true);
+            if (next != kInvalidAddress) ++directedSteers_;
+        }
+        if (next == kInvalidAddress) {
+            // No pheromone for the destination: the ant explores by broadcast.
+            // For a reactive forward ant that is the flood, and it must be
+            // bounded *per (node, generation)* — see allowBroadcast (#173).
+            // Bounding it on the ant instead makes it a hop limit (#169).
+            if (ant.type == AntType::Reactive &&
+                !genQuality_.allowBroadcast(ant.src, ant.seqNum,
+                                            config_.reactiveMaxBroadcasts)) {
+                return {RouteDecision::drop()};
+            }
+            stampForward(ant, kInvalidAddress);  // flood: every interface at once
+            return {broadcastForward(ant)};  // bounded per type (drop at budget 0)
+        }
+        // A proactive ant with a route is normally unicast, but with a small
+        // per-hop probability it is broadcast instead to explore new paths
+        // ([1] §3.3). Gated by the proactive master switch (ADR-0007). With the
+        // broadcast budget spent, keep following pheromone rather than dropping
+        // a routable ant.
+        if (proactive && config_.enableProactive && ant.broadcastBudget != 0 &&
+            rng_.uniform() < config_.proactiveBroadcastProb) {
+            stampForward(ant, kInvalidAddress);
+            return {broadcastForward(ant)};
+        }
+        stampForward(ant, next);
+        return {sendAnt(RouteAction::Unicast, next, ant)};
+    }
+
+    // Backward ant: rebuild the deposit state from the carried path (the four
+    // transient fields are off the wire now, ADR-0009), reinforce, then retrace.
+    computeBackAntState(ant);
+    reinforceFromBackAnt(ant);
+    // A backward ant from `src` just restored a route to it, so any local
+    // repair waiting on that destination has succeeded ([1] §3.5, D6).
+    repairDeadline_.erase(ant.src);
+
+    if (ant.dst == address_) {
+        // Back at the origin: the adapter should flush any pending data for
+        // the newly-discovered destination.
+        return {RouteDecision::deliver()};
+    }
+    if (ant.src == address_) {
+        return {RouteDecision::drop()};
+    }
+
+    NodeAddress next = advanceBackAnt(ant);
+    if (next == kInvalidAddress) return {RouteDecision::drop()};
+    return {sendAnt(RouteAction::Unicast, next, ant)};
+}
+
+std::vector<RouteDecision> AntRouterLogic::onDataPacket(NodeAddress dest,
+                                                        NodeAddress prevHop) {
+    NodeAddress next = nextHopForData(dest, prevHop);
+    if (next == kInvalidAddress) {
+        // No route: always hold the data, but launch at most one reactive ant
+        // per destination per reactiveRetryInterval so a stream of packets to an
+        // unreachable destination doesn't flood ants ([1] §4.2).
+        std::vector<RouteDecision> out{{RouteAction::Queue, dest, false, {}}};
+        if (!config_.enableReactive) return out;  // ablation gate: hold, never discover
+        const double now = clock_.now();
+        auto it = lastReactive_.find(dest);
+        if (it == lastReactive_.end() || now - it->second >= config_.reactiveRetryInterval) {
+            lastReactive_[dest] = now;
+            AntMessage refa = createForwardAnt(AntType::Reactive, dest);
+            // Directed discovery applies at the origin too, and this is the
+            // most valuable place for it: this broadcast is generation 0, the
+            // one every downstream copy descends from.
+            NodeAddress steer = config_.enableDirectedReactive
+                                    ? selectNextHop(dest, /*blendVirtual=*/true)
+                                    : kInvalidAddress;
+            if (steer != kInvalidAddress) {
+                ++directedSteers_;
+                out.push_back(sendAnt(RouteAction::Unicast, steer, refa));
+            } else {
+                out.push_back(sendAnt(RouteAction::Broadcast, kInvalidAddress, refa));
+            }
+        }
+        return out;
+    }
+    return {{RouteAction::Unicast, next, false, {}}};
+}
+
+} // namespace core
+} // namespace anthocnet

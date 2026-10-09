@@ -1,0 +1,427 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
+/*
+ * AntHocNet routing protocol for NS-3.
+ *
+ * An additive Ipv4RoutingProtocol (mirroring src/aodv) that delegates all
+ * routing decisions to the shared core::AntRouterLogic. Ant control packets
+ * travel over a dedicated UDP port; data packets are routed/queued via
+ * RouteOutput / RouteInput.
+ */
+#ifndef ANTHOCNET_ROUTING_PROTOCOL_H
+#define ANTHOCNET_ROUTING_PROTOCOL_H
+
+#include "ns3/ipv4-routing-protocol.h"
+#include "ns3/ipv4-interface-address.h"
+#include "ns3/ipv4-l3-protocol.h"
+#include "ns3/socket.h"
+#include "ns3/timer.h"
+#include "ns3/random-variable-stream.h"
+#include "ns3/traced-callback.h"
+#include "ns3/mac48-address.h"
+#include "ns3/queue.h"
+#include "ns3/wifi-mac.h"
+
+// ns-3 renamed WifiMacQueueItem -> WifiMpdu (and wifi-mac-queue-item.h ->
+// wifi-mpdu.h) in ns-3.37; the WifiMac "DroppedMpdu" trace carries this type.
+// ANTHOCNET_NS3_WIFI_QUEUE_ITEM is defined by the module's CMakeLists for
+// ns-3 <= 3.36; default to the modern name.
+#ifdef ANTHOCNET_NS3_WIFI_QUEUE_ITEM
+#include "ns3/wifi-mac-queue-item.h"
+#define AHN_WIFI_MPDU ns3::WifiMacQueueItem
+#else
+#include "ns3/wifi-mpdu.h"
+#define AHN_WIFI_MPDU ns3::WifiMpdu
+#endif
+
+#include <map>
+#include <memory>
+#include <set>
+
+#include "anthocnet/core/ant_router_logic.h"
+#include "anthocnet/core/config.h"
+#include "anthocnet-adapters.h"
+#include "anthocnet-rqueue.h"
+
+// ns-3 changed Ipv4RoutingProtocol::RouteInput's forwarding-callback parameters
+// from by-value (<= ns-3.36) to const-reference (ns-3.37+). The override must
+// match exactly or the class stays abstract. ANTHOCNET_NS3_ROUTEINPUT_BYVALUE is
+// defined by the module's CMakeLists for ns-3 <= 3.36; default to const-ref.
+#ifdef ANTHOCNET_NS3_ROUTEINPUT_BYVALUE
+#define AHN_RI_CB(T) T
+#else
+#define AHN_RI_CB(T) const T&
+#endif
+
+namespace ns3 {
+namespace anthocnet {
+
+// The protocol is also a core IRouterObserver (item 15): it forwards the core's
+// ant/route events to ns-3 trace sources so users can Config::Connect and so the
+// comparison harness can read ant-level diagnostics. The interface is all
+// no-op-default virtuals, so this adds no state to the core.
+class RoutingProtocol : public Ipv4RoutingProtocol,
+                        public ::anthocnet::core::IRouterObserver,
+                        public ::anthocnet::core::ILinkState
+{
+public:
+    static TypeId GetTypeId();
+    static const uint16_t ANT_PORT;  ///< UDP port for ant control traffic.
+
+    RoutingProtocol();
+    ~RoutingProtocol() override;
+
+    // Trace-source callback signatures (introspection names used in GetTypeId).
+    typedef void (*AntTxCallback)(uint8_t type, uint8_t direction, bool broadcast);
+    typedef void (*AntRxCallback)(uint8_t type, uint8_t direction);
+    typedef void (*RouteChangedCallback)(uint32_t dest, uint32_t neighbor, bool added);
+    // #386: a MAC retry-limit-dropped data packet was re-injected into the
+    // pending queue (#46). `header` is the packet's Ipv4 header as captured off
+    // the failed MPDU; `packet` is the queued form (UDP header + payload, no IP
+    // header — RouteInput's convention). Fired once per re-injection, at the
+    // same site that increments MacReinjectedPackets(), so a listener's event
+    // count and that counter agree by construction.
+    typedef void (*MacReinjectCallback)(const Ipv4Header& header, Ptr<const Packet> packet);
+
+    // core::IRouterObserver
+    void onAntSent(::anthocnet::core::AntType type,
+                   ::anthocnet::core::AntDirection dir, bool broadcast) override;
+    void onAntReceived(::anthocnet::core::AntType type,
+                       ::anthocnet::core::AntDirection dir) override;
+    void onRouteChanged(::anthocnet::core::NodeAddress dest,
+                        ::anthocnet::core::NodeAddress nb, bool added) override;
+
+    // #216 diagnostic: read the current regular and virtual pheromone for
+    // (dest, neighbour), both given as canonical Ipv4 addresses. Zeroes when
+    // the routing logic is not yet constructed. Read-only — used by the
+    // isl-grid corridor cell's "# pher" sampler to watch whether a gradient
+    // toward the clean corridor ever forms at the probe source.
+    void GetPheromoneDiag(Ipv4Address dest, Ipv4Address neighbor,
+                          double& regular, double& virt) const;
+
+    // core::ILinkState (item 10/A2): supply MAC congestion signals for the
+    // congestion-aware per-hop metric. Only meaningful when EnableMacMetric is
+    // set; the core queries these while stamping a forward ant, naming the
+    // next hop the cost is for (#206). This wifi implementation is the
+    // degenerate single-interface case — one radio, one MAC, one queue — so
+    // the parameter is ignored and per-next-hop collapses to per-node.
+    int macQueueLength(::anthocnet::core::NodeAddress nextHop) const override;
+    ::anthocnet::core::Time macServiceTime(::anthocnet::core::NodeAddress nextHop) const override;
+
+    // Ipv4RoutingProtocol
+    Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p, const Ipv4Header& header,
+                               Ptr<NetDevice> oif, Socket::SocketErrno& sockerr) override;
+    bool RouteInput(Ptr<const Packet> p, const Ipv4Header& header, Ptr<const NetDevice> idev,
+                    AHN_RI_CB(UnicastForwardCallback) ucb, AHN_RI_CB(MulticastForwardCallback) mcb,
+                    AHN_RI_CB(LocalDeliverCallback) lcb, AHN_RI_CB(ErrorCallback) ecb) override;
+    void NotifyInterfaceUp(uint32_t interface) override;
+    void NotifyInterfaceDown(uint32_t interface) override;
+    void NotifyAddAddress(uint32_t interface, Ipv4InterfaceAddress address) override;
+    void NotifyRemoveAddress(uint32_t interface, Ipv4InterfaceAddress address) override;
+    void SetIpv4(Ptr<Ipv4> ipv4) override;
+    void PrintRoutingTable(Ptr<OutputStreamWrapper> stream,
+                           Time::Unit unit = Time::S) const override;
+
+    /// Seed the protocol's RNG; returns the number of streams used.
+    int64_t AssignStreams(int64_t stream);
+    /// #496: seed the hello/proactive timer-jitter stream (separate from the
+    /// core's decision stream, so jitter draws never shift the core's
+    /// sequence); returns the number of streams used. AntHocNetHelper assigns
+    /// these after every node's core stream, so the core streams keep their
+    /// pre-#496 indices.
+    int64_t AssignTimerStreams(int64_t stream);
+
+    /// Issue #20 diagnostics: LinkFail origin/propagation split from the core
+    /// (origins = antTx[linkfail] − propagations; budget drops = suppressed).
+    uint64_t LinkfailPropagations() const {
+        return m_logic ? m_logic->linkfailPropagations() : 0;
+    }
+    uint64_t LinkfailBudgetDrops() const {
+        return m_logic ? m_logic->linkfailBudgetDrops() : 0;
+    }
+    uint64_t LinkfailOriginsSuppressed() const {
+        return m_logic ? m_logic->linkfailOriginsSuppressed() : 0;
+    }
+
+    /// Directed reactive discovery diagnostics: reactive forward ants unicast
+    /// along the diffusion gradient instead of broadcast (EnableDirectedReactive).
+    /// Zero on an enabled run means the gradient never covered a destination the
+    /// regular table was missing, i.e. the switch was inert for this scenario.
+    uint64_t DirectedSteers() const {
+        return m_logic ? m_logic->directedSteers() : 0;
+    }
+
+    /// Issue #133 observability: per-node pheromone-table size gauge from the
+    /// core — current (neighbor, dest) entry counts, split regular vs virtual.
+    /// Read by the comparison harness under --diag to watch table growth.
+    uint64_t PtableEntriesRegular() const {
+        return m_logic ? m_logic->table().numEntriesRegular() : 0;
+    }
+    uint64_t PtableEntriesVirtual() const {
+        return m_logic ? m_logic->table().numEntriesVirtual() : 0;
+    }
+
+    /// Issue #21 hold-time attribution: per-reason (setup / reconvergence /
+    /// repair) pending-queue hold-time stats accumulated over the run, read by
+    /// the comparison harness under --diag to locate the delay tail's dominant
+    /// hold path.
+    const HoldStats& HoldTimeStats() const { return m_queue.Stats(); }
+
+    /// Issue #215 drop-cause breakdown, the AntHocNet-specific causes. The
+    /// generic ones (channel, MAC, TTL, interface queue) are measured
+    /// simulator-side by the comparison harness for every protocol; these three
+    /// exist only here because only this protocol has a pending queue and a
+    /// local-repair discard.
+    ///
+    /// Data packets released by a failed local repair ([1] §3.5, D6) — the
+    /// *packet* count behind the core's DiscardPending events. This is expected
+    /// protocol behaviour, not a fault: the paper trades these packets for a
+    /// bounded delay tail.
+    uint64_t RepairDiscardedPackets() const { return m_repairDiscardedPackets; }
+    /// Expired local repairs (the core's event count; several packets may be
+    /// released per event).
+    uint64_t RepairDiscards() const { return m_logic ? m_logic->repairDiscards() : 0; }
+    /// Data packets a MAC retry-limit drop put *back* into the pending queue
+    /// (#46 re-injection). Such a packet is not lost yet — its terminal fate is
+    /// counted wherever it finally ends up — so the harness subtracts these from
+    /// the raw MAC-failure tally to avoid double-counting them (#215).
+    uint64_t MacReinjectedPackets() const { return m_macReinjectedPackets; }
+
+protected:
+    void DoInitialize() override;
+    void DoDispose() override;
+
+public:
+    // Address mapping between core (int32 NodeAddress == the IP, opaque) and
+    // ns-3 (ADR-0011). Broadcast is a RouteAction, never an identity, so the
+    // all-ones address must never reach the core as a peer; guard it so it
+    // cannot alias kInvalidAddress (-1 == 0xFFFFFFFF). MSB-set unicast IPs map
+    // to negative ints and round-trip fine — only the all-ones value collides.
+    // Public so the test suite can assert the round-trip / sentinel guard.
+    static ::anthocnet::core::NodeAddress ToCore(Ipv4Address a) {
+        const uint32_t raw = a.Get();
+        if (raw == 0xFFFFFFFFu) return 0;  // limited broadcast: not an identity
+        return static_cast<::anthocnet::core::NodeAddress>(raw);
+    }
+    static Ipv4Address ToIpv4(::anthocnet::core::NodeAddress a) {
+        return Ipv4Address(static_cast<uint32_t>(a));
+    }
+
+private:
+    void Start();
+    Ptr<Ipv4Route> LoopbackRoute(const Ipv4Header& header, Ptr<NetDevice> oif) const;
+    bool IsMyOwnAddress(Ipv4Address src) const;
+    Ptr<Socket> FindSocketWithInterfaceAddress(Ipv4InterfaceAddress addr) const;
+
+    // ant I/O
+    void RecvAnt(Ptr<Socket> socket);
+    void SendAnt(const ::anthocnet::core::AntMessage& msg, Ipv4Address dest);
+    void ExecuteDecisions(const std::vector<::anthocnet::core::RouteDecision>& decisions,
+                          ::anthocnet::core::NodeAddress flushDest);
+
+    // data path
+    void DeferredRouteOutput(Ptr<const Packet> p, const Ipv4Header& header,
+                             UnicastForwardCallback ucb, ErrorCallback ecb);
+    void FlushQueue(::anthocnet::core::NodeAddress coreDest);
+    /// Repair wait expired ([1] §3.5, D6): drop the packets queued for
+    /// `coreDest`, firing their error callbacks.
+    void DiscardQueue(::anthocnet::core::NodeAddress coreDest);
+
+    // timers
+    void HelloTimerExpire();
+    void ProactiveTimerExpire();
+    /// Issue #21: re-flood a reactive forward ant for every destination with
+    /// data still waiting in the pending queue but no route. onDataPacket only
+    /// retries when a data packet arrives (~1 pkt/s at paper CBR), so a lost
+    /// first re-discovery attempt otherwise waits a full second; this timer
+    /// retries at a sub-second cadence, shortening the reconvergence hold that
+    /// dominates the delay/jitter tail.
+    void ReactiveRetryTimerExpire();
+
+    // ADR-0008 detector D: MAC transmit-failure hook. The WifiMac "DroppedMpdu"
+    // trace fires when a unicast frame is dropped after exhausting retries; we
+    // treat a retry-limit drop as a broken link to that next hop and drive the
+    // shared core reportTxFailure path (prune + bounded repair ant).
+    void NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu);
+    /// Issue #68: successful-transmission hook — samples the measured
+    /// per-packet MAC service time for the A2 congestion metric.
+    void NotifyAckedMpdu(Ptr<const AHN_WIFI_MPDU> mpdu);
+    // Resolve a failed next-hop MAC to a core address via the ARP caches.
+    bool MapMacToCore(const Mac48Address& mac,
+                      ::anthocnet::core::NodeAddress& out) const;
+
+    /// Issue #203: resolve a core next-hop name to the concrete way of reaching
+    /// it — the gateway address to send to, the device to send it out of, and
+    /// that device's interface index.
+    ///
+    /// Necessary because the core names a node by ONE address (the first
+    /// interface's, fixed when the logic is constructed in NotifyInterfaceUp)
+    /// while a multi-interface node is reachable on a different subnet per
+    /// link. On single-interface topologies the two coincide and this resolves
+    /// to exactly the pre-#203 values.
+    ///
+    /// Never fails: an unresolvable hop falls back to the first interface, the
+    /// old behaviour, rather than dropping the packet.
+    void ResolveNextHop(::anthocnet::core::NodeAddress next, Ipv4Address& gateway,
+                        Ptr<NetDevice>& dev, uint32_t& iface) const;
+
+    // state
+    Ptr<Ipv4> m_ipv4;
+    // Per-interface sockets: one bound to the unicast address (receives
+    // unicast ants), one bound to the subnet-broadcast address (receives
+    // broadcast hello/forward ants). A socket bound only to the unicast
+    // address does NOT receive broadcasts, so both are required.
+    //
+    // Issue #362: ordered by the index of the device each socket is bound to,
+    // NOT by Ptr<Socket> (whose operator< compares heap addresses). With more
+    // than one interface (the ISL mesh) the broadcast fan-out order and the
+    // `.begin()` "first interface" fallbacks otherwise depended on what the
+    // process had allocated earlier — i.e. on --protocols order.
+    struct SocketByBoundDevice {
+        bool operator()(const Ptr<Socket>& a, const Ptr<Socket>& b) const;
+    };
+    std::map<Ptr<Socket>, Ipv4InterfaceAddress, SocketByBoundDevice> m_socketAddresses;
+    std::map<Ptr<Socket>, Ipv4InterfaceAddress, SocketByBoundDevice> m_socketSubnetBroadcast;
+
+    /// Issue #203: where a peer the core named actually is. `iface` is the ns-3
+    /// interface index whose device shares a link with it; `linkLocal` is the
+    /// address to send to on that link.
+    struct PeerRoute {
+        uint32_t    iface = 0;
+        Ipv4Address linkLocal;
+    };
+    /// Peer canonical address (how the core names it, i.e. how it appears in
+    /// pheromone tables and ant paths) -> how to reach it. Learned from hello
+    /// ants, the one message carrying both of a peer's names: `msg.src` is the
+    /// canonical one, the IP source is the link-local one. Only populated when
+    /// the two differ, so it stays empty on every single-interface topology.
+    std::map<Ipv4Address, PeerRoute> m_peerRoutes;
+
+    /// Issue #260: every core name a neighbour was heard under, per interface —
+    /// both the link-local sender (what learnNeighbor records as prevHop) and
+    /// the canonical `msg.src` a hello carries. Consulted only by the non-wifi
+    /// interface-down fast path in NotifyInterfaceDown so an ISL break can
+    /// attribute which next hop(s) it severed; an interface that never heard a
+    /// hello has no entry, and that path is then a no-op.
+    std::map<uint32_t, std::set<::anthocnet::core::NodeAddress>> m_ifaceNeighbors;
+
+    ::anthocnet::core::Config m_config;
+    Ns3Clock m_clock;
+    Ns3Rng m_rng;
+    std::unique_ptr<::anthocnet::core::AntRouterLogic> m_logic;
+    bool m_started;
+
+    RequestQueue m_queue;
+
+    Timer m_helloTimer;
+    Timer m_proactiveTimer;
+    /// #496: relative per-period jitter on the hello and proactive timers
+    /// (0 = the pre-#496 fixed, phase-locked timers).
+    double m_timerJitter = 0.05;
+    Ptr<UniformRandomVariable> m_timerRng = CreateObject<UniformRandomVariable>();
+    /// Delay to the next firing of a periodic timer with period `base`: the
+    /// first firing is a uniform phase in [0, base), later ones base scaled by
+    /// U[1 - TimerJitter, 1 + TimerJitter]. Returns `base` unchanged (and draws
+    /// nothing) when TimerJitter is 0.
+    Time TimerDelay(Time base, bool first);
+    Timer m_reactiveRetryTimer;  ///< issue #21: re-flood discovery for held data
+
+    // attribute-backed parameters
+    Time m_helloInterval;
+    Time m_proactiveInterval;
+    double m_alpha;
+    double m_betaAnts;
+    double m_betaData;
+    double m_gamma;
+    double m_hopCountAlpha;           ///< #185: thesis alpha, eq. 4.2 (default 0 = off)
+    bool m_enableProactive;
+    bool m_enableDiffusion;
+    bool m_enableReactive;            ///< reactive forward-ant gate (ablation)
+    bool m_enableRepair;              ///< local-repair ant gate (ablation)
+    bool m_enableLinkFail;            ///< link-failure notification gate (ablation)
+    bool m_enableDirectedReactive;    ///< steer reactive ants by the virtual table
+    double m_proactiveBroadcastProb;
+    double m_proactiveVirtualMargin;
+    uint32_t m_maxHelloAdverts;       ///< #186: diffusion advert cap k (thesis: 10)
+    double m_sessionTtl;
+    uint32_t m_txFailureThreshold;
+    bool m_enableMacFailureDetector;
+    uint32_t m_maxReinjectPerPacket;  ///< #386 remedy: path-global re-injection cap (0 = unlimited)
+    double m_repairWaitFactor;
+    double m_repairTimeout;
+    double m_hopTime;                 ///< T_hop unloaded-hop reference (s), #88
+    bool m_enableMultipath;           ///< multipath reactive setup gate, #96
+    double m_antAcceptanceFactor;     ///< multipath acceptance factor a1, #96/#177
+    double m_antAcceptanceFactorNewHop;  ///< disjoint-first-hop factor a2, #177
+    double m_linkfailNotifyInterval;  ///< issue #20 origin cooldown (s), 0 = off
+    Time m_queueTimeout;              ///< issue #21 pending-queue hold before drop
+    Time m_reconvHoldCap;             ///< issue #21 L2: cap on reconv holds (0 = off)
+    Time m_repairHoldCap;             ///< issue #21 L2: cap on repair holds (0 = off)
+    Time m_reactiveRetryInterval;     ///< issue #21 timer-driven re-discovery cadence (0 = off)
+    // Issue #68: measured per-packet MAC service time (EWMA of inter-ack
+    // spacing while the MAC queue stays backlogged — pure service time, no
+    // queue wait, so (Q+1)*T̂_mac does not double-count congestion).
+    double m_macServiceAlpha;         ///< EWMA smoothing (old-value weight)
+    double m_macServiceEwmaSec = 0.0; ///< 0 = no sample yet (core falls back)
+    Time m_lastAckTime;               ///< previous AckedMpdu timestamp
+    bool m_backlogAtLastAck = false;  ///< queue was non-empty at previous ack
+    bool m_enableMacMetric;  ///< item 10/A2 congestion-aware per-hop metric
+
+    // WifiMac handle for the item-10/A2 queue-occupancy signal (null on non-wifi
+    // devices, where the p2p/ISL transmit-queue reader below takes over, #206).
+    Ptr<WifiMac> m_wifiMac;
+
+    // #206 step 2: per-interface transmit-queue congestion for non-wifi
+    // devices — the p2p/ISL regime, where each interface is one ISL with its
+    // own queue and the useful signal is per-next-hop. `queue` is the device's
+    // "TxQueue" (PointToPointNetDevice, CsmaNetDevice and SimpleNetDevice all
+    // expose the attribute); the EWMA samples inter-dequeue spacing while the
+    // queue stays backlogged — the transmitter-side analogue of the wifi
+    // inter-ack EWMA (#68), which excludes propagation by construction (the
+    // sender never waits for it). Smoothing shares MacServiceAlpha.
+    struct TxQueueState {
+        Ptr<Queue<Packet>> queue;
+        double ewmaSec = 0.0;             ///< 0 = no sample yet (core falls back)
+        Time   lastDequeue;               ///< previous Dequeue timestamp
+        bool   backlogAtLastDequeue = false;
+    };
+    std::map<uint32_t, TxQueueState> m_txQueues;  ///< iface index -> queue state
+    void NotifyTxDequeue(uint32_t interface, Ptr<const Packet> p);
+    static void TxDequeueTrace(RoutingProtocol* self, uint32_t interface,
+                               Ptr<const Packet> p);
+
+    // L3 forwarding callbacks cached from RouteInput (Ipv4L3Protocol passes the
+    // same bound callbacks on every call). NotifyTxError needs them to re-inject
+    // a MAC-dropped data packet it only sees as a raw MPDU (issue #46).
+    UnicastForwardCallback m_cachedUcb;
+    ErrorCallback m_cachedEcb;
+
+    // Destinations this node has ever had a usable next hop for (issue #21):
+    // separates a first-time reactive setup (never routed) from a
+    // reconvergence wait (route was known and lost) when a data packet is
+    // deferred, so the hold-time attribution can tell the two apart.
+    std::set<::anthocnet::core::NodeAddress> m_everRouted;
+
+    // Issue #215 drop-cause counters (see the accessors above).
+    uint64_t m_repairDiscardedPackets = 0;
+    uint64_t m_macReinjectedPackets = 0;
+
+    // trace sources (item 15): ant sent/received and route add/remove.
+    TracedCallback<uint8_t, uint8_t, bool> m_txAntTrace;
+    TracedCallback<uint8_t, uint8_t> m_rxAntTrace;
+    TracedCallback<uint32_t, uint32_t, bool> m_routeChangedTrace;
+    // #386: MAC-failure re-injection (see MacReinjectCallback above).
+    TracedCallback<const Ipv4Header&, Ptr<const Packet>> m_macReinjectTrace;
+    // #402: the cap counterpart — a MAC retry-limit-dropped data packet hit
+    // MaxReinjectPerPacket and was NOT re-injected, so its MAC drop stays
+    // terminal. Same signature and packet form as MacReinject (it reuses
+    // MacReinjectCallback); fired only inside the m_maxReinjectPerPacket != 0
+    // branch of NotifyTxError, so it can never fire at the default cap 0.
+    TracedCallback<const Ipv4Header&, Ptr<const Packet>> m_macReinjectSkipTrace;
+};
+
+} // namespace anthocnet
+} // namespace ns3
+
+#endif // ANTHOCNET_ROUTING_PROTOCOL_H

@@ -1,0 +1,113 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026 Daniel Henrique Joppi
+
+#include "anthocnet-rqueue.h"
+
+#include "ns3/simulator.h"
+#include "ns3/socket.h"
+
+#include <algorithm>
+
+namespace ns3 {
+namespace anthocnet {
+
+bool RequestQueue::Enqueue(QueueEntry& entry) {
+    Purge();
+    // Preserve the first-enqueue timestamp across re-queues (FlushQueue puts an
+    // entry back when its route vanishes again) so the #21 hold time measures
+    // the whole wait, not just the last leg.
+    if (entry.enqueueFirst.IsZero()) entry.enqueueFirst = Simulator::Now();
+    // Global QueueTimeout, measured from this (re-)enqueue. Issue #21 lever L2:
+    // if a per-reason hold cap is set, also bound the expiry to `cap` since the
+    // packet FIRST entered the queue (so re-queues can't extend the tail), and
+    // take whichever fires sooner. Zero cap == disabled, so behaviour is
+    // unchanged by default.
+    Time expire = Simulator::Now() + m_timeout;
+    const Time cap = (entry.holdReason < kHoldReasons) ? m_holdCap[entry.holdReason] : Time();
+    if (!cap.IsZero()) {
+        const Time capped = entry.enqueueFirst + cap;
+        if (capped < expire) expire = capped;
+    }
+    entry.expire = expire;
+    if (m_queue.size() >= m_maxLen) {
+        // Drop the oldest to make room. Accounted and error-callback'd exactly
+        // like an aged-out entry (#215): it is the same loss for the same
+        // reason — the route did not arrive in time — and leaving it silent
+        // made the packet vanish from every downstream tally, so the drop-cause
+        // breakdown could not add up. Matches aodv-rqueue, which also drops the
+        // most-aged packet through its error callback.
+        const QueueEntry old = m_queue.front();  // copy: the ecb runs after the erase
+        m_queue.erase(m_queue.begin());
+        const uint8_t r = old.holdReason < kHoldReasons ? old.holdReason : HOLD_SETUP;
+        m_stats.droppedCount[r] += 1;
+        m_stats.droppedSumS[r] += (Simulator::Now() - old.enqueueFirst).GetSeconds();
+        if (!old.ecb.IsNull()) {
+            old.ecb(old.packet, old.header, Socket::ERROR_NOROUTETOHOST);
+        }
+    }
+    m_queue.push_back(entry);
+    return true;
+}
+
+void RequestQueue::DequeueAll(Ipv4Address dst, std::vector<QueueEntry>& out) {
+    Purge();
+    std::vector<QueueEntry> kept;
+    kept.reserve(m_queue.size());
+    for (QueueEntry& e : m_queue) {
+        if (Dst(e) == dst) {
+            out.push_back(e);
+        } else {
+            kept.push_back(e);
+        }
+    }
+    m_queue.swap(kept);
+}
+
+void RequestQueue::Purge() {
+    const Time now = Simulator::Now();
+    std::vector<QueueEntry> kept;
+    kept.reserve(m_queue.size());
+    for (QueueEntry& e : m_queue) {
+        if (e.expire > now) {
+            kept.push_back(e);
+        } else {
+            // Aged out at QueueTimeout (#21): attribute the lost hold to its
+            // reason before firing the error callback.
+            const uint8_t r = e.holdReason < kHoldReasons ? e.holdReason : HOLD_SETUP;
+            m_stats.droppedCount[r] += 1;
+            m_stats.droppedSumS[r] += (now - e.enqueueFirst).GetSeconds();
+            if (!e.ecb.IsNull()) {
+                e.ecb(e.packet, e.header, Socket::ERROR_NOROUTETOHOST);
+            }
+        }
+    }
+    m_queue.swap(kept);
+}
+
+std::vector<Ipv4Address> RequestQueue::PendingDestinations() {
+    Purge();
+    std::vector<Ipv4Address> dests;
+    for (const QueueEntry& e : m_queue) {
+        const Ipv4Address d = Dst(e);
+        if (std::find(dests.begin(), dests.end(), d) == dests.end()) {
+            dests.push_back(d);
+        }
+    }
+    return dests;
+}
+
+void RequestQueue::NoteDelivered(const QueueEntry& e) {
+    const uint8_t r = e.holdReason < kHoldReasons ? e.holdReason : HOLD_SETUP;
+    const double hold = (Simulator::Now() - e.enqueueFirst).GetSeconds();
+    m_stats.deliveredCount[r] += 1;
+    m_stats.deliveredSumS[r] += hold;
+    if (hold > m_stats.deliveredMaxS[r]) m_stats.deliveredMaxS[r] = hold;
+}
+
+uint32_t RequestQueue::Size() {
+    Purge();
+    return static_cast<uint32_t>(m_queue.size());
+}
+
+} // namespace anthocnet
+} // namespace ns3
