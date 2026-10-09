@@ -6,7 +6,8 @@
 //   3. runs axe-core on the front page as a first visit sees it (the hub up
 //      over the default world) and fails on serious or critical violations;
 //   3b. the site shell (#626): the hub's buttons and #play, the one top bar
-//      on every docs page (axe on each one, from mkdocs' sitemap),
+//      on every docs page (axe on each one, from mkdocs' sitemap, day and
+//      night), the game, a docs page and the Workshop on a phone,
 //      with its five places, and -- when the docs and API are assembled in
 //      (web/build-pages.sh) -- the bar, the Try-it rail and axe on a docs
 //      page and an API page, day and night;
@@ -176,11 +177,12 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
     }
   }
   // Every docs page (#626): from mkdocs' sitemap, each one loads without a
-  // page error, carries the top bar, and passes axe (serious/critical).
-  {
-    const xml = fs.readFileSync(path.join(root, 'docs', 'sitemap.xml'), 'utf8');
-    const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname.replace(/^\/AntHocNet\//, ''));
-    const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  // page error, carries the top bar, and passes axe (serious/critical), day
+  // and night (the night palette is a separate set of colours to get wrong).
+  const xml = fs.readFileSync(path.join(root, 'docs', 'sitemap.xml'), 'utf8');
+  const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname.replace(/^\/AntHocNet\//, ''));
+  for (const scheme of ['light', 'dark']) {
+    const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: scheme });
     let errorsHere = [];
     p.on('pageerror', (e) => errorsHere.push(e.message));
     await p.addInitScript({ content: axeSource });
@@ -195,10 +197,10 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
       // what this checks (and CI must not fail on a CDN hiccup).
       const own = errorsHere.filter((e) => !/^Invalid script: https?:\/\//.test(e));
       const problems = [...(bar ? [] : ['no top bar']), ...result, ...own.map((e) => 'page error: ' + e)];
-      if (problems.length) { bad++; fail(`docs ${u}: ${problems.join(' | ')}`); }
+      if (problems.length) { bad++; fail(`docs ${u} (${scheme}): ${problems.join(' | ')}`); }
     }
     await p.close();
-    if (!bad) console.log(`ok: all ${urls.length} docs pages — top bar, no page errors, axe clean`);
+    if (!bad) console.log(`ok: all ${urls.length} docs pages (${scheme}) — top bar, no page errors, axe clean`);
   }
   // The in-game reader (#630): '?' opens the world's Field guide page over the
   // running world; the clock keeps advancing; a docs link stays in the reader;
@@ -267,6 +269,25 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
     if (result.length) fail(`axe workshop (${scheme}): ${result.join(' | ')}`);
     if (errors.length) fail(`workshop (${scheme}): page errors: ${errors.join(' | ')}`);
     if (!result.length && !errors.length) console.log(`ok: workshop (${scheme}) — ${chambers} chambers, PheromoneTable from the API index, quest ${score}, axe clean`);
+    await p.close();
+  }
+  // On a phone (#627's 720 px breakpoint): the game, a docs page and the
+  // Workshop keep the top bar, never scroll sideways, and pass axe.
+  for (const [name, url] of [['game', '#play'], ['docs page', 'docs/benchmarks/scenarios/vanet/'], ['workshop', 'workshop.html']]) {
+    const p = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(base + url);
+    await p.waitForTimeout(600);
+    const bar = await p.locator('.ahn-bar').isVisible().catch(() => false);
+    const over = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    await p.addScriptTag({ content: axeSource });
+    const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+      .filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id + ': ' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ')));
+    const own = errors.filter((e) => !/^Invalid script: https?:\/\//.test(e));
+    const problems = [...(bar ? [] : ['no visible top bar']), ...(over > 1 ? [`scrolls sideways by ${over} px`] : []), ...result, ...own.map((e) => 'page error: ' + e)];
+    if (problems.length) fail(`phone ${name}: ${problems.join(' | ')}`);
+    else console.log(`ok: phone ${name} — top bar, no sideways scroll, axe clean`);
     await p.close();
   }
   // Search from the bar finds a page and shows its place.

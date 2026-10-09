@@ -134,7 +134,8 @@ jobs:
         # all worlds share the protocol defaults (ADR-0019); mission 2 plays to
         # the end; the hub, the one top bar on game/docs/API and the Try-it rail
         # work (#626); axe-core finds no serious/critical violations on the hub,
-        # a docs page and an API page, day or night.
+        # every docs page and an API page, day and night, nor on the game, a
+        # docs page and the Workshop on a phone (390 px, no sideways scroll).
         # playwright-core / axe-core pinned; Chromium from Playwright's own CDN.
         run: |
           mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
