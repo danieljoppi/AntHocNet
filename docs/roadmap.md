@@ -300,21 +300,35 @@ so it is never what gates a release's exit criteria, but each item carries the
 | v2.1.0 | [#605](https://github.com/danieljoppi/AntHocNet/issues/605) | `make doctor` (checks the ns-3 tree and toolchain) and `BASELINES=0` to install without the comparison baselines |
 | v2.1.0 | [#606](https://github.com/danieljoppi/AntHocNet/issues/606) | a drop-in ns-3 module tarball per release, plus a generated `ns3-module` branch |
 | v2.1.0 | [#607](https://github.com/danieljoppi/AntHocNet/issues/607) | docs-only PRs skip the heavy matrix, behind one required gate job |
+| v2.1.0 | [#618](https://github.com/danieljoppi/AntHocNet/issues/618) | a SessionStart hook, so cloud agent sessions can run every check (lint, docs, parity, smoke) from the first command |
 | v2.2.0 | [#608](https://github.com/danieljoppi/AntHocNet/issues/608) | `ns3/` layout: `ns3/anthocnet/` + `ns3/baselines/`, checks in `tools/checks/` |
 | v2.2.0 | [#609](https://github.com/danieljoppi/AntHocNet/issues/609) | ccache for the ns-3 matrix builds |
 | v2.2.0 | [#610](https://github.com/danieljoppi/AntHocNet/issues/610) | shared setup as composite actions; `ci.yml` split |
 | v2.2.0 | [#611](https://github.com/danieljoppi/AntHocNet/issues/611) | nightly build against ns-3-dev |
+| v2.2.0 | [#35](https://github.com/danieljoppi/AntHocNet/issues/35) | clang-format: one-time reformat (after [#608](https://github.com/danieljoppi/AntHocNet/issues/608)) + CI enforcement |
+| v2.2.0 | [#619](https://github.com/danieljoppi/AntHocNet/issues/619) | CodeQL and clang-tidy for the C++ (after [#35](https://github.com/danieljoppi/AntHocNet/issues/35)) |
+| v2.2.0 | [#620](https://github.com/danieljoppi/AntHocNet/issues/620) | core speed benchmarks (cost per ant, per routing decision) tracked on every merge, before v2.3.0's mechanisms add work |
+| v2.2.0 | [#333](https://github.com/danieljoppi/AntHocNet/issues/333) | coverage badge from the existing gcov job (visibility only: [#162](https://github.com/danieljoppi/AntHocNet/issues/162)'s no-threshold policy stands) |
 | v2.3.0 | [#612](https://github.com/danieljoppi/AntHocNet/issues/612) | one benchmark workflow with inputs; results open a PR |
 | v2.3.0 | [#613](https://github.com/danieljoppi/AntHocNet/issues/613) | ns-3 App Store listing and `bakeconf.xml` (part of [#328](https://github.com/danieljoppi/AntHocNet/issues/328)) |
 | v2.3.0 | [#614](https://github.com/danieljoppi/AntHocNet/issues/614) | signed artifacts and images, SBOM, provenance attestations (part of [#328](https://github.com/danieljoppi/AntHocNet/issues/328)) |
 | v2.3.0 | [#615](https://github.com/danieljoppi/AntHocNet/issues/615) | `results/` for benchmark data; charts rendered in the Pages build |
 | v2.3.0 | [#616](https://github.com/danieljoppi/AntHocNet/issues/616) | merge queue / auto-merge for green PRs |
+| v2.3.0 | [#621](https://github.com/danieljoppi/AntHocNet/issues/621) | `make reproduce FIG=<name>`: every published figure re-rendered from committed data, or re-run from scratch (after [#615](https://github.com/danieljoppi/AntHocNet/issues/615), [#612](https://github.com/danieljoppi/AntHocNet/issues/612)) |
+| v3.0.0 | [#625](https://github.com/danieljoppi/AntHocNet/issues/625) | re-check JOSS eligibility; submission was deferred in [#117](https://github.com/danieljoppi/AntHocNet/issues/117) for reasons only time and use can fix |
 
 **Why this order.** The v2.1.0 items are the ones a new user hits first:
 installing into an existing ns-3 tree and getting a package that holds what it
 claims. The layout move ([#608](https://github.com/danieljoppi/AntHocNet/issues/608)) waits for v2.2.0 so it does not collide with
 the re-baseline. Distribution channels and signing (v2.3.0) come last because
-they want the final layout.
+they want the final layout. The C++ quality gates ([#35](https://github.com/danieljoppi/AntHocNet/issues/35), [#619](https://github.com/danieljoppi/AntHocNet/issues/619)) follow
+the layout move for the same reason, and the core speed benchmarks ([#620](https://github.com/danieljoppi/AntHocNet/issues/620))
+land before v2.3.0 so its new mechanisms are measured against a baseline.
+
+**Learn-site additions** (under the campaign epic [#562](https://github.com/danieljoppi/AntHocNet/issues/562), mapped in
+[learn-campaign.md](learn-campaign.md#9-release-mapping)): translations,
+starting with Portuguese ([#622](https://github.com/danieljoppi/AntHocNet/issues/622), v2.2.0); offline play and a download-size
+budget ([#624](https://github.com/danieljoppi/AntHocNet/issues/624), v2.2.0); a classroom pack of lab worksheets ([#623](https://github.com/danieljoppi/AntHocNet/issues/623), v2.3.0).
 
 ## Platform support
 

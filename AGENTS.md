@@ -161,9 +161,9 @@ tools/release/check-bundle.sh           # release package: no agent files, tools
   [ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md#labelling-convention):
   one type label (`bug`/`enhancement`/`chore`/`documentation`/`verification`,
   plus `epic` for umbrellas), area label(s) (`protocol`/`adapter`/`ns3`/
-  `benchmark`/`observability`/`packaging`/`learn-site`), one `priority:P1|P2|P3`
-  label on non-epic issues, and a `release:vX.Y.Z` label only when the roadmap
-  ladder gates the issue.
+  `benchmark`/`observability`/`packaging`/`learn-site`), one `model:*`
+  recommendation, one `priority:P1|P2|P3` label on non-epic issues, and a
+  `release:vX.Y.Z` label only when the roadmap ladder gates the issue.
 - Issue bodies follow one shape: **Context** (the evidence, with numbers and
   links), **Scope**, **Acceptance criteria** (checkboxes), **Depends on**
   (issue numbers), **References**. Children of an epic say "Part of #N" and are
