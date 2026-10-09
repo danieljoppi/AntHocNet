@@ -113,3 +113,13 @@ def on_post_page(output: str, page, config) -> str:
 
 def on_post_build(config) -> None:
     _shell.docs_assets(config["site_dir"])
+    # The 404 page is rendered outside on_post_page and served at any depth,
+    # so its bar uses the site's absolute paths.
+    p404 = os.path.join(config["site_dir"], "404.html")
+    if os.path.exists(p404):
+        with open(p404, encoding="utf-8") as f:
+            html = f.read()
+        with open(p404, "w", encoding="utf-8") as f:
+            f.write(_shell.inject_page(html, "/AntHocNet/", None, "/AntHocNet/docs/assets/ahn/",
+                                       css=("shell.css", "docs.css"),
+                                       script=_shell.boot_script("/AntHocNet/docs/assets/ahn/")))

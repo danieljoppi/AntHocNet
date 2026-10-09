@@ -6,6 +6,7 @@
 //   3. runs axe-core on the front page as a first visit sees it (the hub up
 //      over the default world) and fails on serious or critical violations;
 //   3b. the site shell (#626): the hub's buttons and #play, the one top bar
+//      on every docs page (axe on each one, from mkdocs' sitemap),
 //      with its five places, and -- when the docs and API are assembled in
 //      (web/build-pages.sh) -- the bar, the Try-it rail and axe on a docs
 //      page and an API page, day and night;
@@ -173,6 +174,31 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
       if (!result.length && !errors.length) console.log(`ok: ${name} (${scheme}) — top bar on ${place}, axe clean`);
       await p.close();
     }
+  }
+  // Every docs page (#626): from mkdocs' sitemap, each one loads without a
+  // page error, carries the top bar, and passes axe (serious/critical).
+  {
+    const xml = fs.readFileSync(path.join(root, 'docs', 'sitemap.xml'), 'utf8');
+    const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname.replace(/^\/AntHocNet\//, ''));
+    const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+    let errorsHere = [];
+    p.on('pageerror', (e) => errorsHere.push(e.message));
+    await p.addInitScript({ content: axeSource });
+    let bad = 0;
+    for (const u of urls) {
+      errorsHere = [];
+      await p.goto(base + u, { waitUntil: 'load' });
+      const bar = await p.locator('.ahn-bar').count();
+      const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+        .filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id + ': ' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ')));
+      // Material loads mermaid from a CDN; whether the CDN answered is not
+      // what this checks (and CI must not fail on a CDN hiccup).
+      const own = errorsHere.filter((e) => !/^Invalid script: https?:\/\//.test(e));
+      const problems = [...(bar ? [] : ['no top bar']), ...result, ...own.map((e) => 'page error: ' + e)];
+      if (problems.length) { bad++; fail(`docs ${u}: ${problems.join(' | ')}`); }
+    }
+    await p.close();
+    if (!bad) console.log(`ok: all ${urls.length} docs pages — top bar, no page errors, axe clean`);
   }
   // The in-game reader (#630): '?' opens the world's Field guide page over the
   // running world; the clock keeps advancing; a docs link stays in the reader;

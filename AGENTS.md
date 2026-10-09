@@ -105,7 +105,9 @@ figures from the game.
 In a Claude Code on the web session, `.claude/hooks/session-start.sh` (#618)
 already installed these tools at CI's pins; set `AHN_WEB=1` in the environment
 to also get emsdk and playwright for the browser checks above. CI's one
-required check is the `CI gate` job; docs-only PRs skip the heavy jobs (#607).
+required check is the `CI gate` job; docs-only PRs skip the simulator jobs (#607)
+but not the `pages` job, which builds the whole site, crawls it
+(`tools/checks/check-site.py`) and runs the browser smoke with axe on every docs page.
 
 ```bash
 python3 docs/tools/check-links.py .     # relative links resolve

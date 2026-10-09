@@ -33,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.diff.outputs.code }}
+      site: ${{ steps.diff.outputs.site }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -42,7 +43,7 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "$EVENT" != pull_request ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$EVENT" != pull_request ]; then printf 'code=true\nsite=true\n' >> "$GITHUB_OUTPUT"; exit 0; fi
           files=$(git diff --name-only "$BASE" HEAD)
           printf 'changed:\n%s\n' "$files"
           code=false
@@ -50,8 +51,15 @@ jobs:
               | grep -qvE '^(docs/|paper/|\.github/ISSUE_TEMPLATE/)|\.md$|^mkdocs\.yml$|^LICENSE$|^CITATION\.cff$'; then
             code=true
           fi
-          echo "code=$code"
-          echo "code=$code" >> "$GITHUB_OUTPUT"
+          # The Pages site is built from docs, the game, the shell, the API
+          # headers and these workflows: a docs-only PR still gets the page
+          # tests (the pages job below).
+          site=false
+          if printf '%s\n' "$files" | grep -qE '^(docs/|web/|api/|core/include/|tools/checks/|mkdocs\.yml$|README\.md$|\.github/workflows/)'; then
+            site=true
+          fi
+          echo "code=$code site=$site"
+          printf 'code=%s\nsite=%s\n' "$code" "$site" >> "$GITHUB_OUTPUT"
 
   core:
     name: core library + unit tests
@@ -66,7 +74,7 @@ jobs:
         run: make test
 
   web-parity:
-    name: browser adapter — native vs WASM parity + learn-site smoke (#544, #548)
+    name: browser adapter — native vs WASM parity (#544)
     runs-on: ubuntu-latest
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -88,6 +96,26 @@ jobs:
         run: |
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           web/test/parity.sh 120 "1 2 7 42"
+
+  # The whole Pages site, tested as deployed (#626): built by web/build-pages.sh
+  # (the game, the docs, the API, the redirects -- what pages.yml publishes),
+  # then crawled (every internal link, asset and anchor resolves; the top bar
+  # on every page) and driven in a browser (every world, the hub, the reader,
+  # the Workshop, axe on every docs page). Runs on every PR that touches the
+  # site, docs-only PRs included -- they skip the simulator jobs, not this.
+  pages:
+    name: Pages site — build, crawl, browser smoke + axe (#626)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.site == 'true'
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install emsdk (pinned, as web-parity)
+        run: |
+          git clone --depth 1 --branch 4.0.10 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install 4.0.10
+          "$RUNNER_TEMP/emsdk/emsdk" activate 4.0.10
       - name: Install-quest parser unit test (#636)
         run: node web/test/quest.test.mjs
       - name: Assemble the whole site, as pages.yml does (#626)
@@ -96,6 +124,10 @@ jobs:
           sudo apt-get install -y --no-install-recommends doxygen >/dev/null
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           web/build-pages.sh web/build-site
+      - name: Crawl the built site (links, assets, anchors, top bar)
+        run: |
+          python3 tools/checks/check-site.py --self-test
+          python3 tools/checks/check-site.py web/build-site
       - name: Learn-site browser smoke (#548)
         # Every world runs with no console error, a backward ant and a delivery;
         # all worlds share the protocol defaults (ADR-0019); mission 2 plays to
@@ -109,6 +141,7 @@ jobs:
           npm install --no-audit --no-fund playwright-core@1.56.1 axe-core@4.10.2
           npx --no-install playwright-core install --with-deps chromium
           node "$GITHUB_WORKSPACE/web/test/smoke.mjs" "$GITHUB_WORKSPACE/web/build-site"
+
 
   core-sanitizers:
     name: core under ASan + UBSan
@@ -655,7 +688,7 @@ jobs:
     name: CI gate
     runs-on: ubuntu-latest
     if: always()
-    needs: [changes, core, web-parity, core-sanitizers, core-coverage, allowlists, codec-fuzz, ns3-build, ns3-asan, ns3-core-only]
+    needs: [changes, core, web-parity, pages, core-sanitizers, core-coverage, allowlists, codec-fuzz, ns3-build, ns3-asan, ns3-core-only]
     steps:
       - env:
           NEEDS: ${{ toJSON(needs) }}
