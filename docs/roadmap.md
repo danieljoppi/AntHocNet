@@ -214,6 +214,12 @@ issues #562–#602:
 - [#564](https://github.com/danieljoppi/AntHocNet/issues/564): the wider-threat-model epic;
 - [#580](https://github.com/danieljoppi/AntHocNet/issues/580) and [#581](https://github.com/danieljoppi/AntHocNet/issues/581): the two new families.
 
+Filed later the same day:
+- [#603](https://github.com/danieljoppi/AntHocNet/issues/603): the [infrastructure track](#infrastructure-track) epic (#604–#616, and the additions #618–#621);
+- #622–#625: translations, the classroom pack, offline play, and the JOSS re-check;
+- [#626](https://github.com/danieljoppi/AntHocNet/issues/626): the whole site is the game (v2.1.0, #627–#632);
+- [#634](https://github.com/danieljoppi/AntHocNet/issues/634): the Workshop, with the API and ns-3 inside the game (#635–#641).
+
 Existing issues were labelled into the releases they belong to. The sources
 behind every choice are in [research-landscape-2026.md](research-landscape-2026.md).
 

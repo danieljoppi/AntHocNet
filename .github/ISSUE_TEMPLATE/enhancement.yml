@@ -17,6 +17,7 @@ body:
         - benchmark / harness
         - observability
         - packaging / CI
+        - learn-site (the game and the site)
         - documentation
     validations:
       required: true

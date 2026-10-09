@@ -6,6 +6,10 @@
 > It builds on the learn site that ships today: the game at the site root, the
 > core compiled to WebAssembly, and 8 Academy missions plus 4 world challenges
 > ([ADR-0021](adr/0021-the-browser-is-an-adapter.md)).
+>
+> Two later sections widen it from the campaign to the whole site:
+> - [§10](#10-the-whole-site-is-the-game-v210): from v2.1.0 the docs and the API are places inside the game (epic [#626](https://github.com/danieljoppi/AntHocNet/issues/626));
+> - [§11](#11-the-workshop-the-api-and-ns-3-inside-the-game): the Workshop, where the API and the ns-3 integration become things you do in the game (epic [#634](https://github.com/danieljoppi/AntHocNet/issues/634)).
 
 ## 1. The idea in one paragraph
 
@@ -243,7 +247,7 @@ The sandbox keeps today's desk layout, as the "Free play" mode.
 
 ```mermaid
 flowchart LR
-    T["<b>Title</b><br/>Continue · Campaign ·<br/>Free play · Learn more"] --> M["<b>Campaign map</b><br/>4 chapter tiles,<br/>levels + stars"]
+    T["<b>Title</b><br/>Continue · Campaign ·<br/>Free play"] --> M["<b>Campaign map</b><br/>chapter tiles,<br/>levels + stars"]
     M --> B["<b>Briefing card</b><br/>story · goal · budget ·<br/>devices · Start"]
     B --> L["<b>In-level HUD</b><br/>full-screen map"]
     L --> D["<b>Debrief</b><br/>stars · what you saw ·<br/>measured result · Next"]
@@ -253,16 +257,17 @@ flowchart LR
 ```
 
 - **Title.** A full-bleed live scene with ants walking a trail in the
-  background. It offers four buttons:
+  background. It offers three buttons:
   - Continue (the last level, highlighted);
   - Campaign;
-  - Free play;
-  - Learn more (the docs).
+  - Free play.
 
-  This replaces today's welcome card on the front page.
-- **Campaign map.** One illustrated tile per chapter, eight in all: Ad hoc
+  It builds on the v2.1.0 hub screen ([§10](#10-the-whole-site-is-the-game-v210)).
+  There is no "Learn more" link out: the docs are places in the shared top bar,
+  and pages open in the in-game reader.
+- **Campaign map.** One illustrated tile per chapter, nine in all: Ad hoc
   town → Mesh → City streets / Forest / Orbit → Disaster → Contested → Sky to
-  space.
+  space, then Red team (v3.3.0).
   - Each tile shows its levels as stops on a path, with stars per level.
   - Locked chapters are greyed out, with "finish Ad hoc town to unlock" or
     "coming in v2.4.0".
@@ -373,7 +378,7 @@ The [mockups](#mockups) below show the campaign map and the in-level HUD.
 Static mockups, not the implementation. Both are rendered from a standalone
 HTML file in the repository's style.
 
-![Campaign map mockup: four chapter tiles with level stops and stars](images/learn-campaign-map.png)
+![Campaign map mockup: eight chapter tiles with level stops and stars; locked chapters greyed out](images/learn-campaign-map.png)
 
 ![In-level HUD mockup: goal tracker, route card, device dock and budget over a full-screen map](images/learn-campaign-hud.png)
 

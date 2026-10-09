@@ -66,7 +66,8 @@ do not auto-apply labels):
    Umbrella issues add `epic` alongside their type.
 2. **Area** (one or more): `protocol` (core algorithm, `core/`), `adapter`
    (translation layer), `ns2`, `ns3`, `benchmark` (harness/workflows),
-   `observability`, `packaging`.
+   `observability`, `packaging` (build, install, release and CI pipelines),
+   `learn-site` (the browser game and the site around it; added 2026-10-09).
 3. **Recommended model** (`model:*`, one): which Claude model class should
    implement it, chosen by what failure costs, not code volume:
    - `model:haiku-4.5` — mechanical chores (reformat, packaging, config).
