@@ -139,6 +139,7 @@ table is that record.
 | v1.8.0 | `10.5281/zenodo.23187497` | [record 23187497](https://zenodo.org/records/23187497) — the CBR-source fix-and-restatement roll-up ([#521](https://github.com/danieljoppi/AntHocNet/issues/521)) |
 | v1.9.0 | `10.5281/zenodo.23223132` | [record 23223132](https://zenodo.org/records/23223132) — the VANET family release ([#301](https://github.com/danieljoppi/AntHocNet/issues/301)) |
 | v2.0.0 | `10.5281/zenodo.23250180` | [record 23250180](https://zenodo.org/records/23250180) — the moving-constellation result ([#297](https://github.com/danieljoppi/AntHocNet/issues/297)), the learn site, and the NS-2 removal ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)) |
+| v2.1.0 | `10.5281/zenodo.23265537` | [record 23265537](https://zenodo.org/records/23265537) — the restructure: the whole site is the game ([#626](https://github.com/danieljoppi/AntHocNet/issues/626)), the new `ns3/` layout ([#608](https://github.com/danieljoppi/AntHocNet/issues/608)) and the install path |
 
 **Adding a row is the whole per-release chore.** Append the new version DOI
 here; do **not** touch the README badge or `CITATION.cff`, which already point
