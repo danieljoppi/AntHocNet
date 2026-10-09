@@ -174,6 +174,75 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
       await p.close();
     }
   }
+  // The in-game reader (#630): '?' opens the world's Field guide page over the
+  // running world; the clock keeps advancing; a docs link stays in the reader;
+  // search from the bar opens a hit in the reader; axe passes with it open.
+  {
+    const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(base + '#vanet?seed=1');
+    await p.waitForFunction(() => document.getElementById('clock')?.textContent.includes('t 0:0'), null, { timeout: 15000 });
+    await p.locator('#map').focus();
+    await p.keyboard.press('?');
+    await p.locator('#reader h1').first().waitFor({ timeout: 10000 });
+    const h1 = (await p.locator('#reader h1').first().textContent()).trim();
+    const t0 = await p.evaluate(async () => (await import('./js/app.js')).playground.world.now());
+    await p.waitForTimeout(1500);
+    const t1 = await p.evaluate(async () => (await import('./js/app.js')).playground.world.now());
+    if (!(t1 > t0)) fail(`reader: the world stopped while reading (${t0} -> ${t1})`);
+    // A link to another docs page (not an anchor on this one).
+    const link = p.locator('#readerBody a[href*="/docs/"]:not([data-anchor])').filter({ hasNotText: /^$/ })
+      .and(p.locator(`#readerBody a:not([href^="${await p.locator('#readerOut').getAttribute('href')}"])`)).first();
+    if (await link.count()) {
+      const before = await p.locator('#readerOut').getAttribute('href');
+      await link.click();
+      await p.waitForFunction((b) => document.getElementById('readerOut').href !== b, before, { timeout: 10000 });
+      if (!(await p.locator('#reader').isVisible())) fail('reader: a docs link left the reader');
+    }
+    await p.addScriptTag({ content: axeSource });
+    const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+      .filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id + ': ' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ')));
+    if (result.length) fail(`axe with the reader open: ${result.join(' | ')}`);
+    await p.keyboard.press('Escape');
+    await p.fill('#ahn-q', 'repair ant');
+    await p.locator('#ahn-results a').first().waitFor({ timeout: 5000 });
+    await p.locator('#ahn-results a').first().click();
+    await p.locator('#reader h1').first().waitFor({ timeout: 10000 });
+    if (!p.url().includes('#vanet')) fail(`reader: search left the game (${p.url()})`);
+    if (errors.length) fail(`reader: page errors: ${errors.join(' | ')}`);
+    else if (!result.length) console.log(`ok: reader — "?" opened "${h1}" over a running world (t ${t0.toFixed(1)} -> ${t1.toFixed(1)} s), links and search stay in the game, axe clean`);
+    await p.close();
+  }
+  // The Workshop (#634): the Nest draws every chamber, a chamber shows its
+  // classes from the API index, the quest ticks steps from pasted doctor output.
+  for (const scheme of ['light', 'dark']) {
+    const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: scheme });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(base + 'workshop.html');
+    await p.waitForFunction(() => /t \d+:\d\d/.test(document.getElementById('nestLive').textContent), null, { timeout: 15000 });
+    const chambers = await p.locator('#nest .chamber').count();
+    await p.waitForFunction(() => fetch('api/api-index.json').then((r) => r.ok));
+    await p.locator('#nest .chamber[data-id="store"]').click();
+    await p.locator('#chamberBody .ws-classes a', { hasText: 'PheromoneTable' }).waitFor();
+    const href = await p.locator('#chamberBody .ws-classes a', { hasText: 'PheromoneTable' }).getAttribute('href');
+    await p.fill('#questPaste', '##DOCTOR## v=1 ns3=3.42 cmake=3.28.3 cxx=g++-13.3.0 python=3.11.15 contrib=writable module=installed baselines=aomdv:ok,gpsr:ok,oracle:ok built=yes verdict=ok');
+    await p.click('#questCheck');
+    const score = (await p.locator('#questScore').textContent()).trim();
+    if (chambers !== 8) fail(`workshop: ${chambers} chambers drawn, expected 8`);
+    if (!href || !href.endsWith('classanthocnet_1_1core_1_1PheromoneTable.html')) fail(`workshop: PheromoneTable link ${href}`);
+    if (score !== '4 / 5') fail(`workshop: quest score ${score} after a full doctor line, expected 4 / 5`);
+    const current = await p.locator('.ahn-bar .ahn-place[aria-current="page"]').getAttribute('data-place').catch(() => null);
+    if (current !== 'shop') fail(`workshop: active place ${current}`);
+    await p.addScriptTag({ content: axeSource });
+    const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+      .filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id + ': ' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ')));
+    if (result.length) fail(`axe workshop (${scheme}): ${result.join(' | ')}`);
+    if (errors.length) fail(`workshop (${scheme}): page errors: ${errors.join(' | ')}`);
+    if (!result.length && !errors.length) console.log(`ok: workshop (${scheme}) — ${chambers} chambers, PheromoneTable from the API index, quest ${score}, axe clean`);
+    await p.close();
+  }
   // Search from the bar finds a page and shows its place.
   const p = await browser.newPage();
   await p.goto(base + 'docs/');

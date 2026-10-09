@@ -17,6 +17,9 @@ gates protect that claim — keep both green before pushing a `web/` change.
 | `web/build-pages.sh` | the whole Pages site: game + docs (`/docs/`) + API (`/api/`) + redirects; `pages.yml` and CI's smoke both use it |
 | `web/shell/` | the site's one top bar (`topbar.html`, `shell.css`, `shell.js`), `docs.css` / `api.css`, the mkdocs theme override, and `inject.py`, which puts the bar on the game, every docs page (via `docs/tools/mkdocs_hooks.py`) and every API page |
 | `docs/places/` | the four docs places' overview pages (Field guide, Lab, Workshop, Archive) |
+| `web/site/js/reader.js` | the in-game reader: any docs page over the running world (`?`, search, docs links) |
+| `web/site/workshop.html`, `js/workshop.js`, `js/nest-data.js`, `js/install-steps.js` | the Workshop: the Nest (the core's API as a live nest, from `api/api-index.json` built by `web/shell/api_index.py`) and the install quest (parses `##DOCTOR##` locally; unit test `web/test/quest.test.mjs`) |
+| `tools/checks/check-site-links.py` | game ↔ docs links both ways, the Nest covers every core class, quest commands are in the install docs (`--self-test` first) |
 | `web/site-redirects.sh` | old-URL redirects (docs moved to `/docs/`) |
 | `web/test/parity.sh` | native vs WASM decision traces — **byte-identical** |
 | `web/test/smoke.mjs` | headless Chromium: every world delivers, a mission completes, axe finds nothing serious |

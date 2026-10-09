@@ -88,6 +88,8 @@ jobs:
         run: |
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           web/test/parity.sh 120 "1 2 7 42"
+      - name: Install-quest parser unit test (#636)
+        run: node web/test/quest.test.mjs
       - name: Assemble the whole site, as pages.yml does (#626)
         run: |
           pip install -c requirements-dev.txt mkdocs-material

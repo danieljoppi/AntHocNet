@@ -432,7 +432,8 @@ way every debrief links to a measured page, not a promise.
 Epic [#626](https://github.com/danieljoppi/AntHocNet/issues/626).
 
 **Built in v2.1.0:** the shell, hub, docs windows with the Try-it rail and the API chrome
-(#627, #628, #629, #632) live in `web/shell/` and `docs/places/`.
+(#627, #628, #629, #632) live in `web/shell/` and `docs/places/`; the in-game reader (#630)
+is `web/site/js/reader.js`; the two-way links are checked by `tools/checks/check-site-links.py` (#631).
 
 Since #558 the game is the front page, but the site is still three sites,
 each with its own look and navigation:
@@ -537,6 +538,10 @@ the published VANET main cell.
 
 
 ## 11. The Workshop: the API and ns-3 inside the game
+
+**Built in v2.1.0:** the Nest (#635) and the install quest (#636), on
+[the Workshop page](https://danieljoppi.github.io/AntHocNet/workshop.html). X-ray, the tuning
+bench, the ns-3 export and replay follow in v2.2.0–v2.3.0.
 
 §10 puts the API reference and the install guide *inside* the game's frame,
 but you still only read them there. The Workshop goes further, using

@@ -12,5 +12,6 @@ mkdir -p build/api
 AHN_VERSION="$(cat VERSION)" doxygen api/Doxyfile >/dev/null
 rm -rf "$OUT/api" && cp -r build/api/html "$OUT/api"
 python3 web/shell/inject.py api "$OUT/api"
+python3 web/shell/api_index.py build/api/xml "$OUT/api/api-index.json"   # the Nest (#635)
 web/site-redirects.sh "$OUT"
 echo "pages assembled in $OUT ($(du -sh "$OUT" | cut -f1))"

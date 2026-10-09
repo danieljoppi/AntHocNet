@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AntHocNet — the Workshop: the core's API and the ns-3 install</title>
+  <meta name="description" content="The AntHocNet core drawn as an ant nest, lit by a running world, and the ns-3 install guide as a quest you check by pasting make doctor.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/learn.css">
+  <script type="module" src="js/workshop.js"></script>
+</head>
+<body class="workshop">
+  <!--AHN-TOPBAR shop-->
+  <main class="ws">
+    <section class="window ws-nest" aria-labelledby="nestTitle">
+      <div class="titlebar"><span id="nestTitle">The Nest: the core's API, live</span>
+        <span class="ws-live" id="nestLive">starting a world…</span></div>
+      <div class="ws-map"><svg id="nest" viewBox="0 0 948 700" role="group" aria-label="The core's components as chambers of a nest; choose one to read its API"></svg></div>
+      <p class="muted small ws-foot">Chambers glow when the running ad hoc world uses them. Every public class in <code>core/include</code> has a chamber; CI checks it.</p>
+    </section>
+    <section class="window ws-detail" aria-labelledby="chamberTitle" aria-live="polite">
+      <div class="titlebar" id="chamberTitle">Choose a chamber</div>
+      <div class="body" id="chamberBody"><p class="muted">Each chamber is a part of the core. Choose one to see its classes, what they do, and a link into the full API reference.</p></div>
+    </section>
+    <section class="window ws-quest" aria-labelledby="questTitle">
+      <div class="titlebar"><span id="questTitle">Quest: Field engineer — install AntHocNet in ns-3</span><span class="ws-score" id="questScore">0 / 5</span></div>
+      <div class="body">
+        <p>Run each command in your ns-3 setup and paste the output below. It is read here, in your browser; nothing is uploaded. No checkout? The <a href="https://github.com/danieljoppi/AntHocNet/releases/latest">release</a> has a drop-in tarball for <code>contrib/</code>.</p>
+        <ol class="ws-steps" id="questSteps"></ol>
+        <label for="questPaste" class="ws-label">Paste <code>make doctor</code> or <code>./test.py -s anthocnet</code> output</label>
+        <textarea id="questPaste" rows="5" spellcheck="false" placeholder="##DOCTOR## v=1 ns3=3.42 cmake=3.28.3 …"></textarea>
+        <div class="row"><button type="button" class="bevel primary" id="questCheck">Check</button><button type="button" class="bevel" id="questReset">Start over</button></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
