@@ -283,7 +283,7 @@ def main():
                          "run-first..run-first+runs-1, so one point's seeds "
                          "can split across dispatches that each fit the job "
                          "ceiling (#126). Pool the split CSVs with "
-                         ".claude/skills/benchmark-results/pool_runs.py")
+                         "tools/bench/pool_runs.py")
     ap.add_argument("--time", type=int, default=None,
                     help="sim time (s) override; default uses each scenario's own")
     ap.add_argument("--protocols", default="anthocnet,aodv,olsr,dsdv")

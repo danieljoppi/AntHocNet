@@ -44,6 +44,7 @@ COVERED = (
     ("ns3/", CXX),
     ("ns3/tools/", (".py",)),
     ("docs/tools/", (".py",)),
+    ("tools/", (".py",)),
     (".claude/skills/", (".py",)),
 )
 
@@ -104,7 +105,7 @@ def self_test() -> int:
         "ns3/model/anthocnet-packet.cc",
         "docs/tools/check-headers.py",
         "ns3/tools/run-scenarios.py",
-        ".claude/skills/benchmark-results/stats_util.py",
+        "tools/bench/stats_util.py",
     ]
     covered_no = [
         # Build files, docs and the binary fuzz corpus are out of scope.

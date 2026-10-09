@@ -91,7 +91,7 @@ Dispatched 2026-08-03/04 on `main`, `scenario-matrix.yml`, `3.42-opt` image,
 and were run as multiple dispatches over disjoint seed ranges using the
 `runFirst` input ([#126](https://github.com/danieljoppi/AntHocNet/issues/126),
 PR #322), then recombined with
-[`pool_runs.py`](../../../.claude/skills/benchmark-results/pool_runs.py), which
+[`pool_runs.py`](../../../tools/bench/pool_runs.py), which
 recomputes each mean and standard deviation from the pooled per-run rows
 ([#319](https://github.com/danieljoppi/AntHocNet/issues/319)) rather than
 combining split aggregates. Seed coverage was verified as exactly 1–20 per
@@ -163,7 +163,7 @@ _Sweep `scale` — mean of 20 run(s) per point, every baseline on identical real
 > **Provenance.** `main` @ `3edbab6a`, `3.42-opt`, 900 s, range/disk PHY,
 > 20 seeds per point (seeds 1–20 at every point, checked per arm). The
 > large points were seed-split under the 340-minute step ceiling and pooled
-> with [`pool_runs.py`](../../../.claude/skills/benchmark-results/pool_runs.py):
+> with [`pool_runs.py`](../../../tools/bench/pool_runs.py):
 >
 > | point | nodes | dispatches | runs |
 > |---|---|---|---|

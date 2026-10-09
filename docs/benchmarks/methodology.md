@@ -104,7 +104,7 @@ published GHCR images (Actions → workflow → *Run workflow*):
   scale points at 20 seeds, [#126](https://github.com/danieljoppi/AntHocNet/issues/126))
   splits across dispatches with `runFirst` — seeds cover
   `runFirst..runFirst+runs-1`, and
-  [`pool_runs.py`](../../.claude/skills/benchmark-results/pool_runs.py)
+  [`pool_runs.py`](../../tools/bench/pool_runs.py)
   merges the split CSVs back into one aggregate row per point, recomputing
   mean/sd exactly from the pooled #319 per-run rows. With `commit=true`
   the classified CSV lands in `docs/benchmarks/campaign/` and the regenerated
@@ -711,7 +711,7 @@ image.
 Every number published in these pages or in the papers repo carries a **95%
 confidence interval**, or is explicitly marked single-run/diagnostic. The
 computation lives in
-[`.claude/skills/benchmark-results/stats_util.py`](../../.claude/skills/benchmark-results/stats_util.py)
+[`tools/bench/stats_util.py`](../../tools/bench/stats_util.py)
 (consumed by `bench_parse.py` / `sweep_summary.py`; self-tested by
 `test_stats.py` in `lint.yml`) — change the methods there and here together.
 
@@ -1371,7 +1371,7 @@ no longer silently corrupt the published numbers. Recalibration is a one-line
 edit to `anchors.yml`. For ad-hoc runs outside CI, the same floors (plus
 result-plausibility invariants and pre-dispatch scenario sanity checks) are
 enforced locally by
-[`.claude/skills/benchmark-results/scenario_check.py`](../../.claude/skills/benchmark-results/scenario_check.py)
+[`tools/bench/scenario_check.py`](../../tools/bench/scenario_check.py)
 (#134), which reads `anchors.yml` rather than duplicating it.
 
 ### Grid-arm regression floors — a third kind, and not an anchor

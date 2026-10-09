@@ -812,7 +812,7 @@ deterministic point-to-point links — those stay low-run and are read as
    (`sat_run_ids` input); it is committed as
    `docs/benchmarks/campaign/<runid>-sat.txt`.
 3. **Validate** before reading:
-   `python3 .claude/skills/benchmark-results/scenario_check.py results FILE`
+   `python3 tools/bench/scenario_check.py results FILE`
    understands both the `--csv` schema and the human
    `##RUN##`/table output, runs the generic plausibility rules (PDR bounds,
    delay99 ≥ mean, negatives, dead cells) and adds the satellite invariants —
@@ -822,7 +822,7 @@ deterministic point-to-point links — those stay low-run and are read as
    whose topology is the 2-node/1-link anchor. A FAIL is a harness bug: do
    not compare, publish, or quote the numbers.
 4. **Parse / A/B** with
-   `python3 .claude/skills/benchmark-results/bench_parse.py OFF ON` — both
+   `python3 tools/bench/bench_parse.py OFF ON` — both
    the text output and `--csv` rows are accepted; the
    [#244](https://github.com/danieljoppi/AntHocNet/issues/244) directed-arm
    and [#250](https://github.com/danieljoppi/AntHocNet/issues/250) comparisons

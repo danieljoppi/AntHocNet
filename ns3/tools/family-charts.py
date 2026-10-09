@@ -48,11 +48,11 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 SKILL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..",
-                     ".claude", "skills", "benchmark-results")
+                     "tools", "bench")
 
 
 def _load(name):
-    """Load a skill-side module (single source for parsing and CI math)."""
+    """Load a tools/bench module (single source for parsing and CI math)."""
     sys.path.insert(0, SKILL)  # bench_parse imports stats_util by name
     spec = importlib.util.spec_from_file_location(
         name, os.path.join(SKILL, f"{name}.py"))

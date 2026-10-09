@@ -80,3 +80,28 @@ Current inventory:
 - The papers repo participates via its `figures` skill (`figdata.py`), so
   numbers cross the repo boundary only through validated transforms
   (papers-repo golden rules 1–3), never by hand.
+
+## Amendment (2026-10-09): shared scripts live in `tools/`, skills hold procedures
+
+`.claude/` is excluded from both release packages (the install-bundle zip and
+GitHub's source archives, via `export-ignore`). Shipped tools nevertheless
+imported the benchmark-results skill's scripts:
+
+- `run-scenarios.py` used `pool_runs`;
+- `check-leo-walker.sh` used `scenario_check`;
+- `family-charts.py` used `bench_parse` and `stats_util`;
+- `leo-summary.py` used `stats_util`.
+
+So the released tools broke, and the methodology links 404'd (#604).
+
+The rule from now on:
+
+- **A script that any shipped tool, workflow or doc depends on lives in
+  `tools/`.** The benchmark scripts are in `tools/bench/` today.
+- **`.claude/skills/<name>/` holds the procedure** (`SKILL.md`), plus scripts
+  only an agent runs.
+- The release-package gate (`tools/release/check-bundle.sh`, run in CI) fails if
+  a shipped file references `.claude/`.
+
+The decision above (script-first, verdicts not raw data in context) is unchanged.
+

@@ -159,7 +159,7 @@ results.
 | Run / read benchmarks | `docs/benchmarks.md` (index → `docs/benchmarks/{metrics,methodology}.md`, `scenarios/<name>.md`, `sweeps/<name>.md`), `ns3/tools/run-scenarios.py` + `make-charts.py` + `update-benchmarks.py`; family/cross-family + sweep charts from committed data: `ns3/tools/family-charts.py` (re-rendered and committed by `charts.yml`), `anthocnet-compare --diag` |
 | Inspect protocol internals | NS-3 `Tx`/`Rx`/`RouteChanged` trace sources; core counters via `IRouterObserver` |
 | Run the benchmark campaign loop (dispatch → fetch → parse) | `benchmark-results` skill (SKILL.md documents the whole procedure) |
-| Compare benchmark A/B runs (deltas + noise verdict) | `benchmark-results` skill (`.claude/skills/benchmark-results/bench_parse.py`) |
+| Compare benchmark A/B runs (deltas + noise verdict) | `benchmark-results` skill (`tools/bench/bench_parse.py`) |
 | Summarize / export campaign sweep CSVs | `benchmark-results` skill (`sweep_summary.py`; `--export-sweeps` feeds the papers repo) |
 | Validate a scenario config or result plausibility | `benchmark-results` skill (`scenario_check.py`, #134): `preflight` before dispatching, `results [--anchor …]` before trusting numbers |
 | Pre-push invariant check on a diff | `protocol-review` skill (`.claude/skills/protocol-review/check_invariants.sh`) |
