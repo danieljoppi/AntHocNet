@@ -10,6 +10,12 @@ WebAssembly, with missions for every mechanism and a world per network family
 ([ADR-0021](adr/0021-the-browser-is-an-adapter.md)). The code reference is the
 [API documentation](https://danieljoppi.github.io/AntHocNet/api/).
 
+![How AntHocNet finds a route: reactive forward ants search, a backward ant lays pheromone on the way home, data packets follow the strongest trail](images/readme-how-it-routes.png)
+
+The plan from here is in [roadmap.md](roadmap.md#replan-after-v200-accepted-2026-10-09): fix the
+measured gaps, add opt-in tweaks per network, two new network types, comparisons with swarm,
+learned and secure protocols, and the game campaign ([learn-campaign.md](learn-campaign.md)).
+
 ## Understand the protocol
 
 | Page | What it is |

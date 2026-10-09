@@ -1,7 +1,8 @@
-# Learn site: campaign mode (design, proposed 2026-10-09)
+# Learn site: campaign mode (design, accepted 2026-10-09)
 
-> **Status:** proposed, awaiting the maintainer's decision, as part of the
-> [post-v2.0.0 replan](roadmap.md#replan-after-v200-proposed-2026-10-09).
+> **Status:** accepted 2026-10-09 as part of the
+> [post-v2.0.0 replan](roadmap.md#replan-after-v200-accepted-2026-10-09).
+> It is tracked by the campaign epic [#562](https://github.com/danieljoppi/AntHocNet/issues/562).
 > It builds on the learn site that ships today: the game at the site root, the
 > core compiled to WebAssembly, and 8 Academy missions plus 4 world challenges
 > ([ADR-0021](adr/0021-the-browser-is-an-adapter.md)).
@@ -388,7 +389,23 @@ HTML file in the repository's style.
 | **v2.3.0** | **Chapter 3: City streets**, **Chapter 4: Forest**, **Chapter 5: Orbit** (the three families already measured), with attenuation zones, battery, fixed-route mobility, ground stations and the orbit binding; the **upgrades** screen, wired to the gated mechanisms that ship in v2.3.0 |
 | **v2.4.0** | **Chapter 6: Disaster zone**, **Chapter 7: Contested zone** (7.1–7.3) and **Chapter 8: Sky to space**: the same release as the disaster/tactical and SAGIN families they draw on |
 | **v3.0.0** | Contested level **7.4** and the **Shield** upgrade, on the security profile |
-| **v3.3.0** *(proposed)* | **Chapter 9: Red team.** The player places attackers (blackhole, wormhole, Sybil, pheromone poisoner) to break a working network, then switches defences on and watches delivery recover. Every attack and defence is a real gated mechanism from v3.0.0–v3.3.0. |
+| **v3.3.0** | **Chapter 9: Red team.** The player places attackers (blackhole, wormhole, Sybil, pheromone poisoner) to break a working network, then switches defences on and watches delivery recover. Every attack and defence is a real gated mechanism from v3.0.0–v3.3.0. |
+
+### Issues
+
+| work | issue |
+|---|---|
+| game UI | [#566](https://github.com/danieljoppi/AntHocNet/issues/566) |
+| campaign engine | [#567](https://github.com/danieljoppi/AntHocNet/issues/567) |
+| device classes (per-node range) | [#568](https://github.com/danieljoppi/AntHocNet/issues/568) |
+| scenario features, chapters 3–5 | [#575](https://github.com/danieljoppi/AntHocNet/issues/575) |
+| scenario features, chapters 6–8 | [#582](https://github.com/danieljoppi/AntHocNet/issues/582) |
+| upgrades screen | [#579](https://github.com/danieljoppi/AntHocNet/issues/579) |
+| Ch 1 Ad hoc town · Ch 2 Mesh | [#569](https://github.com/danieljoppi/AntHocNet/issues/569) · [#570](https://github.com/danieljoppi/AntHocNet/issues/570) |
+| Ch 3 City streets · Ch 4 Forest · Ch 5 Orbit | [#576](https://github.com/danieljoppi/AntHocNet/issues/576) · [#577](https://github.com/danieljoppi/AntHocNet/issues/577) · [#578](https://github.com/danieljoppi/AntHocNet/issues/578) |
+| Ch 6 Disaster · Ch 7 Contested · Ch 8 Sky to space | [#583](https://github.com/danieljoppi/AntHocNet/issues/583) · [#584](https://github.com/danieljoppi/AntHocNet/issues/584) · [#585](https://github.com/danieljoppi/AntHocNet/issues/585) |
+| level 7.4 + Shield | [#590](https://github.com/danieljoppi/AntHocNet/issues/590) |
+| Ch 9 Red team | [#602](https://github.com/danieljoppi/AntHocNet/issues/602) |
 
 Each chapter lands with the release that measures its network type. That
 way every debrief links to a measured page, not a promise.

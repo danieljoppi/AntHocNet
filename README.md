@@ -7,7 +7,7 @@
 [![Cite](https://img.shields.io/badge/cite-CITATION.cff-blue)](CITATION.cff)
 [![License: GPL v2](https://img.shields.io/badge/license-GPL--2.0-blue)](LICENSE)
 [![C++14](https://img.shields.io/badge/C%2B%2B-14-blue?logo=cplusplus)](CONTRIBUTING.md)
-[![Simulators](https://img.shields.io/badge/simulators-ns--2%20%C2%B7%20ns--3-informational)](#)
+[![Simulators](https://img.shields.io/badge/runs%20on-ns--3%20%C2%B7%20WebAssembly-informational)](#)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow)](https://www.conventionalcommits.org)
 [![Top language](https://img.shields.io/github/languages/top/danieljoppi/AntHocNet)](#)
 [![Docs](https://img.shields.io/badge/docs-site-blue)](https://danieljoppi.github.io/AntHocNet/docs/)
@@ -17,6 +17,8 @@
 that runs this repository's routing core, compiled to WebAssembly, in your
 browser: place and move phones, break links, and watch the ants find the way.
 Code reference: [API docs](https://danieljoppi.github.io/AntHocNet/api/).
+
+![How AntHocNet finds a route, in three frames from the learn site: reactive forward ants flood out from phone 0 until one reaches phone 5; a backward ant walks home laying a pheromone trail; data packets follow the strongest trail to phone 5](docs/images/readme-how-it-routes.png)
 
 **A paper-faithful AntHocNet you can install on a stock ns-3 tree in three
 commands** — a drop-in `contrib/` module, no forked simulator. It is benchmarked
@@ -186,20 +188,47 @@ The NS-2 images built through v1.9.0 stay pullable; see
 
 ## Supported network regimes
 
-The same protocol binary runs in two very different networks: the **MANET
-fields** (paper + thesis, via `anthocnet-compare`) and a **satellite ISL +Grid
-snapshot** (via `isl-grid`). Two more families are supported as of v1.7.0: a **static
-Wi-Fi mesh** ([results](docs/benchmarks/static-mesh.md)) and **FANET**, a 3-D UAV swarm run by
-`--scenario=fanet` ([results](docs/benchmarks/scenarios/fanet.md)). As of v1.9.0, **VANET**: vehicles on a
-Manhattan street grid with building shadowing, run by `--scenario=vanet`
-([results](docs/benchmarks/scenarios/vanet.md), with the four-family ranking
-statement). What
+One protocol binary, unchanged defaults, five network families, each with a
+results page measured in ns-3:
+
+| family | how it runs | results |
+|---|---|---|
+| **MANET** (paper + thesis fields) | `anthocnet-compare` | [grid](docs/benchmarks/grid.md) |
+| **Static Wi-Fi mesh** | `anthocnet-compare` (static cell) | [static mesh](docs/benchmarks/static-mesh.md) |
+| **FANET**, a 3-D UAV swarm | `--scenario=fanet` | [FANET](docs/benchmarks/scenarios/fanet.md) |
+| **VANET**, vehicles on a Manhattan grid with building shadowing | `--scenario=vanet` | [VANET](docs/benchmarks/scenarios/vanet.md) (with the four-family ranking statement) |
+| **Satellite**: the ISL +Grid snapshot and a moving Walker / Starlink shell | `isl-grid`, `leo-walker` | [ISL grid](docs/benchmarks/satellite/isl-grid.md), [moving constellation](docs/benchmarks/satellite/leo-walker.md) |
+
+![One protocol, every network type: the learn site's ad hoc phones, static Wi-Fi mesh routers, cars on a street grid, a drone swarm and an orbiting satellite constellation, plus a mockup of the coming campaign map](docs/images/readme-network-types.png)
+ What
 is *unknown* in each regime decides which of AntHocNet's mechanisms matter
 there — the family table, the side-by-side harness comparison, and the
 mechanism-by-mechanism live/inert map are all in
 [docs/network-regimes.md](docs/network-regimes.md).
 
 ![AntHocNet minus AODV across the four families, paired per seed with 95 % CIs: delivery gains on MANET, static mesh and FANET and a tie on VANET, a shorter delay tail in every cell, and an overhead advantage that reverses on VANET](docs/benchmarks/charts/families-vs-aodv.png)
+
+## Roadmap
+
+Accepted 2026-10-09 ([roadmap](docs/roadmap.md#replan-after-v200-accepted-2026-10-09),
+with the [research behind it](docs/research-landscape-2026.md) and the
+[game campaign design](docs/learn-campaign.md)). Every release has a
+`release:` label and filed issues.
+
+```mermaid
+flowchart LR
+    V20["<b>v2.0.0</b> ✅<br/>moving constellation<br/>+ learn site"]
+    V21["<b>v2.1.0</b><br/>game as front page"]
+    V22["<b>v2.2.0</b><br/>fix the measured gaps<br/>· game: ad hoc + mesh"]
+    V23["<b>v2.3.0</b><br/>opt-in tweaks per network<br/>· game: VANET, FANET, orbit"]
+    V24["<b>v2.4.0</b><br/>disaster + space-air-ground<br/>· game: chapters 6–8"]
+    V25["<b>v2.5.0</b><br/>ARA · Termite · learned<br/>comparators"]
+    V30["<b>v3.0.0</b><br/>secured AntHocNet"]
+    V31["<b>v3.1.0</b><br/>SAODV · SEAD · TAODV"]
+    V32["<b>v3.2.0</b><br/>secure swarm<br/>comparators"]
+    V33["<b>v3.3.0</b><br/>wormhole · Sybil ·<br/>pheromone poisoning"]
+    V20 --> V21 --> V22 --> V23 --> V24 --> V25 --> V30 --> V31 --> V32 --> V33
+```
 
 ## What changed from the original
 

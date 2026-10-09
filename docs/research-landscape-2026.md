@@ -1,7 +1,7 @@
 # Where AntHocNet could go next — research landscape (2026-10)
 
 > **Status:** a web- and abstract-level survey from 2026-10-09, written for the
-> post-v2.0.0 replan ([roadmap.md](roadmap.md#replan-after-v200-proposed-2026-10-09)).
+> post-v2.0.0 replan ([roadmap.md](roadmap.md#replan-after-v200-accepted-2026-10-09)).
 > It shares the limits of [satellite-routing-prior-art.md](satellite-routing-prior-art.md):
 >
 > - each result below is quoted from an abstract or a summary, not checked
@@ -75,12 +75,12 @@ These are mechanisms, not presets. Each one must:
 
 | mechanism | measured weak spot it targets | literature | existing issue |
 |---|---|---|---|
-| **Link-lifetime prediction** — discount pheromone on a next hop whose predicted link expiry is near (position + velocity) | VANET: 36 % of AntHocNet's traffic lost to reconvergence; oracle 81.7 % vs AntHocNet 42.1 % — the widest gap of any family ([#537](https://github.com/danieljoppi/AntHocNet/issues/537)) | intersection-aware link lifetime (iCAR, 2013); ML link-lifetime prediction (Sensors 2022, doi:10.3390/s22166038); ACO + link prediction (ERIACO, 2024); mobility-anticipated ETX gives PDR close to 1 in ns-3 (HAL hal-01072234) | #537 (new mechanism; needs a position port, see note) |
+| **Link-lifetime prediction** — discount pheromone on a next hop whose predicted link expiry is near (position + velocity) | VANET: 36 % of AntHocNet's traffic lost to reconvergence; oracle 81.7 % vs AntHocNet 42.1 % — the widest gap of any family ([#537](https://github.com/danieljoppi/AntHocNet/issues/537)) | intersection-aware link lifetime (iCAR, 2013); ML link-lifetime prediction (Sensors 2022, doi:10.3390/s22166038); ACO + link prediction (ERIACO, 2024); mobility-anticipated ETX gives PDR close to 1 in ns-3 (HAL hal-01072234) | [#574](https://github.com/danieljoppi/AntHocNet/issues/574) (needs the position port [#573](https://github.com/danieljoppi/AntHocNet/issues/573)) |
 | **SINR link metric** | fidelity: every thesis headline result uses it, and this repo's default is the metric the thesis benchmarks as worse | Neishaboori & Kesidis 2008 (SINR as secondary metric on ETX, damps instability); ETX/ETT comparisons (Draves et al., Microsoft Research) | [#181](https://github.com/danieljoppi/AntHocNet/issues/181), through the [#142](https://github.com/danieljoppi/AntHocNet/issues/142) seam |
-| **Propagation-dominated timing** (T_hop, hello, lifeAnt, repair waits) | S1: AntHocNet 15.5 pp under the delay oracle (7.0 pp on walker16); the gap grows with path length | — (this repo's own finding, ADR-0019 cites it as the example) | [#205](https://github.com/danieljoppi/AntHocNet/issues/205) |
+| **Propagation-dominated timing** (T_hop, hello, lifeAnt, repair waits) | S1: AntHocNet 15.5 pp under the delay oracle (7.0 pp on walker16); the gap grows with path length | — (this repo's own finding, ADR-0019 cites it as the example) | [#205](https://github.com/danieljoppi/AntHocNet/issues/205) (v2.3.0) |
 | **Hello suppression on point-to-point ISLs** | satellite: hellos are redundant on a link with one known peer (network-regimes §6) | — | [#204](https://github.com/danieljoppi/AntHocNet/issues/204) |
-| **Quiet mode for stable topologies** — proactive-ant back-off when sampled routes stop changing | static mesh: OLSR leads (99.82 % vs 99.34 % PDR, NRL 1.78 vs 4.51); ants keep sampling links that never change (the learn site's mesh challenge shows it) | adaptive evaporation for dynamic optimisation (Mavrovouniotis & Yang 2013/2014); counterpoint: Pellegrini, Stützle & Birattari 2012 on when parameter adaptation helps | new |
-| **Adaptive evaporation** — evaporation rate tracks observed route churn | handover-heavy shells (walker16 hop changes 2.07 vs the oracles' ~1.0 per flow-minute) and VANET corners | Mavrovouniotis & Yang (EvoApplications 2013; IEEE CIDUE 2014): self-adaptive evaporation beats fixed rates on dynamic problems — tested on dynamic TSP/VRP, **not** packet routing, so transfer needs its own validation | new |
+| **Quiet mode for stable topologies** — proactive-ant back-off when sampled routes stop changing | static mesh: OLSR leads (99.82 % vs 99.34 % PDR, NRL 1.78 vs 4.51); ants keep sampling links that never change (the learn site's mesh challenge shows it) | adaptive evaporation for dynamic optimisation (Mavrovouniotis & Yang 2013/2014); counterpoint: Pellegrini, Stützle & Birattari 2012 on when parameter adaptation helps | [#571](https://github.com/danieljoppi/AntHocNet/issues/571) |
+| **Adaptive evaporation** — evaporation rate tracks observed route churn | handover-heavy shells (walker16 hop changes 2.07 vs the oracles' ~1.0 per flow-minute) and VANET corners | Mavrovouniotis & Yang (EvoApplications 2013; IEEE CIDUE 2014): self-adaptive evaporation beats fixed rates on dynamic problems — tested on dynamic TSP/VRP, **not** packet routing, so transfer needs its own validation | [#572](https://github.com/danieljoppi/AntHocNet/issues/572) |
 | **Energy-aware link metric** | FANET energy per delivered bit is published ([#508](https://github.com/danieljoppi/AntHocNet/pull/508)) but nothing optimises it | BeeAdHoc (GECCO 2005: energy savings from fewer control packets + multipath); PEEBR (predicted residual battery); min-energy vs max-min residual routing | [#145](https://github.com/danieljoppi/AntHocNet/issues/145) |
 | **Re-injection that tells redundant from delivering** | 65–67 % duplicate rate by direct measurement ([reinjection.md](benchmarks/reinjection.md)) | — | [#430](https://github.com/danieljoppi/AntHocNet/issues/430) |
 | **RepairHoldCap** | ~168 ms of tail the #371 flip left on the table | — | [#433](https://github.com/danieljoppi/AntHocNet/issues/433) |
@@ -102,9 +102,9 @@ deserves its own ADR before code.
 
   | protocol | design | what it tests against AntHocNet | plan |
   |---|---|---|---|
-  | **ARA** (Güneş et al. 2002) | purely reactive ACO, built to cut overhead (roots in ABC and AntNet) | whether proactive sampling and repair pay for themselves | v2.5.0 |
-  | **Termite** (Roth & Wicker, SIDM 2005) | stigmergy: routing information rides inside data packets, no control ants; randomised multipath | a different overhead model; its authors report it beats AODV on primary metrics | v2.5.0 |
-  | **BeeAdHoc** (Wedde et al., GECCO 2005) | bee-inspired source routing, scouts and foragers; low energy from fewer control packets | a second swarm family, and the energy-per-bit metric | stretch |
+  | **ARA** (Güneş et al. 2002) | purely reactive ACO, built to cut overhead (roots in ABC and AntNet) | whether proactive sampling and repair pay for themselves | v2.5.0 · [#586](https://github.com/danieljoppi/AntHocNet/issues/586) |
+  | **Termite** (Roth & Wicker, SIDM 2005) | stigmergy: routing information rides inside data packets, no control ants; randomised multipath | a different overhead model; its authors report it beats AODV on primary metrics | v2.5.0 · [#587](https://github.com/danieljoppi/AntHocNet/issues/587) |
+  | **BeeAdHoc** (Wedde et al., GECCO 2005) | bee-inspired source routing, scouts and foragers; low energy from fewer control packets | a second swarm family, and the energy-per-bit metric | stretch · [#589](https://github.com/danieljoppi/AntHocNet/issues/589) |
   | **HOPNET** (Wang, 2007 thesis) | ants hopping between routing zones | the only result found benchmarking against AntHocNet directly; it claims better scaling | stretch |
   | AntNet (Di Caro & Dorigo 1998) | ACO for wired networks | — | skip: AntHocNet's ancestor, not a competitor |
 
@@ -151,14 +151,14 @@ Showing that a defence is competitive needs secure comparators.
 
 | protocol | approach | base protocol (ns-3 module here) | plan |
 |---|---|---|---|
-| **SAODV** | digital signatures + hash chains on AODV control messages | AODV ✓ | v3.1.0 |
-| **SEAD** | hash-chain authenticated distance vector | DSDV ✓ | v3.1.0 |
-| **TAODV** | per-neighbour trust, no cryptography | AODV ✓ | v3.1.0 (the trust side of the cryptographic-vs-trust axis) |
+| **SAODV** | digital signatures + hash chains on AODV control messages | AODV ✓ | v3.1.0 · [#592](https://github.com/danieljoppi/AntHocNet/issues/592) |
+| **SEAD** | hash-chain authenticated distance vector | DSDV ✓ | v3.1.0 · [#593](https://github.com/danieljoppi/AntHocNet/issues/593) |
+| **TAODV** | per-neighbour trust, no cryptography | AODV ✓ | v3.1.0 (the trust side of the cryptographic-vs-trust axis)  · [#594](https://github.com/danieljoppi/AntHocNet/issues/594) |
 | **Ariadne** | authenticated source routing (TESLA) | DSR (stock ns-3) | v3.1.0 stretch |
 | **ARAN** | certificate-signed routing | AODV-like | v3.1.0 stretch |
-| **BeeSec / BeeAIS / BeeAIS-DC** (Mazhar & Farooq 2007) | asymmetric-key or artificial-immune-system security on BeeAdHoc | BeeAdHoc (v2.5.0 stretch → prerequisite) | v3.2.0 |
-| **Trust-weighted ACO** (Simaremare et al., ICC 2014) | ants deposit positive pheromone only through trusted nodes | ARA (v2.5.0) + trust | v3.2.0 |
-| **ACO + watchdog** (Kalinin et al. 2018) | every node an agent that rates its neighbours' security | ARA + watchdog | v3.2.0 |
+| **BeeSec / BeeAIS / BeeAIS-DC** (Mazhar & Farooq 2007) | asymmetric-key or artificial-immune-system security on BeeAdHoc | BeeAdHoc (v2.5.0 stretch → prerequisite) | v3.2.0 · [#595](https://github.com/danieljoppi/AntHocNet/issues/595) |
+| **Trust-weighted ACO** (Simaremare et al., ICC 2014) | ants deposit positive pheromone only through trusted nodes | ARA (v2.5.0) + trust | v3.2.0 · [#596](https://github.com/danieljoppi/AntHocNet/issues/596) |
+| **ACO + watchdog** (Kalinin et al. 2018) | every node an agent that rates its neighbours' security | ARA + watchdog | v3.2.0 · [#597](https://github.com/danieljoppi/AntHocNet/issues/597) |
 
 **What the search found:**
 - **Simulators.** Comparative studies of SAODV, Ariadne, SEAD and ARAN ran on
