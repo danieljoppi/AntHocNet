@@ -72,6 +72,8 @@ def on_page_markdown(markdown: str, page, config, files) -> str:
 import html as _html
 import sys as _sys
 
+from mkdocs.utils import get_relative_url
+
 _sys.path.insert(0, os.path.join(_REPO_ROOT, "web", "shell"))
 import inject as _shell
 
@@ -87,13 +89,31 @@ def _to_site_root(page) -> str:
     return "../" * (url.count("/") + 1 if url else 0) + "../"
 
 
+def _overview(section):
+    """A nav section's own page: its first child when that is titled Overview."""
+    first = (section.children or [None])[0]
+    return first if getattr(first, "is_page", False) and first.title == "Overview" else None
+
+
+def _trail(page) -> list[tuple[str, str | None]]:
+    """AntHocNet › place › sections › page, each level linked to its overview
+    page when it has one. A section's overview page ends the trail at the
+    section itself (Lab, not Lab › Overview)."""
+    items = [("AntHocNet", _to_site_root(page))]
+    for sec in reversed(list(getattr(page, "ancestors", []) or [])):
+        ov = _overview(sec)
+        items.append((sec.title, ov and get_relative_url(ov.url, page.url)))
+        if ov is page:
+            return items
+    items.append((page.title or "", None))
+    return items
+
+
 def on_page_content(html: str, page, config, files) -> str:
     section = _section(page)
     place = _shell.SECTION_PLACE.get(section or "")
-    crumb = f"<b>{_html.escape(section)}</b> › " if section else ""
     bar = (f'<div class="ahn-titlebar" data-place="{place or ""}"><span class="ahn-dots" aria-hidden="true">'
-           f'<i></i><i></i><i></i></span><span class="ahn-crumb">{crumb}{_html.escape(page.title or "")}'
-           "</span></div>")
+           f"<i></i><i></i><i></i></span>{_shell.breadcrumb(_trail(page), place)}</div>")
     tries = page.meta.get("try") or []
     rail = ""
     if tries:

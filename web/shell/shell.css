@@ -93,3 +93,18 @@
   .ahn-places { order: 9; width: 100%; flex-wrap: nowrap; overflow-x: auto; }
   .ahn-place { padding: 6px 9px; font-size: 14px; white-space: nowrap; }
 }
+
+/* The breadcrumb (#652): the trail from the site root to the page, on every
+   docs page (in its title bar) and every API page. The place is in its colour. */
+.ahn-crumb { min-width: 0; font: 700 14px var(--ahn-font); color: var(--ahn-muted); }
+.ahn-crumb ol { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; margin: 0; padding: 0; list-style: none; }
+.ahn-crumb li { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.ahn-crumb li + li::before { content: "›" / ""; color: var(--ahn-muted); }
+.ahn-crumb a { color: inherit; text-decoration: none; }
+.ahn-crumb a:hover, .ahn-crumb a:focus-visible { text-decoration: underline; }
+.ahn-crumb [aria-current="page"] { color: var(--ahn-ink); font-weight: 800; overflow-wrap: anywhere; }
+.ahn-crumb li:nth-child(2) > * { font-weight: 800; }
+.ahn-crumb[data-place="guide"] li:nth-child(2) > * { color: var(--ahn-guide); }
+.ahn-crumb[data-place="lab"] li:nth-child(2) > * { color: var(--ahn-lab); }
+.ahn-crumb[data-place="shop"] li:nth-child(2) > * { color: var(--ahn-shop); }
+.ahn-crumb[data-place="arch"] li:nth-child(2) > * { color: var(--ahn-arch); }

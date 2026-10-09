@@ -149,12 +149,13 @@ for (const scheme of ['light', 'dark']) {
 }
 if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
   const surfaces = [
-    ['docs page', 'docs/benchmarks/scenarios/vanet/', 'lab'],
-    ['place page', 'docs/places/workshop/', 'shop'],
-    ['API page', 'api/classanthocnet_1_1core_1_1PheromoneTable.html', 'shop'],
+    ['docs page', 'docs/benchmarks/scenarios/vanet/', 'lab', 'AntHocNet › Lab › Scenarios › Scenario: vanet'],
+    ['place page', 'docs/places/workshop/', 'shop', 'AntHocNet › Workshop'],
+    ['API page', 'api/classanthocnet_1_1core_1_1PheromoneTable.html', 'shop',
+      'AntHocNet › Workshop › API reference › anthocnet::core::PheromoneTable Class Reference'],
   ];
   for (const scheme of ['light', 'dark']) {
-    for (const [name, url, place] of surfaces) {
+    for (const [name, url, place, trail] of surfaces) {
       const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: scheme });
       const errors = [];
       p.on('pageerror', (e) => errors.push(e.message));
@@ -162,6 +163,9 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
       await p.waitForTimeout(400);
       const current = await p.locator('.ahn-bar .ahn-place[aria-current="page"]').getAttribute('data-place').catch(() => null);
       if (current !== place) fail(`${name}: active place ${current}, expected ${place}`);
+      // The breadcrumb (#652): the trail from the site root, the page last.
+      const got = (await p.locator('.ahn-crumb li').allTextContents()).map((t) => t.trim()).join(' › ');
+      if (got !== trail) fail(`${name}: breadcrumb "${got}", expected "${trail}"`);
       if (name === 'docs page') {
         const href = await p.locator('.ahn-try a').first().getAttribute('href');
         if (!href || !href.endsWith('#vanet?seed=1')) fail(`docs page: Try-it link ${href}`);
@@ -191,16 +195,17 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
       errorsHere = [];
       await p.goto(base + u, { waitUntil: 'load' });
       const bar = await p.locator('.ahn-bar').count();
+      const crumb = await p.locator('.ahn-crumb [aria-current="page"]').count();
       const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
         .filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id + ': ' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ')));
       // Material loads mermaid from a CDN; whether the CDN answered is not
       // what this checks (and CI must not fail on a CDN hiccup).
       const own = errorsHere.filter((e) => !/^Invalid script: https?:\/\//.test(e));
-      const problems = [...(bar ? [] : ['no top bar']), ...result, ...own.map((e) => 'page error: ' + e)];
+      const problems = [...(bar ? [] : ['no top bar']), ...(crumb === 1 ? [] : ['no breadcrumb']), ...result, ...own.map((e) => 'page error: ' + e)];
       if (problems.length) { bad++; fail(`docs ${u} (${scheme}): ${problems.join(' | ')}`); }
     }
     await p.close();
-    if (!bad) console.log(`ok: all ${urls.length} docs pages (${scheme}) — top bar, no page errors, axe clean`);
+    if (!bad) console.log(`ok: all ${urls.length} docs pages (${scheme}) — top bar, breadcrumb, no page errors, axe clean`);
   }
   // The in-game reader (#630): '?' opens the world's Field guide page over the
   // running world; the clock keeps advancing; a docs link stays in the reader;

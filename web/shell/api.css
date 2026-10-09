@@ -29,3 +29,7 @@ span.mlabel { background: #475569; color: #ffffff; border-color: #475569; }
 :root[data-night="1"] .memname, :root[data-night="1"] .groupheader { color: #eef3fa !important; }
 :root[data-night="1"] a, :root[data-night="1"] a.el { color: #93c5fd !important; }
 :root[data-night="1"] .footer, :root[data-night="1"] #MSearchField { color: #cbd5e1 !important; background: transparent !important; }
+
+/* the breadcrumb (shell.css) above Doxygen's own header */
+body > .ahn-crumb { margin: 12px 12px 8px; padding: 8px 14px; border: 1px solid var(--ahn-border);
+  border-radius: 14px; background: var(--ahn-card); }
