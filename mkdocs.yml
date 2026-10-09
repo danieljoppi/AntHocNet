@@ -2,7 +2,7 @@ site_name: AntHocNet
 site_description: >-
   AntHocNet — an ant-colony-optimization MANET routing protocol implemented once
   as a simulator-agnostic core, with thin NS-2 and NS-3 adapters.
-site_url: https://danieljoppi.github.io/AntHocNet/
+site_url: https://danieljoppi.github.io/AntHocNet/docs/
 repo_url: https://github.com/danieljoppi/AntHocNet
 repo_name: danieljoppi/AntHocNet
 edit_uri: edit/main/docs/
@@ -76,9 +76,9 @@ markdown_extensions:
 # When that map changes, change this with it.
 nav:
   - README.md
-  # Built next to the docs by pages.yml (#542): the WASM playground and the
-  # Doxygen reference. Absolute URLs: they are not mkdocs pages.
-  - Learn by playing: https://danieljoppi.github.io/AntHocNet/learn/
+  # Built next to the docs by pages.yml (#542): the WASM game (the site's
+  # front page) and the Doxygen reference. Absolute URLs: not mkdocs pages.
+  - Learn by playing: https://danieljoppi.github.io/AntHocNet/
   - API reference: https://danieljoppi.github.io/AntHocNet/api/
   - Understand the protocol:
       - ant-colony-routing.md

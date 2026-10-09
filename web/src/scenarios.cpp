@@ -26,7 +26,9 @@ void line(World& w) {
 }
 
 void manet(World& w) {
-    // The default ad hoc world: random waypoint on an open field.
+    // The default ad hoc world: phones on an open field. Two in three are
+    // carried (random waypoint); every third one stays put, so the map shows
+    // a MANET as it is -- some devices walking through, some standing still.
     SplitMix64 r = placement(w);
     w.setArea(1000, 1000, 0);
     w.setDiskChannel(250);
@@ -38,7 +40,7 @@ void manet(World& w) {
     for (int i = 0; i < 30; ++i) {
         const double x = r.uniform() * 1000, y = r.uniform() * 1000;
         const int n = w.addNode(x, y, 0);
-        w.setMobility(n, m);
+        if (i % 3 != 2) w.setMobility(n, m);
     }
     w.addFlow(0, 29, 2, 5, 1e9);
     w.addFlow(7, 18, 2, 6, 1e9);
@@ -93,7 +95,7 @@ void vanet(World& w) {
     for (int i = 0; i < 30; ++i) {
         const double x = r.uniform() * 800, y = r.uniform() * 800;
         const int n = w.addNode(x, y, 0);
-        w.setMobility(n, m);
+        if (i % 3 != 2) w.setMobility(n, m);
     }
     w.addFlow(0, 29, 2, 5, 1e9);
     w.addFlow(8, 21, 2, 6, 1e9);

@@ -96,3 +96,27 @@ breaks that, the gate fails rather than the game silently drifting.
 - **Inspection-only API gaps** (for example, the forwarding probability
   distribution a mission scores predictions against) are added to `core/` as
   const accessors with a core test, never computed in the adapter.
+
+## Amendment (2026-10-09): the game is the front page
+
+The maintainer moved the learn site from `/learn/` to the Pages root, so the
+first thing a visitor meets is the protocol running, not a page about it.
+
+- **Layout:** `/` is the game, `/docs/` the mkdocs site (`site_url` changed
+  with it), `/api/` the Doxygen reference. `pages.yml` builds the game first
+  (`web/build-site.sh` empties its output directory), then the docs into
+  `site/docs/`, then the API reference.
+- **Old URLs keep working.** `web/site-redirects.sh` writes a stub at every
+  old docs path (`/<page>/` → `/docs/<page>/`, query and hash carried over)
+  and at `/learn/` → `/`, and copies the docs' 404 page to the root. It
+  refuses to overwrite a game file, so a docs page can never shadow the game.
+- **The default world shows mobility.** The MANET world's nodes are phones;
+  every third one stays put and the rest walk (random waypoint, unchanged
+  speeds). A phone the player places is a static relay. The renderer infers
+  speed and heading from successive positions (presentation only, nothing
+  feeds back into the adapter) and draws footprints and a heading chevron,
+  so movement is visible at teaching speeds. The smoke test checks the mix.
+- Every other world's node is drawn as the device it stands for: mesh
+  routers on poles, cars oriented along the street, quadcopters, satellites
+  with solar wings. Decoration only; the identity colours of ants and
+  packets are unchanged.

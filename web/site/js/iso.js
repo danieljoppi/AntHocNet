@@ -1,11 +1,16 @@
 // Isometric city-builder renderer for the learn site (#545). The map is the
 // world the WASM core simulates, seen at a 2:1 isometric angle: ground tiles,
-// roads and buildings, radio towers / drones / cars / satellites as nodes,
-// ants walking the pheromone trails, packets riding the radio beams.
+// roads and buildings, phones / mesh routers / drones / cars / satellites as
+// nodes, ants walking the pheromone trails, packets riding the radio beams.
+// Moving nodes leave a fading trail and show their heading, so a MANET reads
+// as people walking, not as a static plan.
 //
 // It draws what the core and the adapter report and decides nothing. All art
 // is procedural (no image assets); colours come from the CSS tokens so the
 // day (light) and night (dark) palettes stay the validated steps.
+
+// Vehicle paints (decoration only, never an identity colour).
+const CAR_PAINT = ['#c0392b', '#2e5aa8', '#e8e6df', '#3f4a59', '#d9a21b', '#2f7d5b'];
 
 const KIND_VAR = {
   hello: '--c-hello', reactive: '--c-reactive', backward: '--c-backward',
@@ -30,6 +35,7 @@ export class IsoRenderer {
     this.panX = 0;
     this.panY = 0;
     this.colors = {};
+    this.still = window.matchMedia('(prefers-reduced-motion: reduce)').matches; // no rotor spin
     this.refreshColors();
   }
 
@@ -37,7 +43,7 @@ export class IsoRenderer {
     const cs = getComputedStyle(document.documentElement);
     const v = (n) => cs.getPropertyValue(n).trim();
     const c = {};
-    for (const n of ['sky', 'grass-a', 'grass-b', 'grass-edge', 'road', 'road-mark', 'tree',
+    for (const n of ['sky', 'sky-top', 'slab-right', 'phone', 'phone-edge', 'screen', 'trail', 'grass-a', 'grass-b', 'grass-edge', 'road', 'road-mark', 'tree',
       'tree-dark', 'trunk', 'bldg-top', 'bldg-left', 'bldg-right', 'window', 'window-lit',
       'space', 'star', 'tower', 'tower-dark', 'node-off', 'beam', 'ph', 'accent', 'good',
       'critical', 'text', 'text2', 'shadow', 'panel', 'panel-blue']) c[n] = v('--' + n);
@@ -51,6 +57,7 @@ export class IsoRenderer {
   /** World geometry, read once per world from the WASM World. */
   setWorld(meta) {
     this.meta = meta;
+    this.motion = [];
     this.zoom = 1;
     this.panX = 0;
     this.panY = 0;
@@ -156,9 +163,12 @@ export class IsoRenderer {
     const x = pos[4 * i], y = pos[4 * i + 1], z = pos[4 * i + 2];
     const [px, py] = this.project(x, y, z);
     const k = this.kind;
-    const lift = k === 'field' ? 26 : k === 'city' ? 14 : 4;
-    return [px, py - lift * Math.min(1.6, Math.max(0.7, this.zoom))];
+    const lift = k === 'field' ? (this.meta.sprite === 'phone' ? 20 : 26) : k === 'city' ? 14 : 4;
+    return [px, py - lift * this.spriteScale()];
   }
+
+  /** Node icon size: grows with zoom, within limits, so devices stay legible. */
+  spriteScale() { return 1.25 * Math.min(2.2, Math.max(0.8, this.zoom)); }
 
   /** Index of the node under (px, py), or -1. */
   hit(pos, px, py) {
@@ -192,6 +202,33 @@ export class IsoRenderer {
       Math.abs(pos[4 * a + 1] - pos[4 * b + 1]) > this.meta.areaY / 2;
   }
 
+  // --- motion (what the renderer infers from successive positions) ------------
+  /** Track speed, heading and a short footprint trail per node, in sim time. */
+  track(pos, simNow) {
+    const n = pos.length / 4;
+    const step = Math.max(this.meta.areaX, this.meta.areaY) / 70; // footprint spacing (m)
+    for (let i = 0; i < n; i++) {
+      const x = pos[4 * i], y = pos[4 * i + 1];
+      let m = this.motion[i];
+      if (!m || simNow < m.t) m = this.motion[i] = { x, y, t: simNow, speed: 0, dx: 0, dy: 0, trail: [] };
+      const dx = x - m.x, dy = y - m.y, d = Math.hypot(dx, dy), dt = simNow - m.t;
+      if (dt >= 0.25) {
+        m.speed = d / dt;
+        if (d > 1e-6) { m.dx = dx / d; m.dy = dy / d; }
+        m.x = x; m.y = y; m.t = simNow;
+      }
+      const last = m.trail[m.trail.length - 1];
+      if (!last || Math.hypot(x - last[0], y - last[1]) > step) {
+        if (last && Math.hypot(x - last[0], y - last[1]) > step * 6) m.trail.length = 0; // a drag or a wrap
+        m.trail.push([x, y]);
+        if (m.trail.length > 12) m.trail.shift();
+      }
+    }
+  }
+
+  /** Last measured speed of node i (m/s of simulated time). */
+  speedOf(i) { return this.motion?.[i]?.speed || 0; }
+
   // --- drawing ------------------------------------------------------------------
   draw(s) {
     const { ctx, colors: c } = this;
@@ -200,6 +237,40 @@ export class IsoRenderer {
     this.drawGround();
     const pos = s.positions;
     const n = pos.length / 4;
+    if (this.kind !== 'space') this.track(pos, s.simNow || 0);
+
+    // The selected node's radio range: who can hear it right now.
+    if (s.selected >= 0 && s.selected < n && this.kind !== 'space' && this.meta.range > 0) {
+      const [px, py] = this.project(pos[4 * s.selected], pos[4 * s.selected + 1], 0);
+      const R = this.meta.range * this.c * Math.SQRT2;
+      ctx.save();
+      ctx.fillStyle = c.accent;
+      ctx.globalAlpha = 0.08;
+      ctx.beginPath(); ctx.ellipse(px, py, R, R / 2, 0, 0, 2 * Math.PI); ctx.fill();
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = c.accent;
+      ctx.setLineDash([6, 5]);
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Footprints: where each moving node has just been.
+    if (this.kind !== 'space') {
+      ctx.save();
+      ctx.fillStyle = c.trail;
+      for (let i = 0; i < n; i++) {
+        const m = this.motion[i];
+        if (!m || m.speed < 0.05 || m.trail.length < 2) continue;
+        const T = m.trail;
+        for (let k = 0; k < T.length - 1; k++) {
+          const [px, py] = this.project(T[k][0], T[k][1], 0);
+          ctx.globalAlpha = 0.1 + 0.4 * (k / T.length);
+          ctx.beginPath(); ctx.ellipse(px, py, 3, 1.5, 0, 0, 2 * Math.PI); ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
 
     // Pheromone trails: glowing paths on the ground (in the air for drones and
     // satellites), one stroke per (node -> neighbour) toward the watched node.
@@ -263,7 +334,10 @@ export class IsoRenderer {
       flowEnds.set(f.src, (flowEnds.get(f.src) || '') + ` S${f.id}`);
       flowEnds.set(f.dst, (flowEnds.get(f.dst) || '') + ` D${f.id}`);
     }
-    for (const i of order) this.drawNode(pos, i, s, flowEnds.get(i));
+    for (const i of order) {
+      this.heading(pos, i);
+      this.drawNode(pos, i, s, flowEnds.get(i));
+    }
 
     // Ants and packets in transit.
     for (const f of s.flights) {
@@ -298,6 +372,23 @@ export class IsoRenderer {
       const [px, py] = this.project(s.ghost[0], s.ghost[1], 0);
       this.groundDiamond(px, py, 12, c.accent, 0.5);
     }
+  }
+
+  /** A small ground chevron ahead of a moving node, pointing where it walks. */
+  heading(pos, i) {
+    const m = this.motion[i];
+    if (!m || m.speed < 0.05 || this.kind === 'space') return;
+    const { ctx, colors: c } = this;
+    const x = pos[4 * i], y = pos[4 * i + 1];
+    const L = 16 / this.c, W = 5 / this.c;
+    const tip = this.project(x + m.dx * (L + 6 / this.c), y + m.dy * (L + 6 / this.c), 0);
+    const l = this.project(x + m.dx * L - m.dy * W, y + m.dy * L + m.dx * W, 0);
+    const r = this.project(x + m.dx * L + m.dy * W, y + m.dy * L - m.dx * W, 0);
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = c.accent;
+    ctx.beginPath(); ctx.moveTo(tip[0], tip[1]); ctx.lineTo(l[0], l[1]); ctx.lineTo(r[0], r[1]); ctx.closePath(); ctx.fill();
+    ctx.restore();
   }
 
   trailEnds(pos, a, b) {
@@ -370,7 +461,14 @@ export class IsoRenderer {
   paintGround() {
     const { ctx, colors: c, meta } = this;
     const W = meta.areaX, H = meta.areaY;
-    ctx.fillStyle = this.kind === 'space' ? c.space : c.sky;
+    if (this.kind === 'space') {
+      ctx.fillStyle = c.space;
+    } else {
+      const g = ctx.createLinearGradient(0, 0, 0, this.h);
+      g.addColorStop(0, c['sky-top']);
+      g.addColorStop(1, c.sky);
+      ctx.fillStyle = g;
+    }
     ctx.fillRect(0, 0, this.w, this.h);
 
     if (this.kind === 'space') {
@@ -393,13 +491,15 @@ export class IsoRenderer {
       return;
     }
 
-    // Grass tiles with a soft checker, plus the slab edge for depth.
+    // Grass tiles with a little per-tile variation and a faint build grid,
+    // plus the slab edge for depth.
     const nT = 20;
     const tx = W / nT, ty = H / nT;
     this.slab();
+    const grid = c.night ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
     for (let i = 0; i < nT; i++) {
       for (let j = 0; j < nT; j++) {
-        this.tile(i * tx, j * ty, (i + 1) * tx, (j + 1) * ty, (i + j) % 2 ? c['grass-a'] : c['grass-b']);
+        this.tile(i * tx, j * ty, (i + 1) * tx, (j + 1) * ty, hash2(i + 3, j + 5) < 0.5 ? c['grass-a'] : c['grass-b'], grid);
       }
     }
 
@@ -440,12 +540,15 @@ export class IsoRenderer {
     const left = this.project(...this.unrotate(0, V));
     const right = this.project(...this.unrotate(U, 0));
     const th = 18; // slab thickness, constant on screen
-    ctx.fillStyle = c['grass-edge'];
-    ctx.beginPath();
-    ctx.moveTo(left[0], left[1]); ctx.lineTo(near[0], near[1]); ctx.lineTo(right[0], right[1]);
-    ctx.lineTo(right[0], right[1] + th); ctx.lineTo(near[0], near[1] + th); ctx.lineTo(left[0], left[1] + th);
-    ctx.closePath();
-    ctx.fill();
+    // Two faces, two shades: the light falls from the right.
+    for (const [a, fill] of [[left, c['grass-edge']], [right, c['slab-right']]]) {
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1]); ctx.lineTo(near[0], near[1]);
+      ctx.lineTo(near[0], near[1] + th); ctx.lineTo(a[0], a[1] + th);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 
   box(x0, y0, x1, y1, h, seed) {
@@ -508,84 +611,58 @@ export class IsoRenderer {
     const [bx, by] = this.project(x, y, 0);
     const [ax, ay] = this.antenna(pos, i);
     const k = this.kind;
-    const zs = Math.min(1.6, Math.max(0.7, this.zoom));
+    const zs = this.spriteScale();
     const body = up ? c.tower : c['node-off'];
     const flash = s.flash && s.flash.get(i);
 
     if (i === s.selected) this.groundDiamond(bx, by, 16 * zs, c.accent, 0.45);
 
-    if (k === 'sky') {
-      // Drone: shadow on the ground, a faint plumb line, the body in the air.
-      ctx.save();
-      ctx.globalAlpha = 0.25;
-      ctx.fillStyle = c.shadow;
-      ctx.beginPath(); ctx.ellipse(bx, by, 7 * zs, 3.5 * zs, 0, 0, 2 * Math.PI); ctx.fill();
-      ctx.globalAlpha = 0.18;
-      ctx.strokeStyle = c.shadow;
-      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ax, ay); ctx.stroke();
-      ctx.restore();
-      ctx.strokeStyle = body;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(ax - 6 * zs, ay - 3 * zs); ctx.lineTo(ax + 6 * zs, ay + 3 * zs);
-      ctx.moveTo(ax + 6 * zs, ay - 3 * zs); ctx.lineTo(ax - 6 * zs, ay + 3 * zs);
-      ctx.stroke();
-      ctx.fillStyle = body;
-      for (const [dx, dy] of [[-6, -3], [6, 3], [6, -3], [-6, 3]]) {
-        ctx.beginPath(); ctx.ellipse(ax + dx * zs, ay + dy * zs, 3 * zs, 1.5 * zs, 0, 0, 2 * Math.PI); ctx.fill();
-      }
-    } else if (k === 'space') {
-      // Satellite: a body and two solar panels.
-      ctx.fillStyle = up ? c['panel-blue'] : c['node-off'];
-      ctx.fillRect(ax - 13 * zs, ay - 2 * zs, 8 * zs, 4 * zs);
-      ctx.fillRect(ax + 5 * zs, ay - 2 * zs, 8 * zs, 4 * zs);
-      ctx.fillStyle = body;
-      ctx.fillRect(ax - 4 * zs, ay - 4 * zs, 8 * zs, 8 * zs);
-    } else if (k === 'city') {
-      // Car with a roof antenna.
-      ctx.fillStyle = c.shadow;
-      ctx.globalAlpha = 0.25;
-      ctx.beginPath(); ctx.ellipse(bx, by, 7 * zs, 3.5 * zs, 0, 0, 2 * Math.PI); ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = body;
-      ctx.beginPath();
-      ctx.moveTo(bx - 7 * zs, by - 2 * zs); ctx.lineTo(bx, by - 5.5 * zs); ctx.lineTo(bx + 7 * zs, by - 2 * zs);
-      ctx.lineTo(bx + 7 * zs, by - 6 * zs); ctx.lineTo(bx, by - 9.5 * zs); ctx.lineTo(bx - 7 * zs, by - 6 * zs);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = body;
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(bx, by - 8 * zs); ctx.lineTo(ax, ay); ctx.stroke();
-    } else {
-      // Radio tower: a small concrete base and a lattice mast.
-      ctx.fillStyle = c.shadow;
-      ctx.globalAlpha = 0.2;
-      ctx.beginPath(); ctx.ellipse(bx, by, 7 * zs, 3.5 * zs, 0, 0, 2 * Math.PI); ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = up ? c['tower-dark'] : c['node-off'];
-      ctx.beginPath();
-      ctx.moveTo(bx - 5 * zs, by - 1 * zs); ctx.lineTo(bx, by + 1.5 * zs); ctx.lineTo(bx + 5 * zs, by - 1 * zs);
-      ctx.lineTo(bx + 5 * zs, by - 4 * zs); ctx.lineTo(bx, by - 1.5 * zs); ctx.lineTo(bx - 5 * zs, by - 4 * zs);
+    if (k === 'sky') this.drone(bx, by, ax, ay, up, zs, i);
+    else if (k === 'space') this.satellite(ax, ay, up, zs);
+    else if (k === 'city') this.car(pos, i, up, zs);
+    else if (this.meta.sprite === 'phone') {
+      // Mobile phone, standing upright: a slab with real thickness (the
+      // right-hand edge), a lit screen, an earpiece and a home bar.
+      this.shadowAt(bx, by, 7 * zs, 0.22);
+      const w = 10 * zs, h = 17 * zs, t = 2.2 * zs, x0 = bx - w / 2, y0 = by - 2 * zs - h;
+      ctx.fillStyle = up ? c.phone : c['node-off'];
+      ctx.beginPath(); // side edge, receding up-right
+      ctx.moveTo(x0 + w - 1, y0 + 2 * zs); ctx.lineTo(x0 + w + t, y0 + 2 * zs - t / 2);
+      ctx.lineTo(x0 + w + t, y0 + h - 2 * zs - t / 2); ctx.lineTo(x0 + w - 1, y0 + h - 2 * zs);
       ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = body;
-      ctx.lineWidth = 1.5;
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fill();
       ctx.beginPath();
-      ctx.moveTo(bx - 3 * zs, by - 3 * zs); ctx.lineTo(ax, ay);
-      ctx.moveTo(bx + 3 * zs, by - 3 * zs); ctx.lineTo(ax, ay);
+      ctx.roundRect(x0, y0, w, h, 2.4 * zs);
+      ctx.fillStyle = up ? c.phone : c['node-off'];
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = c['phone-edge'];
+      ctx.globalAlpha = 0.6;
       ctx.stroke();
-      ctx.lineWidth = 0.8;
+      ctx.globalAlpha = 1;
       ctx.beginPath();
-      for (let q = 1; q < 4; q++) {
-        const f = q / 4;
-        ctx.moveTo(bx - 3 * zs * (1 - f), by - 3 * zs + (ay - by + 3 * zs) * f);
-        ctx.lineTo(bx + 3 * zs * (1 - f), by - 3 * zs + (ay - by + 3 * zs) * f);
+      ctx.roundRect(x0 + 1.2 * zs, y0 + 2.6 * zs, w - 2.4 * zs, h - 5.4 * zs, 1.2 * zs);
+      if (up) {
+        const g = ctx.createLinearGradient(x0, y0, x0 + w, y0 + h);
+        g.addColorStop(0, flash ? c[flash] : c.screen);
+        g.addColorStop(1, c['panel-blue']);
+        ctx.fillStyle = g;
+      } else {
+        ctx.fillStyle = c.phone;
       }
-      ctx.stroke();
+      ctx.fill();
+      ctx.fillStyle = c['phone-edge'];
+      ctx.globalAlpha = 0.7;
+      ctx.fillRect(bx - 1.5 * zs, y0 + 1.1 * zs, 3 * zs, 0.7 * zs);       // earpiece
+      ctx.fillRect(bx - 2 * zs, y0 + h - 1.8 * zs, 4 * zs, 0.7 * zs);    // home bar
+      ctx.globalAlpha = 1;
+    } else {
+      this.router(bx, by, ay, up, zs);
     }
 
     // Antenna light: lit in the colour of whatever it just transmitted.
     ctx.beginPath();
-    ctx.arc(ax, ay, (flash ? 3.5 : 2.2) * zs, 0, 2 * Math.PI);
+    ctx.arc(ax, ay, (flash ? 2.8 : 1.6) * zs / 1.25, 0, 2 * Math.PI);
     ctx.fillStyle = flash ? c[flash] : (up ? c.critical : c['node-off']);
     ctx.fill();
     if (!up) {
@@ -607,6 +684,181 @@ export class IsoRenderer {
       ctx.strokeText(text, tx, ty);
       ctx.fillStyle = c.text;
       ctx.fillText(text, tx, ty);
+    }
+  }
+
+  /** A screen-space isometric cube: ground centre (cx, cy), half-width a,
+   *  height h, raised by e; faces top / left / right. */
+  cube(cx, cy, a, h, e, top, left, right) {
+    const { ctx } = this;
+    const y0 = cy - e, y1 = cy - e - h;
+    const face = (pts, fill) => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+    };
+    face([[cx - a, y1], [cx, y1 + a / 2], [cx, y0 + a / 2], [cx - a, y0]], left);
+    face([[cx, y1 + a / 2], [cx + a, y1], [cx + a, y0], [cx, y0 + a / 2]], right);
+    face([[cx, y1 - a / 2], [cx + a, y1], [cx, y1 + a / 2], [cx - a, y1]], top);
+  }
+
+  shadowAt(x, y, rx, alpha = 0.22) {
+    const { ctx, colors: c } = this;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = c.shadow;
+    ctx.beginPath(); ctx.ellipse(x, y, rx, rx / 2, 0, 0, 2 * Math.PI); ctx.fill();
+    ctx.restore();
+  }
+
+  /** Quadcopter: ground shadow and plumb line, X frame, four spinning rotors. */
+  drone(bx, by, ax, ay, up, zs, i) {
+    const { ctx, colors: c } = this;
+    this.shadowAt(bx, by, 8 * zs, 0.25);
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.strokeStyle = c.shadow;
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ax, ay + 4 * zs); ctx.stroke();
+    ctx.restore();
+    const cy = ay + 4 * zs, body = up ? c.tower : c['node-off'];
+    const arms = [[-8, -4], [8, -4], [8, 4], [-8, 4]];
+    ctx.strokeStyle = body;
+    ctx.lineWidth = 2 * zs;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(ax + arms[0][0] * zs, cy + arms[0][1] * zs); ctx.lineTo(ax + arms[2][0] * zs, cy + arms[2][1] * zs);
+    ctx.moveTo(ax + arms[1][0] * zs, cy + arms[1][1] * zs); ctx.lineTo(ax + arms[3][0] * zs, cy + arms[3][1] * zs);
+    ctx.stroke();
+    const spin = up && !this.still ? (this.t / 40 + i) % (2 * Math.PI) : 0.6;
+    for (const [dx, dy] of arms) {
+      const rx = ax + dx * zs, ry = cy + dy * zs - 1.5 * zs;
+      ctx.fillStyle = body;
+      ctx.globalAlpha = 0.18;
+      ctx.beginPath(); ctx.ellipse(rx, ry, 5 * zs, 2.5 * zs, 0, 0, 2 * Math.PI); ctx.fill();
+      ctx.globalAlpha = 0.9;
+      ctx.lineWidth = 1.2 * zs;
+      ctx.beginPath();
+      ctx.moveTo(rx - Math.cos(spin) * 5 * zs, ry - Math.sin(spin) * 2.5 * zs);
+      ctx.lineTo(rx + Math.cos(spin) * 5 * zs, ry + Math.sin(spin) * 2.5 * zs);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    ctx.beginPath();
+    ctx.roundRect(ax - 4 * zs, cy - 3 * zs, 8 * zs, 6 * zs, 2 * zs);
+    ctx.fillStyle = body;
+    ctx.fill();
+    ctx.lineCap = 'butt';
+  }
+
+  /** Satellite: gold-foil bus, two ribbed solar wings on a boom, a dish. */
+  satellite(ax, ay, up, zs) {
+    const { ctx, colors: c } = this;
+    const panel = up ? c['panel-blue'] : c['node-off'];
+    ctx.strokeStyle = up ? c.star : c['node-off'];
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(ax - 7 * zs, ay); ctx.lineTo(ax + 7 * zs, ay); ctx.stroke();
+    for (const side of [-1, 1]) {
+      // A wing: a parallelogram (the panel seen at the isometric angle) with cell ribs.
+      const x0 = ax + side * 7 * zs, x1 = ax + side * 19 * zs;
+      const P = [[x0, ay - 4 * zs], [x1, ay - 4 * zs + side * 2 * zs], [x1, ay + 4 * zs + side * 2 * zs], [x0, ay + 4 * zs]];
+      ctx.beginPath();
+      ctx.moveTo(P[0][0], P[0][1]);
+      for (let k = 1; k < 4; k++) ctx.lineTo(P[k][0], P[k][1]);
+      ctx.closePath();
+      ctx.fillStyle = panel;
+      ctx.fill();
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = c.star;
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      for (let q = 1; q < 4; q++) {
+        const f = q / 4;
+        ctx.moveTo(P[0][0] + (P[1][0] - P[0][0]) * f, P[0][1] + (P[1][1] - P[0][1]) * f);
+        ctx.lineTo(P[3][0] + (P[2][0] - P[3][0]) * f, P[3][1] + (P[2][1] - P[3][1]) * f);
+      }
+      ctx.moveTo((P[0][0] + P[3][0]) / 2, (P[0][1] + P[3][1]) / 2);
+      ctx.lineTo((P[1][0] + P[2][0]) / 2, (P[1][1] + P[2][1]) / 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    const gold = up ? '#d4a72c' : c['node-off'];
+    this.cube(ax, ay + 4 * zs, 5 * zs, 8 * zs, 0, up ? '#f0cf6a' : c['node-off'], gold, up ? '#a77f17' : c['node-off']);
+    // Dish on top, facing the viewer.
+    ctx.fillStyle = up ? '#f4f4f5' : c['node-off'];
+    ctx.beginPath(); ctx.ellipse(ax + 1 * zs, ay - 6 * zs, 3.4 * zs, 1.8 * zs, -0.4, 0, 2 * Math.PI); ctx.fill();
+  }
+
+  /** Car: an oriented box with a glass cabin, coloured per vehicle, driving
+   *  along its heading; a shark-fin antenna on the roof. */
+  car(pos, i, up, zs) {
+    const { colors: c } = this;
+    const x = pos[4 * i], y = pos[4 * i + 1];
+    const m = this.motion[i];
+    const moved = m && (m.dx || m.dy);
+    const dx = moved ? m.dx : 1, dy = moved ? m.dy : 0;
+    const L = 8 * zs / this.c, W = 4 * zs / this.c; // half-length / half-width in metres (screen-sized)
+    const corner = (fl, fw) => [x + dx * L * fl - dy * W * fw, y + dy * L * fl + dx * W * fw];
+    const [gx, gy] = this.project(x, y, 0);
+    this.shadowAt(gx, gy + 1, 10 * zs, 0.25);
+    const paint = up ? CAR_PAINT[i % CAR_PAINT.length] : c['node-off'];
+    this.prism([corner(1, 1), corner(1, -1), corner(-1, -1), corner(-1, 1)], 1 * zs, 4.5 * zs, paint);
+    this.prism([corner(0.4, 0.8), corner(0.4, -0.8), corner(-0.6, -0.8), corner(-0.6, 0.8)], 4.5 * zs, 8 * zs,
+      up ? (c.night ? '#1e293b' : '#334155') : c['node-off'], paint);
+    const [ax, ay] = this.antenna(pos, i);
+    this.ctx.strokeStyle = up ? c.tower : c['node-off'];
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath(); this.ctx.moveTo(gx, gy - 9 * zs); this.ctx.lineTo(ax, ay); this.ctx.stroke();
+  }
+
+  /** Extrude a ground polygon (world x, y) between screen heights h0 and h1. */
+  prism(poly, h0, h1, fill, topFill) {
+    const { ctx } = this;
+    const pts = poly.map(([x, y]) => this.project(x, y, 0));
+    const walls = pts.map((p, k) => [p, pts[(k + 1) % pts.length], this.depth(...poly[k]) + this.depth(...poly[(k + 1) % poly.length])]);
+    walls.sort((a, b) => a[2] - b[2]);
+    for (const [a, b] of walls) {
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1] - h0); ctx.lineTo(b[0], b[1] - h0); ctx.lineTo(b[0], b[1] - h1); ctx.lineTo(a[0], a[1] - h1);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1] - h1);
+    for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1] - h1);
+    ctx.closePath();
+    ctx.fillStyle = topFill || fill;
+    ctx.fill();
+  }
+
+  /** Wi-Fi mesh router on a pole: a white box with two antennas. */
+  router(bx, by, ay, up, zs) {
+    const { ctx, colors: c } = this;
+    this.shadowAt(bx, by, 6 * zs, 0.2);
+    const pole = up ? c['tower-dark'] : c['node-off'];
+    ctx.strokeStyle = pole;
+    ctx.lineWidth = 2 * zs;
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx, by - 12 * zs); ctx.stroke();
+    const e = 12 * zs;
+    this.cube(bx, by, 6 * zs, 4 * zs, e, up ? '#f8fafc' : c['node-off'], up ? '#cbd5e1' : c['node-off'], up ? '#94a3b8' : c['node-off']);
+    ctx.strokeStyle = up ? c.tower : c['node-off'];
+    ctx.lineWidth = 1.4 * zs;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(bx - 4 * zs, by - e - 3 * zs); ctx.lineTo(bx - 5 * zs, ay + 1 * zs);
+    ctx.moveTo(bx + 4 * zs, by - e - 3 * zs); ctx.lineTo(bx + 5 * zs, ay + 1 * zs);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    if (up) { // status LEDs on the front face
+      ctx.fillStyle = c.good;
+      for (const q of [-2, 0, 2]) ctx.fillRect(bx + 1.5 * zs + q * zs, by - e - 1 * zs + q * 0.25 * zs, 1.1 * zs, 1.1 * zs);
     }
   }
 

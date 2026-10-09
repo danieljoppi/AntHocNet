@@ -82,6 +82,7 @@ async function load(worldId, seed, opts = {}) {
   R.setWorld({
     areaX: w.areaX(), areaY: w.areaY(), areaZ: w.areaZ(), channel: w.channel(),
     blocksX: w.blocksX(), blocksY: w.blocksY(), streetWidth: w.streetWidth(), range: w.range(),
+    sprite: worldById(playground.worldId).sprite,
   });
   $('world').value = playground.worldId;
   $('seed').value = seed;
@@ -331,7 +332,9 @@ function renderInspector(w) {
   const dests = Array.from(w.destinations(i));
   const frag = document.createDocumentFragment();
   const p = document.createElement('p');
-  p.innerHTML = `<strong>Node ${i}</strong> · ${up ? 'on the air' : 'switched off'} · ${w.pendingCount(i)} packet(s) waiting · routes to ${dests.length} node(s)`;
+  const v = R.speedOf(i);
+  const motion = playground.worldId === 'satellite' ? '' : v > 0.05 ? ` · <span class="chip">moving ${v.toFixed(1)} m/s</span>` : ' · <span class="chip">standing still</span>';
+  p.innerHTML = `<strong>Node ${i}</strong> · ${up ? 'on the air' : 'switched off'}${motion} · ${w.pendingCount(i)} packet(s) waiting · routes to ${dests.length} node(s)`;
   frag.append(p);
   if (d >= 0 && d !== i) {
     const row = w.pheromone(i, d);
@@ -407,7 +410,7 @@ function frame(ts) {
     anim.marks = prog(anim.marks).slice(-200);
     for (const [n, until] of flashUntil) if (until < ts) { flashUntil.delete(n); flash.delete(n); }
     R.draw({
-      time: ts, positions: w.positions(), links: w.links(), pheromone: pheromoneEdges(w),
+      time: ts, simNow: w.now(), positions: w.positions(), links: w.links(), pheromone: pheromoneEdges(w),
       showLinks: $('ovLinks').checked, labels: $('ovLabels').checked,
       flights: anim.flights, rings: anim.rings, marks: anim.marks, flash,
       flows: playground.flows, selected: playground.selected, tool: playground.tool,
@@ -435,8 +438,9 @@ function inField(x, y) {
 
 function mobilityFor(world) {
   // New nodes move like the world's own (ADR-0019: the scenario's mobility).
+  // The ad hoc world mixes walkers and phones that stay put; a phone the
+  // player places is a relay, so it stays where it was put.
   switch (world) {
-    case 'manet': return [1, 2, 10, 5, false];
     case 'fanet': return [2, 20, 0.85, 0, true];
     case 'vanet': return [3, 10, 20, 0, false];
     default: return null;
@@ -647,6 +651,22 @@ function buildLegend() {
   }
 }
 
+// The front-page welcome card: shown until dismissed once (per browser).
+function welcome(fresh) {
+  const card = $('welcome');
+  if (!fresh || safeStore('get', 'ahn-welcome') === 'seen') return;
+  const close = () => { card.hidden = true; safeStore('set', 'ahn-welcome', 'seen'); };
+  card.hidden = false;
+  $('welcomeClose').addEventListener('click', close);
+  $('welcomeExplore').addEventListener('click', () => { close(); mapEl.focus({ preventScroll: true }); });
+  $('welcomePlay').addEventListener('click', () => {
+    close();
+    const first = document.querySelector('#missionBody .missions button');
+    if (first) first.click();
+    $('missionWin').scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'nearest' });
+  });
+}
+
 // --- boot ---------------------------------------------------------------------------------
 function parseHash() {
   const m = /^#([a-z]+)(?:\?seed=(\d+))?/.exec(location.hash);
@@ -660,9 +680,11 @@ async function boot() {
   setSpeed(0.25);
   setTool('inspect');
   $('toast').hidden = true;
+  const fresh = !location.hash; // a plain visit to the front page, not a shared run
   const h = parseHash();
   await load(h.world, h.seed);
   initMissions(playground);
+  welcome(fresh);
   requestAnimationFrame(frame);
 }
 boot().catch((err) => {
