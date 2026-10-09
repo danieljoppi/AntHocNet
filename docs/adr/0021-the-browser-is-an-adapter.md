@@ -120,3 +120,34 @@ first thing a visitor meets is the protocol running, not a page about it.
   routers on poles, cars oriented along the street, quadcopters, satellites
   with solar wings. Decoration only; the identity colours of ants and
   packets are unchanged.
+
+Follow-up the same day (maintainer: "they are not moving"; "the satellites
+should have different orbits"; "we should see the strongest pheromone route
+and when it changes"):
+
+- **Each world has a default playback speed** (`worlds.js` `speed`): 1x for
+  the moving worlds (MANET, FANET, VANET, satellites), 0.25x for the line and
+  the static mesh. At 0.25x a 6 m/s walker moved under 1 px/s and read as
+  static. MANET walkers now go 3-15 m/s (walking to cycling); a carried
+  phone bobs with its step.
+- **The satellite world orbits.** New `MobilityKind::Orbit` (circular,
+  inclination / RAAN / phase / rate, 0.25 s chords). Its sin/cos are
+  `detSin`/`detCos` -- range reduction plus a Taylor series, arithmetic
+  only -- because libm's transcendental functions are not guaranteed to
+  round identically natively and in WASM, and the parity gate needs
+  bit-identical positions. The world is a Walker delta: 8 planes x 8
+  satellites, 1200 km, 53 deg, RAAN 45 deg apart, phasing F = 1; one plane
+  shares one orbit. +grid links stay fixed (that is how real ISLs are
+  wired); their delay follows the changing distance. The teaching orbit
+  takes 120 s, ~55x a real 1200 km orbit, said on the world card. 1200 km
+  (not 550) keeps every +grid chord above the Earth with 8 x 8 satellites.
+  The renderer draws a globe (orthographic, 22 deg tilt), one ring per
+  orbital plane recovered from two position samples, and dims what is
+  behind the Earth.
+- **Strongest pheromone route.** For each flow the front end follows, from
+  the source, the neighbour with the most regular pheromone toward the
+  destination (the core's own table via `pheromone()`), and draws that path
+  as a bold trail with marching dashes. When it switches to a different
+  path it turns amber for 2 s, the news ticker and ant log say so, and a
+  status chip counts switches. It is a reading of the table, not a forced
+  route: data still samples next hops by pheromone^beta.

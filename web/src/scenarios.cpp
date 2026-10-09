@@ -27,15 +27,16 @@ void line(World& w) {
 
 void manet(World& w) {
     // The default ad hoc world: phones on an open field. Two in three are
-    // carried (random waypoint); every third one stays put, so the map shows
-    // a MANET as it is -- some devices walking through, some standing still.
+    // carried (random waypoint, 3-15 m/s: walking to cycling); every third
+    // one stays put, so the map shows a MANET as it is -- some devices moving
+    // through, some standing still.
     SplitMix64 r = placement(w);
     w.setArea(1000, 1000, 0);
     w.setDiskChannel(250);
     Mobility m;
     m.kind = MobilityKind::RandomWaypoint;
-    m.speedMin = 2;
-    m.speedMax = 10;
+    m.speedMin = 3;   // walking to cycling
+    m.speedMax = 15;
     m.pause = 5;
     for (int i = 0; i < 30; ++i) {
         const double x = r.uniform() * 1000, y = r.uniform() * 1000;
@@ -103,24 +104,41 @@ void vanet(World& w) {
 }
 
 void satellite(World& w) {
-    // The isl-grid snapshot: a 6 x 6 +grid torus, links fixed, delay tracking
-    // distance (1000 km spacing, so ~3.3 ms a hop).
-    const int k = 6;
-    const double s = 1.0e6;
-    w.setArea(k * s, k * s, 0);
+    // A Walker-delta constellation that actually orbits: 8 planes of 8
+    // satellites, 1200 km up, 53 deg inclination, planes 45 deg apart in RAAN,
+    // phasing F = 1. Satellites in one plane share an orbit; each plane is a
+    // different orbit. The +grid links are fixed (ahead / behind in the plane,
+    // same slot in the next plane, wrapping like a torus); their delay follows
+    // the real, changing distance. The teaching orbit takes 120 s, ~55x faster
+    // than a real 1200 km orbit (109 min), so the motion is visible.
+    constexpr int kPlanes = 8, kSlots = 8;
+    constexpr double kPi = 3.141592653589793;
+    constexpr double kEarth = 6.371e6, kAlt = 1.2e6;
+    w.setArea(2.2e7, 2.2e7, 0);  // the Earth's centre is the field's centre
     w.setIslChannel();
-    for (int i = 0; i < k; ++i)
-        for (int j = 0; j < k; ++j) w.addNode((i + 0.5) * s, (j + 0.5) * s, 0);
-    for (int i = 0; i < k; ++i) {
-        for (int j = 0; j < k; ++j) {
-            const int id = i * k + j;
-            w.addIslLink(id, ((i + 1) % k) * k + j);
-            w.addIslLink(id, i * k + (j + 1) % k);
+    Mobility m;
+    m.kind = MobilityKind::Orbit;
+    m.orbitRadius = kEarth + kAlt;
+    m.orbitInc = 53 * kPi / 180;
+    m.orbitRate = 2 * kPi / 120;
+    for (int p = 0; p < kPlanes; ++p) {
+        for (int s = 0; s < kSlots; ++s) {
+            m.orbitRaan = p * 2 * kPi / kPlanes;
+            m.orbitPhase = s * 2 * kPi / kSlots + p * 2 * kPi / (kPlanes * kSlots);
+            const int n = w.addNode(0, 0, 0);
+            w.setMobility(n, m);  // places it on its orbit
         }
     }
-    w.addFlow(0, 21, 4, 3, 1e9);
-    w.addFlow(5, 30, 4, 4, 1e9);
-    w.addFlow(14, 35, 4, 5, 1e9);
+    for (int p = 0; p < kPlanes; ++p) {
+        for (int s = 0; s < kSlots; ++s) {
+            const int id = p * kSlots + s;
+            w.addIslLink(id, p * kSlots + (s + 1) % kSlots);
+            w.addIslLink(id, ((p + 1) % kPlanes) * kSlots + s);
+        }
+    }
+    w.addFlow(0, 36, 4, 3, 1e9);
+    w.addFlow(5, 50, 4, 4, 1e9);
+    w.addFlow(18, 61, 4, 5, 1e9);
 }
 
 }  // namespace
