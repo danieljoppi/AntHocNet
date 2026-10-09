@@ -104,7 +104,15 @@ core/
   CMakeLists.txt
 ns3/
   model/ helper/ examples/ test/   ← native NS-3 module
+  tools/                  ← benchmark harness drivers, chart scripts, anchors.yml
 web/                      ← browser adapter (core/ as WebAssembly) + learn site
+  site/                   ← the game (Pages front page); test/ parity.sh + smoke.mjs
+tools/
+  bench/                  ← shipped benchmark scripts (stats, parsing, scenario_check)
+  release/                ← install-bundle assembly + the package-contents gate
+api/                      ← Doxygen config (published at /api/)
+paper/                    ← paper source
+.claude/skills/           ← agent procedures (not shipped in releases)
 .github/workflows/ci.yml  ← core tests + NS-3 matrix + WASM parity
 ```
 
@@ -143,15 +151,28 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   `CHANGELOG.md`, a Commitizen-driven `Release` workflow that builds an
   install-bundle zip (Zenodo-ready); Conventional-Commit PR titles are
   CI-enforced (item 14).
-- **Agent tooling is script-first** (ADR-0014): the `.claude/skills/` scripts
+- **Agent tooling is script-first** (ADR-0014): shipped scripts in `tools/bench/`
   do benchmark parsing/A/B noise calls (`bench_parse.py`), campaign-CSV
   summaries (`sweep_summary.py`), scenario pre-flight + result-plausibility
-  validation (`scenario_check.py`, #134), and diff invariant checks — raw
-  tables and logs stay out of LLM context; only script verdicts are read.
+  validation (`scenario_check.py`, #134); the `.claude/skills/` hold the
+  procedures and the diff invariant checks — raw tables and logs stay out of
+  LLM context; only script verdicts are read. Release packages carry no agent
+  files (`tools/release/check-bundle.sh`, #604).
 - **Open work is tracked in GitHub issues**, prioritized via
   `priority:P1..P3` labels — see §10 for how to query it rather than trusting
   a list in this file.
-- **A 2026 roadmap exists** ([#298](https://github.com/danieljoppi/AntHocNet/issues/298)):
+- **v2.0.0 has shipped; the plan was replanned on 2026-10-09.** Five network
+  families are benchmarked (MANET, static mesh, VANET, FANET, satellite/ISL
+  including a Walker LEO constellation). The learn-site game is the project's
+  front page (GitHub Pages: game at `/`, docs at `/docs/`, API at `/api/`).
+  The entry point for "what next" is now
+  [`docs/roadmap.md`](docs/roadmap.md#replan-after-v200-accepted-2026-10-09):
+  v2.1.0 re-baseline → gated per-family mechanisms → disaster/SAGIN families →
+  swarm and learned comparators → v3.x secure protocols and attacks, with the
+  game campaign ([`docs/learn-campaign.md`](docs/learn-campaign.md)) and the
+  infrastructure track (#603) alongside. The research behind it is
+  [`docs/research-landscape-2026.md`](docs/research-landscape-2026.md).
+- **The original 2026 roadmap** ([#298](https://github.com/danieljoppi/AntHocNet/issues/298)):
   a literature gap analysis (recent MANET routing · satellite/LEO · evaluation
   methodology, all three survey reports attached to the issue) crossed against
   this repo's capability, with release goals **v1.3.0 → v3.0.0** and one epic

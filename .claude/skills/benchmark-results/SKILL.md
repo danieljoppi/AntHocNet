@@ -30,6 +30,11 @@ fetch cheap:
   saved file self-describing after the run's logs expire.
 - Otherwise fetch ~55 tail lines (the human table sits just above the
   upload/cleanup noise) and save it.
+- **Whole log to a file, not to context:** `mcp__github__get_job_logs` with
+  `return_content: false` returns a short-lived signed URL; `curl -sSL "$URL"
+  -o job.log` then works (the signed host is reachable even though `gh api`
+  cannot follow the blob redirect). Use it for long cells (leo-walker,
+  campaign logs) and grep/extract by script.
 
 Save each run's text to a file (one file per run); a leading `# <label>` line
 names the cell. Then run the parser — never eyeball tables or compute deltas by
@@ -189,6 +194,23 @@ sibling fall back to the materiality verdict and print no paired line, so
 pre-#319 campaigns still compare exactly as before.
 `--export-sweeps` is the bridge to the papers repo's `figures` skill
 (`plot_sweeps.py` reads that schema directly).
+
+## Satellite constellation cells (`ns3/tools/leo-summary.py`, #297)
+
+The leo-walker cells (`docs/benchmarks/cells/leo-<cell>-<arm>.txt`, one arm per
+file, 20 seeds) are summarised by script into the tables on
+`docs/benchmarks/satellite/leo-walker.md` — headline per arm with CIs, paired
+AntHocNet-vs-arm differences (oracles excluded: they are bounds), the handover
+family and route churn:
+
+```bash
+python3 ns3/tools/leo-summary.py walker16 starlink1 starlink1-storm
+```
+
+Paste its output; never retype the numbers. Validate each cell with
+`scenario_check.py results` first. The CI smoke for the harness itself
+(geometry, handover, every arm delivers, reproducibility) is
+`ns3/tools/check-leo-walker.sh <ns3-dir>`.
 
 ## Scenario validation (`scenario_check.py`, #134)
 

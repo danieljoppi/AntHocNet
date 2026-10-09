@@ -22,6 +22,11 @@ bad=$(printf '%s\n' "$changed" | grep -E '^core/(src|include)/' \
 if [ -n "$bad" ]; then say FAIL "core/ includes an NS header:"; echo "$bad" | sed 's/^/        /'; fail=1
 else say PASS "core/ has no NS-2/NS-3 headers"; fi
 
+# Rule 1 (browser) — core/ must not include emscripten either; WASM glue lives in web/.
+bad=$(printf '%s\n' "$changed" | grep -E '^core/(src|include)/' \
+      | while read -r f; do [ -f "$f" ] && grep -lE '#include\s*[<"]emscripten' "$f"; done)
+if [ -n "$bad" ]; then say FAIL "core/ includes an emscripten header (belongs in web/):"; echo "$bad" | sed 's/^/        /'; fail=1; fi
+
 # Rule 4 — a wire-format change must bump kWireVersion (+ both adapters, test_codec, doc).
 wire_touched=$(printf '%s\n' "$changed" | grep -E 'ant_message(\.h|_codec)' || true)
 if [ -n "$wire_touched" ]; then
@@ -29,7 +34,7 @@ if [ -n "$wire_touched" ]; then
     say PASS "wire files changed and kWireVersion is bumped"
   else
     say WARN "wire files changed but no kWireVersion bump in the diff:"; echo "$wire_touched" | sed 's/^/        /'
-    say WARN "  also update both adapter headers, test_codec.cpp, docs/wire-format.md"; warn=1
+    say WARN "  also update the ns-3 header (ns3/model/anthocnet-packet), test_codec.cpp, docs/wire-format.md"; warn=1
   fi
 fi
 
@@ -41,6 +46,29 @@ if [ -n "$core_src" ] && [ -z "$core_test" ]; then
 elif [ -n "$core_src" ]; then
   say PASS "core/ change has an accompanying core/tests/ change"
 fi
+
+# Rule 8 — a new mechanism ships default-off (ADR-0019/0020).
+on=$(printf '%s\n' "$diff_txt" | grep -E '^\+\s*bool\s+enable[A-Za-z0-9_]*\s*=\s*true' || true)
+if [ -n "$on" ]; then
+  say WARN "new default-ON switch in the diff — new mechanisms ship off (golden rule #8):"; echo "$on" | sed 's/^/        /'; warn=1
+fi
+
+# Rule 9 — browser adapter changes must keep native/WASM parity.
+if printf '%s\n' "$changed" | grep -qE '^web/(src|include)/'; then
+  say WARN "web/ adapter changed — run web/test/parity.sh and web/test/smoke.mjs (learn-site skill)"; warn=1
+fi
+
+# Rule 10 — nothing shipped depends on .claude/ (ADR-0014 amendment, #604).
+dep=$(printf '%s\n' "$changed" | grep -vE '^(\.claude/|tools/release/|AGENTS\.md|CLAUDE\.md|docs/handoffs/)' \
+      | while read -r f; do [ -f "$f" ] && grep -lE '\.claude/skills/[^ ]+\.(py|sh)|"\.claude", *"skills"' "$f"; done)
+if [ -n "$dep" ]; then say FAIL "shipped file depends on a .claude/skills script (move it to tools/):"; echo "$dep" | sed 's/^/        /'; fail=1; fi
+
+# New docs page must be in the mkdocs nav (else it is unreachable on the site).
+for f in $(printf '%s\n' "$changed" | grep -E '^docs/.*\.md$' | grep -vE '^docs/handoffs/'); do
+  [ -f "$f" ] || continue
+  git cat-file -e "$MB:$f" 2>/dev/null && continue
+  grep -qF "${f#docs/}" mkdocs.yml || { say WARN "new page $f is not in the mkdocs.yml nav"; warn=1; }
+done
 
 # Behavioural change to a documented decision should touch a doc/ADR.
 if [ -n "$core_src$wire_touched" ] && ! printf '%s\n' "$changed" | grep -qE '^docs/'; then

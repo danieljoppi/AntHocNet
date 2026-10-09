@@ -1,0 +1,43 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+<!-- Composition page for web/tools/readme-figures.mjs: lays the captured game frames out as the two README figures. -->
+body{margin:0;font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#0f172a;background:#fff}
+.fig{display:none;padding:22px 24px 20px;width:1500px;box-sizing:border-box}
+.fig.on{display:block}
+h1{margin:0 0 4px;font-size:24px;letter-spacing:-.01em}
+.sub{color:#475569;margin-bottom:16px}
+.row{display:grid;gap:14px}
+.steps{grid-template-columns:repeat(3,1fr)}
+.tiles{grid-template-columns:repeat(3,1fr)}
+.card{border:1px solid #d5dde7;border-radius:14px;overflow:hidden;background:#f8fafc}
+.card .img{height:270px;background-size:cover;background-position:center 55%}
+.steps .card .img{height:250px}
+.cap{padding:10px 14px 12px;display:flex;gap:10px;align-items:flex-start}
+.n{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff}
+.cap b{display:block;font-size:16px}
+.cap span{color:#475569;font-size:14px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.arrow{position:relative}
+</style></head><body>
+<section class="fig" id="steps">
+  <h1>How AntHocNet finds a route</h1>
+  <div class="sub">Six phones in a row, one call from phone 0 to phone 5 — frames from the learn site, where the real routing core runs as WebAssembly.</div>
+  <div class="row steps">
+    <div class="card"><div class="img" style="background-image:url(step1.png)"></div><div class="cap"><span class="n" style="background:#eb6834">1</span><div><b>Ants search</b><span>Phone 0 has no route, so it sends reactive forward ants. Each phone re-broadcasts them (orange rings) until one reaches phone 5.</span></div></div></div>
+    <div class="card"><div class="img" style="background-image:url(step2.png)"></div><div class="cap"><span class="n" style="background:#2a78d6">2</span><div><b>Ants lay pheromone</b><span>The ant that arrived turns into a backward ant and walks home, leaving pheromone on every hop (the blue trail).</span></div></div></div>
+    <div class="card"><div class="img" style="background-image:url(step3.png)"></div><div class="cap"><span class="n" style="background:#4a3aa7">3</span><div><b>Packets follow the scent</b><span>Data packets (purple crates) pick each next hop by pheromone; the strongest trail almost always wins. Delivered ✓.</span></div></div></div>
+  </div>
+</section>
+<section class="fig" id="types">
+  <h1>One protocol, every network type</h1>
+  <div class="sub">The same core, unchanged defaults, in each world of the learn site. Each one has a measured results page in ns-3.</div>
+  <div class="row tiles">
+    <div class="card"><div class="img" style="background-image:url(world-manet.png)"></div><div class="cap"><div><b>Ad hoc (MANET)</b><span>Phones: some walk, some stand still. The bold trail is each call's strongest route.</span></div></div></div>
+    <div class="card"><div class="img" style="background-image:url(world-mesh.png)"></div><div class="cap"><div><b>Static Wi-Fi mesh</b><span>Routers on poles. Nothing moves, so the routes are found once.</span></div></div></div>
+    <div class="card"><div class="img" style="background-image:url(world-vanet.png)"></div><div class="cap"><div><b>Vehicles (VANET)</b><span>Cars on a street grid; buildings block the radio at every corner.</span></div></div></div>
+    <div class="card"><div class="img" style="background-image:url(world-fanet.png)"></div><div class="cap"><div><b>Drones (FANET)</b><span>A 3-D swarm at about 20 m/s; links last seconds.</span></div></div></div>
+    <div class="card"><div class="img" style="background-image:url(world-satellite.png)"></div><div class="cap"><div><b>Satellites</b><span>A Walker constellation: 8 orbital planes; links stay, their delay changes.</span></div></div></div>
+    <div class="card"><div class="img" style="background-image:url(campaign.png);background-position:left top"></div><div class="cap"><div><b>Next: the campaign</b><span>One chapter per network type — fix the network, the ants find the way (roadmap v2.2.0–v3.3.0).</span></div></div></div>
+  </div>
+</section>
+<script>document.getElementById(new URLSearchParams(location.search).get('f')).classList.add('on')</script>
+</body></html>
