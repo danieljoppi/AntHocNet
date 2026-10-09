@@ -1,0 +1,322 @@
+<!doctype html>
+<!-- Static mockup for docs/learn-campaign.md §7 (not the implementation).
+     Render: open with ?screen=map or ?screen=hud, 1440x900. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campaign mockup</title>
+<style>
+  :root {
+    --bg: #e9eef4; --card: #ffffff; --card2: #f5f7fa; --border: #d5dde7;
+    --ink: #0f172a; --ink2: #3f4b5e; --muted: #556173; --accent: #2563eb;
+    --good: #0a8f0a; --amber: #d97706; --ph: #1f5fbf;
+    --town: #f59e0b; --forest: #16a34a; --zone: #b45309; --space: #4f46e5;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; width: 1440px; height: 900px; overflow: hidden; font: 14px/1.45 var(--font); color: var(--ink);
+    background: radial-gradient(1200px 600px at 50% -10%, #dde5ee, var(--bg) 70%); }
+  .screen { display: none; width: 100%; height: 100%; }
+  .screen.on { display: block; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--card);
+    border: 1px solid var(--border); font-weight: 700; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 8px 24px rgba(15,23,42,.07); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--card2); font-weight: 700; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .stars { color: #b07800; letter-spacing: 2px; }
+
+  /* ---- campaign map ---- */
+  #map header { display: flex; align-items: center; gap: 14px; padding: 18px 28px; }
+  #map h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+  #map .sub { color: var(--muted); font-weight: 600; }
+  .grow { flex: 1; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; padding: 6px 28px 0; }
+  .tile { position: relative; height: 690px; border-radius: 20px; overflow: hidden; background: var(--card); border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 12px 32px rgba(15,23,42,.10); display: flex; flex-direction: column; }
+  .tile svg.art { display: block; width: 100%; height: 260px; }
+  .tile .body { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .tile .k { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .tile h2 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
+  .tile p { margin: 0; color: var(--ink2); }
+  .levels { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+  .levels li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--card2); border: 1px solid var(--border); font-weight: 600; }
+  .levels .dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 800; flex: none; }
+  .levels .next { outline: 2px solid var(--accent); background: #eef4ff; }
+  .levels .stars { margin-left: auto; font-size: 13px; }
+  .lock { position: absolute; inset: 0; background: rgba(233,238,244,.72); backdrop-filter: grayscale(1) blur(1px); display: grid; place-items: center; }
+  .lock .pill { font-size: 15px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: #eef2f7; color: var(--ink2); }
+
+  /* ---- HUD ---- */
+  #hud { position: relative; }
+  #hud canvas { position: absolute; inset: 0; }
+  .top { position: absolute; left: 16px; right: 16px; top: 14px; display: flex; gap: 10px; align-items: center; }
+  .glass { background: rgba(255,255,255,.88); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 10px 28px rgba(15,23,42,.12); }
+  .top .glass { display: flex; align-items: center; gap: 12px; padding: 8px 14px; font-weight: 700; }
+  .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--card2); border: 1px solid var(--border); }
+  .seg span { padding: 3px 10px; border-radius: 8px; }
+  .seg .on { background: var(--accent); color: #fff; }
+  .goal { position: absolute; left: 16px; top: 78px; width: 360px; padding: 14px 16px; }
+  .goal h3, .route h3 { margin: 0 0 8px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .obj { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid #eef2f7; font-weight: 600; }
+  .obj:first-of-type { border-top: 0; }
+  .tick { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-size: 13px; font-weight: 900; flex: none; }
+  .tick.ok { background: var(--good); color: #fff; }
+  .tick.todo { border: 2px solid #b8c2cf; }
+  .obj .v { white-space: nowrap; margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink2); }
+  .bar { height: 6px; border-radius: 99px; background: #e5eaf0; margin: 2px 0 0 32px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+  .route { position: absolute; right: 16px; top: 78px; width: 270px; padding: 14px 16px; }
+  .hops { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-weight: 800; }
+  .hop { padding: 2px 8px; border-radius: 8px; background: #e8f0ff; color: var(--ph); }
+  .arrow { color: var(--muted); }
+  .switch { margin-top: 8px; font-size: 13px; color: var(--ink2); }
+  .switch b { color: var(--amber); }
+  .toast { position: absolute; left: 50%; transform: translateX(-50%); top: 150px; padding: 10px 18px; border-radius: 999px; font-weight: 700; }
+  .dock { position: absolute; left: 50%; transform: translateX(-50%); bottom: 18px; display: flex; gap: 10px; padding: 10px; align-items: stretch; }
+  .card { width: 136px; padding: 10px; border-radius: 14px; background: var(--card); border: 1px solid var(--border); text-align: center; }
+  .card.sel { outline: 3px solid var(--accent); }
+  .card.off { opacity: .45; }
+  .card svg { width: 46px; height: 46px; display: block; margin: 2px auto 4px; }
+  .card b { display: block; }
+  .cost { font-size: 12.5px; color: var(--ink2); font-weight: 700; }
+  .sep { width: 1px; background: var(--border); margin: 4px 4px; }
+  .tool { width: 86px; display: grid; place-items: center; font-weight: 700; color: var(--ink2); border-radius: 14px; border: 1px solid var(--border); background: var(--card2); }
+  .phase { position: absolute; left: 16px; bottom: 26px; padding: 10px 14px; display: flex; gap: 10px; align-items: center; font-weight: 700; }
+  .drawer { position: absolute; right: 16px; bottom: 26px; padding: 10px 14px; font-weight: 700; color: var(--ink2); }
+  .note { position: absolute; right: 16px; bottom: 74px; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ================= Campaign map ================= -->
+<section class="screen" id="map">
+  <header>
+    <svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true"><rect width="38" height="38" rx="10" fill="#7cbf5a"/><circle cx="11" cy="19" r="4" fill="#eb6834"/><circle cx="19" cy="19" r="3.2" fill="#eb6834"/><circle cx="27" cy="19" r="4" fill="#eb6834"/></svg>
+    <div><h1>Campaign</h1><div class="sub">Fix the network — the ants find the way</div></div>
+    <div class="grow"></div>
+    <span class="pill"><span class="stars">★</span> 14 / 54</span>
+    <span class="btn">Upgrades</span>
+    <span class="btn">Free play</span>
+    <span class="btn primary">▶ Continue: T4 Two ways home</span>
+  </header>
+  <div class="tiles">
+    <!-- Town -->
+    <article class="tile">
+      <svg class="art" preserveAspectRatio="xMidYMid slice" viewBox="0 0 340 260" aria-hidden="true">
+        <defs><linearGradient id="tsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fde7c2"/><stop offset="1" stop-color="#fff6e6"/></linearGradient></defs>
+        <rect width="340" height="260" fill="url(#tsky)"/>
+        <path d="M0 200 L170 120 L340 200 L170 280Z" fill="#9bd27c"/>
+        <path d="M60 170 L170 118 L280 170" stroke="#7a7f86" stroke-width="16" fill="none"/>
+        <g><path d="M70 150 l26 -13 26 13 v26 l-26 13 -26 -13z" fill="#f1d9b5"/><path d="M70 150 l26 -13 26 13 -26 13z" fill="#e57d4a"/></g>
+        <g><path d="M200 140 l30 -15 30 15 v34 l-30 15 -30 -15z" fill="#e8e3da"/><path d="M200 140 l30 -15 30 15 -30 15z" fill="#c2593a"/></g>
+        <g><path d="M140 186 l22 -11 22 11 v20 l-22 11 -22 -11z" fill="#dfe7f1"/><path d="M140 186 l22 -11 22 11 -22 11z" fill="#5b7fb0"/></g>
+        <g stroke="#1f5fbf" stroke-width="4" stroke-linecap="round" fill="none"><path d="M100 168 L150 196 L222 168"/></g>
+        <g fill="#1e293b"><rect x="94" y="152" width="10" height="16" rx="2"/><rect x="146" y="180" width="10" height="16" rx="2"/><rect x="218" y="150" width="10" height="16" rx="2"/></g>
+        <g fill="#38bdf8"><rect x="96" y="155" width="6" height="10" rx="1"/><rect x="148" y="183" width="6" height="10" rx="1"/><rect x="220" y="153" width="6" height="10" rx="1"/></g>
+      </svg>
+      <div class="body">
+        <div class="k" style="color:var(--town)">Chapter 1</div>
+        <h2>Town</h2>
+        <p>Phones, laptops and PCs make a network out of nothing. Bridge the gaps; keep the calls alive as people walk.</p>
+        <div class="chips"><span class="chip">MANET</span><span class="chip">static mesh</span><span class="chip">hellos · ants · repair</span></div>
+        <ul class="levels">
+          <li><span class="dot" style="background:var(--good)">✓</span>T1 First hello<span class="stars">★★★</span></li>
+          <li><span class="dot" style="background:var(--good)">✓</span>T2 Across the street<span class="stars">★★★</span></li>
+          <li><span class="dot" style="background:var(--good)">✓</span>T3 The café<span class="stars">★★☆</span></li>
+          <li class="next"><span class="dot" style="background:var(--accent)">4</span>T4 Two ways home<span class="stars">☆☆☆</span></li>
+          <li><span class="dot" style="background:#b8c2cf">5</span>T5 Rush hour <span class="chip" style="margin-left:6px">boss</span><span class="stars">☆☆☆</span></li>
+        </ul>
+      </div>
+    </article>
+    <!-- Forest -->
+    <article class="tile">
+      <svg class="art" preserveAspectRatio="xMidYMid slice" viewBox="0 0 340 260" aria-hidden="true">
+        <rect width="340" height="260" fill="#d9f2df"/>
+        <path d="M0 205 L170 125 L340 205 L170 285Z" fill="#4f8f3f"/>
+        <g fill="#2f6b2a">
+          <circle cx="80" cy="178" r="16"/><circle cx="104" cy="168" r="14"/><circle cx="128" cy="186" r="17"/><circle cx="210" cy="160" r="15"/>
+          <circle cx="236" cy="176" r="18"/><circle cx="262" cy="166" r="14"/><circle cx="170" cy="206" r="16"/><circle cx="150" cy="150" r="13"/>
+        </g>
+        <path d="M250 205 q20 -30 40 -8" stroke="#f97316" stroke-width="10" stroke-linecap="round" fill="none" opacity=".85"/>
+        <g transform="translate(176 92)"><path d="M-16 -6 L16 6 M16 -6 L-16 6" stroke="#1e293b" stroke-width="3"/><g fill="#1e293b"><ellipse cx="-16" cy="-6" rx="7" ry="3"/><ellipse cx="16" cy="6" rx="7" ry="3"/><ellipse cx="16" cy="-6" rx="7" ry="3"/><ellipse cx="-16" cy="6" rx="7" ry="3"/></g><rect x="-6" y="-4" width="12" height="8" rx="3" fill="#1e293b"/></g>
+      </svg>
+      <div class="body">
+        <div class="k" style="color:var(--forest)">Chapter 2</div>
+        <h2>Forest</h2>
+        <p>Trees eat the signal. Fly relay drones over the canopy, find the lost hiker, and keep the channel up as the fire spreads.</p>
+        <div class="chips"><span class="chip">FANET</span><span class="chip">disaster</span><span class="chip">partitions · battery</span></div>
+        <ul class="levels">
+          <li><span class="dot" style="background:#b8c2cf">1</span>F1 Under the canopy</li>
+          <li><span class="dot" style="background:#b8c2cf">2</span>F2 Eyes in the sky</li>
+          <li><span class="dot" style="background:#b8c2cf">3</span>F3 Lost hiker</li>
+          <li><span class="dot" style="background:#b8c2cf">4</span>F4 Wildfire <span class="chip" style="margin-left:6px">boss</span></li>
+        </ul>
+      </div>
+      <div class="lock"><span class="pill">🔒 Finish Town to unlock</span></div>
+    </article>
+    <!-- Contested -->
+    <article class="tile">
+      <svg class="art" preserveAspectRatio="xMidYMid slice" viewBox="0 0 340 260" aria-hidden="true">
+        <rect width="340" height="260" fill="#f6ead7"/>
+        <path d="M0 205 L170 125 L340 205 L170 285Z" fill="#b9a27a"/>
+        <path d="M30 196 L110 140 L170 176 L240 128 L320 190" fill="#8c7853"/>
+        <ellipse cx="200" cy="198" rx="54" ry="26" fill="#ef4444" opacity=".25"/>
+        <ellipse cx="200" cy="198" rx="54" ry="26" fill="none" stroke="#ef4444" stroke-dasharray="6 5" stroke-width="2"/>
+        <g stroke="#3f3a2e" stroke-width="3"><path d="M110 140 v-30"/><path d="M240 128 v-30"/></g>
+        <g fill="#3f3a2e"><circle cx="110" cy="108" r="4"/><circle cx="240" cy="96" r="4"/></g>
+        <path d="M90 230 L150 200 L250 240" stroke="#6b6355" stroke-width="10" fill="none"/>
+      </svg>
+      <div class="body">
+        <div class="k" style="color:var(--zone)">Chapter 3</div>
+        <h2>Contested zone</h2>
+        <p>Narrowband radios, jammed valleys and relays that go dark. Every ant costs airtime — plan a quiet, resilient network.</p>
+        <div class="chips"><span class="chip">tactical</span><span class="chip">jamming</span><span class="chip">overhead</span></div>
+        <ul class="levels">
+          <li><span class="dot" style="background:#b8c2cf">1</span>W1 Radio silence</li>
+          <li><span class="dot" style="background:#b8c2cf">2</span>W2 Jammed</li>
+          <li><span class="dot" style="background:#b8c2cf">3</span>W3 Convoy</li>
+          <li><span class="dot" style="background:#b8c2cf">4</span>W4 Trust no one <span class="chip" style="margin-left:6px">v3.0</span></li>
+        </ul>
+      </div>
+      <div class="lock"><span class="pill">🔒 Finish Forest to unlock</span></div>
+    </article>
+    <!-- Space -->
+    <article class="tile">
+      <svg class="art" preserveAspectRatio="xMidYMid slice" viewBox="0 0 340 260" aria-hidden="true">
+        <rect width="340" height="260" fill="#0b1230"/>
+        <g fill="#fff" opacity=".8"><circle cx="30" cy="30" r="1.2"/><circle cx="300" cy="40" r="1.5"/><circle cx="250" cy="20" r="1"/><circle cx="60" cy="220" r="1.2"/><circle cx="310" cy="210" r="1"/><circle cx="120" cy="24" r="1"/></g>
+        <circle cx="170" cy="140" r="70" fill="#1e4f8f"/><circle cx="150" cy="120" r="40" fill="#3b82c4" opacity=".6"/>
+        <g fill="none" stroke="#c7d2fe" stroke-width="1.4" opacity=".7"><ellipse cx="170" cy="140" rx="110" ry="40" transform="rotate(-20 170 140)"/><ellipse cx="170" cy="140" rx="110" ry="40" transform="rotate(25 170 140)"/><ellipse cx="170" cy="140" rx="110" ry="40" transform="rotate(70 170 140)"/></g>
+        <g><rect x="258" y="96" width="14" height="5" fill="#3b6fb6"/><rect x="246" y="96" width="10" height="5" fill="#3b6fb6"/><rect x="255" y="93" width="6" height="11" fill="#d4a72c"/></g>
+        <g><rect x="70" y="170" width="10" height="5" fill="#3b6fb6"/><rect x="86" y="170" width="10" height="5" fill="#3b6fb6"/><rect x="80" y="167" width="6" height="11" fill="#d4a72c"/></g>
+      </svg>
+      <div class="body">
+        <div class="k" style="color:var(--space)">Chapter 4</div>
+        <h2>Space</h2>
+        <p>Ground stations, high-altitude platforms and a Walker shell. Hand over every 15 s, survive a solar storm, launch the missing satellite.</p>
+        <div class="chips"><span class="chip">LEO</span><span class="chip">space-air-ground</span><span class="chip">handover</span></div>
+        <ul class="levels">
+          <li><span class="dot" style="background:#b8c2cf">1</span>S1 First contact</li>
+          <li><span class="dot" style="background:#b8c2cf">2</span>S2 Across the ocean</li>
+          <li><span class="dot" style="background:#b8c2cf">3</span>S3 Solar storm</li>
+          <li><span class="dot" style="background:#b8c2cf">4</span>S4 Launch window <span class="chip" style="margin-left:6px">boss</span></li>
+        </ul>
+      </div>
+      <div class="lock"><span class="pill">🔒 Finish Contested zone to unlock</span></div>
+    </article>
+  </div>
+</section>
+
+<!-- ================= In-level HUD ================= -->
+<section class="screen" id="hud">
+  <canvas id="scene" width="1440" height="900"></canvas>
+  <div class="top">
+    <div class="glass">◀ Map</div>
+    <div class="glass"><span style="color:var(--town)">Town</span> · T4 Two ways home <span class="stars">★★☆</span></div>
+    <div class="grow"></div>
+    <div class="glass"><span class="seg"><span>❚❚</span><span class="on">▶</span><span>▶▶</span><span>▶▶▶</span></span></div>
+    <div class="glass">💰 35 left</div>
+    <div class="glass">⏱ 0:42 / 1:30</div>
+  </div>
+  <div class="goal glass">
+    <h3>Goal</h3>
+    <div class="obj"><span class="tick ok">✓</span>Connect home → school</div>
+    <div class="obj"><span class="tick todo"></span>Keep 95 % delivered for 60 s<span class="v">87 %</span></div>
+    <div class="bar"><i style="width:58%"></i></div>
+    <div class="obj"><span class="tick todo"></span>Survive the router unplug<span class="v">at 1:00</span></div>
+    <div class="obj"><span class="tick ok">✓</span>Use at most 3 relays<span class="v">2 / 3</span></div>
+  </div>
+  <div class="route glass">
+    <h3>Strongest route</h3>
+    <div class="hops"><span class="hop">home</span><span class="arrow">→</span><span class="hop">n4</span><span class="arrow">→</span><span class="hop">router</span><span class="arrow">→</span><span class="hop">school</span></div>
+    <div class="switch">Switched <b>2×</b> — last when phone 7 walked away</div>
+  </div>
+  <div class="toast glass">📶 New link: your laptop hears the router. Ants are testing the second path…</div>
+  <div class="phase glass"><span style="color:var(--good)">● Running</span></div>
+  <div class="dock glass">
+    <div class="card"><svg viewBox="0 0 46 46"><rect x="15" y="6" width="16" height="32" rx="4" fill="#1e293b"/><rect x="17.5" y="10" width="11" height="22" rx="2" fill="#38bdf8"/></svg><b>Phone</b><span class="cost">💰 10 · walks</span></div>
+    <div class="card sel"><svg viewBox="0 0 46 46"><rect x="8" y="10" width="30" height="19" rx="2.5" fill="#1e293b"/><rect x="11" y="13" width="24" height="13" rx="1.5" fill="#38bdf8"/><path d="M4 31 h38 l-3 5 h-32z" fill="#64748b"/></svg><b>Laptop</b><span class="cost">💰 25 · moves rarely</span></div>
+    <div class="card"><svg viewBox="0 0 46 46"><rect x="7" y="8" width="24" height="17" rx="2" fill="#1e293b"/><rect x="9.5" y="10.5" width="19" height="12" rx="1" fill="#38bdf8"/><rect x="16" y="26" width="6" height="5" fill="#64748b"/><rect x="11" y="31" width="16" height="3" rx="1" fill="#64748b"/><rect x="33" y="10" width="7" height="24" rx="1.5" fill="#334155"/></svg><b>Desktop PC</b><span class="cost">💰 40 · indoor</span></div>
+    <div class="card off"><svg viewBox="0 0 46 46"><rect x="9" y="24" width="28" height="10" rx="3" fill="#e2e8f0" stroke="#94a3b8"/><path d="M15 24 l-3 -14 M31 24 l3 -14" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/><g fill="#16a34a"><circle cx="17" cy="29" r="1.5"/><circle cx="22" cy="29" r="1.5"/><circle cx="27" cy="29" r="1.5"/></g></svg><b>Wi-Fi router</b><span class="cost">💰 60 · long range</span></div>
+    <div class="sep"></div>
+    <div class="tool">✋<br>Move</div>
+    <div class="tool">🔍<br>Inspect</div>
+  </div>
+  <div class="drawer glass">🧪 Lab · ant log, overlays ▴</div>
+</section>
+
+<script>
+  const screen = new URLSearchParams(location.search).get('screen') || 'map';
+  document.getElementById(screen).classList.add('on');
+  if (screen === 'hud') {
+    const c = document.getElementById('scene').getContext('2d');
+    const W = 1440, H = 900;
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#fde7c2'); g.addColorStop(1, '#fff6e6');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    // iso projection of a 1000 x 1000 field
+    const ox = 720, oy = 210, k = 0.54;
+    const P = (x, y, z = 0) => [ox + (x - y) * k, oy + (x + y) * k / 2 - z];
+    const poly = (pts, fill) => { c.beginPath(); pts.forEach(([x, y], i) => { const [px, py] = P(x, y); i ? c.lineTo(px, py) : c.moveTo(px, py); }); c.closePath(); c.fillStyle = fill; c.fill(); };
+    // slab
+    const [a, b2, d] = [P(1000, 0), P(1000, 1000), P(0, 1000)];
+    c.fillStyle = '#7a6544'; c.beginPath(); c.moveTo(...d); c.lineTo(...b2); c.lineTo(b2[0], b2[1] + 20); c.lineTo(d[0], d[1] + 20); c.fill();
+    c.fillStyle = '#937c55'; c.beginPath(); c.moveTo(...b2); c.lineTo(...a); c.lineTo(a[0], a[1] + 20); c.lineTo(b2[0], b2[1] + 20); c.fill();
+    for (let i = 0; i < 20; i++) for (let j = 0; j < 20; j++) poly([[i * 50, j * 50], [i * 50 + 50, j * 50], [i * 50 + 50, j * 50 + 50], [i * 50, j * 50 + 50]], (i * 7 + j * 3) % 5 < 2 ? '#93cc72' : '#8bc66a');
+    // streets
+    poly([[0, 470], [1000, 470], [1000, 530], [0, 530]], '#7a7f86');
+    poly([[470, 0], [530, 0], [530, 1000], [470, 1000]], '#7a7f86');
+    // houses
+    const house = (x, y, w, h, wall, roof) => {
+      const z = 46;
+      c.fillStyle = wall; c.beginPath(); const p1 = P(x + w, y), p2 = P(x + w, y + h), p3 = P(x, y + h);
+      c.moveTo(...p1); c.lineTo(...p2); c.lineTo(...p3); c.lineTo(p3[0], p3[1] - z); c.lineTo(p2[0], p2[1] - z); c.lineTo(p1[0], p1[1] - z); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(0,0,0,.12)'; c.beginPath(); c.moveTo(...p2); c.lineTo(...p3); c.lineTo(p3[0], p3[1] - z); c.lineTo(p2[0], p2[1] - z); c.fill();
+      c.fillStyle = roof; c.beginPath(); [[x, y], [x + w, y], [x + w, y + h], [x, y + h]].forEach(([u, v], i) => { const [px, py] = P(u, v); i ? c.lineTo(px, py - z) : c.moveTo(px, py - z); }); c.fill();
+    };
+    house(120, 120, 200, 180, '#f1d9b5', '#e57d4a'); house(640, 110, 230, 200, '#e8e3da', '#c2593a');
+    house(140, 640, 200, 200, '#dfe7f1', '#5b7fb0'); house(660, 660, 220, 190, '#f3e2c8', '#d06b3f');
+    // trees
+    for (const [x, y] of [[400, 160], [410, 360], [600, 380], [380, 640], [600, 860], [900, 420], [90, 420]]) { const [px, py] = P(x, y); c.fillStyle = '#2f7330'; c.beginPath(); c.arc(px, py - 14, 11, 0, 7); c.fill(); c.fillStyle = '#3f8f3a'; c.beginPath(); c.arc(px - 3, py - 17, 7, 0, 7); c.fill(); }
+    // devices
+    const dev = [[230, 330, 'home'], [430, 430, 'n4'], [560, 560, 'router'], [740, 640, 'school'], [380, 560, 'laptop'], [610, 300, 'p7'], [300, 760, 'p2'], [850, 300, 'p3']];
+    const at = (n) => dev.find((d) => d[2] === n);
+    // range ring of the selected laptop (ghost while placing)
+    { const [px, py] = P(380, 560); const R = 250 * k * Math.SQRT2; c.fillStyle = 'rgba(37,99,235,.08)'; c.beginPath(); c.ellipse(px, py, R, R / 2, 0, 0, 7); c.fill(); c.setLineDash([7, 6]); c.strokeStyle = 'rgba(37,99,235,.6)'; c.lineWidth = 1.5; c.stroke(); c.setLineDash([]); }
+    // links
+    c.strokeStyle = 'rgba(48,69,92,.45)'; c.lineWidth = 1.2;
+    for (const [u, v] of [['home', 'n4'], ['n4', 'router'], ['router', 'school'], ['n4', 'laptop'], ['laptop', 'router'], ['laptop', 'p2'], ['n4', 'p7'], ['router', 'p7']]) { const A = at(u), B = at(v); const [x1, y1] = P(A[0], A[1], 22), [x2, y2] = P(B[0], B[1], 22); c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); }
+    // strongest route
+    const path = ['home', 'n4', 'router', 'school'].map((n) => { const d2 = at(n); return P(d2[0], d2[1], 0); });
+    const trace = () => { c.beginPath(); path.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); };
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 11; trace(); c.stroke();
+    c.strokeStyle = '#1f5fbf'; c.lineWidth = 6; trace(); c.stroke();
+    c.setLineDash([3, 12]); c.strokeStyle = '#0b1220'; c.lineWidth = 3; trace(); c.stroke(); c.setLineDash([]);
+    // second path (forming, amber)
+    const alt = ['n4', 'laptop', 'router'].map((n) => { const d2 = at(n); return P(d2[0], d2[1], 0); });
+    c.strokeStyle = 'rgba(217,119,6,.9)'; c.lineWidth = 4; c.setLineDash([8, 7]); c.beginPath(); alt.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.stroke(); c.setLineDash([]);
+    // footprints for walkers
+    c.fillStyle = 'rgba(51,65,85,.4)'; for (let t = 0; t < 7; t++) { const [px, py] = P(610 - t * 22, 300 - t * 10); c.beginPath(); c.ellipse(px, py, 3, 1.5, 0, 0, 7); c.fill(); }
+    // device sprites
+    for (const [x, y, name] of dev) {
+      const [px, py] = P(x, y);
+      c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(px, py, 11, 5, 0, 0, 7); c.fill();
+      if (name === 'router') { c.fillStyle = '#94a3b8'; c.fillRect(px - 2, py - 26, 4, 26); c.fillStyle = '#f8fafc'; c.fillRect(px - 13, py - 36, 26, 10); c.strokeStyle = '#1e293b'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(px - 9, py - 36); c.lineTo(px - 12, py - 50); c.moveTo(px + 9, py - 36); c.lineTo(px + 12, py - 50); c.stroke(); }
+      else if (name === 'laptop' || name === 'school' || name === 'home') { c.fillStyle = '#1e293b'; c.fillRect(px - 14, py - 30, 28, 18); c.fillStyle = '#38bdf8'; c.fillRect(px - 11, py - 27, 22, 12); c.fillStyle = '#64748b'; c.beginPath(); c.moveTo(px - 18, py - 12); c.lineTo(px + 18, py - 12); c.lineTo(px + 14, py - 6); c.lineTo(px - 14, py - 6); c.fill(); }
+      else { c.fillStyle = '#1e293b'; c.beginPath(); c.roundRect(px - 7, py - 30, 14, 24, 3); c.fill(); c.fillStyle = '#38bdf8'; c.fillRect(px - 5, py - 27, 10, 17); }
+      if (['home', 'school', 'laptop', 'router'].includes(name)) { c.font = '800 13px system-ui'; c.lineWidth = 4; c.strokeStyle = 'rgba(255,255,255,.9)'; c.strokeText(name, px + 14, py - 34); c.fillStyle = '#0f172a'; c.fillText(name, px + 14, py - 34); }
+    }
+    // ants on the route
+    const ant = (x, y, col) => { c.fillStyle = col; for (const [dx, r] of [[-5, 3.2], [0, 2.3], [5, 2.6]]) { c.beginPath(); c.ellipse(x + dx, y, r, r * .8, 0, 0, 7); c.fill(); } };
+    { const [x1, y1] = path[1], [x2, y2] = path[2]; ant(x1 + (x2 - x1) * .45, y1 + (y2 - y1) * .45, '#2a78d6'); }
+    { const [x1, y1] = alt[0], [x2, y2] = alt[1]; ant(x1 + (x2 - x1) * .6, y1 + (y2 - y1) * .6, '#1baf7a'); }
+    // packet crate
+    { const [x1, y1] = path[2], [x2, y2] = path[3]; const x = x1 + (x2 - x1) * .4, y = y1 + (y2 - y1) * .4; c.fillStyle = '#4a3aa7'; c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + 6, y - 3); c.lineTo(x + 6, y + 3); c.lineTo(x, y + 6); c.lineTo(x - 6, y + 3); c.lineTo(x - 6, y - 3); c.fill(); }
+  }
+</script>
+</body>
+</html>
