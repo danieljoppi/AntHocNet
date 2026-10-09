@@ -1,3 +1,11 @@
+---
+# Try it in the game (#629): rendered as a rail above the page on the site.
+try:
+  - world: fanet
+    seed: 1
+    title: "A drone swarm: links that last seconds"
+---
+
 # Scenario: fanet
 
 **Class:** FANET — 3-D, smooth trajectories, fast link churn ([#300](https://github.com/danieljoppi/AntHocNet/issues/300))

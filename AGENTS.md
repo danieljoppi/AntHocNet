@@ -222,6 +222,7 @@ tools/release/check-bundle.sh           # release package: no agent files, tools
 | Run the benchmark campaign loop (dispatch → fetch → parse) | `benchmark-results` skill (SKILL.md documents the whole procedure) |
 | Compare benchmark A/B runs (deltas + noise verdict) | `benchmark-results` skill (`tools/bench/bench_parse.py`) |
 | Build, test or screenshot the learn site | `learn-site` skill (parity, smoke, README figures) |
+| Change the site's top bar, places or the docs/API look | `web/shell/` (one source for game, docs and API; `inject.py`), `docs/places/`, the nav in `mkdocs.yml`; checked by `web/test/smoke.mjs` on `web/build-pages.sh` output |
 | Summarize / export campaign sweep CSVs | `benchmark-results` skill (`tools/bench/sweep_summary.py`; `--export-sweeps` feeds the papers repo) |
 | Validate a scenario config or result plausibility | `benchmark-results` skill (`tools/bench/scenario_check.py`, #134): `preflight` before dispatching, `results [--anchor …]` before trusting numbers |
 | Pre-push invariant check on a diff | `protocol-review` skill (`.claude/skills/protocol-review/check_invariants.sh`) |

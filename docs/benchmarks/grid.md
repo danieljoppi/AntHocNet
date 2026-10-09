@@ -1,3 +1,11 @@
+---
+# Try it in the game (#629): rendered as a rail above the page on the site.
+try:
+  - world: manet
+    seed: 1
+    title: "Watch walkers and standers share one field"
+---
+
 # Grid: mobility × channel
 
 **Varies:** mobility model (`rwp`, `ssrwp`, `gaussmarkov`) × channel model

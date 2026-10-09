@@ -88,14 +88,18 @@ jobs:
         run: |
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           web/test/parity.sh 120 "1 2 7 42"
-      - name: Assemble the learn site
+      - name: Assemble the whole site, as pages.yml does (#626)
         run: |
+          pip install -c requirements-dev.txt mkdocs-material
+          sudo apt-get install -y --no-install-recommends doxygen >/dev/null
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
-          web/build-site.sh web/build-site
+          web/build-pages.sh web/build-site
       - name: Learn-site browser smoke (#548)
         # Every world runs with no console error, a backward ant and a delivery;
         # all worlds share the protocol defaults (ADR-0019); mission 2 plays to
-        # the end; axe-core finds no serious/critical violations, day or night.
+        # the end; the hub, the one top bar on game/docs/API and the Try-it rail
+        # work (#626); axe-core finds no serious/critical violations on the hub,
+        # a docs page and an API page, day or night.
         # playwright-core / axe-core pinned; Chromium from Playwright's own CDN.
         run: |
           mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"

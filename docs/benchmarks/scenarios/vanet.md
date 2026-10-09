@@ -1,3 +1,11 @@
+---
+# Try it in the game (#629): rendered as a rail above the page on the site.
+try:
+  - world: vanet
+    seed: 1
+    title: "Watch a route break at a street corner"
+---
+
 # Scenario: vanet
 
 **Class:** VANET — vehicles on a street grid, corridor-shaped links, buildings that cut line of sight ([#301](https://github.com/danieljoppi/AntHocNet/issues/301), [#488](https://github.com/danieljoppi/AntHocNet/issues/488))

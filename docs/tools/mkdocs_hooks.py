@@ -62,3 +62,54 @@ def _rewrite(target: str, page_dir: str) -> str:
 def on_page_markdown(markdown: str, page, config, files) -> str:
     page_dir = posixpath.dirname(page.file.src_uri)
     return _LINK.sub(lambda m: m.group(1) + _rewrite(m.group(2), page_dir), markdown)
+
+
+# --- the site shell (#626/#627/#629) ----------------------------------------
+# Every docs page is a game window under the site's one top bar. The bar and
+# its assets come from web/shell/ (one source for the game, the docs and the
+# API); this hook adds them to the rendered pages, so the markdown stays
+# plain markdown that reads the same in the repo tree.
+import html as _html  # noqa: E402
+import sys as _sys  # noqa: E402
+
+_sys.path.insert(0, os.path.join(_REPO_ROOT, "web", "shell"))
+import inject as _shell  # noqa: E402
+
+
+def _section(page) -> str | None:
+    """The page's top-level nav section, which is its place."""
+    anc = list(getattr(page, "ancestors", []) or [])
+    return anc[-1].title if anc else None
+
+
+def _to_site_root(page) -> str:
+    url = page.url.strip("/")
+    return "../" * (url.count("/") + 1 if url else 0) + "../"
+
+
+def on_page_content(html: str, page, config, files) -> str:
+    section = _section(page)
+    place = _shell.SECTION_PLACE.get(section or "")
+    crumb = f"<b>{_html.escape(section)}</b> › " if section else ""
+    bar = (f'<div class="ahn-titlebar" data-place="{place or ""}"><span class="ahn-dots" aria-hidden="true">'
+           f'<i></i><i></i><i></i></span><span class="ahn-crumb">{crumb}{_html.escape(page.title or "")}'
+           "</span></div>")
+    tries = page.meta.get("try") or []
+    rail = ""
+    if tries:
+        root = _to_site_root(page)
+        cards = []
+        for t in tries:
+            target = t.get("mission") and f"#mission={t['mission']}" or f"#{t['world']}?seed={t.get('seed', 1)}"
+            cards.append(f'<a href="{root}{target}"><span class="ahn-go" aria-hidden="true">▶</span>'
+                         f'<b>Try it</b><span>{_html.escape(t["title"])}</span></a>')
+        rail = '<nav class="ahn-try" aria-label="Try it in the game">' + "".join(cards) + "</nav>"
+    return bar + rail + html
+
+
+def on_post_page(output: str, page, config) -> str:
+    return _shell.docs_page(output, page.url, _section(page))
+
+
+def on_post_build(config) -> None:
+    _shell.docs_assets(config["site_dir"])

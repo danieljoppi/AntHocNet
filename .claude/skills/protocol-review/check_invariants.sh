@@ -59,7 +59,10 @@ if printf '%s\n' "$changed" | grep -qE '^web/(src|include)/'; then
 fi
 
 # Rule 10 — nothing shipped depends on .claude/ (ADR-0014 amendment, #604).
+# Code and workflow files only: a doc may describe a maintainer-only agent
+# tool without shipping a dependency on it.
 dep=$(printf '%s\n' "$changed" | grep -vE '^(\.claude/|tools/release/|AGENTS\.md|CLAUDE\.md|docs/handoffs/)' \
+      | grep -E '\.(py|sh|mjs|js|ya?ml|cc|cpp|h|txt)$|Makefile$' \
       | while read -r f; do [ -f "$f" ] && grep -lE '\.claude/skills/[^ ]+\.(py|sh)|"\.claude", *"skills"' "$f"; done)
 if [ -n "$dep" ]; then say FAIL "shipped file depends on a .claude/skills script (move it to tools/):"; echo "$dep" | sed 's/^/        /'; fail=1; fi
 

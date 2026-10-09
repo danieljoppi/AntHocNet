@@ -1,3 +1,11 @@
+---
+# Try it in the game (#629): rendered as a rail above the page on the site.
+try:
+  - world: line
+    seed: 1
+    title: "Six phones in a row: watch each ant type"
+---
+
 # The ant types
 
 AntHocNet's control plane is five ant types travelling in two directions. This

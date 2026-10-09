@@ -431,6 +431,9 @@ way every debrief links to a measured page, not a promise.
 **Maintainer decision 2026-10-09:** everything is part of the game.
 Epic [#626](https://github.com/danieljoppi/AntHocNet/issues/626).
 
+**Built in v2.1.0:** the shell, hub, docs windows with the Try-it rail and the API chrome
+(#627, #628, #629, #632) live in `web/shell/` and `docs/places/`.
+
 Since #558 the game is the front page, but the site is still three sites,
 each with its own look and navigation:
 - the game at `/`;

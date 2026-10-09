@@ -1,3 +1,11 @@
+---
+# Try it in the game (#629): rendered as a rail above the page on the site.
+try:
+  - world: line
+    seed: 1
+    title: "Ants search, lay pheromone, packets follow"
+---
+
 # Ant Colony routing: from foraging ants to AntHocNet
 
 > A conceptual primer. This page explains *the idea* behind the protocol — where

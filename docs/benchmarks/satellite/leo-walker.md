@@ -1,3 +1,11 @@
+---
+# Try it in the game (#629): rendered as a rail above the page on the site.
+try:
+  - world: satellite
+    seed: 1
+    title: "Orbit with the constellation"
+---
+
 # Satellite suite: the moving constellation (leo-walker)
 
 **Regime:** a time-varying LEO Walker shell — satellites move, ground stations

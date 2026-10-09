@@ -1,3 +1,11 @@
+---
+# Try it in the game (#629): rendered as a rail above the page on the site.
+try:
+  - world: mesh
+    seed: 1
+    title: "Routers on poles: the routes are found once"
+---
+
 # Static Wi-Fi mesh: the family where nothing moves
 
 **Varies:** mobility, switched off. This is the paper base field (50 nodes,
