@@ -27,7 +27,7 @@ keeps ligatures (`ﬁxed`, `diﬀerent`), so search prose fragments ("unloaded",
 | Ticket | Question | Status |
 |---|---|---|
 | #88 | Numeric `T_hop` | ✅ **Answered and shipped.** `t_hop = 0.003 s` (§ "we kept thop on 0.003 sec"). The repo's provisional 50 ms was **16.7× too large**; `Config::hopTimeSec` now carries the thesis value. Issue closed 2026-07-25 |
-| #58 | The full scenario/parameter table | ✅ **Mined and encoded.** `--scenario=thesis` in `ns3/examples/anthocnet-compare.cc` now carries §5.1.3's values verbatim (below). Issue stays open for its *remaining* half — documenting the calibration-vs-fidelity distinction and actually running the preset |
+| #58 | The full scenario/parameter table | ✅ **Mined and encoded.** `--scenario=thesis` in `ns3/anthocnet/examples/anthocnet-compare.cc` now carries §5.1.3's values verbatim (below). Issue stays open for its *remaining* half — documenting the calibration-vs-fidelity distinction and actually running the preset |
 | #89 | The "average delay jitter" estimator | ✅ **Definition recovered** (§5.1.5, equation 5.1 — below). ⚠️ It does **not** match what the harness measures; the issue stays open on that mismatch, which is now a decision rather than a lookup |
 | #70 | A2 `(Q_mac+1)·T̂_mac` details vs the thesis version | ⏳ still to check against the source |
 | — | Pheromone diffusion / bootstrapping constants; any evaporation the thesis adds | ⏳ still to check (ADR-0007, ADR-0012 gates) |

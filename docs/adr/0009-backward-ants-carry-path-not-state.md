@@ -15,7 +15,7 @@ While scoping that change we found that a backward ant serializes four fields �
 `pheromone`, `hops`, `prevSINR`, `prevHop` — that are **transient compute state**:
 
 - Verified in both adapters (`ns2/src/ant_packet_ns2.cc`,
-  `ns3/model/anthocnet-packet.cc`): they are only *marshaled* header ⇄
+  `ns3/anthocnet/model/anthocnet-packet.cc`): they are only *marshaled* header ⇄
   `AntMessage`; neither adapter reads them to make a routing decision.
 - The core recomputes them at every hop in `advanceBackAnt` (`hops += 1`,
   `prevHop = current.node`, `pheromone = …`). They do not need to survive across

@@ -188,7 +188,7 @@ ORACLE_COMMON_SEED_LINE = re.compile(
 # The MANET preflight above is field geometry (nodes/area/range on a wifi
 # disk); none of it can express an ISL cell, which is why the #432 dispatch had
 # to hand-build a validator and discard it. These constants and the sat_*
-# helpers below mirror ns3/examples/isl-grid.cc's own dispatch-time NS_ABORT
+# helpers below mirror ns3/anthocnet/examples/isl-grid.cc's own dispatch-time NS_ABORT
 # rules (the #230 design lesson: derive from the harness, never paraphrase —
 # a validator that drifts from the harness is worse than none), plus the two
 # checks the harness cannot do at t=0: the BFS proving the cut ISL lies on a
@@ -1070,7 +1070,7 @@ def cmd_preflight(a):
                            "point, not a proven upper bound. --range does not "
                            "pin the oracle's radius any more; to force one, "
                            "pass --ns3::oracle::Topology::LinkRangeM=<m> "
-                           "(ns3/oracle/README.md)")
+                           "(ns3/baselines/oracle/README.md)")
     # #481: the harness's #480 refusals, mirrored so a bad 3-D cell fails here
     # at zero dispatches instead of aborting on the runner.
     if area_z > 0:
@@ -1917,7 +1917,7 @@ def check_oracle(path, rows):
                            f"(mode={mode}, radius {rng} m). A fading or "
                            "two-ray channel has no crisp adjacency, so this "
                            "arm is a reference point, not a proven upper "
-                           "bound — see ns3/oracle/README.md before quoting "
+                           "bound — see ns3/baselines/oracle/README.md before quoting "
                            "it as one")
         if int(no_route) > 0:
             report("WARN", f"{tag}: {no_route} lookup(s) found no path — the "
@@ -2709,7 +2709,7 @@ def main():
     # knob, #483), else 1 pkt/s (the paper base scenario).
     p.add_argument("--pktPerSec", type=float, default=None)
     p.add_argument("--rateMbps", type=float, default=2)
-    # kDefaultPathWindowS in ns3/examples/anthocnet-compare.cc (#217).
+    # kDefaultPathWindowS in ns3/anthocnet/examples/anthocnet-compare.cc (#217).
     p.add_argument("--pathWindowS", type=float, default=10)
     p.add_argument("--mobility",
                    choices=("rwp", "ssrwp", "gaussmarkov", "manhattan"),
@@ -2728,7 +2728,7 @@ def main():
     # anthocnet, mirroring each harness's own default).
     p.add_argument("--protocols", default=None)
     # --- #444 satellite mode: --harness isl-grid switches preflight to the
-    # ISL rules; the knobs and their defaults mirror ns3/examples/isl-grid.cc.
+    # ISL rules; the knobs and their defaults mirror ns3/anthocnet/examples/isl-grid.cc.
     p.add_argument("--harness", choices=("compare", "isl-grid"),
                    default="compare")
     p.add_argument("--rows", type=int, default=6)

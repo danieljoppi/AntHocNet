@@ -22,7 +22,7 @@ for f in Makefile README.md LICENSE CHANGELOG.md CITATION.cff VERSION \
   [ -e "$f" ] && cp "$f" "$dest/"
 done
 # Tracked files only: never ship build output, caches or local scratch.
-git ls-files -z core ns3 tools docs \
+git ls-files -z core ns3 tools docs results \
   | grep -zv -e '^docs/handoffs/' \
   | xargs -0 -I{} cp --parents {} "$dest/"
 echo "$dest"

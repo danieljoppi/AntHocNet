@@ -9,7 +9,7 @@
  * It is the computation behind the **oracle control arm** — the
  * global-knowledge upper bound the benchmark suites lack: Dijkstra over the
  * ground-truth topology, replayed as an ns-3 routing protocol
- * (`ns3/oracle/`). It lives in `core/` for one reason: it is
+ * (`ns3/baselines/oracle/`). It lives in `core/` for one reason: it is
  * simulator-agnostic logic, and AGENTS.md rule 7 wants logic covered by a
  * core unit test rather than only by a simulator run.
  *

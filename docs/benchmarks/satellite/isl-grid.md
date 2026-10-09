@@ -45,7 +45,7 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 > failcell [37319142249](https://github.com/danieljoppi/AntHocNet/actions/runs/37319142249),
 > corridor [37319154658](https://github.com/danieljoppi/AntHocNet/actions/runs/37319154658),
 > seam [37319168168](https://github.com/danieljoppi/AntHocNet/actions/runs/37319168168).
-> Cells: `docs/benchmarks/cells/sat-{base,failcell,corridor,seam}-app517.txt`.
+> Cells: `results/cells/sat-{base,failcell,corridor,seam}-app517.txt`.
 > `scenario_check.py results`: OK (0 fail, 0 warn) on all four. `±` is a
 > 95 % t-CI half-width; `[lo, hi]` a paired per-seed 95 % t-CI; p is
 > Wilcoxon signed-rank.
@@ -108,7 +108,7 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 > failcell [37172253492](https://github.com/danieljoppi/AntHocNet/actions/runs/37172253492),
 > corridor [37172255336](https://github.com/danieljoppi/AntHocNet/actions/runs/37172255336),
 > seam [37172257652](https://github.com/danieljoppi/AntHocNet/actions/runs/37172257652).
-> Cells: `docs/benchmarks/cells/sat-{base,failcell,corridor,seam}-cbr521.txt`.
+> Cells: `results/cells/sat-{base,failcell,corridor,seam}-cbr521.txt`.
 > `scenario_check.py results`: OK (0 fail, 0 warn) on all four. Means and
 > intervals are by script (`bench_parse.py`, `stats_util`); `±` is a 95 %
 > t-CI half-width and `[lo, hi]` a paired per-seed 95 % t-CI.
@@ -196,7 +196,7 @@ cannot carry a comparative delivery or latency claim in either direction.**
 > convergence, not of the topology. It is below this page's ≥ 1 pp
 > discrimination floor, so no verdict below changes.
 >
-> Cells: `docs/benchmarks/cells/sat-{base,failcell,corridor,seam}-olsr513.txt`.
+> Cells: `results/cells/sat-{base,failcell,corridor,seam}-olsr513.txt`.
 
 | protocol | PDR% | delay (ms) | delay99 (ms) | thrput (kbps) | NRL | NRL bytes | jitter (ms) |
 |---|---|---|---|---|---|---|---|
@@ -577,7 +577,7 @@ excludes.
 
 ## What this suite is, and is not
 
-One harness, [`ns3/examples/isl-grid.cc`](../../../ns3/examples/isl-grid.cc):
+One harness, [`ns3/anthocnet/examples/isl-grid.cc`](../../../ns3/anthocnet/examples/isl-grid.cc):
 an R×C **+Grid torus** of point-to-point ISLs — one `/30` subnet per link, so
 every satellite holds one interface *per neighbour* (degree 4 on the torus).
 That multi-interface shape is the point: it is what the MANET suite can never
@@ -682,7 +682,7 @@ node one interface, and DSDV is correct there. DSDV remains a full baseline in
 the MANET suite, where every node has a single wifi interface and the
 assumption holds.
 
-`ns3/tools/check-sat-arms.sh` runs every supported arm on a small torus per PR
+`tools/checks/check-sat-arms.sh` runs every supported arm on a small torus per PR
 so a defect of this class cannot reach a campaign dispatch again.
 
 `dsdv` is therefore **absent by necessity, not by choice**, and its absence
@@ -776,7 +776,7 @@ a point-to-point grid with fixed per-link delay has no stochastic channel, so
   above is why it exists).
 
 Values live in [`ns3/tools/anchors.yml`](../../../ns3/tools/anchors.yml);
-the gate is [`ns3/tools/check-sat-anchors.sh`](../../../ns3/tools/check-sat-anchors.sh)
+the gate is [`tools/checks/check-sat-anchors.sh`](../../../tools/checks/check-sat-anchors.sh)
 (#237/#238). Known open question against the hop-delay floor: the ~0.25 ms
 excess tracked in [#250](https://github.com/danieljoppi/AntHocNet/issues/250)
 — inside the slack, not yet attributed.
@@ -810,7 +810,7 @@ deterministic point-to-point links — those stay low-run and are read as
    is uploaded as the `satellite-benchmark` artifact (30-day retention).
 2. **Rescue** it past expiry with the `rescue-artifacts` workflow
    (`sat_run_ids` input); it is committed as
-   `docs/benchmarks/campaign/<runid>-sat.txt`.
+   `results/campaign/<runid>-sat.txt`.
 3. **Validate** before reading:
    `python3 tools/bench/scenario_check.py results FILE`
    understands both the `--csv` schema and the human

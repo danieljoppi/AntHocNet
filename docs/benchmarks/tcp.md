@@ -58,7 +58,7 @@ realisations inside each cell:
 Per-seed goodput comes from the jobs' `##GOODPUT##` marker rows. The pooled
 tables below are hand-written (independent dispatches, no generated block —
 same as [grid.md](grid.md)); the underlying data is committed so they can be
-re-derived: [`campaign/tcp-goodput.csv`](campaign/tcp-goodput.csv)
+re-derived: [`results/campaign/tcp-goodput.csv`](../../results/campaign/tcp-goodput.csv)
 (80 rows: 20 seeds × 4 protocols). The per-cell column mapping was validated
 against the harness's `# stddev` lines before any number here was read
 (20 checks per cell, all OK).
@@ -130,7 +130,7 @@ the grid's `rwp × tworay` knobs, and reproduced that cell exactly:
 
 - **Per-seed, field-for-field:** all 80 `##RUN##` rows (20 seeds × 4
   protocols) match the committed
-  [`campaign/pooled-grid-mobility-channel-20260808-runs.csv`](campaign/pooled-grid-mobility-channel-20260808-runs.csv)
+  [`results/campaign/pooled-grid-mobility-channel-20260808-runs.csv`](../../results/campaign/pooled-grid-mobility-channel-20260808-runs.csv)
   rwp-tworay rows on every compared metric (pdr, delay, delay99, throughput,
   NRL, jitter, dOff50, dOff90) — zero mismatches, the only textual difference
   being the undefined-quantile sentinel (`inf` in the log, `−1` in the CSV).

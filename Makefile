@@ -7,10 +7,11 @@
 #
 # Usage:
 #   make test                                   # build + run core unit tests
-#   make install-ns3  NS3DIR=/path/to/ns-3-dev
+#   make doctor       NS3DIR=/path/to/ns-3-dev   # check the ns-3 tree first
+#   make install-ns3  NS3DIR=/path/to/ns-3-dev   # BASELINES=0: AntHocNet only
 #   make uninstall-ns3 NS3DIR=/path/to/ns-3-dev
 
-.PHONY: test core-test install-ns3 uninstall-ns3 clean
+.PHONY: test core-test doctor install-ns3 uninstall-ns3 clean
 
 test: core-test
 
@@ -19,8 +20,11 @@ core-test:
 	cmake --build core/build -j
 	cd core/build && ctest --output-on-failure
 
+doctor:
+	@$(MAKE) --no-print-directory -C ns3 doctor NS3DIR=$(NS3DIR)
+
 install-ns3:
-	$(MAKE) -C ns3 install NS3DIR=$(NS3DIR)
+	$(MAKE) -C ns3 install NS3DIR=$(NS3DIR) BASELINES=$(or $(BASELINES),1)
 
 uninstall-ns3:
 	$(MAKE) -C ns3 uninstall NS3DIR=$(NS3DIR)

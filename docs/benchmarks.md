@@ -131,7 +131,7 @@ The ranking-stability statement that reads it is on the
 | moving LEO constellation | [leo-walker.md](benchmarks/satellite/leo-walker.md) | [constellation.png](benchmarks/charts/constellation.png), [calibration-hypatia.png](benchmarks/charts/calibration-hypatia.png) |
 
 These charts are drawn from the committed cells under
-[`benchmarks/cells/`](benchmarks/cells/) by `ns3/tools/family-charts.py`. The
+[`results/cells/`](../results/cells/) by `ns3/tools/family-charts.py`. The
 **Charts** workflow re-renders them (and the sweep charts, from the campaign
 CSVs their pages cite) on every change to that data or to the chart code, and
 commits the result; the Pages site redeploys after it. Re-measuring a page

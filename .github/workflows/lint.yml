@@ -101,4 +101,4 @@ jobs:
         # trace. core/tests/test_config_defaults.cpp pins the core values;
         # this pins the adapter copies to core. Cheap (stdlib-only regexes,
         # <1 s) and it runs on every PR. See #258.
-        run: python3 ns3/tools/check-default-parity.py
+        run: python3 tools/checks/check-default-parity.py

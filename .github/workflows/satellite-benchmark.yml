@@ -7,7 +7,7 @@ name: Satellite benchmark (manual)
 # for per-merge CI, and the CI matrix already runs the fast pieces of this
 # suite on every PR (the 4x4 delivery smoke on every leg; the analytic anchor
 # gate and the ISL determinism gate on the 3.42 leg — see ci.yml and
-# ns3/tools/check-sat-anchors.sh).
+# tools/checks/check-sat-anchors.sh).
 #
 # harness=leo-walker (#297, ADR-0022) runs the MOVING constellation instead:
 # a Walker shell on stock ns-3.48's LEO model with GSL handover and a failure

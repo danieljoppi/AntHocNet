@@ -19,7 +19,7 @@ the per-simulator adapters, and the harnesses that drive scenarios. Nothing in
 
 ```mermaid
 flowchart TB
-    subgraph HARNESS["Harnesses & scenarios (ns3/examples)"]
+    subgraph HARNESS["Harnesses & scenarios (ns3/anthocnet/examples)"]
         direction LR
         H1["anthocnet-compare<br/>--scenario=paper / thesis<br/>MANET fields"]
         H2["isl-grid<br/>+Grid torus<br/>satellite ISL"]

@@ -64,7 +64,7 @@ charts** workflow (`scenario-matrix.yml`), which renders `sweep-scale.png` into
 filled in by pointing `update-benchmarks.py` at that CSV.
 
 Raw sweep data rescued from expired artifacts lives in
-[`../campaign/`](../campaign/) and is summarizable with the `benchmark-results`
+[`results/campaign/`](../../../results/campaign/) and is summarizable with the `benchmark-results`
 skill's `sweep_summary.py`. This sweep is the one that had to be **seed-split**
 to run at all — see the provenance note below.
 
@@ -105,7 +105,7 @@ protocol per point, with no gaps and no duplicates.
 | f = 2.0 | 200 | 18 × 1 + 1 × 2 seeds | `30898711742`, `30898724984`, `30898736284`, `30898751349`, `30898769563`, `30898781607`, `30898794804`, `30898809114`, `30898820499`, `30898833922`, `30898846247`, `30898858035`, `30898870503`, `30898882109`, `30898892224`, `30898902277`, `30898913177`, `30898925485`, `30876743751` |
 
 The pooled inputs are committed as
-`../campaign/pooled-scale-{1.4,1.8,2.0}-20260804.csv` (plus their per-run
+`results/campaign/pooled-scale-{1.4,1.8,2.0}-20260804.csv` (plus their per-run
 siblings); f = 1.0 predates #319 and has no sibling, so it is published from
 its aggregate CSV unchanged.
 
@@ -172,9 +172,9 @@ _Sweep `scale` — mean of 20 run(s) per point, every baseline on identical real
 > | f = 1.8 | 162 | 1 + 6 × 3 + 1 seeds | `37233308743`, `37245033305`, `37245034720`, `37245035898`, `37245037135`, `37245038377`, `37245039781`, `37245041291` |
 > | f = 2.0 | 200 | 20 × 1 seed | `37233310160`, `37245045391`, `37245046905`, `37245048133`, `37245049690`, `37245051438`, `37245052799`, `37245054608`, `37245056047`, `37245058610`, `37245060289`, `37245061876`, `37245063971`, `37245065248`, `37245066748`, `37245068375`, `37245069836`, `37245071215`, `37245072592`, `37245073899` |
 >
-> Pooled inputs: `../campaign/pooled-scale-{1.4,1.8,2.0}-20261005.csv`
+> Pooled inputs: `results/campaign/pooled-scale-{1.4,1.8,2.0}-20261005.csv`
 > plus their `-runs.csv` per-seed siblings; f = 1.0 is
-> `../campaign/37233299992-run.csv` unchanged.
+> `results/campaign/37233299992-run.csv` unchanged.
 > `scenario_check.py results`: 0 FAIL; the 4 WARNs are the #230
 > path-diversity window caveat. OLSR's PDR is offered-based ([#510](https://github.com/danieljoppi/AntHocNet/issues/510)), so the
 > estimate table at the top of this page does not apply to this block.

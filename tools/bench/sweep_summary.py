@@ -3,7 +3,7 @@
 # Copyright (C) 2026 Daniel Henrique Joppi
 """Validate + summarize classified campaign CSVs (run-scenarios.py schema).
 
-The scenario-matrix / campaign CSVs (docs/benchmarks/campaign/*.csv, or a
+The scenario-matrix / campaign CSVs (results/campaign/*.csv, or a
 fresh `run-scenarios.py --out` file) are hundreds of cells wide; never load
 them into LLM context to compare by eye. This script does the schema check,
 the per-point AntHocNet-vs-baseline deltas, the stddev-aware noise call, and

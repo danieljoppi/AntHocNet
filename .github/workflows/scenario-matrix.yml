@@ -196,8 +196,11 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          cp "$GITHUB_WORKSPACE/scenarios.csv" docs/benchmarks/scenarios.csv
-          git add docs/benchmarks
+          # The classified CSV is data: it lands in results/campaign/ named after
+          # the run (#615), like rescue-artifacts.yml; the charts stay in docs/.
+          mkdir -p results/campaign
+          cp "$GITHUB_WORKSPACE/scenarios.csv" "results/campaign/${GITHUB_RUN_ID}-matrix.csv"
+          git add docs/benchmarks results/campaign
           if git diff --cached --quiet; then
             echo "no chart changes to commit"
           else

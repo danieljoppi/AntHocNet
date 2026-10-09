@@ -1,5 +1,5 @@
 # Validation-anchor thresholds (#59) — the single place to recalibrate.
-# Consumed by ns3/tools/check-anchors.sh, which parses "key: number" lines
+# Consumed by tools/checks/check-anchors.sh, which parses "key: number" lines
 # (a trailing "# comment" is fine as long as it contains no colon). Scenario
 # definitions live in the script; expected values and their rationale in
 # docs/benchmarks/methodology.md "Validation anchors".

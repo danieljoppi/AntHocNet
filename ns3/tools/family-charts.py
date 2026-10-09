@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (C) 2026 Daniel Henrique Joppi
 """
-family-charts.py [--cells docs/benchmarks/cells] [--outdir docs/benchmarks/charts]
+family-charts.py [--cells results/cells] [--outdir docs/benchmarks/charts]
 
 Render the family results pages' figures from the committed result cells
-(docs/benchmarks/cells/*.txt -- the harness's own text output, ##RUN##
+(results/cells/*.txt -- the harness's own text output, ##RUN##
 per-seed rows included). Re-plotting never re-runs a simulator, and the
 output is deterministic (the bootstrap is seeded by stats_util).
 
@@ -553,12 +553,10 @@ def plot_sweeps(campaign_dir, outdir):
 def main():
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
     ap = argparse.ArgumentParser(description="Render family results charts.")
-    ap.add_argument("--cells", default=os.path.join(root, "docs", "benchmarks",
-                                                    "cells"))
+    ap.add_argument("--cells", default=os.path.join(root, "results", "cells"))
     ap.add_argument("--outdir", default=os.path.join(root, "docs", "benchmarks",
                                                      "charts"))
-    ap.add_argument("--campaign", default=os.path.join(root, "docs", "benchmarks",
-                                                       "campaign"))
+    ap.add_argument("--campaign", default=os.path.join(root, "results", "campaign"))
     ap.add_argument("--sweep-outdir", default=os.path.join(root, "docs",
                                                            "benchmarks"))
     args = ap.parse_args()

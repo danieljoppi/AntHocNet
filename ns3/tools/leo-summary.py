@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (C) 2026 Daniel Henrique Joppi
 """
-leo-summary.py [--cells docs/benchmarks/cells] CELL...
+leo-summary.py [--cells results/cells] CELL...
 
 Summarise the moving-constellation campaign (#297) from the committed
-leo-walker cells (docs/benchmarks/cells/leo-<cell>-<arm>.txt, one arm per
+leo-walker cells (results/cells/leo-<cell>-<arm>.txt, one arm per
 file, 20 seeds each) as the Markdown tables the results page carries. Stdlib
 plus tools/bench/stats_util.py, so the numbers on the page are
 recomputed by anyone with python3 and never typed by hand.
@@ -188,7 +188,7 @@ def cell_tables(cell, cells_dir):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--cells", default=os.path.join(ROOT, "docs", "benchmarks", "cells"))
+    ap.add_argument("--cells", default=os.path.join(ROOT, "results", "cells"))
     ap.add_argument("cell", nargs="+")
     a = ap.parse_args()
     for cell in a.cell:

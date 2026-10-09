@@ -36,7 +36,7 @@
 >   `git show 0caa508d:docs/benchmarks/grid.md`;
 > - `4cdfb96` (1 s cap): `git show v1.4.0:docs/benchmarks/grid.md`.
 >
-> The per-seed cells are committed as `cells/grid-<mobility>-<channel>.txt`.
+> The per-seed cells are committed as `results/cells/grid-<mobility>-<channel>.txt`.
 
 > **OLSR's delivery column is restated
 > ([#510](https://github.com/danieljoppi/AntHocNet/issues/510)).** Stock ns-3 OLSR refuses an unroutable send at
@@ -57,7 +57,7 @@
 > is no longer the same in all six cells; see
 > [the ranking-stability statement](#the-ranking-stability-statement).
 >
-> Cells: `cells/grid-<mobility>-<channel>-olsr510.txt`, runs `36962722070` …
+> Cells: `results/cells/grid-<mobility>-<channel>-olsr510.txt`, runs `36962722070` …
 > `36962733439`.
 
 ## Restated on CBR sources (#521)
@@ -83,7 +83,7 @@
 >
 > _Dots: mean of 20 seeds; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99); black tick: the oracle control, `approx=1` on these channels ([#431](https://github.com/danieljoppi/AntHocNet/issues/431): its delay99 is not a bound on Nakagami). DSDV is in the cells and tables, not plotted, to keep three series apart. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `grid-*-cbr521.txt`._
 >
-> Cells: `cells/grid-<mobility>-<channel>-cbr521.txt`. Each marker carries
+> Cells: `results/cells/grid-<mobility>-<channel>-cbr521.txt`. Each marker carries
 > 20 rows per arm. Rows split by the workflow's interleaved `##RSS##` line
 > are dropped; their clean re-emitted copies are kept. `bench_parse` column
 > mapping is OK (25 checks) on all six. Statistics come from `stats_util`.
@@ -229,12 +229,12 @@ Because the cells come from independent dispatches rather than one classified
 sweep, this page has **no generated block**: the tables below are
 hand-written, as on the [satellite suite](satellite/isl-grid.md) page. The
 per-seed data behind them is committed next to this page as
-`cells/grid-<mobility>-<channel>.txt` (`##RUN##`, `##BENCH##`, `##CONFIG##`,
+`results/cells/grid-<mobility>-<channel>.txt` (`##RUN##`, `##BENCH##`, `##CONFIG##`,
 `##PROV##`, `##ORACLE##`, `##COMMON##`, `##MATCH##`, `# drops`, `# stddev`).
 Each cell's `##PROV##` line pins `commit=dd171e5e`, and its `##CONFIG##` pins
 `TimerJitter=0.05` and `ReconvHoldCap=+2e+08ns`, so every block is
 self-describing. The committed
-`../benchmarks/campaign/pooled-grid-mobility-channel-20260808.csv` and its
+`results/campaign/pooled-grid-mobility-channel-20260808.csv` and its
 per-run sibling remain the **1 s corpus**, superseded twice over.
 
 ## Results
@@ -687,7 +687,7 @@ margin no plausible graph correction closes.
 sharpest statement this page can make about the limit. Shrink the radius and the
 oracle's hop count rises above its subjects — today's fading failure. Grow it and
 the oracle's PDR falls *below* them: the refuted link-budget rule recorded in
-[`ns3/oracle/README.md`](../../ns3/oracle/README.md) made 2440 of 2450 edges
+[`ns3/baselines/oracle/README.md`](../../ns3/baselines/oracle/README.md) made 2440 of 2450 edges
 adjacent and delivered 30.4 % PDR, a control its own subjects beat. Two-ray has a
 radius in the feasible band between those failures. Whether a fading channel has
 one at all is open, and if it does not, the answer is a probability-weighted
@@ -797,12 +797,12 @@ what drives the result.
 
 | mobility | channel | pause | run ID | cell |
 |---|---|---|---|---|
-| rwp | tworay | 30 | [`36810709154`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810709154) | `cells/grid-rwp-tworay.txt` |
-| ssrwp | tworay | 30 | [`36810711356`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810711356) | `cells/grid-ssrwp-tworay.txt` |
-| gaussmarkov | tworay | 0 | [`36810713478`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810713478) | `cells/grid-gaussmarkov-tworay.txt` |
-| rwp | nakagami | 30 | [`36810715413`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810715413) | `cells/grid-rwp-nakagami.txt` |
-| ssrwp | nakagami | 30 | [`36810717701`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810717701) | `cells/grid-ssrwp-nakagami.txt` |
-| gaussmarkov | nakagami | 0 | [`36810720076`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810720076) | `cells/grid-gaussmarkov-nakagami.txt` |
+| rwp | tworay | 30 | [`36810709154`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810709154) | `results/cells/grid-rwp-tworay.txt` |
+| ssrwp | tworay | 30 | [`36810711356`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810711356) | `results/cells/grid-ssrwp-tworay.txt` |
+| gaussmarkov | tworay | 0 | [`36810713478`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810713478) | `results/cells/grid-gaussmarkov-tworay.txt` |
+| rwp | nakagami | 30 | [`36810715413`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810715413) | `results/cells/grid-rwp-nakagami.txt` |
+| ssrwp | nakagami | 30 | [`36810717701`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810717701) | `results/cells/grid-ssrwp-nakagami.txt` |
+| gaussmarkov | nakagami | 0 | [`36810720076`](https://github.com/danieljoppi/AntHocNet/actions/runs/36810720076) | `results/cells/grid-gaussmarkov-nakagami.txt` |
 
 Every cell self-identifies through its `##CONFIG##` row
 ([#369](https://github.com/danieljoppi/AntHocNet/issues/369)) — cell identity

@@ -23,9 +23,41 @@ permissions:
   packages: read
 
 jobs:
+  # Docs-only PRs skip the heavy jobs (#607). Pushes to main and manual runs
+  # always run everything; a PR is "docs-only" when every changed file is
+  # prose, docs, the paper or an issue template. The single `CI gate` job at
+  # the end is the one check to require: it passes when every job it waits on
+  # passed or was skipped, so skipped jobs never block a merge.
+  changes:
+    name: what changed (docs-only PRs skip the heavy jobs)
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          files=$(git diff --name-only "$BASE" HEAD)
+          printf 'changed:\n%s\n' "$files"
+          code=false
+          if [ -z "$files" ] || printf '%s\n' "$files" \
+              | grep -qvE '^(docs/|paper/|\.github/ISSUE_TEMPLATE/)|\.md$|^mkdocs\.yml$|^LICENSE$|^CITATION\.cff$'; then
+            code=true
+          fi
+          echo "code=$code"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
   core:
     name: core library + unit tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install toolchain
@@ -36,6 +68,8 @@ jobs:
   web-parity:
     name: browser adapter — native vs WASM parity + learn-site smoke (#544, #548)
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     timeout-minutes: 30
     # ADR-0021: the learn site runs core/ as WebAssembly. This job builds the
     # browser adapter natively and with Emscripten, runs every built-in
@@ -73,6 +107,8 @@ jobs:
   core-sanitizers:
     name: core under ASan + UBSan
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install toolchain
@@ -87,6 +123,8 @@ jobs:
   core-coverage:
     name: core test coverage (gcov, report-only)
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     # Which parts of core/ do the 18 ctest targets actually execute? The repo's
     # expensive failures (D2 evaporation, the #19 detector-D storm, the 8-bit
     # sequence wrap) were all behaviour in paths nothing exercised, so make that
@@ -208,11 +246,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check allowlists against the tree
-        run: bash ns3/tools/check-allowlists.sh
+        run: bash tools/checks/check-allowlists.sh
 
   codec-fuzz:
     name: codec fuzz (libFuzzer, 60s)
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     # The codec is the only parser of untrusted network bytes (item 12), so fuzz
     # its decode path against a small seed corpus. ubuntu-latest's clang ships
     # the libFuzzer/ASan runtimes; a crash/UB/over-read fails the job.
@@ -230,6 +270,8 @@ jobs:
   ns3-build:
     name: NS-3 module build + test
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     # Build against the pre-built plain ns-3 image (published to GHCR on merge
     # to the default branch) rather than compiling ns-3 from scratch: the stock
     # tree is already built, so CI only compiles the AntHocNet module delta
@@ -253,7 +295,26 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install AntHocNet module
-        run: make install-ns3 NS3DIR=/opt/ns-3
+        # The 3.48 leg installs from the drop-in release tarball (#606) instead
+        # of the Makefile, so every PR proves the asset a user downloads builds
+        # and passes the same tests; the other legs keep `make install-ns3`.
+        run: |
+          if [ "${{ matrix.version }}" = 3.48 ]; then
+            tools/release/module-tarball.sh ci /tmp/tarball
+            tar -xzf /tmp/tarball/anthocnet-ns3-modules-ci.tar.gz -C /opt/ns-3/contrib
+          else
+            make install-ns3 NS3DIR=/opt/ns-3
+          fi
+      - name: make doctor (#605)
+        # The pre-install checker must recognise every supported tree and the
+        # installed modules; its ##DOCTOR## line is what the learn site parses.
+        run: |
+          out=$(make -s doctor NS3DIR=/opt/ns-3)
+          echo "$out"
+          line=$(printf '%s\n' "$out" | grep '^##DOCTOR## ')
+          case "$line" in *" ns3=${{ matrix.version }} "*) ;; *) echo "FAIL: doctor misread the version"; exit 1;; esac
+          case "$line" in *" module=installed "*) ;; *) echo "FAIL: doctor did not see the module"; exit 1;; esac
+          case "$line" in *"baselines=aomdv:ok,gpsr:ok,oracle:ok "*) ;; *) echo "FAIL: doctor did not see the baselines"; exit 1;; esac
       - name: Configure (scope examples/tests to AntHocNet)
         run: |
           cd /opt/ns-3
@@ -316,7 +377,7 @@ jobs:
         # The mid-run sample exists because the first draft passed a t=0-only
         # check while the mobility bounds clamped every node back to z = 0.
         if: matrix.version == '3.42'
-        run: bash ns3/tools/check-3d-field.sh /opt/ns-3
+        run: bash tools/checks/check-3d-field.sh /opt/ns-3
       - name: Manhattan / urban smoke (#488, the VANET family)
         # --mobility=manhattan must keep every vehicle on the street grid
         # (`# road` diagnostic at t=0 and mid-run); every arm must deliver on
@@ -325,7 +386,7 @@ jobs:
         # same-seed rerun is byte-identical; and the four unhonourable
         # combinations are refused.
         if: matrix.version == '3.42'
-        run: bash ns3/tools/check-manhattan.sh /opt/ns-3
+        run: bash tools/checks/check-manhattan.sh /opt/ns-3
       - name: Moving-constellation smoke (#192/#297, ADR-0022, leo-walker)
         # A 16x16 Walker shell on stock ns-3.48's LEO mobility model: the
         # geometry must match the analytic shell at t=0 and half an orbit
@@ -336,7 +397,7 @@ jobs:
         # 3.48 only: the stock LEO model first ships there (ADR-0022), and
         # leo-walker is not built on older trees. ~45 s.
         if: matrix.version == '3.48'
-        run: bash ns3/tools/check-leo-walker.sh /opt/ns-3
+        run: bash tools/checks/check-leo-walker.sh /opt/ns-3
       - name: Validation-anchor gate (single-hop PDR floor, #59)
         # Blocking anchor from docs/benchmarks/methodology.md "Validation
         # anchors": on a static, in-range 2-node link the *stock* stack
@@ -347,7 +408,7 @@ jobs:
         # the heavier Broch-field anchor runs per-merge in benchmarks.yml.
         # Thresholds: ns3/tools/anchors.yml.
         if: matrix.version == '3.42'
-        run: bash ns3/tools/check-anchors.sh /opt/ns-3 single-hop
+        run: bash tools/checks/check-anchors.sh /opt/ns-3 single-hop
       - name: FANET anchors (#482, --scenario=fanet)
         # The FANET family's analytic anchors, gated before any FANET number is
         # published. Both shrink the --scenario=fanet preset to a field whose
@@ -362,8 +423,8 @@ jobs:
         # Thresholds: ns3/tools/anchors.yml.
         if: matrix.version == '3.42'
         run: |
-          bash ns3/tools/check-anchors.sh /opt/ns-3 fanet-single-hop-3d
-          bash ns3/tools/check-anchors.sh /opt/ns-3 fanet-vertical-3d
+          bash tools/checks/check-anchors.sh /opt/ns-3 fanet-single-hop-3d
+          bash tools/checks/check-anchors.sh /opt/ns-3 fanet-vertical-3d
       - name: VANET anchors (#488, --scenario=vanet)
         # The VANET family's analytic anchors, gated before any VANET number is
         # published. Both shrink --scenario=vanet to one 280 x 280 m block
@@ -377,8 +438,8 @@ jobs:
         # Thresholds: ns3/tools/anchors.yml.
         if: matrix.version == '3.42'
         run: |
-          bash ns3/tools/check-anchors.sh /opt/ns-3 vanet-single-hop
-          bash ns3/tools/check-anchors.sh /opt/ns-3 vanet-building
+          bash tools/checks/check-anchors.sh /opt/ns-3 vanet-single-hop
+          bash tools/checks/check-anchors.sh /opt/ns-3 vanet-building
       - name: Determinism gate (same seed twice must be byte-identical, #129)
         # Golden rule 3 (AGENTS.md): all randomness via IRng, all time via
         # IClock, so identical seeds must reproduce identical runs — the
@@ -390,7 +451,7 @@ jobs:
         # single-matrix-version placement as the anchor gate above to keep CI
         # cheap (reuses this job's build).
         if: matrix.version == '3.42'
-        run: bash ns3/tools/check-determinism.sh /opt/ns-3
+        run: bash tools/checks/check-determinism.sh /opt/ns-3
       - name: Seed-independence gate (a run must depend on its seed alone, #352)
         # Stronger than the determinism gate above: identical invocations were
         # already reproducible, but a run's realisation also leaked its
@@ -407,7 +468,7 @@ jobs:
         # 4 seeds x 30 simulated seconds on small fields, so it costs seconds; same
         # single-matrix-version placement as the gates above.
         if: matrix.version == '3.42'
-        run: python3 ns3/tools/check-seed-independence.py /opt/ns-3 --seeds 4 --time 30
+        run: python3 tools/checks/check-seed-independence.py /opt/ns-3 --seeds 4 --time 30
       - name: Arm delivery smoke (#429, every MANET arm must route multi-hop)
         # The MANET equivalent of the satellite arm smoke below, and the gate
         # that turns methodology.md's "no baseline merges without a smoke run
@@ -427,7 +488,7 @@ jobs:
         # the list cannot outlive the defects. ~2-3 min; same
         # single-matrix-version placement as the gates above.
         if: matrix.version == '3.42'
-        run: bash ns3/tools/check-arm-delivery.sh /opt/ns-3
+        run: bash tools/checks/check-arm-delivery.sh /opt/ns-3
 
       - name: Satellite validation anchors (#237, ISL topology)
         # The ISL analogue of the anchor gate above, and stronger in kind: a
@@ -445,8 +506,8 @@ jobs:
         # ns3/tools/anchors.yml.
         if: matrix.version == '3.42'
         run: |
-          bash ns3/tools/check-sat-anchors.sh /opt/ns-3 single-isl
-          bash ns3/tools/check-sat-anchors.sh /opt/ns-3 hop-delay
+          bash tools/checks/check-sat-anchors.sh /opt/ns-3 single-isl
+          bash tools/checks/check-sat-anchors.sh /opt/ns-3 hop-delay
       - name: Satellite protocol-arm smoke (#420, every arm must run)
         # The gate that #420 was missing. Everything above this line asks what
         # *values* a run produces, and all of it on a single arm — so nothing
@@ -464,7 +525,7 @@ jobs:
         # than crashing mid-run. Seconds in total; same single-matrix-version
         # placement as the gates above.
         if: matrix.version == '3.42'
-        run: bash ns3/tools/check-sat-arms.sh /opt/ns-3
+        run: bash tools/checks/check-sat-arms.sh /opt/ns-3
       - name: Determinism gate on the ISL topology (#237 S5)
         # Run separately from the wifi determinism gate rather than assuming it
         # follows: the ISL grid exercises a different device and channel, plus
@@ -472,17 +533,19 @@ jobs:
         # built from received hellos — an ordering a container-iteration bug
         # could perturb without ever showing on a single-interface wifi node.
         if: matrix.version == '3.42'
-        run: bash ns3/tools/check-determinism.sh /opt/ns-3 isl-grid
+        run: bash tools/checks/check-determinism.sh /opt/ns-3 isl-grid
 
   ns3-asan:
     name: NS-3 module under ASan + LSan
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     # Sanitize the adapter surface (pending-packet queue, timer cancel paths,
     # header <-> AntMessage conversion): rebuild the AntHocNet module and its
     # ns-3 dependencies with AddressSanitizer + LeakSanitizer, then re-run the
     # same module test suite and e2e delivery smoke as ns3-build. Single matrix
     # version (3.42, the anchor-gate pin) to bound cost. Non-blocking while the
-    # LSan suppression file (ns3/tools/lsan.supp) is calibrated against
+    # LSan suppression file (tools/checks/lsan.supp) is calibrated against
     # upstream ns-3 static/global allocations — promote to blocking once green
     # on main (#130).
     continue-on-error: true
@@ -506,7 +569,7 @@ jobs:
           # Scope LSan failures to AntHocNet code: suppress known upstream ns-3
           # static-initializer allocations (see the file header for how to
           # extend it). $GITHUB_WORKSPACE is the in-container checkout path.
-          echo "LSAN_OPTIONS=suppressions=$GITHUB_WORKSPACE/ns3/tools/lsan.supp" >> "$GITHUB_ENV"
+          echo "LSAN_OPTIONS=suppressions=$GITHUB_WORKSPACE/tools/checks/lsan.supp" >> "$GITHUB_ENV"
           mods='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
           # ns-3's CMake build has first-class sanitizer support (NS3_SANITIZE),
           # exposed by the ./ns3 wrapper as --enable-sanitizers
@@ -545,3 +608,57 @@ jobs:
           echo "AntHocNet PDR% = ${pdr:-<none>}"
           awk -v p="${pdr:-0}" 'BEGIN { exit (p+0 > 0) ? 0 : 1 }' \
             || { echo "FAIL: AntHocNet delivered no packets (PDR=${pdr:-<none>})"; exit 1; }
+
+  # BASELINES=0 (#605): AntHocNet alone, without the aomdv/gpsr/oracle
+  # comparison modules. The module, its test suite and anthocnet-example must
+  # build and pass; the comparison harnesses are skipped by ns-3 itself.
+  ns3-core-only:
+    name: NS-3 module alone (BASELINES=0)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ns3:3.48
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install AntHocNet only
+        run: make install-ns3 NS3DIR=/opt/ns-3 BASELINES=0
+      - name: make doctor reports the baselines missing, verdict still not fail
+        run: |
+          out=$(make -s doctor NS3DIR=/opt/ns-3)
+          echo "$out"
+          printf '%s\n' "$out" | grep -q '^##DOCTOR## .* baselines=aomdv:missing,gpsr:missing,oracle:missing '
+          ! printf '%s\n' "$out" | grep -q 'verdict=fail'
+      - name: Configure, build, test, run the example
+        run: |
+          cd /opt/ns-3
+          ./ns3 configure --enable-tests --enable-examples \
+            --filter-module-examples-and-tests='anthocnet' \
+            --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;csma'
+          ./ns3 build
+          ./test.py -s anthocnet
+          ./ns3 run anthocnet-example
+
+  # The one check to require in branch protection (#607): passes when every
+  # job above passed or was skipped (docs-only PRs), fails on any failure or
+  # cancellation.
+  ci-gate:
+    name: CI gate
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [changes, core, web-parity, core-sanitizers, core-coverage, allowlists, codec-fuzz, ns3-build, ns3-asan, ns3-core-only]
+    steps:
+      - env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          printf '%s\n' "$NEEDS" | python3 -c '
+          import json, sys
+          needs = json.load(sys.stdin)
+          bad = {k: v["result"] for k, v in needs.items() if v["result"] not in ("success", "skipped")}
+          for k, v in sorted(needs.items()):
+              print("%9s  %s" % (v["result"], k))
+          sys.exit(f"CI gate: {bad}" if bad else 0)
+          '

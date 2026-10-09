@@ -97,7 +97,7 @@ above the 3-period WARN line, so `HelloInterval` is not a concern
 
 The Broch AODV floor is RWP on the ground and does not transfer. The FANET
 family has its own **analytic** anchors, gated in CI on the 3.42 leg
-([`ns3/tools/check-anchors.sh`](../../../ns3/tools/check-anchors.sh), floors in
+([`tools/checks/check-anchors.sh`](../../../tools/checks/check-anchors.sh), floors in
 [`ns3/tools/anchors.yml`](../../../ns3/tools/anchors.yml)). Both run the preset
 with only the field shrunk, and route only stock AODV and the oracle control.
 
@@ -165,7 +165,7 @@ independent evidence.
 > oracle's 100 ms recompute is the preset default.
 > Main cell: [37172235137](https://github.com/danieljoppi/AntHocNet/actions/runs/37172235137).
 > Sparse cell: [37172236293](https://github.com/danieljoppi/AntHocNet/actions/runs/37172236293).
-> Cells: `docs/benchmarks/cells/fanet-{main,sparse}-cbr521.txt`.
+> Cells: `results/cells/fanet-{main,sparse}-cbr521.txt`.
 > `scenario_check.py results`: 0 FAIL; the WARNs are the expected oracle
 > no-path partitions and the 3-D hop-check note. `bench_parse` column
 > mapping is OK (30 checks) on both. OLSR's PDR is offered-based (#510).
@@ -379,7 +379,7 @@ our tuning.
 current code, with OLSR offered-based (#510) everywhere:
 
 - the six [grid](../grid.md) cells, two-ray or Nakagami;
-- the disk-propagation paper cell (`cells/paper-mobile-jitter*.txt`, RWP,
+- the disk-propagation paper cell (`results/cells/paper-mobile-jitter*.txt`, RWP,
   pause 0, from [#494](https://github.com/danieljoppi/AntHocNet/issues/494)).
 
 The paper cell is the channel-matched comparator, because FANET also runs on
@@ -452,10 +452,10 @@ re-runs:
 
 | cell | arms | run | commit | cell file |
 |---|---|---|---|---|
-| main, 350 m | anthocnet, aodv, olsr, dsdv, aomdv, oracle (100 ms), `##ENERGY##` | [36957200584](https://github.com/danieljoppi/AntHocNet/actions/runs/36957200584) | `77098cfe` | `cells/fanet-main-6arm.txt` |
-| sparse, 250 m | same | [36957203615](https://github.com/danieljoppi/AntHocNet/actions/runs/36957203615) | `77098cfe` | `cells/fanet-sparse-6arm.txt` |
-| main, 350 m | olsr, #510 offered-based PDR | [36962716872](https://github.com/danieljoppi/AntHocNet/actions/runs/36962716872) | `bd1f4e49` | `cells/fanet-main-olsr510.txt` |
-| sparse, 250 m | olsr, #510 offered-based PDR | [36962719693](https://github.com/danieljoppi/AntHocNet/actions/runs/36962719693) | `bd1f4e49` | `cells/fanet-sparse-olsr510.txt` |
+| main, 350 m | anthocnet, aodv, olsr, dsdv, aomdv, oracle (100 ms), `##ENERGY##` | [36957200584](https://github.com/danieljoppi/AntHocNet/actions/runs/36957200584) | `77098cfe` | `results/cells/fanet-main-6arm.txt` |
+| sparse, 250 m | same | [36957203615](https://github.com/danieljoppi/AntHocNet/actions/runs/36957203615) | `77098cfe` | `results/cells/fanet-sparse-6arm.txt` |
+| main, 350 m | olsr, #510 offered-based PDR | [36962716872](https://github.com/danieljoppi/AntHocNet/actions/runs/36962716872) | `bd1f4e49` | `results/cells/fanet-main-olsr510.txt` |
+| sparse, 250 m | olsr, #510 offered-based PDR | [36962719693](https://github.com/danieljoppi/AntHocNet/actions/runs/36962719693) | `bd1f4e49` | `results/cells/fanet-sparse-olsr510.txt` |
 
 `77098cfe` is the #508 branch head; its code is what merged as `a412ab0f`.
 `bd1f4e49` is the #511 branch head; its code is what merged as `f480d0ae`.
@@ -475,10 +475,10 @@ and OLSR's pre-#510 denominator:
 
 | cell | arms | run | commit | cell file |
 |---|---|---|---|---|
-| main, 350 m | anthocnet, aodv, olsr, dsdv (+ oracle at 1 s) | [36932609311](https://github.com/danieljoppi/AntHocNet/actions/runs/36932609311) | `54886e2a` | `cells/fanet-main.txt` |
-| sparse, 250 m | anthocnet, aodv, olsr, dsdv (+ oracle at 1 s) | [36932612649](https://github.com/danieljoppi/AntHocNet/actions/runs/36932612649) | `54886e2a` | `cells/fanet-sparse.txt` |
-| main, 350 m | oracle at 100 ms (all five arms re-run) | [36936966493](https://github.com/danieljoppi/AntHocNet/actions/runs/36936966493) | `0197fe66` | `cells/fanet-main-oracle100ms.txt` |
-| sparse, 250 m | oracle at 100 ms (all five arms re-run) | [36936970028](https://github.com/danieljoppi/AntHocNet/actions/runs/36936970028) | `0197fe66` | `cells/fanet-sparse-oracle100ms.txt` |
+| main, 350 m | anthocnet, aodv, olsr, dsdv (+ oracle at 1 s) | [36932609311](https://github.com/danieljoppi/AntHocNet/actions/runs/36932609311) | `54886e2a` | `results/cells/fanet-main.txt` |
+| sparse, 250 m | anthocnet, aodv, olsr, dsdv (+ oracle at 1 s) | [36932612649](https://github.com/danieljoppi/AntHocNet/actions/runs/36932612649) | `54886e2a` | `results/cells/fanet-sparse.txt` |
+| main, 350 m | oracle at 100 ms (all five arms re-run) | [36936966493](https://github.com/danieljoppi/AntHocNet/actions/runs/36936966493) | `0197fe66` | `results/cells/fanet-main-oracle100ms.txt` |
+| sparse, 250 m | oracle at 100 ms (all five arms re-run) | [36936970028](https://github.com/danieljoppi/AntHocNet/actions/runs/36936970028) | `0197fe66` | `results/cells/fanet-sparse-oracle100ms.txt` |
 
 **Dispatch:** `paper-benchmark.yml` with
 

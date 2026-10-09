@@ -136,7 +136,7 @@ which the route-stability metrics measure directly.
 
 The Broch AODV floor is RWP-only and does not transfer. The VANET family has
 its own **analytic** anchors, gated in CI on the 3.42 leg
-([`ns3/tools/check-anchors.sh`](../../../ns3/tools/check-anchors.sh), floors in
+([`tools/checks/check-anchors.sh`](../../../tools/checks/check-anchors.sh), floors in
 [`ns3/tools/anchors.yml`](../../../ns3/tools/anchors.yml)). Both run the preset
 shrunk to a single 280 × 280 m block with 20 vehicles, and route only stock
 AODV and the oracle control.
@@ -146,7 +146,7 @@ AODV and the oracle control.
 | `vanet-single-hop` | one block, street width 279 m (a 1 m building) | the 396 m block diagonal is inside the 423.3 m two-ray decode radius and no line of sight is cut, so every flow is one hop: **PDR ≈ 100 %**, oracle **hopsMean ≈ 1.00** | AODV 99.5 %, oracle 99.9 %, hopsMean 1.00 | the street grid, mobility and channel deliver at all |
 | `vanet-building` | one block, street width 100 m (a 180 × 180 m building) | vehicles on opposite streets lose line of sight and must relay around a corner: oracle **hopsMean > 1.2**; a channel that ignored the building reads the single-hop 1.00 | AODV 80.4 %, oracle 99.6 %, hopsMean 1.36 | the buildings are honoured end to end |
 
-The harness's own CI smoke (`ns3/tools/check-manhattan.sh`) adds the
+The harness's own CI smoke (`tools/checks/check-manhattan.sh`) adds the
 invariants the anchors do not: every vehicle is on a street at t = 0 and
 mid-run, every arm delivers on the urban field, the oracle keeps 66 edges
 against 236 under plain two-ray on the same field, and a same-seed rerun is
@@ -155,7 +155,7 @@ byte-identical.
 ## The oracle on the street grid
 
 The oracle derives its graph per pair under this channel (`decode-los-approx`,
-[ns3/oracle/README.md](../../../ns3/oracle/README.md)): inside the two-ray
+[ns3/baselines/oracle/README.md](../../../ns3/baselines/oracle/README.md)): inside the two-ray
 decode disk, a pair is a link iff the deterministic two-ray + building chain
 reaches the decode floor. Both models are deterministic, so the evaluation
 draws no random numbers and every arm sees the same channel. It is flagged
@@ -183,7 +183,7 @@ inputs `nNodes`, `areaX=800`, `areaY=800`, `pause=0`, `speed=20`,
 | main (100 vehicles, 4 seeds per job) | [37638802518](https://github.com/danieljoppi/AntHocNet/actions/runs/37638802518) (1–4), [37638813699](https://github.com/danieljoppi/AntHocNet/actions/runs/37638813699) (5–8), [37638825144](https://github.com/danieljoppi/AntHocNet/actions/runs/37638825144) (9–12), [37638836620](https://github.com/danieljoppi/AntHocNet/actions/runs/37638836620) (13–16), [37638847225](https://github.com/danieljoppi/AntHocNet/actions/runs/37638847225) (17–20) |
 | sparse (40 vehicles, 10 seeds per job) | [37638857489](https://github.com/danieljoppi/AntHocNet/actions/runs/37638857489) (1–10), [37638868141](https://github.com/danieljoppi/AntHocNet/actions/runs/37638868141) (11–20) |
 
-Cells: `docs/benchmarks/cells/vanet-{main,sparse}.txt`, 140 `##RUN##` rows
+Cells: `results/cells/vanet-{main,sparse}.txt`, 140 `##RUN##` rows
 each (20 seeds × 7 arms). A main-cell job took 3.5–4 h (about 50 min per
 seed, seven arms); a sparse-cell job 1.2–2 h.
 
@@ -369,7 +369,7 @@ _Each dot is AntHocNet − AODV averaged over 20 paired seeds, with its 95 % pai
 
 ## Provenance of the numbers
 
-Per-seed rows: `docs/benchmarks/cells/vanet-{main,sparse}.txt`. Statistics
+Per-seed rows: `results/cells/vanet-{main,sparse}.txt`. Statistics
 from `stats_util` (t-CI, Wilcoxon signed-rank). Drop decomposition from the
 `# drops` compact blocks, `##ROUTE##` from the per-seed rows. Reproduce with
 `paper-benchmark.yml` at `1a923576` and the inputs in the provenance block

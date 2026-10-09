@@ -35,7 +35,7 @@ cd "$NS3DIR"
 # anthocnet-compare and isl-grid examples are SKIPPED silently (their
 # CMakeLists lists those libs), so the "run anthocnet-compare" suggestion
 # below would point at a binary that was never built. Consistency is now
-# enforced by ns3/tools/check-allowlists.sh.
+# enforced by tools/checks/check-allowlists.sh.
 mods='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
 if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
     ./ns3 configure --enable-tests --enable-examples \

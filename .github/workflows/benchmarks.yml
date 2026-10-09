@@ -127,8 +127,8 @@ jobs:
         # ns3/tools/anchors.yml; rationale in docs/benchmarks/methodology.md
         # "Validation anchors".
         run: |
-          bash ns3/tools/check-anchors.sh /opt/ns-3 single-hop
-          bash ns3/tools/check-anchors.sh /opt/ns-3 broch-low-mobility
+          bash tools/checks/check-anchors.sh /opt/ns-3 single-hop
+          bash tools/checks/check-anchors.sh /opt/ns-3 broch-low-mobility
       - name: Run scenario taxonomy (10 runs, 120 s — the #318 floor)
         run: |
           python3 ns3/tools/run-scenarios.py /opt/ns-3 \

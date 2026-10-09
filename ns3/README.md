@@ -8,17 +8,44 @@ module (and `core/`) into `contrib/anthocnet`.
 Targets ns-3.36+ (CMake). A `wscript` is included for older waf-based ns-3
 (< 3.36).
 
+## Layout
+
+```
+ns3/
+  anthocnet/          our module: model/, helper/, examples/ (the harnesses), test/
+  baselines/<name>/   vendored comparison arms, each a self-contained module:
+                      aomdv/, gpsr/, oracle/ (provenance in each README)
+  tools/              harness drivers, chart scripts, anchors.yml
+  Makefile            the installer (make install-ns3 from the repo root)
+```
+
+CI check scripts live in [`tools/checks/`](../tools/checks). The installed
+layout is the same as before the #608 move: `contrib/anthocnet`,
+`contrib/aomdv`, `contrib/gpsr` and `contrib/oracle`.
+
 ## Install
 
 ```bash
 # from the repository root
-make install-ns3 NS3DIR=/path/to/ns-3-dev
+make doctor      NS3DIR=/path/to/ns-3-dev   # check the tree before a long build
+make install-ns3 NS3DIR=/path/to/ns-3-dev   # add BASELINES=0 for AntHocNet alone
 
 # then (re)configure and build ns-3
 cd /path/to/ns-3-dev
 ./ns3 configure --enable-examples --enable-tests
 ./ns3 build
 ```
+
+`make doctor` checks that the tree is ns-3.36–3.48 with CMake, a C++17
+compiler, Python and a writable `contrib/`, and reports what is installed. It
+ends with one machine-readable `##DOCTOR##` line (versioned, fields only ever
+added). `BASELINES=0` skips the `aomdv`, `gpsr` and `oracle` comparison
+modules: the module, its test suite and `anthocnet-example` build as usual,
+and ns-3 skips the comparison harnesses that link those modules.
+
+No checkout? Each release ships `anthocnet-ns3-modules-<version>.tar.gz`,
+the four modules exactly as installed:
+`tar -xzf anthocnet-ns3-modules-<version>.tar.gz -C /path/to/ns-3/contrib`.
 
 ## Run
 
@@ -207,7 +234,7 @@ IMC 2020, Fig. 13), for the #297 calibration; the default set is unchanged.
 `scenario_check.py results` checks the clock against `##CONFIG##` and that
 every book closes (#297).
 `# anchor` checks the geometry (shell radius, in-plane chord at t=0 and t=T/2,
-period vs `2π√(a³/μ)`); `ns3/tools/check-leo-walker.sh` asserts it all on the
+period vs `2π√(a³/μ)`); `tools/checks/check-leo-walker.sh` asserts it all on the
 CI's 3.48 leg.
 
 Results are 3.48-only and are claims about routing over Walker-shell geometry

@@ -34,7 +34,7 @@ if [ -n "$wire_touched" ]; then
     say PASS "wire files changed and kWireVersion is bumped"
   else
     say WARN "wire files changed but no kWireVersion bump in the diff:"; echo "$wire_touched" | sed 's/^/        /'
-    say WARN "  also update the ns-3 header (ns3/model/anthocnet-packet), test_codec.cpp, docs/wire-format.md"; warn=1
+    say WARN "  also update the ns-3 header (ns3/anthocnet/model/anthocnet-packet), test_codec.cpp, docs/wire-format.md"; warn=1
   fi
 fi
 

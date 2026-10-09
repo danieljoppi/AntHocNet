@@ -16,7 +16,7 @@ One struct, two surfaces:
 | Layer | File | What it is |
 |---|---|---|
 | Core | [`core/include/anthocnet/core/config.h`](../core/include/anthocnet/core/config.h) | `anthocnet::core::Config` — **38 fields**, plain C++14 aggregate with default member initializers. The single source of truth; `AntRouterLogic` reads nothing else. |
-| NS-3 | [`ns3/model/anthocnet-routing-protocol.cc`](../ns3/model/anthocnet-routing-protocol.cc) | 30 `AddAttribute` blocks on `ns3::anthocnet::RoutingProtocol`. **24** of them write into `Config`; the other 6 are adapter-side state (queue timeouts, hold caps, the MAC failure detector, the MAC service-time EWMA, the adapter's own reactive-retry timer). |
+| NS-3 | [`ns3/anthocnet/model/anthocnet-routing-protocol.cc`](../ns3/anthocnet/model/anthocnet-routing-protocol.cc) | 30 `AddAttribute` blocks on `ns3::anthocnet::RoutingProtocol`. **24** of them write into `Config`; the other 6 are adapter-side state (queue timeouts, hold caps, the MAC failure detector, the MAC service-time EWMA, the adapter's own reactive-retry timer). |
 
 So a field is either a core default only or reachable as an ns-3 attribute —
 the table in §2 says which. Anything not exposed as an attribute must be
@@ -441,7 +441,7 @@ python3 $S preflight --areaX 2500 --flows 40      # exactly what you intend to d
 Pair **every** ON run with an identical OFF run — baselines are deterministic on
 identical seeds, so an A/B pair is a clean comparison and a lone run is not. For
 multi-point sweeps use `scenario-matrix.yml` (`only=<sweep> point=<x>` runs a
-single point; `commit=true` writes the CSV into `docs/benchmarks/campaign/`).
+single point; `commit=true` writes the CSV into `results/campaign/`).
 Core-only parameters (`—` in §3.1) cannot be swept this way; they need a
 `config.h` edit and a rebuilt image.
 
@@ -450,7 +450,7 @@ Core-only parameters (`—` in §3.1) cannot be swept this way; they need a
 ```bash
 D=tools/bench
 python3 $D/bench_parse.py --ab off1.txt on1.txt off2.txt on2.txt   # the money mode
-python3 $D/sweep_summary.py docs/benchmarks/campaign/*.csv         # campaign CSVs
+python3 $D/sweep_summary.py results/campaign/*.csv         # campaign CSVs
 ```
 
 `--ab` computes on-vs-off within each pair and flags **NOISE** when the PDR
@@ -517,7 +517,7 @@ gives different numbers, that is a **bug** — a stray `rand()`, an uninjected
 wall-clock read, or unordered-container iteration feeding a routing decision —
 **not** noise to be averaged away.
 
-[`ns3/tools/check-determinism.sh`](../ns3/tools/check-determinism.sh) runs a small
+[`tools/checks/check-determinism.sh`](../tools/checks/check-determinism.sh) runs a small
 scenario twice and diffs the per-protocol metric rows; it is a blocking CI gate
 ([#129](https://github.com/danieljoppi/AntHocNet/issues/129)). Every relative
 comparison in the benchmark pages is made on identical per-protocol
@@ -537,7 +537,7 @@ The checklist that would have prevented #88 and #169:
    per hop is a hop limit. Write down the mechanism the number bounds, not just
    the number.
 3. **ns-3 attribute** in
-   [`anthocnet-routing-protocol.cc`](../ns3/model/anthocnet-routing-protocol.cc) —
+   [`anthocnet-routing-protocol.cc`](../ns3/anthocnet/model/anthocnet-routing-protocol.cc) —
    an `AddAttribute` block *and* the corresponding `m_config.<field> = m_<attr>;`
    assignment (there are two such blocks, one per construction path; miss one and
    the attribute silently does nothing). The description string is user-facing

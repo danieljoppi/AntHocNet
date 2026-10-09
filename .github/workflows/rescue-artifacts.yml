@@ -4,18 +4,18 @@ name: Rescue run artifacts into docs (manual)
 # the campaign runs), but the #110 campaign's completed sweep CSVs are
 # irreplaceable without re-paying the simulation cost. This job downloads the
 # `scenario-matrix` artifact of each given run and commits its scenarios.csv
-# into docs/benchmarks/campaign/ so the data survives expiry. Runs in seconds;
+# into results/campaign/ so the data survives expiry. Runs in seconds;
 # it does NOT dispatch any simulation.
 #
 # #259 extends the same rescue to the satellite suite: the `satellite-benchmark`
 # artifact's satellite-results.txt (human table + ##RUN## rows, not a CSV)
-# lands as docs/benchmarks/campaign/<runid>-sat.txt.
+# lands as results/campaign/<runid>-sat.txt.
 #
 # #229 extends it to the per-merge `benchmarks` workflow: its
 # `benchmark-results` artifact carries the scenarios.csv with the drop_*_pct
 # columns that the job log swallows (run-scenarios.py keeps only CSV rows), so
 # the only drop-cause data the per-merge run produces dies with the artifact
-# unless rescued. Lands as docs/benchmarks/campaign/<runid>-merge.csv.
+# unless rescued. Lands as results/campaign/<runid>-merge.csv.
 on:
   workflow_dispatch:
     inputs:
@@ -47,7 +47,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p docs/benchmarks/campaign
+          mkdir -p results/campaign
           IFS=',' read -ra IDS <<< "${{ github.event.inputs.run_ids }}"
           for id in "${IDS[@]}"; do
             id="$(echo "$id" | tr -d ' ')"
@@ -67,12 +67,12 @@ jobs:
               echo "FAIL: scenarios.csv of run $id has no data rows"; exit 1
             fi
             echo "run $id ($label): $rows data rows"
-            cp "$dir/scenarios.csv" "docs/benchmarks/campaign/${id}-${label}.csv"
+            cp "$dir/scenarios.csv" "results/campaign/${id}-${label}.csv"
             # #319: the per-run sibling rides along when the producing run is
             # new enough to have written it; absent for older runs.
             if [ -f "$dir/scenarios-runs.csv" ]; then
               cp "$dir/scenarios-runs.csv" \
-                 "docs/benchmarks/campaign/${id}-${label}-runs.csv"
+                 "results/campaign/${id}-${label}-runs.csv"
             fi
           done
           rm -rf rescue-tmp
@@ -83,7 +83,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p docs/benchmarks/campaign
+          mkdir -p results/campaign
           IFS=',' read -ra IDS <<< "${{ github.event.inputs.sat_run_ids }}"
           for id in "${IDS[@]}"; do
             id="$(echo "$id" | tr -d ' ')"
@@ -101,7 +101,7 @@ jobs:
               echo "FAIL: satellite-results.txt of run $id has no ##RUN## result rows (#28 empty-table class)"; exit 1
             fi
             echo "run $id ($label): $runs per-run result rows"
-            cp "$dir/satellite-results.txt" "docs/benchmarks/campaign/${id}-${label}.txt"
+            cp "$dir/satellite-results.txt" "results/campaign/${id}-${label}.txt"
           done
           rm -rf rescue-tmp
       - name: Download per-merge benchmark artifacts and stage CSVs (#229)
@@ -111,7 +111,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p docs/benchmarks/campaign
+          mkdir -p results/campaign
           IFS=',' read -ra IDS <<< "${{ github.event.inputs.merge_run_ids }}"
           for id in "${IDS[@]}"; do
             id="$(echo "$id" | tr -d ' ')"
@@ -129,14 +129,14 @@ jobs:
               echo "FAIL: scenarios.csv of run $id has no data rows"; exit 1
             fi
             echo "run $id ($label): $rows data rows"
-            cp "$dir/scenarios.csv" "docs/benchmarks/campaign/${id}-${label}.csv"
+            cp "$dir/scenarios.csv" "results/campaign/${id}-${label}.csv"
           done
           rm -rf rescue-tmp
       - name: Commit rescued results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/benchmarks/campaign
+          git add results/campaign
           if git diff --cached --quiet; then
             echo "nothing new to commit"
           else
