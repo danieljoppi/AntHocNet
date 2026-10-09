@@ -391,9 +391,9 @@ HTML file in the repository's style.
 
 | release | learn-site work |
 |---|---|
-| **v2.1.0** | **the whole site is the game** (§10): one top bar and five places across the game, the docs and the API; docs pages as game windows; the in-game reader; two-way links checked in CI |
-| **v2.2.0** | the game UI (title, campaign map, briefing, in-level HUD with device dock, debrief; the sandbox kept as Free play); campaign engine (level format, budget, objectives); device classes + per-node range in the adapter; **Chapter 1: Ad hoc town** (absorbs the Academy) and **Chapter 2: Neighbourhood mesh**; translations (pt-BR first); offline play and the size budget |
-| **v2.3.0** | **Chapter 3: City streets**, **Chapter 4: Forest**, **Chapter 5: Orbit** (the three families already measured), with attenuation zones, battery, fixed-route mobility, ground stations and the orbit binding; the **upgrades** screen, wired to the gated mechanisms that ship in v2.3.0; the **classroom pack** (lab worksheets built on the missions) |
+| **v2.1.0** | **the whole site is the game** (§10): one top bar and five places across the game, the docs and the API; docs pages as game windows; the in-game reader; two-way links checked in CI. **Workshop** (§11): the Nest (the API as a live nest map) and the install quest |
+| **v2.2.0** | the game UI (title, campaign map, briefing, in-level HUD with device dock, debrief; the sandbox kept as Free play); campaign engine (level format, budget, objectives); device classes + per-node range in the adapter; **Chapter 1: Ad hoc town** (absorbs the Academy) and **Chapter 2: Neighbourhood mesh**; translations (pt-BR first); offline play and the size budget; **Workshop:** X-ray, the tuning bench, and the export-to-ns-3 kit |
+| **v2.3.0** | **Chapter 3: City streets**, **Chapter 4: Forest**, **Chapter 5: Orbit** (the three families already measured), with attenuation zones, battery, fixed-route mobility, ground stations and the orbit binding; the **upgrades** screen, wired to the gated mechanisms that ship in v2.3.0; the **classroom pack** (lab worksheets built on the missions); **Workshop:** ns-3 replay beside the browser run |
 | **v2.4.0** | **Chapter 6: Disaster zone**, **Chapter 7: Contested zone** (7.1–7.3) and **Chapter 8: Sky to space**: the same release as the disaster/tactical and SAGIN families they draw on |
 | **v3.0.0** | Contested level **7.4** and the **Shield** upgrade, on the security profile |
 | **v3.3.0** | **Chapter 9: Red team.** The player places attackers (blackhole, wormhole, Sybil, pheromone poisoner) to break a working network, then switches defences on and watches delivery recover. Every attack and defence is a real gated mechanism from v3.0.0–v3.3.0. |
@@ -526,3 +526,103 @@ The mockups are static HTML ([`site-in-game-mockup.html`](images/site-in-game-mo
 `?screen=hub|page|reader`). The world frames come from
 `web/tools/readme-figures.mjs`, and the numbers on the lab-report mockup are
 the published VANET main cell.
+
+
+## 11. The Workshop: the API and ns-3 inside the game
+
+§10 puts the API reference and the install guide *inside* the game's frame,
+but you still only read them there. The Workshop goes further, using
+something almost no API reference has: the game **is** the core, running
+live (ADR-0021). So the API can be explored on running objects, and anything
+built in the game can be carried into ns-3. Epic [#634](https://github.com/danieljoppi/AntHocNet/issues/634).
+
+### The Nest — the API as an ant nest (v2.1.0)
+
+The core's architecture is drawn as a cross-section of a nest:
+- the two adapters on the surface (`ns3::anthocnet::RoutingProtocol`, the
+  browser's `ahn_web::World`);
+- the ports of `ports.h` as tunnels (`IClock`, `IRng`, `ITimerScheduler`,
+  `INeighborProvider`, `ILinkState`, `IRouterObserver`);
+- the components as chambers:
+
+| chamber | classes |
+|---|---|
+| Queen chamber | `AntRouterLogic` → `RouteDecision` |
+| Pheromone store | `PheromoneTable`, `PheromoneEngine` |
+| Gate | `AntMessage`, the codec |
+| Senses | `ILinkMetric`, `ClassicMetric` |
+| Memory | `AntHistoryTracker`, `GenerationTracker` |
+| Rule stone | `Config` |
+| Map room | `ShortestPathGraph` |
+
+Chambers glow as the running world exercises them (from the event stream:
+it shows activity, it is not a profiler). Clicking one opens its API page in
+the reader. For the selected node, members with a binding show their live
+values. The page index comes from Doxygen's XML output. A CI check fails if
+a public class in `core/include` has no chamber, so the map cannot fall
+behind the code. [#635](https://github.com/danieljoppi/AntHocNet/issues/635).
+
+![The Nest mockup: the core drawn as an ant nest — adapters on the surface, ports as tunnels, components as chambers — with the PheromoneTable API page open beside it showing live values for node 7](images/workshop-nest.png)
+
+### X-ray and the tuning bench (v2.2.0)
+
+- **X-ray** ([#637](https://github.com/danieljoppi/AntHocNet/issues/637)):
+  - **Node X-ray.** The Inspect tool's pheromone table names its columns by
+    API member.
+  - **Ant X-ray.** Click an ant in flight to see the bytes the core's codec
+    actually produced. The adapter serializes every ant with the same
+    `codec::serialize` the ns-3 module puts on the air. Each field is
+    coloured and linked to [wire-format.md](wire-format.md).
+  - It is read-only, so parity is untouched.
+- **Tuning bench** ([#638](https://github.com/danieljoppi/AntHocNet/issues/638)). Every `Config` field the browser exposes
+  (`alpha`, `betaAnts`, `betaData`, `enableMultipath`, `enableProactive`,
+  `enableRepair`, `helloInterval`, `proactiveInterval`) gets a slider with:
+  - its doc comment;
+  - its default and that default's provenance
+    ([configuration.md](configuration.md));
+  - its ns-3 attribute.
+
+  A ghost run with the defaults, on the same seed, shows what the change
+  did. The bench ends with the exact `--ns3::anthocnet::RoutingProtocol::<Attr>=`
+  line. The campaign's upgrades ([#579](https://github.com/danieljoppi/AntHocNet/issues/579)) are switches on this bench.
+
+![X-ray mockup: a running world with node 7's pheromone table (columns named by API member), a forward ant's codec bytes decoded field by field, and the tuning bench with the matching ns-3 attribute line](images/workshop-xray.png)
+
+### The game meets ns-3 (v2.1.0–v2.3.0)
+
+- **Install quest** ([#636](https://github.com/danieljoppi/AntHocNet/issues/636), v2.1.0). The install guide becomes a quest.
+  `make doctor` ([#605](https://github.com/danieljoppi/AntHocNet/issues/605)) prints a machine-readable `##DOCTOR##` line; the
+  user pastes it, and the game ticks or explains each step **locally**,
+  pointing at the fix. The install page and the quest are generated from one
+  step list.
+- **Take it to ns-3** ([#640](https://github.com/danieljoppi/AntHocNet/issues/640), v2.2.0). Any world or campaign level exports
+  as an ns-3 kit, built in the browser:
+  - the devices' movements as an ns-2 trace;
+  - the calls as a flow list;
+  - the bench's Config as attributes;
+  - a `run.sh` for `anthocnet-compare`.
+
+  This needs the harness to replay a trace and a flow list ([#639](https://github.com/danieljoppi/AntHocNet/issues/639), which
+  also finishes [#61](https://github.com/danieljoppi/AntHocNet/issues/61)).
+- **ns-3 replay** ([#641](https://github.com/danieljoppi/AntHocNet/issues/641), v2.3.0). The harness writes a compact trace
+  (positions, `RouteChanged` events, drops) for one seed of every published
+  cell, committed under `results/` ([#615](https://github.com/danieljoppi/AntHocNet/issues/615)). The game replays it with its
+  own renderer, side by side with the browser run of the same scene, and
+  marks where the strongest routes diverge. That divergence is the
+  simplified radio, made visible.
+
+![Bench mockup: the browser run and the ns-3 replay of the same street grid side by side on one timeline, an export card with the ns-3 kit and its command, and the install quest with doctor checks ticked](images/workshop-bench.png)
+
+**Considered, not planned:** ns-3 itself compiled to WebAssembly. Its size,
+threads and Python bindings make it a research project of its own. Export
+and replay give the player ns-3's real behaviour without it.
+
+**Honest about the radio.** Every browser-to-ns-3 comparison says that the
+browser's channel is simplified, and links the measured page.
+
+The mockups are static HTML ([`workshop-mockup.html`](images/workshop-mockup.html),
+`?screen=nest|xray|bench`). In them:
+- the pheromone values, the call count and the tuning-bench delivery are
+  illustrative;
+- the ant bytes are a correct encoding of the fields shown;
+- the 42.10 % is the published VANET main cell.

@@ -1,0 +1,304 @@
+<!doctype html>
+<!-- Static mockup for docs/learn-campaign.md §11 "The Workshop: the API and
+     ns-3 inside the game" (not the implementation). Render at 1440x900 with
+     ?screen=nest | xray | bench. frames/world-*.png are game captures from
+     web/tools/readme-figures.mjs. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workshop mockup</title>
+<style>
+  :root {
+    --bg: #e9eef4; --card: #fff; --card2: #f5f7fa; --border: #d5dde7;
+    --ink: #0f172a; --ink2: #3f4b5e; --muted: #556173; --accent: #2563eb; --soft: #dbe7fd;
+    --play: #2563eb; --guide: #0f766e; --lab: #7c3aed; --shop: #b45309; --arch: #475569;
+    --soil: #7a5a3a; --soil2: #5e4329; --tunnel: #3d2b1c;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --elev: 0 1px 2px rgba(15,23,42,.06), 0 12px 32px rgba(15,23,42,.10);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; width: 1440px; height: 900px; overflow: hidden; font: 14px/1.5 var(--font); color: var(--ink);
+    background: radial-gradient(1200px 600px at 50% -10%, #dde5ee, var(--bg) 70%); }
+  .screen { display: none; width: 100%; height: 100%; position: relative; }
+  .screen.on { display: block; }
+  .bar { position: absolute; left: 16px; right: 16px; top: 12px; height: 56px; display: flex; align-items: center; gap: 8px;
+    padding: 0 10px 0 14px; background: rgba(255,255,255,.94); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--elev); z-index: 5; }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 17px; margin-right: 10px; }
+  .logo { width: 28px; height: 28px; border-radius: 9px; background: conic-gradient(from 200deg, #2563eb, #0f766e, #f59e0b, #2563eb); }
+  .brand small { color: var(--muted); font-weight: 700; }
+  .place { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 12px; font-weight: 700; color: var(--ink2); }
+  .place i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .place.on { background: #fdf0e1; color: var(--ink); outline: 1px solid #f1cfa6; }
+  .place.onp { background: var(--soft); color: var(--ink); outline: 1px solid #b9cdf7; }
+  .grow { flex: 1; }
+  .search { width: 280px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card2); color: var(--muted); font-weight: 600; }
+  .icon { width: 36px; height: 36px; border-radius: 11px; border: 1px solid var(--border); background: var(--card2); display: grid; place-items: center; font-weight: 800; color: var(--ink2); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); font-weight: 700; font-size: 12px; white-space: nowrap; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--card2); font-weight: 700; white-space: nowrap; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.shop { background: var(--shop); color: #fff; border-color: var(--shop); }
+  .k { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .win { position: absolute; background: var(--card); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--elev); overflow: hidden; }
+  .win .title { white-space: nowrap; height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--border); background: var(--card2); font-weight: 800; }
+  .dots { display: flex; gap: 6px; } .dots i { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; display: block; }
+  code, .mono { font-family: var(--mono); font-size: 12.5px; }
+  .content { padding: 16px 20px; color: var(--ink2); }
+  .content h1 { margin: 0 0 4px; font-size: 22px; color: var(--ink); }
+  .content h3 { margin: 14px 0 6px; font-size: 14px; color: var(--ink); }
+  .crumbs { color: var(--muted); font-weight: 700; font-size: 12px; margin-bottom: 8px; }
+  .member { display: grid; grid-template-columns: 1fr; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--card2); border: 1px solid var(--border); margin-bottom: 6px; }
+  .member b { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+  .member span { font-size: 13px; }
+  .live { color: #0a7f3f; font-weight: 800; }
+
+  /* ---- nest ---- */
+  #nest .nestwin { top: 84px; left: 16px; right: 476px; bottom: 16px; background: linear-gradient(#cfe6f5 0, #e6f2fa 92px, var(--soil) 92px, var(--soil2) 100%); }
+  #nest svg { position: absolute; inset: 44px 0 0 0; width: 100%; height: calc(100% - 44px); }
+  #nest .doc { top: 84px; right: 16px; width: 444px; bottom: 16px; }
+  .legend { position: absolute; left: 16px; bottom: 14px; display: flex; gap: 8px; }
+  .legend .pill { background: rgba(255,255,255,.92); }
+
+  /* ---- xray ---- */
+  #xray .world { position: absolute; inset: 0; background: url(frames/world-manet.png) 22% 58% / 1450px auto no-repeat, #d3e8f5; }
+  #xray .node { top: 84px; left: 16px; width: 500px; }
+  #xray .pkt { top: 84px; right: 16px; width: 520px; }
+  #xray .tune { left: 16px; bottom: 16px; width: 500px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .04em; }
+  th a, .api { color: var(--shop); font-family: var(--mono); font-size: 11px; font-weight: 700; text-decoration: none; }
+  .bytes { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; font-family: var(--mono); font-size: 12px; margin: 8px 0 10px; }
+  .bytes span { text-align: center; padding: 3px 0; border-radius: 4px; background: var(--card2); }
+  .f0 { background: #fde2c4 !important; } .f1 { background: #e9d5ff !important; } .f2 { background: #cfe8ff !important; }
+  .f3 { background: #d1f5dc !important; } .f4 { background: #fef3a7 !important; } .f5 { background: #fbd5e0 !important; } .f6 { background: #e2e8f0 !important; }
+  .fields { display: grid; grid-template-columns: 14px 120px 1fr auto; gap: 4px 8px; align-items: center; font-size: 12.5px; }
+  .fields i { width: 12px; height: 12px; border-radius: 3px; display: block; }
+  .slider { display: grid; grid-template-columns: 1fr 120px 54px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .track { height: 6px; border-radius: 3px; background: #e2e8f0; position: relative; }
+  .track i { position: absolute; top: -5px; width: 16px; height: 16px; border-radius: 50%; background: var(--shop); }
+  .track b { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--muted); }
+
+  /* ---- bench ---- */
+  #bench .split { position: absolute; top: 84px; left: 16px; right: 16px; height: 430px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .pane { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--elev); background-color: #d3e8f5; }
+  .pane .img { position: absolute; inset: 0; background-size: 760px auto; background-position: center 60%; background-repeat: no-repeat; }
+  .pane .tag { position: absolute; left: 12px; top: 12px; display: flex; gap: 8px; }
+  .pane .stat { position: absolute; right: 12px; bottom: 12px; background: rgba(255,255,255,.95); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; font-size: 13px; min-width: 230px; }
+  .pane .stat b { font-size: 20px; }
+  .scrub { position: absolute; left: 16px; right: 16px; top: 526px; height: 44px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--elev); display: flex; align-items: center; gap: 12px; padding: 0 14px; font-weight: 700; }
+  .scrub .tl { flex: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--accent) 38%, #e2e8f0 38%); position: relative; }
+  .scrub .tl i { position: absolute; top: -6px; width: 3px; height: 20px; background: #dc2626; }
+  #bench .export { left: 16px; top: 584px; bottom: 16px; width: 760px; }
+  #bench .quest { right: 16px; top: 584px; bottom: 16px; width: 634px; }
+  pre { margin: 6px 0 0; padding: 10px 12px; border-radius: 10px; background: #0f172a; color: #e2e8f0; font: 12px/1.5 var(--mono); white-space: pre-wrap; }
+  pre .c { color: #94a3b8; } pre .a { color: #fbbf24; }
+  .files { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+  .chk { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; padding: 3px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .ok { color: #0a7f3f; font-weight: 900; } .no { color: #b91c1c; font-weight: 900; } .todo { color: var(--muted); font-weight: 900; }
+</style>
+</head>
+<body>
+<template id="bar">
+  <div class="bar">
+    <div class="brand"><span class="logo"></span>AntHocNet <small>Colony Net</small></div>
+    <span class="place" data-p="play"><i style="background:var(--play)"></i>Play</span>
+    <span class="place" data-p="guide"><i style="background:var(--guide)"></i>Field guide</span>
+    <span class="place" data-p="lab"><i style="background:var(--lab)"></i>Lab</span>
+    <span class="place" data-p="shop"><i style="background:var(--shop)"></i>Workshop</span>
+    <span class="place" data-p="arch"><i style="background:var(--arch)"></i>Archive</span>
+    <span class="grow"></span>
+    <span class="search">Search the colony…  <b style="float:right">/</b></span>
+    <span class="icon">☾</span><span class="icon">PT</span><span class="icon">⌥</span>
+  </div>
+</template>
+
+<!-- ============ 1. The Nest: the API as an ant nest ============ -->
+<section class="screen" id="nest">
+  <div class="win nestwin">
+    <div class="title"><span class="dots"><i></i><i></i><i></i></span>Workshop · The Nest — the core's API, live<span class="grow"></span><span class="pill">world: Ad hoc · t 1:12 · chambers glow when called</span></div>
+    <svg viewBox="0 0 948 760" font-family="system-ui, sans-serif">
+      <defs>
+        <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <!-- surface: the adapters -->
+      <g font-weight="800" font-size="14">
+        <rect x="60" y="8" width="300" height="56" rx="14" fill="#fff" stroke="#d5dde7"/>
+        <text x="80" y="31" fill="#0f172a">ns-3 module</text>
+        <text x="80" y="51" fill="#b45309" font-family="ui-monospace,monospace" font-size="12" font-weight="700">ns3::anthocnet::RoutingProtocol</text>
+        <rect x="588" y="8" width="300" height="56" rx="14" fill="#fff" stroke="#d5dde7"/>
+        <text x="608" y="31" fill="#0f172a">Browser adapter (this game)</text>
+        <text x="608" y="51" fill="#b45309" font-family="ui-monospace,monospace" font-size="12" font-weight="700">ahn_web::World</text>
+      </g>
+      <text x="474" y="40" text-anchor="middle" fill="#3f4b5e" font-size="12" font-weight="700">SURFACE · the adapters</text>
+      <!-- tunnels: the ports -->
+      <g stroke="#3d2b1c" stroke-width="22" stroke-linecap="round" fill="none" opacity=".9">
+        <path d="M210 70 C 210 140, 300 150, 330 214"/>
+        <path d="M738 70 C 738 140, 650 150, 620 214"/>
+        <path d="M474 300 L 474 370"/>
+        <path d="M400 290 C 330 330, 250 360, 214 420"/>
+        <path d="M548 290 C 620 330, 700 360, 734 420"/>
+        <path d="M474 470 L 474 560"/>
+        <path d="M300 460 C 360 520, 400 560, 420 600"/>
+      </g>
+      <g font-size="11" font-weight="800" fill="#f8e7c9" font-family="ui-monospace,monospace">
+        <text x="150" y="120">IClock · IRng · ITimerScheduler</text>
+        <text x="640" y="120">INeighborProvider · ILinkState</text>
+        <text x="652" y="136">IRouterObserver</text>
+      </g>
+      <text x="474" y="96" text-anchor="middle" fill="#f8e7c9" font-size="12" font-weight="800">TUNNELS · the ports (ports.h)</text>
+      <!-- chambers -->
+      <g>
+        <ellipse cx="474" cy="256" rx="176" ry="56" fill="#f6d8a8" stroke="#fde68a" stroke-width="3" filter="url(#glow)"/>
+        <text x="474" y="248" text-anchor="middle" font-weight="900" font-size="17" fill="#3d2b1c">Queen chamber</text>
+        <text x="474" y="270" text-anchor="middle" font-family="ui-monospace,monospace" font-size="13" font-weight="700" fill="#7c2d12">AntRouterLogic → RouteDecision</text>
+        <text x="474" y="290" text-anchor="middle" font-size="11" font-weight="800" fill="#0a7f3f">● 1,284 calls this run</text>
+      </g>
+      <g>
+        <ellipse cx="474" cy="422" rx="150" ry="52" fill="#f6d8a8" stroke="#2563eb" stroke-width="4" filter="url(#glow)"/>
+        <text x="474" y="414" text-anchor="middle" font-weight="900" font-size="16" fill="#3d2b1c">Pheromone store</text>
+        <text x="474" y="436" text-anchor="middle" font-family="ui-monospace,monospace" font-size="13" font-weight="700" fill="#7c2d12">PheromoneTable · PheromoneEngine</text>
+        <text x="474" y="455" text-anchor="middle" font-size="11" font-weight="800" fill="#1d4ed8">◆ open in the reader →</text>
+      </g>
+      <g>
+        <ellipse cx="200" cy="450" rx="130" ry="46" fill="#e9cfa4"/>
+        <text x="200" y="444" text-anchor="middle" font-weight="900" font-size="15" fill="#3d2b1c">The gate</text>
+        <text x="200" y="465" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" font-weight="700" fill="#7c2d12">AntMessage · codec</text>
+      </g>
+      <g>
+        <ellipse cx="748" cy="450" rx="130" ry="46" fill="#e9cfa4"/>
+        <text x="748" y="444" text-anchor="middle" font-weight="900" font-size="15" fill="#3d2b1c">Senses</text>
+        <text x="748" y="465" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" font-weight="700" fill="#7c2d12">ILinkMetric · ClassicMetric</text>
+      </g>
+      <g>
+        <ellipse cx="474" cy="604" rx="140" ry="46" fill="#e9cfa4"/>
+        <text x="474" y="598" text-anchor="middle" font-weight="900" font-size="15" fill="#3d2b1c">Memory</text>
+        <text x="474" y="619" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" font-weight="700" fill="#7c2d12">AntHistoryTracker · GenerationTracker</text>
+      </g>
+      <g>
+        <ellipse cx="190" cy="640" rx="120" ry="42" fill="#e9cfa4"/>
+        <text x="190" y="636" text-anchor="middle" font-weight="900" font-size="15" fill="#3d2b1c">Rule stone</text>
+        <text x="190" y="656" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" font-weight="700" fill="#7c2d12">Config</text>
+      </g>
+      <g>
+        <ellipse cx="770" cy="640" rx="120" ry="42" fill="#e9cfa4"/>
+        <text x="770" y="636" text-anchor="middle" font-weight="900" font-size="15" fill="#3d2b1c">Map room</text>
+        <text x="770" y="656" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" font-weight="700" fill="#7c2d12">ShortestPathGraph</text>
+      </g>
+      <!-- an ant walking the tunnel -->
+      <g transform="translate(330,330) rotate(35)"><ellipse rx="7" ry="4" fill="#111"/><ellipse cx="-9" rx="5" ry="3.5" fill="#111"/><ellipse cx="9" rx="4" ry="3" fill="#111"/></g>
+      <g transform="translate(474,520) rotate(90)"><ellipse rx="7" ry="4" fill="#111"/><ellipse cx="-9" rx="5" ry="3.5" fill="#111"/><ellipse cx="9" rx="4" ry="3" fill="#111"/></g>
+    </svg>
+    <div class="legend"><span class="pill">● live call counts from the running world</span><span class="pill">click a chamber → its API page</span><span class="pill">every public class in core/include is on the map (CI)</span></div>
+  </div>
+  <article class="win doc">
+    <div class="title"><span class="dots"><i></i><i></i><i></i></span>API · PheromoneTable<span class="grow"></span><span class="pill">pheromone_table.h</span></div>
+    <div class="content">
+      <div class="crumbs"><b style="color:var(--shop)">Workshop</b> › The Nest › Pheromone store</div>
+      <h1>PheromoneTable</h1>
+      <p>Per-node routing state: the regular and virtual pheromone maps keyed by (neighbour, destination), the neighbour set, and the per-table destination sets.</p>
+      <h3>Members, with their live values at node 7 <span style="font-weight:600;color:var(--muted);font-size:12px">(illustrative)</span></h3>
+      <div class="member"><b>getPheromoneRegular(dest, neighbor) const</b><span>toward 29 via 12: <span class="live">0.0841</span> · via 3: <span class="live">0.0217</span></span></div>
+      <div class="member"><b>bestRegular(dest) const</b><span>Best regular pheromone any neighbour holds for <code>dest</code>; advertised in hellos. <span class="live">0.0841</span></span></div>
+      <div class="member"><b>bestVirtual(dest) const</b><span>Same units as bestRegular; the comparison is the proactive emission gate (#180). <span class="live">0.0590</span></span></div>
+      <h3>Who calls it</h3>
+      <p><code>AntRouterLogic</code> on every ant and data decision; adapters only read it (the game's route overlay, ns-3's routing-table printout).</p>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><span class="btn primary">◉ Show it on the map</span><span class="btn">Full reference</span><span class="btn">Source</span></div>
+    </div>
+  </article>
+</section>
+
+<!-- ============ 2. X-ray: the real objects under the game ============ -->
+<section class="screen" id="xray">
+  <div class="world"></div>
+  <article class="win node">
+    <div class="title"><span class="dots"><i></i><i></i><i></i></span>X-ray · node 7<span class="grow"></span><span class="pill">toward node 29</span></div>
+    <div class="content">
+      <table>
+        <tr><th>next hop</th><th>regular<br><a>getPheromoneRegular</a></th><th>virtual<br><a>getPheromoneVirtual</a></th><th>P(data)<br><a>RouteDecision</a></th></tr>
+        <tr><td><b>12</b></td><td>0.0841</td><td>0.0590</td><td><b>≈ 1.00</b></td></tr>
+        <tr><td>3</td><td>0.0217</td><td>0.0204</td><td>&lt; 0.001</td></tr>
+        <tr><td>18</td><td>—</td><td>0.0102</td><td>0</td></tr>
+      </table>
+      <p style="margin:8px 0 0;font-size:12.5px">P(data) is the core's own probability: pheromone<sup>β</sup>, β = <code>Config::betaData</code> = 20.</p>
+    </div>
+  </article>
+  <article class="win pkt">
+    <div class="title"><span class="dots"><i></i><i></i><i></i></span>X-ray · forward ant 7 → 12<span class="grow"></span><span class="pill">the real codec bytes</span></div>
+    <div class="content">
+      <div class="bytes">
+        <span class="f0">03</span><span class="f1">02</span><span class="f1">11</span><span class="f2">00</span><span class="f2">00</span><span class="f2">00</span><span class="f2">00</span><span class="f2">1d</span><span class="f2">00</span><span class="f2">00</span><span class="f2">00</span><span class="f3">07</span><span class="f3">00</span><span class="f3">00</span><span class="f3">00</span><span class="f4">00</span>
+        <span class="f4">00</span><span class="f4">00</span><span class="f4">00</span><span class="f4">00</span><span class="f4">00</span><span class="f4">00</span><span class="f4">40</span><span>00</span><span>00</span><span>00</span><span>00</span><span>00</span><span>00</span><span>00</span><span>00</span><span class="f5">ff</span>
+        <span class="f5">ff</span><span class="f5">ff</span><span class="f5">ff</span><span class="f6">02</span><span class="f6">00</span><span>00</span><span>00</span><span>00</span><span>00</span><span>…</span>
+      </div>
+      <div class="fields">
+        <i class="f0"></i><b>version</b><span>wire format 0x03 — checked first</span><a class="api">kWireVersion</a>
+        <i class="f1"></i><b>type · direction</b><span>0x02 Reactive · 0x11 Up (forward)</span><a class="api">AntType</a>
+        <i class="f2"></i><b>src → dst</b><span>node 0 → node 29</span><a class="api">AntMessage</a>
+        <i class="f3"></i><b>seqNum</b><span>7 (u32 — the original wrapped at 256)</span><a class="api">wire-format.md</a>
+        <i class="f4"></i><b>timeStart</b><span>2.0 s (f64, little-endian)</span><a class="api">AntMessage</a>
+        <i class="f5"></i><b>broadcastBudget</b><span>−1 = untracked</span><a class="api">item 05</a>
+        <i class="f6"></i><b>nVisited</b><span>2 hops so far → visited[] follows, 12 bytes each</span><a class="api">AntHop</a>
+      </div>
+      <p style="margin:10px 0 0;font-size:12.5px">The game serializes every ant with the same <code>codec::serialize</code> the ns-3 module puts on the air — these are those bytes.</p>
+    </div>
+  </article>
+  <article class="win tune">
+    <div class="title"><span class="dots"><i></i><i></i><i></i></span>Tuning bench · Config<span class="grow"></span><span class="pill">A/B on the same seed</span></div>
+    <div class="content">
+      <div class="slider"><span><b>betaData</b> <span class="api">BetaData</span></span><span class="track"><b style="left:66%"></b><i style="left:40%"></i></span><span>12</span></div>
+      <div class="slider"><span><b>helloInterval</b> <span class="api">HelloInterval</span></span><span class="track"><b style="left:33%"></b><i style="left:33%"></i></span><span>1 s</span></div>
+      <div class="slider"><span><b>enableRepair</b> <span class="api">EnableRepair</span></span><span>on</span><span></span></div>
+      <p style="margin:8px 0 6px;font-size:12.5px">Delivered: <b>91 %</b> vs the default's ghost run <b>94 %</b>, same seed (illustrative). Each default's source: <u>configuration</u>.</p>
+      <pre><span class="c"># the same change in ns-3</span>
+--ns3::anthocnet::RoutingProtocol::<span class="a">BetaData</span>=12</pre>
+    </div>
+  </article>
+</section>
+
+<!-- ============ 3. The bench: the game meets ns-3 ============ -->
+<section class="screen" id="bench">
+  <div class="split">
+    <div class="pane"><div class="img" style="background-image:url(frames/world-vanet.png)"></div>
+      <div class="tag"><span class="pill" style="background:var(--soft)">▶ browser · disk radio</span><span class="pill">seed 1</span></div>
+      <div class="stat"><div class="k" style="color:var(--play)">This game</div><b>simplified radio</b><div>live, in your browser</div></div></div>
+    <div class="pane"><div class="img" style="background-image:url(frames/world-vanet.png);filter:saturate(.85) hue-rotate(-8deg)"></div>
+      <div class="tag"><span class="pill" style="background:#ede9fe">◼ ns-3 replay · two-ray + buildings</span><span class="pill">seed 1 of 20</span></div>
+      <div class="stat"><div class="k" style="color:var(--lab)">ns-3 3.42 · committed trace</div><b>42.10 % PDR</b><div>main cell, mean of 20 seeds</div></div></div>
+  </div>
+  <div class="scrub"><span>❚❚</span><span>t 341 s</span><div class="tl"><i style="left:38%"></i></div><span style="color:#b91c1c">● route changes diverge here</span><span class="pill">same renderer, two sources</span></div>
+  <article class="win export">
+    <div class="title"><span class="dots"><i></i><i></i><i></i></span>Take it to ns-3 · your City streets level<span class="grow"></span><span class="pill">nothing leaves your browser</span></div>
+    <div class="content">
+      <p style="margin:0">The level you built, as an ns-3 run: your devices' positions over time, your calls, your upgrades.</p>
+      <div class="files"><span class="pill">📄 mobility.ns_movements</span><span class="pill">📄 flows.txt</span><span class="pill">📄 run.sh</span><span class="pill">📄 README.md</span></div>
+      <pre><span class="c"># inside the release image, or after make install-ns3 && make doctor</span>
+./ns3 run "anthocnet-compare --mobility=trace --traceFile=mobility.ns_movements \
+  --flowsFile=flows.txt --propagation=urban --blocksX=5 --blocksY=5 --runs=20 \
+  --ns3::anthocnet::RoutingProtocol::<span class="a">EnableRepair</span>=true"</pre>
+      <div style="display:flex;gap:8px;margin-top:10px"><span class="btn shop">⬇ Download the ns-3 kit</span><span class="btn">Copy the command</span><span class="btn">Why the numbers differ</span></div>
+    </div>
+  </article>
+  <article class="win quest">
+    <div class="title"><span class="dots"><i></i><i></i><i></i></span>Quest · Field engineer — install AntHocNet in ns-3<span class="grow"></span><span class="pill">3 / 5</span></div>
+    <div class="content">
+      <div class="chk"><span class="ok">✓</span><span>ns-3 tree found: <code>3.48</code></span><span class="pill">make doctor</span></div>
+      <div class="chk"><span class="ok">✓</span><span>compiler <code>g++ 13.2</code>, CMake <code>3.28</code></span><span class="pill">make doctor</span></div>
+      <div class="chk"><span class="ok">✓</span><span>module installed to <code>contrib/anthocnet</code></span><span class="pill">make install-ns3</span></div>
+      <div class="chk"><span class="no">✗</span><span>baselines: AOMDV not built — re-run with <code>BASELINES=0</code> or install the patch</span><span class="pill">#605</span></div>
+      <div class="chk"><span class="todo">○</span><span>run the smoke and paste its <code>##BENCH##</code> line</span><span class="pill">reward: Lab badge</span></div>
+      <p style="margin:6px 0 0;font-size:12.5px">Paste <code>make doctor</code>'s output: the game reads its <code>##DOCTOR##</code> block locally and ticks what passed.</p>
+    </div>
+  </article>
+</section>
+
+<script>
+  const screen = new URLSearchParams(location.search).get('screen') || 'nest';
+  document.getElementById(screen).classList.add('on');
+  const bar = document.getElementById('bar').content.cloneNode(true);
+  const on = { nest: ['shop', 'on'], xray: ['play', 'onp'], bench: ['shop', 'on'] }[screen];
+  bar.querySelector(`[data-p="${on[0]}"]`).classList.add(on[1]);
+  document.getElementById(screen).prepend(bar);
+</script>
+</body>
+</html>
