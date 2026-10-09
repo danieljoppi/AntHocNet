@@ -19,8 +19,30 @@ build_lib_example(
     ${libapplications}
 )
 
+# The comparison harnesses link the vendored baseline modules (aomdv, gpsr,
+# oracle). ns-3 skips an example whose module is present but not enabled, but
+# a module that is not installed at all leaves its ${lib...} variable empty and
+# the example is compiled anyway (seen on ns-3.48 with BASELINES=0, #605). So
+# each harness is gated on its contrib modules existing, the same way
+# leo-walker is gated on its ns-3 header below.
+set(AHN_HAVE_ORACLE FALSE)
+if(EXISTS ${PROJECT_SOURCE_DIR}/contrib/oracle/CMakeLists.txt)
+  set(AHN_HAVE_ORACLE TRUE)
+endif()
+set(AHN_HAVE_BASELINES FALSE)
+if(AHN_HAVE_ORACLE
+   AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/aomdv/CMakeLists.txt
+   AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/gpsr/CMakeLists.txt)
+  set(AHN_HAVE_BASELINES TRUE)
+else()
+  message(STATUS "anthocnet: comparison modules (aomdv, gpsr, oracle) not all "
+                 "installed -- skipping anthocnet-compare, isl-grid and "
+                 "leo-walker (make install-ns3 without BASELINES=0 adds them)")
+endif()
+
 # Protocol comparison (AntHocNet vs AODV/OLSR/DSDV). Only built when those
 # modules + flow-monitor are enabled; otherwise ns-3 skips it automatically.
+if(AHN_HAVE_BASELINES)
 build_lib_example(
   NAME anthocnet-compare
   SOURCE_FILES anthocnet-compare.cc
@@ -54,10 +76,12 @@ build_lib_example(
     # not enabled, example skipped.
     ${liboracle}
 )
+endif()
 
 # ISL-grid scenario (#214): a static +Grid torus of point-to-point links — the
 # LEO inter-satellite-link abstraction — with no mobility and no wifi. Needs
 # point-to-point in addition to the comparison example's dependencies.
+if(AHN_HAVE_ORACLE)
 build_lib_example(
   NAME isl-grid
   SOURCE_FILES isl-grid.cc
@@ -75,6 +99,7 @@ build_lib_example(
     # #296 item 1 / #216: the oracle control, exact on this static torus.
     ${liboracle}
 )
+endif()
 
 # #24 control: STOCK baselines only (AODV/OLSR/DSDV) on the identical scenario,
 # deliberately NOT linking ${libanthocnet}/${libcore} so no AntHocNet code is in
@@ -98,7 +123,7 @@ build_lib_example(
 # #192/#297: the time-varying LEO constellation. Its substrate is stock ns-3's
 # LeoCircularOrbitMobilityModel (the #193 decision), new in ns-3.48, so it is
 # built only where that header exists; on 3.36-3.47 the example is skipped.
-if(EXISTS ${PROJECT_SOURCE_DIR}/src/mobility/model/leo-circular-orbit-mobility-model.h)
+if(AHN_HAVE_ORACLE AND EXISTS ${PROJECT_SOURCE_DIR}/src/mobility/model/leo-circular-orbit-mobility-model.h)
   build_lib_example(
     NAME leo-walker
     SOURCE_FILES leo-walker.cc
