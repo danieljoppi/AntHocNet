@@ -3,7 +3,7 @@ name: Charts
 # Keeps every chart drawn from *committed* data in step with that data:
 # the family results charts (docs/benchmarks/charts/) and the sweep charts
 # (docs/benchmarks/sweep-*.png), all rendered by ns3/tools/family-charts.py
-# from docs/benchmarks/cells/ and docs/benchmarks/campaign/.
+# from results/cells/ and results/campaign/.
 #
 # Before this workflow those charts were rendered by hand, so a re-measured
 # cell or a restyled chart script left the published figure stale until
@@ -16,7 +16,7 @@ name: Charts
 # render as a check, so a broken chart script or an unparsable cell fails
 # before merge, and upload the PNGs for the reviewer.
 #
-# Re-measuring a sweep: rescue its CSV into docs/benchmarks/campaign/, cite it
+# Re-measuring a sweep: rescue its CSV into results/campaign/, cite it
 # on the sweep page, and point SWEEP_SOURCES in family-charts.py at it. A
 # scenario-matrix run with commit=true writes sweep PNGs from its own fresh
 # CSV; the next run here re-renders them from the cited CSVs, which is what
@@ -25,8 +25,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'docs/benchmarks/cells/**'
-      - 'docs/benchmarks/campaign/**'
+      - 'results/cells/**'
+      - 'results/campaign/**'
       - 'ns3/tools/family-charts.py'
       - 'ns3/tools/make-charts.py'
       - 'tools/bench/bench_parse.py'
@@ -35,8 +35,8 @@ on:
       - '.github/workflows/charts.yml'
   pull_request:
     paths:
-      - 'docs/benchmarks/cells/**'
-      - 'docs/benchmarks/campaign/**'
+      - 'results/cells/**'
+      - 'results/campaign/**'
       - 'ns3/tools/family-charts.py'
       - 'ns3/tools/make-charts.py'
       - 'tools/bench/bench_parse.py'

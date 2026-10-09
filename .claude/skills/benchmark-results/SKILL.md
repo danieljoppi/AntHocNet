@@ -1,6 +1,6 @@
 ---
 name: benchmark-results
-description: Run the full AntHocNet benchmark loop — pre-flight-validate scenario configs, dispatch paper-benchmark / scenario-matrix, fetch results cheaply, check result plausibility and anchor floors, parse and A/B-compare runs, and summarize classified campaign CSVs — with automatic run-to-run-noise verdicts. Use whenever dispatching benchmark workflows, validating a scenario or its results, or collecting/comparing AntHocNet benchmark numbers (including docs/benchmarks/campaign/*.csv sweeps) so validation, parsing, deltas, filtering, and the noise call are done by scripts instead of by hand in context.
+description: Run the full AntHocNet benchmark loop — pre-flight-validate scenario configs, dispatch paper-benchmark / scenario-matrix, fetch results cheaply, check result plausibility and anchor floors, parse and A/B-compare runs, and summarize classified campaign CSVs — with automatic run-to-run-noise verdicts. Use whenever dispatching benchmark workflows, validating a scenario or its results, or collecting/comparing AntHocNet benchmark numbers (including results/campaign/*.csv sweeps) so validation, parsing, deltas, filtering, and the noise call are done by scripts instead of by hand in context.
 ---
 
 # benchmark-results
@@ -117,7 +117,7 @@ The cross-session procedure (formerly buried in issue #91's session notes):
    just above — fetch ~55 lines if you need those). Save the tail verbatim to
    a file, one per run. `scenario-matrix`: the CSV artifact is
    proxy-blocked; use `commit=true` on dispatch, or the `rescue-artifacts`
-   workflow, then read `docs/benchmarks/campaign/<runid>-*.csv` from the ref.
+   workflow, then read `results/campaign/<runid>-*.csv` from the ref.
 4. **Validate before comparing**: `scenario_check.py results` on the saved
    cell/CSV — plausibility invariants (PDR bounds, delay99 ≥ mean, negative
    metrics) and, for anchor-shaped scenarios, the `ns3/tools/anchors.yml`
@@ -133,13 +133,13 @@ The cross-session procedure (formerly buried in issue #91's session notes):
 ## Campaign CSVs (`sweep_summary.py`)
 
 Classified CSVs (`run-scenarios.py` schema, e.g.
-`docs/benchmarks/campaign/*.csv`) are hundreds of cells — schema check,
+`results/campaign/*.csv`) are hundreds of cells — schema check,
 per-point deltas, and the stddev-aware noise call happen in the script; only
 its compact grid should reach context.
 
 ```bash
 S=tools/bench/sweep_summary.py
-python3 $S docs/benchmarks/campaign/*.csv        # anthocnet vs aodv per point
+python3 $S results/campaign/*.csv        # anthocnet vs aodv per point
 python3 $S --baseline olsr --group pause FILE    # other baseline / one group
 python3 $S AFTER.csv --vs BEFORE.csv             # same sweep, two code
                                                  #   generations (see below)
@@ -156,7 +156,7 @@ invalidated every published number. `--vs` takes the BEFORE CSVs and diffs the
 same `(kind, group, x)` points of the same protocol:
 
 ```bash
-python3 $S docs/benchmarks/campaign/<after>.csv --vs docs/benchmarks/campaign/<before>.csv
+python3 $S results/campaign/<after>.csv --vs results/campaign/<before>.csv
 ```
 
 Note the argument order: `--vs` is greedy (`nargs='+'`), so the AFTER files must
@@ -197,7 +197,7 @@ pre-#319 campaigns still compare exactly as before.
 
 ## Satellite constellation cells (`ns3/tools/leo-summary.py`, #297)
 
-The leo-walker cells (`docs/benchmarks/cells/leo-<cell>-<arm>.txt`, one arm per
+The leo-walker cells (`results/cells/leo-<cell>-<arm>.txt`, one arm per
 file, 20 seeds) are summarised by script into the tables on
 `docs/benchmarks/satellite/leo-walker.md` — headline per arm with CIs, paired
 AntHocNet-vs-arm differences (oracles excluded: they are bounds), the handover

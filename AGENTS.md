@@ -22,6 +22,7 @@ ns3/     anthocnet/ (the ns-3 module + harnesses), baselines/<arm>/ (vendored ar
 web/     browser adapter (core/ as WebAssembly) + the learn site (the Pages front page)
 tools/   shipped scripts: bench/ (stats, parsing, scenario_check), checks/ (CI gates), release/
 docs/    architecture.md, porting-notes.md, adr/, benchmarks/ — full map in docs/README.md
+results/ raw benchmark data: cells/ (harness runs), campaign/ (classified CSVs)
 api/     Doxygen config for the API reference (/api/)
 paper/   JOSS-style paper source
 .claude/ agent skills (procedures only; never shipped in a release)

@@ -18,12 +18,12 @@ t = 0 position for the whole run. It is the community-network / Freifunk-class
 > that proves only AntHocNet moved. Like the [grid](grid.md) and [TCP](tcp.md)
 > pages, these numbers are **not** comparable with the `v1.3.0`-pinned sweep
 > pages. The raw per-seed cells are committed next to this page:
-> [`cells/static-mesh-jitter.txt`](cells/static-mesh-jitter.txt) (current),
-> [`cells/static-mesh-cap200ms.txt`](cells/static-mesh-cap200ms.txt) and
-> [`cells/static-mesh-cap1s.txt`](cells/static-mesh-cap1s.txt) (pre-#496).
+> [`results/cells/static-mesh-jitter.txt`](../../results/cells/static-mesh-jitter.txt) (current),
+> [`results/cells/static-mesh-cap200ms.txt`](../../results/cells/static-mesh-cap200ms.txt) and
+> [`results/cells/static-mesh-cap1s.txt`](../../results/cells/static-mesh-cap1s.txt) (pre-#496).
 > The #494 cap re-measure arms are
-> [`cells/static-mesh-jitter-cap1s.txt`](cells/static-mesh-jitter-cap1s.txt) and
-> [`cells/paper-mobile-jitter-cap1s.txt`](cells/paper-mobile-jitter-cap1s.txt).
+> [`results/cells/static-mesh-jitter-cap1s.txt`](../../results/cells/static-mesh-jitter-cap1s.txt) and
+> [`results/cells/paper-mobile-jitter-cap1s.txt`](../../results/cells/paper-mobile-jitter-cap1s.txt).
 > Run IDs are in [Provenance](#provenance) below.
 
 ## Why this family, and why it is framed rather than built
@@ -57,7 +57,7 @@ Whatever AntHocNet loses here, it loses to its own machinery.
 > **Provenance.** Run [37172238042](https://github.com/danieljoppi/AntHocNet/actions/runs/37172238042) at `main`
 > @ `d26ae640`, with the knobs of the published dispatch: 20 seeds, 900 s,
 > `pause=900`, disk, `3.42-opt`. Cell:
-> `docs/benchmarks/cells/static-mesh-cbr521.txt`. `scenario_check.py
+> `results/cells/static-mesh-cbr521.txt`. `scenario_check.py
 > results`: 0 FAIL (the #230 path-diversity WARN only). `bench_parse` column
 > mapping is OK (25 checks). OLSR's PDR is offered-based (#510).
 >
@@ -222,5 +222,5 @@ arms, add `extraArgs=--ns3::anthocnet::RoutingProtocol::TimerJitter=0`, plus
 `--ns3::anthocnet::RoutingProtocol::ReconvHoldCap=1s` for the 1 s row.
 The #494 arms add only `ReconvHoldCap=1s` and run `protocols=anthocnet`
 (`pause=0` for the mobile one); their 200 ms partners are
-`cells/static-mesh-jitter.txt` and `cells/paper-mobile-jitter.txt`. `4c8482fd`
+`results/cells/static-mesh-jitter.txt` and `results/cells/paper-mobile-jitter.txt`. `4c8482fd`
 carries the same code as `ce81eefe` (it differs only by a docs refresh).

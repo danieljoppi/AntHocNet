@@ -183,7 +183,7 @@ inputs `nNodes`, `areaX=800`, `areaY=800`, `pause=0`, `speed=20`,
 | main (100 vehicles, 4 seeds per job) | [37638802518](https://github.com/danieljoppi/AntHocNet/actions/runs/37638802518) (1–4), [37638813699](https://github.com/danieljoppi/AntHocNet/actions/runs/37638813699) (5–8), [37638825144](https://github.com/danieljoppi/AntHocNet/actions/runs/37638825144) (9–12), [37638836620](https://github.com/danieljoppi/AntHocNet/actions/runs/37638836620) (13–16), [37638847225](https://github.com/danieljoppi/AntHocNet/actions/runs/37638847225) (17–20) |
 | sparse (40 vehicles, 10 seeds per job) | [37638857489](https://github.com/danieljoppi/AntHocNet/actions/runs/37638857489) (1–10), [37638868141](https://github.com/danieljoppi/AntHocNet/actions/runs/37638868141) (11–20) |
 
-Cells: `docs/benchmarks/cells/vanet-{main,sparse}.txt`, 140 `##RUN##` rows
+Cells: `results/cells/vanet-{main,sparse}.txt`, 140 `##RUN##` rows
 each (20 seeds × 7 arms). A main-cell job took 3.5–4 h (about 50 min per
 seed, seven arms); a sparse-cell job 1.2–2 h.
 
@@ -369,7 +369,7 @@ _Each dot is AntHocNet − AODV averaged over 20 paired seeds, with its 95 % pai
 
 ## Provenance of the numbers
 
-Per-seed rows: `docs/benchmarks/cells/vanet-{main,sparse}.txt`. Statistics
+Per-seed rows: `results/cells/vanet-{main,sparse}.txt`. Statistics
 from `stats_util` (t-CI, Wilcoxon signed-rank). Drop decomposition from the
 `# drops` compact blocks, `##ROUTE##` from the per-seed rows. Reproduce with
 `paper-benchmark.yml` at `1a923576` and the inputs in the provenance block

@@ -45,7 +45,7 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 > failcell [37319142249](https://github.com/danieljoppi/AntHocNet/actions/runs/37319142249),
 > corridor [37319154658](https://github.com/danieljoppi/AntHocNet/actions/runs/37319154658),
 > seam [37319168168](https://github.com/danieljoppi/AntHocNet/actions/runs/37319168168).
-> Cells: `docs/benchmarks/cells/sat-{base,failcell,corridor,seam}-app517.txt`.
+> Cells: `results/cells/sat-{base,failcell,corridor,seam}-app517.txt`.
 > `scenario_check.py results`: OK (0 fail, 0 warn) on all four. `±` is a
 > 95 % t-CI half-width; `[lo, hi]` a paired per-seed 95 % t-CI; p is
 > Wilcoxon signed-rank.
@@ -108,7 +108,7 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 > failcell [37172253492](https://github.com/danieljoppi/AntHocNet/actions/runs/37172253492),
 > corridor [37172255336](https://github.com/danieljoppi/AntHocNet/actions/runs/37172255336),
 > seam [37172257652](https://github.com/danieljoppi/AntHocNet/actions/runs/37172257652).
-> Cells: `docs/benchmarks/cells/sat-{base,failcell,corridor,seam}-cbr521.txt`.
+> Cells: `results/cells/sat-{base,failcell,corridor,seam}-cbr521.txt`.
 > `scenario_check.py results`: OK (0 fail, 0 warn) on all four. Means and
 > intervals are by script (`bench_parse.py`, `stats_util`); `±` is a 95 %
 > t-CI half-width and `[lo, hi]` a paired per-seed 95 % t-CI.
@@ -196,7 +196,7 @@ cannot carry a comparative delivery or latency claim in either direction.**
 > convergence, not of the topology. It is below this page's ≥ 1 pp
 > discrimination floor, so no verdict below changes.
 >
-> Cells: `docs/benchmarks/cells/sat-{base,failcell,corridor,seam}-olsr513.txt`.
+> Cells: `results/cells/sat-{base,failcell,corridor,seam}-olsr513.txt`.
 
 | protocol | PDR% | delay (ms) | delay99 (ms) | thrput (kbps) | NRL | NRL bytes | jitter (ms) |
 |---|---|---|---|---|---|---|---|
@@ -810,7 +810,7 @@ deterministic point-to-point links — those stay low-run and are read as
    is uploaded as the `satellite-benchmark` artifact (30-day retention).
 2. **Rescue** it past expiry with the `rescue-artifacts` workflow
    (`sat_run_ids` input); it is committed as
-   `docs/benchmarks/campaign/<runid>-sat.txt`.
+   `results/campaign/<runid>-sat.txt`.
 3. **Validate** before reading:
    `python3 tools/bench/scenario_check.py results FILE`
    understands both the `--csv` schema and the human

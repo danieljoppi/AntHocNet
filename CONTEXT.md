@@ -112,6 +112,7 @@ tools/
   bench/                  ← shipped benchmark scripts (stats, parsing, scenario_check)
   checks/                 ← CI gate scripts (anchors, determinism, allowlists, smokes)
   release/                ← install-bundle assembly + the package-contents gate
+results/                  ← raw benchmark data: cells/, campaign/ (never hand-edited)
 api/                      ← Doxygen config (published at /api/)
 paper/                    ← paper source
 .claude/skills/           ← agent procedures (not shipped in releases)

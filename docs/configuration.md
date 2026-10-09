@@ -441,7 +441,7 @@ python3 $S preflight --areaX 2500 --flows 40      # exactly what you intend to d
 Pair **every** ON run with an identical OFF run — baselines are deterministic on
 identical seeds, so an A/B pair is a clean comparison and a lone run is not. For
 multi-point sweeps use `scenario-matrix.yml` (`only=<sweep> point=<x>` runs a
-single point; `commit=true` writes the CSV into `docs/benchmarks/campaign/`).
+single point; `commit=true` writes the CSV into `results/campaign/`).
 Core-only parameters (`—` in §3.1) cannot be swept this way; they need a
 `config.h` edit and a rebuilt image.
 
@@ -450,7 +450,7 @@ Core-only parameters (`—` in §3.1) cannot be swept this way; they need a
 ```bash
 D=tools/bench
 python3 $D/bench_parse.py --ab off1.txt on1.txt off2.txt on2.txt   # the money mode
-python3 $D/sweep_summary.py docs/benchmarks/campaign/*.csv         # campaign CSVs
+python3 $D/sweep_summary.py results/campaign/*.csv         # campaign CSVs
 ```
 
 `--ab` computes on-vs-off within each pair and flags **NOISE** when the PDR

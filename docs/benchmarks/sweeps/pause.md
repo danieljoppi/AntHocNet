@@ -67,13 +67,13 @@ charts** workflow (`scenario-matrix.yml`), which renders `sweep-pause.png` into
 filled in by pointing `update-benchmarks.py` at that CSV.
 
 Raw sweep data rescued from expired artifacts lives in
-[`../campaign/`](../campaign/). The published table below comes from the
+[`results/campaign/`](../../../results/campaign/). The published table below comes from the
 **2026-08-03 20-seed re-run** (runs `30850273352` / `30850282055` /
 `30850291550` / `30850299279` / `30850306777`, one point per job, `3.42-opt`
-image, 900 s, range/disk PHY), rescued as `../campaign/308502*-run.csv` and
+image, 900 s, range/disk PHY), rescued as `results/campaign/308502*-run.csv` and
 summarizable with the `benchmark-results` skill's `sweep_summary.py`. The
 superseded pre-#88/#169 5-seed data remains at
-[`30031904151-pause-disk.csv`](../campaign/30031904151-pause-disk.csv).
+[`30031904151-pause-disk.csv`](../../../results/campaign/30031904151-pause-disk.csv).
 
 ## Results
 
@@ -133,7 +133,7 @@ _Sweep `pause` — mean of 20 run(s) per point, every baseline on identical real
 > 20 seeds per point, one point per `scenario-matrix` job: runs
 > [37233291212](https://github.com/danieljoppi/AntHocNet/actions/runs/37233291212) (0), [37233292762](https://github.com/danieljoppi/AntHocNet/actions/runs/37233292762) (100), [37233294241](https://github.com/danieljoppi/AntHocNet/actions/runs/37233294241) (300), [37233296147](https://github.com/danieljoppi/AntHocNet/actions/runs/37233296147) (600) and
 > [37233298023](https://github.com/danieljoppi/AntHocNet/actions/runs/37233298023) (900).
-> Rescued as `../campaign/<run>-run.csv` (aggregate) and
+> Rescued as `results/campaign/<run>-run.csv` (aggregate) and
 > `<run>-run-runs.csv` (per seed).
 > `scenario_check.py results`: 0 FAIL; the WARNs are the #230 path-diversity
 > window caveat and route-flap reorder notes. OLSR's PDR is offered-based

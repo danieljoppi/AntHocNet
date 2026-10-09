@@ -107,7 +107,7 @@ published GHCR images (Actions → workflow → *Run workflow*):
   [`pool_runs.py`](../../tools/bench/pool_runs.py)
   merges the split CSVs back into one aggregate row per point, recomputing
   mean/sd exactly from the pooled #319 per-run rows. With `commit=true`
-  the classified CSV lands in `docs/benchmarks/campaign/` and the regenerated
+  the classified CSV lands in `results/campaign/` and the regenerated
   charts in `docs/benchmarks/`; otherwise everything stays in the run's
   artifacts.
 
@@ -963,7 +963,7 @@ hellos in a row evicted a live neighbour, about 93 k spurious evictions per
   possible. The oracle arm, which runs no AntHocNet code, reproduces #431's
   per-cell PDR in 6 / 6 cells (to the printed digit in five, 0.01 pp in the
   sixth). That is the control. The lesson is to **commit per-seed cells**: the
-  grid now has them under `cells/`, so the next re-baseline can diff rows
+  grid now has them under `results/cells/`, so the next re-baseline can diff rows
   instead of relying on the Actions log retention window.
 - **The static mesh** was republished at the fixed timer in the same PR as the
   fix ([static-mesh.md](static-mesh.md)), and the
@@ -1094,7 +1094,7 @@ The pinned `v1.3.0` sweeps are not re-measured.
 
 ### Run ID → commit
 
-Every campaign CSV under `docs/benchmarks/campaign/` is named after the Actions
+Every campaign CSV under `results/campaign/` is named after the Actions
 run that produced it, so the run ID is never in doubt. The commit behind that
 run ID is answered in two different ways depending on when the run happened, and
 the boundary is worth stating plainly rather than blurring.

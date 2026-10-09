@@ -23,7 +23,7 @@ hand over, ISLs fail and recover. The static ISL torus that came first is
 > | `starlink1-storm` | [37827449496](https://github.com/danieljoppi/AntHocNet/actions/runs/37827449496) | [37827453949](https://github.com/danieljoppi/AntHocNet/actions/runs/37827453949) |  | [37827467035](https://github.com/danieljoppi/AntHocNet/actions/runs/37827467035) | [37827458721](https://github.com/danieljoppi/AntHocNet/actions/runs/37827458721) | [37827462965](https://github.com/danieljoppi/AntHocNet/actions/runs/37827462965) |
 > | `hypatia` calibration | | | | | | [37827470132](https://github.com/danieljoppi/AntHocNet/actions/runs/37827470132) |
 >
-> Cells: `docs/benchmarks/cells/leo-<cell>-<arm>.txt`. **Every leo-walker
+> Cells: `results/cells/leo-<cell>-<arm>.txt`. **Every leo-walker
 > number measured before `0b5a65ad` is superseded** — see
 > [the pairing bug](#the-cross-plane-pairing-bug-and-the-superseded-runs).
 
@@ -264,7 +264,7 @@ LENS (Zhao & Pan, MMSys 2024; dataset CC BY-SA 4.0) publishes raw 10 ms ping
 traces from Starlink dishes to their point of presence. One full day of the
 `bruhl` dish (Brühl → Frankfurt PoP, 2026-10-06, 24 hourly traces, 5.96 M
 pings) summarised by `ns3/tools/lens-calibration.py`; derived numbers only,
-in `docs/benchmarks/cells/lens-bruhl-20261006.txt`:
+in `results/cells/lens-bruhl-20261006.txt`:
 
 | | min | p5 | p50 | p95 | p99 | loss |
 |---|---|---|---|---|---|---|
