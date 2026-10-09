@@ -37,6 +37,9 @@ let lastInspector = 0;
 let pendingFlowSrc = -1;
 let ghost = null;
 let hover = -1;
+let routes = [];              // each flow's strongest-pheromone route, for the map
+let routeKeys = new Map();    // flow id -> the route last seen ("0-4-9"), to spot a switch
+let routeChanges = 0;
 
 function safeStore(op, key, value) {
   try {
@@ -78,6 +81,7 @@ async function load(worldId, seed, opts = {}) {
   anim.flights = []; anim.rings = []; anim.marks = [];
   window10 = [];
   logItems = [];
+  routes = []; routeKeys = new Map(); routeChanges = 0;
   $('log').replaceChildren();
   R.setWorld({
     areaX: w.areaX(), areaY: w.areaY(), areaZ: w.areaZ(), channel: w.channel(),
@@ -88,6 +92,7 @@ async function load(worldId, seed, opts = {}) {
   $('seed').value = seed;
   describeWorld();
   fillWatch();
+  setSpeed(worldById(playground.worldId).speed ?? 0.25); // a mission sets its own after this
   history.replaceState(null, '', `#${playground.worldId}?seed=${seed}`);
   news(worldById(playground.worldId).headline || 'A new network goes live.', true);
   for (const fn of playground.listeners) fn({ type: 'reset' });
@@ -264,6 +269,7 @@ function handle(e, wallNow) {
 function describe(e) {
   const t = `t=${e.t.toFixed(3)}`;
   switch (e.kind) {
+    case -1: return `${t}  ${e.text}`;
     case Ev.TxAnt: return `${t}  n${e.node} → ${e.peer < 0 ? 'all neighbours' : 'n' + e.peer}: ${KIND_LABEL[antKind(e.a, e.b)]}`;
     case Ev.TxData: return `${t}  n${e.node} → n${e.peer}: data packet (flow ${e.a} #${e.b})`;
     case Ev.Deliver: return `${t}  n${e.node}: delivered flow ${e.a} #${e.b} after ${(e.v * 1000).toFixed(1)} ms`;
@@ -320,6 +326,50 @@ function pheromoneEdges(w) {
     for (let k = 0; k < row.length; k += 3) if (row[k + 1] > 0) out.push({ from: n, to: row[k], share: row[k + 1] / sum });
   }
   return out;
+}
+
+/**
+ * Each flow's strongest route as the pheromone table stands now: from the
+ * source, follow the neighbour with the most regular pheromone toward the
+ * destination, hop by hop. This reads the core's table (PheromoneTable via
+ * the adapter); it is what the trails say, not a route the core is forced to
+ * take -- data still picks next hops at random, weighted by pheromone^beta.
+ */
+function strongestRoutes(w) {
+  const out = [];
+  for (const f of playground.flows) {
+    const path = [f.src];
+    const seen = new Set(path);
+    let cur = f.src;
+    while (cur !== f.dst && path.length < 40) {
+      const row = w.pheromone(cur, f.dst);
+      let best = -1, bestTau = 0;
+      for (let k = 0; k < row.length; k += 3) if (row[k + 1] > bestTau) { bestTau = row[k + 1]; best = row[k]; }
+      if (best < 0 || seen.has(best)) break;
+      path.push(best); seen.add(best); cur = best;
+    }
+    out.push({ flow: f.id, path, complete: cur === f.dst });
+  }
+  return out;
+}
+
+function updateRoutes(w, wallNow) {
+  const fresh = strongestRoutes(w);
+  for (const r of fresh) {
+    const key = r.complete ? r.path.join('-') : null;
+    const prev = routeKeys.get(r.flow);
+    const old = routes.find((o) => o.flow === r.flow);
+    r.changedAt = old ? old.changedAt : -1e9;
+    if (key && prev && key !== prev) {
+      routeChanges++;
+      r.changedAt = wallNow;
+      const text = `Flow ${r.flow}'s strongest trail switched: now ${r.path.map((n) => 'n' + n).join(' → ')} (${r.path.length - 1} hops).`;
+      news(text);
+      log({ t: w.now(), kind: -1, text }, 'repair', 'routes');
+    }
+    if (key) routeKeys.set(r.flow, key);
+  }
+  routes = fresh;
 }
 
 function renderInspector(w) {
@@ -382,6 +432,7 @@ function updateStatus(w) {
   $('stDropped').textContent = `✕ ${st.drops}`;
   const ants = w.antTransmissions();
   $('stBudget').textContent = `ants ${ants}` + (st.delivered ? ` · ${(ants / st.delivered).toFixed(1)}/pkt` : '');
+  $('stRoutes').textContent = `route switches ${routeChanges}`;
   window10 = window10.filter(([ts]) => ts > t - 10);
   if (window10.length) {
     const ok = window10.reduce((a, [, g]) => a + g, 0) / window10.length;
@@ -410,13 +461,14 @@ function frame(ts) {
     anim.marks = prog(anim.marks).slice(-200);
     for (const [n, until] of flashUntil) if (until < ts) { flashUntil.delete(n); flash.delete(n); }
     R.draw({
-      time: ts, simNow: w.now(), positions: w.positions(), links: w.links(), pheromone: pheromoneEdges(w),
+      time: ts, simNow: w.now(), positions: w.positions(),
+      routes: $('ovRoute').checked ? routes : null, links: w.links(), pheromone: pheromoneEdges(w),
       showLinks: $('ovLinks').checked, labels: $('ovLabels').checked,
       flights: anim.flights, rings: anim.rings, marks: anim.marks, flash,
       flows: playground.flows, selected: playground.selected, tool: playground.tool,
       hover, ghost,
     });
-    if (ts - lastInspector > 300) { renderInspector(w); updateStatus(w); lastInspector = ts; }
+    if (ts - lastInspector > 300) { updateRoutes(w, ts); renderInspector(w); updateStatus(w); lastInspector = ts; }
     flushLog();
   }
   requestAnimationFrame(frame);
@@ -641,7 +693,7 @@ new ResizeObserver(() => R.resize()).observe(mapEl);
 function buildLegend() {
   const ul = $('legend');
   ul.replaceChildren();
-  const items = [['reactive', 'reactive ant (searching)'], ['backward', 'backward ant (laying pheromone)'],
+  const items = [['route', 'strongest pheromone route'], ['reactive', 'reactive ant (searching)'], ['backward', 'backward ant (laying pheromone)'],
     ['proactive', 'proactive ant (scouting)'], ['repair', 'repair ant'], ['linkfail', 'link-failure notice'],
     ['data', 'data packet'], ['hello', 'hello (beacon)'], ['pheromone', 'pheromone trail']];
   for (const [k, label] of items) {

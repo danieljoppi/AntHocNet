@@ -9,7 +9,7 @@ protocol by running **the** protocol, not a look-alike.
 
 | path | what |
 |---|---|
-| `include/ahn_web/sim.h`, `src/sim.cpp` | the adapter + a small discrete-event teaching radio: clock, per-node RNG streams, hello/proactive/reactive-retry timers, pending queue, FIFO transmitter, mobility (static, random waypoint, Gauss–Markov 2-D/3-D, Manhattan), channels (disk, urban buildings, ISL) |
+| `include/ahn_web/sim.h`, `src/sim.cpp` | the adapter + a small discrete-event teaching radio: clock, per-node RNG streams, hello/proactive/reactive-retry timers, pending queue, FIFO transmitter, mobility (static, random waypoint, Gauss–Markov 2-D/3-D, Manhattan, circular orbit), channels (disk, urban buildings, ISL) |
 | `include/ahn_web/scenarios.h`, `src/scenarios.cpp` | one built-in world per family: `line`, `manet` (default), `mesh`, `fanet`, `vanet`, `satellite` |
 | `src/bindings.cpp` | the Embind API the site's JavaScript calls (WASM build only) |
 | `src/trace_main.cpp` | `ahn-web-trace`: runs every scenario and prints the full event log |

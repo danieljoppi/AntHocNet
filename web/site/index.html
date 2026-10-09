@@ -57,6 +57,7 @@
       </div>
       <div class="titlebar">Overlays</div>
       <div class="overlays">
+        <label><input type="checkbox" id="ovRoute" checked> strongest route</label>
         <label><input type="checkbox" id="ovPheromone" checked> pheromone</label>
         <label><input type="checkbox" id="ovLinks" checked> radio links</label>
         <label><input type="checkbox" id="ovHello" checked> hellos</label>
@@ -86,6 +87,7 @@
         <span id="stDelivered" title="Data packets delivered / sent">✓ 0</span>
         <span id="stDropped" title="Data packets dropped">✕ 0</span>
         <span id="stBudget" title="Control budget: ant transmissions per delivered packet (the routing overhead, NRL)">ants 0</span>
+        <span id="stRoutes" title="How often a flow's strongest pheromone route switched to a different path">route switches 0</span>
         <span class="health" title="Network health: delivery ratio over the last 10 s"><span class="meter"><span id="healthBar"></span></span><span id="health">—</span></span>
       </div>
       <div class="ticker" aria-label="Network news"><span class="mast">The Daily Pheromone</span><span id="news">Reporters are in place. Build, break and watch.</span></div>

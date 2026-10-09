@@ -12,6 +12,8 @@
 // Vehicle paints (decoration only, never an identity colour).
 const CAR_PAINT = ['#c0392b', '#2e5aa8', '#e8e6df', '#3f4a59', '#d9a21b', '#2f7d5b'];
 
+const EARTH_R = 6.371e6; // m: the globe drawn in the satellite world
+
 const KIND_VAR = {
   hello: '--c-hello', reactive: '--c-reactive', backward: '--c-backward',
   proactive: '--c-proactive', repair: '--c-repair', linkfail: '--c-linkfail',
@@ -58,6 +60,8 @@ export class IsoRenderer {
   setWorld(meta) {
     this.meta = meta;
     this.motion = [];
+    this.rings = null;
+    this.orbitSample = null;
     this.zoom = 1;
     this.panX = 0;
     this.panY = 0;
@@ -106,8 +110,22 @@ export class IsoRenderer {
     }
   }
 
+  /** The satellite world is seen as a globe: Earth at the field's centre,
+   *  satellites on their orbits, an orthographic camera tilted 22 degrees. */
+  get globe() { return this.meta?.channel === 2; }
+
   fit() {
     if (!this.meta) return;
+    if (this.globe) {
+      const E = this.meta.areaX / 2 * 0.8; // frame the 7571 km orbits with a margin
+      this.c = Math.min(this.w - 48, this.h - 48) / (2 * E) * this.zoom;
+      this.ox = this.w / 2 + this.panX;
+      this.oy = this.h / 2 + this.panY;
+      this.yaw = this.rot * Math.PI / 2 + Math.PI / 5;
+      this.el = 22 * Math.PI / 180;
+      this.groundCache = null;
+      return;
+    }
     const [U, V] = this.dims();
     this.zf = 0.9; // vertical exaggeration of altitude
     const zmax = this.meta.areaZ || 0;
@@ -124,6 +142,10 @@ export class IsoRenderer {
 
   /** World (x, y, z) -> screen [px, py]. */
   project(x, y, z = 0) {
+    if (this.globe) {
+      const [a, b] = this.camera(x, y);
+      return [this.ox + a * this.c, this.oy + (b * Math.sin(this.el) - z * Math.cos(this.el)) * this.c];
+    }
     const [u, v] = this.rotate(x, y);
     return [this.ox + (u - v) * this.c, this.oy + (u + v) * this.c / 2 - z * this.zf * this.c];
   }
@@ -135,7 +157,28 @@ export class IsoRenderer {
     return this.unrotate((a + b) / 2, (b - a) / 2);
   }
 
-  depth(x, y) { const [u, v] = this.rotate(x, y); return u + v; }
+  /** Globe: world (x, y) -> camera (across, toward the viewer). */
+  camera(x, y) {
+    const X = x - this.meta.areaX / 2, Y = y - this.meta.areaY / 2;
+    const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
+    return [X * cy - Y * sy, X * sy + Y * cy];
+  }
+
+  /** Larger = nearer the viewer (z counts on the globe only). */
+  depth(x, y, z = 0) {
+    if (this.globe) return this.camera(x, y)[1] * Math.cos(this.el) + z * Math.sin(this.el);
+    const [u, v] = this.rotate(x, y);
+    return u + v;
+  }
+
+  hiddenNode(pos, i) { return this.hidden(pos[4 * i], pos[4 * i + 1], pos[4 * i + 2]) ? 1 : 0; }
+
+  /** Globe: is the point hidden behind the Earth? */
+  hidden(x, y, z) {
+    if (!this.globe) return false;
+    const [px, py] = this.project(x, y, z);
+    return this.depth(x, y, z) < 0 && Math.hypot(px - this.ox, py - this.oy) < EARTH_R * this.c;
+  }
 
   zoomAt(px, py, factor) {
     const z = Math.min(6, Math.max(0.5, this.zoom * factor));
@@ -187,19 +230,12 @@ export class IsoRenderer {
     let best = null, bestD = 8 * 8;
     for (let k = 0; k < links.length; k += 2) {
       const a = this.antenna(pos, links[k]), b = this.antenna(pos, links[k + 1]);
-      if (this.wraps(links[k], links[k + 1], pos)) continue;
       const dx = b[0] - a[0], dy = b[1] - a[1];
       const t = Math.max(0, Math.min(1, ((px - a[0]) * dx + (py - a[1]) * dy) / (dx * dx + dy * dy || 1)));
       const d = (a[0] + t * dx - px) ** 2 + (a[1] + t * dy - py) ** 2;
       if (d < bestD) { bestD = d; best = [links[k], links[k + 1]]; }
     }
     return best;
-  }
-
-  wraps(a, b, pos) {
-    if (this.meta.channel !== 2) return false;
-    return Math.abs(pos[4 * a] - pos[4 * b]) > this.meta.areaX / 2 ||
-      Math.abs(pos[4 * a + 1] - pos[4 * b + 1]) > this.meta.areaY / 2;
   }
 
   // --- motion (what the renderer infers from successive positions) ------------
@@ -280,9 +316,8 @@ export class IsoRenderer {
       ctx.strokeStyle = c.ph;
       if (c.night) { ctx.shadowColor = c.ph; ctx.shadowBlur = 8; }
       for (const e of s.pheromone) {
-        if (this.wraps(e.from, e.to, pos)) continue;
         const [a, b] = this.trailEnds(pos, e.from, e.to);
-        ctx.globalAlpha = 0.3 + 0.6 * e.share;
+        ctx.globalAlpha = (0.3 + 0.6 * e.share) * (this.globe ? (this.hiddenNode(pos, e.from) ? 0.15 : 0.6) : 1);
         ctx.lineWidth = (1.5 + 5 * e.share) * Math.min(1.5, this.zoom);
         ctx.beginPath();
         ctx.moveTo(a[0], a[1]);
@@ -292,29 +327,38 @@ export class IsoRenderer {
       ctx.restore();
     }
 
+    if (this.globe) this.orbits(pos, s.simNow || 0);
+
     // Radio beams between antennas.
     if (s.showLinks) {
       ctx.save();
       ctx.strokeStyle = c.beam;
       ctx.globalAlpha = c.night ? 0.45 : 0.55;
       ctx.lineWidth = 1;
-      ctx.beginPath();
       const L = s.links;
-      for (let k = 0; k < L.length; k += 2) {
-        if (this.wraps(L[k], L[k + 1], pos)) { this.wrapStub(pos, L[k], L[k + 1]); continue; }
-        const a = this.antenna(pos, L[k]), b = this.antenna(pos, L[k + 1]);
-        ctx.moveTo(a[0], a[1]);
-        ctx.lineTo(b[0], b[1]);
+      const base = ctx.globalAlpha;
+      for (const back of [true, false]) { // links behind the Earth are faint
+        ctx.globalAlpha = back ? base * 0.25 : base;
+        ctx.beginPath();
+        for (let k = 0; k < L.length; k += 2) {
+          if ((this.hiddenNode(pos, L[k]) + this.hiddenNode(pos, L[k + 1]) > 0) !== back) continue;
+          const a = this.antenna(pos, L[k]), b = this.antenna(pos, L[k + 1]);
+          ctx.moveTo(a[0], a[1]);
+          ctx.lineTo(b[0], b[1]);
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
       ctx.restore();
     }
+
+    if (s.routes) this.drawRoutes(pos, s.routes);
 
     // Broadcast rings on the ground (an isometric circle is a 2:1 ellipse).
     for (const r of s.rings) {
       const x = pos[4 * r.node], y = pos[4 * r.node + 1], z = pos[4 * r.node + 2];
-      const [px, py] = this.project(x, y, this.kind === 'sky' ? z : 0);
-      const R = (12 / this.c + r.progress * r.radius) * this.c * Math.SQRT2;
+      const [px, py] = this.project(x, y, this.kind === 'sky' || this.globe ? z : 0);
+      const R = this.globe ? (6 + 18 * r.progress) * this.spriteScale()
+        : (12 / this.c + r.progress * r.radius) * this.c * Math.SQRT2;
       ctx.save();
       ctx.globalAlpha = (1 - r.progress) * (r.kind === 'hello' ? 0.4 : 0.85);
       ctx.strokeStyle = c[r.kind];
@@ -328,7 +372,7 @@ export class IsoRenderer {
     // Everything standing on the map, back to front: trees/buildings were in
     // the ground layer; nodes sort by depth so nearer ones overlap farther.
     const order = [...Array(n).keys()].sort((i, j) =>
-      this.depth(pos[4 * i], pos[4 * i + 1]) - this.depth(pos[4 * j], pos[4 * j + 1]));
+      this.depth(pos[4 * i], pos[4 * i + 1], pos[4 * i + 2]) - this.depth(pos[4 * j], pos[4 * j + 1], pos[4 * j + 2]));
     const flowEnds = new Map();
     for (const f of s.flows) {
       flowEnds.set(f.src, (flowEnds.get(f.src) || '') + ` S${f.id}`);
@@ -341,7 +385,6 @@ export class IsoRenderer {
 
     // Ants and packets in transit.
     for (const f of s.flights) {
-      if (this.wraps(f.from, f.to, pos)) continue;
       if (f.kind === 'data') {
         const a = this.antenna(pos, f.from), b = this.antenna(pos, f.to);
         this.crate(a[0] + (b[0] - a[0]) * f.progress, a[1] + (b[1] - a[1]) * f.progress, f.failed);
@@ -374,6 +417,42 @@ export class IsoRenderer {
     }
   }
 
+  /** Each flow's strongest pheromone route: a bold trail with ants marching
+   *  along it from source to destination; amber for 2 s after it switches. */
+  drawRoutes(pos, routes) {
+    const { ctx, colors: c } = this;
+    const zs = this.spriteScale();
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const r of routes) {
+      if (r.path.length < 2) continue;
+      const pts = r.path.map((i) => (this.kind === 'sky' || this.globe ? this.antenna(pos, i)
+        : this.project(pos[4 * i], pos[4 * i + 1], 0)));
+      const fresh = this.t - r.changedAt < 2000;
+      const trace = () => {
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+      };
+      ctx.globalAlpha = r.complete ? 0.9 : 0.45;
+      ctx.setLineDash([]);
+      ctx.strokeStyle = c.night ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = (fresh ? 9 : 7) * zs / 1.25;
+      trace(); ctx.stroke();
+      ctx.strokeStyle = fresh ? c.repair : c.ph;
+      ctx.lineWidth = (fresh ? 5 : 3.5) * zs / 1.25;
+      trace(); ctx.stroke();
+      // Marching dashes: the direction packets go.
+      ctx.setLineDash([2, 10]);
+      ctx.lineDashOffset = this.still ? 0 : -this.t / 45;
+      ctx.strokeStyle = c.night ? '#ffffff' : '#0b1220';
+      ctx.lineWidth = 2.2 * zs / 1.25;
+      trace(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   /** A small ground chevron ahead of a moving node, pointing where it walks. */
   heading(pos, i) {
     const m = this.motion[i];
@@ -394,23 +473,6 @@ export class IsoRenderer {
   trailEnds(pos, a, b) {
     if (this.kind === 'sky' || this.kind === 'space') return [this.antenna(pos, a), this.antenna(pos, b)];
     return [this.project(pos[4 * a], pos[4 * a + 1], 0), this.project(pos[4 * b], pos[4 * b + 1], 0)];
-  }
-
-  wrapStub(pos, a, b) {
-    const { ctx } = this;
-    for (const [p, q] of [[a, b], [b, a]]) {
-      const [x0, y0] = this.antenna(pos, p);
-      let dx = pos[4 * q] - pos[4 * p], dy = pos[4 * q + 1] - pos[4 * p + 1];
-      if (Math.abs(dx) > this.meta.areaX / 2) dx = -Math.sign(dx);
-      else dx = 0;
-      if (Math.abs(dy) > this.meta.areaY / 2) dy = -Math.sign(dy);
-      else dy = 0;
-      const [x1, y1] = this.project(pos[4 * p] + dx * this.meta.areaX * 0.06,
-        pos[4 * p + 1] + dy * this.meta.areaY * 0.06, 0);
-      const [bx, by] = this.project(pos[4 * p], pos[4 * p + 1], 0);
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(x0 + (x1 - bx), y0 + (y1 - by));
-    }
   }
 
   groundDiamond(px, py, r, color, alpha) {
@@ -472,22 +534,15 @@ export class IsoRenderer {
     ctx.fillRect(0, 0, this.w, this.h);
 
     if (this.kind === 'space') {
-      // Starfield, then the constellation's orbital grid.
+      // Starfield, then the Earth.
       for (let k = 0; k < 220; k++) {
         const x = hash2(k, 1) * this.w, y = hash2(k, 2) * this.h, r = hash2(k, 3);
         ctx.fillStyle = c.star;
         ctx.globalAlpha = 0.3 + 0.7 * r;
         ctx.fillRect(x, y, r > 0.9 ? 2 : 1, r > 0.9 ? 2 : 1);
       }
-      ctx.globalAlpha = 0.25;
-      ctx.strokeStyle = c.beam;
-      ctx.beginPath();
-      const p = [this.project(0, 0), this.project(W, 0), this.project(W, H), this.project(0, H)];
-      ctx.moveTo(p[0][0], p[0][1]);
-      for (let k = 1; k < 4; k++) ctx.lineTo(p[k][0], p[k][1]);
-      ctx.closePath();
-      ctx.stroke();
       ctx.globalAlpha = 1;
+      this.earth();
       return;
     }
 
@@ -530,6 +585,94 @@ export class IsoRenderer {
     }
     trees.sort((a, b) => this.depth(a[0], a[1]) - this.depth(b[0], b[1]));
     for (const [x, y] of trees) this.tree(x, y);
+  }
+
+  /** The Earth: a lit ocean sphere, an atmosphere rim and a graticule
+   *  (front half only). It does not rotate: orbits are drawn inertially. */
+  earth() {
+    const { ctx } = this;
+    const R = EARTH_R * this.c, cx = this.ox, cy = this.oy;
+    const glow = ctx.createRadialGradient(cx, cy, R * 0.95, cx, cy, R * 1.12);
+    glow.addColorStop(0, 'rgba(125, 211, 252, 0.45)');
+    glow.addColorStop(1, 'rgba(125, 211, 252, 0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(cx, cy, R * 1.12, 0, 2 * Math.PI); ctx.fill();
+    const g = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R);
+    g.addColorStop(0, '#3b82c4');
+    g.addColorStop(0.7, '#1e4f8f');
+    g.addColorStop(1, '#0c2347');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.fill();
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = 0.8;
+    const X0 = this.meta.areaX / 2, Y0 = this.meta.areaY / 2;
+    const line = (pt) => { // a closed curve on the sphere, front half only
+      ctx.beginPath();
+      let pen = false;
+      for (let k = 0; k <= 96; k++) {
+        const [x, y, z] = pt(2 * Math.PI * k / 96);
+        if (this.depth(X0 + x, Y0 + y, z) < 0) { pen = false; continue; }
+        const [px, py] = this.project(X0 + x, Y0 + y, z);
+        if (pen) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+        pen = true;
+      }
+      ctx.stroke();
+    };
+    for (const lat of [-60, -30, 0, 30, 60]) {
+      const f = lat * Math.PI / 180, r = EARTH_R * Math.cos(f), z = EARTH_R * Math.sin(f);
+      line((t) => [r * Math.cos(t), r * Math.sin(t), z]);
+    }
+    for (let lon = 0; lon < 180; lon += 30) {
+      const f = lon * Math.PI / 180;
+      line((t) => [EARTH_R * Math.cos(t) * Math.cos(f), EARTH_R * Math.cos(t) * Math.sin(f), EARTH_R * Math.sin(t)]);
+    }
+    ctx.restore();
+  }
+
+  /** Orbit rings, one per orbital plane, recovered from two position samples
+   *  (normal = r x dr): satellites that share a ring share an orbit. */
+  orbits(pos, simNow) {
+    const { ctx, colors: c } = this;
+    const n = pos.length / 4, X0 = this.meta.areaX / 2, Y0 = this.meta.areaY / 2;
+    if (!this.rings) {
+      if (!this.orbitSample) { this.orbitSample = { t: simNow, pos: Array.from(pos) }; return; }
+      if (simNow - this.orbitSample.t < 0.5) return;
+      const P = this.orbitSample.pos, rings = [];
+      for (let i = 0; i < n; i++) {
+        const r = [P[4 * i] - X0, P[4 * i + 1] - Y0, P[4 * i + 2]];
+        const d = [pos[4 * i] - P[4 * i], pos[4 * i + 1] - P[4 * i + 1], pos[4 * i + 2] - P[4 * i + 2]];
+        let nv = [r[1] * d[2] - r[2] * d[1], r[2] * d[0] - r[0] * d[2], r[0] * d[1] - r[1] * d[0]];
+        const L = Math.hypot(...nv);
+        if (!L) continue;
+        nv = nv.map((v) => v / L);
+        if (rings.some((q) => q.n[0] * nv[0] + q.n[1] * nv[1] + q.n[2] * nv[2] > 0.999)) continue;
+        rings.push({ n: nv, R: Math.hypot(...r) });
+      }
+      this.rings = rings;
+    }
+    ctx.save();
+    ctx.strokeStyle = c.night ? c.star : c.beam;
+    ctx.lineWidth = 1;
+    for (const { n: nv, R } of this.rings) {
+      // e1 perpendicular to the normal, e2 = n x e1.
+      const t = Math.abs(nv[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+      let e1 = [nv[1] * t[2] - nv[2] * t[1], nv[2] * t[0] - nv[0] * t[2], nv[0] * t[1] - nv[1] * t[0]];
+      const L1 = Math.hypot(...e1); e1 = e1.map((v) => v / L1);
+      const e2 = [nv[1] * e1[2] - nv[2] * e1[1], nv[2] * e1[0] - nv[0] * e1[2], nv[0] * e1[1] - nv[1] * e1[0]];
+      let prev = null;
+      for (let k = 0; k <= 120; k++) {
+        const a = 2 * Math.PI * k / 120, ca = Math.cos(a) * R, sa = Math.sin(a) * R;
+        const x = X0 + e1[0] * ca + e2[0] * sa, y = Y0 + e1[1] * ca + e2[1] * sa, z = e1[2] * ca + e2[2] * sa;
+        const p = this.project(x, y, z);
+        if (prev) {
+          ctx.globalAlpha = this.hidden(x, y, z) ? 0.08 : 0.4;
+          ctx.beginPath(); ctx.moveTo(prev[0], prev[1]); ctx.lineTo(p[0], p[1]); ctx.stroke();
+        }
+        prev = p;
+      }
+    }
+    ctx.restore();
   }
 
   slab() {
@@ -608,14 +751,21 @@ export class IsoRenderer {
     const { ctx, colors: c } = this;
     const x = pos[4 * i], y = pos[4 * i + 1], z = pos[4 * i + 2];
     const up = pos[4 * i + 3] > 0;
-    const [bx, by] = this.project(x, y, 0);
+    const [bx, by] = this.project(x, y, this.globe ? z : 0);
     const [ax, ay] = this.antenna(pos, i);
     const k = this.kind;
     const zs = this.spriteScale();
     const body = up ? c.tower : c['node-off'];
     const flash = s.flash && s.flash.get(i);
+    ctx.save();
+    if (this.hidden(x, y, z)) ctx.globalAlpha = 0.3; // behind the Earth
 
-    if (i === s.selected) this.groundDiamond(bx, by, 16 * zs, c.accent, 0.45);
+    if (i === s.selected) {
+      if (this.globe) {
+        ctx.strokeStyle = c.accent; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(ax, ay, 14 * zs, 0, 2 * Math.PI); ctx.stroke();
+      } else this.groundDiamond(bx, by, 16 * zs, c.accent, 0.45);
+    }
 
     if (k === 'sky') this.drone(bx, by, ax, ay, up, zs, i);
     else if (k === 'space') this.satellite(ax, ay, up, zs);
@@ -624,7 +774,10 @@ export class IsoRenderer {
       // Mobile phone, standing upright: a slab with real thickness (the
       // right-hand edge), a lit screen, an earpiece and a home bar.
       this.shadowAt(bx, by, 7 * zs, 0.22);
-      const w = 10 * zs, h = 17 * zs, t = 2.2 * zs, x0 = bx - w / 2, y0 = by - 2 * zs - h;
+      // A carried phone bobs with its walker's step.
+      const walking = !this.still && (this.motion[i]?.speed || 0) > 0.05;
+      const bob = walking ? Math.abs(Math.sin(this.t / 140 + i)) * 2 * zs : 0;
+      const w = 10 * zs, h = 17 * zs, t = 2.2 * zs, x0 = bx - w / 2, y0 = by - 2 * zs - h - bob;
       ctx.fillStyle = up ? c.phone : c['node-off'];
       ctx.beginPath(); // side edge, receding up-right
       ctx.moveTo(x0 + w - 1, y0 + 2 * zs); ctx.lineTo(x0 + w + t, y0 + 2 * zs - t / 2);
@@ -685,6 +838,7 @@ export class IsoRenderer {
       ctx.fillStyle = c.text;
       ctx.fillText(text, tx, ty);
     }
+    ctx.restore();
   }
 
   /** A screen-space isometric cube: ground centre (cx, cy), half-width a,
@@ -935,6 +1089,13 @@ export class IsoRenderer {
     if (kind === 'hello') {
       this.ctx.strokeStyle = this.colors.hello;
       this.ctx.beginPath(); this.ctx.ellipse(11, 7, 8, 4, 0, 0, 2 * Math.PI); this.ctx.stroke();
+    } else if (kind === 'route') {
+      const g = this.ctx;
+      g.lineCap = 'round';
+      g.strokeStyle = this.colors.night ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.8)'; g.lineWidth = 7;
+      g.beginPath(); g.moveTo(4, 7); g.lineTo(18, 7); g.stroke();
+      g.strokeStyle = this.colors.ph; g.lineWidth = 3.5;
+      g.beginPath(); g.moveTo(4, 7); g.lineTo(18, 7); g.stroke();
     } else if (kind === 'pheromone') {
       this.ctx.strokeStyle = this.colors.ph; this.ctx.lineWidth = 4; this.ctx.lineCap = 'round';
       this.ctx.beginPath(); this.ctx.moveTo(3, 10); this.ctx.lineTo(19, 4); this.ctx.stroke();

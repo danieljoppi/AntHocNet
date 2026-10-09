@@ -77,6 +77,7 @@ enum class MobilityKind {
     RandomWaypoint,  ///< straight legs to uniform waypoints, optional pause
     GaussMarkov,     ///< correlated speed and heading, 1 s steps, optionally 3-D
     Manhattan,       ///< street grid: straight 0.5, left/right 0.25 at each corner
+    Orbit,           ///< circular orbit around the field's centre (satellites)
 };
 
 /// A node's mobility model and its parameters.
@@ -88,7 +89,21 @@ struct Mobility {
     double gmMeanSpeed = 10;  ///< Gauss-Markov: mean speed (m/s)
     double gmAlpha = 0.85;    ///< Gauss-Markov: memory (0 = random walk, 1 = straight line)
     bool threeD = false;      ///< Gauss-Markov: also move in z
+    double orbitRadius = 0;   ///< Orbit: distance from the field's centre (m)
+    double orbitInc = 0;      ///< Orbit: inclination (rad)
+    double orbitRaan = 0;     ///< Orbit: right ascension of the ascending node (rad)
+    double orbitPhase = 0;    ///< Orbit: argument of latitude at t = 0 (rad)
+    double orbitRate = 0;     ///< Orbit: angular speed (rad/s)
 };
+
+/// sin / cos from arithmetic only (range reduction + Taylor series), so the
+/// native and WASM builds compute bit-identical orbits: libm's transcendental
+/// functions are not guaranteed to round the same on both.
+double detSin(double x);
+double detCos(double x);
+
+/// Where an Orbit puts a node at time t (centre = the field's centre, z = 0).
+Vec3 orbitPosition(const Mobility& m, const Vec3& centre, double t);
 
 /// Which link rule the teaching radio uses.
 enum class ChannelKind {

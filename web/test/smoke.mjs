@@ -5,7 +5,8 @@
 //   2. plays mission 2 ("Send the scouts") to completion with scripted input;
 //   3. runs axe-core on the front page as a first visit sees it (welcome
 //      card up, default world) and fails on serious or critical violations;
-//   4. checks the default world is mixed: some phones walk, some stand still.
+//   4. checks the default world is mixed (some phones walk, some stand still)
+//      and that every satellite moves along its orbit.
 //
 // Usage: node web/test/smoke.mjs <assembled-site-root>   (web/build-site.sh's output)
 // Env:   CHROMIUM=/path/to/chrome (default: Playwright's pre-installed one)
@@ -141,6 +142,31 @@ for (const scheme of ['light', 'dark']) {
   if (errors.length) fail(`mixed mobility: console errors: ${errors.join(' | ')}`);
   if (!moved.walk || moved.still < 10) fail(`manet: expected walkers and >= 10 still phones, got ${JSON.stringify(moved)}`);
   else console.log(`ok: manet — ${moved.walk} phones moved in 20 s, ${moved.still} stood still`);
+  await p.close();
+}
+{
+  const { p, errors } = await page('#satellite?seed=1');
+  await p.waitForFunction(() => document.getElementById('clock')?.textContent.includes('t 0:0'), null, { timeout: 15000 });
+  const orbit = await p.evaluate(async () => {
+    const { playground } = await import('./js/app.js');
+    playground.setSpeed(0);
+    const w = playground.world;
+    const a = Array.from(w.positions());
+    w.advanceTo(w.now() + 10);
+    const b = Array.from(w.positions());
+    let moved = 0, n = a.length / 4, rMin = Infinity, rMax = 0;
+    const cx = w.areaX() / 2, cy = w.areaY() / 2;
+    for (let i = 0; i < n; i++) {
+      if (Math.hypot(a[4 * i] - b[4 * i], a[4 * i + 1] - b[4 * i + 1], a[4 * i + 2] - b[4 * i + 2]) > 1e5) moved++;
+      const r = Math.hypot(b[4 * i] - cx, b[4 * i + 1] - cy, b[4 * i + 2]);
+      rMin = Math.min(rMin, r); rMax = Math.max(rMax, r);
+    }
+    return { n, moved, rMin, rMax };
+  });
+  if (errors.length) fail(`orbits: console errors: ${errors.join(' | ')}`);
+  // Chords of the circle sit a little inside it: allow 0.1 % below the radius.
+  if (orbit.moved !== orbit.n || orbit.rMax > 7.5711e6 || orbit.rMin < 7.563e6) fail(`satellite: expected all on 7571 km orbits and moving, got ${JSON.stringify(orbit)}`);
+  else console.log(`ok: satellite — all ${orbit.n} moved >100 km in 10 s on their 7571 km orbits`);
   await p.close();
 }
 

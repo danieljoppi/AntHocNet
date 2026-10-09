@@ -23,6 +23,8 @@ namespace {
 constexpr double kForever = 1e18;
 constexpr double kLightSpeed = 299792458.0;
 
+constexpr double kPi = 3.141592653589793;
+
 std::uint64_t mixSeed(std::uint64_t seed, std::uint64_t node, std::uint64_t stream) {
     SplitMix64 m(seed ^ (node * 0x9E3779B97F4A7C15ULL) ^ (stream * 0xD1B54A32D192ED03ULL));
     m.next();
@@ -124,6 +126,7 @@ void World::setMobility(int node, const Mobility& m) {
         p.y = std::round(p.y / bh) * bh;
         p.z = 0;
     }
+    if (m.kind == MobilityKind::Orbit) p = orbitPosition(m, Vec3{area_.x / 2, area_.y / 2, 0}, 0);
     n.legs_.assign(1, Leg{0, 0, p, p});
     n.gmSpeed_ = m.gmMeanSpeed;
     n.gmDir_ = Vec3{1, 0, 0};
@@ -198,6 +201,31 @@ std::string World::formatEvent(const LogEvent& e) {
 
 // --- mobility ----------------------------------------------------------------------
 
+double detSin(double x) {
+    // Reduce to [-pi, pi], fold to [-pi/2, pi/2], then the Taylor series to
+    // x^19 (error < 1e-15 there). floor, +, -, *, / are exact-rounded IEEE.
+    x -= 2 * kPi * std::floor(x / (2 * kPi) + 0.5);
+    if (x > kPi / 2) x = kPi - x;
+    else if (x < -kPi / 2) x = -kPi - x;
+    const double x2 = x * x;
+    double term = x, sum = x;
+    for (int k = 1; k <= 9; ++k) {
+        term *= -x2 / ((2.0 * k) * (2.0 * k + 1));
+        sum += term;
+    }
+    return sum;
+}
+
+double detCos(double x) { return detSin(x + kPi / 2); }
+
+Vec3 orbitPosition(const Mobility& m, const Vec3& c, double t) {
+    const double u = m.orbitPhase + m.orbitRate * t;
+    const double x = m.orbitRadius * detCos(u), y0 = m.orbitRadius * detSin(u);
+    const double y = y0 * detCos(m.orbitInc), z = y0 * detSin(m.orbitInc);
+    const double cr = detCos(m.orbitRaan), sr = detSin(m.orbitRaan);
+    return Vec3{c.x + x * cr - y * sr, c.y + x * sr + y * cr, c.z + z};
+}
+
 void World::extendLegs(Node& n, double until) const {
     while (n.legs_.back().t1 < until) {
         const Leg& last = n.legs_.back();
@@ -248,6 +276,13 @@ void World::extendLegs(Node& n, double until) const {
                 if (q.z > zmax) q.z = 2 * zmax - q.z, d.z = -d.z;
                 n.gmDir_ = d;
                 n.legs_.push_back(Leg{t0, t0 + 1.0, p, q});
+                break;
+            }
+            case MobilityKind::Orbit: {
+                // Chords of the circle, 0.25 s each: at the teaching orbit's
+                // ~3 deg/s the chord sags < 1 km below the arc.
+                const Vec3 c{area_.x / 2, area_.y / 2, 0};
+                n.legs_.push_back(Leg{t0, t0 + 0.25, p, orbitPosition(n.mob_, c, t0 + 0.25)});
                 break;
             }
             case MobilityKind::Manhattan: {
