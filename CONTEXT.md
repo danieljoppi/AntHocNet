@@ -167,7 +167,8 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   front page (GitHub Pages: game at `/`, docs at `/docs/`, API at `/api/`).
   The entry point for "what next" is now
   [`docs/roadmap.md`](docs/roadmap.md#replan-after-v200-accepted-2026-10-09):
-  v2.1.0 re-baseline → gated per-family mechanisms → disaster/SAGIN families →
+  v2.1.0 restructure (the whole site becomes the game, #626; the repo layout
+  moves) → v2.2.0 re-baseline → gated per-family mechanisms → disaster/SAGIN families →
   swarm and learned comparators → v3.x secure protocols and attacks, with the
   game campaign ([`docs/learn-campaign.md`](docs/learn-campaign.md)) and the
   infrastructure track (#603) alongside. The research behind it is

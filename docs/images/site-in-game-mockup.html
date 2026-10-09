@@ -1,0 +1,248 @@
+<!doctype html>
+<!-- Static mockup for docs/learn-campaign.md §10 "The site is the game" (not the
+     implementation). Render at 1440x900 with ?screen=hub | page | reader.
+     frames/world-*.png are game captures from web/tools/readme-figures.mjs. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Site-in-the-game mockup</title>
+<style>
+  :root {
+    --bg: #e9eef4; --card: #fff; --card2: #f5f7fa; --border: #d5dde7;
+    --ink: #0f172a; --ink2: #3f4b5e; --muted: #556173; --accent: #2563eb; --soft: #dbe7fd;
+    --play: #2563eb; --guide: #0f766e; --lab: #7c3aed; --shop: #b45309; --arch: #475569;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --elev: 0 1px 2px rgba(15,23,42,.06), 0 12px 32px rgba(15,23,42,.10);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; width: 1440px; height: 900px; overflow: hidden; font: 14px/1.5 var(--font); color: var(--ink);
+    background: radial-gradient(1200px 600px at 50% -10%, #dde5ee, var(--bg) 70%); }
+  .screen { display: none; width: 100%; height: 100%; position: relative; }
+  .screen.on { display: block; }
+  /* the one top bar, on every page of the site */
+  .bar { position: absolute; left: 16px; right: 16px; top: 12px; height: 56px; display: flex; align-items: center; gap: 8px;
+    padding: 0 10px 0 14px; background: rgba(255,255,255,.92); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--elev); z-index: 5; }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 17px; margin-right: 10px; }
+  .logo { width: 28px; height: 28px; border-radius: 9px; background: conic-gradient(from 200deg, #2563eb, #0f766e, #f59e0b, #2563eb); }
+  .brand small { color: var(--muted); font-weight: 700; }
+  .place { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 12px; font-weight: 700; color: var(--ink2); }
+  .place i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .place.on { background: var(--soft); color: var(--ink); outline: 1px solid #b9cdf7; }
+  .grow { flex: 1; }
+  .search { width: 280px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card2); color: var(--muted); font-weight: 600; }
+  .icon { width: 36px; height: 36px; border-radius: 11px; border: 1px solid var(--border); background: var(--card2); display: grid; place-items: center; font-weight: 800; color: var(--ink2); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); font-weight: 700; font-size: 12px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px; border-radius: 12px; border: 1px solid var(--border); background: var(--card2); font-weight: 700; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .k { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+
+  /* ---- hub: the places, as a world map ---- */
+  #hub .stage { position: absolute; top: 84px; left: 16px; right: 16px; bottom: 16px; display: grid; grid-template-columns: 1.25fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 14px; }
+  .placecard { position: relative; border-radius: 22px; overflow: hidden; background: var(--card); border: 1px solid var(--border); box-shadow: var(--elev); display: flex; flex-direction: column; }
+  .placecard .art { height: 46%; background-size: cover; background-position: center 58%; position: relative; }
+  .placecard .art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(255,255,255,.9)); }
+  .placecard .body { padding: 6px 18px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .placecard h2 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
+  .placecard p { margin: 0; color: var(--ink2); }
+  .placecard ul { margin: 2px 0 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+  .placecard li { display: flex; gap: 8px; align-items: center; font-weight: 600; color: var(--ink2); }
+  .placecard li b { color: var(--ink); white-space: nowrap; }
+  .placecard.play li { display: grid; grid-template-columns: 92px 1fr auto; }
+  .placecard li span.n { white-space: nowrap; }
+  .placecard li span.n { margin-left: auto; color: var(--muted); font-weight: 700; font-size: 12px; }
+  .placecard.play { grid-row: span 2; }
+  .placecard.play .art { height: 58%; }
+  .badge { position: absolute; top: 14px; left: 14px; z-index: 2; }
+  .glyph { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; color: #fff; font-weight: 900; font-size: 20px; position: absolute; right: 16px; top: 14px; z-index: 2; box-shadow: var(--elev); }
+
+  /* ---- page: a doc page is a game window ---- */
+  #page .side { position: absolute; top: 84px; left: 16px; bottom: 16px; width: 270px; background: var(--card); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--elev); padding: 14px; }
+  #page .side h3 { margin: 4px 6px 10px; font-size: 13px; }
+  #page .side a { display: block; padding: 7px 10px; border-radius: 10px; color: var(--ink2); font-weight: 600; text-decoration: none; }
+  #page .side a.on { background: #ddf3ef; color: #0b5c56; font-weight: 800; }
+  #page .side .grp { margin: 12px 6px 4px; color: var(--muted); }
+  .win { position: absolute; background: var(--card); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--elev); overflow: hidden; }
+  .win .title { white-space: nowrap; height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--border); background: var(--card2); font-weight: 800; }
+  .win .title .dots { display: flex; gap: 6px; }
+  .win .title .dots i { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; display: block; }
+  #page .doc { top: 84px; left: 300px; right: 352px; bottom: 16px; }
+  .doc .content { padding: 22px 34px; color: var(--ink2); }
+  .doc h1 { margin: 0 0 4px; font-size: 30px; color: var(--ink); letter-spacing: -.02em; }
+  .doc h2 { margin: 22px 0 6px; font-size: 19px; color: var(--ink); }
+  .doc p { margin: 0 0 10px; }
+  .crumbs { color: var(--muted); font-weight: 700; font-size: 12px; margin-bottom: 10px; }
+  .crumbs b { color: #0b5c56; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-size: 12px; }
+  .bars { display: grid; gap: 7px; margin: 8px 0 12px; }
+  .bars div { display: grid; grid-template-columns: 120px 1fr 60px; gap: 10px; align-items: center; font-weight: 700; font-size: 13px; }
+  .bars span.b { height: 14px; border-radius: 7px; background: #c7d2fe; position: relative; }
+  .bars span.b i { position: absolute; inset: 0 auto 0 0; border-radius: 7px; }
+  .trybox { position: absolute; top: 84px; right: 16px; width: 322px; display: flex; flex-direction: column; gap: 12px; }
+  .try { background: var(--card); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--elev); overflow: hidden; }
+  .try .shot { height: 190px; background-size: cover; background-position: center 55%; }
+  .try .t { padding: 12px 14px 14px; display: grid; gap: 8px; }
+  .try h3 { margin: 0; font-size: 16px; }
+  .try p { margin: 0; color: var(--ink2); font-size: 13px; }
+  .mini { display: flex; gap: 8px; align-items: center; padding: 9px 12px; border-radius: 12px; background: var(--card2); border: 1px solid var(--border); font-weight: 700; font-size: 13px; }
+  .mini .dot { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 900; flex: none; }
+
+  /* ---- reader: a page opened over the running world ---- */
+  #reader .world { position: absolute; inset: 0; background: url(frames/world-vanet.png) 30% 62% / 1500px auto no-repeat, #d3e8f5; }
+  #reader .hud { position: absolute; left: 16px; top: 84px; display: flex; flex-direction: column; gap: 10px; width: 300px; }
+  .card { background: rgba(255,255,255,.95); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--elev); padding: 12px 14px; }
+  .card h4 { margin: 0 0 6px; font-size: 13px; }
+  .route { font-family: ui-monospace, monospace; font-weight: 700; color: #1f5fbf; }
+  #reader .rd { top: 84px; right: 16px; width: 470px; bottom: 16px; }
+  #reader .rd .content { padding: 18px 22px; color: var(--ink2); font-size: 14px; }
+  #reader .rd h1 { font-size: 23px; margin: 0 0 6px; color: var(--ink); }
+  .hl { background: #fff3c4; border-radius: 4px; padding: 0 3px; color: var(--ink); font-weight: 700; }
+  .callout { border-left: 4px solid #0f766e; background: #effaf8; padding: 10px 12px; border-radius: 10px; margin: 10px 0; }
+  .ctrl { position: absolute; left: 50%; transform: translateX(-160%); bottom: 18px; display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+<!-- top bar, shared by every screen -->
+<template id="bar">
+  <div class="bar">
+    <div class="brand"><span class="logo"></span>AntHocNet <small>Colony Net</small></div>
+    <span class="place" data-p="play"><i style="background:var(--play)"></i>Play</span>
+    <span class="place" data-p="guide"><i style="background:var(--guide)"></i>Field guide</span>
+    <span class="place" data-p="lab"><i style="background:var(--lab)"></i>Lab</span>
+    <span class="place" data-p="shop"><i style="background:var(--shop)"></i>Workshop</span>
+    <span class="place" data-p="arch"><i style="background:var(--arch)"></i>Archive</span>
+    <span class="grow"></span>
+    <span class="search">Search the colony…  <b style="float:right">/</b></span>
+    <span class="icon">☾</span><span class="icon">PT</span><span class="icon">⌥</span>
+  </div>
+</template>
+
+<section class="screen" id="hub">
+  <div class="stage">
+    <div class="placecard play">
+      <div class="art" style="background-image:url(frames/world-manet.png)"></div>
+      <span class="glyph" style="background:var(--play)">▶</span>
+      <div class="body">
+        <div class="k" style="color:var(--play)">Play</div>
+        <h2>Help the ants find the way</h2>
+        <p>The real routing core, running as WebAssembly in your browser. Fix a broken network; the ants do the routing.</p>
+        <ul>
+          <li><b>Campaign</b><span>eight chapters, ad hoc town to orbit</span> <span class="n">v2.2.0+</span></li>
+          <li><b>Free play</b><span>phones, mesh, cars, drones, satellites</span> <span class="n">5 worlds</span></li>
+          <li><b>Academy</b><span>one mission per ant mechanism</span> <span class="n">8 missions + challenges</span></li>
+        </ul>
+        <div style="display:flex;gap:8px;margin-top:auto"><span class="btn primary">▶ Continue: 1.3 Two ways home</span><span class="btn">Free play</span></div>
+      </div>
+    </div>
+    <div class="placecard">
+      <div class="art" style="background-image:url(frames/world-mesh.png)"></div>
+      <span class="glyph" style="background:var(--guide)">?</span>
+      <div class="body">
+        <div class="k" style="color:var(--guide)">Field guide</div>
+        <h2>How the colony routes</h2>
+        <ul><li>Ant colony routing, from ants to AntHocNet</li><li>The five ant types</li><li>Network regimes · Architecture</li></ul>
+      </div>
+    </div>
+    <div class="placecard">
+      <div class="art" style="background-image:url(frames/world-vanet.png)"></div>
+      <span class="glyph" style="background:var(--lab)">%</span>
+      <div class="body">
+        <div class="k" style="color:var(--lab)">Lab</div>
+        <h2>What we measured</h2>
+        <ul><li>Results per network type, with CIs <span class="n">5 families</span></li><li>Metrics · Methodology · Sweeps</li><li>Reproduce any figure</li></ul>
+      </div>
+    </div>
+    <div class="placecard">
+      <div class="art" style="background-image:url(frames/world-fanet.png)"></div>
+      <span class="glyph" style="background:var(--shop)">⚒</span>
+      <div class="body">
+        <div class="k" style="color:var(--shop)">Workshop</div>
+        <h2>Build it into ns-3</h2>
+        <ul><li>Install in an ns-3 tree · <code>make doctor</code></li><li>Configuration · Wire format · Porting</li><li>API reference (Doxygen)</li></ul>
+      </div>
+    </div>
+    <div class="placecard">
+      <div class="art" style="background-image:url(frames/world-satellite.png)"></div>
+      <span class="glyph" style="background:var(--arch)">§</span>
+      <div class="body">
+        <div class="k" style="color:var(--arch)">Archive</div>
+        <h2>Decisions and what's next</h2>
+        <ul><li>Roadmap — the road ahead as a map</li><li>Decision records · Fidelity to the paper</li><li>Research landscape · Publications</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="page">
+  <nav class="side">
+    <h3 class="k" style="color:var(--lab)">Lab</h3>
+    <a>Results index</a>
+    <div class="grp k">Network types</div>
+    <a>Ad hoc (MANET)</a><a>Static Wi-Fi mesh</a><a class="on" style="background:#ede9fe;color:#5b21b6">Vehicles (VANET)</a><a>Drones (FANET)</a><a>Satellites</a>
+    <div class="grp k">How we measure</div>
+    <a>Metrics</a><a>Methodology</a><a>Sweeps</a><a>Reproduce a figure</a>
+  </nav>
+  <article class="win doc">
+    <div class="title"><span class="dots"><i></i><i></i><i></i></span>Lab report · Vehicles (VANET)<span class="grow"></span><span class="pill">20 seeds · 95 % CI</span></div>
+    <div class="content">
+      <div class="crumbs"><b style="color:#5b21b6">Lab</b> › Network types › Vehicles</div>
+      <h1>Cars on a street grid</h1>
+      <p>Buildings block the radio at every corner, so a route lives only until the next turn. Delivery (PDR) when 100 cars drive the street grid, 900 s, mean of 20 seeds:</p>
+      <div class="bars">
+        <div>oracle (bound)<span class="b"><i style="width:81.7%;background:#94a3b8"></i></span>81.70 %</div>
+        <div>AODV<span class="b"><i style="width:42.26%;background:#a78bfa"></i></span>42.26 %</div>
+        <div>AntHocNet<span class="b"><i style="width:42.1%;background:#2563eb"></i></span>42.10 %</div>
+        <div>OLSR<span class="b"><i style="width:9.19%;background:#c4b5fd"></i></span>9.19 %</div>
+      </div>
+      <h2>Tie on delivery, half the tail</h2>
+      <p>AntHocNet and AODV deliver the same share; AntHocNet's 99th-percentile delay is half of AODV's. The oracle shows how much a perfect router would still deliver: that gap is what v2.2.0 (#537) and v2.3.0's link-lifetime prediction target.</p>
+      <table><tr><th>arm</th><th>PDR %</th><th>delay99 ms</th></tr>
+        <tr><td><b>AntHocNet</b></td><td>42.10 ± 0.66</td><td>1848 ± 43</td></tr>
+        <tr><td>AODV</td><td>42.26 ± 0.60</td><td>3749 ± 48</td></tr>
+        <tr><td>oracle (100 ms)</td><td>81.70 ± 0.45</td><td>609 ± 71</td></tr></table>
+    </div>
+  </article>
+  <aside class="trybox">
+    <div class="try">
+      <div class="shot" style="background-image:url(frames/world-vanet.png)"></div>
+      <div class="t"><div class="k" style="color:var(--play)">Try it</div><h3>Watch a route break at a corner</h3>
+        <p>The same street grid in your browser. Follow the bold trail as the cars turn.</p>
+        <span class="btn primary">▶ Open the City streets world</span></div>
+    </div>
+    <div class="mini"><span class="dot" style="background:var(--guide)">?</span>Field guide: why VANET is hard</div>
+    <div class="mini"><span class="dot" style="background:var(--shop)">⚒</span>Workshop: run this cell in ns-3</div>
+    <div class="mini"><span class="dot" style="background:var(--play)">★</span>Campaign 3.2 teaches this</div>
+  </aside>
+</section>
+
+<section class="screen" id="reader">
+  <div class="world"></div>
+  <div class="hud">
+    <div class="card"><h4>City streets · free play</h4><div style="color:var(--ink2)">street grid · 3 calls · t 0:42</div></div>
+    <div class="card"><h4>Strongest route, call 1</h4><div class="route">0 → 8 → 15 → 29</div><div style="color:var(--muted);font-size:12px;margin-top:4px">switched 3× · last at 0:39 (corner)</div></div>
+  </div>
+  <div class="ctrl"><span class="btn">❚❚</span><span class="btn primary">▶</span><span class="btn">▶▶</span></div>
+  <article class="win rd">
+    <div class="title"><span class="dots"><i></i><i></i><i></i></span>Field guide · Repair ants<span class="grow"></span><span class="pill">the world keeps running</span><span class="icon" style="width:28px;height:28px">↗</span><span class="icon" style="width:28px;height:28px">✕</span></div>
+    <div class="content">
+      <div class="crumbs"><b>Field guide</b> › The five ant types › Repair</div>
+      <h1>When a link breaks</h1>
+      <p>The car at node 8 just turned the corner; its link to 15 is gone. The node that lost its next hop <span class="hl">broadcasts a repair ant</span> for that destination, limited to a few hops, instead of telling the source to start over.</p>
+      <div class="callout"><b>Watch for it:</b> an amber ring around node 8, then a new bold trail through 11. The route card on the left logs the switch.</div>
+      <p>If the repair ant finds nothing in time, the source falls back to reactive forward ants: the slower, wider search you saw when the call started.</p>
+      <p style="color:var(--muted);font-size:13px">How this plays out at scale, 20 seeds in ns-3 → <u>Lab report: Vehicles</u></p>
+    </div>
+  </article>
+</section>
+
+<script>
+  const screen = new URLSearchParams(location.search).get('screen') || 'hub';
+  const on = { hub: null, page: 'lab', reader: 'play' }[screen];
+  document.getElementById(screen).classList.add('on');
+  const bar = document.getElementById('bar').content.cloneNode(true);
+  if (on) bar.querySelector(`[data-p="${on}"]`).classList.add('on');
+  document.getElementById(screen).prepend(bar);
+</script>
+</body>
+</html>

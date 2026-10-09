@@ -218,7 +218,7 @@ with the [research behind it](docs/research-landscape-2026.md) and the
 ```mermaid
 flowchart LR
     V20["<b>v2.0.0</b> ✅<br/>moving constellation<br/>+ learn site"]
-    V21["<b>v2.1.0</b><br/>game as front page"]
+    V21["<b>v2.1.0</b><br/>the site is the game<br/>+ repo restructure"]
     V22["<b>v2.2.0</b><br/>fix the measured gaps<br/>· game: ad hoc + mesh"]
     V23["<b>v2.3.0</b><br/>opt-in tweaks per network<br/>· game: VANET, FANET, orbit"]
     V24["<b>v2.4.0</b><br/>disaster + space-air-ground<br/>· game: chapters 6–8"]

@@ -391,6 +391,7 @@ HTML file in the repository's style.
 
 | release | learn-site work |
 |---|---|
+| **v2.1.0** | **the whole site is the game** (§10): one top bar and five places across the game, the docs and the API; docs pages as game windows; the in-game reader; two-way links checked in CI |
 | **v2.2.0** | the game UI (title, campaign map, briefing, in-level HUD with device dock, debrief; the sandbox kept as Free play); campaign engine (level format, budget, objectives); device classes + per-node range in the adapter; **Chapter 1: Ad hoc town** (absorbs the Academy) and **Chapter 2: Neighbourhood mesh**; translations (pt-BR first); offline play and the size budget |
 | **v2.3.0** | **Chapter 3: City streets**, **Chapter 4: Forest**, **Chapter 5: Orbit** (the three families already measured), with attenuation zones, battery, fixed-route mobility, ground stations and the orbit binding; the **upgrades** screen, wired to the gated mechanisms that ship in v2.3.0; the **classroom pack** (lab worksheets built on the missions) |
 | **v2.4.0** | **Chapter 6: Disaster zone**, **Chapter 7: Contested zone** (7.1–7.3) and **Chapter 8: Sky to space**: the same release as the disaster/tactical and SAGIN families they draw on |
@@ -418,3 +419,110 @@ HTML file in the repository's style.
 
 Each chapter lands with the release that measures its network type. That
 way every debrief links to a measured page, not a promise.
+
+
+## 10. The whole site is the game (v2.1.0)
+
+**Maintainer decision 2026-10-09:** everything is part of the game.
+Epic [#626](https://github.com/danieljoppi/AntHocNet/issues/626).
+
+Since #558 the game is the front page, but the site is still three sites,
+each with its own look and navigation:
+- the game at `/`;
+- the docs at `/docs/` (mkdocs-material, about 90 pages);
+- the API reference at `/api/` (Doxygen).
+
+The game links out to the docs, and the reader leaves the game to read. From
+v2.1.0 they are one game. The docs become places in it, and any page can open
+over a running world.
+
+### The five places
+
+One top bar sits on every page of the site: game, docs and API alike. It holds
+the brand, the five places, search, day/night and the language switch
+([#622](https://github.com/danieljoppi/AntHocNet/issues/622)).
+
+| place | what is there | today's docs group |
+|---|---|---|
+| **Play** | campaign (from v2.2.0), free play (the five worlds), academy missions | the game |
+| **Field guide** | how the colony routes: ant colony routing, the five ant types, architecture, software layers, network regimes | "Understand the protocol" |
+| **Lab** | what we measured: results per network type with CIs, metrics, methodology, sweeps, reproduce a figure | "Measure & reproduce" |
+| **Workshop** | building it into ns-3: install, `make doctor`, configuration, wire format, porting, the API reference | "Build, port, extend" + `/api/` |
+| **Archive** | decisions and what's next: roadmap, ADRs, fidelity to the paper, research landscape, publications | "Research provenance & fidelity" + "Decisions & process" |
+
+![Hub mockup: a large Play card with Continue and Free play, and one card per place (Field guide, Lab, Workshop, Archive), each with a world from the game as its art](images/site-game-hub.png)
+
+### A docs page is a game window
+
+The docs stay mkdocs, so these keep working:
+- the strict build, with link and anchor validation;
+- search;
+- mermaid;
+- the checks in `lint.yml`.
+
+The theme is overridden (`theme.custom_dir`) so each page is a game screen:
+- the place's page list on the left;
+- the page in a window with a title bar and breadcrumbs by place;
+- on the right, a **Try it** rail.
+
+The rail comes from front matter (`try:` for a world or mission; `related:`
+for the other places). It sends the reader straight back into the game: from
+the VANET results page to the City streets world at the same seed.
+
+![Docs-page mockup: the VANET lab report inside a game window, with the Lab page list on the left and a Try it card that opens the City streets world on the right](images/site-game-page.png)
+
+### Read without leaving the world
+
+The **reader** opens any docs page in a window over the running world:
+1. It fetches the same-origin page, extracts the article and rewrites its links.
+2. It shows the article in a dockable window.
+3. The simulation keeps running underneath.
+
+It is opened by:
+- a "?" on every world and mission card;
+- the debrief links;
+- the `?` key;
+- search from the game, which queries mkdocs' own search index.
+
+The reader is presentation only: it never touches the simulation, so parity
+is unaffected (golden rule 9).
+
+![Reader mockup: the City streets world running full-screen with the strongest-route card, and the Field guide page on repair ants open in a window on the right, explaining the corner break the player is watching](images/site-game-reader.png)
+
+### Links both ways, checked
+
+- Every world and Academy mission carries `read:` (docs pages).
+- Every family results page carries `try:` (a world).
+- A checker in `lint.yml` fails on a missing or dangling link in either
+  direction. Without it, the two halves drift apart as soon as a page or a
+  mission is added.
+
+### What does not change
+
+- **URLs.** `/docs/...` and `/api/...` stay where they are, so citations, the
+  Zenodo records, the papers repo and every README link keep working. The
+  places are presentation, not paths.
+- **No JavaScript needed to read.** A docs page is still a plain HTML page; only
+  the game needs JavaScript.
+- **The checks.** mkdocs strict, check-links, the redirect test and the smoke +
+  axe gates all keep running. The smoke adds a docs page, an API page and the
+  reader, day and night.
+
+### Issues
+
+| work | issue |
+|---|---|
+| site shell: places, one top bar, docs nav regrouped | [#627](https://github.com/danieljoppi/AntHocNet/issues/627) |
+| hub screen (the game's home) | [#628](https://github.com/danieljoppi/AntHocNet/issues/628) |
+| docs pages as game windows + Try it rail | [#629](https://github.com/danieljoppi/AntHocNet/issues/629) |
+| in-game reader + search from the game | [#630](https://github.com/danieljoppi/AntHocNet/issues/630) |
+| two-way links, checked in CI | [#631](https://github.com/danieljoppi/AntHocNet/issues/631) |
+| API reference in the game's chrome | [#632](https://github.com/danieljoppi/AntHocNet/issues/632) |
+
+The campaign's title screen ([#566](https://github.com/danieljoppi/AntHocNet/issues/566), v2.2.0) builds on the hub. Its "Learn
+more" button becomes the places in the top bar.
+
+The mockups are static HTML ([`site-in-game-mockup.html`](images/site-in-game-mockup.html),
+`?screen=hub|page|reader`). The world frames come from
+`web/tools/readme-figures.mjs`, and the numbers on the lab-report mockup are
+the published VANET main cell.
