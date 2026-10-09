@@ -6,6 +6,10 @@
 > It builds on the learn site that ships today: the game at the site root, the
 > core compiled to WebAssembly, and 8 Academy missions plus 4 world challenges
 > ([ADR-0021](adr/0021-the-browser-is-an-adapter.md)).
+>
+> Two later sections widen it from the campaign to the whole site:
+> - [§10](#10-the-whole-site-is-the-game-v210): from v2.1.0 the docs and the API are places inside the game (epic [#626](https://github.com/danieljoppi/AntHocNet/issues/626));
+> - [§11](#11-the-workshop-the-api-and-ns-3-inside-the-game): the Workshop, where the API and the ns-3 integration become things you do in the game (epic [#634](https://github.com/danieljoppi/AntHocNet/issues/634)).
 
 ## 1. The idea in one paragraph
 
@@ -243,7 +247,7 @@ The sandbox keeps today's desk layout, as the "Free play" mode.
 
 ```mermaid
 flowchart LR
-    T["<b>Title</b><br/>Continue · Campaign ·<br/>Free play · Learn more"] --> M["<b>Campaign map</b><br/>4 chapter tiles,<br/>levels + stars"]
+    T["<b>Title</b><br/>Continue · Campaign ·<br/>Free play"] --> M["<b>Campaign map</b><br/>chapter tiles,<br/>levels + stars"]
     M --> B["<b>Briefing card</b><br/>story · goal · budget ·<br/>devices · Start"]
     B --> L["<b>In-level HUD</b><br/>full-screen map"]
     L --> D["<b>Debrief</b><br/>stars · what you saw ·<br/>measured result · Next"]
@@ -253,16 +257,17 @@ flowchart LR
 ```
 
 - **Title.** A full-bleed live scene with ants walking a trail in the
-  background. It offers four buttons:
+  background. It offers three buttons:
   - Continue (the last level, highlighted);
   - Campaign;
-  - Free play;
-  - Learn more (the docs).
+  - Free play.
 
-  This replaces today's welcome card on the front page.
-- **Campaign map.** One illustrated tile per chapter, eight in all: Ad hoc
+  It builds on the v2.1.0 hub screen ([§10](#10-the-whole-site-is-the-game-v210)).
+  There is no "Learn more" link out: the docs are places in the shared top bar,
+  and pages open in the in-game reader.
+- **Campaign map.** One illustrated tile per chapter, nine in all: Ad hoc
   town → Mesh → City streets / Forest / Orbit → Disaster → Contested → Sky to
-  space.
+  space, then Red team (v3.3.0).
   - Each tile shows its levels as stops on a path, with stars per level.
   - Locked chapters are greyed out, with "finish Ad hoc town to unlock" or
     "coming in v2.4.0".
@@ -373,7 +378,7 @@ The [mockups](#mockups) below show the campaign map and the in-level HUD.
 Static mockups, not the implementation. Both are rendered from a standalone
 HTML file in the repository's style.
 
-![Campaign map mockup: four chapter tiles with level stops and stars](images/learn-campaign-map.png)
+![Campaign map mockup: eight chapter tiles with level stops and stars; locked chapters greyed out](images/learn-campaign-map.png)
 
 ![In-level HUD mockup: goal tracker, route card, device dock and budget over a full-screen map](images/learn-campaign-hud.png)
 
@@ -391,8 +396,9 @@ HTML file in the repository's style.
 
 | release | learn-site work |
 |---|---|
-| **v2.2.0** | the game UI (title, campaign map, briefing, in-level HUD with device dock, debrief; the sandbox kept as Free play); campaign engine (level format, budget, objectives); device classes + per-node range in the adapter; **Chapter 1: Ad hoc town** (absorbs the Academy) and **Chapter 2: Neighbourhood mesh**; translations (pt-BR first); offline play and the size budget |
-| **v2.3.0** | **Chapter 3: City streets**, **Chapter 4: Forest**, **Chapter 5: Orbit** (the three families already measured), with attenuation zones, battery, fixed-route mobility, ground stations and the orbit binding; the **upgrades** screen, wired to the gated mechanisms that ship in v2.3.0; the **classroom pack** (lab worksheets built on the missions) |
+| **v2.1.0** | **the whole site is the game** (§10): one top bar and five places across the game, the docs and the API; docs pages as game windows; the in-game reader; two-way links checked in CI. **Workshop** (§11): the Nest (the API as a live nest map) and the install quest |
+| **v2.2.0** | the game UI (title, campaign map, briefing, in-level HUD with device dock, debrief; the sandbox kept as Free play); campaign engine (level format, budget, objectives); device classes + per-node range in the adapter; **Chapter 1: Ad hoc town** (absorbs the Academy) and **Chapter 2: Neighbourhood mesh**; translations (pt-BR first); offline play and the size budget; **Workshop:** X-ray, the tuning bench, and the export-to-ns-3 kit |
+| **v2.3.0** | **Chapter 3: City streets**, **Chapter 4: Forest**, **Chapter 5: Orbit** (the three families already measured), with attenuation zones, battery, fixed-route mobility, ground stations and the orbit binding; the **upgrades** screen, wired to the gated mechanisms that ship in v2.3.0; the **classroom pack** (lab worksheets built on the missions); **Workshop:** ns-3 replay beside the browser run |
 | **v2.4.0** | **Chapter 6: Disaster zone**, **Chapter 7: Contested zone** (7.1–7.3) and **Chapter 8: Sky to space**: the same release as the disaster/tactical and SAGIN families they draw on |
 | **v3.0.0** | Contested level **7.4** and the **Shield** upgrade, on the security profile |
 | **v3.3.0** | **Chapter 9: Red team.** The player places attackers (blackhole, wormhole, Sybil, pheromone poisoner) to break a working network, then switches defences on and watches delivery recover. Every attack and defence is a real gated mechanism from v3.0.0–v3.3.0. |
@@ -418,3 +424,210 @@ HTML file in the repository's style.
 
 Each chapter lands with the release that measures its network type. That
 way every debrief links to a measured page, not a promise.
+
+
+## 10. The whole site is the game (v2.1.0)
+
+**Maintainer decision 2026-10-09:** everything is part of the game.
+Epic [#626](https://github.com/danieljoppi/AntHocNet/issues/626).
+
+Since #558 the game is the front page, but the site is still three sites,
+each with its own look and navigation:
+- the game at `/`;
+- the docs at `/docs/` (mkdocs-material, about 90 pages);
+- the API reference at `/api/` (Doxygen).
+
+The game links out to the docs, and the reader leaves the game to read. From
+v2.1.0 they are one game. The docs become places in it, and any page can open
+over a running world.
+
+### The five places
+
+One top bar sits on every page of the site: game, docs and API alike. It holds
+the brand, the five places, search, day/night and the language switch
+([#622](https://github.com/danieljoppi/AntHocNet/issues/622)).
+
+| place | what is there | today's docs group |
+|---|---|---|
+| **Play** | campaign (from v2.2.0), free play (the five worlds), academy missions | the game |
+| **Field guide** | how the colony routes: ant colony routing, the five ant types, architecture, software layers, network regimes | "Understand the protocol" |
+| **Lab** | what we measured: results per network type with CIs, metrics, methodology, sweeps, reproduce a figure | "Measure & reproduce" |
+| **Workshop** | building it into ns-3: install, `make doctor`, configuration, wire format, porting, the API reference | "Build, port, extend" + `/api/` |
+| **Archive** | decisions and what's next: roadmap, ADRs, fidelity to the paper, research landscape, publications | "Research provenance & fidelity" + "Decisions & process" |
+
+![Hub mockup: a large Play card with Continue and Free play, and one card per place (Field guide, Lab, Workshop, Archive), each with a world from the game as its art](images/site-game-hub.png)
+
+### A docs page is a game window
+
+The docs stay mkdocs, so these keep working:
+- the strict build, with link and anchor validation;
+- search;
+- mermaid;
+- the checks in `lint.yml`.
+
+The theme is overridden (`theme.custom_dir`) so each page is a game screen:
+- the place's page list on the left;
+- the page in a window with a title bar and breadcrumbs by place;
+- on the right, a **Try it** rail.
+
+The rail comes from front matter (`try:` for a world or mission; `related:`
+for the other places). It sends the reader straight back into the game: from
+the VANET results page to the City streets world at the same seed.
+
+![Docs-page mockup: the VANET lab report inside a game window, with the Lab page list on the left and a Try it card that opens the City streets world on the right](images/site-game-page.png)
+
+### Read without leaving the world
+
+The **reader** opens any docs page in a window over the running world:
+1. It fetches the same-origin page, extracts the article and rewrites its links.
+2. It shows the article in a dockable window.
+3. The simulation keeps running underneath.
+
+It is opened by:
+- a "?" on every world and mission card;
+- the debrief links;
+- the `?` key;
+- search from the game, which queries mkdocs' own search index.
+
+The reader is presentation only: it never touches the simulation, so parity
+is unaffected (golden rule 9).
+
+![Reader mockup: the City streets world running full-screen with the strongest-route card, and the Field guide page on repair ants open in a window on the right, explaining the corner break the player is watching](images/site-game-reader.png)
+
+### Links both ways, checked
+
+- Every world and Academy mission carries `read:` (docs pages).
+- Every family results page carries `try:` (a world).
+- A checker in `lint.yml` fails on a missing or dangling link in either
+  direction. Without it, the two halves drift apart as soon as a page or a
+  mission is added.
+
+### What does not change
+
+- **URLs.** `/docs/...` and `/api/...` stay where they are, so citations, the
+  Zenodo records, the papers repo and every README link keep working. The
+  places are presentation, not paths.
+- **No JavaScript needed to read.** A docs page is still a plain HTML page; only
+  the game needs JavaScript.
+- **The checks.** mkdocs strict, check-links, the redirect test and the smoke +
+  axe gates all keep running. The smoke adds a docs page, an API page and the
+  reader, day and night.
+
+### Issues
+
+| work | issue |
+|---|---|
+| site shell: places, one top bar, docs nav regrouped | [#627](https://github.com/danieljoppi/AntHocNet/issues/627) |
+| hub screen (the game's home) | [#628](https://github.com/danieljoppi/AntHocNet/issues/628) |
+| docs pages as game windows + Try it rail | [#629](https://github.com/danieljoppi/AntHocNet/issues/629) |
+| in-game reader + search from the game | [#630](https://github.com/danieljoppi/AntHocNet/issues/630) |
+| two-way links, checked in CI | [#631](https://github.com/danieljoppi/AntHocNet/issues/631) |
+| API reference in the game's chrome | [#632](https://github.com/danieljoppi/AntHocNet/issues/632) |
+
+The campaign's title screen ([#566](https://github.com/danieljoppi/AntHocNet/issues/566), v2.2.0) builds on the hub. Its "Learn
+more" button becomes the places in the top bar.
+
+The mockups are static HTML ([`site-in-game-mockup.html`](images/site-in-game-mockup.html),
+`?screen=hub|page|reader`). The world frames come from
+`web/tools/readme-figures.mjs`, and the numbers on the lab-report mockup are
+the published VANET main cell.
+
+
+## 11. The Workshop: the API and ns-3 inside the game
+
+§10 puts the API reference and the install guide *inside* the game's frame,
+but you still only read them there. The Workshop goes further, using
+something almost no API reference has: the game **is** the core, running
+live (ADR-0021). So the API can be explored on running objects, and anything
+built in the game can be carried into ns-3. Epic [#634](https://github.com/danieljoppi/AntHocNet/issues/634).
+
+### The Nest — the API as an ant nest (v2.1.0)
+
+The core's architecture is drawn as a cross-section of a nest:
+- the two adapters on the surface (`ns3::anthocnet::RoutingProtocol`, the
+  browser's `ahn_web::World`);
+- the ports of `ports.h` as tunnels (`IClock`, `IRng`, `ITimerScheduler`,
+  `INeighborProvider`, `ILinkState`, `IRouterObserver`);
+- the components as chambers:
+
+| chamber | classes |
+|---|---|
+| Queen chamber | `AntRouterLogic` → `RouteDecision` |
+| Pheromone store | `PheromoneTable`, `PheromoneEngine` |
+| Gate | `AntMessage`, the codec |
+| Senses | `ILinkMetric`, `ClassicMetric` |
+| Memory | `AntHistoryTracker`, `GenerationTracker` |
+| Rule stone | `Config` |
+| Map room | `ShortestPathGraph` |
+
+Chambers glow as the running world exercises them (from the event stream:
+it shows activity, it is not a profiler). Clicking one opens its API page in
+the reader. For the selected node, members with a binding show their live
+values. The page index comes from Doxygen's XML output. A CI check fails if
+a public class in `core/include` has no chamber, so the map cannot fall
+behind the code. [#635](https://github.com/danieljoppi/AntHocNet/issues/635).
+
+![The Nest mockup: the core drawn as an ant nest — adapters on the surface, ports as tunnels, components as chambers — with the PheromoneTable API page open beside it showing live values for node 7](images/workshop-nest.png)
+
+### X-ray and the tuning bench (v2.2.0)
+
+- **X-ray** ([#637](https://github.com/danieljoppi/AntHocNet/issues/637)):
+  - **Node X-ray.** The Inspect tool's pheromone table names its columns by
+    API member.
+  - **Ant X-ray.** Click an ant in flight to see the bytes the core's codec
+    actually produced. The adapter serializes every ant with the same
+    `codec::serialize` the ns-3 module puts on the air. Each field is
+    coloured and linked to [wire-format.md](wire-format.md).
+  - It is read-only, so parity is untouched.
+- **Tuning bench** ([#638](https://github.com/danieljoppi/AntHocNet/issues/638)). Every `Config` field the browser exposes
+  (`alpha`, `betaAnts`, `betaData`, `enableMultipath`, `enableProactive`,
+  `enableRepair`, `helloInterval`, `proactiveInterval`) gets a slider with:
+  - its doc comment;
+  - its default and that default's provenance
+    ([configuration.md](configuration.md));
+  - its ns-3 attribute.
+
+  A ghost run with the defaults, on the same seed, shows what the change
+  did. The bench ends with the exact `--ns3::anthocnet::RoutingProtocol::<Attr>=`
+  line. The campaign's upgrades ([#579](https://github.com/danieljoppi/AntHocNet/issues/579)) are switches on this bench.
+
+![X-ray mockup: a running world with node 7's pheromone table (columns named by API member), a forward ant's codec bytes decoded field by field, and the tuning bench with the matching ns-3 attribute line](images/workshop-xray.png)
+
+### The game meets ns-3 (v2.1.0–v2.3.0)
+
+- **Install quest** ([#636](https://github.com/danieljoppi/AntHocNet/issues/636), v2.1.0). The install guide becomes a quest.
+  `make doctor` ([#605](https://github.com/danieljoppi/AntHocNet/issues/605)) prints a machine-readable `##DOCTOR##` line; the
+  user pastes it, and the game ticks or explains each step **locally**,
+  pointing at the fix. The install page and the quest are generated from one
+  step list.
+- **Take it to ns-3** ([#640](https://github.com/danieljoppi/AntHocNet/issues/640), v2.2.0). Any world or campaign level exports
+  as an ns-3 kit, built in the browser:
+  - the devices' movements as an ns-2 trace;
+  - the calls as a flow list;
+  - the bench's Config as attributes;
+  - a `run.sh` for `anthocnet-compare`.
+
+  This needs the harness to replay a trace and a flow list ([#639](https://github.com/danieljoppi/AntHocNet/issues/639), which
+  also finishes [#61](https://github.com/danieljoppi/AntHocNet/issues/61)).
+- **ns-3 replay** ([#641](https://github.com/danieljoppi/AntHocNet/issues/641), v2.3.0). The harness writes a compact trace
+  (positions, `RouteChanged` events, drops) for one seed of every published
+  cell, committed under `results/` ([#615](https://github.com/danieljoppi/AntHocNet/issues/615)). The game replays it with its
+  own renderer, side by side with the browser run of the same scene, and
+  marks where the strongest routes diverge. That divergence is the
+  simplified radio, made visible.
+
+![Bench mockup: the browser run and the ns-3 replay of the same street grid side by side on one timeline, an export card with the ns-3 kit and its command, and the install quest with doctor checks ticked](images/workshop-bench.png)
+
+**Considered, not planned:** ns-3 itself compiled to WebAssembly. Its size,
+threads and Python bindings make it a research project of its own. Export
+and replay give the player ns-3's real behaviour without it.
+
+**Honest about the radio.** Every browser-to-ns-3 comparison says that the
+browser's channel is simplified, and links the measured page.
+
+The mockups are static HTML ([`workshop-mockup.html`](images/workshop-mockup.html),
+`?screen=nest|xray|bench`). In them:
+- the pheromone values, the call count and the tuning-bench delivery are
+  illustrative;
+- the ant bytes are a correct encoding of the fields shown;
+- the 42.10 % is the published VANET main cell.
