@@ -316,7 +316,7 @@ that minimises the mean cross-link length at t = 0 — with the seam plane
 pairing to its nearest satellite.
 
 Each cell's `# anchor isl` line records the choice, and the CI smoke
-(`ns3/tools/check-leo-walker.sh`) asserts it is no longer on average than
+(`tools/checks/check-leo-walker.sh`) asserts it is no longer on average than
 same-slot pairing and shorter than the in-plane chord:
 
 | shell | chosen shift (slots) | cross mean | same-slot mean | in-plane chord |

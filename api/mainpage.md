@@ -9,7 +9,7 @@ algorithm core, and the adapters that run it.
 | Pheromone state | same | `anthocnet::core::PheromoneTable`, `anthocnet::core::PheromoneEngine`, `anthocnet::core::ILinkMetric` |
 | Ants on the wire | same | `anthocnet::core::AntMessage`, `ant_message_codec.h` ([wire format](https://danieljoppi.github.io/AntHocNet/docs/wire-format/)) |
 | Configuration | same | `anthocnet::core::Config` — every default traces to a source or a measurement ([configuration](https://danieljoppi.github.io/AntHocNet/docs/configuration/)) |
-| **ns-3 adapter** | `ns3/model/`, `ns3/helper/` | `ns3::anthocnet::RoutingProtocol`, `ns3::AntHocNetHelper` |
+| **ns-3 adapter** | `ns3/anthocnet/model/`, `ns3/anthocnet/helper/` | `ns3::anthocnet::RoutingProtocol`, `ns3::AntHocNetHelper` |
 | **Browser adapter** — the learn site's simulation ([ADR-0021](https://danieljoppi.github.io/AntHocNet/docs/adr/0021-the-browser-is-an-adapter/)) | `web/include/ahn_web/` | `ahn_web::World`, `ahn_web::Node` |
 
 How the pieces fit — the adapter contract, and why time and randomness only

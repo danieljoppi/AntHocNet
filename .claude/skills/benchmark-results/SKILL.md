@@ -210,7 +210,7 @@ python3 ns3/tools/leo-summary.py walker16 starlink1 starlink1-storm
 Paste its output; never retype the numbers. Validate each cell with
 `scenario_check.py results` first. The CI smoke for the harness itself
 (geometry, handover, every arm delivers, reproducibility) is
-`ns3/tools/check-leo-walker.sh <ns3-dir>`.
+`tools/checks/check-leo-walker.sh <ns3-dir>`.
 
 ## Scenario validation (`scenario_check.py`, #134)
 
@@ -252,7 +252,7 @@ every cell: FAIL below one hello period, WARN below three.
 
 `preflight --harness isl-grid` validates a satellite cell instead (#444 — the
 validator the #432 dispatch had to hand-build and discard, made permanent).
-Knobs and defaults mirror `ns3/examples/isl-grid.cc`; the MANET interface is
+Knobs and defaults mirror `ns3/anthocnet/examples/isl-grid.cc`; the MANET interface is
 untouched. It mirrors every dispatch-time `NS_ABORT` in the harness (topology
 closed form, break-endpoint format/range/adjacency including torus wraps,
 `breakAt` inside the window, corridor prerequisites, the #420

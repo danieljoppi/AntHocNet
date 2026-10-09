@@ -12,7 +12,7 @@
  *
  * If a default is changed *deliberately*, update the assertion here, the table
  * in docs/configuration.md §3.1, and the adapter defaults checked by
- * ns3/tools/check-default-parity.py in the same commit.
+ * tools/checks/check-default-parity.py in the same commit.
  */
 #include "anthocnet/core/config.h"
 #include "test_support.h"

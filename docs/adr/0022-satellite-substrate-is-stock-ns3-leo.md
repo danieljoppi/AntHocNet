@@ -51,7 +51,7 @@ own link layer in the example harness.**
    satellites' ECEF distance every `--delayUpdate` s; ground-satellite links as
    one `Csma` segment per ground station holding every satellite ever visible
    from it, with only the serving satellite's interface up. This is the #210
-   / #211 scope delivered as *example code* (`ns3/examples/leo-walker.cc`), not
+   / #211 scope delivered as *example code* (`ns3/anthocnet/examples/leo-walker.cc`), not
    as a module.
 3. **Version:** satellite runs and their CI smoke are **ns-3.48 only**
    (ADR-0015 point 3 — one version, not the matrix). The example is guarded at

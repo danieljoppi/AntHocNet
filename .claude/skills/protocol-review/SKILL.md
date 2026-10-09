@@ -21,7 +21,7 @@ It reports PASS/WARN/FAIL for:
   the WASM glue belongs in `web/`.
 - **Rule 4 (WARN):** `ant_message.h` / `ant_message_codec` changed without a
   `kWireVersion` bump in the diff; reminds you to also update the ns-3 header
-  (`ns3/model/anthocnet-packet`), `test_codec.cpp`, and `docs/wire-format.md`.
+  (`ns3/anthocnet/model/anthocnet-packet`), `test_codec.cpp`, and `docs/wire-format.md`.
 - **Rule 7 (WARN):** `core/` logic changed but no `core/tests/` file changed.
 - **Docs (WARN):** a core/adapter change with no `docs/` touch — confirm no
   ADR needs updating.

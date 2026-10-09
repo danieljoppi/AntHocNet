@@ -102,7 +102,7 @@ def self_test() -> int:
     covered_yes = [
         "core/src/pheromone_table.cpp",
         "core/include/anthocnet/core/ports.h",
-        "ns3/model/anthocnet-packet.cc",
+        "ns3/anthocnet/model/anthocnet-packet.cc",
         "docs/tools/check-headers.py",
         "ns3/tools/run-scenarios.py",
         "tools/bench/stats_util.py",

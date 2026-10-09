@@ -51,7 +51,7 @@ gate, and the NS-3 build/test matrix across ns-3.36–3.48.
 Any new `AntMessage` field must be added to **all** of: the struct
 (`core/include/anthocnet/core/ant_message.h`), the codec
 (`core/src/ant_message_codec.cpp`), the ns-3 packet header
-(`ns3/model/anthocnet-packet.*`; the browser adapter uses the core codec), and
+(`ns3/anthocnet/model/anthocnet-packet.*`; the browser adapter uses the core codec), and
 `core/tests/test_codec.cpp` — and the round-trip test must still pass. Bump the
 wire-version byte per [`docs/wire-format.md`](docs/wire-format.md) (ADR-0006).
 

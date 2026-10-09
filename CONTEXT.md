@@ -103,12 +103,14 @@ core/
   tests/                  ← ctest unit tests (codec, pheromone, history, logic)
   CMakeLists.txt
 ns3/
-  model/ helper/ examples/ test/   ← native NS-3 module
+  anthocnet/              ← native NS-3 module: model/ helper/ examples/ test/
+  baselines/<arm>/        ← vendored comparison arms (aomdv, gpsr, oracle)
   tools/                  ← benchmark harness drivers, chart scripts, anchors.yml
 web/                      ← browser adapter (core/ as WebAssembly) + learn site
   site/                   ← the game (Pages front page); test/ parity.sh + smoke.mjs
 tools/
   bench/                  ← shipped benchmark scripts (stats, parsing, scenario_check)
+  checks/                 ← CI gate scripts (anchors, determinism, allowlists, smokes)
   release/                ← install-bundle assembly + the package-contents gate
 api/                      ← Doxygen config (published at /api/)
 paper/                    ← paper source

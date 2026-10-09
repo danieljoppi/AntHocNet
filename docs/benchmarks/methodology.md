@@ -171,7 +171,7 @@ written here — and each provenance carries its own quality risk.
 | `anthocnet` | subject under test | this repo (`core/` + `ns3/`) | measured everywhere |
 | `aodv`, `olsr`, `dsdv` | **replication anchors** | stock ns-3 modules, never vendored | the published corpus |
 | `gpsr` | **attempted → documented gap** (was: competitive frontier) | vendored third-party port, repaired here ([#412](https://github.com/danieljoppi/AntHocNet/pull/412)) | builds + ASan green, beacons correctly — and **delivers zero packets on 40/40 seeds** ([#425](https://github.com/danieljoppi/AntHocNet/issues/425)). Not a usable arm |
-| `oracle` | **upper bound** | written here ([`ns3/oracle/`](../../ns3/oracle/README.md), [#415](https://github.com/danieljoppi/AntHocNet/issues/415)) | **measured** in [phase 3](v1.5.0-campaign.md#phase-3-the-oracle-control) — six grid cells (`approx=1`) and the exact `approx=0` [ISL torus](satellite/isl-grid.md) |
+| `oracle` | **upper bound** | written here ([`ns3/baselines/oracle/`](../../ns3/baselines/oracle/README.md), [#415](https://github.com/danieljoppi/AntHocNet/issues/415)) | **measured** in [phase 3](v1.5.0-campaign.md#phase-3-the-oracle-control) — six grid cells (`approx=1`) and the exact `approx=0` [ISL torus](satellite/isl-grid.md) |
 | `aomdv` | **attempted → documented gap** | vendored third-party port, repaired here ([#414](https://github.com/danieljoppi/AntHocNet/pull/414)) | builds on all five ns-3 versions; **does not route multi-hop** |
 | RL / DRL baseline | **deferred by design** | — | out of scope until [#293](https://github.com/danieljoppi/AntHocNet/issues/293) + [#295](https://github.com/danieljoppi/AntHocNet/issues/295) land |
 | Babel · BATMAN-adv · OLSRv2 | **decided against, for now** | — | [surveyed and declined](#modern-deployed-baseline-decided-not-skipped-item-4) |
@@ -207,7 +207,7 @@ baseline code.
    packets from its routing queue with no observable signal at all, which this
    harness had to reason around before its drop-conservation check could mean
    anything ([#229](https://github.com/danieljoppi/AntHocNet/issues/229); see the
-   `ns3/examples/anthocnet-compare.cc` conservation block). Baselines inherit
+   `ns3/anthocnet/examples/anthocnet-compare.cc` conservation block). Baselines inherit
    their simulator's model gaps, and those gaps are not symmetric across arms.
 2. *They are the comparison set of 2004–2005, and 2026 reviewers increasingly
    read them as strawmen.* That criticism is correct and is not answered by
@@ -234,7 +234,7 @@ faults the spike named fixed: the dead `TxErrHeader` trace re-pointed at
 (the [#352](https://github.com/danieljoppi/AntHocNet/issues/352) requirement),
 and the position-header layering reordered to `IP|UDP|GPSR` so FlowMonitor
 classifies data flows correctly. Full detail and per-file port notes:
-[`ns3/gpsr/README.md`](../../ns3/gpsr/README.md).
+[`ns3/baselines/gpsr/README.md`](../../ns3/baselines/gpsr/README.md).
 
 **Quality risk — this is a repaired third-party port, not a reference
 implementation.**
@@ -301,7 +301,7 @@ answer "how much of the gap between AntHocNet and perfect is protocol overhead?"
 The arm exists (`contrib/oracle`, off unless `--protocols` names it) and runs in
 both suites; its cells are [phase 3](v1.5.0-campaign.md#phase-3-the-oracle-control)
 of the v1.5.0 campaign. Design, evidence and the recompute-cadence tradeoff:
-[`ns3/oracle/README.md`](../../ns3/oracle/README.md).
+[`ns3/baselines/oracle/README.md`](../../ns3/baselines/oracle/README.md).
 
 It emits **no control traffic at all** — NRL is exactly 0, asserted by
 `NS_ABORT` in both harnesses and by `scenario_check.py`, not merely expected —
@@ -338,7 +338,7 @@ derived per interface from the simulator's own objects; every oracle row carries
   the Nakagami closed-form median disk at the same threshold restores the
   delivery bound per seed. Both stay `approx=1` — calibrated reference
   points, not proven upper bounds. Full derivations:
-  [`ns3/oracle/README.md`](../../ns3/oracle/README.md).
+  [`ns3/baselines/oracle/README.md`](../../ns3/baselines/oracle/README.md).
 - **`--range` is inert under `tworay`/`nakagami` for every arm, `oracle`
   included** (since #431 — before that it pinned the control's adjacency).
   The explicit override is `--ns3::oracle::Topology::LinkRangeM=<m>`;
@@ -429,7 +429,7 @@ one. The honest answer, with its evidence:
   vendored fork, not port mechanics.
 - **The arm therefore ships as a build-matrix citizen only** — off by default,
   with a "Runtime status" section in
-  [`ns3/aomdv/README.md`](../../ns3/aomdv/README.md) that says so, and it must
+  [`ns3/baselines/aomdv/README.md`](../../ns3/baselines/aomdv/README.md) that says so, and it must
   not be scheduled into a campaign in this state. It was landed rather than
   dropped so the failure stays reproducible and the next audit starts from the
   diagnosis instead of from scratch.
@@ -465,7 +465,7 @@ The paragraph this produces, in the form the paper will use it:
 > crash the first of them masked — the hypothesis above was real but
 > secondary. The paragraphs above describe what the v1.5.0 corpus measured
 > and remain true of it; no v1.5.0 number is republished. With the fix
-> (vendoring items 10–14, [`ns3/aomdv/README.md`](../../ns3/aomdv/README.md))
+> (vendoring items 10–14, [`ns3/baselines/aomdv/README.md`](../../ns3/baselines/aomdv/README.md))
 > the arm passes the `check-arm-delivery.sh` gate (PDR 84.4 on the gate
 > scenario, `hopsMean` 5.21, drop book closes), so a multipath arm becomes
 > available to **future** campaigns — subject, before any publication, to the
@@ -556,7 +556,7 @@ rather than assumed permanent:
 | clause | retired by |
 |---|---|
 | no modern deployed protocol | ns-3 MR [!2887](https://gitlab.com/nsnam/ns-3-dev/-/merge_requests/2887) merging with an OLSRv2 or B.A.T.M.A.N. model, or any other [reversal trigger](modern-baseline-survey.md#what-would-reverse-this-decision) |
-| no multipath protocol | the `Path*` aliasing audit in [`ns3/aomdv/README.md`](../../ns3/aomdv/README.md) being completed and the arm passing a multi-hop smoke run |
+| no multipath protocol | the `Path*` aliasing audit in [`ns3/baselines/aomdv/README.md`](../../ns3/baselines/aomdv/README.md) being completed and the arm passing a multi-hop smoke run |
 | geographic arm is **non-functional** ([#425](https://github.com/danieljoppi/AntHocNet/issues/425)) | `gpsr` delivering a non-zero PDR with a drop book that closes, *then* its results being checked against published GPSR behaviour. Measured at 0.00 % on 40/40 seeds, so the clause is now "no geographic protocol is compared", not "the geographic arm is unvalidated" |
 | no upper bound | [#415](https://github.com/danieljoppi/AntHocNet/issues/415) landing the oracle control |
 | no learned baseline | [#293](https://github.com/danieljoppi/AntHocNet/issues/293) + [#295](https://github.com/danieljoppi/AntHocNet/issues/295) landing, then #296 item 5 |
@@ -616,7 +616,7 @@ With `--areaZ > 0`:
 
 Under `--diag`, a 3-D run prints a `# geom` line with the nodes' altitude span
 at t=0 and at mid-run. CI gates it with
-[`check-3d-field.sh`](../../ns3/tools/check-3d-field.sh) on the 3.42 leg. The
+[`check-3d-field.sh`](../../tools/checks/check-3d-field.sh) on the 3.42 leg. The
 mid-run sample is the load-bearing one: an early draft placed nodes in 3-D but
 left the mobility bounds planar, so every node was clamped back to z = 0 after
 its first step. A placement-only check would have passed that run.
@@ -799,12 +799,12 @@ stream-consuming helper — position allocator, mobility, wifi channel + devices
 the IPv4 stack, the routing helper for the arm, the flow-start variable and the
 OnOff sources — is now pinned with `AssignStreams()` from a **seed-derived base**,
 `seed * kStreamStride` (`kStreamStride` = 10⁶ in each of
-`ns3/examples/anthocnet-compare.cc`, `ns3/examples/isl-grid.cc` and
-`ns3/examples/manet-baselines.cc`, roughly three orders of magnitude above what a
+`ns3/anthocnet/examples/anthocnet-compare.cc`, `ns3/anthocnet/examples/isl-grid.cc` and
+`ns3/anthocnet/examples/manet-baselines.cc`, roughly three orders of magnitude above what a
 run actually consumes). The stride is enforced at runtime from the counts
 `AssignStreams()` returns, so a scenario that one day adds streams aborts loudly
 instead of wrapping into the next seed's block. The regression gate is
-`ns3/tools/check-seed-independence.py` (CI, ns-3.42 leg), which checks the two
+`tools/checks/check-seed-independence.py` (CI, ns-3.42 leg), which checks the two
 independent halves: same seeds split across invocations, and same seeds with the
 protocol list reversed.
 
@@ -825,7 +825,7 @@ and `manet-baselines`. The last of these was the follow-up gap left open when
 pinned but has a separate, non-RNG order dependence — see the box below). That
 matters beyond tidiness:
 `manet-baselines` is both the anchor harness
-([`check-anchors.sh`](../../ns3/tools/check-anchors.sh)) and the #24
+([`check-anchors.sh`](../../tools/checks/check-anchors.sh)) and the #24
 stock-baseline control that links no AntHocNet code, and its whole purpose —
 deciding whether a low absolute PDR is a property of the scenario or an artefact
 of our harness — rests on its numbers meaning the same thing as
@@ -866,7 +866,7 @@ be expressed against them.
 > already do, so no published satellite number is affected. The same exposure
 > applies to any multi-interface baseline comparison, and is a threat to
 > validity to state wherever one is published. `isl-grid` also keeps its own
-> determinism gate ([`check-determinism.sh`](../../ns3/tools/check-determinism.sh)):
+> determinism gate ([`check-determinism.sh`](../../tools/checks/check-determinism.sh)):
 > identical invocations are reproducible, which is the weaker property.
 
 > **Campaign data produced before #352 carries a structure dependence.** Within
@@ -1360,7 +1360,7 @@ fix** — doing it sooner would bake the single-hop penalty into the baseline. T
 **Enforcement ([#59](https://github.com/danieljoppi/AntHocNet/issues/59)).** With
 #51 fixed, the first two anchors are **blocking CI gates**, run on the stock
 `manet-baselines` harness by
-[`ns3/tools/check-anchors.sh`](../../ns3/tools/check-anchors.sh) with floors kept in
+[`tools/checks/check-anchors.sh`](../../tools/checks/check-anchors.sh) with floors kept in
 one file, [`ns3/tools/anchors.yml`](../../ns3/tools/anchors.yml): the single-hop
 anchor (AODV + DSDV, PDR ≥ 99, measured 100.0) runs on every push/PR in `ci.yml`
 (inside the ns-3.42 `ns3-build` job), and both it and the Broch low-mobility AODV
@@ -1437,7 +1437,7 @@ provenance is on [the fanet scenario page](scenarios/fanet.md).
 The anchors above are **literature-derived and approximate** ("AODV ≈ 90–100%")
 because a wifi channel is stochastic — the best available reference is somebody
 else's measurement. The satellite/ISL topology
-([`isl-grid`](../../ns3/examples/isl-grid.cc), [#214](https://github.com/danieljoppi/AntHocNet/issues/214))
+([`isl-grid`](../../ns3/anthocnet/examples/isl-grid.cc), [#214](https://github.com/danieljoppi/AntHocNet/issues/214))
 is different in kind: a point-to-point link has **no contention and no loss
 model**, so the expected values are **analytic**. The anchor is a derivation,
 not a remembered number, and a wrong substrate, image or topology cannot hide
@@ -1472,7 +1472,7 @@ next-hop resolution, whose peer map is built from received hellos — an orderin
 a container-iteration bug could perturb without ever showing on a
 single-interface wifi node.
 
-**Enforcement.** [`ns3/tools/check-sat-anchors.sh`](../../ns3/tools/check-sat-anchors.sh),
+**Enforcement.** [`tools/checks/check-sat-anchors.sh`](../../tools/checks/check-sat-anchors.sh),
 thresholds in the same [`anchors.yml`](../../ns3/tools/anchors.yml)
 (`sat_single_isl_pdr_min`, `sat_hop_delay_slack_ms`). Both anchors and the ISL
 determinism gate run in `ci.yml` on the ns-3.42 leg only — per
@@ -1492,7 +1492,7 @@ substrate installed.
 One further anchor's expected result is not a number but *identity*: golden
 rule 3 (AGENTS.md) routes all randomness through `IRng` and all time through
 `IClock`, so **the same seed twice must produce byte-identical results**.
-[`ns3/tools/check-determinism.sh`](../../ns3/tools/check-determinism.sh) runs a
+[`tools/checks/check-determinism.sh`](../../tools/checks/check-determinism.sh) runs a
 small, fast `anthocnet-compare` scenario twice with identical parameters and
 diffs the per-protocol metric rows (build chatter and timing-dependent log
 noise are filtered out); any difference — a stray `rand()`, an uninjected

@@ -8,6 +8,21 @@ module (and `core/`) into `contrib/anthocnet`.
 Targets ns-3.36+ (CMake). A `wscript` is included for older waf-based ns-3
 (< 3.36).
 
+## Layout
+
+```
+ns3/
+  anthocnet/          our module: model/, helper/, examples/ (the harnesses), test/
+  baselines/<name>/   vendored comparison arms, each a self-contained module:
+                      aomdv/, gpsr/, oracle/ (provenance in each README)
+  tools/              harness drivers, chart scripts, anchors.yml
+  Makefile            the installer (make install-ns3 from the repo root)
+```
+
+CI check scripts live in [`tools/checks/`](../tools/checks). The installed
+layout is the same as before the #608 move: `contrib/anthocnet`,
+`contrib/aomdv`, `contrib/gpsr` and `contrib/oracle`.
+
 ## Install
 
 ```bash
@@ -207,7 +222,7 @@ IMC 2020, Fig. 13), for the #297 calibration; the default set is unchanged.
 `scenario_check.py results` checks the clock against `##CONFIG##` and that
 every book closes (#297).
 `# anchor` checks the geometry (shell radius, in-plane chord at t=0 and t=T/2,
-period vs `2π√(a³/μ)`); `ns3/tools/check-leo-walker.sh` asserts it all on the
+period vs `2π√(a³/μ)`); `tools/checks/check-leo-walker.sh` asserts it all on the
 CI's 3.48 leg.
 
 Results are 3.48-only and are claims about routing over Walker-shell geometry

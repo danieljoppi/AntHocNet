@@ -111,4 +111,4 @@ Two design questions had to be settled before generalising the source:
 blocker analysis), #194/#202/#216 (the satellite claim this enables), #55/#67/#68
 (A2 metric as shipped), #260 (interface-down fast path), ADR-0015 (the
 one-build-per-regime axis this extends), `core/include/anthocnet/core/ports.h`,
-`ns3/model/anthocnet-routing-protocol.cc`.
+`ns3/anthocnet/model/anthocnet-routing-protocol.cc`.

@@ -57,7 +57,7 @@ The two supported regimes in detail:
 
 | | MANET — paper field | MANET — thesis field | Satellite — ISL +Grid |
 |---|---|---|---|
-| Harness | [`anthocnet-compare`](../ns3/examples/anthocnet-compare.cc) `--scenario=paper` | [`anthocnet-compare`](../ns3/examples/anthocnet-compare.cc) `--scenario=thesis` | [`isl-grid`](../ns3/examples/isl-grid.cc) |
+| Harness | [`anthocnet-compare`](../ns3/anthocnet/examples/anthocnet-compare.cc) `--scenario=paper` | [`anthocnet-compare`](../ns3/anthocnet/examples/anthocnet-compare.cc) `--scenario=thesis` | [`isl-grid`](../ns3/anthocnet/examples/isl-grid.cc) |
 | Nodes / field | 50 · 1500×300 m (Broch '98 calibration field) | 100 · 2400×800 m (Ducatelle 2007 §5.1.3) | rows×cols torus (default 6×6), static snapshot |
 | Mobility | RandomWaypoint, 1–20 m/s, pause 30 s | RandomWaypoint, 1–10 m/s, pause 30 s | none — topology fixed by construction |
 | Medium | 802.11b @ 2 Mbit/s, shared broadcast channel (disk or two-ray propagation) | same | point-to-point ISLs, 10 Mbit/s, 5 ms/link, one `/30` subnet each, degree 4 |
@@ -97,7 +97,7 @@ graph TB
 ```
 
 Tiled, that is a **+Grid torus** — the standard LEO abstraction, and what
-[`ns3/examples/isl-grid.cc`](../ns3/examples/isl-grid.cc) builds:
+[`ns3/anthocnet/examples/isl-grid.cc`](../ns3/anthocnet/examples/isl-grid.cc) builds:
 
 ```
         ┌───────────────────────────┐   ← cross-plane wrap

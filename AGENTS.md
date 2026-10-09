@@ -18,9 +18,9 @@ v1.2.0–v1.9.0 tags.
 
 ```
 core/    simulator-agnostic C++ (no simulator headers) + unit tests
-ns3/     native ns3::Ipv4RoutingProtocol contrib module, baselines, harnesses, ns3/tools
+ns3/     anthocnet/ (the ns-3 module + harnesses), baselines/<arm>/ (vendored arms), tools/
 web/     browser adapter (core/ as WebAssembly) + the learn site (the Pages front page)
-tools/   shipped scripts: bench/ (stats, parsing, scenario_check), release/ (package)
+tools/   shipped scripts: bench/ (stats, parsing, scenario_check), checks/ (CI gates), release/
 docs/    architecture.md, porting-notes.md, adr/, benchmarks/ — full map in docs/README.md
 api/     Doxygen config for the API reference (/api/)
 paper/   JOSS-style paper source
@@ -71,7 +71,7 @@ results.
   enums). The `AHN_*`/`ANTHOCNET_NS3_*` macros in the NS-3 headers + CMake
   already gate several of these by version — extend that pattern, don't fork.
 - Sanitizer pass on the adapter (#130): the `ns3-asan` job rebuilds the
-  ns-3 module under ASan/LSan (suppressions: `ns3/tools/lsan.supp`). It is
+  ns-3 module under ASan/LSan (suppressions: `tools/checks/lsan.supp`). It is
   `continue-on-error` while suppression calibration accumulates — read its log
   even when it shows green.
 - Validate the **core** half locally first (`make test`); only the adapter/build
@@ -127,7 +127,7 @@ tools/release/check-bundle.sh           # release package: no agent files, tools
  little-endian layout, prefixed by a 1-byte `kWireVersion` (see
  `docs/wire-format.md` and ADR-0006). If you change `AntMessage` fields — or the
  units/semantics of an existing field — you must **bump `kWireVersion`** and
- update, in the same field order: the codec, the NS-3 header (`ns3/model/anthocnet-packet`
+ update, in the same field order: the codec, the NS-3 header (`ns3/anthocnet/model/anthocnet-packet`
  `AntHeader`), the round-trip tests (`core/tests/test_codec.cpp`, NS-3 test
  suite), and the layout table in `docs/wire-format.md`.
 5. **Keep bounded structures bounded.** The visited path and the `(src,seq)`
@@ -208,7 +208,7 @@ tools/release/check-bundle.sh           # release package: no agent files, tools
 | Change pheromone math | `core/src/pheromone_engine.cpp`, `pheromone_table.cpp` |
 | Change the wire format | `docs/wire-format.md` → `core/include/.../ant_message_codec.h` (+ the ns-3 header; bump `kWireVersion`) |
 | Find the removed NS-2 adapter | [`docs/ns2-support.md`](docs/ns2-support.md) — the v1.2.0 / v1.9.0 tags and images |
-| Work on the NS-3 adapter | `ns3/model/`, `ns3/helper/`, `ns3/examples/` |
+| Work on the NS-3 adapter | `ns3/anthocnet/model/`, `ns3/anthocnet/helper/`, `ns3/anthocnet/examples/` |
 | Work on the browser adapter (the learn site's simulation) | `web/` ([README](web/README.md), [ADR-0021](docs/adr/0021-the-browser-is-an-adapter.md)); `web/test/parity.sh` must stay byte-identical native vs WASM (CI job `web-parity`) |
 | Run / read benchmarks | `docs/benchmarks.md` (index → `docs/benchmarks/{metrics,methodology}.md`, `scenarios/<name>.md`, `sweeps/<name>.md`), `ns3/tools/run-scenarios.py` + `make-charts.py` + `update-benchmarks.py`; family/cross-family + sweep charts from committed data: `ns3/tools/family-charts.py` (re-rendered and committed by `charts.yml`), `anthocnet-compare --diag` |
 | Inspect protocol internals | NS-3 `Tx`/`Rx`/`RouteChanged` trace sources; core counters via `IRouterObserver` |

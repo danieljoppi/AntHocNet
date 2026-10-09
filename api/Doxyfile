@@ -24,10 +24,10 @@ WARN_LOGFILE           = build/api/warnings.log
 # Public headers only: the core's API and the adapters' entry points.
 INPUT                  = api/mainpage.md \
                          core/include/anthocnet/core \
-                         ns3/model/anthocnet-routing-protocol.h \
-                         ns3/model/anthocnet-adapters.h \
-                         ns3/model/anthocnet-packet.h \
-                         ns3/helper \
+                         ns3/anthocnet/model/anthocnet-routing-protocol.h \
+                         ns3/anthocnet/model/anthocnet-adapters.h \
+                         ns3/anthocnet/model/anthocnet-packet.h \
+                         ns3/anthocnet/helper \
                          web/include/ahn_web
 FILE_PATTERNS          = *.h *.md
 RECURSIVE              = YES

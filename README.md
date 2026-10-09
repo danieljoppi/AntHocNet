@@ -70,7 +70,7 @@ split stays with one simulator adapter.
 
 ```mermaid
 flowchart TB
-    H["Benchmark harnesses (ns3/examples)<br/>anthocnet-compare · isl-grid · run-scenarios.py"]
+    H["Benchmark harnesses (ns3/anthocnet/examples)<br/>anthocnet-compare · isl-grid · run-scenarios.py"]
 
     subgraph NS3["ns3/ — contrib module (supported)"]
         A3["RoutingProtocol : Ipv4RoutingProtocol<br/>~30 attributes = the config surface"]

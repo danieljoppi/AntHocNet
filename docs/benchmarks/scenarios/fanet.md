@@ -97,7 +97,7 @@ above the 3-period WARN line, so `HelloInterval` is not a concern
 
 The Broch AODV floor is RWP on the ground and does not transfer. The FANET
 family has its own **analytic** anchors, gated in CI on the 3.42 leg
-([`ns3/tools/check-anchors.sh`](../../../ns3/tools/check-anchors.sh), floors in
+([`tools/checks/check-anchors.sh`](../../../tools/checks/check-anchors.sh), floors in
 [`ns3/tools/anchors.yml`](../../../ns3/tools/anchors.yml)). Both run the preset
 with only the field shrunk, and route only stock AODV and the oracle control.
 

@@ -4,7 +4,7 @@ Canonical, simulator-agnostic on-wire layout of an ant packet. This is the
 single source of truth referenced by [`AGENTS.md`](../AGENTS.md) golden rule #4
 and by [`docs/porting-notes.md`](porting-notes.md). The encoder/decoder lives in
 `core/src/ant_message_codec.cpp`; the NS-3 `AntHeader`
-(`ns3/model/anthocnet-packet`) delegates to it (as the NS-2 header did through
+(`ns3/anthocnet/model/anthocnet-packet`) delegates to it (as the NS-2 header did through
 v1.9.0, so a byte produced on one simulator was interpreted identically on the
 other).
 
@@ -170,6 +170,6 @@ When you change `AntMessage` fields, update **in the same field order** and bump
 
 1. `core/include/anthocnet/core/ant_message.h` (the struct).
 2. `core/src/ant_message_codec.cpp` (serialize + deserialize + size constants).
-3. `ns3/model/anthocnet-packet` (`AntHeader` Serialize/Deserialize/GetSerializedSize).
+3. `ns3/anthocnet/model/anthocnet-packet` (`AntHeader` Serialize/Deserialize/GetSerializedSize).
 4. `core/tests/test_codec.cpp` (round-trip + the version-mismatch rejection test).
 5. This table and the offsets above.

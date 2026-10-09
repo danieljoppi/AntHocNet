@@ -330,7 +330,7 @@ the start of any campaign that will publish a baseline comparison.
 | 11 | von Ehren, Andre & Wiedner, *An Implementation of the Babel Routing Protocol for ns-3*, TUM NET-2022-01-1 (2022), <https://www.net.in.tum.de/fileadmin/TUM/NET/NET-2022-01-1/NET-2022-01-1_15.pdf> | the only located Babel-for-ns-3 work; no released code found (host egress-blocked) |
 | 12 | ns-3 GitLab issues/MR search for "babel", "batman" (2026-08-13) | zero upstream tickets for either |
 | 13 | ns-3 wiki `NSOC2020Routing` | a batman-adv-for-ns-3 project existed and is paused/incomplete (**second-hand**: page egress-blocked, read from search summary) |
-| 14 | [#414](https://github.com/danieljoppi/AntHocNet/pull/414) · [`ns3/aomdv/README.md`](../../ns3/aomdv/README.md) | the local evidence that a compiling third-party port is not a working arm |
+| 14 | [#414](https://github.com/danieljoppi/AntHocNet/pull/414) · [`ns3/baselines/aomdv/README.md`](../../ns3/baselines/aomdv/README.md) | the local evidence that a compiling third-party port is not a working arm |
 
 Refs [#296](https://github.com/danieljoppi/AntHocNet/issues/296)
 ([item 4](https://github.com/danieljoppi/AntHocNet/issues/296#issuecomment-5275396168)),

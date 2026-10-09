@@ -577,7 +577,7 @@ excludes.
 
 ## What this suite is, and is not
 
-One harness, [`ns3/examples/isl-grid.cc`](../../../ns3/examples/isl-grid.cc):
+One harness, [`ns3/anthocnet/examples/isl-grid.cc`](../../../ns3/anthocnet/examples/isl-grid.cc):
 an R×C **+Grid torus** of point-to-point ISLs — one `/30` subnet per link, so
 every satellite holds one interface *per neighbour* (degree 4 on the torus).
 That multi-interface shape is the point: it is what the MANET suite can never
@@ -682,7 +682,7 @@ node one interface, and DSDV is correct there. DSDV remains a full baseline in
 the MANET suite, where every node has a single wifi interface and the
 assumption holds.
 
-`ns3/tools/check-sat-arms.sh` runs every supported arm on a small torus per PR
+`tools/checks/check-sat-arms.sh` runs every supported arm on a small torus per PR
 so a defect of this class cannot reach a campaign dispatch again.
 
 `dsdv` is therefore **absent by necessity, not by choice**, and its absence
@@ -776,7 +776,7 @@ a point-to-point grid with fixed per-link delay has no stochastic channel, so
   above is why it exists).
 
 Values live in [`ns3/tools/anchors.yml`](../../../ns3/tools/anchors.yml);
-the gate is [`ns3/tools/check-sat-anchors.sh`](../../../ns3/tools/check-sat-anchors.sh)
+the gate is [`tools/checks/check-sat-anchors.sh`](../../../tools/checks/check-sat-anchors.sh)
 (#237/#238). Known open question against the hop-delay floor: the ~0.25 ms
 excess tracked in [#250](https://github.com/danieljoppi/AntHocNet/issues/250)
 — inside the slack, not yet attributed.

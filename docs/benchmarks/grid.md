@@ -687,7 +687,7 @@ margin no plausible graph correction closes.
 sharpest statement this page can make about the limit. Shrink the radius and the
 oracle's hop count rises above its subjects — today's fading failure. Grow it and
 the oracle's PDR falls *below* them: the refuted link-budget rule recorded in
-[`ns3/oracle/README.md`](../../ns3/oracle/README.md) made 2440 of 2450 edges
+[`ns3/baselines/oracle/README.md`](../../ns3/baselines/oracle/README.md) made 2440 of 2450 edges
 adjacent and delivered 30.4 % PDR, a control its own subjects beat. Two-ray has a
 radius in the feasible band between those failures. Whether a fading channel has
 one at all is open, and if it does not, the answer is a probability-weighted
