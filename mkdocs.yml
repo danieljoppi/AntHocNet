@@ -85,6 +85,7 @@ nav:
       - ant-types.md
       - architecture.md
       - roadmap.md
+      - research-landscape-2026.md
       - software-layers.md
       - network-regimes.md
   - Build, port, extend:
