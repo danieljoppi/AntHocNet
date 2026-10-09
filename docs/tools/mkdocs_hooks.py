@@ -69,11 +69,11 @@ def on_page_markdown(markdown: str, page, config, files) -> str:
 # its assets come from web/shell/ (one source for the game, the docs and the
 # API); this hook adds them to the rendered pages, so the markdown stays
 # plain markdown that reads the same in the repo tree.
-import html as _html  # noqa: E402
-import sys as _sys  # noqa: E402
+import html as _html
+import sys as _sys
 
 _sys.path.insert(0, os.path.join(_REPO_ROOT, "web", "shell"))
-import inject as _shell  # noqa: E402
+import inject as _shell
 
 
 def _section(page) -> str | None:

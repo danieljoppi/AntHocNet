@@ -29,9 +29,9 @@ def topbar(root: str, active: str | None) -> str:
     """The bar's markup for a page whose path to the site root is `root`."""
     with open(os.path.join(HERE, "topbar.html"), encoding="utf-8") as f:
         html = f.read()
-    html = re.sub(r"<!--.*?-->\s*", "", html, count=1, flags=re.S)  # header comment
+    html = re.sub(r"<!--.*?-->\s*", "", html, count=1, flags=re.DOTALL)  # header comment
     for p in PLACES:
-        html = html.replace("{ON:%s}" % p, ' aria-current="page"' if p == active else "")
+        html = html.replace(f"{{ON:{p}}}", ' aria-current="page"' if p == active else "")
     return html.replace("{ROOT}", root).strip()
 
 
@@ -89,7 +89,7 @@ def api(apidir: str) -> None:
     n = 0
     for dirpath, _, names in os.walk(apidir):
         rel = os.path.relpath(dirpath, apidir)
-        if rel.startswith("ahn") or rel.startswith("search"):
+        if rel.startswith(("ahn", "search")):
             continue
         depth = 0 if rel == "." else rel.count(os.sep) + 1
         up = "../" * depth
