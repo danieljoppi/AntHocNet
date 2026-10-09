@@ -84,8 +84,9 @@ export async function openReader(href, title) {
     note.append('A diagram is drawn here on the full page: ', a, '.');
     n.replaceWith(note);
   });
-  const crumb = article.querySelector('.ahn-titlebar .ahn-crumb');
-  if (crumb) $('readerTitle').textContent = crumb.textContent.trim();
+  // The page's breadcrumb, without its first step (the site root: the reader is already there).
+  const steps = [...article.querySelectorAll('.ahn-titlebar .ahn-crumb li')].slice(1);
+  if (steps.length) $('readerTitle').textContent = steps.map((li) => li.textContent.trim()).join(' › ');
   article.querySelector('.ahn-titlebar')?.remove();
   for (const img of article.querySelectorAll('img[src]')) img.src = new URL(img.getAttribute('src'), url).href;
   for (const a of article.querySelectorAll('a[href]')) {

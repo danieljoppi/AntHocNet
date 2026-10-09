@@ -15,6 +15,7 @@ Used three ways:
 """
 from __future__ import annotations
 
+import html as _html
 import os
 import re
 import shutil
@@ -33,6 +34,23 @@ def topbar(root: str, active: str | None) -> str:
     for p in PLACES:
         html = html.replace(f"{{ON:{p}}}", ' aria-current="page"' if p == active else "")
     return html.replace("{ROOT}", root).strip()
+
+
+def breadcrumb(items: list[tuple[str, str | None]], place: str | None = None) -> str:
+    """The trail from the site root to this page (#652): `items` are (label,
+    href) pairs, the last one the current page; an href of None is a level with
+    no page of its own. The place's colour comes from `data-place`."""
+    lis = []
+    for i, (label, href) in enumerate(items):
+        text = _html.escape(label)
+        if i == len(items) - 1:
+            lis.append(f'<li><span aria-current="page">{text}</span></li>')
+        elif href:
+            lis.append(f'<li><a href="{_html.escape(href)}">{text}</a></li>')
+        else:
+            lis.append(f"<li><span>{text}</span></li>")
+    return (f'<nav class="ahn-crumb" aria-label="Breadcrumb" data-place="{place or ""}">'
+            f'<ol>{"".join(lis)}</ol></nav>')
 
 
 def copy_assets(dest: str, extra: tuple[str, ...] = ()) -> None:
@@ -104,11 +122,26 @@ def api(apidir: str) -> None:
                 html = f.read()
             out = inject_page(html, up + "../", "shop", up + "ahn/",
                               css=("shell.css", "api.css"), script=boot_script(up + "ahn/"))
+            out = _api_crumb(out, name, up)
             if out != html:
                 with open(p, "w", encoding="utf-8") as f:
                     f.write(out)
                 n += 1
     print(f"inject.py: top bar on {n} API pages")
+
+
+def _api_crumb(html: str, name: str, up: str) -> str:
+    """AntHocNet › Workshop › API reference › <page>, above Doxygen's own header."""
+    if 'class="ahn-crumb"' in html or '<div id="top">' not in html:
+        return html
+    m = re.search(r"<title>(?:AntHocNet: )?([^<]*)</title>", html)
+    title = _html.unescape(m.group(1).strip()) if m else name
+    root = up + "../"
+    items = [("AntHocNet", root), ("Workshop", root + "docs/places/workshop/")]
+    items += [("API reference", None if name == "index.html" else up + "index.html")]
+    if name != "index.html":
+        items.append((title, None))
+    return html.replace('<div id="top">', breadcrumb(items, "shop") + '<div id="top">', 1)
 
 
 # --- docs (called from the mkdocs hook) ----------------------------------------
