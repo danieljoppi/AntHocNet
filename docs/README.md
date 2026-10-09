@@ -10,6 +10,12 @@ WebAssembly, with missions for every mechanism and a world per network family
 ([ADR-0021](adr/0021-the-browser-is-an-adapter.md)). The code reference is the
 [API documentation](https://danieljoppi.github.io/AntHocNet/api/).
 
+![How AntHocNet finds a route: reactive forward ants search, a backward ant lays pheromone on the way home, data packets follow the strongest trail](images/readme-how-it-routes.png)
+
+The plan from here is in [roadmap.md](roadmap.md#replan-after-v200-accepted-2026-10-09): fix the
+measured gaps, add opt-in tweaks per network, two new network types, comparisons with swarm,
+learned and secure protocols, and the game campaign ([learn-campaign.md](learn-campaign.md)).
+
 ## Understand the protocol
 
 | Page | What it is |
@@ -18,6 +24,8 @@ WebAssembly, with missions for every mechanism and a world per network family
 | [ant-types.md](ant-types.md) | Reference for the five ant types: comparison table, lifecycle diagrams (setup, maintenance, repair), and how to observe them at runtime. |
 | [architecture.md](architecture.md) | The core/adapter split, ports, and the decision flow. |
 | [roadmap.md](roadmap.md) | Release ladder v1.3.0→v3.0.0, the epic dependency graph, per-release exit criteria, and the deliberate non-goals. Live status lives on #298. |
+| [research-landscape-2026.md](research-landscape-2026.md) | Post-v2.0.0 survey behind the replan: candidate network families, gated algorithm adjustments, comparators, with sources. |
+| [learn-campaign.md](learn-campaign.md) | Proposed campaign mode for the learn site: one chapter per network type (ad hoc first, then mesh, VANET, FANET, satellite, disaster, tactical, SAGIN), the game UI (with mockups), and what the browser adapter must add. |
 | [software-layers.md](software-layers.md) | Three diagrams: the software stack, the ant mechanisms + the switches that gate them, and what is live/inert/planned per network regime. |
 | [network-regimes.md](network-regimes.md) | Why MANET and satellite/ISL are different routing problems — read before transferring an intuition between them. §6 tables which AntHocNet mechanism is live/inert in each regime. |
 

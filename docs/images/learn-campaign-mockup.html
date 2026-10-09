@@ -1,0 +1,224 @@
+<!doctype html>
+<!-- Static mockup for docs/learn-campaign.md §7 (not the implementation).
+     Render: open with ?screen=map or ?screen=hud, 1440x900. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campaign mockup</title>
+<style>
+  :root {
+    --bg: #e9eef4; --card: #ffffff; --card2: #f5f7fa; --border: #d5dde7;
+    --ink: #0f172a; --ink2: #3f4b5e; --muted: #556173; --accent: #2563eb;
+    --good: #0a8f0a; --amber: #d97706; --ph: #1f5fbf;
+    --town: #f59e0b; --forest: #16a34a; --zone: #b45309; --space: #4f46e5;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; width: 1440px; height: 900px; overflow: hidden; font: 14px/1.45 var(--font); color: var(--ink);
+    background: radial-gradient(1200px 600px at 50% -10%, #dde5ee, var(--bg) 70%); }
+  .screen { display: none; width: 100%; height: 100%; }
+  .screen.on { display: block; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--card);
+    border: 1px solid var(--border); font-weight: 700; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 8px 24px rgba(15,23,42,.07); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--card2); font-weight: 700; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .stars { color: #b07800; letter-spacing: 2px; }
+
+  /* ---- campaign map ---- */
+  #map header { display: flex; align-items: center; gap: 14px; padding: 18px 28px; }
+  #map h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+  #map .sub { color: var(--muted); font-weight: 600; }
+  .grow { flex: 1; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 372px; gap: 16px; padding: 4px 28px 0; }
+  .tile { position: relative; border-radius: 20px; overflow: hidden; background: var(--card); border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 12px 32px rgba(15,23,42,.10); display: flex; flex-direction: column; }
+  .tile svg.art { display: block; width: 100%; height: 150px; }
+  .tile h2 { font-size: 20px; }
+  .lvs { display: flex; gap: 6px; margin-top: auto; }
+  .lv { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; font-size: 12px; background: var(--card2); border: 1px solid var(--border); color: var(--muted); }
+  .lv.done { background: #fff7e0; color: #b07800; border-color: #f2d58a; font-size: 10px; letter-spacing: 0; }
+  .lv.next { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tile .body { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .tile .k { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .tile h2 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
+  .tile p { margin: 0; color: var(--ink2); }
+  .levels { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+  .levels li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--card2); border: 1px solid var(--border); font-weight: 600; }
+  .levels .dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 800; flex: none; }
+  .levels .next { outline: 2px solid var(--accent); background: #eef4ff; }
+  .levels .stars { margin-left: auto; font-size: 13px; }
+  .lock { position: absolute; inset: 0; background: rgba(233,238,244,.45); backdrop-filter: grayscale(1); display: flex; justify-content: center; align-items: flex-start; padding-top: 56px; }
+  .lock .pill { font-size: 15px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: #eef2f7; color: var(--ink2); }
+
+  /* ---- HUD ---- */
+  #hud { position: relative; }
+  #hud canvas { position: absolute; inset: 0; }
+  .top { position: absolute; left: 16px; right: 16px; top: 14px; display: flex; gap: 10px; align-items: center; }
+  .glass { background: rgba(255,255,255,.88); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 10px 28px rgba(15,23,42,.12); }
+  .top .glass { display: flex; align-items: center; gap: 12px; padding: 8px 14px; font-weight: 700; }
+  .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--card2); border: 1px solid var(--border); }
+  .seg span { padding: 3px 10px; border-radius: 8px; }
+  .seg .on { background: var(--accent); color: #fff; }
+  .goal { position: absolute; left: 16px; top: 78px; width: 360px; padding: 14px 16px; }
+  .goal h3, .route h3 { margin: 0 0 8px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .obj { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid #eef2f7; font-weight: 600; }
+  .obj:first-of-type { border-top: 0; }
+  .tick { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-size: 13px; font-weight: 900; flex: none; }
+  .tick.ok { background: var(--good); color: #fff; }
+  .tick.todo { border: 2px solid #b8c2cf; }
+  .obj .v { white-space: nowrap; margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink2); }
+  .bar { height: 6px; border-radius: 99px; background: #e5eaf0; margin: 2px 0 0 32px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+  .route { position: absolute; right: 16px; top: 78px; width: 270px; padding: 14px 16px; }
+  .hops { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-weight: 800; }
+  .hop { padding: 2px 8px; border-radius: 8px; background: #e8f0ff; color: var(--ph); }
+  .arrow { color: var(--muted); }
+  .switch { margin-top: 8px; font-size: 13px; color: var(--ink2); }
+  .switch b { color: var(--amber); }
+  .toast { position: absolute; left: 50%; transform: translateX(-50%); top: 150px; padding: 10px 18px; border-radius: 999px; font-weight: 700; }
+  .dock { position: absolute; left: 50%; transform: translateX(-50%); bottom: 18px; display: flex; gap: 10px; padding: 10px; align-items: stretch; }
+  .card { width: 136px; padding: 10px; border-radius: 14px; background: var(--card); border: 1px solid var(--border); text-align: center; }
+  .card.sel { outline: 3px solid var(--accent); }
+  .card.off { opacity: .45; }
+  .card svg { width: 46px; height: 46px; display: block; margin: 2px auto 4px; }
+  .card b { display: block; }
+  .cost { font-size: 12.5px; color: var(--ink2); font-weight: 700; }
+  .sep { width: 1px; background: var(--border); margin: 4px 4px; }
+  .tool { width: 86px; display: grid; place-items: center; font-weight: 700; color: var(--ink2); border-radius: 14px; border: 1px solid var(--border); background: var(--card2); }
+  .phase { position: absolute; left: 16px; bottom: 26px; padding: 10px 14px; display: flex; gap: 10px; align-items: center; font-weight: 700; }
+  .drawer { position: absolute; right: 16px; bottom: 26px; padding: 10px 14px; font-weight: 700; color: var(--ink2); }
+  .note { position: absolute; right: 16px; bottom: 74px; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ================= Campaign map ================= -->
+<section class="screen" id="map">
+  <header>
+    <svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true"><rect width="38" height="38" rx="10" fill="#7cbf5a"/><circle cx="11" cy="19" r="4" fill="#eb6834"/><circle cx="19" cy="19" r="3.2" fill="#eb6834"/><circle cx="27" cy="19" r="4" fill="#eb6834"/></svg>
+    <div><h1>Campaign</h1><div class="sub">One chapter per network type — fix the network, the ants find the way</div></div>
+    <div class="grow"></div>
+    <span class="pill"><span class="stars">★</span> 10 / 99</span>
+    <span class="btn">Upgrades</span>
+    <span class="btn">Free play</span>
+    <span class="btn primary">▶ Continue: 1.5 Two ways home</span>
+  </header>
+  <div class="tiles">
+    <article class="tile"><svg class="art" preserveAspectRatio="xMidYMid slice" viewBox="0 0 340 150" aria-hidden="true"><rect width="340" height="150" fill="#fde7c2"/><path d="M0 130 L170 70 L340 130 L170 190Z" fill="#9bd27c"/><path d="M60 118 l26 -13 26 13 v22 l-26 13 -26 -13z" fill="#f1d9b5"/><path d="M60 118 l26 -13 26 13 -26 13z" fill="#e57d4a"/><path d="M220 100 l28 -14 28 14 v24 l-28 14 -28 -14z" fill="#e8e3da"/><path d="M220 100 l28 -14 28 14 -28 14z" fill="#c2593a"/><path d="M110 120 L170 135 L230 112" stroke="#1f5fbf" stroke-width="4" fill="none" stroke-linecap="round"/><g fill="#1e293b"><rect x="104" y="106" width="9" height="15" rx="2"/><rect x="164" y="120" width="16" height="10" rx="1.5"/><rect x="226" y="98" width="9" height="15" rx="2"/></g><g fill="#38bdf8"><rect x="106" y="109" width="5" height="9"/><rect x="166" y="122" width="12" height="6"/><rect x="228" y="101" width="5" height="9"/></g></svg><div class="body"><div class="k" style="color:#ea580c">Chapter 1 · MANET</div><h2>Ad hoc town</h2><p>Phones, laptops and PCs — no routers. Every device is a router.</p><div class="lvs"><span class="lv done">★★★</span><span class="lv done">★★★</span><span class="lv done">★★☆</span><span class="lv done">★★☆</span><span class="lv next">5</span><span class="lv ">6</span></div></div></article><article class="tile"><svg class="art" preserveAspectRatio="xMidYMid slice" viewBox="0 0 340 150" aria-hidden="true"><rect width="340" height="150" fill="#d5f3ef"/><path d="M0 130 L170 70 L340 130 L170 190Z" fill="#a9d79a"/><g fill="#e8e3da"><path d="M70 110 l24 -12 24 12 v20 l-24 12 -24 -12z"/><path d="M150 96 l24 -12 24 12 v20 l-24 12 -24 -12z"/><path d="M230 112 l24 -12 24 12 v20 l-24 12 -24 -12z"/></g><g fill="#0f766e"><path d="M70 110 l24 -12 24 12 -24 12z"/><path d="M150 96 l24 -12 24 12 -24 12z"/><path d="M230 112 l24 -12 24 12 -24 12z"/></g><g stroke="#334155" stroke-width="2"><path d="M94 96 v-14"/><path d="M174 82 v-14"/><path d="M254 98 v-14"/></g><path d="M94 82 L174 68 L254 84" stroke="#1f5fbf" stroke-width="3" stroke-dasharray="6 4" fill="none"/></svg><div class="body"><div class="k" style="color:#0f766e">Chapter 2 · static mesh</div><h2>Neighbourhood mesh</h2><p>Rooftop routers for a village. Do the ants ever go quiet?</p><div class="lvs"><span class="lv ">1</span><span class="lv ">2</span><span class="lv ">3</span><span class="lv ">4</span></div></div><div class="lock"><span class="pill">🔒 Finish Ad hoc town</span></div></article><article class="tile"><svg class="art" preserveAspectRatio="xMidYMid slice" viewBox="0 0 340 150" aria-hidden="true"><rect width="340" height="150" fill="#e2e8f0"/><path d="M0 130 L170 70 L340 130 L170 190Z" fill="#7a7f86"/><g fill="#cbd5e1"><path d="M40 100 l40 -20 40 20 v34 l-40 20 -40 -20z"/><path d="M220 100 l40 -20 40 20 v34 l-40 20 -40 -20z"/></g><g fill="#94a3b8"><path d="M40 100 l40 -20 40 20 -40 20z"/><path d="M220 100 l40 -20 40 20 -40 20z"/></g><g><rect x="150" y="118" width="22" height="10" rx="3" fill="#c0392b"/><rect x="186" y="132" width="22" height="10" rx="3" fill="#2e5aa8"/><rect x="128" y="138" width="30" height="11" rx="3" fill="#d9a21b"/></g></svg><div class="body"><div class="k" style="color:#475569">Chapter 3 · VANET</div><h2>City streets</h2><p>Cars, buses and roadside units; buildings cut the radio.</p><div class="lvs"><span class="lv ">1</span><span class="lv ">2</span><span class="lv ">3</span><span class="lv ">4</span></div></div><div class="lock"><span class="pill">🔒 Finish Mesh</span></div></article><article class="tile"><svg class="art" preserveAspectRatio="xMidYMid slice" viewBox="0 0 340 150" aria-hidden="true"><rect width="340" height="150" fill="#d9f2df"/><path d="M0 130 L170 70 L340 130 L170 190Z" fill="#4f8f3f"/><g fill="#2f6b2a"><circle cx="80" cy="118" r="14"/><circle cx="104" cy="108" r="12"/><circle cx="130" cy="124" r="15"/><circle cx="214" cy="104" r="13"/><circle cx="240" cy="120" r="16"/><circle cx="266" cy="110" r="12"/><circle cx="174" cy="140" r="14"/></g><g transform="translate(176 56)"><path d="M-14 -5 L14 5 M14 -5 L-14 5" stroke="#1e293b" stroke-width="3"/><g fill="#1e293b"><ellipse cx="-14" cy="-5" rx="6" ry="2.5"/><ellipse cx="14" cy="5" rx="6" ry="2.5"/><ellipse cx="14" cy="-5" rx="6" ry="2.5"/><ellipse cx="-14" cy="5" rx="6" ry="2.5"/></g></g></svg><div class="body"><div class="k" style="color:#16a34a">Chapter 4 · FANET</div><h2>Forest</h2><p>Relay drones over the canopy; batteries run out.</p><div class="lvs"><span class="lv ">1</span><span class="lv ">2</span><span class="lv ">3</span><span class="lv ">4</span></div></div><div class="lock"><span class="pill">🔒 Finish Mesh</span></div></article><article class="tile"><svg class="art" preserveAspectRatio="xMidYMid slice" viewBox="0 0 340 150" aria-hidden="true"><rect width="340" height="150" fill="#0b1230"/><g fill="#fff" opacity=".8"><circle cx="30" cy="20" r="1.2"/><circle cx="300" cy="30" r="1.5"/><circle cx="60" cy="130" r="1.2"/><circle cx="310" cy="120" r="1"/></g><circle cx="170" cy="78" r="44" fill="#1e4f8f"/><circle cx="156" cy="64" r="24" fill="#3b82c4" opacity=".6"/><g fill="none" stroke="#c7d2fe" stroke-width="1.3" opacity=".7"><ellipse cx="170" cy="78" rx="80" ry="26" transform="rotate(-20 170 78)"/><ellipse cx="170" cy="78" rx="80" ry="26" transform="rotate(30 170 78)"/></g><g><rect x="240" y="48" width="10" height="4" fill="#3b6fb6"/><rect x="254" y="48" width="10" height="4" fill="#3b6fb6"/><rect x="249" y="45" width="6" height="10" fill="#d4a72c"/></g></svg><div class="body"><div class="k" style="color:#4f46e5">Chapter 5 · satellite</div><h2>Orbit</h2><p>Ground stations, a Walker shell, a solar storm, a launch.</p><div class="lvs"><span class="lv ">1</span><span class="lv ">2</span><span class="lv ">3</span><span class="lv ">4</span><span class="lv ">5</span></div></div><div class="lock"><span class="pill">🔒 Finish Mesh</span></div></article><article class="tile"><svg class="art" preserveAspectRatio="xMidYMid slice" viewBox="0 0 340 150" aria-hidden="true"><rect width="340" height="150" fill="#fde2e2"/><path d="M0 130 L170 70 L340 130 L170 190Z" fill="#a8a29e"/><g fill="#78716c"><path d="M70 120 l20 -18 18 10 -6 22z"/><path d="M200 104 l26 -8 10 22 -24 8z"/></g><path d="M250 140 q20 -36 46 -14" stroke="#f97316" stroke-width="10" stroke-linecap="round" fill="none" opacity=".85"/><g stroke="#334155" stroke-width="2.5"><path d="M150 120 v-30"/></g><circle cx="150" cy="88" r="4" fill="#dc2626"/></svg><div class="body"><div class="k" style="color:#dc2626">Chapter 6 · disaster</div><h2>Disaster zone</h2><p>Split rescue teams, aftershocks, a fire front.</p><div class="lvs"><span class="lv ">1</span><span class="lv ">2</span><span class="lv ">3</span></div></div><div class="lock"><span class="pill">🔒 Coming in v2.4.0</span></div></article><article class="tile"><svg class="art" preserveAspectRatio="xMidYMid slice" viewBox="0 0 340 150" aria-hidden="true"><rect width="340" height="150" fill="#f6ead7"/><path d="M0 130 L170 70 L340 130 L170 190Z" fill="#b9a27a"/><path d="M30 124 L110 80 L170 110 L240 70 L320 120" fill="#8c7853"/><ellipse cx="200" cy="128" rx="46" ry="20" fill="#ef4444" opacity=".25"/><ellipse cx="200" cy="128" rx="46" ry="20" fill="none" stroke="#ef4444" stroke-dasharray="6 5" stroke-width="2"/><g stroke="#3f3a2e" stroke-width="3"><path d="M110 80 v-24"/><path d="M240 70 v-24"/></g></svg><div class="body"><div class="k" style="color:#b45309">Chapter 7 · tactical</div><h2>Contested zone</h2><p>Narrowband radios, jamming, a convoy.</p><div class="lvs"><span class="lv ">1</span><span class="lv ">2</span><span class="lv ">3</span><span class="lv ">4</span></div></div><div class="lock"><span class="pill">🔒 Coming in v2.4.0</span></div></article><article class="tile"><svg class="art" preserveAspectRatio="xMidYMid slice" viewBox="0 0 340 150" aria-hidden="true"><rect width="340" height="150" fill="#dbeafe"/><rect y="110" width="340" height="40" fill="#60a5fa"/><path d="M0 120 L80 100 L120 120 Z" fill="#9bd27c"/><path d="M240 120 L300 98 L340 110 V120Z" fill="#9bd27c"/><ellipse cx="170" cy="58" rx="22" ry="6" fill="#f8fafc" stroke="#94a3b8"/><g><rect x="254" y="18" width="10" height="4" fill="#3b6fb6"/><rect x="268" y="18" width="10" height="4" fill="#3b6fb6"/><rect x="263" y="15" width="6" height="10" fill="#d4a72c"/></g><path d="M50 104 L170 60 L300 100" stroke="#1f5fbf" stroke-width="3" fill="none"/><path d="M50 104 L266 24 L300 100" stroke="#6366f1" stroke-width="2" stroke-dasharray="5 4" fill="none"/></svg><div class="body"><div class="k" style="color:#0284c7">Chapter 8 · SAGIN</div><h2>Sky to space</h2><p>Ground, air and space in one network — the finale.</p><div class="lvs"><span class="lv ">1</span><span class="lv ">2</span><span class="lv ">3</span></div></div><div class="lock"><span class="pill">🔒 Coming in v2.4.0</span></div></article>
+  </div>
+</section>
+
+<!-- ================= In-level HUD ================= -->
+<section class="screen" id="hud">
+  <canvas id="scene" width="1440" height="900"></canvas>
+  <div class="top">
+    <div class="glass">◀ Map</div>
+    <div class="glass"><span style="color:#ea580c">Ad hoc town</span> · 1.5 Two ways home <span class="stars">★★☆</span></div>
+    <div class="grow"></div>
+    <div class="glass"><span class="seg"><span>❚❚</span><span class="on">▶</span><span>▶▶</span><span>▶▶▶</span></span></div>
+    <div class="glass">💰 35 left</div>
+    <div class="glass">⏱ 0:42 / 1:30</div>
+  </div>
+  <div class="goal glass">
+    <h3>Goal</h3>
+    <div class="obj"><span class="tick ok">✓</span>Connect home → school</div>
+    <div class="obj"><span class="tick todo"></span>Keep 95 % delivered for 60 s<span class="v">87 %</span></div>
+    <div class="bar"><i style="width:58%"></i></div>
+    <div class="obj"><span class="tick todo"></span>Survive the laptop lid closing<span class="v">at 1:00</span></div>
+    <div class="obj"><span class="tick ok">✓</span>Use at most 3 relays<span class="v">2 / 3</span></div>
+  </div>
+  <div class="route glass">
+    <h3>Strongest route</h3>
+    <div class="hops"><span class="hop">home</span><span class="arrow">→</span><span class="hop">n4</span><span class="arrow">→</span><span class="hop">pc</span><span class="arrow">→</span><span class="hop">school</span></div>
+    <div class="switch">Switched <b>2×</b> — last when phone 7 walked away</div>
+  </div>
+  <div class="toast glass">💻 New link: your laptop hears the PC. Ants are testing the second path…</div>
+  <div class="phase glass"><span style="color:var(--good)">● Running</span></div>
+  <div class="dock glass">
+    <div class="card"><svg viewBox="0 0 46 46"><rect x="15" y="6" width="16" height="32" rx="4" fill="#1e293b"/><rect x="17.5" y="10" width="11" height="22" rx="2" fill="#38bdf8"/></svg><b>Phone</b><span class="cost">💰 10 · walks</span></div>
+    <div class="card sel"><svg viewBox="0 0 46 46"><rect x="8" y="10" width="30" height="19" rx="2.5" fill="#1e293b"/><rect x="11" y="13" width="24" height="13" rx="1.5" fill="#38bdf8"/><path d="M4 31 h38 l-3 5 h-32z" fill="#64748b"/></svg><b>Laptop</b><span class="cost">💰 25 · moves rarely</span></div>
+    <div class="card"><svg viewBox="0 0 46 46"><rect x="7" y="8" width="24" height="17" rx="2" fill="#1e293b"/><rect x="9.5" y="10.5" width="19" height="12" rx="1" fill="#38bdf8"/><rect x="16" y="26" width="6" height="5" fill="#64748b"/><rect x="11" y="31" width="16" height="3" rx="1" fill="#64748b"/><rect x="33" y="10" width="7" height="24" rx="1.5" fill="#334155"/></svg><b>Desktop PC</b><span class="cost">💰 40 · indoor</span></div>
+    <div class="card off"><svg viewBox="0 0 46 46"><rect x="9" y="24" width="28" height="10" rx="3" fill="#e2e8f0" stroke="#94a3b8"/><path d="M15 24 l-3 -14 M31 24 l3 -14" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/><g fill="#16a34a"><circle cx="17" cy="29" r="1.5"/><circle cx="22" cy="29" r="1.5"/><circle cx="27" cy="29" r="1.5"/></g></svg><b>🔒 Router</b><span class="cost">Chapter 2 · mesh</span></div>
+    <div class="sep"></div>
+    <div class="tool">✋<br>Move</div>
+    <div class="tool">🔍<br>Inspect</div>
+  </div>
+  <div class="drawer glass">🧪 Lab · ant log, overlays ▴</div>
+</section>
+
+<script>
+  const screen = new URLSearchParams(location.search).get('screen') || 'map';
+  document.getElementById(screen).classList.add('on');
+  if (screen === 'hud') {
+    const c = document.getElementById('scene').getContext('2d');
+    const W = 1440, H = 900;
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#fde7c2'); g.addColorStop(1, '#fff6e6');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    // iso projection of a 1000 x 1000 field
+    const ox = 720, oy = 210, k = 0.54;
+    const P = (x, y, z = 0) => [ox + (x - y) * k, oy + (x + y) * k / 2 - z];
+    const poly = (pts, fill) => { c.beginPath(); pts.forEach(([x, y], i) => { const [px, py] = P(x, y); i ? c.lineTo(px, py) : c.moveTo(px, py); }); c.closePath(); c.fillStyle = fill; c.fill(); };
+    // slab
+    const [a, b2, d] = [P(1000, 0), P(1000, 1000), P(0, 1000)];
+    c.fillStyle = '#7a6544'; c.beginPath(); c.moveTo(...d); c.lineTo(...b2); c.lineTo(b2[0], b2[1] + 20); c.lineTo(d[0], d[1] + 20); c.fill();
+    c.fillStyle = '#937c55'; c.beginPath(); c.moveTo(...b2); c.lineTo(...a); c.lineTo(a[0], a[1] + 20); c.lineTo(b2[0], b2[1] + 20); c.fill();
+    for (let i = 0; i < 20; i++) for (let j = 0; j < 20; j++) poly([[i * 50, j * 50], [i * 50 + 50, j * 50], [i * 50 + 50, j * 50 + 50], [i * 50, j * 50 + 50]], (i * 7 + j * 3) % 5 < 2 ? '#93cc72' : '#8bc66a');
+    // streets
+    poly([[0, 470], [1000, 470], [1000, 530], [0, 530]], '#7a7f86');
+    poly([[470, 0], [530, 0], [530, 1000], [470, 1000]], '#7a7f86');
+    // houses
+    const house = (x, y, w, h, wall, roof) => {
+      const z = 46;
+      c.fillStyle = wall; c.beginPath(); const p1 = P(x + w, y), p2 = P(x + w, y + h), p3 = P(x, y + h);
+      c.moveTo(...p1); c.lineTo(...p2); c.lineTo(...p3); c.lineTo(p3[0], p3[1] - z); c.lineTo(p2[0], p2[1] - z); c.lineTo(p1[0], p1[1] - z); c.closePath(); c.fill();
+      c.fillStyle = 'rgba(0,0,0,.12)'; c.beginPath(); c.moveTo(...p2); c.lineTo(...p3); c.lineTo(p3[0], p3[1] - z); c.lineTo(p2[0], p2[1] - z); c.fill();
+      c.fillStyle = roof; c.beginPath(); [[x, y], [x + w, y], [x + w, y + h], [x, y + h]].forEach(([u, v], i) => { const [px, py] = P(u, v); i ? c.lineTo(px, py - z) : c.moveTo(px, py - z); }); c.fill();
+    };
+    house(120, 120, 200, 180, '#f1d9b5', '#e57d4a'); house(640, 110, 230, 200, '#e8e3da', '#c2593a');
+    house(140, 640, 200, 200, '#dfe7f1', '#5b7fb0'); house(660, 660, 220, 190, '#f3e2c8', '#d06b3f');
+    // trees
+    for (const [x, y] of [[400, 160], [410, 360], [600, 380], [380, 640], [600, 860], [900, 420], [90, 420]]) { const [px, py] = P(x, y); c.fillStyle = '#2f7330'; c.beginPath(); c.arc(px, py - 14, 11, 0, 7); c.fill(); c.fillStyle = '#3f8f3a'; c.beginPath(); c.arc(px - 3, py - 17, 7, 0, 7); c.fill(); }
+    // devices
+    const dev = [[230, 330, 'home'], [430, 430, 'n4'], [560, 560, 'pc'], [740, 640, 'school'], [380, 560, 'laptop'], [610, 300, 'p7'], [300, 760, 'p2'], [850, 300, 'p3']];
+    const at = (n) => dev.find((d) => d[2] === n);
+    // range ring of the selected laptop (ghost while placing)
+    { const [px, py] = P(380, 560); const R = 250 * k * Math.SQRT2; c.fillStyle = 'rgba(37,99,235,.08)'; c.beginPath(); c.ellipse(px, py, R, R / 2, 0, 0, 7); c.fill(); c.setLineDash([7, 6]); c.strokeStyle = 'rgba(37,99,235,.6)'; c.lineWidth = 1.5; c.stroke(); c.setLineDash([]); }
+    // links
+    c.strokeStyle = 'rgba(48,69,92,.45)'; c.lineWidth = 1.2;
+    for (const [u, v] of [['home', 'n4'], ['n4', 'pc'], ['pc', 'school'], ['n4', 'laptop'], ['laptop', 'pc'], ['laptop', 'p2'], ['n4', 'p7'], ['pc', 'p7']]) { const A = at(u), B = at(v); const [x1, y1] = P(A[0], A[1], 22), [x2, y2] = P(B[0], B[1], 22); c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); }
+    // strongest route
+    const path = ['home', 'n4', 'pc', 'school'].map((n) => { const d2 = at(n); return P(d2[0], d2[1], 0); });
+    const trace = () => { c.beginPath(); path.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); };
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 11; trace(); c.stroke();
+    c.strokeStyle = '#1f5fbf'; c.lineWidth = 6; trace(); c.stroke();
+    c.setLineDash([3, 12]); c.strokeStyle = '#0b1220'; c.lineWidth = 3; trace(); c.stroke(); c.setLineDash([]);
+    // second path (forming, amber)
+    const alt = ['n4', 'laptop', 'pc'].map((n) => { const d2 = at(n); return P(d2[0], d2[1], 0); });
+    c.strokeStyle = 'rgba(217,119,6,.9)'; c.lineWidth = 4; c.setLineDash([8, 7]); c.beginPath(); alt.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.stroke(); c.setLineDash([]);
+    // footprints for walkers
+    c.fillStyle = 'rgba(51,65,85,.4)'; for (let t = 0; t < 7; t++) { const [px, py] = P(610 - t * 22, 300 - t * 10); c.beginPath(); c.ellipse(px, py, 3, 1.5, 0, 0, 7); c.fill(); }
+    // device sprites
+    for (const [x, y, name] of dev) {
+      const [px, py] = P(x, y);
+      c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(px, py, 11, 5, 0, 0, 7); c.fill();
+      if (name === 'pc') { c.fillStyle = '#1e293b'; c.fillRect(px - 16, py - 36, 24, 18); c.fillStyle = '#38bdf8'; c.fillRect(px - 13, py - 33, 18, 12); c.fillStyle = '#64748b'; c.fillRect(px - 7, py - 18, 6, 5); c.fillRect(px - 12, py - 13, 16, 3); c.fillStyle = '#334155'; c.fillRect(px + 11, py - 34, 7, 24); }
+      else if (name === 'laptop' || name === 'school' || name === 'home') { c.fillStyle = '#1e293b'; c.fillRect(px - 14, py - 30, 28, 18); c.fillStyle = '#38bdf8'; c.fillRect(px - 11, py - 27, 22, 12); c.fillStyle = '#64748b'; c.beginPath(); c.moveTo(px - 18, py - 12); c.lineTo(px + 18, py - 12); c.lineTo(px + 14, py - 6); c.lineTo(px - 14, py - 6); c.fill(); }
+      else { c.fillStyle = '#1e293b'; c.beginPath(); c.roundRect(px - 7, py - 30, 14, 24, 3); c.fill(); c.fillStyle = '#38bdf8'; c.fillRect(px - 5, py - 27, 10, 17); }
+      if (['home', 'school', 'laptop', 'pc'].includes(name)) { c.font = '800 13px system-ui'; c.lineWidth = 4; c.strokeStyle = 'rgba(255,255,255,.9)'; c.strokeText(name, px + 14, py - 34); c.fillStyle = '#0f172a'; c.fillText(name, px + 14, py - 34); }
+    }
+    // ants on the route
+    const ant = (x, y, col) => { c.fillStyle = col; for (const [dx, r] of [[-5, 3.2], [0, 2.3], [5, 2.6]]) { c.beginPath(); c.ellipse(x + dx, y, r, r * .8, 0, 0, 7); c.fill(); } };
+    { const [x1, y1] = path[1], [x2, y2] = path[2]; ant(x1 + (x2 - x1) * .45, y1 + (y2 - y1) * .45, '#2a78d6'); }
+    { const [x1, y1] = alt[0], [x2, y2] = alt[1]; ant(x1 + (x2 - x1) * .6, y1 + (y2 - y1) * .6, '#1baf7a'); }
+    // packet crate
+    { const [x1, y1] = path[2], [x2, y2] = path[3]; const x = x1 + (x2 - x1) * .4, y = y1 + (y2 - y1) * .4; c.fillStyle = '#4a3aa7'; c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + 6, y - 3); c.lineTo(x + 6, y + 3); c.lineTo(x, y + 6); c.lineTo(x - 6, y + 3); c.lineTo(x - 6, y - 3); c.fill(); }
+  }
+</script>
+</body>
+</html>

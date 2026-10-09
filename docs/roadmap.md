@@ -22,6 +22,13 @@ is a live query rather than a diagram that drifts:
 | v1.8.0 | [`release:v1.8.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av1.8.0%22) |
 | v1.9.0 | [`release:v1.9.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av1.9.0%22) |
 | v2.0.0 | [`release:v2.0.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av2.0.0%22) |
+| v2.2.0 | [`release:v2.2.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av2.2.0%22) |
+| v2.3.0 | [`release:v2.3.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av2.3.0%22) |
+| v2.4.0 | [`release:v2.4.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av2.4.0%22) |
+| v2.5.0 | [`release:v2.5.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av2.5.0%22) |
+| v3.1.0 | [`release:v3.1.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av3.1.0%22) |
+| v3.2.0 | [`release:v3.2.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av3.2.0%22) |
+| v3.3.0 | [`release:v3.3.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av3.3.0%22) |
 | v3.0.0 | [`release:v3.0.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av3.0.0%22) |
 | all epics | [`epic`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3Aepic) |
 
@@ -47,14 +54,32 @@ flowchart LR
     V18["<b>v1.8.0</b><br/>fix + restatement<br/>roll-up (CBR, #521)"]
     V19["<b>v1.9.0</b><br/>family axis II:<br/>VANET (ns-3)"]
     V20["<b>v2.0.0</b><br/>the constellation<br/>actually moves<br/>+ learn site"]
+    V21["<b>v2.1.0</b><br/>game as front page<br/>+ orbits roll-up"]
+    V22["<b>v2.2.0</b><br/>close the<br/>measured gaps"]
+    V23["<b>v2.3.0</b><br/>regime-gated<br/>mechanisms"]
+    V24["<b>v2.4.0</b><br/>family axis III:<br/>disaster + SAGIN"]
+    V25["<b>v2.5.0</b><br/>adaptive-routing<br/>comparators"]
     V30["<b>v3.0.0</b><br/>secured<br/>AntHocNet"]
+    V31["<b>v3.1.0</b><br/>secure-routing<br/>comparators"]
+    V32["<b>v3.2.0</b><br/>secure swarm<br/>comparators"]
+    V33["<b>v3.3.0</b><br/>wider threat<br/>model"]
 
-    V13 --> V14 --> V15 --> V16 --> V17 --> V18 --> V19 --> V20 --> V30
+    V13 --> V14 --> V15 --> V16 --> V17 --> V18 --> V19 --> V20 --> V21 --> V22 --> V23 --> V24 --> V25 --> V30 --> V31 --> V32 --> V33
 
     style V13 fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
     style V20 fill:#e8e6f8,stroke:#5b4fc4,stroke-width:2px
+    style V22 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
+    style V23 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
+    style V24 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
+    style V25 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
+    style V31 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
+    style V32 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
+    style V33 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
     style V30 fill:#f6dede,stroke:#c0392b,stroke-width:2px
 ```
+
+Amber releases are the **post-v2.0.0 replan, accepted 2026-10-09** (#561) and
+not yet started — see [Replan after v2.0.0](#replan-after-v200-accepted-2026-10-09).
 
 The order is not arbitrary — statistics come first because every later claim is
 quoted with a confidence interval, and realism comes before baselines because
@@ -133,7 +158,15 @@ otherwise independent of the epic chain.
 | **v1.8.0** | *Not a roadmap goal* — a fix-and-restatement roll-up, as v1.6.0 was. The `feat:` commits after v1.7.0 (#519, #523) make the next release a minor bump, and the fixes it carries change what the v1.7.0 artifact measures: CBR sources at the documented rate ([#521](https://github.com/danieljoppi/AntHocNet/issues/521)), arm-independent flow schedules on the ISL grid ([#517](https://github.com/danieljoppi/AntHocNet/issues/517)), OLSR refused sends counted on the ISL grid ([#513](https://github.com/danieljoppi/AntHocNet/issues/513)), loopback TTL compensation ([#522](https://github.com/danieljoppi/AntHocNet/issues/522)), and per-seed route stability as `##ROUTE##` ([#294](https://github.com/danieljoppi/AntHocNet/issues/294) item 4). Every page those fixes touch is restated on them. **Shipped 2026-10-06** ([release v1.8.0](https://github.com/danieljoppi/AntHocNet/releases/tag/v1.8.0); version DOI `10.5281/zenodo.23187497`). The OMNeT++/INET adapter that held this slot is **deferred** (decision 2026-10-06; [below](#why-omnet-32-is-deferred)). |
 | **v1.9.0** | **Family axis II — VANET** ([#301](https://github.com/danieljoppi/AntHocNet/issues/301)), on ns-3 (maintainer decision 2026-09-26; the Veins arm deferred 2026-10-06). **Measured arm:** ns-3 Manhattan grid ([#488](https://github.com/danieljoppi/AntHocNet/issues/488)): `--mobility=manhattan` waypoint generation and the `--propagation=urban` building channel, `--scenario=vanet`, its own anchor, a results page with CIs. (Trace ingestion — BonnMotion/SUMO via `Ns2MobilityHelper` — was the plan here and was not needed for the exit; it is the open remainder of [#61](https://github.com/danieljoppi/AntHocNet/issues/61).) It carries the numbers because the cross-family statement is only valid inside one simulator: [ADR-0019](adr/0019-network-families-change-the-evaluation-not-the-protocol.md) holds the protocol fixed so a ranking change is the network's, and that fails if the MAC/PHY/simulator changes too ([cross-validation.md](cross-validation.md): cross-simulator is qualitative). It does not depend on #32 and can start once #480/#481 land. **Confirmation arm:** Veins ([#485](https://github.com/danieljoppi/AntHocNet/issues/485)) is **deferred** with the OMNeT++ adapter it needs ([below](#why-omnet-32-is-deferred)); it is not an exit criterion. Exit: the README family table shows ≥4 supported families (MANET, static mesh, FANET, VANET), each with a results page, plus a cross-family ranking-stability statement on ns-3 — the criterion the old v1.6.0 row carried. <br/>**Status (2026-10-07): exit criteria met.**<br/>• `--scenario=vanet` ✅ ([#488](https://github.com/danieljoppi/AntHocNet/issues/488)): Manhattan mobility and the urban building channel (PR #535), the road-aware preflight, the sourced preset and two analytic anchors (PR #536). It runs deterministically, passes preflight and is gated in CI.<br/>• Results ✅ ([VANET page](benchmarks/scenarios/vanet.md)): seven arms, 20 seeds, a main and a sparse cell. AntHocNet ties AODV on delivery (42.1 vs 42.3 %) with half its `delay99`; the oracle delivers 81.7 %.<br/>• Four-family ranking-stability statement ✅ (on the VANET page): AntHocNet beats AODV on the tail in every family and leads delivery on the open mobile fields; it ties AODV on the street grid and trails OLSR on the static mesh.<br/>• Found on the way: 36 % of AntHocNet's VANET traffic is lost to reconvergence, and the preflight's distance-only link-lifetime rule overestimates link life under buildings ([#537](https://github.com/danieljoppi/AntHocNet/issues/537)).<br/>• **Shipped 2026-10-07** ([release v1.9.0](https://github.com/danieljoppi/AntHocNet/releases/tag/v1.9.0); version DOI `10.5281/zenodo.23223132`). |
 | **v2.0.0** | A committed time-varying Walker result: scheduled handovers, failure overlay, oracle + geographic comparators, handover metric family, calibration deltas vs Hypatia/LENS. **Also the NS-2 removal** ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)) — dropping a supported platform is breaking, so it lands with a major. **And the teaching site** ([#542](https://github.com/danieljoppi/AntHocNet/issues/542), maintainer decision 2026-10-08): `/learn/` on the Pages site, a canvas game whose simulation is `core/` compiled to WebAssembly (the browser is a third adapter, parity-tested against native, [#544](https://github.com/danieljoppi/AntHocNet/issues/544)), with a mission for every core mechanism on the default ad hoc MANET world and one world per supported family; plus the Doxygen API reference at `/api/` ([#543](https://github.com/danieljoppi/AntHocNet/issues/543)). Independent of the constellation work — it can land in any order with it.<br/>**Status (2026-10-08):**<br/>• Teaching site ✅ and API reference ✅ (#551).<br/>• Moving constellation ✅ ([#297](https://github.com/danieljoppi/AntHocNet/issues/297), [results page](benchmarks/satellite/leo-walker.md)): `leo-walker` on stock ns-3.48 LEO mobility ([ADR-0022](adr/0022-satellite-substrate-is-stock-ns3-leo.md), #552); walker16, Starlink S1 and an S1 storm at 20 seeds with the hop and delay oracles and an idealised geo-greedy arm. AntHocNet beats AODV by +15.5 / +28.2 / +32.3 pp PDR; Hypatia median inside the published band, LENS confirms the 15 s handover phase.<br/>• NS-2 removal ✅ ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)): the adapter, its CI jobs and images are gone; [ns2-support.md](ns2-support.md) says where to get it ([ADR-0023](adr/0023-one-core-one-simulator-adapter.md)).<br/>• **Shipped 2026-10-08** ([release v2.0.0](https://github.com/danieljoppi/AntHocNet/releases/tag/v2.0.0); version DOI `10.5281/zenodo.23250180`). |
-| **v3.0.0** | Four-protocol vulnerability table under blackhole/grayhole; defense profile recovering PDR under attack while reading **NOISE** in benign scenarios; `EnableSecurity=false` path proven byte-identical. |
+| **v2.1.0** | *Not a roadmap goal* — a roll-up, as v1.6.0 and v1.8.0 were. The `feat:` commits after v2.0.0 make it a minor bump:<br/>• the game as the Pages front page, with docs at `/docs/` and redirects (#558);<br/>• walking phones, orbiting satellites and the strongest-route overlay (#559);<br/>• the walker16 OLSR cell (#560).<br/>Exit: the release run, as for every roll-up. |
+| **v2.2.0** | **Close the measured gaps** — the weak spots v1.9.0 and v2.0.0 measured, fixed in **one** re-baseline so nothing is measured twice:<br/>• [#537](https://github.com/danieljoppi/AntHocNet/issues/537): 36 % of VANET traffic lost to reconvergence.<br/>• [#433](https://github.com/danieljoppi/AntHocNet/issues/433): `RepairHoldCap`, about 168 ms of tail.<br/>• [#181](https://github.com/danieljoppi/AntHocNet/issues/181): the SINR link metric the thesis headline results use, through the [#142](https://github.com/danieljoppi/AntHocNet/issues/142)/[#144](https://github.com/danieljoppi/AntHocNet/issues/144) seam.<br/>Exit criteria:<br/>• each change A/B'd on identical seeds in **every** family;<br/>• a default moves only where the delta holds everywhere (ADR-0019); otherwise it ships gated and off;<br/>• every family page restated on the result.<br/>**Learn site** ([campaign design](learn-campaign.md)): the game UI (title, campaign map, briefing, in-level HUD with device dock, debrief; the sandbox kept as Free play), the campaign engine, device classes with per-node radio range in the browser adapter, **Chapter 1: Ad hoc town** (MANET only: phones, laptops, PCs, no infrastructure; it absorbs the Academy missions) and **Chapter 2: Neighbourhood mesh** (static mesh). |
+| **v2.3.0** | **Regime-gated mechanisms** — per-regime improvements, as ADR-0019 allows them: default-off switches, byte-identical when off (the ADR-0020 check).<br/>The mechanisms:<br/>• propagation-dominated timing ([#205](https://github.com/danieljoppi/AntHocNet/issues/205));<br/>• ISL hello suppression ([#204](https://github.com/danieljoppi/AntHocNet/issues/204));<br/>• a quiet mode for stable topologies ([#571](https://github.com/danieljoppi/AntHocNet/issues/571));<br/>• adaptive evaporation ([#572](https://github.com/danieljoppi/AntHocNet/issues/572));<br/>• link-lifetime prediction ([#574](https://github.com/danieljoppi/AntHocNet/issues/574); it needs the position port and its ADR first, [#573](https://github.com/danieljoppi/AntHocNet/issues/573));<br/>• an energy-aware metric ([#145](https://github.com/danieljoppi/AntHocNet/issues/145)).<br/>Exit criteria:<br/>• the mechanism × regime table in [network-regimes.md](network-regimes.md) gains a measured row per mechanism;<br/>• each mechanism shows a paired improvement in its target family, with no significant regression in the others.<br/>**Learn site:** the three families already measured — **Chapter 3: City streets** (VANET), **Chapter 4: Forest** (FANET) and **Chapter 5: Orbit** (satellite) — and the **upgrades** screen, where each upgrade is one of this release's gated mechanisms. |
+| **v2.4.0** | **Family axis III — disaster/emergency response and space-air-ground (SAGIN).** Both run on the ns-3 substrate already in use.<br/>• **Disaster:** partitioned first-responder teams, composite rescue mobility and indoor/outdoor shadowing, building on [#62](https://github.com/danieljoppi/AntHocNet/issues/62). It includes one tactical narrowband cell.<br/>• **SAGIN:** the `leo-walker` shell with a HAPS/UAV relay layer.<br/>Exit criteria:<br/>• for each family: a `--scenario` preset, preflight rules, an anchor and a results page with CIs;<br/>• a six-family ranking-stability statement;<br/>• a learn-site chapter for each new family: **Chapter 6: Disaster zone**, **Chapter 7: Contested zone** (tactical) and **Chapter 8: Sky to space** (SAGIN). |
+| **v2.5.0** | **Adaptive-routing comparators** — the families of adaptive routing compared under identical conditions, which no published study has done:<br/>• **swarm:** ARA (Güneş et al. 2002, purely reactive ants);<br/>• **stigmergic:** Termite (Roth & Wicker 2005, routing state carried inside data packets, no control ants);<br/>• **learned:** tabular Q-routing, then a multi-agent DRL arm via ns3-gym/ns3-ai. This lifts the "planned but gated" DRL non-goal under its conditions: training and test seeds disjoint, one held-out family, training budget reported.<br/>Stretch, not exit criteria: BeeAdHoc (Wedde et al. 2005, bee-inspired source routing; a much larger implementation) and HOPNET (ants + zone routing; a 2007 thesis claiming better scaling than AntHocNet).<br/>Every new arm must, before its numbers count (the #425/#416 lesson: two vendored arms once compiled, passed CI and forwarded nothing):<br/>• live in its own ns-3 module, like `ns3/aomdv` and `ns3/gpsr`, written from the original paper with a fidelity sheet of its parameters;<br/>• pass the per-PR delivery smoke ([#439](https://github.com/danieljoppi/AntHocNet/pull/439));<br/>• reproduce its own paper's headline trend against AODV as an anchor.<br/>The #244 ant-type ablation (AntHocNet with proactive/repair ants off) is a cheap complement, never reported as ARA.<br/>Exit criteria: ARA, Termite and both learned arms pass the gates above; a paired comparison on every family page. |
+| **v3.0.0** | Four-protocol vulnerability table under blackhole/grayhole; defense profile recovering PDR under attack while reading **NOISE** in benign scenarios; `EnableSecurity=false` path proven byte-identical. Learn site: Contested level **7.4 "Trust no one"** and the **Shield** upgrade, on the security profile. |
+| **v3.1.0** | **Secure-routing comparators.** v3.0.0's vulnerability table compares AntHocNet's defence with *unprotected* AODV, OLSR and DSDV. That shows a defence works, not that it is competitive. This release adds the established secure protocols, each built on an ns-3 module this repo already runs:<br/>• **SAODV**, signed AODV (cryptographic);<br/>• **SEAD**, hash-chain DSDV (cryptographic);<br/>• **TAODV**, trust-based AODV (the trust side of the cryptographic-vs-trust axis);<br/>• stretch: **Ariadne** (secure DSR) and **ARAN** (certificates).<br/>No ns-3 study comparing them was found; past comparisons ran on NS-2, GloMoSim or hardware, pairwise. Cryptography is modelled as per-operation delay plus bytes on the wire, with the delay measured on stated hardware. Same gates as v2.5.0: a fidelity sheet, the #439 smoke, and a paper anchor.<br/>Exit: the v3.0.0 attack grid re-run with these arms; delivery under attack, benign-case cost (NRL bytes, delay) and detection rate, all with CIs. |
+| **v3.2.0** | **Secure swarm comparators**, the closest relatives of a secured AntHocNet:<br/>• **BeeSec / BeeAIS** (Mazhar & Farooq 2007): asymmetric-key and artificial-immune-system security on BeeAdHoc. This makes BeeAdHoc, a stretch arm in v2.5.0, a prerequisite.<br/>• **Trust-weighted ACO**: ants deposit pheromone only through trusted nodes (Simaremare et al., ICC 2014). Built as ARA (v2.5.0) plus trust, from the paper.<br/>• **ACO + watchdog** (Kalinin et al. 2018).<br/>The literature here is mostly small-venue, with self-reported simulations. Every arm needs the anchor gate before its numbers count, and an arm that cannot reproduce its paper is published as a written infeasibility verdict, as AOMDV and GPSR were in v1.5.0.<br/>Exit: one table placing AntHocNet's v3.0.0 profile among secure swarm *and* secure classic protocols, on identical attacks and seeds. |
+| **v3.3.0** | **Wider threat model**: the attacks #302 deliberately left out of scope.<br/>• **Wormhole** (packet leashes, Hu, Perrig & Johnson, as the reference defence);<br/>• **rushing**;<br/>• **Sybil** (bound to the v3.0.0 key model);<br/>• **coordinated pheromone poisoning**, where colluding nodes forge or inflate trails. Ant routing has its own attack surface, and no evaluation of this attack was found.<br/>Each attack gets an attacker arm, metrics and the must-fire / must-not-fire tests that #302 phase 1 sets up. Each defence is a gated, default-off mechanism (ADR-0020).<br/>Exit: the attack × defence × protocol grid, run on every v3.1.0 and v3.2.0 arm.<br/>**Learn site:** a **Red team** chapter, where the player plays the attacker and then switches the defences on. |
 
 ### What the v1.5.0 campaign left behind
 
@@ -169,6 +202,90 @@ allowlists whose fifth silent miss blocked the v1.5.0 release images
 ([#435](https://github.com/danieljoppi/AntHocNet/issues/435)) — is gated
 against tree-derived ground truth in the same pass
 ([#438](https://github.com/danieljoppi/AntHocNet/pull/438)).
+
+## Replan after v2.0.0 (accepted 2026-10-09)
+
+**Status: accepted 2026-10-09** ([#561](https://github.com/danieljoppi/AntHocNet/pull/561)). Each
+release has a `release:` label (table above), and the new work is filed as
+issues #562–#602:
+- [#562](https://github.com/danieljoppi/AntHocNet/issues/562): the campaign epic;
+- [#563](https://github.com/danieljoppi/AntHocNet/issues/563): the comparator epic;
+- [#564](https://github.com/danieljoppi/AntHocNet/issues/564): the wider-threat-model epic;
+- [#580](https://github.com/danieljoppi/AntHocNet/issues/580) and [#581](https://github.com/danieljoppi/AntHocNet/issues/581): the two new families.
+
+Existing issues were labelled into the releases they belong to. The sources
+behind every choice are in [research-landscape-2026.md](research-landscape-2026.md).
+
+**Why this order.**
+
+1. **Fix before you extend.** v2.2.0 changes protocol behaviour, so it lands
+   before any new family is measured. This is the same lesson as the #179/#180
+   sequencing rule above: otherwise every new family page is measured twice.
+2. **Mechanisms before families.** v2.3.0's gated mechanisms come before
+   v2.4.0's families, so the new families can evaluate them from their first
+   campaign.
+3. **The comparators span every family.** The swarm, stigmergic and learned
+   comparators come after the families, so they can be measured on all six.
+   They are also the riskiest credibility item — a weak re-implementation of a
+   competitor is a strawman — and the families give the learned arm a
+   held-out test set.
+4. **Security stays last.** v3.0.0 keeps its place: it wants the high-churn
+   cells (FANET, disaster) as trust evidence.
+5. **After v3.0.0: compare, then widen.** These steps follow the same
+   discipline as v2.5.0.
+   - **v3.1.0** puts the defence next to established secure protocols. They
+     are cheapest to build because each extends an ns-3 module this repo
+     already runs.
+   - **v3.2.0** puts it next to the secure *swarm* protocols, which need the
+     v2.5.0 swarm arms first.
+   - **v3.3.0** only then widens the threat model, so every new attack is run
+     against every arm at once.
+
+**What v2.0.0 measured that this targets.** Every number below is on a
+published page:
+
+| measured gap | number | page | release |
+|---|---|---|---|
+| VANET reconvergence | 36 % of traffic lost; the oracle delivers 81.7 % vs AntHocNet's 42.1 % | [vanet.md](benchmarks/scenarios/vanet.md) | v2.2.0 (#537), v2.3.0 (link lifetime) |
+| path length on LEO shells | 15.5 pp under the delay oracle on S1, 7.0 pp on walker16 | [leo-walker.md](benchmarks/satellite/leo-walker.md) | v2.3.0 (#205, #204) |
+| static mesh overhead | OLSR 99.82 % PDR at NRL 1.78 vs AntHocNet 99.34 % at 4.51 | [static-mesh.md](benchmarks/static-mesh.md) | v2.3.0 (quiet mode) |
+| re-injection waste | ~65–67 % of re-injections are duplicates | [reinjection.md](benchmarks/reinjection.md) | unscheduled ([#430](https://github.com/danieljoppi/AntHocNet/issues/430)) |
+| fidelity: link metric | thesis headline results use SINR; this repo does not | [fidelity.md](fidelity.md) | v2.2.0 (#181) |
+
+**The learn site evolves with the ladder.** The sandbox becomes a **campaign**: the
+player fixes a broken network by placing, moving and powering devices on a
+budget, and the ants (the real core) find the routes. There is **one chapter
+per supported network type**:
+1. Ad hoc town (MANET only);
+2. Neighbourhood mesh;
+3. City streets (VANET);
+4. Forest (FANET);
+5. Orbit (satellite);
+6. Disaster zone;
+7. Contested zone (tactical);
+8. Sky to space (SAGIN).
+
+Each chapter lands with the release that measures its network type, so every
+debrief links to a measured page.
+The full design is in [learn-campaign.md](learn-campaign.md): core loop,
+levels, device classes, the game UI with mockups, adapter features, tests.
+
+**Families considered and not adopted** (reasons in the research page, §2):
+
+- **Underwater acoustic:** a research spike only. Aqua-Sim NG is a third-party
+  module pinned to ns-3.40, and it would need a whole new PHY/MAC.
+- **LoRa mesh:** out, as WSN/IoT is. Ants may not fit a 1 % duty cycle.
+- **Maritime:** out until DTN is.
+- **mmWave directional:** out. It breaks the broadcast assumption, so it is a
+  protocol redesign, not a family.
+
+**What would change this plan.**
+
+- If v2.2.0's #537 work closes most of the VANET gap without a position port,
+  link-lifetime prediction drops out of v2.3.0.
+- If the disaster family shows the oracle failing too (partition-bound loss),
+  DTN store-carry-forward is reconsidered as a gated mechanism, and maritime
+  comes with it.
 
 ## Platform support
 
@@ -234,7 +351,10 @@ Sionna RT ray tracing is an upgrade path, not a goal; WSN/IoT (RPL's problem),
 DTN store-carry-forward (a capability the protocol structurally lacks), and
 NR-V2X sidelink (a different L2/PHY stack) are out. The OMNeT++/INET adapter
 and its Veins arm are **deferred**, not out, with the trigger that would bring
-them back recorded [above](#why-omnet-32-is-deferred).
+them back recorded [above](#why-omnet-32-is-deferred). The
+[post-v2.0.0 replan](#replan-after-v200-accepted-2026-10-09) lifts
+the DRL gate at v2.5.0 under stated conditions, alongside swarm comparators, and records the trigger that
+would reopen DTN.
 
 Security was a non-goal and was **reversed** by converting the objection into a
 design constraint ([ADR-0020](adr/0020-security-is-a-default-off-profile.md)) —
