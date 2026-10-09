@@ -88,6 +88,10 @@ jobs:
         run: |
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           web/build-pages.sh site
+      - name: Crawl the site before it ships (links, assets, anchors, top bar)
+        # The same check CI runs on PRs (#626); a bot commit to docs/ reaches
+        # this workflow without a PR, so the deploy checks for itself.
+        run: python3 tools/checks/check-site.py site
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

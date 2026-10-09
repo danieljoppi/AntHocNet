@@ -51,11 +51,12 @@ jobs:
               | grep -qvE '^(docs/|paper/|\.github/ISSUE_TEMPLATE/)|\.md$|^mkdocs\.yml$|^LICENSE$|^CITATION\.cff$'; then
             code=true
           fi
-          # The Pages site is built from docs, the game, the shell, the API
-          # headers and these workflows: a docs-only PR still gets the page
+          # The Pages site is built from docs, the game, the shell, the core
+          # (compiled to WASM: a protocol change must still deliver in every
+          # world) and these workflows: a docs-only PR still gets the page
           # tests (the pages job below).
           site=false
-          if printf '%s\n' "$files" | grep -qE '^(docs/|web/|api/|core/include/|tools/checks/|mkdocs\.yml$|README\.md$|\.github/workflows/)'; then
+          if printf '%s\n' "$files" | grep -qE '^(docs/|web/|api/|core/|tools/checks/|mkdocs\.yml$|README\.md$|\.github/workflows/)'; then
             site=true
           fi
           echo "code=$code site=$site"
