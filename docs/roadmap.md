@@ -287,6 +287,35 @@ levels, device classes, the game UI with mockups, adapter features, tests.
   DTN store-carry-forward is reconsidered as a gated mechanism, and maritime
   comes with it.
 
+## Infrastructure track
+
+Epic [#603](https://github.com/danieljoppi/AntHocNet/issues/603) runs alongside the ladder. The goals are an easy ns-3 install,
+faster CI and clean release packages. None of it changes protocol behaviour,
+so it is never what gates a release's exit criteria, but each item carries the
+`release:` label of the release it should ship with.
+
+| release | issue | what |
+|---|---|---|
+| v2.1.0 | [#604](https://github.com/danieljoppi/AntHocNet/issues/604) | release package ships the benchmark tools in `tools/bench/`, keeps agent files out, and a CI gate checks the contents |
+| v2.1.0 | [#605](https://github.com/danieljoppi/AntHocNet/issues/605) | `make doctor` (checks the ns-3 tree and toolchain) and `BASELINES=0` to install without the comparison baselines |
+| v2.1.0 | [#606](https://github.com/danieljoppi/AntHocNet/issues/606) | a drop-in ns-3 module tarball per release, plus a generated `ns3-module` branch |
+| v2.1.0 | [#607](https://github.com/danieljoppi/AntHocNet/issues/607) | docs-only PRs skip the heavy matrix, behind one required gate job |
+| v2.2.0 | [#608](https://github.com/danieljoppi/AntHocNet/issues/608) | `ns3/` layout: `ns3/anthocnet/` + `ns3/baselines/`, checks in `tools/checks/` |
+| v2.2.0 | [#609](https://github.com/danieljoppi/AntHocNet/issues/609) | ccache for the ns-3 matrix builds |
+| v2.2.0 | [#610](https://github.com/danieljoppi/AntHocNet/issues/610) | shared setup as composite actions; `ci.yml` split |
+| v2.2.0 | [#611](https://github.com/danieljoppi/AntHocNet/issues/611) | nightly build against ns-3-dev |
+| v2.3.0 | [#612](https://github.com/danieljoppi/AntHocNet/issues/612) | one benchmark workflow with inputs; results open a PR |
+| v2.3.0 | [#613](https://github.com/danieljoppi/AntHocNet/issues/613) | ns-3 App Store listing and `bakeconf.xml` (part of [#328](https://github.com/danieljoppi/AntHocNet/issues/328)) |
+| v2.3.0 | [#614](https://github.com/danieljoppi/AntHocNet/issues/614) | signed artifacts and images, SBOM, provenance attestations (part of [#328](https://github.com/danieljoppi/AntHocNet/issues/328)) |
+| v2.3.0 | [#615](https://github.com/danieljoppi/AntHocNet/issues/615) | `results/` for benchmark data; charts rendered in the Pages build |
+| v2.3.0 | [#616](https://github.com/danieljoppi/AntHocNet/issues/616) | merge queue / auto-merge for green PRs |
+
+**Why this order.** The v2.1.0 items are the ones a new user hits first:
+installing into an existing ns-3 tree and getting a package that holds what it
+claims. The layout move ([#608](https://github.com/danieljoppi/AntHocNet/issues/608)) waits for v2.2.0 so it does not collide with
+the re-baseline. Distribution channels and signing (v2.3.0) come last because
+they want the final layout.
+
 ## Platform support
 
 **NS-2 was retired in v2.0.0** ([#307](https://github.com/danieljoppi/AntHocNet/issues/307)).
