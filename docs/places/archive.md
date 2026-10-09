@@ -6,6 +6,7 @@ plan.
 
 <div class="ahn-cards" markdown>
 [**Roadmap** <span>The release ladder, what each release must show, and the non-goals.</span>](../roadmap.md)
+[**Releases** <span>The notes of every release, old and new, from the changelog.</span>](https://danieljoppi.github.io/AntHocNet/docs/releases/)
 [**The game's plan** <span>The campaign, the site as a game, and the Workshop.</span>](../learn-campaign.md)
 [**Research landscape** <span>Families, mechanisms and comparators behind the replan.</span>](../research-landscape-2026.md)
 [**Fidelity** <span>What is reproduced from the 2004 paper, and every deviation.</span>](../fidelity.md)

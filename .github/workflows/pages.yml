@@ -22,15 +22,18 @@ on:
       - 'ns3/anthocnet/helper/*.h'
       - 'web/**'
       - 'VERSION'
+      - 'CHANGELOG.md'   # the release-notes pages (docs/releases/) render it
       - '.github/workflows/pages.yml'
   # The bots that refresh published results push with GITHUB_TOKEN, and a
   # GITHUB_TOKEN push never triggers another workflow -- so the push trigger
   # above cannot see them, and the live site kept serving the previous
   # tables and charts until the next human merge touched docs/. Redeploy
   # whenever one of those workflows finishes on main. A run that committed
-  # nothing just redeploys the same tree, which is harmless.
+  # nothing just redeploys the same tree, which is harmless. Release is one
+  # of them: its bump commit (CHANGELOG.md, VERSION) is how a new release's
+  # notes page reaches the site.
   workflow_run:
-    workflows: ["Benchmarks", "Charts", "Scenario matrix + charts (manual)"]
+    workflows: ["Benchmarks", "Charts", "Scenario matrix + charts (manual)", "Release"]
     types: [completed]
     branches: [main]
   workflow_dispatch:
