@@ -388,6 +388,7 @@ HTML file in the repository's style.
 | **v2.3.0** | **Chapter 3: City streets**, **Chapter 4: Forest**, **Chapter 5: Orbit** (the three families already measured), with attenuation zones, battery, fixed-route mobility, ground stations and the orbit binding; the **upgrades** screen, wired to the gated mechanisms that ship in v2.3.0 |
 | **v2.4.0** | **Chapter 6: Disaster zone**, **Chapter 7: Contested zone** (7.1–7.3) and **Chapter 8: Sky to space**: the same release as the disaster/tactical and SAGIN families they draw on |
 | **v3.0.0** | Contested level **7.4** and the **Shield** upgrade, on the security profile |
+| **v3.3.0** *(proposed)* | **Chapter 9: Red team.** The player places attackers (blackhole, wormhole, Sybil, pheromone poisoner) to break a working network, then switches defences on and watches delivery recover. Every attack and defence is a real gated mechanism from v3.0.0–v3.3.0. |
 
 Each chapter lands with the release that measures its network type. That
 way every debrief links to a measured page, not a promise.

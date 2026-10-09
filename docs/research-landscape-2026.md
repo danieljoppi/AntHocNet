@@ -140,6 +140,47 @@ deserves its own ADR before code.
 
   None reports an ns-3 or comparable-harness evaluation in what was found.
 
+## 4b. Secure routing comparators (after v3.0.0)
+
+The v3.0.0 security epic ([#302](https://github.com/danieljoppi/AntHocNet/issues/302)):
+- scopes **blackhole, grayhole, pheromone forgery and replay**;
+- leaves **wormhole, Sybil and rushing** out;
+- compares only against *unprotected* AODV, OLSR and DSDV.
+
+Showing that a defence is competitive needs secure comparators.
+
+| protocol | approach | base protocol (ns-3 module here) | plan |
+|---|---|---|---|
+| **SAODV** | digital signatures + hash chains on AODV control messages | AODV ✓ | v3.1.0 |
+| **SEAD** | hash-chain authenticated distance vector | DSDV ✓ | v3.1.0 |
+| **TAODV** | per-neighbour trust, no cryptography | AODV ✓ | v3.1.0 (the trust side of the cryptographic-vs-trust axis) |
+| **Ariadne** | authenticated source routing (TESLA) | DSR (stock ns-3) | v3.1.0 stretch |
+| **ARAN** | certificate-signed routing | AODV-like | v3.1.0 stretch |
+| **BeeSec / BeeAIS / BeeAIS-DC** (Mazhar & Farooq 2007) | asymmetric-key or artificial-immune-system security on BeeAdHoc | BeeAdHoc (v2.5.0 stretch → prerequisite) | v3.2.0 |
+| **Trust-weighted ACO** (Simaremare et al., ICC 2014) | ants deposit positive pheromone only through trusted nodes | ARA (v2.5.0) + trust | v3.2.0 |
+| **ACO + watchdog** (Kalinin et al. 2018) | every node an agent that rates its neighbours' security | ARA + watchdog | v3.2.0 |
+
+**What the search found:**
+- **Simulators.** Comparative studies of SAODV, Ariadne, SEAD and ARAN ran on
+  NS-2, GloMoSim or real hardware, always pairwise or in small groups. No
+  ns-3 study was found, and no study puts all of them under one attack model.
+- **Cost of security.** Security costs performance; the SEAD study says so
+  directly. A hardware comparison of SAODV against TAODV (Stevens) also notes
+  that cryptographic schemes open new denial-of-service avenues.
+- **Mobility model.** One group argues that earlier secure-routing
+  evaluations relied on random waypoint, which does not converge at high
+  pause times. This repo's mobility and warm-up policy already address that.
+- **Swarm literature.** It is mostly smaller venues with self-reported
+  simulations (for example, 99.66 % PDR claimed for trust-ACO AODV). The
+  anchor gate exists for exactly this.
+- **Gap.** No evaluation was found of **pheromone poisoning**: colluding
+  nodes forging or inflating trails. This attack is specific to ant routing,
+  and it is v3.3.0's original contribution.
+- **Crypto in simulation.** ns-3 does not execute cryptography. The standard
+  practice, and the plan here, is to model each signature or verification as
+  a computation delay, measured on stated hardware, plus its bytes on the
+  wire.
+
 ## 5. Store-carry-forward (DTN) — why it stays out, and what would bring it in
 
 DTN routing is a capability AntHocNet structurally lacks: it drops a packet it
@@ -198,6 +239,19 @@ Every entry was retrieved on 2026-10-09 at abstract or summary level.
 - Wang, HOPNET (2007 thesis) — [UManitoba MSpace](https://mspace.lib.umanitoba.ca/bitstream/1993/20935/1/Wang_HOPNET_a.pdf)
 - Ducatelle, AntHocNet thesis (2007) — [USI](https://susi.usi.ch/rerodoc/9027/files/2007INFO001.pdf)
 - *Performance Analysis of Swarm Based Routing Protocols for MANETs* (NS-2 thesis, Thapar University) — [TUDR](https://tudr.thapar.edu/items/22361eb3-790e-4330-bfe9-1bb009c24e4c)
+
+**Secure comparators**
+- Sadasivam, Changrani & Yang, SEAD vs DSDV vs DSR — [UHCL](https://sceweb.sce.uhcl.edu/yang/research/MANETII05-sadasivam.pdf)
+- *Evaluations of Secure MANET Routing Protocols* (Ariadne, SAODV under attack; thesis) — [UHCL](https://sceweb.uhcl.edu/yang/public/download/Tuan%20thesis%20040506.doc)
+- ARAN vs AODV under blackhole and IP spoofing (GloMoSim) — [CUP](https://kr.cup.edu.in/items/8aa53833-6e82-4351-87ac-2605a272bb8d/full)
+- Cryptographic versus trust-based methods for MANET routing security (SAODV vs TAODV on hardware) — [Stevens](https://researchwith.stevens.edu/en/publications/cryptographic-versus-trust-based-methods-for-manet-routing-securi/)
+- Secure bee algorithms for MANET routing (survey; BeeSec, BeeAIS) — [UB](https://pubs.ub.ro/article/3797)
+- Secure routing in MANETs: a bio-inspired approach with honey bees — [Inderscience](https://www.inderscience.com/offer.php?id=66750)
+- Kalinin et al., attack prevention in self-organizing ad hoc networks using swarm intelligence (2018) — [doi:10.3103/S0146411618080163](https://www.doi.org/10.3103/S0146411618080163)
+- Trust-based ant routing under DoS/DDoS (ICC 2014) — [UI](https://research.eng.ui.ac.id/detail/publication/2017031919060558ce742d99de4)
+- Blackhole prevention in MANET using ACO — [ITC](https://itc.ktu.lt/index.php/ITC/article/view/25265)
+- ACO approach for wormhole detection in MANETs (2023) — [Inderscience](https://www.inderscience.com/offers.php?id=132378)
+- Trust system and multiple verification for wormholes, IEEE Access 2024 — [Sogang](https://scholarworks.sogang.ac.kr/item/6fd949e8-38f7-4620-a5dd-2c5a884e1520)
 
 **DTN**
 - Routing in delay-tolerant networking (overview) — [Wikipedia](https://en.wikipedia.org/wiki/Routing_in_delay-tolerant_networking)

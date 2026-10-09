@@ -26,6 +26,9 @@ is a live query rather than a diagram that drifts:
 | v2.3.0 *(proposed)* | [`release:v2.3.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av2.3.0%22) |
 | v2.4.0 *(proposed)* | [`release:v2.4.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av2.4.0%22) |
 | v2.5.0 *(proposed)* | [`release:v2.5.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av2.5.0%22) |
+| v3.1.0 *(proposed)* | [`release:v3.1.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av3.1.0%22) |
+| v3.2.0 *(proposed)* | [`release:v3.2.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av3.2.0%22) |
+| v3.3.0 *(proposed)* | [`release:v3.3.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av3.3.0%22) |
 | v3.0.0 | [`release:v3.0.0`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3A%22release%3Av3.0.0%22) |
 | all epics | [`epic`](https://github.com/danieljoppi/AntHocNet/issues?q=is%3Aopen+label%3Aepic) |
 
@@ -57,8 +60,11 @@ flowchart LR
     V24["<b>v2.4.0</b><br/>family axis III:<br/>disaster + SAGIN"]
     V25["<b>v2.5.0</b><br/>adaptive-routing<br/>comparators"]
     V30["<b>v3.0.0</b><br/>secured<br/>AntHocNet"]
+    V31["<b>v3.1.0</b><br/>secure-routing<br/>comparators"]
+    V32["<b>v3.2.0</b><br/>secure swarm<br/>comparators"]
+    V33["<b>v3.3.0</b><br/>wider threat<br/>model"]
 
-    V13 --> V14 --> V15 --> V16 --> V17 --> V18 --> V19 --> V20 --> V21 --> V22 --> V23 --> V24 --> V25 --> V30
+    V13 --> V14 --> V15 --> V16 --> V17 --> V18 --> V19 --> V20 --> V21 --> V22 --> V23 --> V24 --> V25 --> V30 --> V31 --> V32 --> V33
 
     style V13 fill:#e2f0ed,stroke:#0f7f70,stroke-width:2px
     style V20 fill:#e8e6f8,stroke:#5b4fc4,stroke-width:2px
@@ -66,6 +72,9 @@ flowchart LR
     style V23 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
     style V24 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
     style V25 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
+    style V31 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
+    style V32 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
+    style V33 fill:#fff8e6,stroke:#c48f00,stroke-dasharray:4 3
     style V30 fill:#f6dede,stroke:#c0392b,stroke-width:2px
 ```
 
@@ -155,6 +164,9 @@ otherwise independent of the epic chain.
 | **v2.4.0** *(proposed)* | **Family axis III — disaster/emergency response and space-air-ground (SAGIN).** Both run on the ns-3 substrate already in use.<br/>• **Disaster:** partitioned first-responder teams, composite rescue mobility and indoor/outdoor shadowing, building on [#62](https://github.com/danieljoppi/AntHocNet/issues/62). It includes one tactical narrowband cell.<br/>• **SAGIN:** the `leo-walker` shell with a HAPS/UAV relay layer.<br/>Exit criteria:<br/>• for each family: a `--scenario` preset, preflight rules, an anchor and a results page with CIs;<br/>• a six-family ranking-stability statement;<br/>• a learn-site chapter for each new family: **Chapter 6: Disaster zone**, **Chapter 7: Contested zone** (tactical) and **Chapter 8: Sky to space** (SAGIN). |
 | **v2.5.0** *(proposed)* | **Adaptive-routing comparators** — the families of adaptive routing compared under identical conditions, which no published study has done:<br/>• **swarm:** ARA (Güneş et al. 2002, purely reactive ants);<br/>• **stigmergic:** Termite (Roth & Wicker 2005, routing state carried inside data packets, no control ants);<br/>• **learned:** tabular Q-routing, then a multi-agent DRL arm via ns3-gym/ns3-ai. This lifts the "planned but gated" DRL non-goal under its conditions: training and test seeds disjoint, one held-out family, training budget reported.<br/>Stretch, not exit criteria: BeeAdHoc (Wedde et al. 2005, bee-inspired source routing; a much larger implementation) and HOPNET (ants + zone routing; a 2007 thesis claiming better scaling than AntHocNet).<br/>Every new arm must, before its numbers count (the #425/#416 lesson: two vendored arms once compiled, passed CI and forwarded nothing):<br/>• live in its own ns-3 module, like `ns3/aomdv` and `ns3/gpsr`, written from the original paper with a fidelity sheet of its parameters;<br/>• pass the per-PR delivery smoke ([#439](https://github.com/danieljoppi/AntHocNet/pull/439));<br/>• reproduce its own paper's headline trend against AODV as an anchor.<br/>The #244 ant-type ablation (AntHocNet with proactive/repair ants off) is a cheap complement, never reported as ARA.<br/>Exit criteria: ARA, Termite and both learned arms pass the gates above; a paired comparison on every family page. |
 | **v3.0.0** | Four-protocol vulnerability table under blackhole/grayhole; defense profile recovering PDR under attack while reading **NOISE** in benign scenarios; `EnableSecurity=false` path proven byte-identical. Learn site: Contested level **7.4 "Trust no one"** and the **Shield** upgrade, on the security profile. |
+| **v3.1.0** *(proposed)* | **Secure-routing comparators.** v3.0.0's vulnerability table compares AntHocNet's defence with *unprotected* AODV, OLSR and DSDV. That shows a defence works, not that it is competitive. This release adds the established secure protocols, each built on an ns-3 module this repo already runs:<br/>• **SAODV**, signed AODV (cryptographic);<br/>• **SEAD**, hash-chain DSDV (cryptographic);<br/>• **TAODV**, trust-based AODV (the trust side of the cryptographic-vs-trust axis);<br/>• stretch: **Ariadne** (secure DSR) and **ARAN** (certificates).<br/>No ns-3 study comparing them was found; past comparisons ran on NS-2, GloMoSim or hardware, pairwise. Cryptography is modelled as per-operation delay plus bytes on the wire, with the delay measured on stated hardware. Same gates as v2.5.0: a fidelity sheet, the #439 smoke, and a paper anchor.<br/>Exit: the v3.0.0 attack grid re-run with these arms; delivery under attack, benign-case cost (NRL bytes, delay) and detection rate, all with CIs. |
+| **v3.2.0** *(proposed)* | **Secure swarm comparators**, the closest relatives of a secured AntHocNet:<br/>• **BeeSec / BeeAIS** (Mazhar & Farooq 2007): asymmetric-key and artificial-immune-system security on BeeAdHoc. This makes BeeAdHoc, a stretch arm in v2.5.0, a prerequisite.<br/>• **Trust-weighted ACO**: ants deposit pheromone only through trusted nodes (Simaremare et al., ICC 2014). Built as ARA (v2.5.0) plus trust, from the paper.<br/>• **ACO + watchdog** (Kalinin et al. 2018).<br/>The literature here is mostly small-venue, with self-reported simulations. Every arm needs the anchor gate before its numbers count, and an arm that cannot reproduce its paper is published as a written infeasibility verdict, as AOMDV and GPSR were in v1.5.0.<br/>Exit: one table placing AntHocNet's v3.0.0 profile among secure swarm *and* secure classic protocols, on identical attacks and seeds. |
+| **v3.3.0** *(proposed)* | **Wider threat model**: the attacks #302 deliberately left out of scope.<br/>• **Wormhole** (packet leashes, Hu, Perrig & Johnson, as the reference defence);<br/>• **rushing**;<br/>• **Sybil** (bound to the v3.0.0 key model);<br/>• **coordinated pheromone poisoning**, where colluding nodes forge or inflate trails. Ant routing has its own attack surface, and no evaluation of this attack was found.<br/>Each attack gets an attacker arm, metrics and the must-fire / must-not-fire tests that #302 phase 1 sets up. Each defence is a gated, default-off mechanism (ADR-0020).<br/>Exit: the attack × defence × protocol grid, run on every v3.1.0 and v3.2.0 arm.<br/>**Learn site:** a **Red team** chapter, where the player plays the attacker and then switches the defences on. |
 
 ### What the v1.5.0 campaign left behind
 
@@ -213,6 +225,15 @@ acceptance. The sources behind every choice are in
    held-out test set.
 4. **Security stays last.** v3.0.0 keeps its place: it wants the high-churn
    cells (FANET, disaster) as trust evidence.
+5. **After v3.0.0: compare, then widen.** These steps are proposed with the
+   same discipline as v2.5.0.
+   - **v3.1.0** puts the defence next to established secure protocols. They
+     are cheapest to build because each extends an ns-3 module this repo
+     already runs.
+   - **v3.2.0** puts it next to the secure *swarm* protocols, which need the
+     v2.5.0 swarm arms first.
+   - **v3.3.0** only then widens the threat model, so every new attack is run
+     against every arm at once.
 
 **What v2.0.0 measured that this targets.** Every number below is on a
 published page:
