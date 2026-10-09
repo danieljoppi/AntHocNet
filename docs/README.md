@@ -19,7 +19,7 @@ WebAssembly, with missions for every mechanism and a world per network family
 | [architecture.md](architecture.md) | The core/adapter split, ports, and the decision flow. |
 | [roadmap.md](roadmap.md) | Release ladder v1.3.0→v3.0.0, the epic dependency graph, per-release exit criteria, and the deliberate non-goals. Live status lives on #298. |
 | [research-landscape-2026.md](research-landscape-2026.md) | Post-v2.0.0 survey behind the replan: candidate network families, gated algorithm adjustments, comparators, with sources. |
-| [learn-campaign.md](learn-campaign.md) | Proposed campaign mode for the learn site: Town → Forest → Contested zone → Space, the game UI (with mockups), and what the browser adapter must add. |
+| [learn-campaign.md](learn-campaign.md) | Proposed campaign mode for the learn site: one chapter per network type (ad hoc first, then mesh, VANET, FANET, satellite, disaster, tactical, SAGIN), the game UI (with mockups), and what the browser adapter must add. |
 | [software-layers.md](software-layers.md) | Three diagrams: the software stack, the ant mechanisms + the switches that gate them, and what is live/inert/planned per network regime. |
 | [network-regimes.md](network-regimes.md) | Why MANET and satellite/ISL are different routing problems — read before transferring an intuition between them. §6 tables which AntHocNet mechanism is live/inert in each regime. |
 

@@ -8,15 +8,20 @@
 
 ## 1. The idea in one paragraph
 
-The player is the **network planner**. In each level a network is broken: a
-town where two phones cannot reach each other, a forest where trees eat the
-signal, a contested area where relays get jammed, an orbit with a gap in
-coverage. The player fixes it by **placing, moving and powering devices**
+The player is the **network planner**. In each level a network is broken:
+- a town where two phones cannot reach each other;
+- a street where buildings cut the cars' radio;
+- a forest where trees eat the signal;
+- an orbit with a gap in coverage.
+ The player fixes it by **placing, moving and powering devices**
 within a budget. The **ants do the routing**: the player never picks a route.
 They watch the reactive ants find the gap they just bridged, the strongest
-trail form and switch, and the repair ants patch a break. The campaign starts
-in a small town with phones and laptops and ends in space; each chapter adds
-a network type, device types and hazards.
+trail form and switch, and the repair ants patch a break. The campaign covers **every network type the project supports**, one chapter
+each:
+- Chapter 1 is pure ad hoc: phones, laptops and PCs, with no infrastructure.
+- Each later chapter brings in one more network type, with its own devices
+  and hazards.
+- It ends in space.
 
 This keeps the rule ADR-0021 is built on: **the game teaches the real
 protocol.**
@@ -49,61 +54,115 @@ flowchart LR
 - **Sandbox** stays: every unlocked device and hazard is available to free
   play.
 
-## 3. The campaign
+## 3. The campaign — one chapter per network type
 
-| chapter | setting | network type (measured page) | devices | hazards | releases |
-|---|---|---|---|---|---|
-| **1. Town** | streets, houses, a café, a school | MANET + static mesh ([grid](benchmarks/grid.md), [static mesh](benchmarks/static-mesh.md)) | phone (walks, short range, cheap), laptop (moved now and then), desktop PC (static, indoor), Wi-Fi router (static, longer range) | people walking away, a router unplugged | v2.2.0 |
-| **2. Forest** | canopy, clearings, a ranger station, a wildfire | FANET + disaster response ([FANET](benchmarks/scenarios/fanet.md); disaster family, v2.4.0) | ranger radio, sensor post, relay drone (3-D, battery), ranger station | foliage cuts range; drone batteries run out; the fire front destroys devices | v2.3.0 |
-| **3. Contested zone** | a valley with roads and ridges | tactical narrowband (v2.4.0 disaster/tactical cell) | narrowband radio (long range, very low rate), relay vehicle (follows roads), mast | jamming areas; relays destroyed; a convoy moving out of range; *adversary nodes from v3.0.0* | v2.4.0 (+ v3.0.0) |
-| **4. Space** | the globe, a Walker shell, ground stations | satellite + space-air-ground ([leo-walker](benchmarks/satellite/leo-walker.md); SAGIN, v2.4.0) | ground station, HAPS, launched satellite (choose its plane) | handover every 15 s; a solar storm takes out satellites | v2.4.0 |
+Every network type the repository supports gets a chapter, and so does every
+type the replan adds. **Chapter 1 is ad hoc only**: phones, laptops and PCs
+talking directly, with no routers and no infrastructure. It is the network
+the AntHocNet papers were written for. Each later chapter adds exactly one
+network type, so the player meets one new idea at a time.
 
-The contested chapter is about keeping a network up under jamming and
+| # | chapter | network type (measured page) | setting | devices | hazards | ships in |
+|---|---|---|---|---|---|---|
+| **1** | **Ad hoc town** | MANET ([grid](benchmarks/grid.md)) | streets, houses, a café, a school | phone (walks, short range, cheap), laptop (moved now and then), desktop PC (static, indoor) — all in ad hoc mode | people walk away, a laptop's lid closes | v2.2.0 |
+| **2** | **Neighbourhood mesh** | static Wi-Fi mesh ([static mesh](benchmarks/static-mesh.md)) | rooftops of a village | rooftop router, repeater, home gateway | a storm takes a router down; ants that never stop sampling | v2.2.0 |
+| **3** | **City streets** | VANET ([VANET](benchmarks/scenarios/vanet.md)) | a Manhattan grid with tall buildings | car, bus (fixed line), roadside unit (static, at intersections) | buildings block the radio at every corner | v2.3.0 |
+| **4** | **Forest** | FANET ([FANET](benchmarks/scenarios/fanet.md)) | canopy, clearings, a ranger station | relay drone (3-D, battery), ranger radio, sensor post | foliage cuts range; batteries run out | v2.3.0 |
+| **5** | **Orbit** | satellite: ISL grid and moving Walker shell ([isl-grid](benchmarks/satellite/isl-grid.md), [leo-walker](benchmarks/satellite/leo-walker.md)) | the globe and a Walker shell | ground station, launched satellite (choose its plane) | a handover every 15 s, a failed link, a solar storm | v2.3.0 |
+| **6** | **Disaster zone** | disaster / emergency response (new family, v2.4.0) | a town after an earthquake, then a wildfire front | rescue-team radio, portable mast, relay drone | teams split and re-merge; aftershocks destroy devices; the fire front advances | v2.4.0 |
+| **7** | **Contested zone** | tactical narrowband (v2.4.0 tactical cell; v3.0.0 security) | a valley with roads and ridges | narrowband radio (long range, very low rate), relay vehicle (follows roads), mast | jamming areas, relays going dark, a convoy moving out of range; *adversary nodes from v3.0.0* | v2.4.0 (+ v3.0.0) |
+| **8** | **Sky to space** | space-air-ground, SAGIN (new family, v2.4.0) | a remote village, the sea, the city | ground station, HAPS, relay drone, satellites | links in three layers with very different delays | v2.4.0 |
+
+**Unlocking.**
+1. Chapter 1, then Chapter 2.
+2. Chapters 3, 4 and 5 unlock together, so the player can pick a vehicle, a
+   drone or a satellite path next.
+3. Chapters 6–8 unlock once Chapter 5 is done, as each one ships.
+
+The Contested zone chapter is about keeping a network up under jamming and
 failures. No level rewards harming anyone; the hazards are things that happen
 to the radio.
 
 ### Levels — what each one teaches
 
 Every level names its mechanism. Each debrief links to the doc page, the API
-symbol and the measured result, as the Academy missions do now. The current 8
-Academy missions are folded into the Town chapter, not thrown away.
+symbol and the measured result. The work done so far is folded in, not
+thrown away:
+- the 8 Academy missions become Chapter 1;
+- the 4 world challenges become levels in Chapters 2–5, marked ⟲ below.
 
-**Chapter 1: Town**
-
-| # | level | the broken network | the player fixes it by | mechanism taught |
-|---|---|---|---|---|
-| T1 | First hello | two phones just out of reach | moving one closer | hellos and neighbour tables |
-| T2 | Across the street | a call between houses fails | placing one laptop as a relay | reactive forward ants, backward ants, pheromone |
-| T3 | The café | phones walk in and out; the call drops | putting a router where walkers pass | proactive ants; the strongest route switching |
-| T4 | Two ways home | one relay carries everything | adding a second path, then the level unplugs one | multipath and repair |
-| T5 | Rush hour (boss) | three calls, a crowd, a small budget | placement under budget, ≥ 95 % delivery | everything above; the overhead ("ants spent") score |
-
-**Chapter 2: Forest**
+**Chapter 1: Ad hoc town (MANET).** No routers; every device is a router.
 
 | # | level | the broken network | the player fixes it by | mechanism taught |
 |---|---|---|---|---|
-| F1 | Under the canopy | trees halve radio range | finding clearings for relays | link quality vs distance |
-| F2 | Eyes in the sky | a valley no ground radio crosses | flying a relay drone over it, and swapping it before its battery dies | 3-D links, link expiry, repair |
-| F3 | Lost hiker | a search team split into groups | bridging groups as they move | partition and re-merge (the v2.4.0 disaster family) |
-| F4 | Wildfire | the fire front destroys devices | keeping the evacuation channel alive | repair under cascading failure |
+| 1.1 | First hello | two phones just out of reach | moving one closer | hellos and neighbour tables |
+| 1.2 | Across the street | a call between houses fails | carrying a laptop to the middle as a relay | reactive forward ants, backward ants, pheromone |
+| 1.3 | Follow the scent | three neighbours, one call | predicting which way the next packet goes | pheromone^β forwarding |
+| 1.4 | The café | phones walk in and out; the call drops | putting a desktop PC where walkers pass | proactive ants; the strongest route switching |
+| 1.5 | Two ways home | one laptop carries everything | adding a second path, then the level closes a lid | multipath and repair |
+| 1.6 | Rush hour (boss) | three calls, a crowd, a small budget | placement under budget, ≥ 95 % delivery | everything above; the overhead ("ants spent") score |
 
-**Chapter 3: Contested zone**
-
-| # | level | the broken network | the player fixes it by | mechanism taught |
-|---|---|---|---|---|
-| W1 | Radio silence | narrowband radios: ants compete with data | fewer, better relays | control overhead as the binding cost (NRL) |
-| W2 | Jammed | a jamming area cuts the valley's links | routing around it with masts on the ridges | link failure and re-discovery |
-| W3 | Convoy | relay vehicles move along the road | timing and placing masts along it | mobility along roads (VANET-style link life) |
-| W4 | *Trust no one* (v3.0.0) | an adversary node attracts traffic and drops it | finding it, and enabling the defence profile | blackhole/grayhole attacks; the security profile (ADR-0020) |
-
-**Chapter 4: Space**
+**Chapter 2: Neighbourhood mesh (static Wi-Fi mesh)**
 
 | # | level | the broken network | the player fixes it by | mechanism taught |
 |---|---|---|---|---|
-| S1 | First contact | a city cannot reach the shell | placing a ground station; watching the 15 s handover | handover; scheduled link changes |
-| S2 | Across the ocean | two cities, no common satellite | placing ground stations and a HAPS | multi-hop over ISLs; propagation delay |
-| S3 | Solar storm | 10 % of satellites fail | nothing to build: watch, then predict | mass-failure repair (the S1 storm cell) |
-| S4 | Launch window | a coverage gap | choosing the orbital plane for one extra satellite | why orbits differ; same-plane vs cross-plane links |
+| 2.1 | Rooftops | houses with no link to the gateway | placing rooftop routers | routes found once on a static topology |
+| 2.2 | Does it ever go quiet? ⟲ | routes are found, yet ants keep flying | predicting, then unlocking **Quiet mode** | proactive sampling cost on stable links |
+| 2.3 | Storm | one router goes down | a repeater that keeps a second path warm | repair in a static network |
+| 2.4 | Wire the village (boss) | every house must reach the gateway | covering the village under budget | multipath + overhead score |
+
+**Chapter 3: City streets (VANET)**
+
+| # | level | the broken network | the player fixes it by | mechanism taught |
+|---|---|---|---|---|
+| 3.1 | Around the corner ⟲ | a link dies as a car turns | watching, then predicting the break | buildings and link lifetime |
+| 3.2 | Roadside units | cars lose each other between blocks | placing roadside units at intersections | static relays in a mobile network |
+| 3.3 | Bus line | a predictable bus could carry the link | timing roadside units along its route | repair vs predictable mobility; **Look-ahead** upgrade |
+| 3.4 | Traffic jam (boss) | a dense, then sparse, street grid | placement for both densities | reconvergence (the #537 finding) |
+
+**Chapter 4: Forest (FANET)**
+
+| # | level | the broken network | the player fixes it by | mechanism taught |
+|---|---|---|---|---|
+| 4.1 | Under the canopy | trees halve radio range | finding clearings for ranger radios | link quality vs distance |
+| 4.2 | Eyes in the sky | a valley no ground radio crosses | flying a relay drone over it; swapping it before the battery dies | 3-D links, link expiry, **Battery saver** |
+| 4.3 | Faster than the tables ⟲ | drones at 20 m/s outrun routes | adding drones where routes break | why reactive repair beats stale tables at speed |
+| 4.4 | Lost hiker (boss) | a search pattern with gaps | a drone formation that keeps the hiker's radio connected | partitions in a 3-D swarm |
+
+**Chapter 5: Orbit (satellite)**
+
+| # | level | the broken network | the player fixes it by | mechanism taught |
+|---|---|---|---|---|
+| 5.1 | First contact | a city cannot reach the shell | placing a ground station; watching the 15 s handover | handover; scheduled link changes |
+| 5.2 | Across the ocean | two cities, no common satellite | placing ground stations | multi-hop over ISLs; propagation delay; **Long-haul timing** |
+| 5.3 | The failed link ⟲ | an ISL fails mid-flow | cutting a link and timing the recovery | reconvergence on a deterministic topology |
+| 5.4 | Solar storm | 10 % of satellites fail | nothing to build: watch, then predict | mass-failure repair (the S1 storm cell) |
+| 5.5 | Launch window (boss) | a coverage gap | choosing the orbital plane for one extra satellite | why orbits differ; same-plane vs cross-plane links |
+
+**Chapter 6: Disaster zone (v2.4.0)**
+
+| # | level | the broken network | the player fixes it by | mechanism taught |
+|---|---|---|---|---|
+| 6.1 | Split teams | rescue teams search separate blocks | portable masts that bridge the teams as they move | partition and re-merge |
+| 6.2 | Aftershock | devices are destroyed in waves | redundancy placed before the next wave | repair under cascading failure |
+| 6.3 | Fire front (boss) | the wildfire advances on the relays | moving the evacuation channel ahead of the fire | everything under time pressure |
+
+**Chapter 7: Contested zone (v2.4.0; 7.4 at v3.0.0)**
+
+| # | level | the broken network | the player fixes it by | mechanism taught |
+|---|---|---|---|---|
+| 7.1 | Radio silence | narrowband radios: ants compete with data | fewer, better relays | control overhead as the binding cost (NRL) |
+| 7.2 | Jammed | a jamming area cuts the valley's links | routing around it with masts on the ridges | link failure and re-discovery |
+| 7.3 | Convoy | relay vehicles move along the road | timing and placing masts along it | mobility along roads |
+| 7.4 | *Trust no one* (v3.0.0) | an adversary node attracts traffic and drops it | finding it, and enabling **Shield** | blackhole/grayhole attacks; the security profile (ADR-0020) |
+
+**Chapter 8: Sky to space (SAGIN, v2.4.0)**
+
+| # | level | the broken network | the player fixes it by | mechanism taught |
+|---|---|---|---|---|
+| 8.1 | Three layers | a remote village, a city, and three ways to join them | choosing ground, air (HAPS/drone) or space links | pheromone choosing between very different link delays |
+| 8.2 | Ocean crossing | no ground path, the satellite path is slow | a HAPS chain vs the satellite path | delay-aware trails across layers |
+| 8.3 | One network (finale) | everything from Chapters 1–7 on one map | connecting all of them under one budget | the whole protocol, every network type |
 
 ## 4. Upgrades are real gated mechanisms
 
@@ -115,11 +174,11 @@ game does not offer it.
 
 | upgrade | the gated mechanism | where it pays off |
 |---|---|---|
-| Quiet mode | proactive back-off on stable topologies | Town (static PCs and routers) |
-| Look-ahead | link-lifetime prediction | Forest drones, convoy |
-| Long-haul timing | propagation-dominated timing (#205) | Space |
-| Battery saver | energy-aware link metric (#145) | Forest drones |
-| Shield (v3.0.0) | the security profile (#302) | Contested W4 |
+| Quiet mode | proactive back-off on stable topologies | Ch 2 Mesh (unlocked in 2.2) |
+| Look-ahead | link-lifetime prediction | Ch 3 City streets (3.3), Ch 7 convoy |
+| Battery saver | energy-aware link metric (#145) | Ch 4 Forest drones (4.2), Ch 6 |
+| Long-haul timing | propagation-dominated timing (#205) | Ch 5 Orbit (5.2), Ch 8 |
+| Shield (v3.0.0) | the security profile (#302) | Ch 7 Contested (7.4) |
 
 Each upgrade card shows what the measured A/B found ("on the static mesh,
 quiet mode cut ants per packet by …"). This makes the gated-mechanism work
@@ -136,13 +195,15 @@ rules). Each one extends the native-vs-WASM parity gate.
 | feature | for | sketch |
 |---|---|---|
 | device classes with **per-node radio range** | every chapter | link iff `dist ≤ min(range_a, range_b)` on the disk channel; class = range + mobility + sprite |
-| **attenuation zones** (polygons that scale range inside them) | Forest canopy | a range multiplier per zone; deterministic arithmetic only |
-| **jamming zones** (links touching the zone fail) | Contested | the urban channel's line-of-sight test, reused |
-| **scripted events** (device destroyed / restored at t, zone moves) | Forest fire, Contested, Space storm | the front end schedules `setNodeUp`; a moving zone is a scenario timeline |
-| **battery** (a device switches off after its energy budget) | Forest drones | an adapter timer; it never touches routing |
-| **orbit binding** (`setMobility` for `Orbit` with plane parameters) | Space S4 | exposes the `MobilityKind::Orbit` that the satellite world already uses |
-| **ground stations + handover** | Space S1–S2 | ground↔satellite links by elevation, as `leo-walker` does, simplified |
-| **adversary nodes** | Contested W4 | needs the v3.0.0 core profile; not before |
+| **attenuation zones** (polygons that scale range inside them) | Ch 4 canopy, Ch 6 rubble | a range multiplier per zone; deterministic arithmetic only |
+| **jamming zones** (links touching the zone fail) | Ch 7 Contested | the urban channel's line-of-sight test, reused |
+| **scripted events** (device destroyed / restored at t, zone moves) | Ch 2 storm, Ch 5 solar storm, Ch 6 aftershocks and fire, Ch 7 | the front end schedules `setNodeUp`; a moving zone is a scenario timeline |
+| **battery** (a device switches off after its energy budget) | Ch 4, Ch 6 drones | an adapter timer; it never touches routing |
+| **orbit binding** (`setMobility` for `Orbit` with plane parameters) | Ch 5 launch window (5.5) | exposes the `MobilityKind::Orbit` that the satellite world already uses |
+| **ground stations + handover** | Ch 5 (5.1–5.2), Ch 8 |
+| **fixed-route mobility** (a bus line) and **static devices inside a mobile world** | Ch 3 bus, roadside units | waypoints along streets; the Manhattan model already exists |
+| **mixed layers in one world** (ground, air, space nodes together) | Ch 8 | one world with disk, 3-D and ISL links; per-node range covers most of it | ground↔satellite links by elevation, as `leo-walker` does, simplified |
+| **adversary nodes** | Ch 7 (7.4) | needs the v3.0.0 core profile; not before |
 
 ## 6. Front-end work
 
@@ -192,10 +253,12 @@ flowchart LR
   - Learn more (the docs).
 
   This replaces today's welcome card on the front page.
-- **Campaign map.** One illustrated tile per chapter: Town → Forest →
-  Contested → Space.
+- **Campaign map.** One illustrated tile per chapter, eight in all: Ad hoc
+  town → Mesh → City streets / Forest / Orbit → Disaster → Contested → Sky to
+  space.
   - Each tile shows its levels as stops on a path, with stars per level.
-  - Locked chapters are greyed out, with "finish Town to unlock".
+  - Locked chapters are greyed out, with "finish Ad hoc town to unlock" or
+    "coming in v2.4.0".
   - A total-stars counter sits at the top.
 - **Briefing card.** A modal over the frozen level. It shows:
   - one line of story ("The café's Wi-Fi died; two friends want to call");
@@ -223,7 +286,7 @@ flowchart LR
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ ◀ Map   Town · T3 The café        ★★☆   ⏸ ▶ ▶▶      💰 120   ⏱ 0:42 / 1:30 │  top bar
+│ ◀ Map   Ad hoc town · 1.4 The café ★★☆   ⏸ ▶ ▶▶      💰 120   ⏱ 0:42 / 1:30 │  top bar
 ├──────────────────────────────────────────────────────────────────────────┤
 │ ┌Goal───────────────┐                                    ┌Strongest route┐│
 │ │✓ connect A → B    │                                    │ A→n4→n9→B     ││
@@ -287,10 +350,14 @@ flowchart LR
   - motion is reduced when the reader asks for it (`prefers-reduced-motion`).
 - **Style:** it continues the modern look shipped in #558 (cards, pills,
   glass), with a chapter colour per chapter:
-  - Town: warm;
+  - Ad hoc town: warm orange;
+  - Mesh: teal;
+  - City streets: slate;
   - Forest: green;
+  - Orbit: indigo;
+  - Disaster: red;
   - Contested: amber;
-  - Space: indigo.
+  - Sky to space: sky blue.
 
 The [mockups](#mockups) below show the campaign map and the in-level HUD.
 
@@ -317,10 +384,10 @@ HTML file in the repository's style.
 
 | release | learn-site work |
 |---|---|
-| **v2.2.0** | the game UI (title, campaign map, briefing, in-level HUD with device dock, debrief; the sandbox kept as Free play); campaign engine (level format, budget, objectives); device classes + per-node range in the adapter; **Chapter 1: Town** (absorbs the Academy) |
-| **v2.3.0** | **Chapter 2: Forest** (attenuation zones, drone battery, fire events); the **upgrades** screen, wired to the gated mechanisms that ship in v2.3.0 |
-| **v2.4.0** | **Chapter 3: Contested zone** (jamming zones, narrowband class, convoy) and **Chapter 4: Space** (ground stations, HAPS, launch) — the same release as the disaster/tactical and SAGIN families they draw on |
-| **v3.0.0** | Contested **W4** and the **Shield** upgrade, on the security profile |
+| **v2.2.0** | the game UI (title, campaign map, briefing, in-level HUD with device dock, debrief; the sandbox kept as Free play); campaign engine (level format, budget, objectives); device classes + per-node range in the adapter; **Chapter 1: Ad hoc town** (absorbs the Academy) and **Chapter 2: Neighbourhood mesh** |
+| **v2.3.0** | **Chapter 3: City streets**, **Chapter 4: Forest**, **Chapter 5: Orbit** (the three families already measured), with attenuation zones, battery, fixed-route mobility, ground stations and the orbit binding; the **upgrades** screen, wired to the gated mechanisms that ship in v2.3.0 |
+| **v2.4.0** | **Chapter 6: Disaster zone**, **Chapter 7: Contested zone** (7.1–7.3) and **Chapter 8: Sky to space**: the same release as the disaster/tactical and SAGIN families they draw on |
+| **v3.0.0** | Contested level **7.4** and the **Shield** upgrade, on the security profile |
 
 Each chapter lands with the release that measures its network type. That
 way every debrief links to a measured page, not a promise.
