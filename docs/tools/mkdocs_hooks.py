@@ -123,3 +123,90 @@ def on_post_build(config) -> None:
             f.write(_shell.inject_page(html, "/AntHocNet/", None, "/AntHocNet/docs/assets/ahn/",
                                        css=("shell.css", "docs.css"),
                                        script=_shell.boot_script("/AntHocNet/docs/assets/ahn/")))
+
+
+# --- release notes (one page per release) ------------------------------------
+# CHANGELOG.md is the record (release.yml's `cz bump --changelog` writes it on
+# every release); the site renders it as one page per release under
+# docs/releases/, generated at build time so it can never drift from the file.
+# A release lands on the site when release.yml finishes (pages.yml redeploys).
+from mkdocs.structure.files import File as _File
+
+_REPO = "https://github.com/danieljoppi/AntHocNet"
+_RELEASE = re.compile(r"^## (v\d+\.\d+\.\d+\S*) \((\d{4}-\d{2}-\d{2})\)[ \t]*$", re.MULTILINE)
+_KINDS = {"BREAKING CHANGE": "Breaking changes", "Feat": "Features", "Fix": "Fixes",
+          "Refactor": "Refactoring", "Perf": "Performance"}
+_COUNT = {"BREAKING CHANGE": ("breaking change", "breaking changes"), "Feat": ("feature", "features"),
+          "Fix": ("fix", "fixes")}
+_ISSUE = re.compile(r"(?<![\w/&`])#(\d+)\b")
+
+
+def _releases() -> list[tuple[str, str, str]]:
+    """(tag, date, body) per CHANGELOG.md release, newest first."""
+    with open(os.path.join(_REPO_ROOT, "CHANGELOG.md"), encoding="utf-8") as f:
+        text = f.read()
+    parts = _RELEASE.split(text)
+    return [(parts[i], parts[i + 1], parts[i + 2].strip()) for i in range(1, len(parts), 3)]
+
+
+def _notes_body(body: str) -> str:
+    out = []
+    for line in body.splitlines():
+        if line.startswith("### "):
+            kind = line[4:].strip()
+            line = "## " + _KINDS.get(kind, kind)
+        elif line.startswith("- "):
+            line = _ISSUE.sub(lambda m: f"[#{m.group(1)}]({_REPO}/issues/{m.group(1)})", line)
+        out.append(line)
+    return "\n".join(out)
+
+
+def _release_page(tag: str, date: str, body: str, prev: str | None) -> str:
+    links = [f"Released {date}", f"[GitHub release and downloads]({_REPO}/releases/tag/{tag})"]
+    if prev:
+        links.append(f"[every commit since {prev}]({_REPO}/compare/{prev}...{tag})")
+    notes = _notes_body(body) if body else ("The first tagged release, cut from the tree as it stood (no changelog entries yet);\n"
+                                      "its notes are on the GitHub release.")
+    return f"# {tag}\n\n{' · '.join(links)}\n\n{notes}\n"
+
+
+def _releases_index(rels) -> str:
+    rows = []
+    for tag, date, body in rels:
+        heads = [h[4:].strip() for h in body.splitlines() if h.startswith("### ")]
+        count = {h: 0 for h in heads}
+        kind = None
+        for line in body.splitlines():
+            if line.startswith("### "):
+                kind = line[4:].strip()
+            elif line.startswith("- ") and kind:
+                count[kind] += 1
+        what = ", ".join(f"{n} {_COUNT.get(k, (k.lower(),) * 2)[n != 1]}" for k, n in count.items()) or "baseline"
+        rows.append(f"| [{tag}]({tag}.md) | {date} | {what} |")
+    return ("# Releases\n\n"
+            "Every AntHocNet release, newest first. Each page is that release's entry in\n"
+            f"[CHANGELOG.md]({_BLOB}CHANGELOG.md), rendered when the site is built; the\n"
+            f"downloads, checksums and the full pull-request list are on its [GitHub release]({_REPO}/releases).\n"
+            "The software version is distinct from the on-wire protocol version, see\n"
+            "[wire-format.md](../wire-format.md).\n\n"
+            "| Release | Date | What changed |\n|---|---|---|\n" + "\n".join(rows) + "\n")
+
+
+def on_config(config):
+    rels = _releases()
+    section = {"Releases": [{"Overview": "releases/index.md"}] + [f"releases/{t}.md" for t, _, _ in rels]}
+    for entry in config["nav"] or []:
+        if isinstance(entry, dict) and "Archive" in entry:
+            items = entry["Archive"]
+            at = next((i + 1 for i, it in enumerate(items) if it == "roadmap.md"), len(items))
+            items.insert(at, section)
+    return config
+
+
+def on_files(files, config):
+    rels = _releases()
+    files.append(_File.generated(config, "releases/index.md", content=_releases_index(rels)))
+    for i, (tag, date, body) in enumerate(rels):
+        prev = rels[i + 1][0] if i + 1 < len(rels) else None
+        files.append(_File.generated(config, f"releases/{tag}.md", content=_release_page(tag, date, body, prev)))
+    return files

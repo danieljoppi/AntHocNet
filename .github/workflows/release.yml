@@ -147,7 +147,8 @@ jobs:
             dist/anthocnet-ns3-modules-${{ env.VER }}.tar.gz.sha256
           generate_release_notes: true
           body: |
-            AntHocNet ${{ env.TAG }}. See [CHANGELOG.md](CHANGELOG.md).
+            AntHocNet ${{ env.TAG }}. Release notes: https://danieljoppi.github.io/AntHocNet/docs/releases/${{ env.TAG }}/
+            (from [CHANGELOG.md](https://github.com/danieljoppi/AntHocNet/blob/${{ env.TAG }}/CHANGELOG.md); the site redeploys when this run finishes).
 
             **Install bundle** (`anthocnet-${{ env.VER }}.zip`) — the source to
             drop onto your own simulator tree:

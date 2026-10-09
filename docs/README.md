@@ -24,6 +24,7 @@ learned and secure protocols, and the game campaign ([learn-campaign.md](learn-c
 | [ant-types.md](ant-types.md) | Reference for the five ant types: comparison table, lifecycle diagrams (setup, maintenance, repair), and how to observe them at runtime. |
 | [architecture.md](architecture.md) | The core/adapter split, ports, and the decision flow. |
 | [roadmap.md](roadmap.md) | Release ladder (the v2.0.0 replan: v2.1.0→v3.3.0), the epic dependency graph, per-release exit criteria, the infrastructure track, and the deliberate non-goals. Issues carry `release:` labels; #298 holds the original 2026 plan. |
+| Release notes (site only) | One page per release under `/docs/releases/`, generated at build time from [CHANGELOG.md](../CHANGELOG.md) by `docs/tools/mkdocs_hooks.py`; a new release appears when `release.yml` finishes. |
 | [research-landscape-2026.md](research-landscape-2026.md) | Post-v2.0.0 survey behind the replan: candidate network families, gated algorithm adjustments, comparators, with sources. |
 | [learn-campaign.md](learn-campaign.md) | The learn site's plan: from v2.1.0 the whole site is the game (docs and API as places in it, §10); then the campaign mode: one chapter per network type (ad hoc first, then mesh, VANET, FANET, satellite, disaster, tactical, SAGIN), the game UI (with mockups), and what the browser adapter must add. |
 | [software-layers.md](software-layers.md) | Three diagrams: the software stack, the ant mechanisms + the switches that gate them, and what is live/inert/planned per network regime. |
