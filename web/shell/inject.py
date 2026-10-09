@@ -22,7 +22,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLACES = ("play", "guide", "lab", "shop", "arch")
-MARKER = "<!--AHN-TOPBAR-->"
+MARKER = re.compile(r"<!--AHN-TOPBAR(?: (\w+))?-->")
 
 
 def topbar(root: str, active: str | None) -> str:
@@ -50,11 +50,12 @@ def inject_page(html: str, root: str, active: str | None, assets: str,
         return html
     links = "".join(f'<link rel="stylesheet" href="{assets}{c}">' for c in css)
     html = html.replace("</head>", links + "</head>", 1)
-    bar = topbar(root, active)
-    if MARKER in html:
-        html = html.replace(MARKER, bar, 1)
+    m = MARKER.search(html)
+    if m:
+        html = html[:m.start()] + topbar(root, m.group(1) or active) + html[m.end():]
     else:
-        html = re.sub(r"(<body[^>]*>)", lambda m: m.group(1) + bar, html, count=1)
+        bar = topbar(root, active)
+        html = re.sub(r"(<body[^>]*>)", lambda mm: mm.group(1) + bar, html, count=1)
     if script:
         html = html.replace("</body>", script + "</body>", 1)
     return html
@@ -68,16 +69,18 @@ def boot_script(assets: str) -> str:
 
 # --- game --------------------------------------------------------------------
 def game(site: str) -> None:
-    path = os.path.join(site, "index.html")
-    with open(path, encoding="utf-8") as f:
-        html = f.read()
-    if MARKER not in html:
-        sys.exit(f"inject.py: {path} has no {MARKER}")
-    # The game's own app.js owns the theme button and wires search to the
-    # in-game reader, so no boot script here.
-    html = inject_page(html, "./", None, "shell/")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(html)
+    """Every page in the game's root carries the marker (optionally naming its
+    place, `<!--AHN-TOPBAR shop-->`). The pages' own scripts own the theme
+    button and search wiring (app.js: the in-game reader), so no boot script."""
+    pages = sorted(n for n in os.listdir(site) if n.endswith(".html") and n != "404.html")
+    for name in pages:
+        path = os.path.join(site, name)
+        with open(path, encoding="utf-8") as f:
+            html = f.read()
+        if not MARKER.search(html):
+            sys.exit(f"inject.py: {path} has no <!--AHN-TOPBAR--> marker")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(inject_page(html, "./", None, "shell/"))
     copy_assets(os.path.join(site, "shell"))
 
 

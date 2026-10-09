@@ -8,6 +8,7 @@ import { IsoRenderer } from './iso.js';
 import { WORLDS, worldById } from './worlds.js';
 import { initMissions } from './missions.js';
 import { initSearch } from '../shell/shell.js';
+import { openReader, interceptDocsLinks } from './reader.js';
 
 const $ = (id) => document.getElementById(id);
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -119,6 +120,13 @@ function describeWorld() {
     a.href = m.results.href;
     a.textContent = m.results.label + ' →';
     honest.append(a);
+  }
+  if (m.read) {
+    // The Field guide page this world illustrates; opens in the reader (#630).
+    const a = document.createElement('a');
+    a.href = m.read.href;
+    a.textContent = 'Field guide: ' + m.read.label + ' →';
+    honest.append(' ', a);
   }
 }
 
@@ -629,7 +637,14 @@ mapEl.addEventListener('keydown', (ev) => {
 });
 
 document.addEventListener('keydown', (ev) => {
-  if (ev.target.matches('input, select, textarea')) return;
+  if (ev.target.matches('input, select, textarea') || ev.target.closest('#reader')) return;
+  if (ev.key === '?') {
+    // Read about what you are watching (#630): the world's Field guide page.
+    const m = worldById(playground.worldId);
+    if (m.read) openReader(m.read.href, m.read.label);
+    ev.preventDefault();
+    return;
+  }
   const tools = ['inspect', 'move', 'build', 'bulldoze', 'flow'];
   if (ev.key >= '1' && ev.key <= '5') setTool(tools[Number(ev.key) - 1]);
   else if (ev.key === ' ' && !ev.target.matches('button')) setSpeed(playground.speed > 0 ? 0 : (setSpeed.last || 0.25));
@@ -741,7 +756,8 @@ async function boot() {
   await load(h.world, h.seed);
   initMissions(playground);
   hub(fresh);
-  initSearch(null);
+  initSearch((location, title) => openReader('docs/' + location, title));
+  interceptDocsLinks(document.body);
   requestAnimationFrame(frame);
 }
 boot().catch((err) => {

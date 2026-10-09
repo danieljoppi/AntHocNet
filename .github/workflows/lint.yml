@@ -102,3 +102,11 @@ jobs:
         # this pins the adapter copies to core. Cheap (stdlib-only regexes,
         # <1 s) and it runs on every PR. See #258.
         run: python3 tools/checks/check-default-parity.py
+      - name: Game <-> docs links and the Nest's coverage (#631, #635)
+        # Every world and Academy mission links its docs page, every family
+        # results page links its world, every target exists, every public core
+        # class has a chamber in the Nest, every install-quest command is in the
+        # docs. Self-test first (each rule must fire on a broken input).
+        run: |
+          python3 tools/checks/check-site-links.py --self-test
+          python3 tools/checks/check-site-links.py

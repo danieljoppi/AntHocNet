@@ -6,6 +6,8 @@
 //   3. runs axe-core on the front page as a first visit sees it (the hub up
 //      over the default world) and fails on serious or critical violations;
 //   3b. the site shell (#626): the hub's buttons and #play, the one top bar
+//      on every docs page (axe on each one, from mkdocs' sitemap, day and
+//      night), the game, a docs page and the Workshop on a phone,
 //      with its five places, and -- when the docs and API are assembled in
 //      (web/build-pages.sh) -- the bar, the Try-it rail and axe on a docs
 //      page and an API page, day and night;
@@ -173,6 +175,120 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
       if (!result.length && !errors.length) console.log(`ok: ${name} (${scheme}) — top bar on ${place}, axe clean`);
       await p.close();
     }
+  }
+  // Every docs page (#626): from mkdocs' sitemap, each one loads without a
+  // page error, carries the top bar, and passes axe (serious/critical), day
+  // and night (the night palette is a separate set of colours to get wrong).
+  const xml = fs.readFileSync(path.join(root, 'docs', 'sitemap.xml'), 'utf8');
+  const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname.replace(/^\/AntHocNet\//, ''));
+  for (const scheme of ['light', 'dark']) {
+    const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: scheme });
+    let errorsHere = [];
+    p.on('pageerror', (e) => errorsHere.push(e.message));
+    await p.addInitScript({ content: axeSource });
+    let bad = 0;
+    for (const u of urls) {
+      errorsHere = [];
+      await p.goto(base + u, { waitUntil: 'load' });
+      const bar = await p.locator('.ahn-bar').count();
+      const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+        .filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id + ': ' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ')));
+      // Material loads mermaid from a CDN; whether the CDN answered is not
+      // what this checks (and CI must not fail on a CDN hiccup).
+      const own = errorsHere.filter((e) => !/^Invalid script: https?:\/\//.test(e));
+      const problems = [...(bar ? [] : ['no top bar']), ...result, ...own.map((e) => 'page error: ' + e)];
+      if (problems.length) { bad++; fail(`docs ${u} (${scheme}): ${problems.join(' | ')}`); }
+    }
+    await p.close();
+    if (!bad) console.log(`ok: all ${urls.length} docs pages (${scheme}) — top bar, no page errors, axe clean`);
+  }
+  // The in-game reader (#630): '?' opens the world's Field guide page over the
+  // running world; the clock keeps advancing; a docs link stays in the reader;
+  // search from the bar opens a hit in the reader; axe passes with it open.
+  {
+    const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(base + '#vanet?seed=1');
+    await p.waitForFunction(() => document.getElementById('clock')?.textContent.includes('t 0:0'), null, { timeout: 15000 });
+    await p.locator('#map').focus();
+    await p.keyboard.press('?');
+    await p.locator('#reader h1').first().waitFor({ timeout: 10000 });
+    const h1 = (await p.locator('#reader h1').first().textContent()).trim();
+    const t0 = await p.evaluate(async () => (await import('./js/app.js')).playground.world.now());
+    await p.waitForTimeout(1500);
+    const t1 = await p.evaluate(async () => (await import('./js/app.js')).playground.world.now());
+    if (!(t1 > t0)) fail(`reader: the world stopped while reading (${t0} -> ${t1})`);
+    // A link to another docs page (not an anchor on this one).
+    const link = p.locator('#readerBody a[href*="/docs/"]:not([data-anchor])').filter({ hasNotText: /^$/ })
+      .and(p.locator(`#readerBody a:not([href^="${await p.locator('#readerOut').getAttribute('href')}"])`)).first();
+    if (await link.count()) {
+      const before = await p.locator('#readerOut').getAttribute('href');
+      await link.click();
+      await p.waitForFunction((b) => document.getElementById('readerOut').href !== b, before, { timeout: 10000 });
+      if (!(await p.locator('#reader').isVisible())) fail('reader: a docs link left the reader');
+    }
+    await p.addScriptTag({ content: axeSource });
+    const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+      .filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id + ': ' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ')));
+    if (result.length) fail(`axe with the reader open: ${result.join(' | ')}`);
+    await p.keyboard.press('Escape');
+    await p.fill('#ahn-q', 'repair ant');
+    await p.locator('#ahn-results a').first().waitFor({ timeout: 5000 });
+    await p.locator('#ahn-results a').first().click();
+    await p.locator('#reader h1').first().waitFor({ timeout: 10000 });
+    if (!p.url().includes('#vanet')) fail(`reader: search left the game (${p.url()})`);
+    if (errors.length) fail(`reader: page errors: ${errors.join(' | ')}`);
+    else if (!result.length) console.log(`ok: reader — "?" opened "${h1}" over a running world (t ${t0.toFixed(1)} -> ${t1.toFixed(1)} s), links and search stay in the game, axe clean`);
+    await p.close();
+  }
+  // The Workshop (#634): the Nest draws every chamber, a chamber shows its
+  // classes from the API index, the quest ticks steps from pasted doctor output.
+  for (const scheme of ['light', 'dark']) {
+    const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: scheme });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(base + 'workshop.html');
+    await p.waitForFunction(() => /t \d+:\d\d/.test(document.getElementById('nestLive').textContent), null, { timeout: 15000 });
+    const chambers = await p.locator('#nest .chamber').count();
+    await p.waitForFunction(() => fetch('api/api-index.json').then((r) => r.ok));
+    await p.locator('#nest .chamber[data-id="store"]').click();
+    await p.locator('#chamberBody .ws-classes a', { hasText: 'PheromoneTable' }).waitFor();
+    const href = await p.locator('#chamberBody .ws-classes a', { hasText: 'PheromoneTable' }).getAttribute('href');
+    await p.fill('#questPaste', '##DOCTOR## v=1 ns3=3.42 cmake=3.28.3 cxx=g++-13.3.0 python=3.11.15 contrib=writable module=installed baselines=aomdv:ok,gpsr:ok,oracle:ok built=yes verdict=ok');
+    await p.click('#questCheck');
+    const score = (await p.locator('#questScore').textContent()).trim();
+    if (chambers !== 8) fail(`workshop: ${chambers} chambers drawn, expected 8`);
+    if (!href || !href.endsWith('classanthocnet_1_1core_1_1PheromoneTable.html')) fail(`workshop: PheromoneTable link ${href}`);
+    if (score !== '4 / 5') fail(`workshop: quest score ${score} after a full doctor line, expected 4 / 5`);
+    const current = await p.locator('.ahn-bar .ahn-place[aria-current="page"]').getAttribute('data-place').catch(() => null);
+    if (current !== 'shop') fail(`workshop: active place ${current}`);
+    await p.addScriptTag({ content: axeSource });
+    const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+      .filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id + ': ' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ')));
+    if (result.length) fail(`axe workshop (${scheme}): ${result.join(' | ')}`);
+    if (errors.length) fail(`workshop (${scheme}): page errors: ${errors.join(' | ')}`);
+    if (!result.length && !errors.length) console.log(`ok: workshop (${scheme}) — ${chambers} chambers, PheromoneTable from the API index, quest ${score}, axe clean`);
+    await p.close();
+  }
+  // On a phone (#627's 720 px breakpoint): the game, a docs page and the
+  // Workshop keep the top bar, never scroll sideways, and pass axe.
+  for (const [name, url] of [['game', '#play'], ['docs page', 'docs/benchmarks/scenarios/vanet/'], ['workshop', 'workshop.html']]) {
+    const p = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(base + url);
+    await p.waitForTimeout(600);
+    const bar = await p.locator('.ahn-bar').isVisible().catch(() => false);
+    const over = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    await p.addScriptTag({ content: axeSource });
+    const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+      .filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id + ': ' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ')));
+    const own = errors.filter((e) => !/^Invalid script: https?:\/\//.test(e));
+    const problems = [...(bar ? [] : ['no visible top bar']), ...(over > 1 ? [`scrolls sideways by ${over} px`] : []), ...result, ...own.map((e) => 'page error: ' + e)];
+    if (problems.length) fail(`phone ${name}: ${problems.join(' | ')}`);
+    else console.log(`ok: phone ${name} — top bar, no sideways scroll, axe clean`);
+    await p.close();
   }
   // Search from the bar finds a page and shows its place.
   const p = await browser.newPage();

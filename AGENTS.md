@@ -105,7 +105,9 @@ figures from the game.
 In a Claude Code on the web session, `.claude/hooks/session-start.sh` (#618)
 already installed these tools at CI's pins; set `AHN_WEB=1` in the environment
 to also get emsdk and playwright for the browser checks above. CI's one
-required check is the `CI gate` job; docs-only PRs skip the heavy jobs (#607).
+required check is the `CI gate` job; docs-only PRs skip the simulator jobs (#607)
+but not the `pages` job, which builds the whole site, crawls it
+(`tools/checks/check-site.py`) and runs the browser smoke with axe on every docs page.
 
 ```bash
 python3 docs/tools/check-links.py .     # relative links resolve
@@ -223,6 +225,7 @@ tools/release/check-bundle.sh           # release package: no agent files, tools
 | Compare benchmark A/B runs (deltas + noise verdict) | `benchmark-results` skill (`tools/bench/bench_parse.py`) |
 | Build, test or screenshot the learn site | `learn-site` skill (parity, smoke, README figures) |
 | Change the site's top bar, places or the docs/API look | `web/shell/` (one source for game, docs and API; `inject.py`), `docs/places/`, the nav in `mkdocs.yml`; checked by `web/test/smoke.mjs` on `web/build-pages.sh` output |
+| Add a world, a mission or a core class | it needs its docs links (`read:` / `links:`), a family page needs `try:` front matter, a public core class needs a chamber in `web/site/js/nest-data.js`: `python3 tools/checks/check-site-links.py` (CI) says what is missing |
 | Summarize / export campaign sweep CSVs | `benchmark-results` skill (`tools/bench/sweep_summary.py`; `--export-sweeps` feeds the papers repo) |
 | Validate a scenario config or result plausibility | `benchmark-results` skill (`tools/bench/scenario_check.py`, #134): `preflight` before dispatching, `results [--anchor …]` before trusting numbers |
 | Pre-push invariant check on a diff | `protocol-review` skill (`.claude/skills/protocol-review/check_invariants.sh`) |

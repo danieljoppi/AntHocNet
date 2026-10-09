@@ -188,6 +188,10 @@ export function initPage() {
       el.setAttribute('role', 'region');
       el.setAttribute('aria-label', 'Table (scrolls sideways)');
     }
+    // Code blocks scroll sideways too (Material puts the overflow on <code>).
+    for (const el of document.querySelectorAll('.md-typeset pre > code:not([tabindex])')) {
+      el.tabIndex = 0;
+    }
   };
   fix();
   new MutationObserver(fix).observe(document.body, { childList: true, subtree: true });

@@ -44,6 +44,10 @@ GENERATE_TREEVIEW      = YES
 DISABLE_INDEX          = NO
 SEARCHENGINE           = YES
 GENERATE_LATEX         = NO
+# XML for the learn site's API index (#635): web/shell/api_index.py turns it into
+# api-index.json (classes, briefs, members) for the Nest in the Workshop.
+GENERATE_XML           = YES
+XML_PROGRAMLISTING     = NO
 HAVE_DOT               = NO
 CLASS_GRAPH            = YES
 COLLABORATION_GRAPH    = NO
