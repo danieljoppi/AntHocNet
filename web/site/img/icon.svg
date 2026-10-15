@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AntHocNet">
+  <rect width="64" height="64" rx="14" fill="#0f766e"/>
+  <g stroke="#e2f0ed" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M14 46 L30 30 L50 18"/>
+    <path d="M30 30 L46 44"/>
+  </g>
+  <g fill="#fbbf24">
+    <circle cx="14" cy="46" r="6"/>
+    <circle cx="30" cy="30" r="6"/>
+    <circle cx="50" cy="18" r="6"/>
+    <circle cx="46" cy="44" r="6"/>
+  </g>
+  <circle cx="38" cy="25" r="3" fill="#111827"/>
+</svg>

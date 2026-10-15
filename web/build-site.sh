@@ -21,4 +21,7 @@ v=$(sha256sum "$OUT/anthocnet.wasm" | cut -c1-12)
 sed -i "s#'../anthocnet.js'#'../anthocnet.js?v=$v'#" "$OUT/js/engine.js"
 sed -i "s#anthocnet.wasm#anthocnet.wasm?v=$v#g" "$OUT/anthocnet.js"
 grep -q "anthocnet.js?v=$v" "$OUT/js/engine.js" || { echo "cache-bust: engine.js import not rewritten" >&2; exit 1; }
+# Offline shell + download budget (#624): fills sw.js's precache list and
+# build id, writes size-report.json, fails over web/size-budget.json.
+python3 web/site-manifest.py "$OUT"
 echo "learn site assembled in $OUT ($(du -sh "$OUT" | cut -f1))"
