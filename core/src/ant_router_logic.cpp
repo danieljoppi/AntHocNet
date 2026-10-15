@@ -730,7 +730,7 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
             // built from hello adverts (ADR-0007). selectNextHop blends it in
             // only for proactive ants, so an unmodified reactive ant floods
             // straight past a usable hint the node already holds.
-            next = selectNextHop(ant.dst, /*blendVirtual=*/true);
+            next = selectNextHop(ant.dst, /*proactive=*/true);
             if (next != kInvalidAddress) ++directedSteers_;
         }
         if (next == kInvalidAddress) {
@@ -809,7 +809,7 @@ std::vector<RouteDecision> AntRouterLogic::onDataPacket(NodeAddress dest,
             // most valuable place for it: this broadcast is generation 0, the
             // one every downstream copy descends from.
             NodeAddress steer = config_.enableDirectedReactive
-                                    ? selectNextHop(dest, /*blendVirtual=*/true)
+                                    ? selectNextHop(dest, /*proactive=*/true)
                                     : kInvalidAddress;
             if (steer != kInvalidAddress) {
                 ++directedSteers_;

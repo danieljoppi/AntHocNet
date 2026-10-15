@@ -1,0 +1,51 @@
+name: CodeQL
+
+# Static analysis of the C++ the repo owns outside ns-3 (#619): core/ and the
+# browser adapter built natively (web/, as web/test/parity.sh builds it). The
+# fuzzer and the sanitizers find what executes; this finds what does not,
+# which matters here because ADR-0020 keeps a lot of mechanism code behind
+# default-off switches that no smoke run reaches. Results go to the Security
+# tab. The ns-3 module is not analysed: it needs a full ns-3 build in the
+# container, and the code it adds over core/ is the thin adapter.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'core/**'
+      - 'web/src/**'
+      - 'web/include/**'
+      - 'web/CMakeLists.txt'
+      - '.github/workflows/codeql.yml'
+  schedule:
+    - cron: '41 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: CodeQL (c-cpp)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          languages: c-cpp
+          build-mode: manual
+          queries: security-and-quality
+      - name: Build core and the native browser adapter
+        run: |
+          cmake -S core -B build-codeql/core -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-codeql/core -j
+          cmake -S web -B build-codeql/web -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-codeql/web -j
+      - uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          category: /language:c-cpp

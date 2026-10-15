@@ -1,0 +1,29 @@
+# clang-tidy for the C++ the repo owns outside ns-3 (#619): core/ and the
+# browser adapter in web/src. Conservative on purpose: bug-finding and
+# performance checks, no style checks (the code predates them, and a style
+# sweep would bury the real findings). lint.yml runs it when C++ changes.
+#
+# Off, with reasons:
+#   bugprone-easily-swappable-parameters  (dest, neighbor) pairs everywhere by design
+#   bugprone-narrowing-conversions        the codec narrows on purpose, bounds-checked
+#   performance-enum-size                 int-sized enums are not a hot-path cost here
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  cert-err34-c,
+  cert-err58-cpp,
+  cert-flp30-c,
+  cert-msc50-cpp,
+  cert-msc51-cpp,
+  cert-oop54-cpp,
+  performance-*,
+  -performance-enum-size,
+  readability-container-size-empty,
+  readability-misleading-indentation,
+  readability-redundant-string-cstr,
+  misc-redundant-expression,
+  misc-unused-using-decls
+WarningsAsErrors: ''
+HeaderFilterRegex: '(core/include|web/include)/'

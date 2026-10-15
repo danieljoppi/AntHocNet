@@ -110,3 +110,55 @@ jobs:
         run: |
           python3 tools/checks/check-site-links.py --self-test
           python3 tools/checks/check-site-links.py
+
+  clang-tidy:
+    name: C++ static checks (clang-tidy, warn-only)
+    runs-on: ubuntu-latest
+    # #619: the checks in .clang-tidy over core/src and the browser adapter's
+    # native sources (web/src; bindings.cpp needs emscripten headers, so it is
+    # left to the WASM build). Runs only when a PR or push changes C++ under
+    # core/ or web/, on every translation unit of the touched tree (ten files,
+    # about a minute), because a header change reaches the .cpp files that
+    # include it. WARN-only for v2.2.0: findings become annotations and never
+    # fail the job; it turns gating in the next release once it has stayed
+    # quiet on main.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Did C++ under core/ or web/ change?
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then range="$BASE...HEAD"; else range="$BEFORE..HEAD"; fi
+          # A first push has no usable BEFORE: lint everything then.
+          files=$(git diff --name-only "$range" 2>/dev/null || echo .clang-tidy)
+          if printf '%s\n' "$files" | grep -Eq '^(core|web)/.*\.(cpp|h|hpp)$|^(core|web)/CMakeLists\.txt$|^\.clang-tidy$'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: clang-tidy
+        if: steps.diff.outputs.run == 'true'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq clang-tidy-18 >/dev/null
+          cmake -S core -B build-tidy/core -DCMAKE_EXPORT_COMPILE_COMMANDS=ON >/dev/null
+          cmake -S web -B build-tidy/web -DCMAKE_EXPORT_COMPILE_COMMANDS=ON >/dev/null
+          : > tidy.txt
+          for f in core/src/*.cpp; do clang-tidy-18 -p build-tidy/core --quiet "$f" >> tidy.txt 2>/dev/null || true; done
+          for f in web/src/sim.cpp web/src/scenarios.cpp web/src/trace_main.cpp; do
+            clang-tidy-18 -p build-tidy/web --quiet "$f" >> tidy.txt 2>/dev/null || true
+          done
+          # One annotation per distinct finding (a header's finding repeats
+          # once per including translation unit).
+          grep -E '^[^ ].*:[0-9]+:[0-9]+: warning: ' tidy.txt | sed "s|^$GITHUB_WORKSPACE/||; s|^web/\.\./||" | sort -u > findings.txt || true
+          n=$(wc -l < findings.txt)
+          while IFS= read -r line; do
+            file=${line%%:*}; rest=${line#*:}; ln=${rest%%:*}; msg=${line#*warning: }
+            echo "::warning file=$file,line=$ln,title=clang-tidy::$msg"
+          done < findings.txt
+          echo "clang-tidy: $n finding(s) (warn-only, #619)"
+          { echo "## clang-tidy: $n finding(s)"; echo; echo '```'; cat findings.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
