@@ -1,0 +1,121 @@
+name: ns-3-dev nightly
+
+# Build the module against ns-3's development branch every night (#611), so an
+# upstream API break shows up the week it lands instead of the day a new ns-3
+# release is added to the CI matrix and the images. Not a PR check and not
+# required: ns-3-dev moves under us, and a red night is news about upstream
+# as often as about this repo. A failure opens a tracking issue (or comments
+# on the open one); the next green night closes it.
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: ns3-dev
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: module build + test against ns-3-dev
+    runs-on: ubuntu-latest
+    # There is no ns-3-dev image, so this builds ns-3 itself on the runner
+    # (its gcc and CMake are newer than the images' and fine for ns-3-dev).
+    # ccache keeps the nightly rebuild to what changed upstream since the
+    # night before (#609).
+    timeout-minutes: 120
+    env:
+      NS3DIR: ${{ github.workspace }}/../ns-3-dev
+      CCACHE_DIR: ${{ github.workspace }}/../.ccache
+      CCACHE_MAXSIZE: 1G
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Restore ccache
+        id: ccache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-ns3-dev-${{ github.run_id }}
+          restore-keys: ccache-ns3-dev-
+      - name: Install toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ccache ninja-build
+          ccache -z
+      - name: Clone ns-3-dev
+        id: clone
+        run: |
+          git clone --depth 1 https://gitlab.com/nsnam/ns-3-dev.git "$NS3DIR"
+          echo "sha=$(git -C "$NS3DIR" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          git -C "$NS3DIR" log -1 --format='ns-3-dev at %H (%cs) %s'
+      - name: Install AntHocNet module
+        run: make install-ns3 NS3DIR="$NS3DIR"
+      - name: Configure (scope examples/tests to AntHocNet, as ci.yml)
+        run: |
+          cd "$NS3DIR"
+          mods='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          ./ns3 configure --enable-tests --enable-examples \
+            --filter-module-examples-and-tests='anthocnet;oracle' \
+            --enable-modules="$mods"
+      - name: Build
+        run: cd "$NS3DIR" && ./ns3 build
+      - name: ccache stats
+        if: always()
+        run: ccache -s
+      - name: Save ccache
+        if: always()
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-ns3-dev-${{ github.run_id }}
+      - name: Run module test suite
+        run: cd "$NS3DIR" && ./test.py -s anthocnet && ./test.py -s oracle
+      - name: E2E delivery smoke (AntHocNet must deliver in a connected scenario)
+        run: |
+          cd "$NS3DIR"
+          out=$(./ns3 run "anthocnet-compare --csv --protocols=anthocnet --nNodes=8 --time=20 --area=150 --flows=2" 2>/dev/null)
+          echo "$out"
+          pdr=$(printf '%s\n' "$out" | awk -F, '$1=="anthocnet"{print $7}')
+          echo "AntHocNet PDR% = ${pdr:-<none>}"
+          awk -v p="${pdr:-0}" 'BEGIN { exit (p+0 > 0) ? 0 : 1 }' \
+            || { echo "FAIL: AntHocNet delivered no packets (PDR=${pdr:-<none>})"; exit 1; }
+
+      # One tracking issue, found by its exact title: opened on the first red
+      # night, commented on while it stays red, closed on the next green one.
+      - name: Open or update the tracking issue
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NS3_SHA: ${{ steps.clone.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title='[ci] nightly build against ns-3-dev is failing'
+          num=$(gh issue list --state open --search "in:title \"$title\"" --json number,title \
+                  --jq "map(select(.title == \"$title\")) | .[0].number // empty")
+          body="The nightly ns-3-dev build failed: $RUN_URL
+          ns-3-dev commit: \`${NS3_SHA:-unknown}\` (https://gitlab.com/nsnam/ns-3-dev/-/commit/${NS3_SHA:-})
+          Commit tested here: \`$GITHUB_SHA\`
+
+          Read the failing step first: an upstream API change needs an adapter fix (and, if the next ns-3 release ships it, the CI matrix entry and image for that release); an upstream regression is reported to ns-3 and noted here. See #611."
+          if [ -n "$num" ]; then
+            gh issue comment "$num" --body "$body"
+          else
+            gh issue create --title "$title" --label bug --label ns3 --body "$body"
+          fi
+      - name: Close the tracking issue on a green night
+        if: success() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NS3_SHA: ${{ steps.clone.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title='[ci] nightly build against ns-3-dev is failing'
+          num=$(gh issue list --state open --search "in:title \"$title\"" --json number,title \
+                  --jq "map(select(.title == \"$title\")) | .[0].number // empty")
+          if [ -n "$num" ]; then
+            gh issue close "$num" --comment "Green again against ns-3-dev \`$NS3_SHA\`: $RUN_URL"
+          fi
