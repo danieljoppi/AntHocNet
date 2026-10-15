@@ -176,6 +176,8 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
         .function("addIslLink", &World::addIslLink)
         .function("cutIslLink", &World::cutIslLink)
         .function("addNode", &World::addNode)
+        .function("setNodeRange", &World::setNodeRange)
+        .function("nodeRange", &World::nodeRange)
         .function("setMobility", &setMobility)
         .function("addFlow", &World::addFlow)
         .function("setConfig", &setConfig)

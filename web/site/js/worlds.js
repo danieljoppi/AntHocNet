@@ -22,6 +22,13 @@ export const WORLDS = [
     read: { href: GUIDE + 'network-regimes/', label: 'Network regimes: the ad hoc field' },
   },
   {
+    id: 'town', title: 'Ad hoc town: phones, laptops, PCs', sprite: 'phone', speed: 1,
+    blurb: '30 devices in a small town, with no infrastructure: every device is a router. Phones are carried at walking pace and reach 120 m; laptops move now and then and reach 180 m; desktop PCs stay indoors and reach 250 m. A link needs both ends to reach, so a phone next to a PC still only talks across 120 m.',
+    honest: 'Teaching radio: unit disk with a range per device class, 2 Mbit/s. The measured MANET results use one ns-3 radio for every node.',
+    results: { href: RESULTS + 'grid/', label: 'MANET grid results' },
+    read: { href: GUIDE + 'network-regimes/', label: 'Network regimes: the ad hoc field' },
+  },
+  {
     id: 'mesh', title: 'Static Wi-Fi mesh', sprite: 'tower', speed: 0.25,
     blurb: 'A community mesh: nothing moves. Every link that exists stays. Watch what the ants keep spending once the routes are found.',
     honest: 'Teaching radio: unit disk, 250 m range.',

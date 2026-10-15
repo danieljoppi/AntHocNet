@@ -57,8 +57,15 @@ w.links();          // Int32Array [a, b, ...] current radio links
 w.drainEvents();    // Float64Array [t, kind, node, peer, a, b, v, ...]
 w.pheromone(0, 29); // Float64Array [neighbour, regular, virtual, ...]
 w.moveNode(3, 500, 500, 0); w.setNodeUp(5, false);
+w.setNodeRange(3, 120); w.nodeRange(3);   // device radio (#568)
 w.delete();
 ```
+
+Device classes (#568): `setNodeRange(node, metres)` gives a node its own
+radio. On the disk and urban channels two nodes link iff they are within
+`min(range_a, range_b)`; a node never given a range uses the world's, so the
+built-in worlds other than `town` are unchanged. `town` (phones 120 m,
+laptops 180 m, PCs 250 m) is the mixed-range world the parity gate covers.
 
 Event kinds (`Ev` in `sim.h`, append-only): 1 TxAnt, 2 RxAnt, 3 TxData,
 4 Deliver, 5 Drop, 6 RouteAdd, 7 RouteDel, 8 Queue, 9 TxFail, 10 NodeDown,

@@ -385,11 +385,20 @@ bool World::lineOfSight(const Vec3& a, const Vec3& b) const {
     return true;
 }
 
+void World::setNodeRange(int node, double range) { nodes_.at(node)->range_ = range; }
+
+double World::nodeRange(int node) const {
+    const double own = nodes_.at(node)->range_;
+    return own < 0 ? range_ : own;
+}
+
 bool World::linkUpAt(int a, int b, double t) const {
     if (a == b || !nodes_[a]->up_ || !nodes_[b]->up_) return false;
     if (channel_ == ChannelKind::Isl) return isl_.count({std::min(a, b), std::max(a, b)}) > 0;
     const Vec3 pa = positionAt(a, t), pb = positionAt(b, t);
-    if (dist(pa, pb) > range_) return false;
+    // #568: a link needs both ends to reach; nodes without a device range use
+    // the world's, so min(range_, range_) keeps every existing world as it was.
+    if (dist(pa, pb) > std::min(nodeRange(a), nodeRange(b))) return false;
     return channel_ != ChannelKind::Urban || lineOfSight(pa, pb);
 }
 

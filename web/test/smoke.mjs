@@ -62,7 +62,7 @@ async function page(hash) {
 }
 
 // 1. Every world runs and the core does its job in it.
-for (const world of ['line', 'manet', 'mesh', 'fanet', 'vanet', 'satellite']) {
+for (const world of ['line', 'manet', 'town', 'mesh', 'fanet', 'vanet', 'satellite']) {
   const { p, errors } = await page(`#${world}?seed=1`);
   await p.waitForFunction(() => document.getElementById('clock')?.textContent.includes('t 0:0'), null, { timeout: 15000 });
   // Count kinds from the event stream: subscribe through the playground hook.
