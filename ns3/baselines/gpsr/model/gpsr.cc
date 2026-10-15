@@ -88,6 +88,11 @@ NS_OBJECT_ENSURE_REGISTERED (RoutingProtocol);
 /// UDP Port for GPSR control traffic, not defined by IANA yet
 const uint32_t RoutingProtocol::GPSR_PORT = 666;
 
+/// IANA protocol number of UDP. kUdpProtocolNumber is deprecated in
+/// ns-3.49 (its replacement header does not exist before then), so the value
+/// is named here to build unchanged on ns-3.36 through ns-3-dev (#611).
+static const uint8_t kUdpProtocolNumber = 17;
+
 RoutingProtocol::RoutingProtocol ()
   : HelloInterval (Seconds (1)),
     MaxQueueLen (64),
@@ -170,7 +175,7 @@ RoutingProtocol::StripTransport (Ptr<Packet> p, uint8_t protocol, UdpHeader &udp
 {
   // Only UDP is wrapped by the down-target hook (GpsrHelper::Install re-points
   // UdpL4Protocol alone), so only UDP carries GPSR headers beneath it.
-  if (protocol != UdpL4Protocol::PROT_NUMBER)
+  if (protocol != kUdpProtocolNumber)
     {
       return false;
     }
@@ -431,7 +436,12 @@ RoutingProtocol::SendPacketFromQueue (Ipv4Address dst)
       UnicastForwardCallback ucb = queueEntry.GetUnicastForwardCallback ();
       Ipv4Header header = queueEntry.GetIpv4Header ();
 
-      if (header.GetSource () == Ipv4Address ("102.102.102.102"))
+      // A source that is not one of this node's addresses -- the old
+      // 102.102.102.102 placeholder, or what unbound sockets pass on
+      // ns-3-dev (#611) -- takes interface 1's; otherwise
+      // GetInterfaceForAddress() returns -1 and GetNetDevice(-1) is null.
+      if (header.GetSource () == Ipv4Address ("102.102.102.102")
+          || m_ipv4->GetInterfaceForAddress (header.GetSource ()) < 0)
         {
           route->SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
           header.SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
@@ -1243,7 +1253,12 @@ RoutingProtocol::RouteOutput (Ptr<Packet> p, const Ipv4Header &header,
       NS_LOG_DEBUG ("Destination: " << dst);
 
       route->SetDestination (dst);
-      if (header.GetSource () == Ipv4Address ("102.102.102.102"))
+      // A source that is not one of this node's addresses -- the old
+      // 102.102.102.102 placeholder, or what unbound sockets pass on
+      // ns-3-dev (#611) -- takes interface 1's; otherwise
+      // GetInterfaceForAddress() returns -1 and GetNetDevice(-1) is null.
+      if (header.GetSource () == Ipv4Address ("102.102.102.102")
+          || m_ipv4->GetInterfaceForAddress (header.GetSource ()) < 0)
         {
           route->SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
         }

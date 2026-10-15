@@ -70,6 +70,11 @@ NS_OBJECT_ENSURE_REGISTERED (RoutingProtocol);
 /// UDP Port for AOMDV control traffic
 const uint32_t RoutingProtocol::AOMDV_PORT = 654;
 
+/// IANA protocol number of UDP. kUdpProtocolNumber is deprecated in
+/// ns-3.49 (its replacement header does not exist before then), so the value
+/// is named here to build unchanged on ns-3.36 through ns-3-dev (#611).
+static const uint8_t kUdpProtocolNumber = 17;
+
 /**
 * \ingroup aomdv
 * \brief Tag used by AOMDV implementation
@@ -522,7 +527,7 @@ RoutingProtocol::RouteInput (Ptr<const Packet> p, const Ipv4Header &header,
                 {
                   return true;
                 }
-              if (header.GetProtocol () == UdpL4Protocol::PROT_NUMBER)
+              if (header.GetProtocol () == kUdpProtocolNumber)
                 {
                   UdpHeader udpHeader;
                   p->PeekHeader (udpHeader);
