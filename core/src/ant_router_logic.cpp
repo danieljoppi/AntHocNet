@@ -6,13 +6,15 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace anthocnet {
 namespace core {
 
 AntRouterLogic::AntRouterLogic(NodeAddress address, const Config& config, IClock& clock,
                                IRng& rng, const ILinkMetric* metric,
-                               const ILinkState* linkState)
+                               const ILinkState* linkState,
+                               const ILinkQuality* linkQuality)
     : address_(address),
       config_(config),
       clock_(clock),
@@ -20,6 +22,7 @@ AntRouterLogic::AntRouterLogic(NodeAddress address, const Config& config, IClock
       engine_(config_),
       metric_(metric ? metric : &defaultMetric_),
       linkState_(linkState),
+      linkQuality_(linkQuality),
       history_(config_.maxHistory),
       genQuality_(config_.maxHistory) {}
 
@@ -41,7 +44,7 @@ void AntRouterLogic::learnNeighbor(NodeAddress neighbor) {
     // refresh every reception, in the same units backward ants deposit.
     LinkObservation obs;
     obs.hops = 1;
-    obs.pathTime = config_.hopTimeSec;
+    obs.pathTime = linkCost(neighbor);  // T_hop, or the SINR link cost (#181)
     obs.hopTime = config_.hopTimeSec;
     engine_.updateRegular(table_, neighbor, neighbor, metric_->pheromone(obs));
     lastSeen_[neighbor] = clock_.now();  // liveness: any reception refreshes it
@@ -283,7 +286,7 @@ std::vector<RouteDecision> AntRouterLogic::handleLinkFail(const AntMessage& note
             table_.removePheromoneRegular(d, reporter);  // reporter has no path now
         } else {
             // Reporter's new best, discounted one hop to this node (item 03 units).
-            const double bootstrapped = 1.0 / (1.0 / adv.pheromone + config_.hopTimeSec);
+            const double bootstrapped = 1.0 / (1.0 / adv.pheromone + linkCost(reporter));
             table_.setPheromoneRegular(d, reporter, bootstrapped);
         }
 
@@ -552,6 +555,13 @@ double AntRouterLogic::localHopCost(const AntMessage& ant, NodeAddress nextHop) 
     return cumulative - prior;
 }
 
+double AntRouterLogic::linkCost(NodeAddress neighbor) const {
+    if (!metric_->usesLinkQuality()) return config_.hopTimeSec;
+    const double sinr = linkQuality_ ? linkQuality_->sinrDbFrom(neighbor)
+                                     : std::numeric_limits<double>::quiet_NaN();
+    return sinrLinkCost(sinr, config_.sinrCriticalDb, config_.sinrPenaltyCost);
+}
+
 NodeAddress AntRouterLogic::advanceBackAnt(AntMessage& ant) const {
     if (ant.visited.empty()) return kInvalidAddress;
 
@@ -667,7 +677,7 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
 
     if (incoming.type == AntType::Hello) {
         learnNeighbor(incoming.src);
-        engine_.updateVirtual(table_, incoming);
+        engine_.updateVirtual(table_, incoming, linkCost(incoming.src));
         return {};  // hello is consumed locally
     }
 
@@ -752,6 +762,15 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
 
     // Backward ant: rebuild the deposit state from the carried path (the four
     // transient fields are off the wire now, ADR-0009), reinforce, then retrace.
+    // A link-quality metric (#181) first replaces the cost of the hop this ant
+    // just came over with this node's own estimate of that link -- thesis
+    // §4.2.2: "the reactive backward ant reads at each node i the local
+    // estimate c_i^n of the cost to go from i to the next hop n that the ant
+    // is coming from". The retraced path then sums each node's estimate of
+    // its own downstream link, and nodes upstream read the corrected values.
+    if (metric_->usesLinkQuality() && !ant.history.empty()) {
+        ant.history.back().time = linkCost(ant.history.back().node);
+    }
     computeBackAntState(ant);
     reinforceFromBackAnt(ant);
     // A backward ant from `src` just restored a route to it, so any local

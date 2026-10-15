@@ -41,6 +41,9 @@ public:
     /// Reinforce the virtual links advertised by a hello. Aging is handled by
     /// evaporateAll, same as the regular table (#262).
     void updateVirtual(PheromoneTable& table, const AntMessage& hello) const;
+    /// Same, adding `hopCost` (the cost of the link to the hello's sender, in
+    /// the metric's units) instead of the unloaded hop time (#181).
+    void updateVirtual(PheromoneTable& table, const AntMessage& hello, double hopCost) const;
 
     /// Prune a vanished neighbour from both tables.
     void cleanNeighbor(PheromoneTable& table, NodeAddress neighbor) const;

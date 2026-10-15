@@ -51,6 +51,7 @@ build_lib(
     core/src/ant_history.cpp
     core/src/ant_message_codec.cpp
     core/src/ant_router_logic.cpp
+    core/src/link_metric_registry.cpp
   HEADER_FILES
     model/anthocnet-routing-protocol.h
     model/anthocnet-packet.h

@@ -35,9 +35,11 @@
 #define AHN_WIFI_MPDU ns3::WifiMpdu
 #endif
 
+#include <deque>
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 
 #include "anthocnet/core/ant_router_logic.h"
 #include "anthocnet/core/config.h"
@@ -63,7 +65,8 @@ namespace anthocnet {
 // no-op-default virtuals, so this adds no state to the core.
 class RoutingProtocol : public Ipv4RoutingProtocol,
                         public ::anthocnet::core::IRouterObserver,
-                        public ::anthocnet::core::ILinkState
+                        public ::anthocnet::core::ILinkState,
+                        public ::anthocnet::core::ILinkQuality
 {
 public:
     static TypeId GetTypeId();
@@ -108,6 +111,14 @@ public:
     // the parameter is ignored and per-next-hop collapses to per-node.
     int macQueueLength(::anthocnet::core::NodeAddress nextHop) const override;
     ::anthocnet::core::Time macServiceTime(::anthocnet::core::NodeAddress nextHop) const override;
+
+    // core::ILinkQuality (#181): the SINR (dB) of the last ant received from
+    // `neighbor`, read from the wifi PHY's monitor trace and matched to the
+    // ant by packet UID. Only wired when the selected LinkMetric asks for it
+    // (the "sinr" metric); NaN when there is no sample.
+    double sinrDbFrom(::anthocnet::core::NodeAddress neighbor) const override;
+    /// Called by the PHY monitor hook for every received MPDU (#181).
+    void NotifyPhyRxSinr(Ptr<const Packet> packet, double sinrDb);
 
     // Ipv4RoutingProtocol
     Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p, const Ipv4Header& header,
@@ -367,6 +378,13 @@ private:
     Time m_lastAckTime;               ///< previous AckedMpdu timestamp
     bool m_backlogAtLastAck = false;  ///< queue was non-empty at previous ack
     bool m_enableMacMetric;  ///< item 10/A2 congestion-aware per-hop metric
+    std::string m_linkMetric;   ///< #144: core metric registry name ("classic", "sinr")
+    double m_sinrCriticalDb;    ///< #181: SINR_c (dB)
+    double m_sinrPenaltyCost;   ///< #181: c_const
+    /// #181: SINR of recently received MPDUs by packet UID (bounded FIFO), and
+    /// the latest SINR per neighbour, set when an ant from it is received.
+    std::deque<std::pair<uint64_t, double>> m_rxSinrByUid;
+    std::map<::anthocnet::core::NodeAddress, double> m_neighborSinrDb;
 
     // WifiMac handle for the item-10/A2 queue-occupancy signal (null on non-wifi
     // devices, where the p2p/ISL transmit-queue reader below takes over, #206).

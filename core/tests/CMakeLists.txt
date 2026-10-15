@@ -27,6 +27,7 @@ set(ANTHOCNET_TESTS
   test_ant_type_gates
   test_shortest_path
   test_next_hop_distribution
+  test_sinr_metric
 )
 
 foreach(test ${ANTHOCNET_TESTS})

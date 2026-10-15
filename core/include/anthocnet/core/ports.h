@@ -82,6 +82,21 @@ public:
     virtual Time macServiceTime(NodeAddress nextHop) const = 0;
 };
 
+/// Per-neighbour link quality (#181, ADR-0024). ILinkState is node-scoped
+/// (this node's queue and service time); signal quality is a property of one
+/// link, so it gets its own port. Only metrics that ask for it read it
+/// (ILinkMetric::usesLinkQuality); with no port injected those metrics treat
+/// every link as good, so a missing adapter degrades to hop count.
+class ILinkQuality {
+public:
+    virtual ~ILinkQuality() = default;
+    /// Signal-to-interference-and-noise ratio (dB) of the frames this node
+    /// most recently received from `neighbor`. Returns NaN when there is no
+    /// sample yet: a link never heard on must not read as a bad link, or a new
+    /// neighbour would be penalised until it happened to send.
+    virtual double sinrDbFrom(NodeAddress neighbor) const = 0;
+};
+
 /// Optional observer the core notifies of routing events (item 15). It only
 /// *reports* — it never makes routing decisions or does I/O, so the core stays
 /// pure. Adapters implement it to fan events out to their native trace

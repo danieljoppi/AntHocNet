@@ -66,5 +66,5 @@ learned and secure protocols, and the game campaign ([learn-campaign.md](learn-c
 
 | Page | What it is |
 |---|---|
-| [adr/](adr/README.md) | Architecture Decision Records 0001–0023, indexed with one-line summaries. |
+| [adr/](adr/README.md) | Architecture Decision Records 0001–0024, indexed with one-line summaries. |
 | [handoffs/](handoffs/) | Dated cross-session investigation handoffs (see ADR-0013 for the issue-first discipline). |
