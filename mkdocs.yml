@@ -1,7 +1,8 @@
 site_name: AntHocNet
 site_description: >-
   AntHocNet — an ant-colony-optimization MANET routing protocol implemented once
-  as a simulator-agnostic core, with thin NS-2 and NS-3 adapters.
+  as a simulator-agnostic core, with a thin ns-3 adapter and a WebAssembly
+  browser adapter.
 site_url: https://danieljoppi.github.io/AntHocNet/docs/
 repo_url: https://github.com/danieljoppi/AntHocNet
 repo_name: danieljoppi/AntHocNet

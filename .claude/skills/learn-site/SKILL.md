@@ -24,6 +24,7 @@ gates protect that claim — keep both green before pushing a `web/` change.
 | `web/site-redirects.sh` | old-URL redirects (docs moved to `/docs/`) |
 | `web/test/parity.sh` | native vs WASM decision traces — **byte-identical** |
 | `web/test/smoke.mjs` | headless Chromium: every world delivers, a mission completes, axe finds nothing serious on the game, every docs page, and one API page per Doxygen template (index, annotated, classes, files, namespaces, a class, two structs, a file page, a source page: #645); old URLs keep their query and hash through the redirect stubs (#648) |
+| `web/test/live-smoke.mjs` | after each deploy (`pages.yml` `live-smoke`): the live site under `/AntHocNet/` serves the new core, the game delivers, docs/API/Workshop carry the top bar, a missing URL gets the 404 page (#647) |
 | `web/tools/readme-figures.mjs` | regenerates `docs/images/readme-*.png` from the game |
 | `docs/learn-campaign.md` | the campaign design (chapters, UI, adapter features); §10 the whole site as the game; §11 the Workshop (API + ns-3) |
 
