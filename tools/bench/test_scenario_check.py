@@ -554,6 +554,28 @@ def _pre_vanet_corner():
     expect("corner-limited" not in out, "pre-vanet-corner", out)
 
 
+@case("#639 preflight validates a replayed scene's trace and flow files")
+def _pre_replay():
+    repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    fix = os.path.join(repo, "ns3", "tools", "fixtures")
+    trace = os.path.join(fix, "chain-10.ns_movements")
+    flows = os.path.join(fix, "chain-10.flows")
+    levels, out = run_preflight(mobility="trace", traceFile=trace, flowsFile=flows,
+                                areaX=1000.0, areaY=300.0, range=150.0)
+    bad = [ln for ln in out.splitlines() if ln.startswith("FAIL") and "#639" in ln]
+    expect(not bad and "10 nodes" in out and "2 flows" in out,
+           "pre-replay", f"the fixture's files must pass\n{out}")
+    with tempfile.NamedTemporaryFile("w", suffix=".flows", delete=False) as t:
+        t.write("0 42 2 50 2048\n0 1\n")
+    levels, out = run_preflight(mobility="trace", traceFile=trace, flowsFile=t.name,
+                                areaX=1000.0, areaY=300.0, range=150.0)
+    os.unlink(t.name)
+    expect(levels.count("FAIL") >= 2 and ":1: node ids" in out and ":2: expected" in out,
+           "pre-replay", f"a bad id and a short line must both FAIL\n{out}")
+    levels, out = run_preflight(mobility="trace")
+    expect("FAIL" in levels and "needs --traceFile" in out, "pre-replay", out)
+
+
 @case("#488 preflight labels a disk-channel Manhattan cell validation-only")
 def _pre_vanet_disk():
     _, out = run_preflight(**dict(VANET, propagation="range", nodes=60))

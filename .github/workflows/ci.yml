@@ -420,6 +420,12 @@ jobs:
         # leo-walker is not built on older trees. ~45 s.
         if: matrix.version == '3.48'
         run: bash tools/checks/check-leo-walker.sh /opt/ns-3
+      - name: Scene replay smoke (#639, --mobility=trace and --flowsFile)
+        # The fixture trace + flow list delivers for AntHocNet and AODV, a
+        # dumped RWP run replays byte-identically, and malformed files are
+        # refused before the run. How a game level reaches ns-3 (#640).
+        if: matrix.version == '3.42'
+        run: bash tools/checks/check-trace-replay.sh /opt/ns-3 "$GITHUB_WORKSPACE"
       - name: Validation-anchor gate (single-hop PDR floor, #59)
         # Blocking anchor from docs/benchmarks/methodology.md "Validation
         # anchors": on a static, in-range 2-node link the *stock* stack

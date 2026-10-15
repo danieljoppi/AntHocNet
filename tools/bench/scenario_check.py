@@ -875,6 +875,77 @@ def street_in_range_prob(ax, ay, bx, by, r, urban=False, street=20.0,
     return hits / samples
 
 
+def check_replay_files(a):
+    """#639: validate --traceFile / --flowsFile as the harness will, before a
+    dispatch: the trace names its nodes (and so sets --nodes), stays inside the
+    field; each flow line is 'src dst start stop cbrBps' with ids in range and
+    a start inside the run. Returns the node count the trace implies, or None."""
+    nodes = None
+    trace = getattr(a, "traceFile", None)
+    if getattr(a, "mobility", "rwp") == "trace" and not trace:
+        report("FAIL", "--mobility trace needs --traceFile (#639)")
+    if trace:
+        try:
+            with open(trace) as fh:
+                text = fh.read()
+        except OSError as e:
+            report("FAIL", f"--traceFile {trace}: {e}")
+            return None
+        ids = [int(m) for m in re.findall(r"\$node_\((\d+)\)", text)]
+        if not ids:
+            report("FAIL", f"--traceFile {trace} names no $node_(i) (#639)")
+            return None
+        nodes = max(ids) + 1
+        xs = [float(v) for v in re.findall(r"set X_ (-?[0-9.eE+-]+)", text)]
+        ys = [float(v) for v in re.findall(r"set Y_ (-?[0-9.eE+-]+)", text)]
+        dests = re.findall(r"setdest (-?[0-9.eE+-]+) (-?[0-9.eE+-]+)", text)
+        xs += [float(x) for x, _ in dests]
+        ys += [float(y) for _, y in dests]
+        out = [v for v in xs if v < 0 or v > a.areaX] + [v for v in ys if v < 0 or v > a.areaY]
+        print(f"  trace {trace}: {nodes} nodes, {len(dests)} setdest legs")
+        if out:
+            report("WARN", f"--traceFile moves nodes outside the {a.areaX:g} x {a.areaY:g} m "
+                           f"field ({len(out)} coordinates); the field-geometry rules "
+                           "below reason about --areaX/--areaY, not the trace (#639)")
+        if a.nodes != nodes:
+            print(f"  --nodes {a.nodes} -> {nodes} (the harness takes it from the trace)")
+            a.nodes = nodes
+    flows = getattr(a, "flowsFile", None)
+    if flows:
+        try:
+            with open(flows) as fh:
+                lines = fh.read().splitlines()
+        except OSError as e:
+            report("FAIL", f"--flowsFile {flows}: {e}")
+            return nodes
+        n = 0
+        for k, line in enumerate(lines, 1):
+            line = line.split("#", 1)[0].strip()
+            if not line:
+                continue
+            f = line.split()
+            try:
+                src, dst = int(f[0]), int(f[1])
+                start, stop, bps = float(f[2]), float(f[3]), float(f[4])
+                if len(f) != 5:
+                    raise ValueError
+            except (ValueError, IndexError):
+                report("FAIL", f"{flows}:{k}: expected 'src dst start stop cbrBps' (#639)")
+                continue
+            if not (0 <= src < a.nodes and 0 <= dst < a.nodes and src != dst):
+                report("FAIL", f"{flows}:{k}: node ids must be distinct and in [0, {a.nodes}) (#639)")
+            if not (0 <= start < stop and start < a.time and bps > 0):
+                report("FAIL", f"{flows}:{k}: need 0 <= start < stop, start < --time {a.time:g} "
+                               "and cbrBps > 0 (#639)")
+            n += 1
+        if n == 0:
+            report("FAIL", f"--flowsFile {flows} lists no flows (#639)")
+        else:
+            print(f"  flows {flows}: {n} flows")
+            a.flows = n
+    return nodes
+
+
 def cmd_preflight(a):
     # #444: the satellite harness has its own geometry; everything below this
     # dispatch is MANET field arithmetic and would be meaningless for it.
@@ -907,6 +978,14 @@ def cmd_preflight(a):
         a.pktPerSec = derived
     elif pps is None:
         a.pktPerSec = 1.0
+    # #639: a replayed scene sets the node and flow counts from its files.
+    if getattr(a, "traceFile", None) or getattr(a, "flowsFile", None) or \
+            getattr(a, "mobility", "rwp") == "trace":
+        check_replay_files(a)
+        if a.mobility == "trace":
+            report("WARN", "--mobility trace: the degree, link-lifetime and "
+                           "diversity-window rules use --speed/--pause, not the "
+                           "trace's own motion; read them as nominal (#639)")
     # #481: --areaZ is the harness's 3-D field knob (#480). getattr keeps
     # callers that predate it (and the self-test's namespaces) on the 2-D path.
     area_z = getattr(a, "areaZ", 0.0) or 0.0
@@ -2736,7 +2815,7 @@ def main():
     # kDefaultPathWindowS in ns3/anthocnet/examples/anthocnet-compare.cc (#217).
     p.add_argument("--pathWindowS", type=float, default=10)
     p.add_argument("--mobility",
-                   choices=("rwp", "ssrwp", "gaussmarkov", "manhattan"),
+                   choices=("rwp", "ssrwp", "gaussmarkov", "manhattan", "trace"),
                    default="rwp")
     p.add_argument("--propagation",
                    choices=("range", "tworay", "nakagami", "urban"),
@@ -2746,6 +2825,9 @@ def main():
     p.add_argument("--blocksY", type=int, default=5)
     p.add_argument("--streetWidth", type=float, default=20.0)
     p.add_argument("--transport", choices=("udp", "tcp"), default="udp")
+    # #639: a replayed scene (anthocnet-compare --traceFile / --flowsFile).
+    p.add_argument("--traceFile", default=None)
+    p.add_argument("--flowsFile", default=None)
     # #296: which arms the dispatch names. In MANET mode only the oracle rules
     # read it; in isl-grid mode the #420/#296/#362 arm rules do. None = the
     # per-harness default (MANET anthocnet,aodv,olsr,dsdv / isl-grid
