@@ -1,0 +1,106 @@
+name: Core speed
+
+# Core speed benchmarks (#620): ns/op of the core's hot paths with no
+# simulator (core/bench/bench_core.cpp, `make bench-core`).
+#
+# On a PR that touches core/: build the base branch and the PR head on the same
+# runner, run them interleaved three times each, and put the comparison in the
+# job summary. A case more than 25 % slower gets a ::warning:: annotation; the
+# job never fails on a number, because shared runners are noisy.
+#
+# On main: run once, append the numbers to results/core-bench/history.csv with
+# the commit and the runner's CPU model (only comparable within one model),
+# redraw docs/benchmarks/charts/core-speed.png, and commit both.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'core/**'
+      - 'tools/bench/core_bench.py'
+      - '.github/workflows/core-bench.yml'
+  pull_request:
+    paths:
+      - 'core/**'
+      - 'tools/bench/core_bench.py'
+      - '.github/workflows/core-bench.yml'
+  workflow_dispatch:
+
+# contents: write only to push the history and chart back to main.
+permissions:
+  contents: write
+
+concurrency:
+  group: core-bench-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  bench:
+    name: Core speed benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Build the PR head (or main)
+        run: |
+          cmake -S core -B "$RUNNER_TEMP/head" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/head" -j --target bench_core
+      - name: Build the base branch (PR only)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git worktree add "$RUNNER_TEMP/base-src" "$BASE"
+          if [ ! -f "$RUNNER_TEMP/base-src/core/bench/bench_core.cpp" ]; then
+            echo "The base branch has no core/bench yet; nothing to compare against."
+            echo "NO_BASE=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          cmake -S "$RUNNER_TEMP/base-src/core" -B "$RUNNER_TEMP/base" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/base" -j --target bench_core
+      - name: Compare against the base, interleaved (PR only)
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p "$RUNNER_TEMP/runs"
+          for i in 1 2 3; do
+            [ -n "${NO_BASE:-}" ] || "$RUNNER_TEMP/base/bench_core" --csv > "$RUNNER_TEMP/runs/base-$i.csv"
+            "$RUNNER_TEMP/head/bench_core" --csv > "$RUNNER_TEMP/runs/head-$i.csv"
+          done
+          {
+            echo "## Core speed: this PR against its base"
+            echo
+            echo "CPU: $(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2-)"
+            echo
+            if [ -n "${NO_BASE:-}" ]; then
+              cat "$RUNNER_TEMP/runs/head-1.csv"
+            else
+              python3 tools/bench/core_bench.py compare \
+                --base "$RUNNER_TEMP"/runs/base-*.csv --head "$RUNNER_TEMP"/runs/head-*.csv
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$GITHUB_STEP_SUMMARY"
+      - name: Record and chart (main only)
+        if: github.event_name != 'pull_request'
+        run: |
+          pip install -c requirements-dev.txt matplotlib
+          "$RUNNER_TEMP/head/bench_core" --csv | tee "$RUNNER_TEMP/run.csv"
+          cpu=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')
+          python3 tools/bench/core_bench.py record "$RUNNER_TEMP/run.csv" \
+            --commit "$GITHUB_SHA" --date "$(date -u +%F)" --cpu "$cpu"
+          python3 tools/bench/core_bench.py chart
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add results/core-bench/history.csv docs/benchmarks/charts/core-speed.png
+          git commit -m "docs: record core speed benchmarks [skip ci]"
+          # charts.yml and benchmarks.yml also push to main; they touch other
+          # files, so rebase onto whatever landed meanwhile and retry.
+          for i in 1 2 3 4; do
+            git push && exit 0
+            sleep $((i * 5))
+            git pull --rebase
+          done
+          exit 1

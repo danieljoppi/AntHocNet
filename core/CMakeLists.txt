@@ -45,3 +45,8 @@ target_include_directories(anthocnet_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc
 # The core has no simulator dependency, so it builds and tests standalone.
 enable_testing()
 add_subdirectory(tests)
+
+# Core speed benchmarks (#620): ns/op of the hot paths with no simulator.
+# Built with the library so it cannot rot; not a test. `make bench-core` runs it.
+add_executable(bench_core bench/bench_core.cpp)
+target_link_libraries(bench_core PRIVATE anthocnet_core)
