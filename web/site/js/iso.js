@@ -206,7 +206,7 @@ export class IsoRenderer {
     const x = pos[4 * i], y = pos[4 * i + 1], z = pos[4 * i + 2];
     const [px, py] = this.project(x, y, z);
     const k = this.kind;
-    const lift = k === 'field' ? (this.meta.sprite === 'phone' ? 20 : 26) : k === 'city' ? 14 : 4;
+    const lift = k === 'field' ? ((this.meta.sprites?.[i] || this.meta.sprite) === 'phone' ? 20 : 26) : k === 'city' ? 14 : 4;
     return [px, py - lift * this.spriteScale()];
   }
 
@@ -411,10 +411,32 @@ export class IsoRenderer {
       const [px, py] = this.project(pos[4 * s.hover], pos[4 * s.hover + 1], 0);
       this.groundDiamond(px, py, 10, c.accent, 0.35);
     }
+    if (s.rangeRings) { // campaign planning (#566): every device's reach
+      for (const [n, r] of s.rangeRings) this.groundCircle(pos[4 * n], pos[4 * n + 1], r, c.accent, 0.25);
+    }
     if (s.ghost) { // build preview
       const [px, py] = this.project(s.ghost[0], s.ghost[1], 0);
       this.groundDiamond(px, py, 12, c.accent, 0.5);
+      if (s.ghostRange) this.groundCircle(s.ghost[0], s.ghost[1], s.ghostRange, c.accent, 0.6);
     }
+  }
+
+  /** A circle of radius r metres on the ground, as the projection draws it. */
+  groundCircle(x, y, r, color, alpha) {
+    const { ctx } = this;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    for (let k = 0; k <= 48; k++) {
+      const a = (k / 48) * 2 * Math.PI;
+      const [px, py] = this.project(x + r * Math.cos(a), y + r * Math.sin(a), 0);
+      if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.restore();
   }
 
   /** Each flow's strongest pheromone route: a bold trail with ants marching
@@ -770,7 +792,7 @@ export class IsoRenderer {
     if (k === 'sky') this.drone(bx, by, ax, ay, up, zs, i);
     else if (k === 'space') this.satellite(ax, ay, up, zs);
     else if (k === 'city') this.car(pos, i, up, zs);
-    else if (this.meta.sprite === 'phone') {
+    else if ((this.meta.sprites?.[i] || this.meta.sprite) === 'phone') {
       // Mobile phone, standing upright: a slab with real thickness (the
       // right-hand edge), a lit screen, an earpiece and a home bar.
       this.shadowAt(bx, by, 7 * zs, 0.22);

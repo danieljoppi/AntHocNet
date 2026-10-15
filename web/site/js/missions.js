@@ -41,8 +41,14 @@ export function initMissions(pg) {
     $('missionTitle').textContent = 'Missions';
     const body = $('missionBody');
     body.replaceChildren();
+    // The campaign (#569) teaches these lessons as levels with goals and a
+    // budget; the Academy missions stay here as short drills.
+    if (pg.campaign) {
+      body.append(el('p', { class: 'small' }, 'The campaign plays these lessons as levels. ',
+        el('button', { class: 'bevel', type: 'button', onclick: () => pg.campaign.openMap() }, '▶ Campaign')));
+    }
     for (const group of ['Academy', 'World challenges']) {
-      body.append(el('p', { class: 'small' }, el('b', {}, group)));
+      body.append(el('p', { class: 'small' }, el('b', {}, group === 'Academy' ? 'Drills (the Academy)' : group)));
       const ul = el('ul', { class: 'missions' });
       MISSIONS.filter((m) => m.group === group).forEach((m) => {
         const got = progress[m.id] || 0;

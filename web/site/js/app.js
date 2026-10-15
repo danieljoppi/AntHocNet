@@ -7,6 +7,7 @@ import { engine, events, Ev, antKind, KIND_LABEL, DropReason } from './engine.js
 import { IsoRenderer } from './iso.js';
 import { WORLDS, worldById } from './worlds.js';
 import { initMissions } from './missions.js';
+import { initCampaign } from './campaign/campaign.js';
 import { initSearch } from '../shell/shell.js';
 import { openReader, interceptDocsLinks } from './reader.js';
 
@@ -23,6 +24,14 @@ export const playground = {
   /** Subscribe to every core event (and {type:'reset'}); returns an unsubscribe. */
   on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); },
   load, toast, news, setSpeed, setTool, selectNode, setWatch, addFlow,
+  /** Campaign (#566): while true the world is built but not started (Plan). */
+  planning: false,
+  /** Campaign: a click on empty ground calls this with field metres, if set. */
+  onPlace: null,
+  /** Campaign: which nodes Move may drag (null = all). */
+  canMove: null,
+  /** Campaign: show the placement ghost at field metres (keyboard cursor). */
+  ghostAt(p) { ghost = p; },
   get renderer() { return R; },
 };
 
@@ -69,11 +78,18 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => appl
 // --- world lifecycle ---------------------------------------------------------------
 async function load(worldId, seed, opts = {}) {
   const M = playground.M || (playground.M = await engine());
-  if (playground.world) playground.world.delete();
-  playground.worldId = worldById(worldId).id;
+  if (playground.world && playground.world !== opts.world) playground.world.delete();
+  playground.custom = opts.meta || null;
+  playground.worldId = opts.meta ? 'level' : worldById(worldId).id;
   playground.seed = seed;
-  const w = new M.World(seed, playground.worldId);
+  playground.planning = !!opts.plan;
+  playground.onPlace = null;
+  playground.canMove = null;
+  // A campaign level brings its own world, built by the level engine (#567).
+  const w = opts.world || new M.World(seed, playground.worldId);
   for (const [k, v] of Object.entries(opts.config || {})) w.setConfig(k, v);
+  // A planning level starts too, so the map can read every node's tables;
+  // `planning` keeps its clock at zero until the player presses Run.
   w.start();
   playground.world = w;
   readFlows();
@@ -88,15 +104,16 @@ async function load(worldId, seed, opts = {}) {
   R.setWorld({
     areaX: w.areaX(), areaY: w.areaY(), areaZ: w.areaZ(), channel: w.channel(),
     blocksX: w.blocksX(), blocksY: w.blocksY(), streetWidth: w.streetWidth(), range: w.range(),
-    sprite: worldById(playground.worldId).sprite,
+    sprite: opts.meta ? opts.meta.sprite : worldById(playground.worldId).sprite,
+    sprites: opts.meta ? opts.meta.sprites : null,
   });
-  $('world').value = playground.worldId;
+  if (!opts.meta) $('world').value = playground.worldId;
   $('seed').value = seed;
   describeWorld();
   fillWatch();
-  setSpeed(worldById(playground.worldId).speed ?? 0.25); // a mission sets its own after this
-  history.replaceState(null, '', `#${playground.worldId}?seed=${seed}`);
-  news(worldById(playground.worldId).headline || 'A new network goes live.', true);
+  setSpeed(opts.meta ? 0 : (worldById(playground.worldId).speed ?? 0.25)); // a mission sets its own after this
+  if (!opts.meta) history.replaceState(null, '', `#${playground.worldId}?seed=${seed}`);
+  news(opts.meta ? opts.meta.headline : (worldById(playground.worldId).headline || 'A new network goes live.'), true);
   for (const fn of playground.listeners) fn({ type: 'reset' });
 }
 
@@ -109,7 +126,7 @@ function readFlows() {
 }
 
 function describeWorld() {
-  const m = worldById(playground.worldId);
+  const m = playground.custom || worldById(playground.worldId);
   $('mapTitle').textContent = m.title;
   $('worldTitle').textContent = 'World: ' + m.title;
   $('worldBlurb').textContent = m.blurb;
@@ -459,7 +476,7 @@ function frame(ts) {
   if (w) {
     const dt = Math.min(100, ts - (lastFrame || ts));
     lastFrame = ts;
-    if (playground.speed > 0) w.advanceTo(w.now() + (dt / 1000) * playground.speed);
+    if (playground.speed > 0 && !playground.planning) w.advanceTo(w.now() + (dt / 1000) * playground.speed);
     for (const e of events(w.drainEvents())) handle(e, ts);
     const prog = (list) => list.filter((a) => {
       a.progress = a.dur ? (ts - a.t0) / a.dur : 1;
@@ -475,7 +492,7 @@ function frame(ts) {
       showLinks: $('ovLinks').checked, labels: $('ovLabels').checked,
       flights: anim.flights, rings: anim.rings, marks: anim.marks, flash,
       flows: playground.flows, selected: playground.selected, tool: playground.tool,
-      hover, ghost,
+      hover, ghost, ghostRange: playground.ghostRange || 0, rangeRings: playground.rangeRings || null,
     });
     if (ts - lastInspector > 300) { updateRoutes(w, ts); renderInspector(w); updateStatus(w); lastInspector = ts; }
     flushLog();
@@ -528,8 +545,17 @@ view.addEventListener('pointerdown', (ev) => {
     drag = { pan: true, x: px, y: py, moved: false, clickEmpty: tool === 'inspect' && !panButton };
     return;
   }
+  if (playground.onPlace && i < 0) {
+    const [x, y] = R.unproject(px, py);
+    if (inField(x, y)) playground.onPlace(x, y);
+    else toast('Place it inside the map.');
+    return;
+  }
   if (tool === 'inspect') { selectNode(i); return; }
-  if (tool === 'move') { selectNode(i); drag = { node: i, x: px, y: py }; return; }
+  if (tool === 'move') {
+    if (playground.canMove && !playground.canMove(i)) { selectNode(i); toast('That one stays where it is.'); return; }
+    selectNode(i); drag = { node: i, x: px, y: py }; return;
+  }
   if (tool === 'bulldoze') {
     if (i >= 0) { toggleNode(i); return; }
     if (playground.worldId === 'satellite') {
@@ -578,7 +604,7 @@ view.addEventListener('pointermove', (ev) => {
   if (!drag) {
     const pos = w.positions();
     hover = R.hit(pos, px, py);
-    ghost = playground.tool === 'build' ? R.unproject(px, py) : null;
+    ghost = playground.tool === 'build' || playground.onPlace ? R.unproject(px, py) : null;
     if (ghost && !inField(...ghost)) ghost = null;
     return;
   }
@@ -640,7 +666,7 @@ document.addEventListener('keydown', (ev) => {
   if (ev.target.matches('input, select, textarea') || ev.target.closest('#reader')) return;
   if (ev.key === '?') {
     // Read about what you are watching (#630): the world's Field guide page.
-    const m = worldById(playground.worldId);
+    const m = playground.custom || worldById(playground.worldId);
     if (m.read) openReader(m.read.href, m.read.label);
     ev.preventDefault();
     return;
@@ -662,6 +688,7 @@ function stepToTraffic() {
   // Pause, then advance in small slices until an ant (not a hello) or a
   // packet goes on the air.
   const w = playground.world;
+  if (playground.planning) { toast('Press Run to start the level.'); return; }
   if (playground.speed > 0) setSpeed.last = playground.speed;
   setSpeed(0);
   const end = w.now() + 5;
@@ -693,7 +720,7 @@ $('zoomIn').addEventListener('click', () => R.zoomAt(R.w / 2, R.h / 2, 1.25));
 $('zoomOut').addEventListener('click', () => R.zoomAt(R.w / 2, R.h / 2, 1 / 1.25));
 $('center').addEventListener('click', () => R.resetView());
 $('watch').addEventListener('change', (e) => setWatch(e.target.value));
-$('reset').addEventListener('click', () => load(playground.worldId, playground.seed));
+$('reset').addEventListener('click', () => (playground.custom && playground.restart ? playground.restart() : load(playground.worldId, playground.seed)));
 $('world').addEventListener('change', (e) => load(e.target.value, playground.seed));
 $('seed').addEventListener('change', (e) => load(playground.worldId, Math.max(1, Number(e.target.value) || 1)));
 $('share').addEventListener('click', async () => {
@@ -725,8 +752,18 @@ function buildLegend() {
 function hub(fresh) {
   const card = $('hub');
   const close = () => { card.hidden = true; document.body.classList.remove('hub-open'); };
-  const open = () => { card.hidden = false; document.body.classList.add('hub-open'); $('hubMission').focus({ preventScroll: true }); };
+  const open = () => { card.hidden = false; document.body.classList.add('hub-open'); $('hubCampaign').focus({ preventScroll: true }); };
   $('hubFree').addEventListener('click', () => { close(); mapEl.focus({ preventScroll: true }); });
+  // The campaign (#566): the hub's main action; Continue resumes where the
+  // player left off.
+  $('hubCampaign').addEventListener('click', () => { close(); playground.campaign.openMap(); });
+  const cont = $('hubContinue');
+  if (playground.campaign.hasProgress()) {
+    const next = playground.campaign.continueLevel();
+    cont.hidden = false;
+    cont.textContent = `▶ Continue: ${next.id} ${next.title}`;
+    cont.addEventListener('click', () => { close(); playground.campaign.openBriefing(next); });
+  }
   $('hubMission').addEventListener('click', () => {
     close();
     const first = document.querySelector('#missionBody .missions button');
@@ -740,7 +777,7 @@ function hub(fresh) {
 
 // --- boot ---------------------------------------------------------------------------------
 function parseHash() {
-  const m = /^#([a-z]+)(?:\?seed=(\d+))?/.exec(location.hash === '#play' ? '' : location.hash);
+  const m = /^#([a-z]+)(?:\?seed=(\d+))?/.exec(location.hash === '#play' || location.hash === '#campaign' ? '' : location.hash);
   return m ? { world: m[1], seed: Number(m[2] || 1) } : { world: 'manet', seed: 1 };
 }
 
@@ -752,10 +789,13 @@ async function boot() {
   setTool('inspect');
   $('toast').hidden = true;
   const fresh = !location.hash; // a plain visit to the front page, not a shared run
+  const wantCampaign = location.hash === '#campaign';
   const h = parseHash();
   await load(h.world, h.seed);
+  playground.campaign = initCampaign(playground);
   initMissions(playground);
   hub(fresh);
+  if (wantCampaign) playground.campaign.openMap();
   initSearch((location, title) => openReader('docs/' + location, title));
   interceptDocsLinks(document.body);
   requestAnimationFrame(frame);

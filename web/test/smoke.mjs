@@ -355,6 +355,46 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
   console.log('skip: docs/API not assembled (web/build-site.sh only); web/build-pages.sh adds them');
 }
 
+// 3c. The campaign (#566/#567/#569): the chapter map, a briefing, the Plan
+//     phase with the device dock, a run, and the debrief -- level 1.2 played to
+//     the end through the UI, with axe (serious/critical) on every screen, day
+//     and night.
+for (const scheme of ['light', 'dark']) {
+  const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: scheme });
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.addInitScript(() => { try { localStorage.setItem('ahn-campaign-v1', JSON.stringify({ '1.1': 3 })); } catch { /* none */ } });
+  await p.addInitScript({ content: axeSource });
+  const axe = async (what) => {
+    const v = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+      .filter((x) => x.impact === 'serious' || x.impact === 'critical').map((x) => x.id + ': ' + x.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ')));
+    if (v.length) fail(`campaign ${what} (${scheme}): ${v.join(' | ')}`);
+    return v.length;
+  };
+  await p.goto(base + '#campaign');
+  await p.locator('#campaign .chip-btn', { hasText: 'Across the street' }).waitFor({ timeout: 15000 });
+  let bad = await axe('map');
+  if (await p.locator('#campaign .chip-btn', { hasText: 'Follow the scent' }).isEnabled()) fail(`campaign (${scheme}): 1.3 should be locked until 1.2 is cleared`);
+  await p.locator('#campaign .chip-btn', { hasText: 'Across the street' }).click();
+  await p.locator('#campaign button', { hasText: 'Plan' }).waitFor();
+  bad += await axe('briefing');
+  await p.locator('#campaign button', { hasText: 'Plan' }).click();
+  await p.locator('#hud button', { hasText: 'Run' }).waitFor();
+  await p.locator('#dock .dock-btn').first().click();
+  bad += await axe('plan phase');
+  // Place the laptop where the par solution does (a pixel click depends on the view).
+  await p.evaluate(async () => { const { playground } = await import('./js/app.js'); playground.onPlace(250, 150); });
+  await p.locator('#hud button', { hasText: 'Run' }).click();
+  await p.evaluate(async () => { const { playground } = await import('./js/app.js'); playground.setSpeed(20); });
+  await p.locator('#campTitle', { hasText: 'cleared' }).waitFor({ timeout: 30000 }).catch(() => fail(`campaign (${scheme}): level 1.2 did not clear`));
+  bad += await axe('debrief');
+  const stars = await p.evaluate(() => JSON.parse(localStorage.getItem('ahn-campaign-v1') || '{}')['1.2'] || 0);
+  if (!stars) fail(`campaign (${scheme}): no stars recorded for 1.2`);
+  if (errors.length) fail(`campaign (${scheme}): page errors: ${errors.join(' | ')}`);
+  else if (!bad && stars) console.log(`ok: campaign (${scheme}) — map, briefing, plan, run, debrief; 1.2 cleared with ${stars} stars; axe clean`);
+  await p.close();
+}
+
 // 4. The default ad hoc world mixes walking and standing phones (#542 follow-up).
 {
   const { p, errors } = await page('#manet?seed=1');

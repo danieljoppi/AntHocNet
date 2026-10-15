@@ -61,6 +61,12 @@ flowchart LR
 
 ## 3. The campaign — one chapter per network type
 
+> **Shipped in v2.2.0:** chapters 1 and 2 (the ten levels below), the game
+> screens and the level engine ([#566](https://github.com/danieljoppi/AntHocNet/issues/566),
+> [#567](https://github.com/danieljoppi/AntHocNet/issues/567)). Open them from the
+> hub's **Campaign** button or at `#campaign`. The eight Academy missions stay in
+> the Missions panel as drills, so no link to them breaks.
+
 Every network type the repository supports gets a chapter, and so does every
 type the replan adds. **Chapter 1 is ad hoc only**: phones, laptops and PCs
 talking directly, with no routers and no infrastructure. It is the network

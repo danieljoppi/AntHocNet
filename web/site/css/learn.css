@@ -396,3 +396,55 @@ a.hub-card:hover { border-color: var(--accent); }
 .ws-quest .row { display: flex; gap: 8px; margin-top: 8px; }
 .ws-quest .primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 @media (max-width: 900px) { .ws { grid-template-columns: 1fr; } }
+
+/* --- campaign (#566): map, briefing, debrief, HUD and device dock --------------------- */
+.campaign {
+  position: absolute; inset: 0; z-index: 5; overflow: auto; padding: 14px;
+  background: color-mix(in srgb, var(--desk) 70%, transparent);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+}
+.campaign[hidden] { display: none; }
+.sheet-card { max-width: 720px; margin: 0 auto; }
+.sheet-card h3 { font-size: 1rem; margin: 12px 0 6px; }
+.sheet-card .choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.bevel.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.chapter { border-top: 1px solid var(--rule); padding-top: 4px; }
+.chips { list-style: none; margin: 6px 0 4px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+.chip-btn { width: 100%; display: flex; align-items: center; gap: 8px; text-align: left; }
+.chip-btn .lvl { font: 700 0.78rem var(--mono); color: var(--text-muted); }
+.chip-btn .stars { margin-left: auto; }
+.chip-btn.done { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.later { margin: 4px 0; padding-left: 18px; color: var(--text-secondary); font-size: 0.9rem; }
+.goals { list-style: none; padding: 0; margin: 4px 0; display: grid; gap: 3px; }
+.goals li.done { color: var(--text-primary); font-weight: 600; }
+.goals li.missed { color: var(--text-muted); }
+.device-cards { list-style: none; padding: 0; margin: 4px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+.device-cards li { padding: 8px 10px; display: grid; gap: 4px; }
+.hud {
+  position: absolute; z-index: 3; left: 10px; right: 10px; top: 46px; max-width: 560px;
+  background: color-mix(in srgb, var(--card) 92%, transparent); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--elev); padding: 8px 12px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); font-size: 0.88rem;
+}
+.hud[hidden], .dock[hidden] { display: none; }
+.hud-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.hud-top .bevel { min-height: 28px; padding: 2px 10px; font-size: 0.82rem; }
+.hud .quiz { margin-top: 6px; display: grid; gap: 4px; }
+.hud .quiz .bevel { text-align: left; font-weight: 500; }
+.dock {
+  position: absolute; z-index: 3; left: 50%; bottom: 10px; transform: translateX(-50%); max-width: calc(100% - 20px);
+  display: flex; gap: 6px; padding: 6px; overflow-x: auto;
+  background: color-mix(in srgb, var(--card) 92%, transparent); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--elev);
+}
+.dock-btn { display: grid; grid-template-columns: auto 1fr; column-gap: 6px; text-align: left; min-width: 130px; }
+.dock-btn kbd { grid-row: span 2; font: 700 0.75rem var(--mono); opacity: 0.75; align-self: center; }
+.dock-btn .small { font-weight: 500; }
+@media (max-width: 680px) {
+  /* Phone: the dock becomes a bottom sheet of chips; the HUD shrinks to the top. */
+  .hud { top: 8px; left: 6px; right: 6px; padding: 6px 8px; font-size: 0.8rem; }
+  .dock { left: 0; right: 0; bottom: 0; transform: none; max-width: none; border-radius: 14px 14px 0 0; }
+  .dock-btn { min-width: 110px; }
+  .campaign { padding: 6px; }
+}
+/* In a level the HUD owns the top of the map; messages rise above the dock. */
+body.in-level .toast { top: auto; bottom: 86px; }

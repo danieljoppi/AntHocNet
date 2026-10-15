@@ -40,13 +40,15 @@
         <h1 id="hubTitle">Help the ants find the way</h1>
         <p>Every device on this field runs the real AntHocNet routing core, compiled to WebAssembly. Fix a broken network, and the ants do the routing.</p>
         <ul class="hub-list">
-          <li><b>Academy</b> one mission per thing the ants do</li>
+          <li><b>Campaign</b> one chapter per kind of network: ad hoc town and the neighbourhood mesh now, cars, drones and satellites next</li>
           <li><b>Free play</b> phones, mesh, cars, drones, satellites</li>
-          <li><b>Campaign</b> eight chapters, from ad hoc town to space <span class="soon">v2.2.0</span></li>
+          <li><b>Drills</b> the eight Academy missions, one per thing the ants do</li>
         </ul>
         <div class="row">
-          <button type="button" class="bevel primary" id="hubMission">▶ Start mission 1</button>
+          <button type="button" class="bevel primary" id="hubCampaign">▶ Campaign</button>
+          <button type="button" class="bevel" id="hubContinue" hidden>▶ Continue</button>
           <button type="button" class="bevel" id="hubFree">Free play</button>
+          <button type="button" class="bevel" id="hubMission">Drills</button>
         </div>
       </article>
       <a class="hub-card" data-place="guide" href="docs/places/field-guide/">
@@ -100,6 +102,9 @@
       <div class="titlebar" id="mapTitle">Ad hoc MANET</div>
       <div class="map" id="map" tabindex="0" role="application" aria-label="Network map" aria-describedby="mapHelp">
         <canvas id="view"></canvas>
+        <div class="hud" id="hud" role="region" aria-label="Level" hidden></div>
+        <div class="dock" id="dock" role="toolbar" aria-label="Devices you can place" hidden></div>
+        <section class="campaign" id="campaign" aria-label="Campaign" hidden></section>
         <p class="toast" id="toast" role="status" aria-live="polite" hidden></p>
       </div>
       <p class="sr" id="mapHelp">Keyboard: ? opens the Field guide page for this world, beside the map; 1 to 5 pick a tool; [ and ] select the previous or next node; arrow keys move the selected node (or pan); o switches it off or on; Q and E rotate; plus and minus zoom; space pauses. Every event is also written to the ant log below the map.</p>
@@ -152,7 +157,7 @@
       <button type="button" id="share" class="bevel">Share this run</button>
       <button type="button" id="reset" class="bevel">Restart</button>
     </div>
-    <ol class="log" id="log"></ol>
+    <ol class="log" id="log" tabindex="0" aria-labelledby="logTitle"></ol>
   </section>
 
   <section class="about" aria-labelledby="aboutTitle">

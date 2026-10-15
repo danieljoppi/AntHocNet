@@ -195,6 +195,7 @@ export class LevelRun {
 
   /** Totals of the flows in `which` ('all' or ids) at the sample nearest t. */
   totalsAt(t, which) {
+    if (!this.samples.length) return { sent: 0, delivered: 0 };  // not started yet
     let best = this.samples[0];
     for (const s of this.samples) if (s[0] <= t + 1e-9) best = s;
     const fl = best[1];
