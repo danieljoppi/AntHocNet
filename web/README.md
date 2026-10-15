@@ -71,6 +71,39 @@ Event kinds (`Ev` in `sim.h`, append-only): 1 TxAnt, 2 RxAnt, 3 TxData,
 4 Deliver, 5 Drop, 6 RouteAdd, 7 RouteDel, 8 Queue, 9 TxFail, 10 NodeDown,
 11 NodeUp.
 
+## Campaign levels (#567)
+
+A level is data in `web/site/js/campaign/levels.js`; the engine
+(`web/site/js/campaign/engine.js`, no DOM) builds its world through the calls
+above, runs it, applies its hazards and scores it from flow statistics,
+Deliver events and the ant-transmission count, never from anything the page
+computes about routes.
+
+| field | meaning |
+|---|---|
+| `id`, `chapter`, `title`, `story`, `mechanism` | text; `mechanism` is what the debrief names |
+| `world.area` `[x, y]`, `world.range` | the field (m) and the default radio |
+| `world.devices` `[{ class, x, y, moves, draggable }]` | devices already there, addressed by index; `moves: false` keeps a mobile class still; `draggable` lets the player move it while planning |
+| `world.flows` `[{ src, dst, rate, start }]` | the calls, by device index; `rate` in packets/s |
+| `budget`, `palette` `[{ class, cost, limit, moves }]` | what the player may add, at what cost |
+| `duration` | simulated seconds the level is scored over |
+| `objectives` | `{ kind: 'deliver', flows, ratio, from, to }` (delivery over a window, `flows` = ids or `'all'`), `{ kind: 'connect', flow, within }` (first delivery by then), `{ kind: 'quiz', question, options, answer }` |
+| `stars` `{ budgetLeft, maxNrl }` | star 1 = every objective; star 2 = budget left ≥ `budgetLeft`; star 3 = ants per delivered packet ≤ `maxNrl`; each hint used costs one |
+| `hazards` `[{ at, do: 'down' / 'up' / 'move', device, to }]` | things that happen to the radio |
+| `hints`, `debrief` `{ text, links }` | help and the closing card; links open in the in-game reader |
+| `par` `[{ class, x, y } / { move, x, y } / { answer }]` | a solution; `web/test/levels.mjs` plays it on seeds 1-5 and requires a clear, and requires the level *not* to clear with no action |
+
+Device classes (`DEVICES` in the engine): phone 120 m and walks, laptop 180 m
+and moves now and then, desktop PC 250 m, rooftop router 300 m, repeater
+200 m, home gateway 150 m; all static ones stay put. Progress (best stars per
+level) lives in `localStorage` under `ahn-campaign-v1`, read and written in
+try/catch. Chapters unlock 1 → 2 → 3, 4, 5 (any order) → 6-8 → 9; levels in
+a chapter open in order.
+
+```bash
+web/build-site.sh && node web/test/levels.mjs web/build-site
+```
+
 ## Rules
 
 - **No routing logic here.** The adapter converts, executes and owns timers

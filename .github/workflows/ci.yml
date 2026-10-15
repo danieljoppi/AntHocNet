@@ -129,6 +129,11 @@ jobs:
         run: |
           python3 tools/checks/check-site.py --self-test
           python3 tools/checks/check-site.py web/build-site
+      - name: Campaign levels clear with their par solutions (#567)
+        # Every level in web/site/js/campaign/levels.js, played from its data
+        # with its par solution on five seeds, must clear; with no action it
+        # must not. Node only: the WASM core runs in Node.
+        run: node web/test/levels.mjs web/build-site
       - name: Learn-site browser smoke (#548)
         # Every world runs with no console error, a backward ant and a delivery;
         # all worlds share the protocol defaults (ADR-0019); mission 2 plays to
