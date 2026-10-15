@@ -50,6 +50,9 @@ namespace metrics {
 /// configuration surface, so it is stable.
 constexpr char kClassic[] = "classic";
 
+/// Registry name of the SINR metric (#181, thesis eq. 4.11, SinrMetric).
+constexpr char kSinr[] = "sinr";
+
 /// Every registered name, comma-separated — for diagnostics and for the
 /// adapters' "valid values" help text (child #144).
 std::string registeredNames();

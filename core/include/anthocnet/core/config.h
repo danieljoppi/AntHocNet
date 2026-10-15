@@ -87,6 +87,14 @@ struct Config {
     /// benchmark justifies the switch.
     bool enableMacMetric = false;
 
+    /// SINR link metric (#181, thesis eq. 4.11), used only when the "sinr"
+    /// metric is selected: a link whose SINR is at or below sinrCriticalDb costs
+    /// sinrPenaltyCost hops instead of one. "In simulation tests using IEEE
+    /// 802.11b radios sending at 2Mbps, we empirically set SINR_c to 17dB and
+    /// c_const to 3." -- Ducatelle, PhD thesis, USI Lugano, 2007, §4.2.6.
+    double sinrCriticalDb = 17.0;   ///< SINR_c (dB)
+    double sinrPenaltyCost = 3.0;   ///< c_const (> 1)
+
     /// Links whose pheromone drops below this are pruned.
     double minPheromone = 0.00001;  ///< MIN_PHEROMONE
 

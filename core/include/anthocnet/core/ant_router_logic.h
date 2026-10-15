@@ -41,7 +41,8 @@ public:
     /// Both default to null, so existing adapter call sites are unchanged.
     AntRouterLogic(NodeAddress address, const Config& config, IClock& clock, IRng& rng,
                    const ILinkMetric* metric = nullptr,
-                   const ILinkState* linkState = nullptr);
+                   const ILinkState* linkState = nullptr,
+                   const ILinkQuality* linkQuality = nullptr);
 
     NodeAddress address() const { return address_; }
     const Config& config() const { return config_; }
@@ -158,6 +159,11 @@ public:
     /// the ILinkState then aggregates (#206). Bounded by Config::maxPathLength.
     void stampForward(AntMessage& ant, NodeAddress nextHop) const;
 
+    /// One hop of path cost from this node to `neighbor`, in the metric's units
+    /// (#181): the SINR link cost (eq. 4.11) when the metric uses link quality,
+    /// else the unloaded reference hop time T_hop as before.
+    double linkCost(NodeAddress neighbor) const;
+
     /// Advance a backward ant by one hop: move this node from the visited stack
     /// onto `history` and return the next hop (path management only; the deposit
     /// state is reconstructed at the receiver from `history`, ADR-0009).
@@ -217,6 +223,7 @@ private:
     ClassicMetric   defaultMetric_;        ///< used when no metric is injected
     const ILinkMetric* metric_;            ///< pheromone strategy (item 16)
     const ILinkState* linkState_;          ///< MAC congestion signals (item 10/A2), optional
+    const ILinkQuality* linkQuality_;      ///< per-neighbour SINR (#181), optional
     AntHistoryTracker history_;
     GenerationTracker genQuality_;   ///< multipath acceptance filter (#96)
     std::uint32_t   seqNum_ = 0;

@@ -12,7 +12,7 @@ export const SURFACE = [
 export const CHAMBERS = [
   {
     id: 'tunnels', title: 'Tunnels: the ports', x: 474, y: 128, rx: 290, ry: 30,
-    classes: ['IClock', 'IRng', 'ITimerScheduler', 'INeighborProvider', 'ILinkState', 'IRouterObserver'],
+    classes: ['IClock', 'IRng', 'ITimerScheduler', 'INeighborProvider', 'ILinkState', 'ILinkQuality', 'IRouterObserver'],
     blurb: 'Everything the core needs from a simulator, as small interfaces in ports.h: a clock, a random source, timers, the neighbour list, link state and an observer. An adapter implements them; the core never includes a simulator header.',
     events: ['TxAnt', 'RxAnt'],
   },
@@ -37,7 +37,7 @@ export const CHAMBERS = [
   },
   {
     id: 'senses', title: 'Senses', x: 752, y: 448, rx: 140, ry: 48,
-    classes: ['ILinkMetric', 'ClassicMetric', 'LinkObservation'],
+    classes: ['ILinkMetric', 'ClassicMetric', 'SinrMetric', 'LinkObservation'],
     blurb: 'How a link is judged: the metric registry and the classic hop + time metric the paper uses.',
     events: ['RxAnt'],
   },

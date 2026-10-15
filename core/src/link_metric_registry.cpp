@@ -28,8 +28,10 @@ struct Entry {
 /// (#145, #146) is one include plus one line here.
 const std::vector<Entry>& table() {
     static const ClassicMetric classic;
+    static const SinrMetric sinr;
     static const std::vector<Entry> entries = {
         {kClassic, &classic},
+        {kSinr, &sinr},
     };
     return entries;
 }

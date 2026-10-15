@@ -82,6 +82,11 @@ void PheromoneEngine::evaporateAll(PheromoneTable& table, double dtSeconds) cons
 }
 
 void PheromoneEngine::updateVirtual(PheromoneTable& table, const AntMessage& hello) const {
+    updateVirtual(table, hello, config_.hopTimeSec);
+}
+
+void PheromoneEngine::updateVirtual(PheromoneTable& table, const AntMessage& hello,
+                                    double hopCost) const {
     // Diffusion gated off (ADR-0007): keep the virtual table empty so proactive
     // selection degenerates to the regular-only sum.
     if (!config_.enableProactive || !config_.enableDiffusion) return;
@@ -94,7 +99,7 @@ void PheromoneEngine::updateVirtual(PheromoneTable& table, const AntMessage& hel
     const NodeAddress neighbor = hello.src;
     for (const HelloDest& advert : hello.helloDests) {
         const double bootstrapped = (advert.pheromone > 0.0)
-            ? 1.0 / (1.0 / advert.pheromone + config_.hopTimeSec)
+            ? 1.0 / (1.0 / advert.pheromone + hopCost)
             : 0.0;
         double phValue = table.getPheromoneVirtual(advert.node, neighbor);
         table.setPheromoneVirtual(advert.node, neighbor, reinforce(phValue, bootstrapped));

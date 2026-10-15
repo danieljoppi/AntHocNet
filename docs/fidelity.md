@@ -21,6 +21,7 @@ The living compliance ledger is [issue #91](https://github.com/danieljoppi/AntHo
 | Reactive path setup (forward/backward ants) | 3.1 | `core/ant_router_logic` | ✅ core-tested |
 | **Multipath** setup (hops+time acceptance filter; [1] states 1.5×) | 3.1 | `GenerationTracker`, `enableMultipath` (#96/#97) | ✅ default on — factors are the thesis's `a1 = 0.9` / `a2 = 2.0` since #177 |
 | MAC-queue-aware per-hop cost `(Q+1)·T̂_mac` (A2) | 3.1 | `enableMacMetric` (#67/#70) | ✅ formula matches; default off (gated) |
+| SINR link metric (thesis eq. 4.11: 1 above SINR_c = 17 dB, else c_const = 3; each node's own estimate of the link a backward ant came over, §4.2.2) | thesis 4.2.6 | `LinkMetric=sinr` (#181, [ADR-0024](adr/0024-per-neighbour-link-quality-port.md)) | ✅ formula and constants match; selectable, default `classic` pending the v2.2.0 A/B (#565) |
 | Pheromone deposit `τ=((T̂+h·T_hop)/2)⁻¹`, running avg γ | 3.1 | `pheromone_engine` | ✅ |
 | Stochastic data routing, pheromone² | 3.2 | `betaData=20` (#179) | ⚠️ **deliberate deviation** — follows the thesis's β₃ = 20 instead of [1]'s squared rule; measured, see below |
 | Proactive ants, unsquared pheromone, broadcast≤2 | 3.3 | `betaAnts=20`, `proactiveMaxBroadcasts=2` (#45/#179) | ⚠️ **deliberate deviation** on the exponent (thesis β₁=β₂=20); broadcast≤2 ✅ |

@@ -43,6 +43,8 @@ FIELDS = {
     "betaAnts": {"ns3": "m_betaAnts"},
     "betaData": {"ns3": "m_betaData"},
     "hopTimeSec": {"ns3": "m_hopTime"},
+    "sinrCriticalDb": {"ns3": "m_sinrCriticalDb"},
+    "sinrPenaltyCost": {"ns3": "m_sinrPenaltyCost"},
     "enableMacMetric": {"ns3": "m_enableMacMetric"},
     "enableProactive": {"ns3": "m_enableProactive"},
     "enableDiffusion": {"ns3": "m_enableDiffusion"},

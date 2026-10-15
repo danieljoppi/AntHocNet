@@ -29,6 +29,8 @@ int main() {
     CHECK_EQ(c.betaData, 20.0);                 // thesis beta3 (#179)
     CHECK_EQ(c.hopTimeSec, 0.003);              // #88 thesis 3ms
     CHECK_EQ(c.enableMacMetric, false);         // A2 gate, default off
+    CHECK_EQ(c.sinrCriticalDb, 17.0);           // #181 thesis eq. 4.11 SINR_c
+    CHECK_EQ(c.sinrPenaltyCost, 3.0);           // #181 thesis eq. 4.11 c_const
     CHECK_EQ(c.minPheromone, 0.00001);          // legacy MIN_PHEROMONE
     CHECK_EQ(c.enableEvaporation, true);        // ADR-0012
     CHECK_EQ(c.evaporationInterval, 1.0);       // ADR-0012

@@ -3,11 +3,14 @@
 
 #include "anthocnet-routing-protocol.h"
 #include "anthocnet-packet.h"
+#include "anthocnet/core/link_metric_registry.h"
 
 #include "ns3/log.h"
 #include "ns3/node.h"
 #include "ns3/boolean.h"
 #include "ns3/double.h"
+#include "ns3/string.h"
+#include "ns3/wifi-phy.h"
 #include "ns3/pointer.h"
 #include "ns3/uinteger.h"
 #include "ns3/inet-socket-address.h"
@@ -25,6 +28,7 @@
 #include "ns3/tag.h"
 
 #include <cstdint>
+#include <limits>
 
 namespace ns3 {
 
@@ -79,7 +83,10 @@ RoutingProtocol::RoutingProtocol()
       m_reactiveRetryInterval(Seconds(0.25)),
       m_macServiceAlpha(0.7),
       m_lastAckTime(Seconds(0)),
-      m_enableMacMetric(false) {}
+      m_enableMacMetric(false),
+      m_linkMetric("classic"),
+      m_sinrCriticalDb(17.0),
+      m_sinrPenaltyCost(3.0) {}
 
 RoutingProtocol::~RoutingProtocol() = default;
 
@@ -379,6 +386,26 @@ TypeId RoutingProtocol::GetTypeId() {
                           BooleanValue(false),
                           MakeBooleanAccessor(&RoutingProtocol::m_enableMacMetric),
                           MakeBooleanChecker())
+            .AddAttribute("LinkMetric",
+                          "Link metric, by its core registry name (#144): \"classic\" "
+                          "(delay + hops, [1] eq. 2; the default) or \"sinr\" (the 2007 "
+                          "thesis's SINR metric, eq. 4.11, #181). An unknown name is a "
+                          "fatal configuration error.",
+                          StringValue("classic"),
+                          MakeStringAccessor(&RoutingProtocol::m_linkMetric),
+                          MakeStringChecker())
+            .AddAttribute("SinrCriticalDb",
+                          "SINR metric only (#181): a link whose SINR is at or below this "
+                          "(dB) costs SinrPenaltyCost hops instead of one (thesis SINR_c).",
+                          DoubleValue(17.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_sinrCriticalDb),
+                          MakeDoubleChecker<double>())
+            .AddAttribute("SinrPenaltyCost",
+                          "SINR metric only (#181): the cost of a link at or below "
+                          "SinrCriticalDb, in hops (thesis c_const).",
+                          DoubleValue(3.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_sinrPenaltyCost),
+                          MakeDoubleChecker<double>(1.0))
             .AddTraceSource("Tx",
                             "An ant control packet was put on the medium by this "
                             "node (type, direction, broadcast).",
@@ -642,6 +669,57 @@ void RoutingProtocol::Start() {
 
 // --- interface notifications ------------------------------------------------
 
+// --- #181: per-neighbour SINR from the wifi PHY (core::ILinkQuality) ---------
+
+namespace {
+
+/// What the monitor trace hands over, picked out by type: the received packet
+/// and its signal/noise. The trace's argument list has changed across ns-3
+/// releases, so PhySniffer takes it from WifiPhy::MonitorSnifferRxCallback
+/// rather than spelling it out, and keeps only these two.
+struct SniffSample {
+    Ptr<const Packet> packet;
+    double sinrDb = std::numeric_limits<double>::quiet_NaN();
+};
+inline void Pick(SniffSample& s, Ptr<const Packet> p) { s.packet = p; }
+inline void Pick(SniffSample& s, const SignalNoiseDbm& sn) {
+    // ns-3 sets noise = rx power / SNR, where the SNR includes interference
+    // (PhyEntity::GetReceptionStatus), so signal - noise is the SINR in dB.
+    s.sinrDb = sn.signal - sn.noise;
+}
+template <typename T>
+inline void Pick(SniffSample&, const T&) {}
+
+template <typename Fn>
+struct PhySniffer;
+template <typename... A>
+struct PhySniffer<void (*)(A...)> {
+    static void Fire(RoutingProtocol* rp, A... args) {
+        SniffSample s;
+        (Pick(s, args), ...);
+        if (s.packet) rp->NotifyPhyRxSinr(s.packet, s.sinrDb);
+    }
+    static void Connect(Ptr<WifiPhy> phy, RoutingProtocol* rp) {
+        phy->TraceConnectWithoutContext("MonitorSnifferRx", MakeBoundCallback(&Fire, rp));
+    }
+};
+
+/// How many recent MPDUs to remember. The ant is handed to the socket in the
+/// same simulated instant its frame is received, so a short window is enough.
+constexpr std::size_t kSinrWindow = 64;
+
+}  // namespace
+
+void RoutingProtocol::NotifyPhyRxSinr(Ptr<const Packet> packet, double sinrDb) {
+    m_rxSinrByUid.emplace_back(packet->GetUid(), sinrDb);
+    if (m_rxSinrByUid.size() > kSinrWindow) m_rxSinrByUid.pop_front();
+}
+
+double RoutingProtocol::sinrDbFrom(NodeAddress neighbor) const {
+    auto it = m_neighborSinrDb.find(neighbor);
+    return it == m_neighborSinrDb.end() ? std::numeric_limits<double>::quiet_NaN() : it->second;
+}
+
 void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
     Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol>();
     if (l3->GetNAddresses(interface) == 0) return;
@@ -676,9 +754,19 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.antAcceptanceFactorNewHop = m_antAcceptanceFactorNewHop;
         m_config.linkfailNotifyInterval = m_linkfailNotifyInterval;
         m_config.enableMacMetric = m_enableMacMetric;
+        m_config.sinrCriticalDb = m_sinrCriticalDb;
+        m_config.sinrPenaltyCost = m_sinrPenaltyCost;
+        // #144: resolve the metric through the core registry; a typo must
+        // never quietly run the classic metric instead.
+        const ::anthocnet::core::ILinkMetric* metric =
+            ::anthocnet::core::metrics::find(m_linkMetric);
+        if (!metric) {
+            NS_FATAL_ERROR("anthocnet: unknown LinkMetric \"" << m_linkMetric << "\"; valid: "
+                           << ::anthocnet::core::metrics::registeredNames());
+        }
         m_logic.reset(new ::anthocnet::core::AntRouterLogic(
             ToCore(iface.GetLocal()), m_config, m_clock, m_rng,
-            /*metric*/ nullptr, /*linkState*/ this));
+            metric, /*linkState*/ this, /*linkQuality*/ this));
         m_logic->setObserver(this);  // fan core events to the trace sources
     }
 
@@ -723,6 +811,12 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
                 "AckedMpdu", MakeCallback(&RoutingProtocol::NotifyAckedMpdu, this));
             // Keep the first wifi MAC for the item-10/A2 queue-occupancy signal.
             if (!m_wifiMac) m_wifiMac = wmac;
+        }
+        // #181: a metric that reads link quality gets the PHY's per-frame
+        // SINR. Not wired otherwise, so classic runs pay nothing.
+        Ptr<WifiPhy> phy = wifi->GetPhy();
+        if (phy && ::anthocnet::core::metrics::get(m_linkMetric).usesLinkQuality()) {
+            PhySniffer<WifiPhy::MonitorSnifferRxCallback>::Connect(phy, this);
         }
     }
 
@@ -1095,6 +1189,14 @@ void RoutingProtocol::RecvAnt(Ptr<Socket> socket) {
     }
 
     NodeAddress prevHop = ToCore(sender);
+    // #181: the SINR this ant's frame arrived with is the latest sample of the
+    // link from prevHop (newest first: a retransmission shares the UID).
+    for (auto it = m_rxSinrByUid.rbegin(); it != m_rxSinrByUid.rend(); ++it) {
+        if (it->first == packet->GetUid()) {
+            m_neighborSinrDb[prevHop] = it->second;
+            break;
+        }
+    }
     std::vector<RouteDecision> decisions = m_logic->onReceiveAnt(incoming, prevHop);
 
     // A Deliver means a route to incoming.src was just discovered. And any
