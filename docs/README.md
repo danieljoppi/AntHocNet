@@ -47,6 +47,7 @@ learned and secure protocols, and the game campaign ([learn-campaign.md](learn-c
 | [benchmarks.md](benchmarks.md) | Results index: per-merge taxonomy table + links to every scenario/sweep page. |
 | [benchmarks/metrics.md](benchmarks/metrics.md) | What PDR, delay99, NRL etc. mean, and their caveats. |
 | [benchmarks/methodology.md](benchmarks/methodology.md) | Reproduce commands (local and CI dispatch), build profiles, validation anchors, determinism gate, and what each baseline arm is for. |
+| [benchmarks/core-speed.md](benchmarks/core-speed.md) | Core speed benchmarks: ns/op of the hot paths with no simulator (`make bench-core`), PR-vs-base warnings and the history on main (#620). |
 | [benchmarks/modern-baseline-survey.md](benchmarks/modern-baseline-survey.md) | Dated survey of ns-3 support for Babel / BATMAN-adv / OLSRv2, and the decision it drove. |
 | [benchmarks/README.md](benchmarks/README.md) | How the figures/tables are generated and regenerated. |
 | [benchmarks/satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) | The satellite/ISL suite: harness, analytic anchors, dispatch. |

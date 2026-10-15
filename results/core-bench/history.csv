@@ -1,0 +1,8 @@
+date,commit,cpu,case,ns_per_op,min_ns,max_ns
+2026-10-15,0078ecace2ab,"Intel(R) Xeon(R) Processor @ 2.80GHz (development container, seed row)",pheromone_update,92.96,92.25,103.24
+2026-10-15,0078ecace2ab,"Intel(R) Xeon(R) Processor @ 2.80GHz (development container, seed row)",select_next_hop_4,174.56,164.44,229.40
+2026-10-15,0078ecace2ab,"Intel(R) Xeon(R) Processor @ 2.80GHz (development container, seed row)",select_next_hop_16,737.00,686.94,855.22
+2026-10-15,0078ecace2ab,"Intel(R) Xeon(R) Processor @ 2.80GHz (development container, seed row)",select_next_hop_64,4792.26,4635.26,4924.41
+2026-10-15,0078ecace2ab,"Intel(R) Xeon(R) Processor @ 2.80GHz (development container, seed row)",codec_encode_full_ant,2724.59,2683.89,2909.84
+2026-10-15,0078ecace2ab,"Intel(R) Xeon(R) Processor @ 2.80GHz (development container, seed row)",codec_decode_full_ant,80.98,80.27,81.34
+2026-10-15,0078ecace2ab,"Intel(R) Xeon(R) Processor @ 2.80GHz (development container, seed row)",history_dedup,88.46,88.15,90.14
