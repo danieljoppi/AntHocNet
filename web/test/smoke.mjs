@@ -3,7 +3,7 @@
 //   1. opens every world, runs it, and requires no console errors and at
 //      least one backward ant and one delivered packet in the event stream;
 //   2. plays mission 2 ("Send the scouts") to completion with scripted input,
-//      and again in Portuguese (2b, #622); the tuning bench (2c, #638); the X-ray on touch (2d, #637);
+//      and again in Portuguese (2b, #622); the tuning bench (2c, #638); the X-ray on touch (2d, #637); the ns-3 export (2e, #640);
 //   3. runs axe-core on the front page as a first visit sees it (the hub up
 //      over the default world) and fails on serious or critical violations;
 //   3b. the site shell (#626): the hub's buttons and #play, the one top bar
@@ -202,6 +202,28 @@ for (const world of ['line', 'manet', 'town', 'mesh', 'fanet', 'vanet', 'satelli
   if (result.length) fail(`axe (x-ray): ${result.join(' | ')}`);
   if (errors.length) fail(`x-ray: page errors: ${errors.join(' | ')}`);
   if (spans >= 9 && !result.length && !errors.length) console.log(`ok: x-ray — tap paused the world, ${fields} fields, ${spans} byte ranges, axe clean`);
+  await p.close();
+}
+
+// 2e. Take it to ns-3 (#640): after a few seconds of a world, "Export to
+//     ns-3" downloads a zip holding the four kit files, built in the page.
+{
+  const { p, errors } = await page('#manet?seed=1');
+  await p.locator('#missionBody .missions button').first().waitFor({ timeout: 15000 });
+  await p.locator('.speeds button').last().click();
+  await p.waitForTimeout(4000);
+  const [download] = await Promise.all([p.waitForEvent('download', { timeout: 15000 }), p.locator('#kitExport').click()]);
+  const file = await download.path();
+  const bytes = fs.readFileSync(file);
+  const names = [];
+  for (let i = 0; i + 30 < bytes.length; i++) {
+    if (bytes.readUInt32LE(i) === 0x04034b50) names.push(bytes.subarray(i + 30, i + 30 + bytes.readUInt16LE(i + 26)).toString());
+  }
+  const want = ['mobility.ns_movements', 'flows.txt', 'run.sh', 'README.md'];
+  const ok = want.every((n) => names.some((x) => x.endsWith('/' + n)));
+  if (!ok || !download.suggestedFilename().endsWith('.zip')) fail(`export: ${download.suggestedFilename()} holds ${names.join(', ')}`);
+  if (errors.length) fail(`export: console errors: ${errors.join(' | ')}`);
+  if (ok && !errors.length) console.log(`ok: export — ${download.suggestedFilename()} with ${names.length} files`);
   await p.close();
 }
 

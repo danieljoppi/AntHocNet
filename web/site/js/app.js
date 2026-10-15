@@ -10,6 +10,7 @@ import { initMissions } from './missions.js';
 import { initCampaign } from './campaign/campaign.js';
 import { initBench } from './bench.js';
 import { renderAnt } from './xray.js';
+import { KitRecorder, sceneFrom, buildKit, zip } from './kit.js';
 import { initSearch } from '../shell/shell.js';
 import { openReader, interceptDocsLinks } from './reader.js';
 import { initI18n, t, num, LANGS, currentLang, setLang } from './i18n.js';
@@ -63,6 +64,7 @@ let routeKeys = new Map();    // flow id -> the route last seen ("0-4-9"), to sp
 let routeChanges = 0;
 let antSeq = 0;               // X-ray (#637): the id of the next TxAnt, as World.antBytes counts
 let nodeAnts = new Map();     // node -> its last few ant transmissions [{ id, kind }]
+const kitRec = new KitRecorder(); // #640: where every node was, for the ns-3 export
 let apiIndex;                 // api/api-index.json (null if absent), for the X-ray's member links
 
 function safeStore(op, key, value) {
@@ -114,6 +116,7 @@ async function load(worldId, seed, opts = {}) {
   logItems = [];
   routes = []; routeKeys = new Map(); routeChanges = 0;
   antSeq = 0; nodeAnts = new Map(); playground.xray = -1;
+  kitRec.reset(); playground.edited = false;
   $('log').replaceChildren();
   R.setWorld({
     areaX: w.areaX(), areaY: w.areaY(), areaZ: w.areaZ(), channel: w.channel(),
@@ -215,6 +218,7 @@ function addFlow(src, dst) {
   if (playground.flows.length >= MAX_FLOWS) { toast(t('app.maxFlows', { n: MAX_FLOWS })); return -1; }
   const w = playground.world;
   const id = w.addFlow(src, dst, 2, w.now(), 1e9);
+  playground.edited = true;
   readFlows();
   const keep = playground.watch;
   fillWatch();
@@ -537,6 +541,7 @@ function frame(ts) {
     const dt = Math.min(100, ts - (lastFrame || ts));
     lastFrame = ts;
     if (playground.speed > 0 && !playground.planning) w.advanceTo(w.now() + (dt / 1000) * playground.speed);
+    kitRec.tick(w);
     for (const e of events(w.drainEvents())) handle(e, ts);
     const prog = (list) => list.filter((a) => {
       a.progress = a.dur ? (ts - a.t0) / a.dur : 1;
@@ -641,6 +646,7 @@ view.addEventListener('pointerdown', (ev) => {
     if (w.nodeCount() >= MAX_NODES) { toast(t('app.toast.maxNodes', { n: MAX_NODES })); return; }
     const z = playground.worldId === 'fanet' ? 150 : 0;
     const n = w.addNode(x, y, z);
+    playground.edited = true;
     const m = mobilityFor(playground.worldId);
     if (m) w.setMobility(n, ...m);
     selectNode(n);
@@ -684,6 +690,7 @@ view.addEventListener('pointermove', (ev) => {
   const m = R.meta;
   const pos = w.positions();
   w.moveNode(drag.node, Math.max(0, Math.min(m.areaX, x)), Math.max(0, Math.min(m.areaY, y)), pos[4 * drag.node + 2]);
+  playground.edited = true;
 });
 
 function endPointer(ev) {
@@ -705,6 +712,7 @@ function toggleNode(i) {
   const w = playground.world;
   const up = w.positions()[4 * i + 3] > 0;
   w.setNodeUp(i, !up);
+  playground.edited = true;
   toast(t(up ? 'app.toast.switchedOff' : 'app.toast.switchedOn', { n: i }));
 }
 
@@ -760,6 +768,7 @@ function stepToTraffic() {
   const end = w.now() + 5;
   while (w.now() < end) {
     w.advanceTo(w.now() + 0.002);
+    kitRec.tick(w);
     let found = false;
     const now = performance.now();
     for (const e of events(w.drainEvents())) {
@@ -769,6 +778,36 @@ function stepToTraffic() {
     if (found) return;
   }
 }
+
+// --- take it to ns-3 (#640) ----------------------------------------------------------------
+function currentKit() {
+  const w = playground.world;
+  if (!w || kitRec.samples.length < 4) { toast(t('kit.none')); return null; }
+  const m = playground.custom || worldById(playground.worldId);
+  return buildKit(sceneFrom(w, kitRec, {
+    worldId: playground.worldId, seed: playground.seed, title: m.title, results: m.results,
+    custom: !!playground.custom || playground.edited, ranges: playground.worldId === 'town' || playground.worldId === 'level',
+    attrs: playground.bench ? playground.bench.line() : '',
+  }));
+}
+$('kitExport').addEventListener('click', () => {
+  const kit = currentKit();
+  if (!kit) return;
+  const name = `anthocnet-${playground.worldId}-seed${playground.seed}-ns3`;
+  const url = URL.createObjectURL(new Blob([zip(kit.files, name)], { type: 'application/zip' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: `${name}.zip` });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  toast(t('kit.saved', { file: `${name}.zip` }), 5000);
+});
+$('kitCopy').addEventListener('click', async () => {
+  const kit = currentKit();
+  if (!kit) return;
+  const cmd = kit.command.replace(/\$KIT\//g, '');
+  try { await navigator.clipboard.writeText(cmd); toast(t('kit.copied'), 4000); } catch { toast(cmd, 8000); }
+});
 
 // --- chrome -----------------------------------------------------------------------------
 for (const b of document.querySelectorAll('[data-speed]')) {

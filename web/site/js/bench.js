@@ -163,5 +163,5 @@ export async function initBench(pg) {
   render();
   line.textContent = t('bench.noChange');
   showStats();
-  return { meta, apply, get values() { return values; }, set(key, v) { values[key] = v; render(); return apply(); } };
+  return { meta, apply, line: () => ns3Line(meta, values), get values() { return values; }, set(key, v) { values[key] = v; render(); return apply(); } };
 }

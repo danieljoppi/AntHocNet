@@ -469,3 +469,6 @@ body.in-level .toast { top: auto; bottom: 86px; }
 .xr-timeStart, .xr-lifeAnt { background: #bbf7d0; } .xr-broadcastBudget { background: #fecaca; }
 .xr-visited { background: #fed7aa; } .xr-history { background: #a5f3fc; } .xr-helloDests { background: #f5d0fe; }
 .xray-fields th { white-space: nowrap; }
+
+/* Take it to ns-3 (#640). */
+.kit-row { gap: 6px; flex-wrap: wrap; }

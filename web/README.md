@@ -128,6 +128,24 @@ python3 web/tools/i18n-check.py   # CI: keys and placeholders match en.json,
                                   # no English literal left in web/site/js
 ```
 
+## Take it to ns-3 (#640)
+
+The World window's **Export to ns-3** downloads the scene on screen as a kit,
+built in the page (`web/site/js/kit.js`; nothing is uploaded):
+`mobility.ns_movements` (an ns-2 movement trace from positions sampled every
+0.5 s of simulated time since the world loaded, 2-D), `flows.txt` (the
+flows, from `World.flowSpecs`, as `anthocnet-compare --flowsFile` reads
+them), `run.sh` (the `anthocnet-compare --mobility=trace` command with this
+world's channel and any tuning-bench attributes; the satellite world uses
+`leo-walker`'s moving shell instead) and a README in the viewer's language
+(install, `make doctor`, the release image and tarball, and why the numbers
+differ). **Copy the command** copies the command alone. A built-in world at
+seed 1 that the player did not edit links its family's measured page.
+
+`web/tools/export-kit.mjs` builds the same kit in Node for a built-in world;
+CI exports one per world in the pages job and runs each in the ns-3 image
+(`ns3-kits`, `tools/checks/check-ns3-kits.sh`): AntHocNet must deliver.
+
 ## The X-ray (#637)
 
 `World` keeps a copy of the last `kXrayRing` (512) serialized ants in a ring,

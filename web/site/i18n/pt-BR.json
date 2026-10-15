@@ -992,5 +992,42 @@
     "note": "Toda formiga que o adaptador envia passa pelo codec::serialize; o jogo guarda uma cópia das últimas 512 para esta vista. Nada lê a cópia para decidir coisa alguma.",
     "back": "← Voltar ao nó",
     "recent": "Raio X das últimas formigas deste nó:"
+  },
+  "kit": {
+    "readme": {
+      "title": "{title} — no ns-3",
+      "from": "Exportado do site do AntHocNet (mundo `{world}`, semente {seed}, {time} s gravados).",
+      "intro": "O jogo rodou o núcleo do AntHocNet num rádio didático; este kit roda a mesma cena no ns-3.",
+      "runH": "Como rodar",
+      "step1": "Uma árvore do ns-3 (3.36–3.48) com o AntHocNet em `contrib/`:",
+      "step1a": "a partir de um checkout: `make install-ns3 NS3DIR=/caminho/para/ns-3`, ou",
+      "step1b": "a partir de uma versão publicada: `tar -xzf anthocnet-ns3-modules-<versão>.tar.gz -C /caminho/para/ns-3/contrib`,",
+      "step1c": "ou a imagem pronta: `docker run --rm -it -v \"$PWD\":/kit ghcr.io/danieljoppi/ns3:3.42` (ns-3 em `/opt/ns-3`).",
+      "step2": "Confira: `make doctor NS3DIR=/caminho/para/ns-3` (a missão de instalação da Oficina lê a saída).",
+      "step3": "Configure e compile o ns-3 com os exemplos e depois: `NS3DIR=/caminho/para/ns-3 bash run.sh`.",
+      "cmdIntro": "O comando, se você já tem os arquivos:",
+      "filesH": "O que vem no kit",
+      "sat": "`run.sh` — a casca Walker em movimento que este mundo desenha (8 planos × 8 satélites, 1200 km, 53°) no `leo-walker`, que precisa do ns-3 3.48 ou mais novo. O leo-walker tem seus próprios fluxos entre estações em terra, então os fluxos do jogo não são reproduzidos. Com só 64 satélites, a elevação mínima das estações cai para 10°, para que toda cidade veja algum.",
+      "mobility": "`mobility.ns_movements` — onde cada nó esteve, como um trace de movimento do ns-2: a posição inicial e depois um `setdest` por trecho de 0,5 s. Em 2-D: a altitude do jogo é descartada.",
+      "flows": "`flows.txt` — os fluxos, `src dst start stop cbrBps`, com pacotes de 64 bytes como o `anthocnet-compare` envia.",
+      "run": "`run.sh` — o `anthocnet-compare` reproduzindo os dois (`--mobility=trace`, `--flowsFile`), com o canal deste mundo.",
+      "attrs": "Suas mudanças na bancada de ajuste, como atributos do ns-3: `{attrs}`.",
+      "whyH": "Por que os números são diferentes",
+      "why": "Espere números diferentes; é justamente para isso que você roda. O rádio do jogo é um modelo didático:",
+      "disk": "**Um disco unitário.** Dois nós se escutam perfeitamente dentro do alcance e nada fora dele. Aqui o ns-3 roda Wi-Fi sobre um canal limitado por alcance (ou o canal urbano: o mesmo, cortado por prédios), com tempos de quadro reais.",
+      "mac": "**Sem colisões, sem disputa no MAC.** O jogo entrega todo quadro num enlace livre; o MAC 802.11 do ns-3 disputa o meio, espera, colide e retransmite, então áreas movimentadas perdem pacotes e ganham atraso.",
+      "queue": "**Sem limite de fila.** As filas das interfaces do ns-3 enchem e descartam.",
+      "core": "**O mesmo núcleo.** Toda decisão de roteamento, nos dois, é do núcleo do AntHocNet; só o rádio e o MAC abaixo dele mudam.",
+      "publishedH": "A versão medida",
+      "published": "Este é um mundo pronto na sua semente padrão. Os resultados medidos no ns-3, com várias sementes, para essa família de redes estão em [{label}]({href})."
+    },
+    "oneRange": "Um único alcance de rádio para todos os nós ({range} m): os alcances por dispositivo deste mundo não são modelados pelo anthocnet-compare.",
+    "flat": "Achatado para 2-D: a reprodução de trace do anthocnet-compare é plana, então a altitude dos drones é descartada.",
+    "export": "Exportar para o ns-3",
+    "exportTitle": "Baixe esta cena como um kit do ns-3: o trace de movimento, os fluxos, o run.sh e um README",
+    "copyCmd": "Copiar o comando",
+    "copied": "Copiado. Salve o kit para ter os arquivos: o comando os lê.",
+    "none": "Rode o mundo por alguns segundos antes: o kit grava para onde os nós vão.",
+    "saved": "{file} salvo: descompacte e rode o run.sh."
   }
 }

@@ -95,6 +95,20 @@ val destinations(const World& w, int n) {
     return val::global("Int32Array").new_(typed_memory_view(out.size(), out.data()));
 }
 
+/// Flow definitions as a flat [src, dst, rate, start, stop, ...] array (the
+/// ns-3 export kit, #640, writes them as a --flowsFile).
+val flowSpecs(const World& w) {
+    std::vector<double> out;
+    for (const ahn_web::Flow& f : w.flows()) {
+        out.push_back(f.src);
+        out.push_back(f.dst);
+        out.push_back(f.rate);
+        out.push_back(f.start);
+        out.push_back(f.stop);
+    }
+    return val::global("Float64Array").new_(typed_memory_view(out.size(), out.data()));
+}
+
 /// Flow stats as a flat [src, dst, sent, delivered, delaySum, ...] array.
 val flowStats(const World& w) {
     std::vector<double> out;
@@ -220,5 +234,6 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
         .function("pheromone", &pheromone)
         .function("destinations", &destinations)
         .function("distribution", &distribution)
-        .function("flowStats", &flowStats);
+        .function("flowStats", &flowStats)
+        .function("flowSpecs", &flowSpecs);
 }

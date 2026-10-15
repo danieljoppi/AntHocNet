@@ -992,5 +992,42 @@
     "note": "Every ant the adapter sends goes through codec::serialize; the game keeps a copy of the last 512 for this view. Nothing reads the copy to decide anything.",
     "back": "← Back to the node",
     "recent": "X-ray this node's last ants:"
+  },
+  "kit": {
+    "readme": {
+      "title": "{title} — on ns-3",
+      "from": "Exported from the AntHocNet learn site (world `{world}`, seed {seed}, {time} s recorded).",
+      "intro": "The game ran the AntHocNet core on a teaching radio; this kit runs the same scene on ns-3.",
+      "runH": "Run it",
+      "step1": "An ns-3 tree (3.36–3.48) with AntHocNet in `contrib/`:",
+      "step1a": "from a checkout: `make install-ns3 NS3DIR=/path/to/ns-3`, or",
+      "step1b": "from a release: `tar -xzf anthocnet-ns3-modules-<version>.tar.gz -C /path/to/ns-3/contrib`,",
+      "step1c": "or the ready image: `docker run --rm -it -v \"$PWD\":/kit ghcr.io/danieljoppi/ns3:3.42` (ns-3 in `/opt/ns-3`).",
+      "step2": "Check it: `make doctor NS3DIR=/path/to/ns-3` (the Workshop's install quest reads its output).",
+      "step3": "Configure and build ns-3 with examples, then: `NS3DIR=/path/to/ns-3 bash run.sh`.",
+      "cmdIntro": "The command, if you already have the files:",
+      "filesH": "What is in the kit",
+      "sat": "`run.sh` — the moving Walker shell this world draws (8 planes × 8 satellites, 1200 km, 53°) in `leo-walker`, which needs ns-3 3.48 or later. leo-walker carries its own ground-station flows, so the game's flows are not replayed. With only 64 satellites the stations' elevation mask is lowered to 10° so every city sees one.",
+      "mobility": "`mobility.ns_movements` — where every node was, as an ns-2 movement trace: its start position, then one `setdest` per 0.5 s leg. 2-D: the game's altitude is dropped.",
+      "flows": "`flows.txt` — the flows, `src dst start stop cbrBps`, 64-byte packets as `anthocnet-compare` sends them.",
+      "run": "`run.sh` — `anthocnet-compare` replaying both (`--mobility=trace`, `--flowsFile`), with the channel of this world.",
+      "attrs": "Your tuning-bench changes, as ns-3 attributes: `{attrs}`.",
+      "whyH": "Why the numbers differ",
+      "why": "Expect different numbers, and that is the point of running it. The game's radio is a teaching model:",
+      "disk": "**A unit disk.** Two nodes hear each other perfectly inside the range and not at all outside it. ns-3 here runs Wi-Fi over a range-limited channel (or the urban channel: the same, cut by buildings), with real frame timing.",
+      "mac": "**No collisions, no MAC contention.** The game delivers every frame on a free link; ns-3's 802.11 MAC contends, backs off, collides and retries, so busy areas lose packets and add delay.",
+      "queue": "**No queue limits.** ns-3's interface queues fill and drop.",
+      "core": "**The same core.** Every routing decision in both is the AntHocNet core's; only the radio and the MAC below it differ.",
+      "publishedH": "The measured version",
+      "published": "This is a built-in world at its default seed. The measured, multi-seed ns-3 results for its network family are on [{label}]({href})."
+    },
+    "oneRange": "One radio range for every node ({range} m): the per-device ranges of this world are not modelled by anthocnet-compare.",
+    "flat": "Flattened to 2-D: anthocnet-compare's trace replay is planar, so the drones' altitude is dropped.",
+    "export": "Export to ns-3",
+    "exportTitle": "Download this scene as an ns-3 kit: the movement trace, the flows, run.sh and a README",
+    "copyCmd": "Copy the command",
+    "copied": "Copied. Save the kit for its files: the command reads them.",
+    "none": "Run the world a few seconds first: the kit records where the nodes go.",
+    "saved": "Saved {file}: unzip it and run run.sh."
   }
 }
