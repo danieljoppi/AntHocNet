@@ -351,6 +351,7 @@ export class IsoRenderer {
       ctx.restore();
     }
 
+    if (s.ghostRoutes) this.drawGhostRoutes(pos, s.ghostRoutes);
     if (s.routes) this.drawRoutes(pos, s.routes);
 
     // Broadcast rings on the ground (an isometric circle is a 2:1 ellipse).
@@ -471,6 +472,29 @@ export class IsoRenderer {
       ctx.strokeStyle = c.night ? '#ffffff' : '#0b1220';
       ctx.lineWidth = 2.2 * zs / 1.25;
       trace(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** The tuning bench's ghost (#638): the same seed at default Config, its
+   *  strongest routes drawn thin, dashed and faint under the live ones. */
+  drawGhostRoutes(pos, routes) {
+    const { ctx, colors: c } = this;
+    const zs = this.spriteScale();
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.55;
+    ctx.setLineDash([6, 6]);
+    ctx.strokeStyle = c.night ? '#cbd5e1' : '#475569';
+    ctx.lineWidth = 2 * zs / 1.25;
+    for (const r of routes) {
+      if (r.path.length < 2) continue;
+      const pts = r.path.map((i) => (this.kind === 'sky' || this.globe ? this.antenna(pos, i)
+        : this.project(pos[4 * i], pos[4 * i + 1], 0)));
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+      ctx.stroke();
     }
     ctx.restore();
   }

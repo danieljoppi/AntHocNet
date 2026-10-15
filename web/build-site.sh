@@ -12,6 +12,8 @@ rm -rf "$OUT"
 mkdir -p "$OUT"
 cp -r web/site/. "$OUT/"
 cp web/build-wasm/anthocnet.js web/build-wasm/anthocnet.wasm "$OUT/"
+# The tuning bench's field data (#638), from config.h and configuration.md.
+python3 web/tools/config_fields.py json "$OUT/config-fields.json"
 # The site's one top bar (#627), shared with the docs and the API reference.
 python3 web/shell/inject.py game "$OUT"
 # Cache-busting: the core and its glue must always arrive as a pair. Version

@@ -128,6 +128,25 @@ python3 web/tools/i18n-check.py   # CI: keys and placeholders match en.json,
                                   # no English literal left in web/site/js
 ```
 
+## The tuning bench (#638)
+
+A side window of the game (`web/site/js/bench.js`): a slider or switch for
+each `Config` field the adapter's `setConfig` accepts, with the field's
+`config.h` doc comment, its default and provenance badges, and its ns-3
+attribute. That data is generated at build time by
+`web/tools/config_fields.py json` from `config.h` and
+`docs/configuration.md` §3.1 into `config-fields.json`, so the bench cannot
+drift from the docs; `config_fields.py check` fails when an exposed field has
+no doc comment, no table row or no attribute. A change reloads the world on
+the same seed and starts a *ghost*: a second `World` at the default `Config`,
+advanced in lockstep, its strongest routes drawn faint and its delivery and
+delay shown beside the live run. The bench writes the
+`--ns3::anthocnet::RoutingProtocol::<Attr>=<v>` flags for every moved field.
+
+CI holds both ends: `web/test/bench.test.mjs` (lockstep slices give identical
+statistics; the page writes exactly `config_fields.py ns3-args`), and the ns-3
+3.42 leg runs that line through `anthocnet-compare`.
+
 ## Rules
 
 - **No routing logic here.** The adapter converts, executes and owns timers

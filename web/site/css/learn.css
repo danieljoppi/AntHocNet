@@ -448,3 +448,14 @@ a.hub-card:hover { border-color: var(--accent); }
 }
 /* In a level the HUD owns the top of the map; messages rise above the dock. */
 body.in-level .toast { top: auto; bottom: 86px; }
+
+/* The tuning bench (#638). */
+.bench summary { cursor: pointer; font-weight: 600; }
+.bench-row { display: grid; grid-template-columns: minmax(0, 9rem) minmax(0, 1fr) 4.5rem; gap: 2px 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--rule); }
+.bench-row p { grid-column: 1 / -1; margin: 0; }
+.bench-row.moved label code { color: var(--accent); font-weight: 700; }
+.bench-row input[type="range"] { width: 100%; }
+.bench-row output { text-align: right; font-variant-numeric: tabular-nums; }
+.bench-badges .chip { margin-right: 4px; }
+.bench-pre { white-space: pre-wrap; word-break: break-all; background: var(--card-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; margin: 4px 0; }
+.bench-stats table { width: 100%; }

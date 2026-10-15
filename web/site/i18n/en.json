@@ -136,7 +136,9 @@
       "api": "API reference",
       "source": "Source on GitHub",
       "note": "Nothing measured in this game is a benchmark number; the results pages are."
-    }
+    },
+    "bench": "Tuning bench",
+    "benchOpen": "Change a protocol parameter"
   },
   "app": {
     "newNetwork": "A new network goes live.",
@@ -930,5 +932,40 @@
     "paste": "Paste <code>make doctor</code> or <code>./test.py -s anthocnet</code> output",
     "check": "Check",
     "reset": "Start over"
+  },
+  "bench": {
+    "unavailable": "The bench could not load its field data.",
+    "on": "on",
+    "off": "off",
+    "copied": "Copied: paste it after your anthocnet-compare command.",
+    "copy": "Copy the ns-3 line",
+    "reset": "Back to the defaults",
+    "default": "Default {v}.",
+    "attr": "ns-3:",
+    "provTitle": {
+      "paper": "The value comes from the AntHocNet paper or the 2007 thesis",
+      "measured": "The value was chosen or confirmed by a paired measurement in this repository",
+      "repo": "A choice this repository made; configuration.md says why",
+      "unrecorded": "No recorded provenance yet (configuration.md §3.2)"
+    },
+    "prov": {
+      "paper": "paper",
+      "measured": "measured",
+      "repo": "repo choice",
+      "unrecorded": "unrecorded"
+    },
+    "noGhost": "Move a parameter off its default: a ghost of the same seed at the defaults runs beside it, faint on the map.",
+    "pdr": "delivered",
+    "delay": "mean delay",
+    "packets": "packets",
+    "yours": "your settings",
+    "ghost": "ghost (defaults)",
+    "ghostNote": "Same seed, same flows, advanced in lockstep. Moving or switching off nodes changes only your run, not the ghost. The teaching radio is not ns-3: the measured pages are.",
+    "notInLevel": "The bench works in free play; a campaign level keeps its own rules.",
+    "noChange": "(every parameter at its default)",
+    "intro": "Each parameter shows its doc comment from config.h, its default with where that value comes from, and its ns-3 attribute. A change restarts this world on the same seed.",
+    "compare": "Your run against the ghost",
+    "ns3": "The same change in ns-3",
+    "ns3Note": "Append these flags to an anthocnet-compare command; CI runs them through it."
   }
 }

@@ -136,7 +136,9 @@
       "api": "Referência da API",
       "source": "Código no GitHub",
       "note": "Nada medido neste jogo é um número de benchmark; as páginas de resultados são."
-    }
+    },
+    "bench": "Bancada de ajuste",
+    "benchOpen": "Mude um parâmetro do protocolo"
   },
   "app": {
     "newNetwork": "Uma nova rede entra no ar.",
@@ -930,5 +932,40 @@
     "paste": "Cole a saída de <code>make doctor</code> ou de <code>./test.py -s anthocnet</code>",
     "check": "Conferir",
     "reset": "Recomeçar"
+  },
+  "bench": {
+    "unavailable": "A bancada não conseguiu carregar os dados dos parâmetros.",
+    "on": "ligado",
+    "off": "desligado",
+    "copied": "Copiado: cole depois do seu comando anthocnet-compare.",
+    "copy": "Copiar a linha do ns-3",
+    "reset": "Voltar aos padrões",
+    "default": "Padrão {v}.",
+    "attr": "ns-3:",
+    "provTitle": {
+      "paper": "O valor vem do artigo do AntHocNet ou da tese de 2007",
+      "measured": "O valor foi escolhido ou confirmado por uma medição pareada neste repositório",
+      "repo": "Uma escolha deste repositório; configuration.md explica por quê",
+      "unrecorded": "Ainda sem procedência registrada (configuration.md §3.2)"
+    },
+    "prov": {
+      "paper": "artigo",
+      "measured": "medido",
+      "repo": "escolha do repositório",
+      "unrecorded": "sem registro"
+    },
+    "noGhost": "Tire um parâmetro do padrão: um fantasma da mesma semente com os padrões roda ao lado, apagado no mapa.",
+    "pdr": "entregues",
+    "delay": "atraso médio",
+    "packets": "pacotes",
+    "yours": "seus ajustes",
+    "ghost": "fantasma (padrões)",
+    "ghostNote": "Mesma semente, mesmos fluxos, avançando em sincronia. Mover ou desligar nós muda só a sua partida, não o fantasma. O rádio didático não é o ns-3: as páginas medidas são.",
+    "notInLevel": "A bancada funciona no jogo livre; uma fase da campanha mantém as próprias regras.",
+    "noChange": "(todos os parâmetros no padrão)",
+    "intro": "Cada parâmetro mostra seu comentário de documentação do config.h, seu padrão com a origem desse valor e seu atributo do ns-3. Uma mudança reinicia este mundo na mesma semente.",
+    "compare": "Sua partida contra o fantasma",
+    "ns3": "A mesma mudança no ns-3",
+    "ns3Note": "Acrescente estas opções a um comando anthocnet-compare; a CI as roda nele."
   }
 }

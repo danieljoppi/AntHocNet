@@ -8,6 +8,7 @@ import { IsoRenderer } from './iso.js';
 import { WORLDS, worldById } from './worlds.js';
 import { initMissions } from './missions.js';
 import { initCampaign } from './campaign/campaign.js';
+import { initBench } from './bench.js';
 import { initSearch } from '../shell/shell.js';
 import { openReader, interceptDocsLinks } from './reader.js';
 import { initI18n, t, num, LANGS, currentLang, setLang } from './i18n.js';
@@ -34,6 +35,10 @@ export const playground = {
   /** Campaign: show the placement ghost at field metres (keyboard cursor). */
   ghostAt(p) { ghost = p; },
   get renderer() { return R; },
+  /** Tuning bench (#638): { world, routes } of the default-Config ghost, or null. */
+  ghostRun: null,
+  /** Each flow's strongest pheromone route in world `w` (the flows are the same). */
+  strongestRoutes: (w) => strongestRoutes(w),
 };
 
 const view = $('view');
@@ -487,6 +492,7 @@ function frame(ts) {
     R.draw({
       time: ts, simNow: w.now(), positions: w.positions(),
       routes: $('ovRoute').checked ? routes : null, links: w.links(), pheromone: pheromoneEdges(w),
+      ghostRoutes: $('ovRoute').checked && playground.ghostRun ? playground.ghostRun.routes : null,
       showLinks: $('ovLinks').checked, labels: $('ovLabels').checked,
       flights: anim.flights, rings: anim.rings, marks: anim.marks, flash,
       flows: playground.flows, selected: playground.selected, tool: playground.tool,
@@ -794,6 +800,7 @@ async function boot() {
   await load(h.world, h.seed);
   playground.campaign = initCampaign(playground);
   initMissions(playground);
+  playground.bench = await initBench(playground);
   hub(fresh);
   if (wantCampaign) playground.campaign.openMap();
   initSearch((location, title) => openReader('docs/' + location, title));

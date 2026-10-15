@@ -134,6 +134,8 @@ jobs:
         run: |
           python3 tools/checks/check-site.py --self-test
           python3 tools/checks/check-site.py web/build-site
+      - name: Tuning bench -- ghost lockstep and the copied ns-3 line (#638)
+        run: node web/test/bench.test.mjs web/build-site
       - name: Campaign levels clear with their par solutions (#567)
         # Every level in web/site/js/campaign/levels.js, played from its data
         # with its par solution on five seeds, must clear; with no action it
@@ -419,6 +421,19 @@ jobs:
         # combinations are refused.
         if: matrix.version == '3.42'
         run: bash tools/checks/check-manhattan.sh /opt/ns-3
+      - name: Tuning-bench ns-3 lines run in anthocnet-compare (#638)
+        # The learn site's bench copies --ns3::anthocnet::RoutingProtocol::<Attr>
+        # flags generated from config.h and configuration.md. Every field it
+        # exposes, moved off its default as the bench writes it, must be
+        # accepted by the module's TypeId: an unknown attribute or a malformed
+        # value aborts the run. web/test/bench.test.mjs holds the page to the
+        # same line.
+        if: matrix.version == '3.42'
+        run: |
+          python3 web/tools/config_fields.py check
+          args=$(python3 web/tools/config_fields.py ns3-args)
+          echo "$args"
+          cd /opt/ns-3 && ./ns3 run "anthocnet-compare --csv --protocols=anthocnet --nNodes=8 --time=10 --area=150 --flows=1 $args"
       - name: Moving-constellation smoke (#192/#297, ADR-0022, leo-walker)
         # A 16x16 Walker shell on stock ns-3.48's LEO mobility model: the
         # geometry must match the analytic shell at t=0 and half an orbit
