@@ -14,7 +14,9 @@
 //      template (#645); and old URLs landing on their new page with the query
 //      and hash intact (#648);
 //   4. checks the default world is mixed (some phones walk, some stand still)
-//      and that every satellite moves along its orbit.
+//      and that every satellite moves along its orbit;
+//   5. goes offline after one visit and requires the game to reload and
+//      deliver from the service worker's cache (#624).
 //
 // Usage: node web/test/smoke.mjs <assembled-site-root>   (web/build-site.sh's output)
 // Env:   CHROMIUM=/path/to/chrome (default: Playwright's pre-installed one)
@@ -30,7 +32,7 @@ if (!root) { console.error('usage: smoke.mjs <site-root>'); process.exit(2); }
 const require = createRequire(path.join(process.cwd(), 'noop.js'));
 const { chromium } = require('playwright-core');
 const axeSource = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
 const server = http.createServer((req, res) => {
   let p = decodeURIComponent(req.url.split('?')[0].split('#')[0]);
   if (p.endsWith('/')) p += 'index.html';
@@ -397,6 +399,41 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
   if (orbit.moved !== orbit.n || orbit.rMax > 7.5711e6 || orbit.rMin < 7.563e6) fail(`satellite: expected all on 7571 km orbits and moving, got ${JSON.stringify(orbit)}`);
   else console.log(`ok: satellite — all ${orbit.n} moved >100 km in 10 s on their 7571 km orbits`);
   await p.close();
+}
+
+// 5. Offline (#624): after one visit the service worker has the game shell, so
+//    with the network off the game reloads and a world still delivers, and the
+//    Workshop opens.
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+  const p = await ctx.newPage();
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.goto(base + '#manet?seed=1');
+  const build = await p.evaluate(async () => {
+    const reg = await navigator.serviceWorker.ready;
+    const keys = await caches.keys();
+    return reg.active ? keys.find((k) => k.startsWith('ahn-game-')) || '' : '';
+  });
+  await ctx.setOffline(true);
+  await p.reload();
+  await p.waitForFunction(() => document.getElementById('clock')?.textContent.includes('t 0:0'), null, { timeout: 15000 })
+    .catch(() => fail('offline: the game did not start with the network off'));
+  const delivered = await p.evaluate(async () => {
+    const { playground } = await import('./js/app.js');
+    let n = 0;
+    playground.on((e) => { if (e.kind === 4) n++; });
+    playground.setSpeed(20);
+    await new Promise((r) => setTimeout(r, 6000));
+    return n;
+  }).catch((e) => { fail(`offline: ${e.message}`); return 0; });
+  const shop = await p.goto(base + 'workshop.html').then((r) => r && r.ok()).catch(() => false);
+  if (!build) fail('offline: no service worker cache after the first visit');
+  else if (!delivered) fail('offline: the world delivered nothing with the network off');
+  else if (!shop) fail('offline: the Workshop did not open with the network off');
+  else if (errors.length) fail(`offline: page errors: ${errors.join(' | ')}`);
+  else console.log(`ok: offline — ${build} cached, the game reloads and delivers (${delivered}) and the Workshop opens with the network off`);
+  await ctx.close();
 }
 
 await browser.close();

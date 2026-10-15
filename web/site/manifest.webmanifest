@@ -1,0 +1,13 @@
+{
+  "name": "AntHocNet — learn ant-colony routing by playing",
+  "short_name": "AntHocNet",
+  "description": "Place phones, move them, launch flows, and watch the real AntHocNet routing core find and repair routes. Works offline after one visit.",
+  "start_url": "./#play",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f766e",
+  "icons": [
+    { "src": "img/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "_comment": "Download budget for the game shell (#624): everything a first visit to the game fetches, docs and API excluded. Raise only by a deliberate commit that says why.",
+  "raw_kb": 512,
+  "gzip_kb": 160
+}
