@@ -92,6 +92,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <fstream>
 #include <iomanip>
 #include <iterator>
 #include <map>
@@ -1299,7 +1300,47 @@ struct Params {
     // blocks over areaX x areaY, streets on the block edges.
     uint32_t blocksX, blocksY;
     double   streetWidth;
+    // #639: replay a scene. --mobility=trace moves the nodes along an ns-2
+    // movement trace (Ns2MobilityHelper); --flowsFile replaces the generated
+    // i -> n-1-i pairing with explicit flows. --dumpTrace / --dumpFlows write
+    // a generated run's movement and flows in those formats, so a run can be
+    // replayed -- and the replay checked byte-identical against it.
+    std::string traceFile;
+    struct FlowSpec { uint32_t src, dst; double start, stop, bps; };
+    std::vector<FlowSpec> flowList;
+    std::string dumpTrace, dumpFlows;
 };
+
+// --- #639: recording a run's movement as an ns-2 trace ---------------------------
+// Each node's track is piecewise linear between course changes (RWP legs and
+// pauses, Gauss-Markov steps, Manhattan waypoints), so a leg is written when
+// it ends: "at t1 setdest <position at t2> <speed>". Written once per process
+// (the first arm of the first seed; mobility is identical in every arm on a
+// seed, #352) at 17 significant digits so every double round-trips.
+struct TraceDump {
+    bool active = false, done = false;
+    std::vector<Vector> pos, vel;
+    std::vector<double> t;
+    std::ostringstream out;
+};
+static TraceDump g_traceDump;
+
+static void TraceLeg(uint32_t i, const Vector& at) {
+    const Vector v = g_traceDump.vel[i];
+    const double speed = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    if (speed > 0.0) {
+        g_traceDump.out << "$ns_ at " << g_traceDump.t[i] << " \"$node_(" << i << ") setdest "
+                        << at.x << ' ' << at.y << ' ' << speed << "\"\n";
+    }
+}
+
+static void TraceCourseChange(uint32_t i, Ptr<const MobilityModel> m) {
+    const Vector p = m->GetPosition();
+    TraceLeg(i, p);
+    g_traceDump.pos[i] = p;
+    g_traceDump.vel[i] = m->GetVelocity();
+    g_traceDump.t[i] = Simulator::Now().GetSeconds();
+}
 
 // #488: Manhattan-grid mobility (the VANET family, #301). The model of Bai,
 // Sadagopan & Helmy, "IMPORTANT: a framework to systematically analyze the
@@ -1789,6 +1830,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else if (P.mobility == "manhattan") {
         // #488: waypoints are filled in after Install(), below.
         mobility.SetMobilityModel("ns3::WaypointMobilityModel");
+    } else if (P.mobility == "trace") {
+        // #639: installed from the trace below, after the stream reservation.
     } else {
         // With --areaZ > 0 the waypoints come from the 3-D box allocator above,
         // so RWP legs are straight 3-D segments with no further change (#480).
@@ -1803,9 +1846,46 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // draws) once they exist.
     TakeStreams(stream, streamBase, pos->AssignStreams(stream),
                 "position allocator");
-    mobility.Install(nodes);
-    TakeStreams(stream, streamBase, mobility.AssignStreams(nodes, stream),
-                "mobility");
+    if (P.mobility == "trace") {
+        // #639: reserve exactly the streams the RWP default would take, so
+        // every later stream (routing, MAC, applications) keeps the index it
+        // has in the generated run and a dumped run replays byte-identically.
+        // The models are only counted, never installed or initialised.
+        int64_t used = 0;
+        for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+            Ptr<RandomWaypointMobilityModel> m = CreateObject<RandomWaypointMobilityModel>();
+            m->SetAttribute("Speed", StringValue(speedStr.str()));
+            m->SetAttribute("Pause", StringValue(pauseStr.str()));
+            m->SetAttribute("PositionAllocator", PointerValue(pos));
+            used += m->AssignStreams(stream + used);
+        }
+        TakeStreams(stream, streamBase, used, "mobility");
+        Ns2MobilityHelper ns2(P.traceFile);
+        ns2.Install(nodes.Begin(), nodes.End());  // $node_(i) = the i-th node here
+    } else {
+        mobility.Install(nodes);
+        TakeStreams(stream, streamBase, mobility.AssignStreams(nodes, stream),
+                    "mobility");
+    }
+    // #639: --dumpTrace records the first run's movement (see TraceDump).
+    g_traceDump.active = !P.dumpTrace.empty() && !g_traceDump.done;
+    if (g_traceDump.active) {
+        const uint32_t n = nodes.GetN();
+        g_traceDump.pos.assign(n, Vector());
+        g_traceDump.vel.assign(n, Vector());
+        g_traceDump.t.assign(n, 0.0);
+        g_traceDump.out.str("");
+        g_traceDump.out << std::setprecision(17);
+        for (uint32_t i = 0; i < n; ++i) {
+            Ptr<MobilityModel> m = nodes.Get(i)->GetObject<MobilityModel>();
+            const Vector p = m->GetPosition();
+            g_traceDump.pos[i] = p;
+            g_traceDump.out << "$node_(" << i << ") set X_ " << p.x << '\n'
+                            << "$node_(" << i << ") set Y_ " << p.y << '\n'
+                            << "$node_(" << i << ") set Z_ " << p.z << '\n';
+            m->TraceConnectWithoutContext("CourseChange", MakeBoundCallback(&TraceCourseChange, i));
+        }
+    }
     if (P.mobility == "manhattan") {
         // #488: one pinned stream for the whole grid schedule, drawn in node
         // order. Mobility is installed before routing, so the stream index
@@ -2071,7 +2151,48 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // then span up to n-1 nodes; the default 1:1 pairing caps them at n/2.
     const bool converge = (P.sink >= 0);
     const uint32_t maxFlows = converge ? (P.nNodes - 1) : (P.nNodes / 2);
-    for (uint32_t i = 0; i < P.nFlows && i < maxFlows; ++i) {
+    // #639: --flowsFile replaces the generated pairing. Each flow keeps the
+    // data port (every data classifier keys on it), so flows sharing a
+    // destination share its sink; per-flow setup latency is then off, as in
+    // converge mode.
+    std::vector<Params::FlowSpec> dumped;
+    if (!P.flowList.empty()) {
+        std::set<uint32_t> sinkAt;
+        for (const Params::FlowSpec& f : P.flowList) {
+            const double stopS = std::min(f.stop, P.simTime - 1.0);
+            std::ostringstream fr;
+            fr << static_cast<uint64_t>(f.bps) << "bps";
+            if (P.transport == "tcp") {
+                BulkSendHelper bulk("ns3::TcpSocketFactory",
+                                    InetSocketAddress(ifs.GetAddress(f.dst), port));
+                bulk.SetAttribute("MaxBytes", UintegerValue(0));
+                bulk.SetAttribute("StartTime", TimeValue(Seconds(f.start)));
+                bulk.SetAttribute("StopTime", TimeValue(Seconds(stopS)));
+                apps.Add(bulk.Install(nodes.Get(f.src)));
+            } else {
+                OnOffHelper onoff("ns3::UdpSocketFactory",
+                                  InetSocketAddress(ifs.GetAddress(f.dst), port));
+                onoff.SetAttribute("DataRate", StringValue(fr.str()));
+                onoff.SetAttribute("PacketSize", UintegerValue(64));
+                onoff.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
+                onoff.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+                std::ostringstream off;
+                off << "ns3::ConstantRandomVariable[Constant=" << P.offTime << ']';
+                onoff.SetAttribute("OffTime", StringValue(off.str()));
+                onoff.SetAttribute("StartTime", TimeValue(Seconds(f.start)));
+                onoff.SetAttribute("StopTime", TimeValue(Seconds(stopS)));
+                apps.Add(onoff.Install(nodes.Get(f.src)));
+            }
+            g_flowStart.push_back(f.start);
+            if (sinkAt.insert(f.dst).second) {
+                PacketSinkHelper sink(P.transport == "tcp" ? "ns3::TcpSocketFactory"
+                                                           : "ns3::UdpSocketFactory",
+                                      InetSocketAddress(Ipv4Address::GetAny(), port));
+                sinks.Add(sink.Install(nodes.Get(f.dst)));
+            }
+        }
+    }
+    for (uint32_t i = 0; P.flowList.empty() && i < P.nFlows && i < maxFlows; ++i) {
         uint32_t src = i;
         uint32_t dst = converge ? static_cast<uint32_t>(P.sink) : (P.nNodes - 1 - i);
         if (src == dst) continue;  // source coincides with the gateway: skip
@@ -2094,6 +2215,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                                 InetSocketAddress(ifs.GetAddress(dst), port));
             bulk.SetAttribute("MaxBytes", UintegerValue(0));  // unbounded
             const double startS = startVar->GetValue();
+            dumped.push_back({src, dst, startS, P.simTime - 1.0, P.cbrBps});
             bulk.SetAttribute("StartTime", TimeValue(Seconds(startS)));
             bulk.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
             apps.Add(bulk.Install(nodes.Get(src)));
@@ -2130,6 +2252,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             onoff.SetAttribute("OffTime", StringValue(off.str()));
         }
         const double startS = startVar->GetValue();
+        dumped.push_back({src, dst, startS, P.simTime - 1.0, P.cbrBps});
         onoff.SetAttribute("StartTime", TimeValue(Seconds(startS)));
         onoff.SetAttribute("StopTime", TimeValue(Seconds(P.simTime - 1.0)));
         apps.Add(onoff.Install(nodes.Get(src)));
@@ -2150,6 +2273,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         sinks.Add(sink.Install(nodes.Get(P.sink)));
     }
     sinks.Start(Seconds(0.0));
+    // #639: --dumpFlows writes the generated flows once, in --flowsFile format.
+    if (g_traceDump.active && !P.dumpFlows.empty() && P.flowList.empty()) {
+        std::ofstream ff(P.dumpFlows);
+        ff << std::setprecision(17) << "# src dst start stop cbrBps (anthocnet-compare --dumpFlows, #639)" << '\n';
+        for (const Params::FlowSpec& f : dumped) {
+            ff << f.src << ' ' << f.dst << ' ' << f.start << ' ' << f.stop << ' ' << f.bps << '\n';
+        }
+    }
 
     // #352: the OnOff sources' on/off variables. They are ConstantRandomVariable
     // in this harness (a CBR source is always on), so they consume streams
@@ -2242,6 +2373,19 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
     Simulator::Stop(Seconds(P.simTime));
     Simulator::Run();
+    if (g_traceDump.active) {
+        // Close the legs still under way at the end of the run.
+        for (uint32_t i = 0; i < g_traceDump.pos.size(); ++i) {
+            const Vector v = g_traceDump.vel[i];
+            const double dt = P.simTime - g_traceDump.t[i];
+            TraceLeg(i, Vector(g_traceDump.pos[i].x + v.x * dt, g_traceDump.pos[i].y + v.y * dt,
+                               g_traceDump.pos[i].z + v.z * dt));
+        }
+        std::ofstream tf(P.dumpTrace);
+        tf << g_traceDump.out.str();
+        g_traceDump.active = false;
+        g_traceDump.done = true;
+    }
 
     monitor->CheckForLostPackets();
     // #217: fold the window still open at Simulator::Stop() into the diversity
@@ -3257,13 +3401,26 @@ int main(int argc, char* argv[]) {
                  "change meaning and the reorder columns go absent; read "
                  "##GOODPUT##.",
                  transport);
+    std::string traceFile, flowsFile, dumpTrace, dumpFlows;
+    cmd.AddValue("traceFile", "#639: with --mobility=trace, the ns-2 movement trace to "
+                              "replay ($node_(i) set X_/Y_/Z_, $ns_ at t \"$node_(i) "
+                              "setdest x y speed\"); nNodes is taken from it",
+                 traceFile);
+    cmd.AddValue("flowsFile", "#639: explicit flows, one 'src dst start stop cbrBps' "
+                              "per line ('#' comments); replaces the generated "
+                              "i -> n-1-i pairing and --flows", flowsFile);
+    cmd.AddValue("dumpTrace", "#639: write the first run's node movement to this file "
+                              "as an ns-2 trace (2-D fields only)", dumpTrace);
+    cmd.AddValue("dumpFlows", "#639: write the first run's generated flows to this "
+                              "file in --flowsFile format", dumpFlows);
     cmd.AddValue("mobility",
                  "Mobility model (#61): 'rwp' (Random Waypoint, default — the "
                  "model every published number was measured under) | 'ssrwp' "
                  "(steady-state RWP, no speed-decay transient) | 'gaussmarkov' "
                  "(smooth correlated tracks; --pause is inert under it) | "
                  "'manhattan' (#488: vehicles on a --blocksX x --blocksY street "
-                 "grid, Bai et al. 2003; --pause is inert under it)",
+                 "grid, Bai et al. 2003; --pause is inert under it) | 'trace' "
+                 "(#639: replay --traceFile)",
                  mobilityModel);
     cmd.AddValue("blocksX", "Manhattan grid / urban channel: blocks along x "
                             "(#488; streets on the block edges). Default 5 "
@@ -3471,9 +3628,9 @@ int main(int argc, char* argv[]) {
                            "UDP run labelled as a TCP one (#63).");
     NS_ABORT_MSG_UNLESS(mobilityModel == "rwp" || mobilityModel == "ssrwp" ||
                             mobilityModel == "gaussmarkov" ||
-                            mobilityModel == "manhattan",
+                            mobilityModel == "manhattan" || mobilityModel == "trace",
                         "unknown --mobility='" << mobilityModel
-                        << "' (expected rwp|ssrwp|gaussmarkov|manhattan). Refusing rather "
+                        << "' (expected rwp|ssrwp|gaussmarkov|manhattan|trace). Refusing rather "
                            "than silently falling back to rwp: a typo would "
                            "otherwise produce a plausible run of the wrong "
                            "model (#61).");
@@ -3513,8 +3670,12 @@ int main(int argc, char* argv[]) {
                             "U(speedMin, speed) (#488)");
     }
     if (propagation == "urban") {
-        NS_ABORT_MSG_UNLESS(mobilityModel == "manhattan",
-                            "--propagation=urban needs --mobility=manhattan: the "
+        // A replayed trace (#639) is trusted to keep its vehicles on the same
+        // street grid: the learn site's VANET export (#640) drives the very
+        // blocks this channel builds (area / blocks, streetWidth).
+        NS_ABORT_MSG_UNLESS(mobilityModel == "manhattan" || mobilityModel == "trace",
+                            "--propagation=urban needs --mobility=manhattan (or a "
+                            "--mobility=trace that drives the same streets): the "
                             "buildings are the street grid's blocks, and vehicles "
                             "off the streets would sit inside them (#488)");
         NS_ABORT_MSG_UNLESS(streetWidth > 0.0 &&
@@ -3531,6 +3692,75 @@ int main(int argc, char* argv[]) {
     P.rxCurrentA = rxCurrentA;
     P.idleCurrentA = idleCurrentA;
     P.pathWindowS = pathWindowS > 0.0 ? pathWindowS : kDefaultPathWindowS;
+    // #639: a replayed scene. The trace names its nodes, so it sets nNodes
+    // (an explicit, different --nNodes is refused); the flow file is checked
+    // against that node count and the run window before anything runs, so a
+    // bad file fails here with its line number, never mid-run.
+    P.traceFile = traceFile;
+    P.dumpTrace = dumpTrace;
+    P.dumpFlows = dumpFlows;
+    if (P.mobility == "trace") {
+        NS_ABORT_MSG_IF(traceFile.empty(), "--mobility=trace needs --traceFile=<ns-2 trace> (#639)");
+        std::ifstream tf(traceFile);
+        NS_ABORT_MSG_UNLESS(tf, "--traceFile='" << traceFile << "' cannot be opened (#639)");
+        std::string line;
+        int64_t maxId = -1;
+        uint32_t lineNo = 0;
+        while (std::getline(tf, line)) {
+            ++lineNo;
+            for (std::size_t at = line.find("$node_("); at != std::string::npos;
+                 at = line.find("$node_(", at + 1)) {
+                const std::size_t close = line.find(')', at);
+                NS_ABORT_MSG_IF(close == std::string::npos,
+                                traceFile << ":" << lineNo << ": unterminated $node_( (#639)");
+                const std::string id = line.substr(at + 7, close - at - 7);
+                NS_ABORT_MSG_UNLESS(!id.empty() && id.find_first_not_of("0123456789") == std::string::npos,
+                                    traceFile << ":" << lineNo << ": node id '" << id
+                                    << "' is not a non-negative integer (#639)");
+                maxId = std::max<int64_t>(maxId, std::stoll(id));
+            }
+        }
+        NS_ABORT_MSG_IF(maxId < 0, "--traceFile='" << traceFile << "' names no $node_(i) (#639)");
+        bool explicitN = false;
+        for (int k = 1; k < argc; ++k) {
+            if (std::string(argv[k]).rfind("--nNodes=", 0) == 0) explicitN = true;
+        }
+        NS_ABORT_MSG_IF(explicitN && P.nNodes != static_cast<uint32_t>(maxId + 1),
+                        "--nNodes=" << P.nNodes << " but the trace names " << maxId + 1
+                        << " nodes (#639)");
+        P.nNodes = static_cast<uint32_t>(maxId + 1);
+    }
+    NS_ABORT_MSG_IF(!dumpTrace.empty() && P.areaZ > 0.0,
+                    "--dumpTrace writes ns-2 setdest, which is 2-D; refusing a 3-D field (#639)");
+    if (!flowsFile.empty()) {
+        NS_ABORT_MSG_IF(P.sink >= 0, "--flowsFile and --sink both choose the flows; use one (#639)");
+        std::ifstream ff(flowsFile);
+        NS_ABORT_MSG_UNLESS(ff, "--flowsFile='" << flowsFile << "' cannot be opened (#639)");
+        std::string line;
+        uint32_t lineNo = 0;
+        while (std::getline(ff, line)) {
+            ++lineNo;
+            const std::size_t hash = line.find('#');
+            if (hash != std::string::npos) line.erase(hash);
+            if (line.find_first_not_of(" \t\r") == std::string::npos) continue;
+            std::istringstream ls(line);
+            long long src = -1, dst = -1;
+            double start = -1, stop = -1, bps = -1;
+            std::string extra;
+            NS_ABORT_MSG_UNLESS((ls >> src >> dst >> start >> stop >> bps) && !(ls >> extra),
+                                flowsFile << ":" << lineNo << ": expected 'src dst start stop cbrBps' (#639)");
+            NS_ABORT_MSG_UNLESS(src >= 0 && dst >= 0 && src < static_cast<long long>(P.nNodes) &&
+                                    dst < static_cast<long long>(P.nNodes) && src != dst,
+                                flowsFile << ":" << lineNo << ": node ids must be distinct and in [0, "
+                                << P.nNodes << ") (#639)");
+            NS_ABORT_MSG_UNLESS(start >= 0.0 && start < stop && start < P.simTime && bps > 0.0,
+                                flowsFile << ":" << lineNo << ": need 0 <= start < stop, start < --time="
+                                << P.simTime << " and cbrBps > 0 (#639)");
+            P.flowList.push_back({static_cast<uint32_t>(src), static_cast<uint32_t>(dst), start, stop, bps});
+        }
+        NS_ABORT_MSG_IF(P.flowList.empty(), "--flowsFile='" << flowsFile << "' lists no flows (#639)");
+        P.nFlows = static_cast<uint32_t>(P.flowList.size());
+    }
 
     // 1 ms delay bins for the 99th-percentile computation.
     Config::SetDefault("ns3::FlowMonitor::DelayBinWidth", DoubleValue(0.001));
@@ -3637,6 +3867,9 @@ int main(int argc, char* argv[]) {
         std::cout << " blocksX=" << P.blocksX << " blocksY=" << P.blocksY;
     }
     if (P.propagation == "urban") std::cout << " streetWidth=" << P.streetWidth;
+    // #639: a replayed scene names its files; other rows stay byte-identical.
+    if (!P.traceFile.empty()) std::cout << " traceFile=" << P.traceFile;
+    if (!P.flowList.empty()) std::cout << " flowsFile=" << flowsFile;
     std::cout << " transport=" << P.transport
               << " flows=" << P.nFlows << " cbrBps=" << P.cbrBps
               // #521: always named, so a post-fix row is distinguishable

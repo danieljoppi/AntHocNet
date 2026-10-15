@@ -594,6 +594,49 @@ Three things worth knowing before dispatching a non-default arm:
 z extent and pitch is fixed at 0 — so nodes stay in the plane the propagation
 models and the field geometry assume.
 
+### Replaying a scene (`--mobility=trace`, `--flowsFile`, [#639](https://github.com/danieljoppi/AntHocNet/issues/639))
+
+`anthocnet-compare` can replay a fixed scene instead of generating one. This is
+how a game level, or any external mobility tool, becomes an ns-3 run.
+
+- **`--mobility=trace --traceFile=<file>`** reads an ns-2 movement trace with
+  `Ns2MobilityHelper`:
+  - initial positions are `$node_(i) set X_/Y_/Z_ v`, and each leg is
+    `$ns_ at t "$node_(i) setdest x y speed"`;
+  - `$node_(i)` is the harness's i-th node, and the trace sets `nNodes` (an
+    explicit, different `--nNodes` is refused);
+  - a static scene (a mesh, or satellites frozen in place) is a trace with no
+    `setdest` lines.
+  - with `--propagation=urban` the trace is trusted to keep its vehicles on
+    the street grid the channel builds (`--areaX/--areaY` over
+    `--blocksX/--blocksY`, `--streetWidth`); the learn site's VANET export
+    drives exactly that grid (#640). Otherwise the urban channel still needs
+    `--mobility=manhattan`.
+- **`--flowsFile=<file>`** replaces the generated `i -> n-1-i` pairing. It has
+  one `src dst start stop cbrBps` per line, with `#` comments.
+  - Each flow keeps the data port, so flows that share a destination share its
+    sink, and per-flow setup latency is then off (as in `--sink` mode).
+  - `--flowsFile` and `--sink` are mutually exclusive.
+- **`--dumpTrace=<file>` / `--dumpFlows=<file>`** write any generated run's
+  movement and flows in those formats, once per process (the first arm of the
+  first seed). The trace is written at 17 significant digits and is 2-D only
+  (`setdest` has no z).
+
+**A replay is exact.** Trace mode reserves exactly the RNG streams the RWP
+default would take, so routing, MAC and application streams keep their
+indices (#352/#431). A dumped run replayed from its two files gives
+byte-identical output, every line except `##CONFIG##` (which names the files).
+CI checks this on every PR (`tools/checks/check-trace-replay.sh`, on 3.42),
+together with:
+- a committed 10-node fixture (`ns3/tools/fixtures/chain-10.*`) that must
+  deliver for AntHocNet and AODV;
+- refusals with file and line for a malformed flow line, an out-of-range node
+  id, a node-count mismatch, and trace mode without a file.
+
+`scenario_check.py preflight` accepts `--mobility trace --traceFile --flowsFile`
+and checks the files the same way. It WARNs that its degree and link-lifetime
+rules read `--speed`/`--pause`, not the trace's own motion.
+
 ### 3-D fields (`--areaZ`, [#480](https://github.com/danieljoppi/AntHocNet/issues/480))
 
 `--areaZ=<m>` gives the field a vertical extent for the FANET family

@@ -1,0 +1,3 @@
+# src dst start stop cbrBps (#639 CI fixture)
+0 7 2 59 2048
+7 0 3 59 2048
