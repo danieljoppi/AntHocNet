@@ -10,7 +10,9 @@
 //      night), the game, a docs page and the Workshop on a phone,
 //      with its five places, and -- when the docs and API are assembled in
 //      (web/build-pages.sh) -- the bar, the Try-it rail and axe on a docs
-//      page and an API page, day and night;
+//      page and an API page, day and night; axe on one API page per Doxygen
+//      template (#645); and old URLs landing on their new page with the query
+//      and hash intact (#648);
 //   4. checks the default world is mixed (some phones walk, some stand still)
 //      and that every satellite moves along its orbit.
 //
@@ -293,6 +295,51 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
     const problems = [...(bar ? [] : ['no visible top bar']), ...(over > 1 ? [`scrolls sideways by ${over} px`] : []), ...result, ...own.map((e) => 'page error: ' + e)];
     if (problems.length) fail(`phone ${name}: ${problems.join(' | ')}`);
     else console.log(`ok: phone ${name} — top bar, no sideways scroll, axe clean`);
+    await p.close();
+  }
+  // A sample of API reference pages, one per Doxygen template (#645).
+  // web/shell/api.css restyles Doxygen's output, so a template it misses
+  // regresses without the one class page above noticing.
+  const apiSample = ['api/index.html', 'api/annotated.html', 'api/classes.html', 'api/files.html', 'api/namespaces.html',
+    'api/classanthocnet_1_1core_1_1AntRouterLogic.html', 'api/structanthocnet_1_1core_1_1AntMessage.html',
+    'api/structanthocnet_1_1core_1_1ClassicMetric.html',
+    'api/ant__message__codec_8h.html', 'api/ant__message__codec_8h_source.html'];
+  for (const scheme of ['light', 'dark']) {
+    const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: scheme });
+    let errorsHere = [];
+    p.on('pageerror', (e) => errorsHere.push(e.message));
+    await p.addInitScript({ content: axeSource });
+    let bad = 0;
+    for (const u of apiSample) {
+      errorsHere = [];
+      await p.goto(base + u, { waitUntil: 'load' });
+      const bar = await p.locator('.ahn-bar').count();
+      const crumb = await p.locator('.ahn-crumb [aria-current="page"]').count();
+      const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+        .filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id + ': ' + v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ')));
+      const problems = [...(bar ? [] : ['no top bar']), ...(crumb === 1 ? [] : ['no breadcrumb']), ...result, ...errorsHere.map((e) => 'page error: ' + e)];
+      if (problems.length) { bad++; fail(`${u} (${scheme}): ${problems.join(' | ')}`); }
+    }
+    await p.close();
+    if (!bad) console.log(`ok: ${apiSample.length} API templates (${scheme}) — top bar, breadcrumb, no page errors, axe clean`);
+  }
+  // Old URLs (#648): the stubs web/site-redirects.sh writes must land on the
+  // new page with the query and the hash intact, so deep links in papers,
+  // issues and Zenodo records keep pointing at the same place.
+  for (const [from, wantPath, wantSearch, wantHash] of [
+    ['learn/#vanet?seed=3', '/', '', '#vanet?seed=3'],
+    ['benchmarks/grid/?from=paper#what-it-varies', '/docs/benchmarks/grid/', '?from=paper', '#what-it-varies'],
+    ['adr/', '/docs/adr/', '', ''],
+  ]) {
+    const p = await browser.newPage();
+    await p.goto(base + from);
+    await p.waitForURL((u) => u.pathname === wantPath, { timeout: 10000 }).catch(() => {});
+    const u = new URL(p.url());
+    if (u.pathname !== wantPath || u.search !== wantSearch || u.hash !== wantHash) {
+      fail(`redirect ${from}: landed on ${u.pathname}${u.search}${u.hash}, expected ${wantPath}${wantSearch}${wantHash}`);
+    } else {
+      console.log(`ok: redirect ${from} -> ${wantPath}${wantSearch}${wantHash}`);
+    }
     await p.close();
   }
   // Search from the bar finds a page and shows its place.

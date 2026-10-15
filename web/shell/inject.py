@@ -123,11 +123,31 @@ def api(apidir: str) -> None:
             out = inject_page(html, up + "../", "shop", up + "ahn/",
                               css=("shell.css", "api.css"), script=boot_script(up + "ahn/"))
             out = _api_crumb(out, name, up)
+            out = _api_icon_links(out)
             if out != html:
                 with open(p, "w", encoding="utf-8") as f:
                     f.write(out)
                 n += 1
     print(f"inject.py: top bar on {n} API pages")
+
+
+_ICON_LINK = re.compile(r'<a href="([^"]+)">(<span class="icon[a-z]*"></span>)</a>')
+
+
+def _api_icon_links(html: str) -> str:
+    """Doxygen's file list links each file's source with an icon and no text,
+    which leaves the link without a name for a screen reader (axe link-name,
+    #645). Name it after the page it opens."""
+    def named(m: re.Match) -> str:
+        href = m.group(1)
+        base = os.path.basename(href).removesuffix(".html")
+        if base.endswith("_source"):
+            # Doxygen escapes the file name: "_" -> "__", "." -> "_8".
+            label = "Source of " + base.removesuffix("_source").replace("_8", ".").replace("__", "_")
+        else:
+            label = base.replace("__", "_")
+        return f'<a href="{href}" aria-label="{_html.escape(label)}">{m.group(2)}</a>'
+    return _ICON_LINK.sub(named, html)
 
 
 def _api_crumb(html: str, name: str, up: str) -> str:
