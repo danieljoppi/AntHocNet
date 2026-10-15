@@ -91,6 +91,34 @@ jobs:
         run: |
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           web/build-pages.sh site
+      - name: Coverage badge data (#333)
+        # The README's coverage badge is a shields.io endpoint badge reading
+        # badges/coverage.json from this site, so publishing the number needs
+        # no secret, no gist and no third-party app: Pages already redeploys
+        # on every core/ change on main. Same build, filters and gcovr pin as
+        # ci.yml's core-coverage job, which stays the full report; report-only
+        # as #162 requires, and continue-on-error so a hiccup here costs the
+        # badge, never the deploy.
+        continue-on-error: true
+        run: |
+          pip install -c requirements-dev.txt gcovr
+          cmake -S core -B core/build-coverage -DCMAKE_BUILD_TYPE=Debug -DANTHOCNET_COVERAGE=ON
+          cmake --build core/build-coverage -j
+          (cd core/build-coverage && ctest --output-on-failure)
+          gcovr --root . core/build-coverage \
+            --filter 'core/src/' --filter 'core/include/' --exclude 'core/tests/' \
+            --print-summary --json-summary "$RUNNER_TEMP/coverage.json"
+          mkdir -p site/badges
+          python3 - "$RUNNER_TEMP/coverage.json" > site/badges/coverage.json <<'PY'
+          import json, sys
+          pct = json.load(open(sys.argv[1]))["line_percent"]
+          color = next(c for floor, c in (
+              (90, "brightgreen"), (80, "green"), (70, "yellowgreen"),
+              (60, "yellow"), (50, "orange"), (0, "red")) if pct >= floor)
+          print(json.dumps({"schemaVersion": 1, "label": "core coverage",
+                            "message": f"{pct:.1f}%", "color": color}))
+          PY
+          cat site/badges/coverage.json
       - name: Crawl the site before it ships (links, assets, anchors, top bar)
         # The same check CI runs on PRs (#626); a bot commit to docs/ reaches
         # this workflow without a PR, so the deploy checks for itself.
