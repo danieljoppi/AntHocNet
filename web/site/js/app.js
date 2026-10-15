@@ -3,13 +3,14 @@
 // visitor's tools into adapter calls (move a node, switch it off, add a node
 // or a flow). Nothing here chooses a route. Missions (#546) and worlds (#547)
 // plug in through `playground`.
-import { engine, events, Ev, antKind, KIND_LABEL, DropReason } from './engine.js';
+import { engine, events, Ev, antKind, DropReason } from './engine.js';
 import { IsoRenderer } from './iso.js';
 import { WORLDS, worldById } from './worlds.js';
 import { initMissions } from './missions.js';
 import { initCampaign } from './campaign/campaign.js';
 import { initSearch } from '../shell/shell.js';
 import { openReader, interceptDocsLinks } from './reader.js';
+import { initI18n, t, num, LANGS, currentLang, setLang } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -61,8 +62,8 @@ function safeStore(op, key, value) {
 }
 
 // --- theme (day / night) ------------------------------------------------------------
-function applyTheme(t) {
-  if (t) document.documentElement.dataset.theme = t;
+function applyTheme(theme) {
+  if (theme) document.documentElement.dataset.theme = theme;
   else delete document.documentElement.dataset.theme;
   R.refreshColors();
   buildLegend();
@@ -113,7 +114,7 @@ async function load(worldId, seed, opts = {}) {
   fillWatch();
   setSpeed(opts.meta ? 0 : (worldById(playground.worldId).speed ?? 0.25)); // a mission sets its own after this
   if (!opts.meta) history.replaceState(null, '', `#${playground.worldId}?seed=${seed}`);
-  news(opts.meta ? opts.meta.headline : (worldById(playground.worldId).headline || 'A new network goes live.'), true);
+  news(opts.meta ? opts.meta.headline : (worldById(playground.worldId).headline || t('app.newNetwork')), true);
   for (const fn of playground.listeners) fn({ type: 'reset' });
 }
 
@@ -128,10 +129,10 @@ function readFlows() {
 function describeWorld() {
   const m = playground.custom || worldById(playground.worldId);
   $('mapTitle').textContent = m.title;
-  $('worldTitle').textContent = 'World: ' + m.title;
+  $('worldTitle').textContent = t('app.worldTitle', { title: m.title });
   $('worldBlurb').textContent = m.blurb;
   const honest = $('worldHonest');
-  honest.textContent = m.honest + ' Nothing measured here is a benchmark number. ';
+  honest.textContent = m.honest + ' ' + t('app.notBenchmark') + ' ';
   if (m.results) {
     const a = document.createElement('a');
     a.href = m.results.href;
@@ -142,7 +143,7 @@ function describeWorld() {
     // The Field guide page this world illustrates; opens in the reader (#630).
     const a = document.createElement('a');
     a.href = m.read.href;
-    a.textContent = 'Field guide: ' + m.read.label + ' →';
+    a.textContent = t('app.fieldGuide', { label: m.read.label });
     honest.append(' ', a);
   }
 }
@@ -154,9 +155,9 @@ function fillWatch() {
   for (const f of playground.flows) {
     if (seen.has(f.dst)) continue;
     seen.add(f.dst);
-    sel.append(new Option(`node ${f.dst} (D${f.id})`, f.dst));
+    sel.append(new Option(t('app.watchNode', { n: f.dst, id: f.id }), f.dst));
   }
-  sel.append(new Option('nothing', -1));
+  sel.append(new Option(t('app.watchNothing'), -1));
   setWatch(playground.flows.length ? playground.flows[0].dst : -1);
 }
 
@@ -169,20 +170,13 @@ function setSpeed(s) {
   }
 }
 
-function setTool(t) {
-  playground.tool = t;
-  mapEl.dataset.tool = t;
+function setTool(t0) {
+  playground.tool = t0;
+  mapEl.dataset.tool = t0;
   pendingFlowSrc = -1;
   ghost = null;
-  for (const b of document.querySelectorAll('button[data-tool]')) b.setAttribute('aria-pressed', String(b.dataset.tool === t));
-  const hint = {
-    inspect: 'Inspect: click a node to read its routing table.',
-    move: 'Move: drag a node to a new spot; drag the ground to pan.',
-    build: 'Build: click the ground to put up a new node.',
-    bulldoze: playground.worldId === 'satellite' ? 'Bulldoze: click a node to switch it off/on, or a link to cut it.' : 'Bulldoze: click a node to switch it off, again to switch it back on.',
-    flow: 'Flow: click a source node, then a destination.',
-  }[t];
-  toast(hint, 2600);
+  for (const b of document.querySelectorAll('button[data-tool]')) b.setAttribute('aria-pressed', String(b.dataset.tool === t0));
+  toast(t(`app.toolHint.${t0 === 'bulldoze' && playground.worldId === 'satellite' ? 'bulldozeSat' : t0}`), 2600);
 }
 
 function selectNode(i) { playground.selected = i; lastInspector = 0; }
@@ -205,7 +199,7 @@ function news(text, force = false) {
 }
 
 function addFlow(src, dst) {
-  if (playground.flows.length >= MAX_FLOWS) { toast(`At most ${MAX_FLOWS} flows.`); return -1; }
+  if (playground.flows.length >= MAX_FLOWS) { toast(t('app.maxFlows', { n: MAX_FLOWS })); return -1; }
   const w = playground.world;
   const id = w.addFlow(src, dst, 2, w.now(), 1e9);
   readFlows();
@@ -213,7 +207,7 @@ function addFlow(src, dst) {
   fillWatch();
   setWatch(dst);
   if (keep >= 0 && keep !== dst) setWatch(dst);
-  news(`New service: flow ${id} will carry two packets a second from node ${src} to node ${dst}. Ants are being sent to find the way.`, true);
+  news(t('app.news.newFlow', { id, src, dst }), true);
   return id;
 }
 
@@ -237,7 +231,7 @@ function handle(e, wallNow) {
         if (kind !== 'hello' || $('ovHello').checked) {
           anim.rings.push({ node: e.node, kind, radius: R.meta.range || 300, t0: wallNow, dur: Math.max(dur, 520) });
         }
-        if (kind === 'linkfail') news(`Node ${e.node} warns its neighbours: a route through it just broke.`);
+        if (kind === 'linkfail') news(t('app.news.linkfail', { n: e.node }));
       } else {
         anim.flights.push({ from: e.node, to: e.peer, kind, t0: wallNow, dur });
       }
@@ -254,9 +248,9 @@ function handle(e, wallNow) {
       anim.marks.push({ node: e.node, good: true, t0: wallNow, dur: 900 });
       if (!firstDelivery.has(e.a)) {
         firstDelivery.add(e.a);
-        news(`Flow ${e.a} is open: the first packet reached node ${e.node} in ${(e.v * 1000).toFixed(0)} ms, along a path the ants found.`, true);
+        news(t('app.news.firstDelivery', { id: e.a, n: e.node, ms: num(e.v * 1000) }), true);
       } else if (st.delivered % 250 === 0) {
-        news(`${st.delivered} packets delivered so far. The colony keeps the trails fresh.`);
+        news(t('app.news.delivered', { n: num(st.delivered) }));
       }
       log(e, 'data', 'data');
       break;
@@ -264,20 +258,20 @@ function handle(e, wallNow) {
       st.drops++;
       window10.push([e.t, 0]);
       anim.marks.push({ node: e.node, good: false, t0: wallNow, dur: 900 });
-      news(`Packet lost at node ${e.node}: ${DropReason[e.peer] || 'dropped'}.`);
+      news(t('app.news.drop', { n: e.node, why: dropReason(e.peer) }));
       log(e, 'linkfail', 'data');
       break;
     case Ev.TxFail:
       anim.marks.push({ node: e.node, good: false, t0: wallNow, dur: 900 });
-      news(`Link ${e.node}–${e.peer} snapped: node ${e.node}'s radio got no answer. Repair is under way.`);
+      news(t('app.news.txfail', { n: e.node, p: e.peer }));
       log(e, 'linkfail', 'routes');
       break;
     case Ev.NodeDown:
-      news(`Node ${e.node} goes dark. Its neighbours will notice when its hellos stop.`, true);
+      news(t('app.news.down', { n: e.node }), true);
       log(e, null, 'routes');
       break;
     case Ev.NodeUp:
-      news(`Node ${e.node} is back on the air and saying hello.`, true);
+      news(t('app.news.up', { n: e.node }), true);
       log(e, null, 'routes');
       break;
     case Ev.RouteAdd: case Ev.RouteDel:
@@ -292,22 +286,26 @@ function handle(e, wallNow) {
   for (const fn of playground.listeners) fn(e);
 }
 
+const dropReason = (r) => t(DropReason[r] || 'engine.drop.other');
+
 function describe(e) {
-  const t = `t=${e.t.toFixed(3)}`;
+  const v = { n: e.node, p: e.peer, a: e.a, b: e.b };
+  let line;
   switch (e.kind) {
-    case -1: return `${t}  ${e.text}`;
-    case Ev.TxAnt: return `${t}  n${e.node} → ${e.peer < 0 ? 'all neighbours' : 'n' + e.peer}: ${KIND_LABEL[antKind(e.a, e.b)]}`;
-    case Ev.TxData: return `${t}  n${e.node} → n${e.peer}: data packet (flow ${e.a} #${e.b})`;
-    case Ev.Deliver: return `${t}  n${e.node}: delivered flow ${e.a} #${e.b} after ${(e.v * 1000).toFixed(1)} ms`;
-    case Ev.Drop: return `${t}  n${e.node}: dropped flow ${e.a} #${e.b}: ${DropReason[e.peer] || 'dropped'}`;
-    case Ev.Queue: return `${t}  n${e.node}: holding flow ${e.a} #${e.b}, no route to n${e.peer} yet`;
-    case Ev.TxFail: return `${t}  n${e.node} → n${e.peer}: no answer (out of reach), link reported broken`;
-    case Ev.RouteAdd: return e.a === e.peer ? `${t}  n${e.node}: learned neighbour n${e.peer}` : `${t}  n${e.node}: new pheromone toward n${e.a} via n${e.peer}`;
-    case Ev.RouteDel: return e.a === e.peer ? `${t}  n${e.node}: lost neighbour n${e.peer}` : `${t}  n${e.node}: lost the route toward n${e.a} via n${e.peer}`;
-    case Ev.NodeDown: return `${t}  n${e.node} switched off`;
-    case Ev.NodeUp: return `${t}  n${e.node} switched on`;
-    default: return `${t}  event ${e.kind}`;
+    case -1: line = e.text; break;
+    case Ev.TxAnt: line = t(e.peer < 0 ? 'app.log.txAntAll' : 'app.log.txAnt', { ...v, kind: t(`engine.kind.${antKind(e.a, e.b)}`) }); break;
+    case Ev.TxData: line = t('app.log.txData', v); break;
+    case Ev.Deliver: line = t('app.log.deliver', { ...v, ms: num(e.v * 1000, 1) }); break;
+    case Ev.Drop: line = t('app.log.drop', { ...v, why: dropReason(e.peer) }); break;
+    case Ev.Queue: line = t('app.log.queue', v); break;
+    case Ev.TxFail: line = t('app.log.txFail', v); break;
+    case Ev.RouteAdd: line = t(e.a === e.peer ? 'app.log.nbAdd' : 'app.log.routeAdd', v); break;
+    case Ev.RouteDel: line = t(e.a === e.peer ? 'app.log.nbDel' : 'app.log.routeDel', v); break;
+    case Ev.NodeDown: line = t('app.log.down', v); break;
+    case Ev.NodeUp: line = t('app.log.up', v); break;
+    default: line = t('app.log.other', { k: e.kind }); break;
   }
+  return `t=${e.t.toFixed(3)}  ${line}`;
 }
 
 function log(e, kind, cls) {
@@ -389,7 +387,7 @@ function updateRoutes(w, wallNow) {
     if (key && prev && key !== prev) {
       routeChanges++;
       r.changedAt = wallNow;
-      const text = `Flow ${r.flow}'s strongest trail switched: now ${r.path.map((n) => 'n' + n).join(' → ')} (${r.path.length - 1} hops).`;
+      const text = t('app.news.routeSwitch', { id: r.flow, path: r.path.map((n) => 'n' + n).join(' → '), hops: r.path.length - 1 });
       news(text);
       log({ t: w.now(), kind: -1, text }, 'repair', 'routes');
     }
@@ -409,8 +407,8 @@ function renderInspector(w) {
   const frag = document.createDocumentFragment();
   const p = document.createElement('p');
   const v = R.speedOf(i);
-  const motion = playground.worldId === 'satellite' ? '' : v > 0.05 ? ` · <span class="chip">moving ${v.toFixed(1)} m/s</span>` : ' · <span class="chip">standing still</span>';
-  p.innerHTML = `<strong>Node ${i}</strong> · ${up ? 'on the air' : 'switched off'}${motion} · ${w.pendingCount(i)} packet(s) waiting · routes to ${dests.length} node(s)`;
+  const motion = playground.worldId === 'satellite' ? '' : ` · <span class="chip">${v > 0.05 ? t('app.insp.moving', { v: num(v, 1) }) : t('app.insp.still')}</span>`;
+  p.innerHTML = `<strong>${t('app.insp.node', { n: i })}</strong> · ${t(up ? 'app.insp.on' : 'app.insp.off')}${motion} · ${t('app.insp.summary', { q: w.pendingCount(i), d: dests.length })}`;
   frag.append(p);
   if (d >= 0 && d !== i) {
     const row = w.pheromone(i, d);
@@ -420,35 +418,35 @@ function renderInspector(w) {
     const rows = [];
     for (let k = 0; k < row.length; k += 3) rows.push([row[k], row[k + 1], row[k + 2]]);
     rows.sort((a, b) => (prob.get(b[0]) || 0) - (prob.get(a[0]) || 0) || b[1] - a[1]);
-    const t = document.createElement('table');
-    t.className = 'ph';
-    t.innerHTML = `<caption>Toward node ${d}, straight from the core's pheromone table</caption>
-      <thead><tr><th>via</th><th>τ regular</th><th>τ virtual</th><th>next data packet</th></tr></thead>`;
+    const tbl = document.createElement('table');
+    tbl.className = 'ph';
+    tbl.innerHTML = `<caption>${t('app.insp.caption', { d })}</caption>
+      <thead><tr><th>${t('app.insp.via')}</th><th>${t('app.insp.reg')}</th><th>${t('app.insp.vir')}</th><th>${t('app.insp.next')}</th></tr></thead>`;
     const tb = document.createElement('tbody');
     for (const [nb, reg, vir] of rows) {
       const pr = prob.get(nb) || 0;
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>n${nb}</td><td>${reg ? reg.toFixed(2) : '—'}</td><td>${vir ? vir.toFixed(2) : '—'}</td>
-        <td><span class="bar" style="width:${Math.round(pr * 56)}px"></span> ${(pr * 100).toFixed(pr > 0 && pr < 0.01 ? 2 : 0)}%</td>`;
+      tr.innerHTML = `<td>n${nb}</td><td>${reg ? num(reg, 2) : '—'}</td><td>${vir ? num(vir, 2) : '—'}</td>
+        <td><span class="bar" style="width:${Math.round(pr * 56)}px"></span> ${num(pr * 100, pr > 0 && pr < 0.01 ? 2 : 0)}%</td>`;
       tb.append(tr);
     }
-    t.append(tb);
-    frag.append(t);
+    tbl.append(tb);
+    frag.append(tbl);
     const note = document.createElement('p');
     note.className = 'muted small';
     note.textContent = dist.length
-      ? 'The last column is the core\'s own probability for the next data packet: pheromone raised to β = 20, normalised. The strongest trail wins almost always — almost.'
-      : 'No pheromone toward this destination yet: a packet here would wait while a reactive ant searches.';
+      ? t('app.insp.noteDist')
+      : t('app.insp.noteNone');
     frag.append(note);
   } else if (d === i) {
-    frag.append(Object.assign(document.createElement('p'), { className: 'muted small', textContent: 'This is the destination being watched.' }));
+    frag.append(Object.assign(document.createElement('p'), { className: 'muted small', textContent: t('app.insp.watched') }));
   }
   body.replaceChildren(frag);
 }
 
 function updateStatus(w) {
-  const t = w.now();
-  const m = Math.floor(t / 60), s = (t - 60 * m).toFixed(2).padStart(5, '0');
+  const now = w.now();
+  const m = Math.floor(now / 60), s = (now - 60 * m).toFixed(2).padStart(5, '0');
   $('clock').textContent = `t ${m}:${s}`;
   let sent = 0;
   const fs = w.flowStats();
@@ -457,9 +455,9 @@ function updateStatus(w) {
   $('stDelivered').textContent = `✓ ${st.delivered}/${sent}`;
   $('stDropped').textContent = `✕ ${st.drops}`;
   const ants = w.antTransmissions();
-  $('stBudget').textContent = `ants ${ants}` + (st.delivered ? ` · ${(ants / st.delivered).toFixed(1)}/pkt` : '');
-  $('stRoutes').textContent = `route switches ${routeChanges}`;
-  window10 = window10.filter(([ts]) => ts > t - 10);
+  $('stBudget').textContent = t('app.st.ants', { n: ants }) + (st.delivered ? ' · ' + t('app.st.perPkt', { x: num(ants / st.delivered, 1) }) : '');
+  $('stRoutes').textContent = t('app.st.routes', { n: routeChanges });
+  window10 = window10.filter(([ts]) => ts > now - 10);
   if (window10.length) {
     const ok = window10.reduce((a, [, g]) => a + g, 0) / window10.length;
     $('healthBar').style.width = `${Math.round(ok * 100)}%`;
@@ -548,12 +546,12 @@ view.addEventListener('pointerdown', (ev) => {
   if (playground.onPlace && i < 0) {
     const [x, y] = R.unproject(px, py);
     if (inField(x, y)) playground.onPlace(x, y);
-    else toast('Place it inside the map.');
+    else toast(t('app.toast.placeInside'));
     return;
   }
   if (tool === 'inspect') { selectNode(i); return; }
   if (tool === 'move') {
-    if (playground.canMove && !playground.canMove(i)) { selectNode(i); toast('That one stays where it is.'); return; }
+    if (playground.canMove && !playground.canMove(i)) { selectNode(i); toast(t('app.toast.staysPut')); return; }
     selectNode(i); drag = { node: i, x: px, y: py }; return;
   }
   if (tool === 'bulldoze') {
@@ -562,7 +560,7 @@ view.addEventListener('pointerdown', (ev) => {
       const l = R.hitLink(pos, w.links(), px, py);
       if (l) {
         w.cutIslLink(l[0], l[1]);
-        news(`Inter-satellite link ${l[0]}–${l[1]} cut. The ants will find the long way round.`, true);
+        news(t('app.news.islCut', { a: l[0], b: l[1] }), true);
         for (const fn of playground.listeners) fn({ type: 'cut', a: l[0], b: l[1] });
       }
     }
@@ -570,21 +568,21 @@ view.addEventListener('pointerdown', (ev) => {
   }
   if (tool === 'build') {
     const [x, y] = R.unproject(px, py);
-    if (playground.worldId === 'satellite') { toast('Satellites are launched, not built: pick another world to build.'); return; }
-    if (!inField(x, y)) { toast('Build inside the field.'); return; }
-    if (w.nodeCount() >= MAX_NODES) { toast(`The map holds at most ${MAX_NODES} nodes.`); return; }
+    if (playground.worldId === 'satellite') { toast(t('app.toast.noBuildSat')); return; }
+    if (!inField(x, y)) { toast(t('app.toast.buildInside')); return; }
+    if (w.nodeCount() >= MAX_NODES) { toast(t('app.toast.maxNodes', { n: MAX_NODES })); return; }
     const z = playground.worldId === 'fanet' ? 150 : 0;
     const n = w.addNode(x, y, z);
     const m = mobilityFor(playground.worldId);
     if (m) w.setMobility(n, ...m);
     selectNode(n);
-    news(`Node ${n} built and on the air. It will learn its neighbours from their hellos.`, true);
+    news(t('app.news.built', { n }), true);
     return;
   }
   if (tool === 'flow') {
     if (i < 0) return;
-    if (pendingFlowSrc < 0) { pendingFlowSrc = i; selectNode(i); toast(`Source: node ${i}. Now click the destination.`); return; }
-    if (i === pendingFlowSrc) { toast('Pick a different node as the destination.'); return; }
+    if (pendingFlowSrc < 0) { pendingFlowSrc = i; selectNode(i); toast(t('app.toast.source', { n: i })); return; }
+    if (i === pendingFlowSrc) { toast(t('app.toast.sameNode')); return; }
     addFlow(pendingFlowSrc, i);
     pendingFlowSrc = -1;
   }
@@ -639,7 +637,7 @@ function toggleNode(i) {
   const w = playground.world;
   const up = w.positions()[4 * i + 3] > 0;
   w.setNodeUp(i, !up);
-  toast(`Node ${i} switched ${up ? 'off' : 'on'}.`);
+  toast(t(up ? 'app.toast.switchedOff' : 'app.toast.switchedOn', { n: i }));
 }
 
 mapEl.addEventListener('keydown', (ev) => {
@@ -688,7 +686,7 @@ function stepToTraffic() {
   // Pause, then advance in small slices until an ant (not a hello) or a
   // packet goes on the air.
   const w = playground.world;
-  if (playground.planning) { toast('Press Run to start the level.'); return; }
+  if (playground.planning) { toast(t('app.toast.pressRun')); return; }
   if (playground.speed > 0) setSpeed.last = playground.speed;
   setSpeed(0);
   const end = w.now() + 5;
@@ -726,7 +724,7 @@ $('seed').addEventListener('change', (e) => load(playground.worldId, Math.max(1,
 $('share').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(location.href);
-    toast('Link copied: same world, same seed, same run.');
+    toast(t('app.toast.copied'));
   } catch {
     toast(location.href, 6000);
   }
@@ -736,12 +734,10 @@ new ResizeObserver(() => R.resize()).observe(mapEl);
 function buildLegend() {
   const ul = $('legend');
   ul.replaceChildren();
-  const items = [['route', 'strongest pheromone route'], ['reactive', 'reactive ant (searching)'], ['backward', 'backward ant (laying pheromone)'],
-    ['proactive', 'proactive ant (scouting)'], ['repair', 'repair ant'], ['linkfail', 'link-failure notice'],
-    ['data', 'data packet'], ['hello', 'hello (beacon)'], ['pheromone', 'pheromone trail']];
-  for (const [k, label] of items) {
+  const items = ['route', 'reactive', 'backward', 'proactive', 'repair', 'linkfail', 'data', 'hello', 'pheromone'];
+  for (const k of items) {
     const li = document.createElement('li');
-    li.append(R.swatch(k), label);
+    li.append(R.swatch(k), t(`app.legend.${k}`));
     ul.append(li);
   }
 }
@@ -761,7 +757,7 @@ function hub(fresh) {
   if (playground.campaign.hasProgress()) {
     const next = playground.campaign.continueLevel();
     cont.hidden = false;
-    cont.textContent = `▶ Continue: ${next.id} ${next.title}`;
+    cont.textContent = t('app.continue', { id: next.id, title: next.title });
     cont.addEventListener('click', () => { close(); playground.campaign.openBriefing(next); });
   }
   $('hubMission').addEventListener('click', () => {
@@ -782,6 +778,10 @@ function parseHash() {
 }
 
 async function boot() {
+  await initI18n();
+  for (const [code, name] of Object.entries(LANGS)) $('lang').append(new Option(name, code));
+  $('lang').value = currentLang();
+  $('lang').addEventListener('change', (e) => setLang(e.target.value));
   for (const w of WORLDS) $('world').append(new Option(w.title, w.id));
   const saved = safeStore('get', 'ahn-theme');
   applyTheme(saved === 'light' || saved === 'dark' ? saved : null);
@@ -801,6 +801,6 @@ async function boot() {
   requestAnimationFrame(frame);
 }
 boot().catch((err) => {
-  $('news').textContent = 'Could not start the WebAssembly core: ' + err;
+  $('news').textContent = t('app.bootFail', { err });
   throw err;
 });

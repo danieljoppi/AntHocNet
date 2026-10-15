@@ -7,6 +7,7 @@ import { engine, events, Ev } from './engine.js';
 import { CHAMBERS, SURFACE } from './nest-data.js';
 import { STEPS, parseDoctor } from './install-steps.js';
 import { initPage } from '../shell/shell.js';
+import { initI18n, t, num } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
@@ -14,7 +15,6 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode */ } },
 };
-initPage();
 
 // --- the Nest ------------------------------------------------------------------
 const el = (tag, attrs = {}, text) => {
@@ -38,7 +38,7 @@ function drawNest() {
   const svg = $('nest');
   svg.append(el('rect', { x: 0, y: 0, width: 948, height: 84, class: 'sky' }));
   svg.append(el('rect', { x: 0, y: 84, width: 948, height: 616, class: 'soil' }));
-  svg.append(el('text', { x: 474, y: 22, class: 'label-sm', 'text-anchor': 'middle' }, 'SURFACE · the adapters'));
+  svg.append(el('text', { x: 474, y: 22, class: 'label-sm', 'text-anchor': 'middle' }, t('ws.surface')));
   // tunnels from the surface down through the chambers
   for (const d of ['M210 66 C 210 120, 330 150, 380 210', 'M738 66 C 738 120, 620 150, 568 210', 'M474 306 L 474 368',
     'M380 290 C 320 340, 250 370, 220 400', 'M568 290 C 630 340, 700 370, 730 400', 'M474 472 L 474 558', 'M300 470 C 360 520, 400 560, 410 590']) {
@@ -92,7 +92,7 @@ function select(id) {
       const brief = info.brief;
       if (brief) li.append(Object.assign(document.createElement('span'), { textContent: ' — ' + brief }));
       const n = info.members.filter((m) => m.kind === 'function').length;
-      if (n) li.append(Object.assign(document.createElement('small'), { textContent: ` ${n} public function${n > 1 ? 's' : ''}` }));
+      if (n) li.append(Object.assign(document.createElement('small'), { textContent: ' ' + t(n > 1 ? 'ws.fns' : 'ws.fn', { n }) }));
     }
     ul.append(li);
   }
@@ -112,12 +112,12 @@ function showLive() {
   if (!p || !world) return;
   const node = 7;
   const dests = Array.from(world.destinations(node));
-  if (!dests.length) { p.textContent = `Live: node ${node} holds no pheromone yet.`; return; }
+  if (!dests.length) { p.textContent = t('ws.liveNone', { n: node }); return; }
   const d = dests[0];
   const row = Array.from(world.pheromone(node, d));
   const parts = [];
-  for (let i = 0; i < row.length; i += 3) parts.push(`via ${row[i]}: ${row[i + 1].toFixed(4)}`);
-  p.textContent = `Live, getPheromoneRegular at node ${node} toward ${d}: ${parts.slice(0, 4).join(' · ')}`;
+  for (let i = 0; i < row.length; i += 3) parts.push(t('ws.via', { n: row[i], v: num(row[i + 1], 4) }));
+  p.textContent = t('ws.live', { n: node, d, vals: parts.slice(0, 4).join(' · ') });
 }
 
 const heat = Object.fromEntries(CHAMBERS.map((c) => [c.id, 0]));
@@ -127,7 +127,7 @@ async function runWorld() {
   const M = await engine();
   world = new M.World(1, 'manet');
   world.start();
-  $('nestLive').textContent = 'world: ad hoc, seed 1 · t 0:00';
+  $('nestLive').textContent = t('ws.world', { t: '0:00' });
   let last = performance.now();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const tick = (now) => {
@@ -143,9 +143,9 @@ async function runWorld() {
       g.style.setProperty('--heat', reduce ? 0 : Math.min(1, h / 30).toFixed(3));
       heat[g.dataset.id] = h * 0.92;
     }
-    const t = world.now();
-    $('nestLive').textContent = `world: ad hoc, seed 1 · t ${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
-    if (selected === 'store' && Math.floor(t * 2) !== Math.floor((t - dt) * 2)) showLive();
+    const simNow = world.now();
+    $('nestLive').textContent = t('ws.world', { t: `${Math.floor(simNow / 60)}:${String(Math.floor(simNow % 60)).padStart(2, '0')}` });
+    if (selected === 'store' && Math.floor(simNow * 2) !== Math.floor((simNow - dt) * 2)) showLive();
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
@@ -169,7 +169,7 @@ function renderQuest() {
     li.querySelector('b').textContent = s.title;
     li.querySelector('code').textContent = s.cmd;
     li.querySelector('p').textContent = note;
-    li.setAttribute('aria-label', `${s.title}: ${state === 'todo' ? 'to do' : state}. ${note}`);
+    li.setAttribute('aria-label', `${s.title}: ${t(`ws.state.${state}`)}. ${note}`);
     ol.append(li);
   }
   $('questScore').textContent = `${done} / ${STEPS.length}`;
@@ -187,6 +187,8 @@ $('questCheck').addEventListener('click', () => {
 });
 $('questReset').addEventListener('click', () => { store.set('ahn-quest', ''); renderQuest(); });
 
+await initI18n();
+initPage();
 drawNest();
 renderQuest();
-runWorld().catch((err) => { $('nestLive').textContent = 'Could not start the WebAssembly core: ' + err; });
+runWorld().catch((err) => { $('nestLive').textContent = t('app.bootFail', { err }); });

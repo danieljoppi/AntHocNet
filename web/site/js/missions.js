@@ -6,6 +6,7 @@
 // and a debrief that links to the doc page and the API symbol behind it.
 import { MISSIONS } from './missions-data.js';
 import { Ev } from './engine.js';
+import { t, has } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const STORE = 'ahn-missions-v1';
@@ -38,54 +39,54 @@ export function initMissions(pg) {
   function showList() {
     active?.stop(true);
     active = null;
-    $('missionTitle').textContent = 'Missions';
+    $('missionTitle').textContent = t('missions.title');
     const body = $('missionBody');
     body.replaceChildren();
     // The campaign (#569) teaches these lessons as levels with goals and a
     // budget; the Academy missions stay here as short drills.
     if (pg.campaign) {
-      body.append(el('p', { class: 'small' }, 'The campaign plays these lessons as levels. ',
-        el('button', { class: 'bevel', type: 'button', onclick: () => pg.campaign.openMap() }, '▶ Campaign')));
+      body.append(el('p', { class: 'small' }, t('missions.campaignNote') + ' ',
+        el('button', { class: 'bevel', type: 'button', onclick: () => pg.campaign.openMap() }, t('missions.campaignBtn'))));
     }
-    for (const group of ['Academy', 'World challenges']) {
-      body.append(el('p', { class: 'small' }, el('b', {}, group === 'Academy' ? 'Drills (the Academy)' : group)));
+    for (const group of ['Academy', 'Worlds']) {
+      body.append(el('p', { class: 'small' }, el('b', {}, t(`missions.group.${group}`))));
       const ul = el('ul', { class: 'missions' });
       MISSIONS.filter((m) => m.group === group).forEach((m) => {
         const got = progress[m.id] || 0;
         const btn = el('button', { class: 'bevel', type: 'button', onclick: () => start(m) },
           el('span', {}, `${m.n}. ${m.title}`),
-          el('span', { class: 'stars', 'aria-label': `${got} of 3 stars` }, stars(got)));
+          el('span', { class: 'stars', 'aria-label': t('missions.stars', { n: got }) }, stars(got)));
         ul.append(el('li', {}, btn));
       });
       body.append(ul);
     }
     const total = MISSIONS.reduce((a, m) => a + (progress[m.id] || 0), 0);
-    body.append(el('p', { class: 'muted small' }, `${total} / ${MISSIONS.length * 3} stars. Or just play: every tool works outside a mission too.`));
+    body.append(el('p', { class: 'muted small' }, t('missions.total', { n: total, max: MISSIONS.length * 3 })));
   }
 
   // --- running one mission ------------------------------------------------------
   async function start(m) {
     active?.stop();
     const body = $('missionBody');
-    $('missionTitle').textContent = `Mission ${m.n}: ${m.title}`;
+    $('missionTitle').textContent = t('missions.missionTitle', { n: m.n, title: m.title });
     const goal = el('p', { class: 'mission-goal' }, m.goal);
     const status = el('p', { class: 'small' }, '');
     const bar = el('div', { class: 'progress' }, el('span', { style: 'width:0%' }));
     const ask = el('div', {});
     let hintsUsed = 0;
-    const hintBtn = el('button', { class: 'bevel', type: 'button' }, 'Hint');
+    const hintBtn = el('button', { class: 'bevel', type: 'button' }, t('missions.hint'));
     const hintText = el('p', { class: 'small muted' }, '');
     hintBtn.addEventListener('click', () => {
       if (hintsUsed < m.hints.length) hintText.textContent = m.hints[hintsUsed++];
       if (hintsUsed >= m.hints.length) hintBtn.disabled = true;
     });
-    const back = el('button', { class: 'bevel', type: 'button', onclick: showList }, '← Missions');
+    const back = el('button', { class: 'bevel', type: 'button', onclick: showList }, t('missions.back'));
     body.replaceChildren(el('p', {}, m.intro), goal, bar, status, ask,
       el('div', { class: 'choices' }, hintBtn, back), hintText);
 
     await pg.load(m.world, m.seed, { config: m.config || {} });
     if (m.config && Object.keys(m.config).length) {
-      pg.toast(`Mission knob: ${Object.entries(m.config).map(([k, v]) => `${k} = ${v}`).join(', ')} (reset when you leave).`, 5000);
+      pg.toast(t('missions.knob', { knobs: Object.entries(m.config).map(([k, v]) => `${k} = ${v}`).join(', ') }), 5000);
     }
     pg.setSpeed(m.speed ?? 0.25);
     if (m.tool) pg.setTool(m.tool);
@@ -116,9 +117,9 @@ export function initMissions(pg) {
       on(fn) { const u = pg.on((e) => { if (!done && e.type !== 'reset') fn(e); }); unsub.push(u); return u; },
       /** Run fn every `ms` of wall time until the mission ends; returns a cancel. */
       every(ms, fn) {
-        const t = setInterval(() => { if (!done) fn(); }, ms);
-        timers.push(t);
-        return () => clearInterval(t);
+        const id = setInterval(() => { if (!done) fn(); }, ms);
+        timers.push(id);
+        return () => clearInterval(id);
       },
       complete(score, debriefText) {
         if (done) return;
@@ -127,19 +128,19 @@ export function initMissions(pg) {
         progress[m.id] = Math.max(progress[m.id] || 0, n);
         saveProgress(progress);
         bar.firstChild.style.width = '100%';
-        pg.news(`Mission accomplished: “${m.title}”. ${stars(n)}`, true);
+        pg.news(t('missions.accomplished', { title: m.title, stars: stars(n) }), true);
         const links = el('p', { class: 'small' });
         for (const [label, href] of m.links) {
-          links.append(el('a', { href }, label + ' →'), ' ');
+          links.append(el('a', { href }, (has(label) ? t(label) : label) + ' →'), ' ');
         }
         const next = MISSIONS.find((x) => x.n === m.n + 1 && x.group === m.group);
         ask.replaceChildren(
-          el('p', {}, el('span', { class: 'stars', 'aria-label': `${n} of 3 stars` }, stars(n)), ' ', el('b', {}, 'Done.')),
+          el('p', {}, el('span', { class: 'stars', 'aria-label': t('missions.stars', { n }) }, stars(n)), ' ', el('b', {}, t('missions.done'))),
           el('p', {}, debriefText || ''),
           el('p', {}, m.debrief), links,
           el('div', { class: 'choices' },
-            next ? el('button', { class: 'bevel', type: 'button', onclick: () => start(next) }, `Next: ${next.title}`) : '',
-            el('button', { class: 'bevel', type: 'button', onclick: showList }, 'All missions')));
+            next ? el('button', { class: 'bevel', type: 'button', onclick: () => start(next) }, t('missions.next', { title: next.title })) : '',
+            el('button', { class: 'bevel', type: 'button', onclick: showList }, t('missions.all'))));
       },
     };
     active = {
@@ -147,7 +148,7 @@ export function initMissions(pg) {
       stop(reload = false) {
         done = true;
         unsub.forEach((u) => u());
-        timers.forEach((t) => clearInterval(t));
+        timers.forEach((id) => clearInterval(id));
         if (reload && ctx.state.knobbed) pg.load(pg.worldId, pg.seed);
       },
     };

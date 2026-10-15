@@ -179,7 +179,7 @@ def self_test() -> int:
     wjs, mjs, pages = repo_inputs()
     ex = extra_inputs()
     no_docs = mjs.replace(
-        "links: [['How AntHocNet works', DOC + 'ant-colony-routing/'], ['AntRouterLogic::onMaintenanceTick', ARL]]",
+        "links: [['doc.howItWorks', DOC + 'ant-colony-routing/'], ['AntRouterLogic::onMaintenanceTick', ARL]]",
         "links: [['AntRouterLogic::onMaintenanceTick', ARL]]", 1)
     no_try = dict(pages)
     no_try["docs/benchmarks/static-mesh.md"] = re.sub(r"^---\n.*?\n---\n", "", no_try["docs/benchmarks/static-mesh.md"], flags=re.DOTALL)

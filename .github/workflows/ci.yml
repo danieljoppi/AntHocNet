@@ -119,6 +119,11 @@ jobs:
           "$RUNNER_TEMP/emsdk/emsdk" activate 4.0.10
       - name: Install-quest parser unit test (#636)
         run: node web/test/quest.test.mjs
+      - name: Translations complete, no English left in code (#622)
+        # Every key in web/site/i18n/en.json exists (with the same {placeholders})
+        # in every other language file; no multi-word English literal remains in
+        # web/site/js; index.html and workshop.html text is marked data-i18n.
+        run: python3 web/tools/i18n-check.py
       - name: Assemble the whole site, as pages.yml does (#626)
         run: |
           pip install -c requirements-dev.txt mkdocs-material

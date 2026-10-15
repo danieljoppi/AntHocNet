@@ -9,10 +9,9 @@ export const Ev = Object.freeze({
 });
 export const AntType = Object.freeze({ Hello: 1, Reactive: 2, Proactive: 4, Repair: 8, LinkFail: 16 });
 export const Dir = Object.freeze({ Forward: 17, Backward: 18 });
+/** Drop reason code -> its i18n key (the text is in i18n/<lang>.json). */
 export const DropReason = Object.freeze({
-  1: 'hop limit (loop)', 2: 'no route in time (queue timeout)',
-  3: 'route not back within the reconvergence hold cap',
-  4: 'local repair expired', 5: 'node switched off',
+  1: 'engine.drop.1', 2: 'engine.drop.2', 3: 'engine.drop.3', 4: 'engine.drop.4', 5: 'engine.drop.5',
 });
 
 /** Which glyph/colour family an ant transmission belongs to. */
@@ -24,12 +23,6 @@ export function antKind(type, dir) {
   if (type === AntType.Repair) return 'repair';
   return 'reactive';
 }
-
-export const KIND_LABEL = Object.freeze({
-  hello: 'hello', reactive: 'reactive forward ant', backward: 'backward ant',
-  proactive: 'proactive forward ant', repair: 'repair ant',
-  linkfail: 'link-failure notice', data: 'data packet',
-});
 
 let modulePromise = null;
 /** The compiled core, loaded once. */

@@ -1,0 +1,934 @@
+{
+  "bar": {
+    "home": "AntHocNet: home",
+    "places": "Places",
+    "play": "Play",
+    "guide": "Field guide",
+    "lab": "Lab",
+    "shop": "Workshop",
+    "arch": "Archive",
+    "searchLabel": "Search the docs",
+    "search": "Search the colony…",
+    "theme": "Switch day and night",
+    "themeTitle": "Day / night",
+    "source": "Source on GitHub"
+  },
+  "ui": {
+    "description": "A city-builder for networks and ants: place phones, move them, launch flows, and watch the real AntHocNet routing core, compiled to WebAssembly, find and repair routes.",
+    "menubar": "Game controls",
+    "speed": "Simulation speed",
+    "speed0": "Pause (space)",
+    "speed1": "Ant pace: 0.05×",
+    "speed2": "Slow: 0.25×",
+    "speed3": "Real time: 1×",
+    "speed4": "Fast: 5×",
+    "stepTitle": "Step to the next ant or packet (.)",
+    "tools": "Tools",
+    "mapTools": "Map tools",
+    "tool": {
+      "inspectTitle": "Inspect (1): click a node to read its routing table",
+      "moveTitle": "Move (2): drag a node; drag the ground to pan",
+      "buildTitle": "Build (3): put a new node on the map (in the ad hoc world: a phone that stays put)",
+      "bulldozeTitle": "Bulldoze (4): switch a node off or on; cut a satellite link",
+      "flowTitle": "Flow (5): click a source, then a destination",
+      "inspect": "Inspect",
+      "move": "Move",
+      "build": "Build",
+      "bulldoze": "Bulldoze",
+      "flow": "Flow"
+    },
+    "rotLTitle": "Rotate left (Q)",
+    "rotL": "Rotate view left",
+    "rotRTitle": "Rotate right (E)",
+    "rotR": "Rotate view right",
+    "zoomInTitle": "Zoom in (+)",
+    "zoomIn": "Zoom in",
+    "zoomOutTitle": "Zoom out (−)",
+    "zoomOut": "Zoom out",
+    "centerTitle": "Centre the map (0)",
+    "center": "Centre the map",
+    "mapWin": "Map",
+    "map": "Network map",
+    "hud": "Level",
+    "dock": "Devices you can place",
+    "campaign": "Campaign",
+    "st": {
+      "clock": "Simulated time",
+      "delivered": "Data packets delivered / sent",
+      "dropped": "Data packets dropped",
+      "budget": "Control budget: ant transmissions per delivered packet (the routing overhead, NRL)",
+      "routes": "How often a flow's strongest pheromone route switched to a different path",
+      "health": "Network health: delivery ratio over the last 10 s"
+    },
+    "ticker": "Network news",
+    "watchLabel": "Show pheromone toward",
+    "title": "AntHocNet — learn ant-colony routing by playing",
+    "skip": "Skip to the map",
+    "world": "World",
+    "seed": "Seed",
+    "step": "Step",
+    "language": "Language",
+    "hub": {
+      "play": "Play",
+      "title": "Help the ants find the way",
+      "intro": "Every device on this field runs the real AntHocNet routing core, compiled to WebAssembly. Fix a broken network, and the ants do the routing.",
+      "listCampaign": "<b>Campaign</b> one chapter per kind of network: ad hoc town and the neighbourhood mesh now, cars, drones and satellites next",
+      "listFree": "<b>Free play</b> phones, mesh, cars, drones, satellites",
+      "listDrills": "<b>Drills</b> the eight Academy missions, one per thing the ants do",
+      "campaign": "▶ Campaign",
+      "continue": "▶ Continue",
+      "free": "Free play",
+      "drills": "Drills",
+      "guideK": "Field guide",
+      "guideH": "How the colony routes",
+      "guideP": "Ant colony routing, the five ant types, how the code is built, and why each kind of network is different.",
+      "labK": "Lab",
+      "labH": "What we measured",
+      "labP": "Results per network type in ns-3, with confidence intervals, and how every number is made.",
+      "shopK": "Workshop",
+      "shopH": "Build it into ns-3",
+      "shopP": "The core's API as a live ant nest, and the ns-3 install as a quest you check with <code>make doctor</code>.",
+      "archK": "Archive",
+      "archH": "Decisions and what's next",
+      "archP": "The roadmap, every decision record, fidelity to the paper, and the research behind the plan."
+    },
+    "view": "View",
+    "overlays": "Overlays",
+    "ov": {
+      "route": "strongest route",
+      "pheromone": "pheromone",
+      "links": "radio links",
+      "hello": "hellos",
+      "labels": "all labels"
+    },
+    "mapHelp": "Keyboard: ? opens the Field guide page for this world, beside the map; 1 to 5 pick a tool; [ and ] select the previous or next node; arrow keys move the selected node (or pan); o switches it off or on; Q and E rotate; plus and minus zoom; space pauses. Every event is also written to the ant log below the map.",
+    "mast": "The Daily Pheromone",
+    "newsStart": "Reporters are in place. Build, break and watch.",
+    "missions": "Missions",
+    "query": "Query",
+    "inspHint": "Pick <b>Inspect</b> and click a node to read what its routing table holds.",
+    "watch": "Pheromone to",
+    "legend": "Legend",
+    "log": "Ant log",
+    "logf": {
+      "hello": "hellos",
+      "data": "data",
+      "ants": "ants",
+      "routes": "routes"
+    },
+    "share": "Share this run",
+    "restart": "Restart",
+    "about": {
+      "title": "How the colony routes",
+      "intro": "AntHocNet is an ant-colony routing protocol for networks with no fixed infrastructure — phones, drones, cars, satellites. This repository implements it once, in a simulator-independent core, and runs that core in ns-3 and in this page.",
+      "s1h": "Ants search",
+      "s1": "A node with data and no route sends reactive forward ants. Each one that reaches the destination turns into a backward ant.",
+      "s2h": "Ants lay pheromone",
+      "s2": "The backward ant walks the path home and leaves pheromone on every hop: more on short, fast paths, less on slow ones.",
+      "s3h": "Packets follow the scent",
+      "s3": "Each data packet picks its next hop at random, weighted by pheromone raised to β = 20 — so the best trail almost always wins.",
+      "s4h": "The colony keeps it fresh",
+      "s4": "Hellos find neighbours, proactive ants re-sample routes in use, and link-failure notices and repair ants patch a route when a phone walks away."
+    },
+    "foot": {
+      "docs": "Documentation",
+      "results": "Measured results",
+      "api": "API reference",
+      "source": "Source on GitHub",
+      "note": "Nothing measured in this game is a benchmark number; the results pages are."
+    }
+  },
+  "app": {
+    "newNetwork": "A new network goes live.",
+    "worldTitle": "World: {title}",
+    "notBenchmark": "Nothing measured here is a benchmark number.",
+    "fieldGuide": "Field guide: {label} →",
+    "watchNode": "node {n} (D{id})",
+    "watchNothing": "nothing",
+    "maxFlows": "At most {n} flows.",
+    "toolHint": {
+      "inspect": "Inspect: click a node to read its routing table.",
+      "move": "Move: drag a node to a new spot; drag the ground to pan.",
+      "build": "Build: click the ground to put up a new node.",
+      "bulldozeSat": "Bulldoze: click a node to switch it off/on, or a link to cut it.",
+      "bulldoze": "Bulldoze: click a node to switch it off, again to switch it back on.",
+      "flow": "Flow: click a source node, then a destination."
+    },
+    "news": {
+      "newFlow": "New service: flow {id} will carry two packets a second from node {src} to node {dst}. Ants are being sent to find the way.",
+      "linkfail": "Node {n} warns its neighbours: a route through it just broke.",
+      "firstDelivery": "Flow {id} is open: the first packet reached node {n} in {ms} ms, along a path the ants found.",
+      "delivered": "{n} packets delivered so far. The colony keeps the trails fresh.",
+      "drop": "Packet lost at node {n}: {why}.",
+      "txfail": "Link {n}–{p} snapped: node {n}'s radio got no answer. Repair is under way.",
+      "down": "Node {n} goes dark. Its neighbours will notice when its hellos stop.",
+      "up": "Node {n} is back on the air and saying hello.",
+      "routeSwitch": "Flow {id}'s strongest trail switched: now {path} ({hops} hops).",
+      "islCut": "Inter-satellite link {a}–{b} cut. The ants will find the long way round.",
+      "built": "Node {n} built and on the air. It will learn its neighbours from their hellos."
+    },
+    "log": {
+      "txAntAll": "n{n} → all neighbours: {kind}",
+      "txAnt": "n{n} → n{p}: {kind}",
+      "txData": "n{n} → n{p}: data packet (flow {a} #{b})",
+      "deliver": "n{n}: delivered flow {a} #{b} after {ms} ms",
+      "drop": "n{n}: dropped flow {a} #{b}: {why}",
+      "queue": "n{n}: holding flow {a} #{b}, no route to n{p} yet",
+      "txFail": "n{n} → n{p}: no answer (out of reach), link reported broken",
+      "nbAdd": "n{n}: learned neighbour n{p}",
+      "routeAdd": "n{n}: new pheromone toward n{a} via n{p}",
+      "nbDel": "n{n}: lost neighbour n{p}",
+      "routeDel": "n{n}: lost the route toward n{a} via n{p}",
+      "down": "n{n} switched off",
+      "up": "n{n} switched on",
+      "other": "event {k}"
+    },
+    "insp": {
+      "moving": "moving {v} m/s",
+      "still": "standing still",
+      "node": "Node {n}",
+      "on": "on the air",
+      "off": "switched off",
+      "summary": "{q} packet(s) waiting · routes to {d} node(s)",
+      "caption": "Toward node {d}, straight from the core's pheromone table",
+      "via": "via",
+      "reg": "τ regular",
+      "vir": "τ virtual",
+      "next": "next data packet",
+      "noteDist": "The last column is the core's own probability for the next data packet: pheromone raised to β = 20, normalised. The strongest trail wins almost always — almost.",
+      "noteNone": "No pheromone toward this destination yet: a packet here would wait while a reactive ant searches.",
+      "watched": "This is the destination being watched."
+    },
+    "st": {
+      "ants": "ants {n}",
+      "perPkt": "{x}/pkt",
+      "routes": "route switches {n}"
+    },
+    "toast": {
+      "placeInside": "Place it inside the map.",
+      "staysPut": "That one stays where it is.",
+      "noBuildSat": "Satellites are launched, not built: pick another world to build.",
+      "buildInside": "Build inside the field.",
+      "maxNodes": "The map holds at most {n} nodes.",
+      "source": "Source: node {n}. Now click the destination.",
+      "sameNode": "Pick a different node as the destination.",
+      "switchedOff": "Node {n} switched off.",
+      "switchedOn": "Node {n} switched on.",
+      "pressRun": "Press Run to start the level.",
+      "copied": "Link copied: same world, same seed, same run."
+    },
+    "legend": {
+      "route": "strongest pheromone route",
+      "reactive": "reactive ant (searching)",
+      "backward": "backward ant (laying pheromone)",
+      "proactive": "proactive ant (scouting)",
+      "repair": "repair ant",
+      "linkfail": "link-failure notice",
+      "data": "data packet",
+      "hello": "hello (beacon)",
+      "pheromone": "pheromone trail"
+    },
+    "continue": "▶ Continue: {id} {title}",
+    "bootFail": "Could not start the WebAssembly core: {err}"
+  },
+  "engine": {
+    "drop": {
+      "1": "hop limit (loop)",
+      "2": "no route in time (queue timeout)",
+      "3": "route not back within the reconvergence hold cap",
+      "4": "local repair expired",
+      "5": "node switched off",
+      "other": "dropped"
+    },
+    "kind": {
+      "hello": "hello",
+      "reactive": "reactive forward ant",
+      "backward": "backward ant",
+      "proactive": "proactive forward ant",
+      "repair": "repair ant",
+      "linkfail": "link-failure notice",
+      "data": "data packet"
+    }
+  },
+  "world": {
+    "line": {
+      "title": "Six in a row",
+      "blurb": "Six nodes that each hear only their neighbours, and one flow from end to end. The smallest network where routing is a question at all.",
+      "honest": "Teaching radio: unit disk, 250 m range, 2 Mbit/s, no collisions.",
+      "read": {
+        "label": "The five ant types"
+      }
+    },
+    "manet": {
+      "title": "Ad hoc MANET (default)",
+      "blurb": "30 phones on an open field: the network the AntHocNet papers were written for. Twenty are carried around (random waypoint, 3–15 m/s: walking to cycling) and leave footprints; ten stay put. Links appear and break as people move; the bold trail is each flow's strongest pheromone route, and you can watch it switch.",
+      "honest": "Teaching radio: unit disk, 250 m range. The measured MANET results use ns-3 two-ray and Nakagami channels.",
+      "results": {
+        "label": "MANET grid results"
+      },
+      "read": {
+        "label": "Network regimes: the ad hoc field"
+      }
+    },
+    "town": {
+      "title": "Ad hoc town: phones, laptops, PCs",
+      "blurb": "30 devices in a small town, with no infrastructure: every device is a router. Phones are carried at walking pace and reach 120 m; laptops move now and then and reach 180 m; desktop PCs stay indoors and reach 250 m. A link needs both ends to reach, so a phone next to a PC still only talks across 120 m.",
+      "honest": "Teaching radio: unit disk with a range per device class, 2 Mbit/s. The measured MANET results use one ns-3 radio for every node.",
+      "results": {
+        "label": "MANET grid results"
+      },
+      "read": {
+        "label": "Network regimes: the ad hoc field"
+      }
+    },
+    "mesh": {
+      "title": "Static Wi-Fi mesh",
+      "blurb": "A community mesh: nothing moves. Every link that exists stays. Watch what the ants keep spending once the routes are found.",
+      "honest": "Teaching radio: unit disk, 250 m range.",
+      "results": {
+        "label": "Static mesh results"
+      },
+      "read": {
+        "label": "Network regimes: a mesh that never moves"
+      }
+    },
+    "fanet": {
+      "title": "FANET: a drone swarm",
+      "blurb": "20 drones flying a 3-D Gauss–Markov pattern at about 20 m/s. Links last seconds, not minutes. Altitude is shown as size and shade.",
+      "honest": "Teaching radio: 3-D unit disk, 300 m range. The measured FANET results use ns-3 with 3-D Gauss–Markov mobility.",
+      "results": {
+        "label": "FANET results"
+      },
+      "read": {
+        "label": "Network regimes: links that last seconds"
+      }
+    },
+    "vanet": {
+      "title": "VANET: cars in a city",
+      "blurb": "30 vehicles on a Manhattan street grid. Buildings block the radio, so a link dies the moment a car turns a corner.",
+      "honest": "Teaching radio: unit disk cut by buildings. The measured VANET results use ns-3 two-ray plus building shadowing.",
+      "results": {
+        "label": "VANET results"
+      },
+      "read": {
+        "label": "Network regimes: links cut by buildings"
+      }
+    },
+    "satellite": {
+      "title": "Satellites: a Walker constellation",
+      "blurb": "64 satellites in 8 orbital planes, 1200 km up at 53°. Satellites in one plane share an orbit (a ring); the planes are turned 45° apart, so each ring is a different orbit. Every satellite keeps four +grid links — ahead and behind in its plane, and to the same slot in the next planes — and their delay changes as the orbits move.",
+      "honest": "Teaching orbits: one revolution takes 120 s, about 55× faster than a real 1200 km orbit (109 min), so you can see it move; link delay is the real distance at light speed (≈19 ms in-plane). The measured results use ns-3 LEO mobility (walker16, Starlink shell 1).",
+      "results": {
+        "label": "Moving-constellation results"
+      },
+      "read": {
+        "label": "Network regimes: why satellites differ"
+      }
+    }
+  },
+  "missions": {
+    "title": "Missions",
+    "campaignNote": "The campaign plays these lessons as levels.",
+    "campaignBtn": "▶ Campaign",
+    "group": {
+      "Academy": "Drills (the Academy)",
+      "Worlds": "World challenges"
+    },
+    "stars": "{n} of 3 stars",
+    "total": "{n} / {max} stars. Or just play: every tool works outside a mission too.",
+    "missionTitle": "Mission {n}: {title}",
+    "hint": "Hint",
+    "back": "← Missions",
+    "knob": "Mission knob: {knobs} (reset when you leave).",
+    "accomplished": "Mission accomplished: “{title}”. {stars}",
+    "done": "Done.",
+    "next": "Next: {title}",
+    "all": "All missions",
+    "node": "node {n}",
+    "measuring": "Measuring",
+    "window": "{label}: t = {t} of {t1} s"
+  },
+  "mission": {
+    "hello": {
+      "title": "Hello, neighbours",
+      "intro": "Every node says hello once a second. A node that misses two of a neighbour's hellos in a row forgets that neighbour.",
+      "goal": "Drag node 5 away from node 4 until node 4 forgets it, then bring it back until they are neighbours again.",
+      "debrief": "Hellos are how a node learns who it can talk to; the core seeds a small pheromone entry for every new neighbour and drops all of them when the neighbour goes quiet (ADR-0008, detector A).",
+      "hints": [
+        "The radio reaches 250 m: drag node 5 well clear of node 4.",
+        "Forgetting takes about two seconds of simulated time; watch the log for \"lost neighbour\"."
+      ],
+      "run": {
+        "waiting": "Waiting for node 4 to forget node 5…",
+        "forgot": "Node 4 forgot node 5. Now bring node 5 back.",
+        "done": "They met again at t = {t} s: one hello was enough."
+      }
+    },
+    "scouts": {
+      "title": "Send the scouts",
+      "intro": "Node 0 starts sending to node 5 at t = 2 s, but it has never heard of node 5. Before any data moves, it broadcasts a reactive forward ant, which every node rebroadcasts until one reaches node 5.",
+      "goal": "Predict how many hops the successful ant travels, then watch it happen.",
+      "debrief": "Reactive forward ants flood outward, each remembering the path it took. The first one to arrive turns into a backward ant and walks the same path home.",
+      "hints": [
+        "Each node only hears its immediate neighbours.",
+        "Count the gaps between node 0 and node 5."
+      ],
+      "run": {
+        "q": "How many hops from node 0 to node 5?",
+        "right": "Right. Watch the orange ants fan out.",
+        "wrong": "Let's see: watch the orange ants fan out.",
+        "count": "{n} reactive ant transmissions so far",
+        "done": "It took 5 hops. The first packet arrived {ms} ms after it was sent, after {n} reactive ant transmissions."
+      }
+    },
+    "way-back": {
+      "title": "The way back",
+      "intro": "When a forward ant reaches its destination, a backward ant retraces its path. At each hop it deposits pheromone on the link it came from, more for a faster path.",
+      "goal": "Node 0 is about to look for node 24. Predict which of its neighbours ends up with the most pheromone toward node 24.",
+      "debrief": "The deposit is the inverse of the path's estimated time, averaged into the old value (γ = 0.7). Over time the best link accumulates the most.",
+      "hints": [
+        "Look at where node 24 is on the map.",
+        "Fewer hops and less queueing means more pheromone."
+      ],
+      "run": {
+        "q": "Which neighbour of node 0 will carry the most pheromone toward node 24?",
+        "picked": "You picked node {n}. Watch the blue trail grow from node 0.",
+        "done": "Node {n} holds the most (τ = {tau}).",
+        "yours": "Node {n} holds {tau}."
+      }
+    },
+    "scent": {
+      "title": "Follow the scent",
+      "intro": "A data packet does not follow one fixed route. Each node picks a next hop at random, weighted by pheromone raised to the power β = 20, so the best trail wins most of the time, but not always.",
+      "goal": "Predict node 0's next hop for eight data packets. You score against the core's own probabilities.",
+      "debrief": "This is the stochastic routing rule (the paper's Eq. 1). The power β = 20 makes it nearly greedy; a smaller β would spread traffic more evenly across paths.",
+      "hints": [
+        "Use Inspect on node 0: its table shows the exact probability of each choice.",
+        "Picking the most likely neighbour every time is the best strategy, but even that can miss."
+      ],
+      "run": {
+        "waiting": "Waiting for the route to form…",
+        "round": "Round {r} of 8: {hits} right so far",
+        "q": "Packet {r}: where will node 0 send it?",
+        "went": "It went to node {went} (p = {pw}). You picked node {pick} (p = {pp}).",
+        "done": "{hits} of 8 right. Your picks' combined probability was {p} of a possible 8."
+      }
+    },
+    "two-roads": {
+      "title": "Two roads",
+      "intro": "Because the choice is random, traffic can split over several paths at once. That is multipath routing, and it is AntHocNet's headline feature.",
+      "goal": "Catch any node sending flow 0's packets to two different neighbours.",
+      "debrief": "Multipath spreads load and gives a ready backup when a link breaks. The core only keeps a second path if its ants were nearly as good (the acceptance factor, #96).",
+      "hints": [
+        "Splits happen where two links have similar pheromone.",
+        "Drag a node so two paths are equally short."
+      ],
+      "run": {
+        "watching": "Watching every hop of flow 0…",
+        "done": "Node {n} has sent flow 0 to nodes {a} and {b}: two roads at once."
+      }
+    },
+    "cut": {
+      "title": "Cut the cable",
+      "intro": "Links break. The node that notices sends a link-failure notice, and repair ants look for another way while held packets wait.",
+      "goal": "Bulldoze a node that is carrying flow 0, then see how many packets the network loses in the next 10 s.",
+      "debrief": "Local repair and multipath keep losses low: often a second trail already exists, and the packets switch to it within a hello period.",
+      "hints": [
+        "Watch for the purple crates of flow 0 and pick a node in the middle of their path.",
+        "Fewer losses earn more stars; luck in where you cut matters too."
+      ],
+      "run": {
+        "start": "Bulldoze a node on flow 0's path.",
+        "down": "Node {n} is down. Counting losses for 10 s…",
+        "wrong": "Node {n} was not carrying flow 0. Bulldoze it again to switch it back on, then pick another.",
+        "lost": "{n} packet(s) lost so far",
+        "done": "Flow 0 lost {n} packet(s); the next delivery came {ms} ms after the cut.",
+        "doneNever": "Flow 0 lost {n} packet(s); the next delivery came never (the flow is cut off)."
+      }
+    },
+    "fresh": {
+      "title": "Keep it fresh",
+      "intro": "Proactive ants re-check a route while it is in use, so the trail follows the nodes as they move. This mission turns them off for one run (a labelled mission knob) and compares.",
+      "goal": "Watch 40 s with proactive ants off, then 40 s with them on.",
+      "debrief": "Proactive sampling costs ants, but on a moving network it finds better routes before the old ones break. On the teaching radio the difference is small and seed-dependent; the measured ablations are on the results pages.",
+      "hints": [
+        "Just watch: the mission runs both halves for you."
+      ],
+      "run": {
+        "knob": "Mission knob: enableProactive = 0 for this half.",
+        "off": "Proactive off",
+        "on": "Proactive on (default)",
+        "done": "Off: {offP} delivered, {offA} ant transmissions. On: {onP} delivered, {onA} ant transmissions. Same seed, same movement."
+      }
+    },
+    "boss": {
+      "title": "Run the city",
+      "intro": "Three flows cross a moving network that is not always connected. You are the network planner.",
+      "goal": "From t = 10 s to t = 70 s, deliver at least 95% of all packets. You may place up to 4 relay phones (they stay where you put them).",
+      "debrief": "Partitions, not routing, cap delivery on sparse mobile networks: no protocol can cross a gap with no radio in it. That is why the measured results include an oracle that knows the whole topology.",
+      "hints": [
+        "Watch where packets are dropped (✕) and place a relay phone to bridge that gap.",
+        "A relay in a crowded middle area helps every flow."
+      ],
+      "run": {
+        "done": "{p} delivered ({d} of {s}) with {n} relay(s) placed.",
+        "doneOver": "{p} delivered ({d} of {s}) with {n} relay(s) placed — over the limit of 4."
+      }
+    },
+    "mesh-quiet": {
+      "title": "Mesh: does it ever go quiet?",
+      "intro": "In a static mesh nothing moves and no link ever breaks.",
+      "goal": "Once every route is found, does AntHocNet stop sending ants?",
+      "debrief": "No: proactive ants and hellos keep sampling links that will never change. On the measured static mesh that is why OLSR and DSDV edge out AntHocNet, with lower overhead.",
+      "hints": [
+        "Proactive ants run on a timer while data flows."
+      ],
+      "run": {
+        "q": "Will the ants stop once the routes are found?",
+        "yes": "Yes, nothing changes",
+        "no": "No, they keep sampling",
+        "counting": "Counting ants after t = 20 s",
+        "done": "From t = 20 to 50 s, with every route long established: {n} ant transmissions (not counting hellos)."
+      }
+    },
+    "fanet-relay": {
+      "title": "FANET: faster than the tables",
+      "intro": "Drones at 20 m/s keep links for seconds, not minutes.",
+      "goal": "Keep delivery at 80% or more from t = 5 to t = 35 s. You may launch up to 2 relay drones.",
+      "debrief": "Fast, three-dimensional movement is where AntHocNet measured strongest: its ants re-sample faster than a table protocol's update cycle, and OLSR's delivery collapses.",
+      "hints": [
+        "Launch relays where the swarm thins out between a source and its destination."
+      ],
+      "run": {
+        "done": "{p} delivered with {n} relay(s)."
+      }
+    },
+    "vanet-corner": {
+      "title": "VANET: around the corner",
+      "intro": "Buildings block the radio. Two cars a block apart can be well within range and still unable to hear each other.",
+      "goal": "Wait for a transmission to fail, then say why it failed.",
+      "debrief": "On the street grid, links die at corners, not at the edge of radio range. That is why AntHocNet loses so much traffic to reconvergence there (#537), and why its overhead advantage reverses.",
+      "hints": [
+        "Look at whether a building stands between the two cars."
+      ],
+      "run": {
+        "waiting": "Waiting for a failed transmission…",
+        "q": "Node {n} just failed to reach node {p}. Why?",
+        "far": "They drove too far apart",
+        "building": "A building is in the way",
+        "doneBuilding": "They were {d} m apart with a {r} m radio: in range, so a building cut the link.",
+        "doneFar": "They were {d} m apart with a {r} m radio: simply out of range."
+      }
+    },
+    "sat-failcell": {
+      "title": "Satellites: the failed link",
+      "intro": "Inter-satellite links are fixed and predictable, until one fails.",
+      "goal": "Cut an inter-satellite link that flow 0 is using, and time how long until its packets get through again.",
+      "debrief": "On the measured ISL grid AntHocNet re-converges in about 0.125 s, within 11 ms of an oracle that knows the topology instantly.",
+      "hints": [
+        "Watch flow 0's purple crates, then click the link they ride with Bulldoze."
+      ],
+      "run": {
+        "start": "Cut a link flow 0 is using.",
+        "cut": "Link cut. Timing the recovery…",
+        "wrong": "Flow 0 was not using that link. Try one its packets ride.",
+        "done": "Flow 0 was delivering again {ms} ms after the cut."
+      }
+    }
+  },
+  "doc": {
+    "howItWorks": "How AntHocNet works",
+    "antTypes": "Ant types",
+    "pheromonePaper": "Pheromone and the paper",
+    "configBeta": "Configuration: β",
+    "antTypesRepair": "Ant types: repair and link failure",
+    "antTypesProactive": "Ant types: proactive",
+    "results": "Measured results",
+    "manetOracle": "MANET results with the oracle",
+    "methodology": "Methodology",
+    "staticMesh": "Static mesh results",
+    "fanet": "FANET results",
+    "vanet": "VANET results",
+    "satellite": "Satellite results",
+    "acoModel": "The ACO model",
+    "antTypesProactiveAnts": "Ant types: proactive ants",
+    "manetGrid": "MANET grid results",
+    "metricsNrl": "Metrics: NRL",
+    "regimes": "Network regimes"
+  },
+  "device": {
+    "phone": {
+      "label": "Phone",
+      "note": "carried at walking pace; short range"
+    },
+    "laptop": {
+      "label": "Laptop",
+      "note": "moved now and then"
+    },
+    "pc": {
+      "label": "Desktop PC",
+      "note": "static, indoors"
+    },
+    "router": {
+      "label": "Rooftop router",
+      "note": "static, on a roof"
+    },
+    "repeater": {
+      "label": "Repeater",
+      "note": "static, cheap, short reach"
+    },
+    "gateway": {
+      "label": "Home gateway",
+      "note": "static, indoors"
+    }
+  },
+  "chapter": {
+    "1": {
+      "title": "Ad hoc town",
+      "family": "MANET",
+      "blurb": "Phones, laptops and PCs talking directly: no routers, no infrastructure. Every device is a router.",
+      "results": {
+        "label": "MANET grid results"
+      }
+    },
+    "2": {
+      "title": "Neighbourhood mesh",
+      "family": "static Wi-Fi mesh",
+      "blurb": "Rooftop routers for a village. Nothing moves, so what do the ants keep doing?",
+      "results": {
+        "label": "Static mesh results"
+      }
+    },
+    "3": {
+      "title": "City streets",
+      "family": "VANET"
+    },
+    "4": {
+      "title": "Forest",
+      "family": "FANET"
+    },
+    "5": {
+      "title": "Orbit",
+      "family": "satellites"
+    },
+    "6": {
+      "title": "Disaster zone",
+      "family": "emergency response"
+    },
+    "7": {
+      "title": "Contested zone",
+      "family": "tactical radio"
+    },
+    "8": {
+      "title": "Sky to space",
+      "family": "space-air-ground"
+    }
+  },
+  "level": {
+    "1_1": {
+      "title": "First hello",
+      "mechanism": "hellos and neighbour tables",
+      "story": "Ana and Ben stand on opposite sides of the square, phones in hand. Their phones reach 120 m; they are 220 m apart.",
+      "hints": [
+        "Drag Ben (the phone on the right) towards Ana until the range rings overlap.",
+        "Their phones hear each other within 120 m."
+      ],
+      "debrief": "Once a second each device says hello. A device that hears a hello adds the sender to its neighbour table, with a small pheromone entry for it; two missed hellos and it forgets."
+    },
+    "1_2": {
+      "title": "Across the street",
+      "mechanism": "reactive forward ants, backward ants and pheromone",
+      "story": "Two houses, 340 m apart, want a video call between their desktop PCs, which reach 250 m. You have one laptop to set down in between.",
+      "hints": [
+        "A laptop reaches 180 m, and a link needs both ends to reach.",
+        "Put it in the middle of the street, within 180 m of both houses."
+      ],
+      "debrief": "The first PC had never heard of the second, so it flooded a reactive forward ant. The copy that arrived turned into a backward ant and walked the same path home, laying pheromone on each hop. Data then follows the pheromone."
+    },
+    "1_3": {
+      "title": "Follow the scent",
+      "mechanism": "pheromone^β next-hop choice",
+      "story": "A call from the school PC to the library PC can go through either of two laptops. One path has been reinforced by many backward ants; the other only by a few.",
+      "hints": [
+        "Pheromone sets the odds; it does not make the choice alone.",
+        "Look at the inspector: each neighbour shows its pheromone and its share of the draws."
+      ],
+      "debrief": "Data picks a next hop with probability proportional to its pheromone raised to β (20 for data), so a modestly better path takes almost all the traffic while the other stays known. That is how AntHocNet keeps several paths alive at little cost.",
+      "quiz1": {
+        "question": "Most of the school's packets go through the laptop with more pheromone. Why \"most\", and not \"all\"?",
+        "options": [
+          "Each packet picks a neighbour at random, weighted by pheromone raised to a power β, so the stronger path wins most draws, not every one",
+          "Packets alternate between the laptops to share the load",
+          "The weaker laptop is only used when the stronger one is busy"
+        ]
+      }
+    },
+    "1_4": {
+      "title": "The café",
+      "mechanism": "proactive ants and the strongest route switching",
+      "story": "The café's PC and the bakery's PC talk through whoever is walking by. People wander in and out; when nobody is in the middle, the call drops.",
+      "hints": [
+        "A desktop PC never walks away.",
+        "Put it midway between the two shops: 240 m from each."
+      ],
+      "debrief": "While the call runs, proactive forward ants keep sampling the paths, so when a walker carries a better route past, the strongest route switches to it, and back when they leave. The PC you added is the path that never leaves."
+    },
+    "1_5": {
+      "title": "Two ways home",
+      "mechanism": "multipath and repair",
+      "story": "One laptop on a bench carries the whole call between the two houses. At t = 40 s its owner closes the lid.",
+      "hints": [
+        "Before the lid closes, give the call a second way across.",
+        "A PC on the other side of the street, within reach of both houses."
+      ],
+      "debrief": "With a second path, AntHocNet keeps pheromone on both. When the laptop disappears, the houses notice within two missed hellos and the traffic already has somewhere to go; a local repair ant or a link-failure notice fixes what is left."
+    },
+    "1_6": {
+      "title": "Rush hour",
+      "mechanism": "everything above, and the cost of ants",
+      "story": "Three calls cross the town square at rush hour, and a crowd of phones walks through it. You can afford three PCs, but a cheap, quiet network earns more stars.",
+      "hints": [
+        "The three calls all cross the middle of the square.",
+        "Every house is within 250 m of the centre: one PC there carries all three calls."
+      ],
+      "debrief": "Every device you add is another router sending hellos and forwarding ants, so the network's overhead (ants per delivered packet) grows with it. AntHocNet's measured trade on the MANET grid is exactly this: delivery bought with control traffic."
+    },
+    "2_1": {
+      "title": "Rooftops",
+      "mechanism": "routes found once on a topology that never moves",
+      "story": "Four houses want to reach the village gateway in the square. Their home gateways reach 150 m; the square is 400 m away.",
+      "hints": [
+        "A rooftop router reaches 300 m, but a home gateway only 150 m: the router must be near each house.",
+        "One router near each house, each within 300 m of the square."
+      ],
+      "debrief": "On a mesh that never moves, the first backward ants find the routes and they stay found: delivery is near perfect from the first seconds."
+    },
+    "2_2": {
+      "title": "Does it ever go quiet?",
+      "mechanism": "the cost of proactive sampling on stable links",
+      "story": "The village mesh is wired and every route is found. Nothing moves. Watch the ant counter.",
+      "hints": [
+        "Count the ants in the last ten seconds against the first ten.",
+        "AntHocNet samples on a timer, not on change."
+      ],
+      "debrief": "AntHocNet sends hellos every second and proactive ants every ten seconds of a session, however stable the network is. On a static mesh that is pure overhead; a quiet mode that backs off on stable links is planned for v2.3.0 (#571) and will appear here as an upgrade.",
+      "quiz1": {
+        "question": "Every route is found and nothing moves. Do the ants stop?",
+        "options": [
+          "No: hellos and proactive ants keep flying at the same rate, whether or not anything changes",
+          "Yes: once every route is found, the network goes quiet",
+          "Only the hellos stop"
+        ]
+      }
+    },
+    "2_3": {
+      "title": "Storm",
+      "mechanism": "repair on a static network",
+      "story": "The mesh carries two houses' traffic to the square through one rooftop router. At t = 30 s, lightning takes it down.",
+      "hints": [
+        "The west house only reaches the square through the router at the top-left.",
+        "A second router near the west house, on the other side, keeps a path warm."
+      ],
+      "debrief": "When the router went down, its neighbours missed its hellos and dropped it; the second path you built already had pheromone, so the traffic moved over at once instead of waiting for a new flood."
+    },
+    "2_4": {
+      "title": "Wire the village",
+      "mechanism": "multipath and the overhead score",
+      "story": "Six houses, one village gateway, and a budget. Every house must reach the square; the fewer ants it takes, the better.",
+      "hints": [
+        "Each corner house needs a router within 150 m, and that router within 300 m of the square.",
+        "The two middle houses are close enough for a repeater each."
+      ],
+      "debrief": "A mesh is cheapest when each device has just enough neighbours: every extra router adds hellos and ant traffic for every route through it. The measured static-mesh results show AntHocNet delivering almost everything there, and paying for it in control traffic."
+    }
+  },
+  "campaign": {
+    "err": {
+      "notOffered": "{cls} is not on offer in this level",
+      "limit": "at most {n} × {label}",
+      "outside": "{label} placed outside the map",
+      "budget": "over budget: {cost} of {budget}",
+      "fixed": "that device stays where it is",
+      "planning": "devices are moved while planning"
+    },
+    "obj": {
+      "deliverAll": "Deliver {p} % of all calls from t = {from} to {to} s",
+      "deliver": "Deliver {p} % of call {calls} from t = {from} to {to} s",
+      "connect": "Connect call {call} within {s} s"
+    },
+    "and": " and ",
+    "chipOpen": "Level {id}, {title}: {n} of 3 stars",
+    "chipLocked": "Level {id}, {title}: locked",
+    "chapter": "Chapter {n}: {title}",
+    "arrives": "({family}) arrives in {v}.",
+    "title": "Campaign",
+    "intro": "Each chapter is one kind of network. Fix what is broken with the devices on offer; the real AntHocNet core does the routing.",
+    "totalStars": "{n} / {max} stars.",
+    "next": "Coming next",
+    "free": "Free play",
+    "coins": "{n} coins",
+    "upTo": "up to {n}",
+    "nothingToBuy": "Nothing to buy in this level: use what is on the map.",
+    "level": "Level {id}: {title}",
+    "goals": "Goals",
+    "rules": "Budget: {budget} coins. Stars: one for the goals, one for keeping {keep} coins, one for a quiet network (few ants per delivered packet). A hint costs a star.",
+    "devices": "Devices",
+    "planNote": "You start paused, in the Plan phase: place devices, then press Run. Teaches: {mechanism}.",
+    "plan": "▶ Plan",
+    "backMap": "← Map",
+    "honest": "Teaching radio: unit disk with a range per device class, 2 Mbit/s, no collisions.",
+    "headline": "Level {id}: {title}. Plan your network, then press Run.",
+    "dockTitle": "{k}: {label}, {range} m, {cost} coins",
+    "left": "{n} left",
+    "placeHelp": "{label}: click the map, or move the cursor with the arrow keys and press Enter.",
+    "placed": "{label} placed. {n} coins left.",
+    "right": "Right.",
+    "notQuite": "Not quite: {answer}.",
+    "budgetTitle": "Coins left to spend",
+    "clockTitle": "Simulated time / level length",
+    "run": "▶ Run",
+    "hint": "Hint (−★)",
+    "retry": "Retry",
+    "map": "Map",
+    "running": "Running. Watch the ants find the way.",
+    "cleared": "Level {id} cleared",
+    "notYet": "Level {id}: not yet",
+    "wellRouted": "Well routed.",
+    "missed": "Not every goal was met. Try another placement.",
+    "coinsLeft": "Coins left: {n}",
+    "nrl": "ants per delivered packet: {x}",
+    "hintsUsed": "hints used: {n}",
+    "whatYouSaw": "What you saw: {mechanism}",
+    "nextLevel": "Next: {id} {title}"
+  },
+  "reader": {
+    "title": "Field guide",
+    "liveTitle": "The simulation keeps running while you read",
+    "live": "the world keeps running",
+    "out": "Open the full page",
+    "close": "Close the reader",
+    "opening": "Opening…",
+    "failed": "Could not open this page here ({err}).",
+    "newTab": "Open it in a new tab →",
+    "fullPage": "open the full page",
+    "diagram": "A diagram is drawn here on the full page:"
+  },
+  "nest": {
+    "surface": {
+      "ns3": {
+        "title": "ns-3 module"
+      },
+      "web": {
+        "title": "Browser adapter (this game)"
+      }
+    },
+    "chamber": {
+      "tunnels": {
+        "title": "Tunnels: the ports",
+        "blurb": "Everything the core needs from a simulator, as small interfaces in ports.h: a clock, a random source, timers, the neighbour list, link state and an observer. An adapter implements them; the core never includes a simulator header."
+      },
+      "queen": {
+        "title": "Queen chamber",
+        "blurb": "The protocol: every ant and every data packet goes through AntRouterLogic, which returns a RouteDecision (send, broadcast, drop, deliver) for the adapter to carry out. Pure logic, no I/O."
+      },
+      "store": {
+        "title": "Pheromone store",
+        "blurb": "Each node's routing state: regular and virtual pheromone per (neighbour, destination), and the rules that deposit, diffuse and evaporate it."
+      },
+      "gate": {
+        "title": "The gate",
+        "blurb": "What goes on the air: an ant as a plain value type, serialized by the codec into the canonical wire format (wire-format.md)."
+      },
+      "senses": {
+        "title": "Senses",
+        "blurb": "How a link is judged: the metric registry and the classic hop + time metric the paper uses."
+      },
+      "memory": {
+        "title": "Memory",
+        "blurb": "Which ants a node has already seen, so a flood stops and old generations are ignored."
+      },
+      "rules": {
+        "title": "Rule stone",
+        "blurb": "Every tunable with its default; each one's provenance is on the configuration page."
+      },
+      "map": {
+        "title": "Map room",
+        "blurb": "The shortest-path layer the oracle control is built on (a bound, not a competitor)."
+      }
+    }
+  },
+  "quest": {
+    "tree": {
+      "title": "An ns-3 tree to install into",
+      "note": {
+        "todo": "Run make doctor NS3DIR=/path/to/ns-3 and paste its output.",
+        "notTree": "That path is not an ns-3 tree (no contrib/ or CMakeLists.txt).",
+        "untested": "ns-3 {v}: outside the tested range 3.36–3.48.",
+        "readonly": "contrib/ is not writable: install copies into it.",
+        "ok": "ns-3 {v}, contrib/ writable."
+      }
+    },
+    "tools": {
+      "title": "A toolchain: CMake, a C++17 compiler, Python",
+      "note": {
+        "todo": "make doctor checks these too.",
+        "missing": "Missing: {list}.",
+        "ok": "CMake {cmake}, {cxx}, Python {py}."
+      }
+    },
+    "install": {
+      "title": "AntHocNet in contrib/",
+      "note": {
+        "todo": "make install-ns3 NS3DIR=… (add BASELINES=0 for AntHocNet alone), then make doctor again.",
+        "notYet": "Not installed yet: make install-ns3 NS3DIR=…",
+        "without": "Installed, without {list}: the comparison harnesses are skipped (BASELINES=0).",
+        "ok": "Installed, with the comparison modules."
+      }
+    },
+    "build": {
+      "title": "Built",
+      "note": {
+        "ok": "The module library is built.",
+        "todo": "Configure and build, then make doctor again."
+      }
+    },
+    "test": {
+      "title": "The test suite passes",
+      "note": {
+        "fail": "The anthocnet test suite failed: check the build log, or open an issue with the output.",
+        "ok": "Header round-trip and multi-hop delivery: PASS.",
+        "todo": "Run ./test.py -s anthocnet and paste its output."
+      }
+    }
+  },
+  "ws": {
+    "surface": "SURFACE · the adapters",
+    "fn": "{n} public function",
+    "fns": "{n} public functions",
+    "liveNone": "Live: node {n} holds no pheromone yet.",
+    "via": "via {n}: {v}",
+    "live": "Live, getPheromoneRegular at node {n} toward {d}: {vals}",
+    "world": "world: ad hoc, seed 1 · t {t}",
+    "state": {
+      "ok": "ok",
+      "warn": "warning",
+      "fail": "failed",
+      "todo": "to do"
+    }
+  },
+  "wsui": {
+    "description": "The AntHocNet core drawn as an ant nest, lit by a running world, and the ns-3 install guide as a quest you check by pasting make doctor.",
+    "nestLabel": "The core's components as chambers of a nest; choose one to read its API",
+    "title": "AntHocNet — the Workshop: the core's API and the ns-3 install",
+    "nestTitle": "The Nest: the core's API, live",
+    "starting": "starting a world…",
+    "nestFoot": "Chambers glow when the running ad hoc world uses them. Every public class in <code>core/include</code> has a chamber; CI checks it.",
+    "choose": "Choose a chamber",
+    "chooseNote": "Each chamber is a part of the core. Choose one to see its classes, what they do, and a link into the full API reference.",
+    "questTitle": "Quest: Field engineer — install AntHocNet in ns-3",
+    "questIntro": "Run each command in your ns-3 setup and paste the output below. It is read here, in your browser; nothing is uploaded. No checkout? The <a href=\"https://github.com/danieljoppi/AntHocNet/releases/latest\">release</a> has a drop-in tarball for <code>contrib/</code>.",
+    "paste": "Paste <code>make doctor</code> or <code>./test.py -s anthocnet</code> output",
+    "check": "Check",
+    "reset": "Start over"
+  }
+}

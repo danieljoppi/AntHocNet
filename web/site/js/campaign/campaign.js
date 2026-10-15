@@ -7,18 +7,18 @@
 // yet running.
 import { DEVICES, LevelRun, loadProgress, recordStars, isUnlocked, STEP } from './engine.js';
 import { CHAPTERS, LEVELS, levelById } from './levels.js';
+import { t, num, has, localized } from '../i18n.js';
+
+/** A link label: a doc.* key, or an API name shown as is. */
+const label = (l) => (has(l) ? t(l) : l);
 
 const $ = (id) => document.getElementById(id);
 
 /** Chapters the design promises next (learn-campaign.md §3), shown locked. */
 const LATER = [
-  { n: 3, title: 'City streets', family: 'VANET', ships: 'v2.3.0' },
-  { n: 4, title: 'Forest', family: 'FANET', ships: 'v2.3.0' },
-  { n: 5, title: 'Orbit', family: 'satellites', ships: 'v2.3.0' },
-  { n: 6, title: 'Disaster zone', family: 'emergency response', ships: 'v2.4.0' },
-  { n: 7, title: 'Contested zone', family: 'tactical radio', ships: 'v2.4.0' },
-  { n: 8, title: 'Sky to space', family: 'space-air-ground', ships: 'v2.4.0' },
-];
+  { n: 3, ships: 'v2.3.0' }, { n: 4, ships: 'v2.3.0' }, { n: 5, ships: 'v2.3.0' },
+  { n: 6, ships: 'v2.4.0' }, { n: 7, ships: 'v2.4.0' }, { n: 8, ships: 'v2.4.0' },
+].map((c) => localized(c, `chapter.${c.n}`, ['title', 'family']));
 
 function el(tag, attrs = {}, ...kids) {
   const e = document.createElement(tag);
@@ -32,7 +32,7 @@ function el(tag, attrs = {}, ...kids) {
   return e;
 }
 const starsText = (n) => '★'.repeat(n) + '☆'.repeat(3 - n);
-const starsEl = (n) => el('span', { class: 'stars', 'aria-label': `${n} of 3 stars` }, starsText(n));
+const starsEl = (n) => el('span', { class: 'stars', 'aria-label': t('missions.stars', { n }) }, starsText(n));
 
 export function initCampaign(pg) {
   const sheet = $('campaign');
@@ -68,21 +68,21 @@ export function initCampaign(pg) {
         const n = progress[l.id] || 0;
         return el('li', {}, el('button', {
           type: 'button', class: `chip-btn bevel${n ? ' done' : ''}`, disabled: !open,
-          'aria-label': `Level ${l.id}, ${l.title}: ${open ? `${n} of 3 stars` : 'locked'}`,
+          'aria-label': t(open ? 'campaign.chipOpen' : 'campaign.chipLocked', { id: l.id, title: l.title, n }),
           onclick: () => openBriefing(l),
         }, el('span', { class: 'lvl' }, l.id), el('span', {}, l.title), open ? starsEl(n) : el('span', { class: 'lock', 'aria-hidden': 'true' }, '🔒')));
       }));
       return el('section', { class: 'chapter', 'aria-labelledby': `ch${c.n}` },
-        el('h3', { id: `ch${c.n}` }, `Chapter ${c.n}: ${c.title}`, ' ', el('span', { class: 'muted small' }, `${c.family} · ${got} / ${ls.length * 3} ★`)),
+        el('h3', { id: `ch${c.n}` }, t('campaign.chapter', { n: c.n, title: c.title }), ' ', el('span', { class: 'muted small' }, `${c.family} · ${got} / ${ls.length * 3} ★`)),
         el('p', { class: 'small' }, c.blurb), chips);
     });
     const later = el('ul', { class: 'later' }, ...LATER.map((c) =>
-      el('li', {}, el('b', {}, `Chapter ${c.n}: ${c.title}`), ` (${c.family}) arrives in ${c.ships}.`)));
-    show('Campaign',
-      el('p', {}, 'Each chapter is one kind of network. Fix what is broken with the devices on offer; the real AntHocNet core does the routing. ', el('b', {}, `${total} / ${LEVELS.length * 3} stars.`)),
-      ...chapters, el('h3', {}, 'Coming next'), later,
+      el('li', {}, el('b', {}, t('campaign.chapter', { n: c.n, title: c.title })), ' ' + t('campaign.arrives', { family: c.family, v: c.ships }))));
+    show(t('campaign.title'),
+      el('p', {}, t('campaign.intro') + ' ', el('b', {}, t('campaign.totalStars', { n: total, max: LEVELS.length * 3 }))),
+      ...chapters, el('h3', {}, t('campaign.next')), later,
       el('div', { class: 'choices' },
-        el('button', { type: 'button', class: 'bevel', onclick: freePlay }, 'Free play')));
+        el('button', { type: 'button', class: 'bevel', onclick: freePlay }, t('campaign.free'))));
   }
 
   function openBriefing(l) {
@@ -94,18 +94,18 @@ export function initCampaign(pg) {
       ? el('ul', { class: 'device-cards' }, ...l.palette.map((p) => {
         const d = DEVICES[p.class];
         return el('li', { class: 'window' }, el('b', {}, d.label), el('span', { class: 'small' }, ` ${d.range} m · ${d.note}`),
-          el('span', { class: 'chip' }, `${p.cost} coins${p.limit ? ` · up to ${p.limit}` : ''}`));
+          el('span', { class: 'chip' }, t('campaign.coins', { n: p.cost }) + (p.limit ? ' · ' + t('campaign.upTo', { n: p.limit }) : '')));
       }))
-      : el('p', { class: 'small muted' }, 'Nothing to buy in this level: use what is on the map.');
-    show(`Level ${l.id}: ${l.title}`,
+      : el('p', { class: 'small muted' }, t('campaign.nothingToBuy'));
+    show(t('campaign.level', { id: l.id, title: l.title }),
       el('p', {}, l.story),
-      el('h3', {}, 'Goals'), el('ul', { class: 'goals' }, ...goals),
-      el('p', { class: 'small' }, `Budget: ${l.budget} coins. Stars: one for the goals, one for keeping ${l.stars?.budgetLeft ?? 0} coins, one for a quiet network (few ants per delivered packet). A hint costs a star.`),
-      el('h3', {}, 'Devices'), cards,
-      el('p', { class: 'small muted' }, `You start paused, in the Plan phase: place devices, then press Run. Teaches: ${l.mechanism}.`),
+      el('h3', {}, t('campaign.goals')), el('ul', { class: 'goals' }, ...goals),
+      el('p', { class: 'small' }, t('campaign.rules', { budget: l.budget, keep: l.stars?.budgetLeft ?? 0 })),
+      el('h3', {}, t('campaign.devices')), cards,
+      el('p', { class: 'small muted' }, t('campaign.planNote', { mechanism: l.mechanism })),
       el('div', { class: 'choices' },
-        el('button', { type: 'button', class: 'bevel primary', onclick: () => startLevel(l) }, '▶ Plan'),
-        el('button', { type: 'button', class: 'bevel', onclick: openMap }, '← Map')));
+        el('button', { type: 'button', class: 'bevel primary', onclick: () => startLevel(l) }, t('campaign.plan')),
+        el('button', { type: 'button', class: 'bevel', onclick: openMap }, t('campaign.backMap'))));
   }
 
   // --- playing a level ----------------------------------------------------------------
@@ -131,12 +131,12 @@ export function initCampaign(pg) {
     await pg.load(null, 1, {
       world: run.world, plan: true,
       meta: {
-        title: `Level ${l.id}: ${l.title}`, sprite: 'phone', sprites: spritesFor(),
+        title: t('campaign.level', { id: l.id, title: l.title }), sprite: 'phone', sprites: spritesFor(),
         blurb: l.story,
-        honest: 'Teaching radio: unit disk with a range per device class, 2 Mbit/s, no collisions.',
+        honest: t('campaign.honest'),
         results: chapter.results,
-        read: read ? { href: read[1], label: read[0] } : null,
-        headline: `Level ${l.id}: ${l.title}. Plan your network, then press Run.`,
+        read: read ? { href: read[1], label: label(read[0]) } : null,
+        headline: t('campaign.headline', { id: l.id, title: l.title }),
       },
     });
     pg.restart = () => startLevel(l);
@@ -160,9 +160,9 @@ export function initCampaign(pg) {
       const afford = run.budgetLeft >= p.cost && left > 0;
       dock.append(el('button', {
         type: 'button', class: 'bevel dock-btn', 'aria-pressed': String(picked === p.class), disabled: !afford,
-        title: `${k + 1}: ${d.label}, ${d.range} m, ${p.cost} coins`,
+        title: t('campaign.dockTitle', { k: k + 1, label: d.label, range: d.range, cost: p.cost }),
         onclick: () => pick(picked === p.class ? null : p.class),
-      }, el('kbd', { 'aria-hidden': 'true' }, String(k + 1)), el('b', {}, d.label), el('span', { class: 'small' }, `${d.range} m · ${p.cost}¢${p.limit ? ` · ${Math.max(0, left)} left` : ''}`)));
+      }, el('kbd', { 'aria-hidden': 'true' }, String(k + 1)), el('b', {}, d.label), el('span', { class: 'small' }, `${d.range} m · ${p.cost}¢` + (p.limit ? ' · ' + t('campaign.left', { n: Math.max(0, left) }) : ''))));
     });
     dock.hidden = false;
   }
@@ -173,7 +173,7 @@ export function initCampaign(pg) {
     pg.onPlace = cls ? place : null;
     if (cls) {
       cursor = cursor || [level.world.area[0] / 2, level.world.area[1] / 2];
-      pg.toast(`${DEVICES[cls].label}: click the map, or move the cursor with the arrow keys and press Enter.`, 4000);
+      pg.toast(t('campaign.placeHelp', { label: DEVICES[cls].label }), 4000);
     }
     buildDock();
   }
@@ -183,7 +183,7 @@ export function initCampaign(pg) {
       run.place(picked, x, y);
       pg.renderer.meta.sprites = spritesFor();
       pg.rangeRings = run.started ? null : rings();
-      pg.news(`${DEVICES[picked].label} placed. ${run.budgetLeft} coins left.`, true);
+      pg.news(t('campaign.placed', { label: DEVICES[picked].label, n: run.budgetLeft }), true);
       const slot = level.palette.find((p) => p.class === picked);
       if (run.budgetLeft < slot.cost || (slot.limit && run.placed.filter((p) => p.class === picked).length >= slot.limit)) pick(null);
       else buildDock();
@@ -197,7 +197,7 @@ export function initCampaign(pg) {
   // hint); tick() updates its numbers in place, so focus never jumps.
   let hudRefs = null;
   function goalLine(li, x) {
-    const live = x.o.kind === 'deliver' && run.started ? ` (${Math.round((x.value || 0) * 100)} %)` : '';
+    const live = x.o.kind === 'deliver' && run.started ? ` (${Math.round((x.value || 0) * 100)} %)` : ''; // i18n-ok
     li.className = x.done ? 'done' : x.final ? 'missed' : '';
     li.firstChild.textContent = x.done ? '✓ ' : x.final ? '✕ ' : '○ ';
     li.lastChild.textContent = x.text + live;
@@ -205,7 +205,7 @@ export function initCampaign(pg) {
   function updateHud() {
     if (!hudRefs) return;
     hudRefs.budget.textContent = `${run.budgetLeft} ¢`;
-    hudRefs.clock.textContent = `${Math.min(run.world.now(), level.duration).toFixed(0)} / ${level.duration} s`;
+    hudRefs.clock.textContent = `${Math.min(run.world.now(), level.duration).toFixed(0)} / ${level.duration} s`; // i18n-ok: numbers and a unit
     run.objectives().forEach((x, k) => goalLine(hudRefs.goals[k], x));
   }
   function buildHud() {
@@ -216,24 +216,24 @@ export function initCampaign(pg) {
       goalLine(li, x);
       return li;
     });
-    const goals = el('ul', { class: 'goals', 'aria-label': 'Goals' }, ...goalItems);
+    const goals = el('ul', { class: 'goals', 'aria-label': t('campaign.goals') }, ...goalItems);
     const quizEl = quiz ? el('div', { class: 'quiz', role: 'group', 'aria-label': quiz.o.question },
       el('p', {}, el('b', {}, quiz.o.question)),
       ...quiz.o.options.map((opt, j) => el('button', { type: 'button', class: 'bevel', onclick: () => {
         const right = run.answer(j);
-        pg.toast(right ? 'Right.' : `Not quite: ${quiz.o.options[quiz.o.answer]}.`, 6000);
+        pg.toast(right ? t('campaign.right') : t('campaign.notQuite', { answer: quiz.o.options[quiz.o.answer] }), 6000);
         buildHud();
       } }, opt))) : null;
-    const budget = el('span', { class: 'chip', title: 'Coins left to spend' });
-    const clock = el('span', { class: 'chip', title: 'Simulated time / level length' });
+    const budget = el('span', { class: 'chip', title: t('campaign.budgetTitle') });
+    const clock = el('span', { class: 'chip', title: t('campaign.clockTitle') });
     hudRefs = { budget, clock, goals: goalItems };
     hud.replaceChildren(
       el('div', { class: 'hud-top' },
         el('b', {}, `${level.id} ${level.title}`), budget, clock,
-        run.started ? null : el('button', { type: 'button', class: 'bevel primary', onclick: go }, '▶ Run'),
-        el('button', { type: 'button', class: 'bevel', onclick: hint, disabled: run.hintsUsed >= level.hints.length }, `Hint (−★)`),
-        el('button', { type: 'button', class: 'bevel', onclick: () => startLevel(level) }, 'Retry'),
-        el('button', { type: 'button', class: 'bevel', onclick: openMap }, 'Map')),
+        run.started ? null : el('button', { type: 'button', class: 'bevel primary', onclick: go }, t('campaign.run')),
+        el('button', { type: 'button', class: 'bevel', onclick: hint, disabled: run.hintsUsed >= level.hints.length }, t('campaign.hint')),
+        el('button', { type: 'button', class: 'bevel', onclick: () => startLevel(level) }, t('campaign.retry')),
+        el('button', { type: 'button', class: 'bevel', onclick: openMap }, t('campaign.map'))),
       goals, ...(quizEl ? [quizEl] : []));
     hud.hidden = false;
     updateHud();
@@ -247,7 +247,7 @@ export function initCampaign(pg) {
     pg.canMove = () => false;  // Adapt by adding devices; positions are set
     pg.setSpeed(level.speed ?? 2);
     lastSample = run.world.now();
-    pg.news('Running. Watch the ants find the way.', true);
+    pg.news(t('campaign.running'), true);
     buildHud();
   }
 
@@ -259,13 +259,13 @@ export function initCampaign(pg) {
 
   function tick() {
     if (!run) return;
-    const t = run.world.now();
+    const now = run.world.now();
     if (run.started) {
-      run.applyHazards(t);
-      if (t - lastSample >= STEP) { run.sample(); lastSample = t; }
+      run.applyHazards(now);
+      if (now - lastSample >= STEP) { run.sample(); lastSample = now; }
     }
     updateHud();
-    if (run.started && t + 1e-9 >= level.duration) finish();
+    if (run.started && now + 1e-9 >= level.duration) finish();
   }
 
   function finish() {
@@ -279,17 +279,19 @@ export function initCampaign(pg) {
     const rows = s.objectives.map((x) => el('li', { class: x.done ? 'done' : 'missed' },
       el('span', { 'aria-hidden': 'true' }, x.done ? '✓ ' : '✕ '), x.text,
       x.o.kind === 'deliver' ? ` — ${Math.round((x.value || 0) * 100)} %` : ''));
-    const links = el('p', { class: 'small' }, ...lv.debrief.links.flatMap(([label, href]) => [el('a', { href }, label + ' →'), ' ']));
+    const links = el('p', { class: 'small' }, ...lv.debrief.links.flatMap(([l, href]) => [el('a', { href }, label(l) + ' →'), ' ']));
     leaveLevel(true);
-    show(s.cleared ? `Level ${lv.id} cleared` : `Level ${lv.id}: not yet`,
-      el('p', {}, starsEl(s.stars), ' ', el('b', {}, s.cleared ? 'Well routed.' : 'Not every goal was met. Try another placement.')),
+    show(t(s.cleared ? 'campaign.cleared' : 'campaign.notYet', { id: lv.id }),
+      el('p', {}, starsEl(s.stars), ' ', el('b', {}, t(s.cleared ? 'campaign.wellRouted' : 'campaign.missed'))),
       el('ul', { class: 'goals' }, ...rows),
-      el('p', { class: 'small' }, `Coins left: ${s.budgetLeft}${s.budgetStar ? ' ★' : ''} · ants per delivered packet: ${Number.isFinite(s.nrl) ? s.nrl.toFixed(1) : '—'}${s.nrlStar ? ' ★' : ''}${run.hintsUsed ? ` · hints used: ${run.hintsUsed}` : ''}`),
-      el('h3', {}, `What you saw: ${lv.mechanism}`), el('p', {}, lv.debrief.text), links,
+      el('p', { class: 'small' }, t('campaign.coinsLeft', { n: s.budgetLeft }) + (s.budgetStar ? ' ★' : '')
+        + ' · ' + t('campaign.nrl', { x: Number.isFinite(s.nrl) ? num(s.nrl, 1) : '—' }) + (s.nrlStar ? ' ★' : '')
+        + (run.hintsUsed ? ' · ' + t('campaign.hintsUsed', { n: run.hintsUsed }) : '')),
+      el('h3', {}, t('campaign.whatYouSaw', { mechanism: lv.mechanism })), el('p', {}, lv.debrief.text), links,
       el('div', { class: 'choices' },
-        el('button', { type: 'button', class: 'bevel', onclick: () => startLevel(lv) }, 'Retry'),
-        nextOpen ? el('button', { type: 'button', class: 'bevel primary', onclick: () => openBriefing(next) }, `Next: ${next.id} ${next.title}`) : null,
-        el('button', { type: 'button', class: 'bevel', onclick: openMap }, '← Map')));
+        el('button', { type: 'button', class: 'bevel', onclick: () => startLevel(lv) }, t('campaign.retry')),
+        nextOpen ? el('button', { type: 'button', class: 'bevel primary', onclick: () => openBriefing(next) }, t('campaign.nextLevel', { id: next.id, title: next.title })) : null,
+        el('button', { type: 'button', class: 'bevel', onclick: openMap }, t('campaign.backMap'))));
   }
 
   /** Leave the level (keep the world on screen when `keepWorld`). */

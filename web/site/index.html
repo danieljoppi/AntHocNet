@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AntHocNet — learn ant-colony routing by playing</title>
-  <meta name="description" content="A city-builder for networks and ants: place phones, move them, launch flows, and watch the real AntHocNet routing core, compiled to WebAssembly, find and repair routes.">
+  <title data-i18n="ui.title">AntHocNet — learn ant-colony routing by playing</title>
+  <meta name="description" data-i18n-attr="content:ui.description" content="A city-builder for networks and ants: place phones, move them, launch flows, and watch the real AntHocNet routing core, compiled to WebAssembly, find and repair routes.">
   <link rel="icon" href="img/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0f766e">
@@ -13,169 +13,172 @@
   <script type="module" src="js/offline.js"></script>
 </head>
 <body>
-  <a class="skip" href="#map">Skip to the map</a>
+  <a class="skip" href="#map" data-i18n="ui.skip">Skip to the map</a>
 
   <!--AHN-TOPBAR-->
-  <div class="menubar" role="toolbar" aria-label="Game controls">
-    <label class="menu">World
+  <div class="menubar" role="toolbar" data-i18n-attr="aria-label:ui.menubar" aria-label="Game controls">
+    <label class="menu"><span data-i18n="ui.world">World</span>
       <select id="world" aria-describedby="worldBlurb"></select>
     </label>
-    <label class="menu">Seed
+    <label class="menu"><span data-i18n="ui.seed">Seed</span>
       <input id="seed" type="number" min="1" max="999999" value="1" inputmode="numeric">
     </label>
-    <div class="speeds" role="radiogroup" aria-label="Simulation speed">
-      <button type="button" class="bevel" data-speed="0" aria-pressed="false" title="Pause (space)">❚❚</button>
-      <button type="button" class="bevel" data-speed="0.05" aria-pressed="false" title="Ant pace: 0.05×">▶</button>
-      <button type="button" class="bevel" data-speed="0.25" aria-pressed="true" title="Slow: 0.25×">▶▶</button>
-      <button type="button" class="bevel" data-speed="1" aria-pressed="false" title="Real time: 1×">▶▶▶</button>
-      <button type="button" class="bevel" data-speed="5" aria-pressed="false" title="Fast: 5×">⏩</button>
+    <div class="speeds" role="radiogroup" data-i18n-attr="aria-label:ui.speed" aria-label="Simulation speed">
+      <button type="button" class="bevel" data-speed="0" aria-pressed="false" data-i18n-attr="title:ui.speed0" title="Pause (space)">❚❚</button>
+      <button type="button" class="bevel" data-speed="0.05" aria-pressed="false" data-i18n-attr="title:ui.speed1" title="Ant pace: 0.05×">▶</button>
+      <button type="button" class="bevel" data-speed="0.25" aria-pressed="true" data-i18n-attr="title:ui.speed2" title="Slow: 0.25×">▶▶</button>
+      <button type="button" class="bevel" data-speed="1" aria-pressed="false" data-i18n-attr="title:ui.speed3" title="Real time: 1×">▶▶▶</button>
+      <button type="button" class="bevel" data-speed="5" aria-pressed="false" data-i18n-attr="title:ui.speed4" title="Fast: 5×">⏩</button>
     </div>
-    <button id="step" type="button" class="bevel" title="Step to the next ant or packet (.)">Step</button>
+    <button id="step" type="button" class="bevel" data-i18n="ui.step" data-i18n-attr="title:ui.stepTitle" title="Step to the next ant or packet (.)">Step</button>
+    <label class="menu"><span data-i18n="ui.language">Language</span>
+      <select id="lang"></select>
+    </label>
   </div>
 
   <section class="hub" id="hub" aria-labelledby="hubTitle" hidden>
     <div class="hub-grid">
       <article class="hub-card hub-play">
-        <div class="k">Play</div>
-        <h1 id="hubTitle">Help the ants find the way</h1>
-        <p>Every device on this field runs the real AntHocNet routing core, compiled to WebAssembly. Fix a broken network, and the ants do the routing.</p>
+        <div class="k" data-i18n="ui.hub.play">Play</div>
+        <h1 id="hubTitle" data-i18n="ui.hub.title">Help the ants find the way</h1>
+        <p data-i18n="ui.hub.intro">Every device on this field runs the real AntHocNet routing core, compiled to WebAssembly. Fix a broken network, and the ants do the routing.</p>
         <ul class="hub-list">
-          <li><b>Campaign</b> one chapter per kind of network: ad hoc town and the neighbourhood mesh now, cars, drones and satellites next</li>
-          <li><b>Free play</b> phones, mesh, cars, drones, satellites</li>
-          <li><b>Drills</b> the eight Academy missions, one per thing the ants do</li>
+          <li data-i18n-html="ui.hub.listCampaign"><b>Campaign</b> one chapter per kind of network: ad hoc town and the neighbourhood mesh now, cars, drones and satellites next</li>
+          <li data-i18n-html="ui.hub.listFree"><b>Free play</b> phones, mesh, cars, drones, satellites</li>
+          <li data-i18n-html="ui.hub.listDrills"><b>Drills</b> the eight Academy missions, one per thing the ants do</li>
         </ul>
         <div class="row">
-          <button type="button" class="bevel primary" id="hubCampaign">▶ Campaign</button>
-          <button type="button" class="bevel" id="hubContinue" hidden>▶ Continue</button>
-          <button type="button" class="bevel" id="hubFree">Free play</button>
-          <button type="button" class="bevel" id="hubMission">Drills</button>
+          <button type="button" class="bevel primary" id="hubCampaign" data-i18n="ui.hub.campaign">▶ Campaign</button>
+          <button type="button" class="bevel" id="hubContinue" hidden data-i18n="ui.hub.continue">▶ Continue</button>
+          <button type="button" class="bevel" id="hubFree" data-i18n="ui.hub.free">Free play</button>
+          <button type="button" class="bevel" id="hubMission" data-i18n="ui.hub.drills">Drills</button>
         </div>
       </article>
       <a class="hub-card" data-place="guide" href="docs/places/field-guide/">
-        <div class="k">Field guide</div><h2>How the colony routes</h2>
-        <p>Ant colony routing, the five ant types, how the code is built, and why each kind of network is different.</p>
+        <div class="k" data-i18n="ui.hub.guideK">Field guide</div><h2 data-i18n="ui.hub.guideH">How the colony routes</h2>
+        <p data-i18n="ui.hub.guideP">Ant colony routing, the five ant types, how the code is built, and why each kind of network is different.</p>
       </a>
       <a class="hub-card" data-place="lab" href="docs/places/lab/">
-        <div class="k">Lab</div><h2>What we measured</h2>
-        <p>Results per network type in ns-3, with confidence intervals, and how every number is made.</p>
+        <div class="k" data-i18n="ui.hub.labK">Lab</div><h2 data-i18n="ui.hub.labH">What we measured</h2>
+        <p data-i18n="ui.hub.labP">Results per network type in ns-3, with confidence intervals, and how every number is made.</p>
       </a>
       <a class="hub-card" data-place="shop" href="workshop.html">
-        <div class="k">Workshop</div><h2>Build it into ns-3</h2>
-        <p>The core's API as a live ant nest, and the ns-3 install as a quest you check with <code>make doctor</code>.</p>
+        <div class="k" data-i18n="ui.hub.shopK">Workshop</div><h2 data-i18n="ui.hub.shopH">Build it into ns-3</h2>
+        <p data-i18n-html="ui.hub.shopP">The core's API as a live ant nest, and the ns-3 install as a quest you check with <code>make doctor</code>.</p>
       </a>
       <a class="hub-card" data-place="arch" href="docs/places/archive/">
-        <div class="k">Archive</div><h2>Decisions and what's next</h2>
-        <p>The roadmap, every decision record, fidelity to the paper, and the research behind the plan.</p>
+        <div class="k" data-i18n="ui.hub.archK">Archive</div><h2 data-i18n="ui.hub.archH">Decisions and what's next</h2>
+        <p data-i18n="ui.hub.archP">The roadmap, every decision record, fidelity to the paper, and the research behind the plan.</p>
       </a>
     </div>
   </section>
 
   <main class="desk">
-    <nav class="toolbox window" aria-label="Tools">
-      <div class="titlebar">Tools</div>
-      <div class="tools" role="toolbar" aria-label="Map tools" id="tools">
-        <button type="button" class="tool bevel" data-tool="inspect" aria-pressed="true" title="Inspect (1): click a node to read its routing table"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg><span>Inspect</span><kbd aria-hidden="true">1</kbd></button>
-        <button type="button" class="tool bevel" data-tool="move" aria-pressed="false" title="Move (2): drag a node; drag the ground to pan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg><span>Move</span><kbd aria-hidden="true">2</kbd></button>
-        <button type="button" class="tool bevel" data-tool="build" aria-pressed="false" title="Build (3): put a new node on the map (in the ad hoc world: a phone that stays put)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l-5 18M12 3l5 18M8.5 15h7M10 9h4"/><circle cx="12" cy="3" r="1.5"/></svg><span>Build</span><kbd aria-hidden="true">3</kbd></button>
-        <button type="button" class="tool bevel" data-tool="bulldoze" aria-pressed="false" title="Bulldoze (4): switch a node off or on; cut a satellite link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h12l3-6h3M5 17v3h8v-3M15 11V7H8v4"/></svg><span>Bulldoze</span><kbd aria-hidden="true">4</kbd></button>
-        <button type="button" class="tool bevel" data-tool="flow" aria-pressed="false" title="Flow (5): click a source, then a destination"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><path d="M8 12h8M13 9l3 3-3 3"/></svg><span>Flow</span><kbd aria-hidden="true">5</kbd></button>
+    <nav class="toolbox window" data-i18n-attr="aria-label:ui.tools" aria-label="Tools">
+      <div class="titlebar" data-i18n="ui.tools">Tools</div>
+      <div class="tools" role="toolbar" data-i18n-attr="aria-label:ui.mapTools" aria-label="Map tools" id="tools">
+        <button type="button" class="tool bevel" data-tool="inspect" aria-pressed="true" data-i18n-attr="title:ui.tool.inspectTitle" title="Inspect (1): click a node to read its routing table"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg><span data-i18n="ui.tool.inspect">Inspect</span><kbd aria-hidden="true">1</kbd></button>
+        <button type="button" class="tool bevel" data-tool="move" aria-pressed="false" data-i18n-attr="title:ui.tool.moveTitle" title="Move (2): drag a node; drag the ground to pan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg><span data-i18n="ui.tool.move">Move</span><kbd aria-hidden="true">2</kbd></button>
+        <button type="button" class="tool bevel" data-tool="build" aria-pressed="false" data-i18n-attr="title:ui.tool.buildTitle" title="Build (3): put a new node on the map (in the ad hoc world: a phone that stays put)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l-5 18M12 3l5 18M8.5 15h7M10 9h4"/><circle cx="12" cy="3" r="1.5"/></svg><span data-i18n="ui.tool.build">Build</span><kbd aria-hidden="true">3</kbd></button>
+        <button type="button" class="tool bevel" data-tool="bulldoze" aria-pressed="false" data-i18n-attr="title:ui.tool.bulldozeTitle" title="Bulldoze (4): switch a node off or on; cut a satellite link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h12l3-6h3M5 17v3h8v-3M15 11V7H8v4"/></svg><span data-i18n="ui.tool.bulldoze">Bulldoze</span><kbd aria-hidden="true">4</kbd></button>
+        <button type="button" class="tool bevel" data-tool="flow" aria-pressed="false" data-i18n-attr="title:ui.tool.flowTitle" title="Flow (5): click a source, then a destination"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><path d="M8 12h8M13 9l3 3-3 3"/></svg><span data-i18n="ui.tool.flow">Flow</span><kbd aria-hidden="true">5</kbd></button>
       </div>
-      <div class="titlebar">View</div>
+      <div class="titlebar" data-i18n="ui.view">View</div>
       <div class="tools small">
-        <button type="button" class="bevel" id="rotL" title="Rotate left (Q)" aria-label="Rotate view left">⟲</button>
-        <button type="button" class="bevel" id="rotR" title="Rotate right (E)" aria-label="Rotate view right">⟳</button>
-        <button type="button" class="bevel" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">＋</button>
-        <button type="button" class="bevel" id="zoomOut" title="Zoom out (−)" aria-label="Zoom out">－</button>
-        <button type="button" class="bevel" id="center" title="Centre the map (0)" aria-label="Centre the map">◎</button>
+        <button type="button" class="bevel" id="rotL" data-i18n-attr="title:ui.rotLTitle;aria-label:ui.rotL" title="Rotate left (Q)" aria-label="Rotate view left">⟲</button>
+        <button type="button" class="bevel" id="rotR" data-i18n-attr="title:ui.rotRTitle;aria-label:ui.rotR" title="Rotate right (E)" aria-label="Rotate view right">⟳</button>
+        <button type="button" class="bevel" id="zoomIn" data-i18n-attr="title:ui.zoomInTitle;aria-label:ui.zoomIn" title="Zoom in (+)" aria-label="Zoom in">＋</button>
+        <button type="button" class="bevel" id="zoomOut" data-i18n-attr="title:ui.zoomOutTitle;aria-label:ui.zoomOut" title="Zoom out (−)" aria-label="Zoom out">－</button>
+        <button type="button" class="bevel" id="center" data-i18n-attr="title:ui.centerTitle;aria-label:ui.center" title="Centre the map (0)" aria-label="Centre the map">◎</button>
       </div>
-      <div class="titlebar">Overlays</div>
+      <div class="titlebar" data-i18n="ui.overlays">Overlays</div>
       <div class="overlays">
-        <label><input type="checkbox" id="ovRoute" checked> strongest route</label>
-        <label><input type="checkbox" id="ovPheromone" checked> pheromone</label>
-        <label><input type="checkbox" id="ovLinks" checked> radio links</label>
-        <label><input type="checkbox" id="ovHello" checked> hellos</label>
-        <label><input type="checkbox" id="ovLabels"> all labels</label>
+        <label><input type="checkbox" id="ovRoute" checked> <span data-i18n="ui.ov.route">strongest route</span></label>
+        <label><input type="checkbox" id="ovPheromone" checked> <span data-i18n="ui.ov.pheromone">pheromone</span></label>
+        <label><input type="checkbox" id="ovLinks" checked> <span data-i18n="ui.ov.links">radio links</span></label>
+        <label><input type="checkbox" id="ovHello" checked> <span data-i18n="ui.ov.hello">hellos</span></label>
+        <label><input type="checkbox" id="ovLabels"> <span data-i18n="ui.ov.labels">all labels</span></label>
       </div>
     </nav>
 
-    <section class="mapwin window" aria-label="Map">
-      <div class="titlebar" id="mapTitle">Ad hoc MANET</div>
-      <div class="map" id="map" tabindex="0" role="application" aria-label="Network map" aria-describedby="mapHelp">
+    <section class="mapwin window" data-i18n-attr="aria-label:ui.mapWin" aria-label="Map">
+      <div class="titlebar" id="mapTitle"></div>
+      <div class="map" id="map" tabindex="0" role="application" data-i18n-attr="aria-label:ui.map" aria-label="Network map" aria-describedby="mapHelp">
         <canvas id="view"></canvas>
-        <div class="hud" id="hud" role="region" aria-label="Level" hidden></div>
-        <div class="dock" id="dock" role="toolbar" aria-label="Devices you can place" hidden></div>
-        <section class="campaign" id="campaign" aria-label="Campaign" hidden></section>
+        <div class="hud" id="hud" role="region" data-i18n-attr="aria-label:ui.hud" aria-label="Level" hidden></div>
+        <div class="dock" id="dock" role="toolbar" data-i18n-attr="aria-label:ui.dock" aria-label="Devices you can place" hidden></div>
+        <section class="campaign" id="campaign" data-i18n-attr="aria-label:ui.campaign" aria-label="Campaign" hidden></section>
         <p class="toast" id="toast" role="status" aria-live="polite" hidden></p>
       </div>
-      <p class="sr" id="mapHelp">Keyboard: ? opens the Field guide page for this world, beside the map; 1 to 5 pick a tool; [ and ] select the previous or next node; arrow keys move the selected node (or pan); o switches it off or on; Q and E rotate; plus and minus zoom; space pauses. Every event is also written to the ant log below the map.</p>
+      <p class="sr" id="mapHelp" data-i18n="ui.mapHelp">Keyboard: ? opens the Field guide page for this world, beside the map; 1 to 5 pick a tool; [ and ] select the previous or next node; arrow keys move the selected node (or pan); o switches it off or on; Q and E rotate; plus and minus zoom; space pauses. Every event is also written to the ant log below the map.</p>
       <div class="status" aria-live="off">
-        <span id="clock" title="Simulated time">t 0:00.00</span>
-        <span id="stDelivered" title="Data packets delivered / sent">✓ 0</span>
-        <span id="stDropped" title="Data packets dropped">✕ 0</span>
-        <span id="stBudget" title="Control budget: ant transmissions per delivered packet (the routing overhead, NRL)">ants 0</span>
-        <span id="stRoutes" title="How often a flow's strongest pheromone route switched to a different path">route switches 0</span>
-        <span class="health" title="Network health: delivery ratio over the last 10 s"><span class="meter"><span id="healthBar"></span></span><span id="health">—</span></span>
+        <span id="clock" data-i18n-attr="title:ui.st.clock" title="Simulated time">t 0:00.00</span>
+        <span id="stDelivered" data-i18n-attr="title:ui.st.delivered" title="Data packets delivered / sent">✓ 0</span>
+        <span id="stDropped" data-i18n-attr="title:ui.st.dropped" title="Data packets dropped">✕ 0</span>
+        <span id="stBudget" data-i18n-attr="title:ui.st.budget" title="Control budget: ant transmissions per delivered packet (the routing overhead, NRL)"></span>
+        <span id="stRoutes" data-i18n-attr="title:ui.st.routes" title="How often a flow's strongest pheromone route switched to a different path"></span>
+        <span class="health" data-i18n-attr="title:ui.st.health" title="Network health: delivery ratio over the last 10 s"><span class="meter"><span id="healthBar"></span></span><span id="health">—</span></span>
       </div>
-      <div class="ticker" aria-label="Network news"><span class="mast">The Daily Pheromone</span><span id="news">Reporters are in place. Build, break and watch.</span></div>
+      <div class="ticker" data-i18n-attr="aria-label:ui.ticker" aria-label="Network news"><span class="mast" data-i18n="ui.mast">The Daily Pheromone</span><span id="news" data-i18n="ui.newsStart">Reporters are in place. Build, break and watch.</span></div>
     </section>
 
     <aside class="panels">
       <section class="window" id="missionWin" aria-labelledby="missionTitle">
-        <div class="titlebar" id="missionTitle">Missions</div>
+        <div class="titlebar" id="missionTitle" data-i18n="ui.missions">Missions</div>
         <div class="body" id="missionBody"></div>
       </section>
       <section class="window" aria-labelledby="inspTitle">
-        <div class="titlebar" id="inspTitle">Query</div>
+        <div class="titlebar" id="inspTitle" data-i18n="ui.query">Query</div>
         <div class="body">
-          <p class="muted small" id="inspHint">Pick <b>Inspect</b> and click a node to read what its routing table holds.</p>
+          <p class="muted small" id="inspHint" data-i18n-html="ui.inspHint">Pick <b>Inspect</b> and click a node to read what its routing table holds.</p>
           <div id="inspBody"></div>
         </div>
       </section>
       <section class="window" aria-labelledby="worldTitle">
-        <div class="titlebar" id="worldTitle">World</div>
+        <div class="titlebar" id="worldTitle" data-i18n="ui.world">World</div>
         <div class="body">
           <p id="worldBlurb"></p>
           <p class="muted small" id="worldHonest"></p>
-          <p class="small">Pheromone to <select id="watch" aria-label="Show pheromone toward"></select></p>
+          <p class="small"><span data-i18n="ui.watch">Pheromone to</span> <select id="watch" data-i18n-attr="aria-label:ui.watchLabel" aria-label="Show pheromone toward"></select></p>
         </div>
       </section>
       <section class="window" aria-labelledby="legendTitle">
-        <div class="titlebar" id="legendTitle">Legend</div>
+        <div class="titlebar" id="legendTitle" data-i18n="ui.legend">Legend</div>
         <ul class="body legend" id="legend"></ul>
       </section>
     </aside>
   </main>
 
   <section class="window logwin" aria-labelledby="logTitle">
-    <div class="titlebar"><span id="logTitle">Ant log</span>
+    <div class="titlebar"><span id="logTitle" data-i18n="ui.log">Ant log</span>
       <span class="filters">
-        <label><input type="checkbox" id="logHello"> hellos</label>
-        <label><input type="checkbox" id="logData" checked> data</label>
-        <label><input type="checkbox" id="logAnts" checked> ants</label>
-        <label><input type="checkbox" id="logRoutes"> routes</label>
+        <label><input type="checkbox" id="logHello"> <span data-i18n="ui.logf.hello">hellos</span></label>
+        <label><input type="checkbox" id="logData" checked> <span data-i18n="ui.logf.data">data</span></label>
+        <label><input type="checkbox" id="logAnts" checked> <span data-i18n="ui.logf.ants">ants</span></label>
+        <label><input type="checkbox" id="logRoutes"> <span data-i18n="ui.logf.routes">routes</span></label>
       </span>
-      <button type="button" id="share" class="bevel">Share this run</button>
-      <button type="button" id="reset" class="bevel">Restart</button>
+      <button type="button" id="share" class="bevel" data-i18n="ui.share">Share this run</button>
+      <button type="button" id="reset" class="bevel" data-i18n="ui.restart">Restart</button>
     </div>
     <ol class="log" id="log" tabindex="0" aria-labelledby="logTitle"></ol>
   </section>
 
   <section class="about" aria-labelledby="aboutTitle">
-    <h2 id="aboutTitle">How the colony routes</h2>
-    <p>AntHocNet is an ant-colony routing protocol for networks with no fixed infrastructure — phones, drones, cars, satellites. This repository implements it once, in a simulator-independent core, and runs that core in ns-3 and in this page.</p>
+    <h2 id="aboutTitle" data-i18n="ui.about.title">How the colony routes</h2>
+    <p data-i18n="ui.about.intro">AntHocNet is an ant-colony routing protocol for networks with no fixed infrastructure — phones, drones, cars, satellites. This repository implements it once, in a simulator-independent core, and runs that core in ns-3 and in this page.</p>
     <ol class="steps">
-      <li class="window"><h3><span class="dot" style="background:var(--c-reactive)"></span>Ants search</h3><p>A node with data and no route sends reactive forward ants. Each one that reaches the destination turns into a backward ant.</p></li>
-      <li class="window"><h3><span class="dot" style="background:var(--c-backward)"></span>Ants lay pheromone</h3><p>The backward ant walks the path home and leaves pheromone on every hop: more on short, fast paths, less on slow ones.</p></li>
-      <li class="window"><h3><span class="dot" style="background:var(--c-data)"></span>Packets follow the scent</h3><p>Each data packet picks its next hop at random, weighted by pheromone raised to β = 20 — so the best trail almost always wins.</p></li>
-      <li class="window"><h3><span class="dot" style="background:var(--c-proactive)"></span>The colony keeps it fresh</h3><p>Hellos find neighbours, proactive ants re-sample routes in use, and link-failure notices and repair ants patch a route when a phone walks away.</p></li>
+      <li class="window"><h3><span class="dot" style="background:var(--c-reactive)"></span><span data-i18n="ui.about.s1h">Ants search</span></h3><p data-i18n="ui.about.s1">A node with data and no route sends reactive forward ants. Each one that reaches the destination turns into a backward ant.</p></li>
+      <li class="window"><h3><span class="dot" style="background:var(--c-backward)"></span><span data-i18n="ui.about.s2h">Ants lay pheromone</span></h3><p data-i18n="ui.about.s2">The backward ant walks the path home and leaves pheromone on every hop: more on short, fast paths, less on slow ones.</p></li>
+      <li class="window"><h3><span class="dot" style="background:var(--c-data)"></span><span data-i18n="ui.about.s3h">Packets follow the scent</span></h3><p data-i18n="ui.about.s3">Each data packet picks its next hop at random, weighted by pheromone raised to β = 20 — so the best trail almost always wins.</p></li>
+      <li class="window"><h3><span class="dot" style="background:var(--c-proactive)"></span><span data-i18n="ui.about.s4h">The colony keeps it fresh</span></h3><p data-i18n="ui.about.s4">Hellos find neighbours, proactive ants re-sample routes in use, and link-failure notices and repair ants patch a route when a phone walks away.</p></li>
     </ol>
   </section>
   <footer class="foot">
-    <a href="docs/">Documentation</a>
-    <a href="docs/benchmarks/">Measured results</a>
-    <a href="api/">API reference</a>
-    <a href="https://github.com/danieljoppi/AntHocNet">Source on GitHub</a>
-    <span>Nothing measured in this game is a benchmark number; the results pages are.</span>
+    <a href="docs/" data-i18n="ui.foot.docs">Documentation</a>
+    <a href="docs/benchmarks/" data-i18n="ui.foot.results">Measured results</a>
+    <a href="api/" data-i18n="ui.foot.api">API reference</a>
+    <a href="https://github.com/danieljoppi/AntHocNet" data-i18n="ui.foot.source">Source on GitHub</a>
+    <span data-i18n="ui.foot.note">Nothing measured in this game is a benchmark number; the results pages are.</span>
   </footer>
 
   <noscript><p class="window body">This game runs the AntHocNet routing core as WebAssembly and needs JavaScript. The <a href="docs/">documentation</a> explains the protocol without it.</p></noscript>

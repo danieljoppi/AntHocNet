@@ -2,7 +2,8 @@
 // headless Chromium:
 //   1. opens every world, runs it, and requires no console errors and at
 //      least one backward ant and one delivered packet in the event stream;
-//   2. plays mission 2 ("Send the scouts") to completion with scripted input;
+//   2. plays mission 2 ("Send the scouts") to completion with scripted input,
+//      and again in Portuguese (2b, #622);
 //   3. runs axe-core on the front page as a first visit sees it (the hub up
 //      over the default world) and fails on serious or critical violations;
 //   3b. the site shell (#626): the hub's buttons and #play, the one top bar
@@ -116,6 +117,34 @@ for (const world of ['line', 'manet', 'town', 'mesh', 'fanet', 'vanet', 'satelli
   const stars = await p.locator('#missionBody .stars').first().getAttribute('aria-label');
   if (errors.length) fail(`mission 2: console errors: ${errors.join(' | ')}`);
   else console.log(`ok: mission 2 completed (${stars})`);
+  await p.close();
+}
+
+// 2b. Portuguese (#622): a viewer who picked pt-BR gets the page in it --
+//     <html lang>, the chrome, a world that delivers, a mission played to the
+//     end in Portuguese -- and axe finds nothing serious there either.
+{
+  const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.addInitScript(() => { try { localStorage.setItem('ahn-lang', 'pt-BR'); } catch { /* none */ } });
+  await p.goto(base + '#line?seed=1');
+  await p.waitForFunction(() => document.getElementById('clock')?.textContent.includes('t 0:0'), null, { timeout: 15000 });
+  const lang = await p.evaluate(() => document.documentElement.lang);
+  const tools = (await p.locator('.toolbox .titlebar').first().textContent()).trim();
+  if (lang !== 'pt-BR' || tools !== 'Ferramentas') fail(`pt-BR: lang=${lang}, tools title "${tools}"`);
+  await p.getByRole('button', { name: /2\. Mande as batedoras/ }).click();
+  await p.getByRole('button', { name: '5', exact: true }).click({ timeout: 15000 });
+  await p.getByText('Pronto.').waitFor({ timeout: 60000 }).catch(() => fail('pt-BR: mission 2 did not finish'));
+  const debrief = (await p.locator('#missionBody').textContent()) || '';
+  if (!/Foram 5 saltos/.test(debrief)) fail(`pt-BR: mission debrief not in Portuguese: ${debrief.slice(0, 120)}`);
+  await p.addScriptTag({ content: axeSource });
+  const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+    .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+    .map((v) => `${v.id} (${v.impact}): ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join('; ')}`));
+  if (result.length) fail(`axe (pt-BR): ${result.join(' | ')}`);
+  if (errors.length) fail(`pt-BR: page errors: ${errors.join(' | ')}`);
+  if (!result.length && !errors.length && lang === 'pt-BR') console.log('ok: pt-BR — chrome, mission 2 played to the end, axe clean');
   await p.close();
 }
 

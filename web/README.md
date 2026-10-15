@@ -81,16 +81,16 @@ computes about routes.
 
 | field | meaning |
 |---|---|
-| `id`, `chapter`, `title`, `story`, `mechanism` | text; `mechanism` is what the debrief names |
+| `id`, `chapter` | the level's id (`'1.2'`) and chapter; its words -- `title`, `story`, `mechanism`, `hints`, the debrief text and each quiz's question and options -- are in `web/site/i18n/<lang>.json` under `level.<id with _>` (see Translations); `mechanism` is what the debrief names |
 | `world.area` `[x, y]`, `world.range` | the field (m) and the default radio |
 | `world.devices` `[{ class, x, y, moves, draggable }]` | devices already there, addressed by index; `moves: false` keeps a mobile class still; `draggable` lets the player move it while planning |
 | `world.flows` `[{ src, dst, rate, start }]` | the calls, by device index; `rate` in packets/s |
 | `budget`, `palette` `[{ class, cost, limit, moves }]` | what the player may add, at what cost |
 | `duration` | simulated seconds the level is scored over |
-| `objectives` | `{ kind: 'deliver', flows, ratio, from, to }` (delivery over a window, `flows` = ids or `'all'`), `{ kind: 'connect', flow, within }` (first delivery by then), `{ kind: 'quiz', question, options, answer }` |
+| `objectives` | `{ kind: 'deliver', flows, ratio, from, to }` (delivery over a window, `flows` = ids or `'all'`), `{ kind: 'connect', flow, within }` (first delivery by then), `{ kind: 'quiz', answer }` (question and options: `level.<id>.quiz<k>`) |
 | `stars` `{ budgetLeft, maxNrl }` | star 1 = every objective; star 2 = budget left ≥ `budgetLeft`; star 3 = ants per delivered packet ≤ `maxNrl`; each hint used costs one |
 | `hazards` `[{ at, do: 'down' / 'up' / 'move', device, to }]` | things that happen to the radio |
-| `hints`, `debrief` `{ text, links }` | help and the closing card; links open in the in-game reader |
+| `debrief` `{ links }` | the closing card's links (`[label, href]`; a prose label is a `doc.*` key, an API name stays as is); they open in the in-game reader |
 | `par` `[{ class, x, y } / { move, x, y } / { answer }]` | a solution; `web/test/levels.mjs` plays it on seeds 1-5 and requires a clear, and requires the level *not* to clear with no action |
 
 Device classes (`DEVICES` in the engine): phone 120 m and walks, laptop 180 m
@@ -102,6 +102,30 @@ a chapter open in order.
 
 ```bash
 web/build-site.sh && node web/test/levels.mjs web/build-site
+```
+
+## Translations (#622)
+
+Every word the game and the Workshop show lives in `web/site/i18n/<lang>.json`
+(English in `en.json`, the fallback; `pt-BR.json` complete). Code asks for it
+with `t(key, vars)` from `web/site/js/i18n.js`; `{name}` placeholders are
+filled from `vars`, numbers go through `num()` (`Intl.NumberFormat`). Markup
+in `index.html`, `workshop.html` and the top bar is marked `data-i18n`
+(text), `data-i18n-html` (our own trusted markup) or
+`data-i18n-attr="title:key;aria-label:key"`. Data files keep their shape and
+lose their words: `localized(obj, prefix, fields)` turns `obj.title` into a
+getter for `t(prefix + '.title')`, so worlds, missions, levels, devices, the
+Nest and the install quest read the same as before.
+
+The language is per viewer: the menu bar's picker stores it in
+`localStorage` (`ahn-lang`) and reloads; with none stored, the browser's
+languages decide. Docs pages stay English. To add a language, copy `en.json`,
+translate every value (keep each `{placeholder}`), and add it to `LANGS` in
+`i18n.js`.
+
+```bash
+python3 web/tools/i18n-check.py   # CI: keys and placeholders match en.json,
+                                  # no English literal left in web/site/js
 ```
 
 ## Rules

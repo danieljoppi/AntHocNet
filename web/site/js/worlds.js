@@ -2,59 +2,54 @@
 // mobility, channel, size -- never the protocol defaults (ADR-0019). Every
 // comparative claim is a link to the measured results page, never a number
 // from this teaching radio.
+import { localized } from './i18n.js';
+
 const RESULTS = 'docs/benchmarks/';
 // read: the Field guide page each world illustrates (#631; checked both ways by
 // tools/checks/check-site-links.py, with the docs pages' `try:` front matter).
 const GUIDE = 'docs/';
+// The words (title, blurb, honest, link labels) are in i18n/<lang>.json under
+// world.<id> (#622).
 export const WORLDS = [
   {
-    id: 'line', title: 'Six in a row', sprite: 'phone', speed: 0.25,
-    blurb: 'Six nodes that each hear only their neighbours, and one flow from end to end. The smallest network where routing is a question at all.',
-    honest: 'Teaching radio: unit disk, 250 m range, 2 Mbit/s, no collisions.',
+    id: 'line', sprite: 'phone', speed: 0.25,
     results: null,
-    read: { href: GUIDE + 'ant-types/', label: 'The five ant types' },
+    read: { href: GUIDE + 'ant-types/' },
   },
   {
-    id: 'manet', title: 'Ad hoc MANET (default)', sprite: 'phone', speed: 1,
-    blurb: '30 phones on an open field: the network the AntHocNet papers were written for. Twenty are carried around (random waypoint, 3–15 m/s: walking to cycling) and leave footprints; ten stay put. Links appear and break as people move; the bold trail is each flow\'s strongest pheromone route, and you can watch it switch.',
-    honest: 'Teaching radio: unit disk, 250 m range. The measured MANET results use ns-3 two-ray and Nakagami channels.',
-    results: { href: RESULTS + 'grid/', label: 'MANET grid results' },
-    read: { href: GUIDE + 'network-regimes/', label: 'Network regimes: the ad hoc field' },
+    id: 'manet', sprite: 'phone', speed: 1,
+    results: { href: RESULTS + 'grid/' },
+    read: { href: GUIDE + 'network-regimes/' },
   },
   {
-    id: 'town', title: 'Ad hoc town: phones, laptops, PCs', sprite: 'phone', speed: 1,
-    blurb: '30 devices in a small town, with no infrastructure: every device is a router. Phones are carried at walking pace and reach 120 m; laptops move now and then and reach 180 m; desktop PCs stay indoors and reach 250 m. A link needs both ends to reach, so a phone next to a PC still only talks across 120 m.',
-    honest: 'Teaching radio: unit disk with a range per device class, 2 Mbit/s. The measured MANET results use one ns-3 radio for every node.',
-    results: { href: RESULTS + 'grid/', label: 'MANET grid results' },
-    read: { href: GUIDE + 'network-regimes/', label: 'Network regimes: the ad hoc field' },
+    id: 'town', sprite: 'phone', speed: 1,
+    results: { href: RESULTS + 'grid/' },
+    read: { href: GUIDE + 'network-regimes/' },
   },
   {
-    id: 'mesh', title: 'Static Wi-Fi mesh', sprite: 'tower', speed: 0.25,
-    blurb: 'A community mesh: nothing moves. Every link that exists stays. Watch what the ants keep spending once the routes are found.',
-    honest: 'Teaching radio: unit disk, 250 m range.',
-    results: { href: RESULTS + 'static-mesh/', label: 'Static mesh results' },
-    read: { href: GUIDE + 'network-regimes/', label: 'Network regimes: a mesh that never moves' },
+    id: 'mesh', sprite: 'tower', speed: 0.25,
+    results: { href: RESULTS + 'static-mesh/' },
+    read: { href: GUIDE + 'network-regimes/' },
   },
   {
-    id: 'fanet', title: 'FANET: a drone swarm', speed: 1,
-    blurb: '20 drones flying a 3-D Gauss–Markov pattern at about 20 m/s. Links last seconds, not minutes. Altitude is shown as size and shade.',
-    honest: 'Teaching radio: 3-D unit disk, 300 m range. The measured FANET results use ns-3 with 3-D Gauss–Markov mobility.',
-    results: { href: RESULTS + 'scenarios/fanet/', label: 'FANET results' },
-    read: { href: GUIDE + 'network-regimes/', label: 'Network regimes: links that last seconds' },
+    id: 'fanet', speed: 1,
+    results: { href: RESULTS + 'scenarios/fanet/' },
+    read: { href: GUIDE + 'network-regimes/' },
   },
   {
-    id: 'vanet', title: 'VANET: cars in a city', speed: 1,
-    blurb: '30 vehicles on a Manhattan street grid. Buildings block the radio, so a link dies the moment a car turns a corner.',
-    honest: 'Teaching radio: unit disk cut by buildings. The measured VANET results use ns-3 two-ray plus building shadowing.',
-    results: { href: RESULTS + 'scenarios/vanet/', label: 'VANET results' },
-    read: { href: GUIDE + 'network-regimes/', label: 'Network regimes: links cut by buildings' },
+    id: 'vanet', speed: 1,
+    results: { href: RESULTS + 'scenarios/vanet/' },
+    read: { href: GUIDE + 'network-regimes/' },
   },
   {
-    id: 'satellite', title: 'Satellites: a Walker constellation', speed: 1,
-    blurb: '64 satellites in 8 orbital planes, 1200 km up at 53°. Satellites in one plane share an orbit (a ring); the planes are turned 45° apart, so each ring is a different orbit. Every satellite keeps four +grid links — ahead and behind in its plane, and to the same slot in the next planes — and their delay changes as the orbits move.',
-    honest: 'Teaching orbits: one revolution takes 120 s, about 55× faster than a real 1200 km orbit (109 min), so you can see it move; link delay is the real distance at light speed (≈19 ms in-plane). The measured results use ns-3 LEO mobility (walker16, Starlink shell 1).',
-    results: { href: RESULTS + 'satellite/leo-walker/', label: 'Moving-constellation results' },
-    read: { href: GUIDE + 'network-regimes/', label: 'Network regimes: why satellites differ' },
+    id: 'satellite', speed: 1,
+    results: { href: RESULTS + 'satellite/leo-walker/' },
+    read: { href: GUIDE + 'network-regimes/' },
   },
-];
+].map((w) => {
+  localized(w, `world.${w.id}`, ['title', 'blurb', 'honest']);
+  if (w.results) localized(w.results, `world.${w.id}.results`, ['label']);
+  if (w.read) localized(w.read, `world.${w.id}.read`, ['label']);
+  return w;
+});
 export const worldById = (id) => WORLDS.find((w) => w.id === id) || WORLDS[1];

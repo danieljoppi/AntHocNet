@@ -21,17 +21,18 @@
 //   hints: [..], debrief: { text, links: [[label, href]] }
 //   par: [{ class, x, y } | { move, x, y } | { answer }]  -- clears the level
 
+import { localized, t } from '../i18n.js';
+
 /** Device classes (#568): a radio range, a mobility and a sprite. */
-export const DEVICES = Object.freeze({
-  phone:    { label: 'Phone', range: 120, sprite: 'phone', moves: { kind: 1, min: 1, max: 2, pause: 10 },
-              note: 'carried at walking pace; short range' },
-  laptop:   { label: 'Laptop', range: 180, sprite: 'laptop', moves: { kind: 1, min: 1, max: 1.5, pause: 60 },
-              note: 'moved now and then' },
-  pc:       { label: 'Desktop PC', range: 250, sprite: 'pc', moves: null, note: 'static, indoors' },
-  router:   { label: 'Rooftop router', range: 300, sprite: 'tower', moves: null, note: 'static, on a roof' },
-  repeater: { label: 'Repeater', range: 200, sprite: 'tower', moves: null, note: 'static, cheap, short reach' },
-  gateway:  { label: 'Home gateway', range: 150, sprite: 'pc', moves: null, note: 'static, indoors' },
-});
+/** Their label and note are i18n keys device.<class>.{label,note} (#622). */
+export const DEVICES = Object.freeze(Object.fromEntries(Object.entries({
+  phone:    { range: 120, sprite: 'phone', moves: { kind: 1, min: 1, max: 2, pause: 10 } },
+  laptop:   { range: 180, sprite: 'laptop', moves: { kind: 1, min: 1, max: 1.5, pause: 60 } },
+  pc:       { range: 250, sprite: 'pc', moves: null },
+  router:   { range: 300, sprite: 'tower', moves: null },
+  repeater: { range: 200, sprite: 'tower', moves: null },
+  gateway:  { range: 150, sprite: 'pc', moves: null },
+}).map(([k, d]) => [k, localized(d, `device.${k}`, ['label', 'note'])])));
 
 /** Seconds of simulated time per runner step (hazards and samples land on it). */
 export const STEP = 0.25;
@@ -43,21 +44,21 @@ export function validatePlacements(level, placements) {
   const used = {};
   for (const p of placements) {
     const slot = level.palette.find((s) => s.class === p.class);
-    if (!slot) { errors.push(`${p.class} is not on offer in this level`); continue; }
+    if (!slot) { errors.push(t('campaign.err.notOffered', { cls: p.class })); continue; }
     used[p.class] = (used[p.class] || 0) + 1;
-    if (slot.limit && used[p.class] > slot.limit) errors.push(`at most ${slot.limit} × ${DEVICES[p.class].label}`);
+    if (slot.limit && used[p.class] > slot.limit) errors.push(t('campaign.err.limit', { n: slot.limit, label: DEVICES[p.class].label }));
     cost += slot.cost;
     const [ax, ay] = level.world.area;
-    if (p.x < 0 || p.y < 0 || p.x > ax || p.y > ay) errors.push(`${DEVICES[p.class].label} placed outside the map`);
+    if (p.x < 0 || p.y < 0 || p.x > ax || p.y > ay) errors.push(t('campaign.err.outside', { label: DEVICES[p.class].label }));
   }
-  if (cost > level.budget) errors.push(`over budget: ${cost} of ${level.budget}`);
+  if (cost > level.budget) errors.push(t('campaign.err.budget', { cost, budget: level.budget }));
   return { cost, errors };
 }
 
 /** Add one device to a world; returns its node id. */
 export function addDevice(w, cls, x, y, moves = true) {
   const d = DEVICES[cls];
-  if (!d) throw new Error(`unknown device class ${cls}`);
+  if (!d) throw new Error(`unknown device class ${cls}`); // i18n-ok: a programming error, not player text
   const id = w.addNode(x, y, 0);
   w.setNodeRange(id, d.range);
   if (moves && d.moves) w.setMobility(id, d.moves.kind, d.moves.min, d.moves.max, d.moves.pause, false);
@@ -117,8 +118,8 @@ export class LevelRun {
   /** Plan phase: move a pre-placed device the level marks draggable. */
   move(device, x, y) {
     const d = this.level.world.devices[device];
-    if (!d || !d.draggable) throw new Error('that device stays where it is');
-    if (this.started) throw new Error('devices are moved while planning');
+    if (!d || !d.draggable) throw new Error(t('campaign.err.fixed'));
+    if (this.started) throw new Error(t('campaign.err.planning'));
     const [ax, ay] = this.level.world.area;
     this.world.moveNode(this.ids[device], Math.max(0, Math.min(ax, x)), Math.max(0, Math.min(ay, y)), 0);
   }
@@ -214,7 +215,9 @@ export class LevelRun {
         const ratio = sent ? got / sent : 0;
         const over = now + 1e-9 >= (o.to ?? this.level.duration);
         return { o, value: ratio, done: over && ratio >= o.ratio, final: over,
-                 text: `Deliver ${Math.round(o.ratio * 100)} % ${o.flows === 'all' || !o.flows ? 'of all calls' : 'of call ' + o.flows.map((f) => f + 1).join(' and ')} from t = ${o.from ?? 0} to ${o.to ?? this.level.duration} s` };
+                 text: o.flows === 'all' || !o.flows
+                   ? t('campaign.obj.deliverAll', { p: Math.round(o.ratio * 100), from: o.from ?? 0, to: o.to ?? this.level.duration })
+                   : t('campaign.obj.deliver', { p: Math.round(o.ratio * 100), calls: o.flows.map((f) => f + 1).join(t('campaign.and')), from: o.from ?? 0, to: o.to ?? this.level.duration }) };
       }
       if (o.kind === 'quiz') {
         const i = this.level.objectives.indexOf(o);
@@ -222,12 +225,12 @@ export class LevelRun {
         return { o, value: chosen, done: chosen === o.answer, final: chosen !== undefined, text: o.question };
       }
       if (o.kind === 'connect') {
-        const t = this.firstDelivery[o.flow];
-        const done = t !== undefined && t <= o.within;
-        return { o, value: t, done, final: done || now >= o.within,
-                 text: `Connect call ${o.flow + 1} within ${o.within} s` };
+        const first = this.firstDelivery[o.flow];
+        const done = first !== undefined && first <= o.within;
+        return { o, value: first, done, final: done || now >= o.within,
+                 text: t('campaign.obj.connect', { call: o.flow + 1, s: o.within }) };
       }
-      throw new Error(`unknown objective ${o.kind}`);
+      throw new Error(`unknown objective ${o.kind}`); // i18n-ok: a programming error
     });
   }
 

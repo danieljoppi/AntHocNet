@@ -4,6 +4,7 @@
 // already solved. Runs the WASM core in Node against an assembled site.
 //
 // Usage: node web/test/levels.mjs <assembled-site-root>   (web/build-site.sh's output)
+import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -13,6 +14,8 @@ const url = (p) => pathToFileURL(path.resolve(root, p)).href;
 const { default: createAntHocNet } = await import(url('anthocnet.js'));
 const { LevelRun } = await import(url('js/campaign/engine.js'));
 const { LEVELS } = await import(url('js/campaign/levels.js'));
+const { useStrings } = await import(url('js/i18n.js'));
+useStrings(JSON.parse(fs.readFileSync(path.join(root, 'i18n/en.json'), 'utf8')));
 const M = await createAntHocNet();
 
 const SEEDS = [1, 2, 3, 4, 5];
