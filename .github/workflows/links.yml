@@ -1,0 +1,76 @@
+name: External links
+
+# External link check (#646). check-links.py validates relative links in the
+# markdown and check-site.py every internal link of the built site, but no
+# check fetched an external URL: papers, DOIs, Zenodo records, ns-3 and GitHub
+# links rot over time. This runs weekly and on dispatch, never on PRs: a
+# third-party outage must not block a merge. Hosts that refuse bots are in
+# .lycheeignore. A failure on the schedule opens one tracking issue, or
+# comments on it while it stays open; the next green week closes it.
+on:
+  schedule:
+    - cron: '17 5 * * 3'
+  workflow_dispatch:
+    inputs:
+      report:
+        description: "Open/update/close the tracking issue as a scheduled run would (to test it)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  links:
+    name: Check external links (docs, READMEs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: lychee
+        id: lychee
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
+        with:
+          # Only http(s) links; relative links are check-links.py's job.
+          args: >-
+            --scheme https --scheme http
+            --max-retries 3 --retry-wait-time 10 --timeout 30
+            --max-concurrency 8
+            --accept '100..=103,200..=299,403,429'
+            --no-progress
+            'docs/**/*.md' README.md ns3/README.md CONTRIBUTING.md
+          output: lychee-report.md
+          fail: true
+          jobSummary: true
+      - name: Open or update the tracking issue
+        if: failure() && (github.event_name == 'schedule' || inputs.report)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title='[docs] external links are broken'
+          num=$(gh issue list --state open --search "in:title \"$title\"" --json number,title \
+                  --jq "map(select(.title == \"$title\")) | .[0].number // empty")
+          {
+            echo "The weekly external link check failed: $RUN_URL"
+            echo
+            sed -n '1,120p' lychee-report.md 2>/dev/null || true
+            echo
+            echo "Fix or replace each link; a host that only blocks bots goes in .lycheeignore with a comment. See #646."
+          } > body.md
+          if [ -n "$num" ]; then
+            gh issue comment "$num" --body-file body.md
+          else
+            gh issue create --title "$title" --label bug --label docs --body-file body.md
+          fi
+      - name: Close the tracking issue on a green week
+        if: success() && (github.event_name == 'schedule' || inputs.report)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title='[docs] external links are broken'
+          num=$(gh issue list --state open --search "in:title \"$title\"" --json number,title \
+                  --jq "map(select(.title == \"$title\")) | .[0].number // empty")
+          if [ -n "$num" ]; then gh issue close "$num" --comment "All external links resolve again: $RUN_URL"; fi
