@@ -335,6 +335,28 @@ jobs:
         version: ['3.36', '3.41', '3.42', '3.47', '3.48']
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # ccache (#609) for the legs that recompile all of ns-3, not only the
+      # module: 3.36 (its reconfigure invalidates the image's build) and ASan
+      # (new compile flags). The other legs rebuild only the module delta in
+      # 35-48 s and stay without it: ns-3 picks ccache up at configure time,
+      # which changes every compile command and would force the full rebuild
+      # it is meant to save. Keyed per leg and commit; a run restores the
+      # newest entry of its leg and saves a new one unless it hit exactly.
+      - name: Restore ccache
+        id: ccache
+        if: matrix.version == '3.36'
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: .ccache
+          key: ccache-ns3-3.36-gcc11-${{ github.sha }}
+          restore-keys: ccache-ns3-3.36-gcc11-
+      - name: Install ccache
+        if: matrix.version == '3.36'
+        run: |
+          apt-get update -qq && apt-get install -y -qq --no-install-recommends ccache
+          export CCACHE_DIR="$GITHUB_WORKSPACE/.ccache"
+          printf 'CCACHE_DIR=%s\nCCACHE_MAXSIZE=1G\n' "$CCACHE_DIR" >> "$GITHUB_ENV"
+          ccache -z
       - name: Install AntHocNet module
         # The 3.48 leg installs from the drop-in release tarball (#606) instead
         # of the Makefile, so every PR proves the asset a user downloads builds
@@ -375,6 +397,15 @@ jobs:
           fi
       - name: Build
         run: cd /opt/ns-3 && ./ns3 build
+      - name: ccache stats
+        if: matrix.version == '3.36'
+        run: ccache -s
+      - name: Save ccache
+        if: matrix.version == '3.36' && steps.ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: .ccache
+          key: ccache-ns3-3.36-gcc11-${{ github.sha }}
       - name: Run module test suite (header round-trip + multi-hop delivery)
         if: env.RUN_TESTS == '1'
         run: cd /opt/ns-3 && ./test.py -s anthocnet && ./test.py -s oracle
@@ -602,6 +633,21 @@ jobs:
       options: --cap-add=SYS_PTRACE
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # ccache (#609), as in ns3-build: the sanitizer flags reach every
+      # object, so this leg recompiles all of ns-3 (~15 min cold).
+      - name: Restore ccache
+        id: ccache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: .ccache
+          key: ccache-ns3-asan-3.42-gcc11-${{ github.sha }}
+          restore-keys: ccache-ns3-asan-3.42-gcc11-
+      - name: Install ccache
+        run: |
+          apt-get update -qq && apt-get install -y -qq --no-install-recommends ccache
+          export CCACHE_DIR="$GITHUB_WORKSPACE/.ccache"
+          printf 'CCACHE_DIR=%s\nCCACHE_MAXSIZE=1G\n' "$CCACHE_DIR" >> "$GITHUB_ENV"
+          ccache -z
       - name: Install AntHocNet module
         run: make install-ns3 NS3DIR=/opt/ns-3
       - name: Configure with ASan/LSan
@@ -635,6 +681,14 @@ jobs:
           fi
       - name: Build
         run: cd /opt/ns-3 && ./ns3 build
+      - name: ccache stats
+        run: ccache -s
+      - name: Save ccache
+        if: steps.ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: .ccache
+          key: ccache-ns3-asan-3.42-gcc11-${{ github.sha }}
       - name: Run module test suite under ASan/LSan
         run: cd /opt/ns-3 && ./test.py -s anthocnet && ./test.py -s oracle
       - name: E2E delivery smoke under ASan/LSan
