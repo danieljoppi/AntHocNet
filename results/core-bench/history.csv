@@ -6,3 +6,10 @@ date,commit,cpu,case,ns_per_op,min_ns,max_ns
 2026-10-15,0078ecace2ab,"Intel(R) Xeon(R) Processor @ 2.80GHz (development container, seed row)",codec_encode_full_ant,2724.59,2683.89,2909.84
 2026-10-15,0078ecace2ab,"Intel(R) Xeon(R) Processor @ 2.80GHz (development container, seed row)",codec_decode_full_ant,80.98,80.27,81.34
 2026-10-15,0078ecace2ab,"Intel(R) Xeon(R) Processor @ 2.80GHz (development container, seed row)",history_dedup,88.46,88.15,90.14
+2026-10-15,7884fe536a03,AMD EPYC 9V74 80-Core Processor,pheromone_update,62.02,61.96,62.38
+2026-10-15,7884fe536a03,AMD EPYC 9V74 80-Core Processor,select_next_hop_4,118.93,118.75,119.32
+2026-10-15,7884fe536a03,AMD EPYC 9V74 80-Core Processor,select_next_hop_16,575.08,572.45,576.97
+2026-10-15,7884fe536a03,AMD EPYC 9V74 80-Core Processor,select_next_hop_64,2683.59,2673.64,2724.70
+2026-10-15,7884fe536a03,AMD EPYC 9V74 80-Core Processor,codec_encode_full_ant,1016.45,1016.38,1019.96
+2026-10-15,7884fe536a03,AMD EPYC 9V74 80-Core Processor,codec_decode_full_ant,72.26,72.16,73.53
+2026-10-15,7884fe536a03,AMD EPYC 9V74 80-Core Processor,history_dedup,71.03,70.82,71.15
