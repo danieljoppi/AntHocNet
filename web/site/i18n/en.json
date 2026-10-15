@@ -967,5 +967,30 @@
     "compare": "Your run against the ghost",
     "ns3": "The same change in ns-3",
     "ns3Note": "Append these flags to an anthocnet-compare command; CI runs them through it."
+  },
+  "xray": {
+    "gone": "This ant left the X-ray buffer (it keeps the last 512 transmissions). Pause sooner, or pick a recent one from a node.",
+    "bad": "These bytes do not decode.",
+    "title": "Ant #{id}",
+    "type": {
+      "hello": "hello",
+      "reactive": "reactive ant",
+      "proactive": "proactive ant",
+      "repair": "repair ant",
+      "linkfail": "link-failure notice",
+      "unknown": "unknown type"
+    },
+    "dir": {
+      "forward": "forward",
+      "backward": "backward"
+    },
+    "bytes": "{n} bytes on the air",
+    "fieldsCaption": "The fields, as core::codec decodes these bytes",
+    "bytesLabel": "The ant's bytes in hexadecimal, coloured per field",
+    "offset": "bytes {from}–{to}",
+    "wire": "Frame layout (wire-format.md) →",
+    "note": "Every ant the adapter sends goes through codec::serialize; the game keeps a copy of the last 512 for this view. Nothing reads the copy to decide anything.",
+    "back": "← Back to the node",
+    "recent": "X-ray this node's last ants:"
   }
 }

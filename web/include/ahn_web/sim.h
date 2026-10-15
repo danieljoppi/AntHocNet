@@ -27,6 +27,7 @@
 #include <queue>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "anthocnet/core/ant_router_logic.h"
@@ -295,6 +296,12 @@ public:
     void clearLog() { log_.clear(); }
     /// Ant transmissions so far (control overhead).
     std::uint64_t antTransmissions() const { return antTx_; }
+    /// X-ray (#637): how many ant transmissions the ring keeps.
+    static constexpr std::size_t kXrayRing = 512;
+    /// X-ray (#637): the serialized bytes of ant transmission `id` -- the
+    /// id-th TxAnt event since start(), from 0 -- if it is among the last
+    /// kXrayRing; else empty. A copy kept for inspection: no decision reads it.
+    const std::vector<std::uint8_t>& antBytes(std::uint64_t id) const;
     /// Street grid blocks along x (Urban).
     int urbanBlocksX() const { return blocksX_; }
     /// Street grid blocks along y (Urban).
@@ -375,6 +382,7 @@ private:
     bool started_ = false;
     std::vector<LogEvent> log_;
     std::uint64_t antTx_ = 0;
+    std::deque<std::pair<std::uint64_t, std::vector<std::uint8_t>>> xray_;  // (id, bytes), oldest first
 
     // adapter constants: the ns-3 attribute defaults (anthocnet-routing-protocol.cc)
     static constexpr double kTimerJitter = 0.05;      // TimerJitter

@@ -128,6 +128,24 @@ python3 web/tools/i18n-check.py   # CI: keys and placeholders match en.json,
                                   # no English literal left in web/site/js
 ```
 
+## The X-ray (#637)
+
+`World` keeps a copy of the last `kXrayRing` (512) serialized ants in a ring,
+keyed by transmission number (the n-th `TxAnt` event since `start()`, which
+the page counts as it drains events). `antBytes(id)` returns a copy and
+`decodeAnt(bytes)` returns the core codec's decoding as JSON
+(`ahn_web/xray.h`, shared with the native `ahn-web-trace --decode`). The ring
+is read-only: nothing decides on it, and the parity trace is unchanged.
+
+In the game, Inspect a node to list its last few ants, or tap an ant in
+flight: the world pauses and the Query window shows the fields and the bytes,
+coloured per field after `docs/wire-format.md`'s frame layout, with links to
+that page and to `core::codec`. The node table's column headers name the
+`PheromoneTable` members they show and open them in the reader.
+`web/test/xray.test.mjs` (CI, after `parity.sh`) samples a few hundred ants of
+every type from three worlds and requires the native decode to equal the
+page's, field for field.
+
 ## The tuning bench (#638)
 
 A side window of the game (`web/site/js/bench.js`): a slider or switch for

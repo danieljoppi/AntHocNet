@@ -11,6 +11,7 @@
 
 #include "ahn_web/scenarios.h"
 #include "ahn_web/sim.h"
+#include "ahn_web/xray.h"
 
 using namespace emscripten;
 using ahn_web::World;
@@ -157,6 +158,18 @@ double getConfig(World& w, const std::string& key) {
     return 0;
 }
 
+// X-ray (#637): the bytes of ant transmission `id` (a copy), or an empty array
+// once the ring has dropped it. Read-only.
+val antBytes(const World& w, double id) {
+    const std::vector<std::uint8_t>& b = w.antBytes(static_cast<std::uint64_t>(id));
+    return val::global("Uint8Array").new_(typed_memory_view(b.size(), b.data()));
+}
+
+// X-ray: bytes -> the core codec's decoding, as JSON (ahn_web::antJson).
+std::string decodeAnt(const val& bytes) {
+    return ahn_web::antJson(convertJSArrayToNumberVector<std::uint8_t>(bytes));
+}
+
 val scenarioList() {
     val arr = val::array();
     for (const std::string& s : ahn_web::scenarioNames()) arr.call<void>("push", s);
@@ -167,6 +180,7 @@ val scenarioList() {
 
 EMSCRIPTEN_BINDINGS(anthocnet) {
     function("scenarios", &scenarioList);
+    function("decodeAnt", &decodeAnt);
     class_<World>("World")
         .constructor(&makeWorld, allow_raw_pointers())
         .function("setArea", &World::setArea)
@@ -191,6 +205,7 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
         .function("pendingCount", &World::pendingCount)
         // As a double: a uint64 would reach JS as a BigInt and poison arithmetic.
         .function("antTransmissions", optional_override([](const World& w) { return static_cast<double>(w.antTransmissions()); }))
+        .function("antBytes", &antBytes)
         .function("range", &World::range)
         .function("channel", optional_override([](const World& w) { return static_cast<int>(w.channel()); }))
         .function("blocksX", &World::urbanBlocksX)

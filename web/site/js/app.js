@@ -9,6 +9,7 @@ import { WORLDS, worldById } from './worlds.js';
 import { initMissions } from './missions.js';
 import { initCampaign } from './campaign/campaign.js';
 import { initBench } from './bench.js';
+import { renderAnt } from './xray.js';
 import { initSearch } from '../shell/shell.js';
 import { openReader, interceptDocsLinks } from './reader.js';
 import { initI18n, t, num, LANGS, currentLang, setLang } from './i18n.js';
@@ -35,6 +36,9 @@ export const playground = {
   /** Campaign: show the placement ghost at field metres (keyboard cursor). */
   ghostAt(p) { ghost = p; },
   get renderer() { return R; },
+  /** X-ray (#637): the ant transmission shown in the Query window, or -1. */
+  xray: -1,
+  showAnt: (id) => showAnt(id),
   /** Tuning bench (#638): { world, routes } of the default-Config ghost, or null. */
   ghostRun: null,
   /** Each flow's strongest pheromone route in world `w` (the flows are the same). */
@@ -57,6 +61,9 @@ let hover = -1;
 let routes = [];              // each flow's strongest-pheromone route, for the map
 let routeKeys = new Map();    // flow id -> the route last seen ("0-4-9"), to spot a switch
 let routeChanges = 0;
+let antSeq = 0;               // X-ray (#637): the id of the next TxAnt, as World.antBytes counts
+let nodeAnts = new Map();     // node -> its last few ant transmissions [{ id, kind }]
+let apiIndex;                 // api/api-index.json (null if absent), for the X-ray's member links
 
 function safeStore(op, key, value) {
   try {
@@ -106,6 +113,7 @@ async function load(worldId, seed, opts = {}) {
   window10 = [];
   logItems = [];
   routes = []; routeKeys = new Map(); routeChanges = 0;
+  antSeq = 0; nodeAnts = new Map(); playground.xray = -1;
   $('log').replaceChildren();
   R.setWorld({
     areaX: w.areaX(), areaY: w.areaY(), areaZ: w.areaZ(), channel: w.channel(),
@@ -184,7 +192,7 @@ function setTool(t0) {
   toast(t(`app.toolHint.${t0 === 'bulldoze' && playground.worldId === 'satellite' ? 'bulldozeSat' : t0}`), 2600);
 }
 
-function selectNode(i) { playground.selected = i; lastInspector = 0; }
+function selectNode(i) { playground.selected = i; playground.xray = -1; lastInspector = 0; }
 
 function toast(msg, ms = 3500) {
   const t = $('toast');
@@ -228,17 +236,22 @@ function handle(e, wallNow) {
   switch (e.kind) {
     case Ev.TxAnt: {
       const kind = antKind(e.a, e.b);
+      const antId = antSeq++;
+      const mine = nodeAnts.get(e.node) || [];
+      mine.push({ id: antId, kind });
+      if (mine.length > 4) mine.shift();
+      nodeAnts.set(e.node, mine);
       if (kind !== 'hello') st.ants++;
       flash.set(e.node, kind);
       flashUntil.set(e.node, wallNow + 260);
       const dur = visualDuration(e.v - e.t);
       if (e.peer < 0) {
         if (kind !== 'hello' || $('ovHello').checked) {
-          anim.rings.push({ node: e.node, kind, radius: R.meta.range || 300, t0: wallNow, dur: Math.max(dur, 520) });
+          anim.rings.push({ node: e.node, kind, radius: R.meta.range || 300, t0: wallNow, dur: Math.max(dur, 520), antId });
         }
         if (kind === 'linkfail') news(t('app.news.linkfail', { n: e.node }));
       } else {
-        anim.flights.push({ from: e.node, to: e.peer, kind, t0: wallNow, dur });
+        anim.flights.push({ from: e.node, to: e.peer, kind, t0: wallNow, dur, antId });
       }
       log(e, kind, kind === 'hello' ? 'hello' : 'ants');
       break;
@@ -401,7 +414,37 @@ function updateRoutes(w, wallNow) {
   routes = fresh;
 }
 
+/** The API page of `cls`::`member` (from api/api-index.json when built), for the X-ray's headers. */
+function apiHref(cls, member) {
+  const info = apiIndex && apiIndex.classes[cls];
+  if (!info) return `api/classanthocnet_1_1core_1_1${cls}.html`;
+  const m = member && info.members.find((x) => x.name === member && x.anchor);
+  return `api/${info.url}${m ? '#' + m.anchor : ''}`;
+}
+const apiTh = (label, cls, member) => `<th><a href="${apiHref(cls, member)}" data-cls="${cls}" data-member="${member}" title="${cls}::${member}">${label}</a></th>`;
+
+/** Open `cls`::`member` in the reader, at the member once the API index is read. */
+async function openMember(cls, member) {
+  if (apiIndex === undefined) {
+    apiIndex = await fetch('api/api-index.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  }
+  openReader(apiHref(cls, member), `${cls}::${member}`);
+}
+
+/** X-ray of ant transmission `id` (#637) in the Query window. */
+function showAnt(id) {
+  playground.xray = id;
+  $('inspHint').hidden = true;
+  const box = document.createElement('div');
+  renderAnt(playground.M, playground.world, id, box, (href, title) => openReader(href, title));
+  const back = Object.assign(document.createElement('button'), { type: 'button', className: 'bevel', textContent: t('xray.back') });
+  back.addEventListener('click', () => { playground.xray = -1; lastInspector = 0; });
+  box.append(back);
+  $('inspBody').replaceChildren(box);
+}
+
 function renderInspector(w) {
+  if (playground.xray >= 0) return;
   const i = playground.selected;
   const body = $('inspBody');
   if (i < 0) { body.replaceChildren(); $('inspHint').hidden = false; return; }
@@ -426,7 +469,8 @@ function renderInspector(w) {
     const tbl = document.createElement('table');
     tbl.className = 'ph';
     tbl.innerHTML = `<caption>${t('app.insp.caption', { d })}</caption>
-      <thead><tr><th>${t('app.insp.via')}</th><th>${t('app.insp.reg')}</th><th>${t('app.insp.vir')}</th><th>${t('app.insp.next')}</th></tr></thead>`;
+      <thead><tr><th>${t('app.insp.via')}</th>${apiTh(t('app.insp.reg'), 'PheromoneTable', 'getPheromoneRegular')}${apiTh(t('app.insp.vir'), 'PheromoneTable', 'getPheromoneVirtual')}${apiTh(t('app.insp.next'), 'PheromoneTable', 'nextHopDistribution')}</tr></thead>`;
+    tbl.querySelectorAll('a[data-member]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); openMember(a.dataset.cls, a.dataset.member); }));
     const tb = document.createElement('tbody');
     for (const [nb, reg, vir] of rows) {
       const pr = prob.get(nb) || 0;
@@ -445,6 +489,19 @@ function renderInspector(w) {
     frag.append(note);
   } else if (d === i) {
     frag.append(Object.assign(document.createElement('p'), { className: 'muted small', textContent: t('app.insp.watched') }));
+  }
+  // X-ray (#637): this node's last few ant transmissions, as bytes.
+  const recent = (nodeAnts.get(i) || []).slice().reverse();
+  if (recent.length) {
+    const p2 = document.createElement('p');
+    p2.className = 'small';
+    p2.append(t('xray.recent') + ' ');
+    for (const r of recent) {
+      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'bevel chip-btn', textContent: `#${r.id} ${t(`engine.kind.${r.kind}`)}` });
+      b.addEventListener('click', () => { setSpeed(0); showAnt(r.id); });
+      p2.append(b, ' ');
+    }
+    frag.append(p2);
   }
   body.replaceChildren(frag);
 }
@@ -545,6 +602,11 @@ view.addEventListener('pointerdown', (ev) => {
   const i = R.hit(pos, px, py);
   const panButton = ev.button === 1 || ev.button === 2;
   const tool = playground.tool;
+  // X-ray (#637): a click or tap on an ant in flight pauses and shows its bytes.
+  if (tool === 'inspect' && i < 0 && !panButton) {
+    const f = R.hitFlight(pos, anim.flights, px, py);
+    if (f) { setSpeed(0); showAnt(f.antId); return; }
+  }
   if (panButton || (tool === 'move' && i < 0) || (tool === 'inspect' && i < 0)) {
     drag = { pan: true, x: px, y: py, moved: false, clickEmpty: tool === 'inspect' && !panButton };
     return;

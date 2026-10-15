@@ -967,5 +967,30 @@
     "compare": "Sua partida contra o fantasma",
     "ns3": "A mesma mudança no ns-3",
     "ns3Note": "Acrescente estas opções a um comando anthocnet-compare; a CI as roda nele."
+  },
+  "xray": {
+    "gone": "Esta formiga saiu do buffer do raio X (ele guarda as últimas 512 transmissões). Pause antes, ou escolha uma recente a partir de um nó.",
+    "bad": "Estes bytes não decodificam.",
+    "title": "Formiga #{id}",
+    "type": {
+      "hello": "hello",
+      "reactive": "formiga reativa",
+      "proactive": "formiga proativa",
+      "repair": "formiga de reparo",
+      "linkfail": "aviso de falha de enlace",
+      "unknown": "tipo desconhecido"
+    },
+    "dir": {
+      "forward": "de ida",
+      "backward": "de volta"
+    },
+    "bytes": "{n} bytes no ar",
+    "fieldsCaption": "Os campos, como o core::codec decodifica estes bytes",
+    "bytesLabel": "Os bytes da formiga em hexadecimal, coloridos por campo",
+    "offset": "bytes {from}–{to}",
+    "wire": "Layout do quadro (wire-format.md) →",
+    "note": "Toda formiga que o adaptador envia passa pelo codec::serialize; o jogo guarda uma cópia das últimas 512 para esta vista. Nada lê a cópia para decidir coisa alguma.",
+    "back": "← Voltar ao nó",
+    "recent": "Raio X das últimas formigas deste nó:"
   }
 }

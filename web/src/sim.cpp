@@ -439,6 +439,10 @@ void World::execute(Node& n, const std::vector<RouteDecision>& ds) {
 void World::sendAnt(Node& n, const AntMessage& m, int to) {
     if (!n.up_) return;
     std::vector<std::uint8_t> bytes = core::codec::serialize(m);
+    // X-ray (#637): this transmission's TxAnt event, emitted once below on
+    // every path, is number antTx_. Keep a copy of what goes on the air.
+    xray_.emplace_back(antTx_, bytes);
+    if (xray_.size() > kXrayRing) xray_.pop_front();
     const double start = std::max(now_, n.busyUntil_);
     const double dur = txDuration(bytes.size() + 28);
     n.busyUntil_ = start + dur;
@@ -471,6 +475,13 @@ void World::sendAnt(Node& n, const AntMessage& m, int to) {
         emit(now_, Ev::TxFail, from, to, 0, 0, 0);
         execute(me, me.logic_->reportTxFailure(to));
     });
+}
+
+const std::vector<std::uint8_t>& World::antBytes(std::uint64_t id) const {
+    static const std::vector<std::uint8_t> kNone;
+    if (xray_.empty() || id < xray_.front().first || id > xray_.back().first) return kNone;
+    const auto& e = xray_[static_cast<std::size_t>(id - xray_.front().first)];
+    return e.first == id ? e.second : kNone;
 }
 
 void World::recvAnt(int node, int from, const std::vector<std::uint8_t>& bytes) {

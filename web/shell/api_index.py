@@ -36,8 +36,11 @@ def build(xml_dir: str) -> dict:
                 if not sec.get("kind", "").startswith("public"):
                     continue
                 for m in sec.iter("memberdef"):
+                    mid = m.get("id") or ""
                     members.append({
                         "name": m.findtext("name"),
+                        # Doxygen's anchor on the class page: the member id after "<class id>_1".
+                        "anchor": mid[len(cd.get("id")) + 2 :] if mid.startswith(cd.get("id") + "_1") else "",
                         "kind": m.get("kind"),
                         "sig": " ".join(x for x in (m.findtext("type"), m.findtext("name"), m.findtext("argsstring")) if x).strip(),
                         "brief": text(m.find("briefdescription")),

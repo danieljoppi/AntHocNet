@@ -225,6 +225,19 @@ export class IsoRenderer {
     return best;
   }
 
+  /** The ant in flight under (px, py) -- its flight object -- or null (#637). */
+  hitFlight(pos, flights, px, py) {
+    let best = null, bestD = 14 * 14;
+    for (const f of flights) {
+      if (f.kind === 'data' || f.antId === undefined) continue;
+      const [a, b] = this.trailEnds(pos, f.from, f.to);
+      const x = a[0] + (b[0] - a[0]) * (f.progress || 0), y = a[1] + (b[1] - a[1]) * (f.progress || 0);
+      const d = (x - px) ** 2 + (y - py) ** 2;
+      if (d < bestD) { bestD = d; best = f; }
+    }
+    return best;
+  }
+
   /** Link [a, b] under (px, py), or null (for cutting ISLs). */
   hitLink(pos, links, px, py) {
     let best = null, bestD = 8 * 8;

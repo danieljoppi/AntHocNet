@@ -3,7 +3,7 @@
 //   1. opens every world, runs it, and requires no console errors and at
 //      least one backward ant and one delivered packet in the event stream;
 //   2. plays mission 2 ("Send the scouts") to completion with scripted input,
-//      and again in Portuguese (2b, #622); the tuning bench (2c, #638);
+//      and again in Portuguese (2b, #622); the tuning bench (2c, #638); the X-ray on touch (2d, #637);
 //   3. runs axe-core on the front page as a first visit sees it (the hub up
 //      over the default world) and fails on serious or critical violations;
 //   3b. the site shell (#626): the hub's buttons and #play, the one top bar
@@ -172,6 +172,36 @@ for (const world of ['line', 'manet', 'town', 'mesh', 'fanet', 'vanet', 'satelli
   if (result.length) fail(`axe (bench open): ${result.join(' | ')}`);
   if (errors.length) fail(`bench: console errors: ${errors.join(' | ')}`);
   if (!result.length && !errors.length && line.endsWith('BetaData=10')) console.log(`ok: tuning bench — ${rows} fields, ghost running, line "${line}", axe clean`);
+  await p.close();
+}
+
+// 2d. The X-ray (#637), on a touch screen: select a node from the keyboard,
+//     tap one of its recent ants -- the world pauses and the Query window
+//     shows the ant's fields and its bytes, coloured per field -- axe clean.
+{
+  const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, hasTouch: true });
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.goto(base + '#line?seed=1');
+  await p.locator('#missionBody .missions button').first().waitFor({ timeout: 15000 });
+  await p.locator('.speeds button').last().click();
+  await p.waitForTimeout(3000);
+  await p.locator('#map').focus();
+  await p.keyboard.press(']');
+  const chip = p.locator('#inspBody button.chip-btn').first();
+  await chip.waitFor({ timeout: 15000 }).catch(() => fail('x-ray: no recent ants listed for node 0'));
+  await chip.tap();
+  const spans = await p.locator('#inspBody .xray-bytes .xr').count().catch(() => 0);
+  const fields = await p.locator('#inspBody .xray-fields tbody tr').count().catch(() => 0);
+  const paused = await p.locator('.speeds button[data-speed="0"]').getAttribute('aria-pressed');
+  if (spans < 9 || fields < 9 || paused !== 'true') fail(`x-ray: ${spans} byte ranges, ${fields} fields, paused=${paused}`);
+  await p.addScriptTag({ content: axeSource });
+  const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+    .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+    .map((v) => `${v.id} (${v.impact}): ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join('; ')}`));
+  if (result.length) fail(`axe (x-ray): ${result.join(' | ')}`);
+  if (errors.length) fail(`x-ray: page errors: ${errors.join(' | ')}`);
+  if (spans >= 9 && !result.length && !errors.length) console.log(`ok: x-ray — tap paused the world, ${fields} fields, ${spans} byte ranges, axe clean`);
   await p.close();
 }
 

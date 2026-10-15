@@ -459,3 +459,13 @@ body.in-level .toast { top: auto; bottom: 86px; }
 .bench-badges .chip { margin-right: 4px; }
 .bench-pre { white-space: pre-wrap; word-break: break-all; background: var(--card-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; margin: 4px 0; }
 .bench-stats table { width: 100%; }
+
+/* The X-ray (#637): one colour per wire field, swatch in the table and the bytes. */
+.xray-bytes { font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-word; background: var(--card-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
+.xr { border-radius: 3px; padding: 0 2px; color: #0b1220; }
+.xr-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.xr-version { background: #e2e8f0; } .xr-type, .xr-direction { background: #fde68a; }
+.xr-src, .xr-dst { background: #bfdbfe; } .xr-seqNum { background: #ddd6fe; }
+.xr-timeStart, .xr-lifeAnt { background: #bbf7d0; } .xr-broadcastBudget { background: #fecaca; }
+.xr-visited { background: #fed7aa; } .xr-history { background: #a5f3fc; } .xr-helloDests { background: #f5d0fe; }
+.xray-fields th { white-space: nowrap; }

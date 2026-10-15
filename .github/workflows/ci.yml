@@ -97,6 +97,9 @@ jobs:
         run: |
           source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           web/test/parity.sh 120 "1 2 7 42"
+      - name: X-ray -- the native codec decodes the page's ant bytes to the same fields (#637)
+        # parity.sh has built both ahn-web-trace (native) and the WASM module.
+        run: node web/test/xray.test.mjs
 
   # The whole Pages site, tested as deployed (#626): built by web/build-pages.sh
   # (the game, the docs, the API, the redirects -- what pages.yml publishes),
