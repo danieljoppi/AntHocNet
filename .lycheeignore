@@ -1,0 +1,13 @@
+# External link check (#646): hosts that refuse or throttle bots, so a
+# "failure" there says nothing about the link. One regex per line.
+^https://doi\.org/10\.1145/
+^https://dl\.acm\.org/
+^https://ieeexplore\.ieee\.org/
+^https://www\.sciencedirect\.com/
+^https://link\.springer\.com/
+^https://onlinelibrary\.wiley\.com/
+^https://www\.researchgate\.net/
+^https://scholar\.google\.com/
+# Placeholders and local addresses used in examples.
+^https?://(localhost|127\.0\.0\.1)
+^https://claude\.ai/

@@ -83,7 +83,8 @@ results.
   `release.yml` (Commitizen bump + install-bundle), `images.yml`
   (republish simulator images). Automatic: `charts.yml` (re-renders charts from
   committed data), `core-bench.yml` (core ns/op: PR vs base as a warning, history
-  on main; `make bench-core` locally), `pages.yml` (game at `/`, docs at `/docs/`, API at `/api/`), `ns3-dev.yml`
+  on main; `make bench-core` locally), `links.yml` (weekly external link check; a
+  red week opens a `[docs]` issue), `pages.yml` (game at `/`, docs at `/docs/`, API at `/api/`), `ns3-dev.yml`
   (nightly build against ns-3-dev; a red night opens a `[ci]` issue). Releases are version-bumped by Commitizen from
   Conventional-Commit history; **PR titles must be Conventional Commits** (CI
   enforces it — see `CONTRIBUTING.md`).
