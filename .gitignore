@@ -29,6 +29,8 @@
 
 # Build directories
 build/
+build-tidy/
+build-codeql/
 core/build/
 core/build-*/
 ns3/build/

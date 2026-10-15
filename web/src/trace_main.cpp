@@ -18,7 +18,7 @@
 #include "ahn_web/sim.h"
 
 int main(int argc, char** argv) {
-    const double seconds = argc > 1 ? std::atof(argv[1]) : 60.0;
+    const double seconds = argc > 1 ? std::strtod(argv[1], nullptr) : 60.0;
     const unsigned long long seed = argc > 2 ? std::strtoull(argv[2], nullptr, 10) : 1ULL;
     for (const std::string& name : ahn_web::scenarioNames()) {
         ahn_web::World w(seed);
