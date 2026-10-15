@@ -542,6 +542,18 @@ def _pre_vanet_refusals():
                f"{knob} was not refused with '{msg}'\n{out}")
 
 
+@case("#537 preflight WARNs the corner-limited link lifetime on an urban grid")
+def _pre_vanet_corner():
+    levels, out = run_preflight(**VANET)
+    expect("corner-limited link lifetime ~1.0s" in out and "WARN" in levels,
+           "pre-vanet-corner", out)
+    # Not on the disk channel (no buildings), nor on a MANET cell.
+    _, out = run_preflight(**dict(VANET, propagation="range", nodes=60))
+    expect("corner-limited" not in out, "pre-vanet-corner", out)
+    _, out = run_preflight()
+    expect("corner-limited" not in out, "pre-vanet-corner", out)
+
+
 @case("#488 preflight labels a disk-channel Manhattan cell validation-only")
 def _pre_vanet_disk():
     _, out = run_preflight(**dict(VANET, propagation="range", nodes=60))

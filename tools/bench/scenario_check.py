@@ -1148,6 +1148,30 @@ def cmd_preflight(a):
                            "FANET envelope; state it next to any result, and "
                            "treat a HelloInterval change as an A/B follow-up "
                            "(#300 watchlist), not a pre-tuning (#481)")
+        # #537: on a street grid under the urban channel, distance is not what
+        # ends a link. A vehicle keeps line of sight to the cross street only
+        # while it is inside the intersection, so a link to a car round the
+        # corner lives about streetWidth / speed. The distance bound above
+        # reads 10.6 hello periods for the vanet preset; the measured
+        # shortest-path lifetime there is 0.50 s (AODV's routes 1.32 s), about
+        # 21x shorter, and it is the corner bound that matches. WARN rather
+        # than replace the distance bound: links along one street still obey
+        # it, so the truth is a mix the preflight cannot weigh.
+        if urban and mobility == "manhattan":
+            corner = street / a.speed
+            if corner < churn:
+                print(f"  corner-limited link lifetime ~{corner:.1f}s "
+                      f"(streetWidth {street:g} m / {a.speed:g} m/s) vs the "
+                      f"~{churn:.1f}s distance bound")
+                report("WARN", f"urban street grid: a link round a corner lives "
+                               f"~{corner:.1f}s (streetWidth/speed), not the "
+                               f"~{churn:.1f}s distance bound — "
+                               f"{corner / hello:.1f} hello periods. Measured on "
+                               "the vanet preset: shortest paths change every "
+                               "0.50 s (#537). Route-churn and path-diversity "
+                               "readings are corner-dominated; HelloInterval "
+                               "and ReconvHoldCap are #537's A/B, not "
+                               "pre-tuning")
         print(f"  path-diversity window {a.pathWindowS}s vs ~{churn:.1f}s "
               f"link lifetime at {a.speed} m/s over {eff_range:g} m")
         if a.pathWindowS > churn:
