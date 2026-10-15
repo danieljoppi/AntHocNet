@@ -60,6 +60,8 @@ jobs:
     # After a refresh workflow, deploy only if it succeeded (a failed
     # benchmark run commits nothing, so there is nothing new to publish).
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      core: ${{ steps.core.outputs.v }}
     steps:
       # Every action is SHA-pinned with the tag in a trailing comment, matching
       # the repo-wide pinning done in #338: a tag is a moving pointer, so an
@@ -119,6 +121,9 @@ jobs:
                             "message": f"{pct:.1f}%", "color": color}))
           PY
           cat site/badges/coverage.json
+      - name: Record which core this build ships (for the live smoke)
+        id: core
+        run: echo "v=$(grep -o 'anthocnet\.js?v=[0-9a-f]*' site/js/engine.js | cut -d= -f2)" >> "$GITHUB_OUTPUT"
       - name: Crawl the site before it ships (links, assets, anchors, top bar)
         # The same check CI runs on PRs (#626); a bot commit to docs/ reaches
         # this workflow without a PR, so the deploy checks for itself.
@@ -135,6 +140,53 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  # #647: every other page test serves the tree at /; Pages serves it under
+  # /AntHocNet/, through a CDN that caches for 10 minutes. After the deploy,
+  # wait until the live engine.js imports the core this build made, then
+  # check the game delivers, a docs page, an API page and the Workshop carry
+  # the top bar, and a missing URL gets the 404 page with a home link under
+  # the base path. A failure marks the run red and opens (or comments on) one
+  # tracking issue; it does not roll back.
+  live-smoke:
+    name: Smoke the live site
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Live smoke under /AntHocNet/
+        env:
+          CORE: ${{ needs.build.outputs.core }}
+          URL: ${{ needs.deploy.outputs.page_url }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright-core@1.56.1
+          npx --no-install playwright-core install --with-deps chromium
+          base="${URL:-https://danieljoppi.github.io/AntHocNet/}"
+          case "$base" in */) ;; *) base="$base/";; esac
+          node "$GITHUB_WORKSPACE/web/test/live-smoke.mjs" "$base" "$CORE"
+      - name: Open or update the tracking issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title='[learn-site] the live site failed its post-deploy smoke'
+          num=$(gh issue list --state open --search "in:title \"$title\"" --json number,title \
+                  --jq "map(select(.title == \"$title\")) | .[0].number // empty")
+          body="The post-deploy smoke failed on the live site after deploying \`$GITHUB_SHA\`: $RUN_URL
+
+          The failing checks are in the job log (web/test/live-smoke.mjs). Nothing was rolled back. See #647."
+          if [ -n "$num" ]; then gh issue comment "$num" --body "$body"
+          else gh issue create --title "$title" --label bug --label learn-site --body "$body"; fi
+
