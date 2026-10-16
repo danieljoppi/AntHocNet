@@ -19,6 +19,8 @@ try:
 > each other and against the [FANET anchors](#anchors), never against the
 > Broch floor, which is RWP-on-the-ground only.
 
+**Re-measured for v2.2.0 (2026-10-16).** The [v2.2.0 campaign](../v2.2.0-campaign.md#results) re-ran every cell on this page as its control generation, at `a8a16991`, with the shipped defaults and the same 20 seeds. Every `##RUN##` row is byte-identical to the cells this page cites. No default moved, so the numbers here stand as v2.2.0's. The control cells are `results/cells/fanet-*-v220.txt`. What the campaign's four knobs do on this family is in [network-regimes.md §7](../../network-regimes.md#7-measured-the-v220-knobs-per-regime).
+
 ## What it stresses
 
 Flying ad hoc networks: a small swarm moving fast and smoothly in three

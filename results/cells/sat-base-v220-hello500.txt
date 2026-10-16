@@ -1,0 +1,49 @@
+# v2.2.0 campaign (#565) sat-base-v220-hello500: 1 run(s) @65b7bde5 runs 38894917354 (hello500/sat-base); 20 seeds, 900 s (leo 300 s). Plan: docs/benchmarks/v2.2.0-campaign.md. The artifact carries no ##PROV## line, so each run's is rebuilt from the Actions run record (commit, ref, attempt) and the dispatch inputs.
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##RUN## 1 anthocnet 100.00 10.15 11.00 46.69 2.17 3.64 0.00
+# diag anthocnet seed=1 ctrlTx=123671 antTx[1=28797,2=184,4=6406,] antRx[1=115188,2=208,4=6809,]
+##RUN## 2 anthocnet 100.00 10.15 11.00 46.64 2.17 3.65 0.00
+# diag anthocnet seed=2 ctrlTx=124025 antTx[1=28800,2=207,4=6572,] antRx[1=115200,2=234,4=6993,]
+##RUN## 3 anthocnet 100.00 10.15 11.00 46.82 2.16 3.63 0.00
+# diag anthocnet seed=3 ctrlTx=123743 antTx[1=28805,2=207,4=6483,] antRx[1=115220,2=234,4=6861,]
+##RUN## 4 anthocnet 100.00 10.15 11.00 46.64 2.16 3.64 0.00
+# diag anthocnet seed=4 ctrlTx=123460 antTx[1=28795,2=207,4=6267,] antRx[1=115176,2=234,4=6637,]
+##RUN## 5 anthocnet 100.00 10.15 11.00 46.76 2.17 3.64 0.00
+# diag anthocnet seed=5 ctrlTx=123943 antTx[1=28797,2=184,4=6489,] antRx[1=115188,2=208,4=6932,]
+##RUN## 6 anthocnet 100.00 10.15 11.00 46.77 2.16 3.64 0.00
+# diag anthocnet seed=6 ctrlTx=123737 antTx[1=28797,2=207,4=6500,] antRx[1=115188,2=234,4=6874,]
+##RUN## 7 anthocnet 100.00 10.15 11.00 46.74 2.17 3.65 0.00
+# diag anthocnet seed=7 ctrlTx=124105 antTx[1=28795,2=230,4=6544,] antRx[1=115180,2=260,4=6987,]
+##RUN## 8 anthocnet 100.00 10.15 11.00 46.72 2.19 3.66 0.00
+# diag anthocnet seed=8 ctrlTx=125046 antTx[1=28806,2=184,4=7238,] antRx[1=115224,2=208,4=7769,]
+##RUN## 9 anthocnet 100.00 10.15 11.00 46.79 2.17 3.64 0.00
+# diag anthocnet seed=9 ctrlTx=124018 antTx[1=28804,2=184,4=6494,] antRx[1=115216,2=208,4=6951,]
+##RUN## 10 anthocnet 100.00 10.15 11.00 46.63 2.18 3.66 0.00
+# diag anthocnet seed=10 ctrlTx=124429 antTx[1=28804,2=184,4=6848,] antRx[1=115216,2=208,4=7321,]
+##RUN## 11 anthocnet 100.00 10.15 11.00 46.66 2.17 3.65 0.00
+# diag anthocnet seed=11 ctrlTx=123964 antTx[1=28801,2=207,4=6423,] antRx[1=115204,2=234,4=6869,]
+##RUN## 12 anthocnet 100.00 10.15 11.00 46.80 2.16 3.64 0.00
+# diag anthocnet seed=12 ctrlTx=123819 antTx[1=28795,2=207,4=6506,] antRx[1=115180,2=234,4=6902,]
+##RUN## 13 anthocnet 100.00 10.15 11.00 46.73 2.18 3.65 0.00
+# diag anthocnet seed=13 ctrlTx=124313 antTx[1=28806,2=207,4=6794,] antRx[1=115220,2=234,4=7226,]
+##RUN## 14 anthocnet 100.00 10.15 11.00 46.75 2.19 3.66 0.00
+# diag anthocnet seed=14 ctrlTx=124983 antTx[1=28797,2=207,4=7176,] antRx[1=115188,2=234,4=7694,]
+##RUN## 15 anthocnet 100.00 10.15 11.00 46.71 2.17 3.65 0.00
+# diag anthocnet seed=15 ctrlTx=123998 antTx[1=28807,2=184,4=6597,] antRx[1=115228,2=208,4=7014,]
+##RUN## 16 anthocnet 100.00 10.15 11.00 46.70 2.17 3.65 0.00
+# diag anthocnet seed=16 ctrlTx=124021 antTx[1=28805,2=184,4=6496,] antRx[1=115220,2=208,4=6953,]
+##RUN## 17 anthocnet 100.00 10.15 11.00 46.84 2.16 3.63 0.00
+# diag anthocnet seed=17 ctrlTx=123726 antTx[1=28800,2=207,4=6393,] antRx[1=115200,2=234,4=6785,]
+##RUN## 18 anthocnet 100.00 10.15 11.00 46.74 2.17 3.64 0.00
+# diag anthocnet seed=18 ctrlTx=123779 antTx[1=28806,2=207,4=6527,] antRx[1=115224,2=234,4=6898,]
+##RUN## 19 anthocnet 100.00 10.15 11.00 46.70 2.16 3.64 0.00
+# diag anthocnet seed=19 ctrlTx=123423 antTx[1=28809,2=184,4=6230,] antRx[1=115236,2=208,4=6597,]
+##RUN## 20 anthocnet 100.00 10.15 11.00 46.70 2.14 3.62 0.00
+# diag anthocnet seed=20 ctrlTx=122362 antTx[1=28799,2=207,4=5516,] antRx[1=115196,2=234,4=5795,]
++Grid torus 4x4 = 16 satellites, 32 ISLs (mean degree 4.00) @ 5.00 ms 10Mbps, 8 flows, 900.00 s, mean of 20 run(s)
+
+protocol          PDR%  delay(ms)  delay99(ms)  thrput(kbps)     NRL   NRLbytes  jitter(ms)
+-------------------------------------------------------------------------------------------
+anthocnet        100.0       10.2         11.0         46.73    2.17       3.64        0.00
+##PROV## commit=65b7bde5492d9ab7f25aed12cef713d2dda21b55 ref=main run_id=38894917354 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=isl-grid

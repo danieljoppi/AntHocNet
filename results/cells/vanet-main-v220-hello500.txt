@@ -1,0 +1,521 @@
+# v2.2.0 campaign (#565) vanet-main-v220-hello500: 5 run(s) @da146c66 runs 38848216810 (hello500/vanet-main-s1) / 38848228039 (hello500/vanet-main-s5) / 38848239440 (hello500/vanet-main-s9) / 38848250626 (hello500/vanet-main-s13) / 38848261248 (hello500/vanet-main-s17); 20 seeds, 900 s (leo 300 s). Plan: docs/benchmarks/v2.2.0-campaign.md. The artifact carries no ##PROV## line, so each run's is rebuilt from the Actions run record (commit, ref, attempt) and the dispatch inputs.
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=vanet nNodes=100 time=900 runs=4 firstRun=1 areaX=800 areaY=800 speed=20 speedMin=10 pause=0 range=300 propagation=urban mobility=manhattan blocksX=4 blocksY=4 streetWidth=20 transport=udp flows=20 cbrBps=2048 offTime=0 rateManager=constant2 protocols=anthocnet
+##CONFIG## attr HelloInterval=+5e+08ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+# road anthocnet seed=1 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=1 t=450.000 offStreetMaxM=0.000
+##DROPID## 1 anthocnet hopTx=256212 hopRx=225817 ackedHops=225671 macDrops=26082 reinjected=21889 macTerminal=4193 macLost=25936 queue=0 hopLoss=30395 overlap=-4459 unackedRx=146
+##REINJ## 1 anthocnet events=21889 parsed=21864 unparsedIcmp=25 unparsedOther=0 ofDelivered=155 pkts=9477 pktsDelivBefore=57 pktsDelivAfterOnly=4109 pktsNever=5311 pktsDupDeliv=60 dupRx=60 postTx=37634 postRx=22660 l3DropRoute=2695 l3DropTtl=42 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=1 pdr=45.04 firstDeliveryS=25.62 ctrlTx=1932754 setupMedS=1.50 setupMaxS=12.01 flowsNoDelivery=0 antTx[hello=180002,reactive=1412566,proactive=159405,repair=71270,linkfail=109235] antRx[hello=1481867,reactive=1453847,proactive=150690,repair=102717,linkfail=881971] linkfailProp=13642 linkfailBudgetDrop=5500 linkfailOrigSuppressed=14706 directedSteers=0 ptable[regAvg=12.84,regMax=27,virAvg=175.12,virMax=294] hold[setup=73/904.3ms/max2958.7ms reconv=5249/82.7ms/max199.6ms repair=19381/70.0ms/max2988.8ms] holdDrop[setup=19 reconv=22087 repair=50] repairDiscard=2471ev/3041pkt macReinject=21889
+##RUN## 1 anthocnet 45.0 136.0 1510.5 23.03 68.62 164.28 inf inf 96.6231
+##HOLD## 1 anthocnet 73 904.27 2958.72 5249 82.66 199.58 19381 69.97 2988.80
+##AIR## 1 anthocnet 3544.721 15669.828 7167.027 29.3129
+##ENERGY## 1 anthocnet 76725.712 2.724248 5.3085e-03 1.485
+##GOODPUT## 1 anthocnet 16.059
+##ROUTE## 1 anthocnet 1.4994 12.0052 0 0.37795 0.750 10639 4.9180 4.9214
+# road anthocnet seed=2 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=2 t=450.000 offStreetMaxM=0.000
+##DROPID## 2 anthocnet hopTx=244643 hopRx=213436 ackedHops=213288 macDrops=26297 reinjected=21729 macTerminal=4568 macLost=26149 queue=0 hopLoss=31207 overlap=-5058 unackedRx=148
+##REINJ## 2 anthocnet events=21729 parsed=21722 unparsedIcmp=7 unparsedOther=0 ofDelivered=141 pkts=9568 pktsDelivBefore=54 pktsDelivAfterOnly=4015 pktsNever=5499 pktsDupDeliv=59 dupRx=61 postTx=37005 postRx=22048 l3DropRoute=2683 l3DropTtl=19 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=2 pdr=42.57 firstDeliveryS=2.20 ctrlTx=2063616 setupMedS=1.10 setupMaxS=5.00 flowsNoDelivery=0 antTx[hello=180006,reactive=1537368,proactive=164633,repair=70273,linkfail=111143] antRx[hello=1470673,reactive=1582592,proactive=154415,repair=101101,linkfail=887705] linkfailProp=14333 linkfailBudgetDrop=5740 linkfailOrigSuppressed=15060 directedSteers=0 ptable[regAvg=12.95,regMax=32,virAvg=195.77,virMax=400] hold[setup=75/689.9ms/max2830.3ms reconv=5094/81.9ms/max199.9ms repair=19281/76.7ms/max2978.0ms] holdDrop[setup=3 reconv=23476 repair=62] repairDiscard=2416ev/2951pkt macReinject=21729
+##RUN## 2 anthocnet 42.6 148.9 1606.5 22.06 76.51 179.50 inf inf 108.1590
+##HOLD## 2 anthocnet 75 689.90 2830.27 5094 81.90 199.93 19281 76.73 2978.01
+##AIR## 2 anthocnet 3759.523 16546.021 7571.976 30.9750
+##ENERGY## 2 anthocnet 76899.306 2.850973 5.5549e-03 1.470
+##GOODPUT## 2 anthocnet 15.382
+##ROUTE## 2 anthocnet 1.1027 5.0011 0 0.38714 0.750 10436 4.9862 4.9908
+# road anthocnet seed=3 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=3 t=450.000 offStreetMaxM=0.000
+##DROPID## 3 anthocnet hopTx=264226 hopRx=230841 ackedHops=230680 macDrops=27705 reinjected=22529 macTerminal=5176 macLost=27544 queue=0 hopLoss=33385 overlap=-5841 unackedRx=161
+##REINJ## 3 anthocnet events=22529 parsed=22529 unparsedIcmp=0 unparsedOther=0 ofDelivered=150 pkts=10056 pktsDelivBefore=56 pktsDelivAfterOnly=3976 pktsNever=6024 pktsDupDeliv=75 dupRx=75 postTx=37465 postRx=21816 l3DropRoute=2810 l3DropTtl=28 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=3 pdr=43.06 firstDeliveryS=3.37 ctrlTx=2236645 setupMedS=0.86 setupMaxS=9.83 flowsNoDelivery=0 antTx[hello=179998,reactive=1705869,proactive=167798,repair=70078,linkfail=112632] antRx[hello=1447640,reactive=1755918,proactive=157090,repair=100885,linkfail=899896] linkfailProp=14771 linkfailBudgetDrop=5815 linkfailOrigSuppressed=16466 directedSteers=0 ptable[regAvg=12.30,regMax=23,virAvg=175.98,virMax=324] hold[setup=92/842.3ms/max2899.2ms reconv=5273/84.2ms/max199.9ms repair=19936/76.3ms/max2994.5ms] holdDrop[setup=22 reconv=22817 repair=80] repairDiscard=2541ev/3157pkt macReinject=22529
+##RUN## 3 anthocnet 43.1 149.3 1606.5 23.21 78.82 180.07 inf inf 111.6191
+##HOLD## 3 anthocnet 92 842.34 2899.24 5273 84.23 199.92 19936 76.30 2994.48
+##AIR## 3 anthocnet 4067.115 17863.706 8295.225 33.5845
+##ENERGY## 3 anthocnet 77154.361 2.718809 5.2954e-03 2.023
+##GOODPUT## 3 anthocnet 16.189
+##ROUTE## 3 anthocnet 0.8554 9.8258 0 0.37511 0.750 10639 4.8352 4.8414
+# road anthocnet seed=4 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=4 t=450.000 offStreetMaxM=0.000
+##DROPID## 4 anthocnet hopTx=271041 hopRx=238887 ackedHops=238723 macDrops=26678 reinjected=21799 macTerminal=4879 macLost=26514 queue=0 hopLoss=32154 overlap=-5640 unackedRx=164
+##REINJ## 4 anthocnet events=21799 parsed=21787 unparsedIcmp=12 unparsedOther=0 ofDelivered=135 pkts=9872 pktsDelivBefore=49 pktsDelivAfterOnly=3862 pktsNever=5961 pktsDupDeliv=77 dupRx=79 postTx=37483 postRx=22485 l3DropRoute=2816 l3DropTtl=44 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=4 pdr=41.17 firstDeliveryS=4.53 ctrlTx=2221300 setupMedS=1.75 setupMaxS=15.77 flowsNoDelivery=0 antTx[hello=179981,reactive=1697759,proactive=165824,repair=67201,linkfail=110170] antRx[hello=1461172,reactive=1749486,proactive=155408,repair=96834,linkfail=878207] linkfailProp=14034 linkfailBudgetDrop=5689 linkfailOrigSuppressed=15805 directedSteers=0 ptable[regAvg=12.46,regMax=23,virAvg=174.82,virMax=297] hold[setup=115/984.2ms/max2983.2ms reconv=5150/83.9ms/max200.0ms repair=19256/79.4ms/max2990.3ms] holdDrop[setup=44 reconv=23404 repair=75] repairDiscard=2490ev/3056pkt macReinject=21799
+##RUN## 4 anthocnet 41.2 158.7 1773.5 21.58 84.18 188.91 inf inf 118.8788
+##HOLD## 4 anthocnet 115 984.25 2983.19 5150 83.93 199.99 19256 79.38 2990.27
+##AIR## 4 anthocnet 4029.905 17753.715 8246.557 33.3669
+##ENERGY## 4 anthocnet 77131.684 2.922873 5.6915e-03 1.727
+##GOODPUT## 4 anthocnet 15.058
+##ROUTE## 4 anthocnet 1.7531 15.7719 0 0.38722 0.750 10211 4.9596 4.9661
+##MATCH## 1 anthocnet 28164 28164 1510.5 1510.5
+##MATCH## 2 anthocnet 26973 26973 1606.5 1606.5
+##MATCH## 3 anthocnet 28378 28378 1606.5 1606.5
+##MATCH## 4 anthocnet 26389 26389 1773.5 1773.5
+##COMMON## 1 anthocnet 28169 28169 1514.7 136.6 na 4.918 na
+##COMMON## 2 anthocnet 26977 26977 1610.5 149.7 na 4.987 na
+##COMMON## 3 anthocnet 28382 28382 1618.2 150.0 na 4.835 na
+##COMMON## 4 anthocnet 26390 26390 1784.5 159.6 na 4.959 na
+AntHocNet protocol comparison (mean of 4 run(s))
+  nodes=100 time=900.000s area=800.000x800.000m maxSpeed=20.000m/s pause=0.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+anthocnet       43.0      148.2       1624.2        22.47   77.03      178.19         inf         inf     108.820     76977.8      2.8042        4.93      0.9840       716.38
+# paths anthocnet divUsed=1.368 divMax=8.0 entropyBits=0.253 windowS=10.0 hopsMean=4.93 hopsMax=57.0
+# energy anthocnet initJ=5000.0 resMinJ=4226.1 resMeanJ=4230.2 resSdJ=1.676 firstDeathS=-1.0
+# drops anthocnet pdr=42.96 route=40.53 queue=0.00 mac=7.35 chan=8.19 ttl=1.08 sum=100.11 other=0.00 [route: setup=0.03 reconv=35.98 repair=4.77]
+# stddev anthocnet pdr=1.60 delay=9.3 delay99=109.3 nrl=6.459 nrl_bytes=9.278
+# reorder anthocnet ratio=0.0257 ratioWorstFlow=0.0365 extentMean=1.56 extentMax=10.75 bufMax=1471.75
+##PROV## commit=da146c662a9725eb04a72132837055c68ec9211f ref=main run_id=38848216810 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=compare
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=vanet nNodes=100 time=900 runs=4 firstRun=5 areaX=800 areaY=800 speed=20 speedMin=10 pause=0 range=300 propagation=urban mobility=manhattan blocksX=4 blocksY=4 streetWidth=20 transport=udp flows=20 cbrBps=2048 offTime=0 rateManager=constant2 protocols=anthocnet
+##CONFIG## attr HelloInterval=+5e+08ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+# road anthocnet seed=5 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=5 t=450.000 offStreetMaxM=0.000
+##DROPID## 5 anthocnet hopTx=242364 hopRx=210115 ackedHops=209990 macDrops=27229 reinjected=22909 macTerminal=4320 macLost=27104 queue=0 hopLoss=32249 overlap=-5145 unackedRx=125
+##REINJ## 5 anthocnet events=22909 parsed=22903 unparsedIcmp=6 unparsedOther=0 ofDelivered=125 pkts=9816 pktsDelivBefore=51 pktsDelivAfterOnly=4300 pktsNever=5465 pktsDupDeliv=66 dupRx=67 postTx=38243 postRx=22525 l3DropRoute=2811 l3DropTtl=16 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=5 pdr=44.52 firstDeliveryS=6.78 ctrlTx=2044728 setupMedS=1.19 setupMaxS=17.28 flowsNoDelivery=0 antTx[hello=180006,reactive=1513524,proactive=165021,repair=75301,linkfail=110558] antRx[hello=1484770,reactive=1556451,proactive=155239,repair=109314,linkfail=896798] linkfailProp=14534 linkfailBudgetDrop=5787 linkfailOrigSuppressed=15442 directedSteers=0 ptable[regAvg=14.09,regMax=26,virAvg=216.98,virMax=437] hold[setup=84/673.7ms/max2917.9ms reconv=5448/78.8ms/max200.0ms repair=20277/70.3ms/max2980.7ms] holdDrop[setup=37 reconv=23446 repair=49] repairDiscard=2605ev/3216pkt macReinject=22909
+##RUN## 5 anthocnet 44.5 136.6 1495.5 23.90 69.97 168.30 inf inf 98.1920
+##HOLD## 5 anthocnet 84 673.73 2917.94 5448 78.75 199.98 20277 70.33 2980.67
+##AIR## 5 anthocnet 3707.346 16309.728 7456.440 30.5261
+##ENERGY## 5 anthocnet 76856.431 2.629908 5.1243e-03 1.617
+##GOODPUT## 5 anthocnet 16.665
+##ROUTE## 5 anthocnet 1.1896 17.2842 0 0.38686 0.750 11299 4.9404 4.9454
+# road anthocnet seed=6 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=6 t=450.000 offStreetMaxM=0.000
+##DROPID## 6 anthocnet hopTx=257597 hopRx=225757 ackedHops=225596 macDrops=26666 reinjected=21863 macTerminal=4803 macLost=26505 queue=0 hopLoss=31840 overlap=-5335 unackedRx=161
+##REINJ## 6 anthocnet events=21863 parsed=21858 unparsedIcmp=5 unparsedOther=0 ofDelivered=149 pkts=9857 pktsDelivBefore=67 pktsDelivAfterOnly=4098 pktsNever=5692 pktsDupDeliv=71 dupRx=71 postTx=37602 postRx=22599 l3DropRoute=2665 l3DropTtl=31 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=6 pdr=44.85 firstDeliveryS=21.59 ctrlTx=2164753 setupMedS=0.76 setupMaxS=5.75 flowsNoDelivery=0 antTx[hello=179997,reactive=1639939,proactive=164457,repair=68796,linkfail=111288] antRx[hello=1470468,reactive=1690004,proactive=154134,repair=99013,linkfail=896818] linkfailProp=14358 linkfailBudgetDrop=5779 linkfailOrigSuppressed=15547 directedSteers=0 ptable[regAvg=13.86,regMax=36,virAvg=196.09,virMax=436] hold[setup=81/730.9ms/max2923.9ms reconv=5186/83.9ms/max200.0ms repair=19443/76.1ms/max2997.4ms] holdDrop[setup=27 reconv=22175 repair=80] repairDiscard=2365ev/2891pkt macReinject=21863
+##RUN## 6 anthocnet 44.9 141.7 1590.5 23.71 74.67 172.83 inf inf 105.3510
+##HOLD## 6 anthocnet 81 730.89 2923.90 5186 83.87 199.99 19443 76.13 2997.42
+##AIR## 6 anthocnet 3921.996 17418.493 8066.731 32.6747
+##ENERGY## 6 anthocnet 77054.746 2.657793 5.1778e-03 1.848
+##GOODPUT## 6 anthocnet 16.535
+##ROUTE## 6 anthocnet 0.7579 5.7524 0 0.37156 0.750 10766 4.7657 4.7727
+# road anthocnet seed=7 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=7 t=450.000 offStreetMaxM=0.000
+##DROPID## 7 anthocnet hopTx=244421 hopRx=212618 ackedHops=212465 macDrops=27556 reinjected=22884 macTerminal=4672 macLost=27403 queue=0 hopLoss=31803 overlap=-4400 unackedRx=153
+##REINJ## 7 anthocnet events=22884 parsed=22882 unparsedIcmp=2 unparsedOther=0 ofDelivered=153 pkts=10030 pktsDelivBefore=58 pktsDelivAfterOnly=4360 pktsNever=5612 pktsDupDeliv=67 dupRx=68 postTx=39142 postRx=23472 l3DropRoute=2774 l3DropTtl=20 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=7 pdr=46.64 firstDeliveryS=21.84 ctrlTx=2118418 setupMedS=0.43 setupMaxS=9.30 flowsNoDelivery=0 antTx[hello=179984,reactive=1584159,proactive=166780,repair=74649,linkfail=112509] antRx[hello=1482529,reactive=1630610,proactive=156702,repair=107110,linkfail=917358] linkfailProp=14610 linkfailBudgetDrop=5860 linkfailOrigSuppressed=15741 directedSteers=0 ptable[regAvg=13.10,regMax=25,virAvg=192.30,virMax=334] hold[setup=113/1043.8ms/max2978.9ms reconv=5281/81.4ms/max199.9ms repair=20332/73.2ms/max2988.4ms] holdDrop[setup=11 reconv=22585 repair=57] repairDiscard=2508ev/3086pkt macReinject=22884
+##RUN## 7 anthocnet 46.6 140.3 1583.5 24.99 69.32 171.05 inf inf 97.6712
+##HOLD## 7 anthocnet 113 1043.76 2978.91 5281 81.41 199.88 20332 73.25 2988.43
+##AIR## 7 anthocnet 3844.628 17087.401 7848.944 31.9789
+##ENERGY## 7 anthocnet 76991.155 2.519262 4.9085e-03 1.739
+##GOODPUT## 7 anthocnet 17.428
+##ROUTE## 7 anthocnet 0.4324 9.2960 0 0.36930 0.750 11281 4.7713 4.7775
+# road anthocnet seed=8 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=8 t=450.000 offStreetMaxM=0.000
+##DROPID## 8 anthocnet hopTx=278835 hopRx=247137 ackedHops=247038 macDrops=27438 reinjected=22761 macTerminal=4677 macLost=27339 queue=0 hopLoss=31698 overlap=-4359 unackedRx=99
+##REINJ## 8 anthocnet events=22761 parsed=22741 unparsedIcmp=20 unparsedOther=0 ofDelivered=82 pkts=9921 pktsDelivBefore=29 pktsDelivAfterOnly=4178 pktsNever=5714 pktsDupDeliv=44 dupRx=44 postTx=39047 postRx=23319 l3DropRoute=2761 l3DropTtl=38 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=8 pdr=45.79 firstDeliveryS=16.35 ctrlTx=2065569 setupMedS=1.15 setupMaxS=5.45 flowsNoDelivery=0 antTx[hello=180003,reactive=1534328,proactive=165949,repair=74546,linkfail=110504] antRx[hello=1482803,reactive=1579596,proactive=156177,repair=106870,linkfail=887489] linkfailProp=14281 linkfailBudgetDrop=5648 linkfailOrigSuppressed=15718 directedSteers=0 ptable[regAvg=12.50,regMax=28,virAvg=174.93,virMax=357] hold[setup=101/781.9ms/max2797.5ms reconv=5338/81.2ms/max199.9ms repair=20227/71.3ms/max2984.7ms] holdDrop[setup=4 reconv=21962 repair=60] repairDiscard=2493ev/3105pkt macReinject=22761
+##RUN## 8 anthocnet 45.8 135.5 1498.5 24.10 70.08 167.07 inf inf 98.5142
+##HOLD## 8 anthocnet 101 781.90 2797.48 5338 81.18 199.87 20227 71.35 2984.70
+##AIR## 8 anthocnet 3784.977 16823.467 7777.562 31.5400
+##ENERGY## 8 anthocnet 76938.726 2.610393 5.0905e-03 1.697
+##GOODPUT## 8 anthocnet 16.794
+##ROUTE## 8 anthocnet 1.1498 5.4547 0 0.37130 0.750 10937 4.8042 4.8076
+##MATCH## 5 anthocnet 29224 29224 1495.5 1495.5
+##MATCH## 6 anthocnet 28992 28992 1590.5 1590.5
+##MATCH## 7 anthocnet 30561 30561 1583.5 1583.5
+##MATCH## 8 anthocnet 29474 29474 1498.5 1498.5
+##COMMON## 5 anthocnet 29227 29227 1503.4 137.1 na 4.942 na
+##COMMON## 6 anthocnet 28995 28995 1594.9 142.4 na 4.767 na
+##COMMON## 7 anthocnet 30567 30567 1586.3 140.9 na 4.772 na
+##COMMON## 8 anthocnet 29476 29476 1508.4 135.8 na 4.804 na
+AntHocNet protocol comparison (mean of 4 run(s))
+  nodes=100 time=900.000s area=800.000x800.000m maxSpeed=20.000m/s pause=0.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+anthocnet       45.5      138.5       1542.0        24.18   71.01      169.81         inf         inf      99.932     76960.3      2.6043        4.83      0.9855       658.78
+# paths anthocnet divUsed=1.376 divMax=8.2 entropyBits=0.258 windowS=10.0 hopsMean=4.83 hopsMax=58.2
+# energy anthocnet initJ=5000.0 resMinJ=4226.2 resMeanJ=4230.4 resSdJ=1.725 firstDeathS=-1.0
+# drops anthocnet pdr=45.45 route=39.30 queue=0.00 mac=7.10 chan=7.39 ttl=0.85 sum=100.09 other=0.00 [route: setup=0.03 reconv=34.75 repair=4.73]
+# stddev anthocnet pdr=0.96 delay=3.0 delay99=52.1 nrl=2.462 nrl_bytes=3.629
+# reorder anthocnet ratio=0.0252 ratioWorstFlow=0.0380 extentMean=1.58 extentMax=10.50 bufMax=1531.75
+##PROV## commit=da146c662a9725eb04a72132837055c68ec9211f ref=main run_id=38848228039 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=compare
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=vanet nNodes=100 time=900 runs=4 firstRun=9 areaX=800 areaY=800 speed=20 speedMin=10 pause=0 range=300 propagation=urban mobility=manhattan blocksX=4 blocksY=4 streetWidth=20 transport=udp flows=20 cbrBps=2048 offTime=0 rateManager=constant2 protocols=anthocnet
+##CONFIG## attr HelloInterval=+5e+08ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+# road anthocnet seed=9 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=9 t=450.000 offStreetMaxM=0.000
+##DROPID## 9 anthocnet hopTx=262722 hopRx=230078 ackedHops=229945 macDrops=27860 reinjected=23161 macTerminal=4699 macLost=27727 queue=0 hopLoss=32644 overlap=-4917 unackedRx=133
+##REINJ## 9 anthocnet events=23161 parsed=23149 unparsedIcmp=12 unparsedOther=0 ofDelivered=140 pkts=10039 pktsDelivBefore=51 pktsDelivAfterOnly=4477 pktsNever=5511 pktsDupDeliv=66 dupRx=66 postTx=39432 postRx=23529 l3DropRoute=2686 l3DropTtl=23 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=9 pdr=46.89 firstDeliveryS=0.53 ctrlTx=2061573 setupMedS=1.79 setupMaxS=11.76 flowsNoDelivery=0 antTx[hello=179997,reactive=1526483,proactive=166341,repair=76700,linkfail=111663] antRx[hello=1468008,reactive=1570884,proactive=156289,repair=111037,linkfail=897357] linkfailProp=14752 linkfailBudgetDrop=5909 linkfailOrigSuppressed=15627 directedSteers=0 ptable[regAvg=12.02,regMax=25,virAvg=167.48,virMax=321] hold[setup=80/705.1ms/max2779.9ms reconv=5552/81.0ms/max199.9ms repair=20669/68.5ms/max2985.2ms] holdDrop[setup=9 reconv=22156 repair=63] repairDiscard=2445ev/3032pkt macReinject=23161
+##RUN## 9 anthocnet 46.9 131.1 1390.5 25.46 66.22 160.52 inf inf 93.2829
+##HOLD## 9 anthocnet 80 705.08 2779.91 5552 80.96 199.92 20669 68.47 2985.15
+##AIR## 9 anthocnet 3777.866 16697.443 7712.331 31.3196
+##ENERGY## 9 anthocnet 76921.799 2.470986 4.8156e-03 1.637
+##GOODPUT## 9 anthocnet 17.748
+##ROUTE## 9 anthocnet 1.7871 11.7608 0 0.37227 0.750 11582 4.8041 4.8119
+# road anthocnet seed=10 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=10 t=450.000 offStreetMaxM=0.000
+##DROPID## 10 anthocnet hopTx=241769 hopRx=210694 ackedHops=210550 macDrops=26113 reinjected=21551 macTerminal=4562 macLost=25969 queue=0 hopLoss=31075 overlap=-5106 unackedRx=144
+##REINJ## 10 anthocnet events=21551 parsed=21546 unparsedIcmp=5 unparsedOther=0 ofDelivered=141 pkts=9495 pktsDelivBefore=51 pktsDelivAfterOnly=3982 pktsNever=5462 pktsDupDeliv=52 dupRx=52 postTx=36085 postRx=21223 l3DropRoute=2642 l3DropTtl=13 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=10 pdr=43.77 firstDeliveryS=18.86 ctrlTx=2078145 setupMedS=1.97 setupMaxS=6.55 flowsNoDelivery=0 antTx[hello=180001,reactive=1554765,proactive=162987,repair=69273,linkfail=110764] antRx[hello=1482267,reactive=1600536,proactive=152837,repair=99720,linkfail=896905] linkfailProp=13782 linkfailBudgetDrop=5592 linkfailOrigSuppressed=15231 directedSteers=0 ptable[regAvg=11.78,regMax=26,virAvg=166.56,virMax=343] hold[setup=96/875.4ms/max2796.6ms reconv=5143/81.4ms/max200.0ms repair=19126/73.6ms/max2935.7ms] holdDrop[setup=5 reconv=22310 repair=65] repairDiscard=2382ev/2980pkt macReinject=21551
+##RUN## 10 anthocnet 43.8 143.7 1549.5 22.45 75.69 173.27 inf inf 106.7113
+##HOLD## 10 anthocnet 96 875.35 2796.64 5143 81.44 199.98 19126 73.64 2935.66
+##AIR## 10 anthocnet 3766.283 16810.200 7729.089 31.4506
+##ENERGY## 10 anthocnet 76932.981 2.802046 5.4616e-03 1.767
+##GOODPUT## 10 anthocnet 15.651
+##ROUTE## 10 anthocnet 1.9726 6.5470 0 0.38061 0.750 10444 4.8890 4.8928
+# road anthocnet seed=11 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=11 t=450.000 offStreetMaxM=0.000
+##DROPID## 11 anthocnet hopTx=244129 hopRx=212475 ackedHops=212319 macDrops=26875 reinjected=22184 macTerminal=4691 macLost=26719 queue=0 hopLoss=31654 overlap=-4935 unackedRx=156
+##REINJ## 11 anthocnet events=22184 parsed=22178 unparsedIcmp=6 unparsedOther=0 ofDelivered=136 pkts=9776 pktsDelivBefore=48 pktsDelivAfterOnly=4052 pktsNever=5676 pktsDupDeliv=61 dupRx=61 postTx=37001 postRx=21753 l3DropRoute=2803 l3DropTtl=25 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=11 pdr=44.24 firstDeliveryS=4.81 ctrlTx=2111271 setupMedS=1.09 setupMaxS=11.93 flowsNoDelivery=0 antTx[hello=179995,reactive=1583535,proactive=164197,repair=71424,linkfail=111870] antRx[hello=1479178,reactive=1630745,proactive=154242,repair=103068,linkfail=909368] linkfailProp=14202 linkfailBudgetDrop=5550 linkfailOrigSuppressed=15728 directedSteers=0 ptable[regAvg=12.28,regMax=27,virAvg=183.12,virMax=449] hold[setup=75/757.9ms/max2800.5ms reconv=5314/81.7ms/max199.6ms repair=19590/72.7ms/max2996.5ms] holdDrop[setup=19 reconv=22851 repair=64] repairDiscard=2560ev/3141pkt macReinject=22184
+##RUN## 11 anthocnet 44.2 139.1 1550.5 23.32 74.03 167.57 inf inf 104.1847
+##HOLD## 11 anthocnet 75 757.92 2800.52 5314 81.65 199.56 19590 72.68 2996.52
+##AIR## 11 anthocnet 3823.799 16935.933 7797.455 31.7302
+##ENERGY## 11 anthocnet 76964.976 2.698726 5.2590e-03 1.849
+##GOODPUT## 11 anthocnet 16.261
+##ROUTE## 11 anthocnet 1.0887 11.9345 0 0.37329 0.750 10640 4.7514 4.7564
+# road anthocnet seed=12 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=12 t=450.000 offStreetMaxM=0.000
+##DROPID## 12 anthocnet hopTx=243601 hopRx=211826 ackedHops=211692 macDrops=26946 reinjected=22296 macTerminal=4650 macLost=26812 queue=0 hopLoss=31775 overlap=-4963 unackedRx=134
+##REINJ## 12 anthocnet events=22296 parsed=22286 unparsedIcmp=10 unparsedOther=0 ofDelivered=175 pkts=9741 pktsDelivBefore=61 pktsDelivAfterOnly=4093 pktsNever=5587 pktsDupDeliv=68 dupRx=68 postTx=38115 postRx=22784 l3DropRoute=2765 l3DropTtl=34 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=12 pdr=43.90 firstDeliveryS=7.72 ctrlTx=2057222 setupMedS=3.24 setupMaxS=13.57 flowsNoDelivery=0 antTx[hello=180012,reactive=1530311,proactive=162211,repair=73029,linkfail=111384] antRx[hello=1482569,reactive=1575241,proactive=152284,repair=105804,linkfail=902592] linkfailProp=14555 linkfailBudgetDrop=5655 linkfailOrigSuppressed=15336 directedSteers=0 ptable[regAvg=11.55,regMax=24,virAvg=183.22,virMax=323] hold[setup=128/1063.1ms/max2976.7ms reconv=5291/80.4ms/max199.7ms repair=19726/71.9ms/max2992.2ms] holdDrop[setup=27 reconv=23887 repair=57] repairDiscard=2532ev/3098pkt macReinject=22296
+##RUN## 12 anthocnet 43.9 137.4 1488.5 23.61 71.25 165.99 inf inf 100.2800
+##HOLD## 12 anthocnet 128 1063.09 2976.73 5291 80.41 199.75 19726 71.94 2992.17
+##AIR## 12 anthocnet 3738.542 16511.369 7581.388 30.9237
+##ENERGY## 12 anthocnet 76890.035 2.662858 5.1883e-03 1.464
+##GOODPUT## 12 anthocnet 16.466
+##ROUTE## 12 anthocnet 3.2377 13.5665 0 0.37000 0.750 10677 4.8367 4.8421
+##MATCH## 9 anthocnet 31130 31130 1390.5 1390.5
+##MATCH## 10 anthocnet 27456 27456 1549.5 1549.5
+##MATCH## 11 anthocnet 28519 28519 1550.5 1550.5
+##MATCH## 12 anthocnet 28875 28875 1488.5 1488.5
+##COMMON## 9 anthocnet 31132 31132 1394.3 131.6 na 4.806 na
+##COMMON## 10 anthocnet 27460 27460 1551.6 144.2 na 4.889 na
+##COMMON## 11 anthocnet 28523 28523 1568.7 140.1 na 4.751 na
+##COMMON## 12 anthocnet 28877 28877 1494.0 137.9 na 4.838 na
+AntHocNet protocol comparison (mean of 4 run(s))
+  nodes=100 time=900.000s area=800.000x800.000m maxSpeed=20.000m/s pause=0.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+anthocnet       44.7      137.8       1494.8        23.71   71.80      166.84         inf         inf     101.115     76927.4      2.6587        4.83      0.9818       671.18
+# paths anthocnet divUsed=1.374 divMax=8.2 entropyBits=0.257 windowS=10.0 hopsMean=4.83 hopsMax=56.2
+# energy anthocnet initJ=5000.0 resMinJ=4226.6 resMeanJ=4230.7 resSdJ=1.679 firstDeathS=-1.0
+# drops anthocnet pdr=44.70 route=39.82 queue=0.00 mac=7.17 chan=7.69 ttl=0.72 sum=100.10 other=0.00 [route: setup=0.02 reconv=35.27 repair=4.73]
+# stddev anthocnet pdr=1.47 delay=5.2 delay99=75.3 nrl=4.143 nrl_bytes=5.853
+# reorder anthocnet ratio=0.0250 ratioWorstFlow=0.0343 extentMean=1.56 extentMax=9.25 bufMax=1513.50
+##PROV## commit=da146c662a9725eb04a72132837055c68ec9211f ref=main run_id=38848239440 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=compare
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=vanet nNodes=100 time=900 runs=4 firstRun=13 areaX=800 areaY=800 speed=20 speedMin=10 pause=0 range=300 propagation=urban mobility=manhattan blocksX=4 blocksY=4 streetWidth=20 transport=udp flows=20 cbrBps=2048 offTime=0 rateManager=constant2 protocols=anthocnet
+##CONFIG## attr HelloInterval=+5e+08ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+# road anthocnet seed=13 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=13 t=450.000 offStreetMaxM=0.000
+##DROPID## 13 anthocnet hopTx=233708 hopRx=202608 ackedHops=202453 macDrops=27031 reinjected=22474 macTerminal=4557 macLost=26876 queue=0 hopLoss=31100 overlap=-4224 unackedRx=155
+##REINJ## 13 anthocnet events=22474 parsed=22467 unparsedIcmp=7 unparsedOther=0 ofDelivered=130 pkts=9759 pktsDelivBefore=52 pktsDelivAfterOnly=4207 pktsNever=5500 pktsDupDeliv=69 dupRx=69 postTx=38059 postRx=22641 l3DropRoute=2767 l3DropTtl=14 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=13 pdr=44.73 firstDeliveryS=18.18 ctrlTx=2038375 setupMedS=0.74 setupMaxS=8.14 flowsNoDelivery=0 antTx[hello=179985,reactive=1507091,proactive=165469,repair=75265,linkfail=110186] antRx[hello=1480511,reactive=1550544,proactive=156253,repair=107873,linkfail=886260] linkfailProp=14555 linkfailBudgetDrop=5871 linkfailOrigSuppressed=15209 directedSteers=0 ptable[regAvg=12.48,regMax=24,virAvg=180.71,virMax=359] hold[setup=64/687.8ms/max2928.5ms reconv=5451/82.1ms/max200.0ms repair=19876/75.9ms/max2974.5ms] holdDrop[setup=6 reconv=22922 repair=62] repairDiscard=2564ev/3126pkt macReinject=22474
+##RUN## 13 anthocnet 44.7 144.4 1502.5 23.13 72.06 175.41 inf inf 101.7624
+##HOLD## 13 anthocnet 64 687.79 2928.49 5451 82.07 199.99 19876 75.89 2974.54
+##AIR## 13 anthocnet 3710.422 16327.810 7484.193 30.5805
+##ENERGY## 13 anthocnet 76857.522 2.716966 5.2929e-03 1.488
+##GOODPUT## 13 anthocnet 16.134
+##ROUTE## 13 anthocnet 0.7364 8.1447 0 0.38646 0.750 10926 5.0455 5.0522
+# road anthocnet seed=14 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=14 t=450.000 offStreetMaxM=0.000
+##DROPID## 14 anthocnet hopTx=244912 hopRx=213046 ackedHops=212920 macDrops=26154 reinjected=21642 macTerminal=4512 macLost=26028 queue=0 hopLoss=31866 overlap=-5838 unackedRx=126
+##REINJ## 14 anthocnet events=21642 parsed=21642 unparsedIcmp=0 unparsedOther=0 ofDelivered=148 pkts=9587 pktsDelivBefore=51 pktsDelivAfterOnly=4035 pktsNever=5501 pktsDupDeliv=49 dupRx=50 postTx=36494 postRx=21593 l3DropRoute=2645 l3DropTtl=20 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=14 pdr=41.95 firstDeliveryS=1.90 ctrlTx=2034485 setupMedS=1.26 setupMaxS=13.96 flowsNoDelivery=0 antTx[hello=179999,reactive=1508950,proactive=163259,repair=71607,linkfail=110442] antRx[hello=1482363,reactive=1553169,proactive=153121,repair=102799,linkfail=895857] linkfailProp=13890 linkfailBudgetDrop=5486 linkfailOrigSuppressed=15037 directedSteers=0 ptable[regAvg=13.87,regMax=28,virAvg=202.55,virMax=370] hold[setup=109/1060.9ms/max2973.9ms reconv=5203/80.7ms/max200.0ms repair=19228/75.8ms/max2950.3ms] holdDrop[setup=16 reconv=23748 repair=65] repairDiscard=2371ev/2912pkt macReinject=21642
+##RUN## 14 anthocnet 42.0 147.4 1618.5 22.11 75.25 178.00 inf inf 105.6944
+##HOLD## 14 anthocnet 109 1060.92 2973.88 5203 80.68 199.98 19228 75.84 2950.30
+##AIR## 14 anthocnet 3688.718 16476.335 7570.168 30.8169
+##ENERGY## 14 anthocnet 76869.448 2.843331 5.5423e-03 1.794
+##GOODPUT## 14 anthocnet 15.411
+##ROUTE## 14 anthocnet 1.2648 13.9551 0 0.38739 0.750 10467 4.9145 4.9181
+# road anthocnet seed=15 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=15 t=450.000 offStreetMaxM=0.000
+##DROPID## 15 anthocnet hopTx=246513 hopRx=215878 ackedHops=215746 macDrops=26010 reinjected=21544 macTerminal=4466 macLost=25878 queue=0 hopLoss=30635 overlap=-4757 unackedRx=132
+##REINJ## 15 anthocnet events=21544 parsed=21541 unparsedIcmp=3 unparsedOther=0 ofDelivered=151 pkts=9342 pktsDelivBefore=57 pktsDelivAfterOnly=4070 pktsNever=5215 pktsDupDeliv=63 dupRx=63 postTx=36289 postRx=21426 l3DropRoute=2538 l3DropTtl=17 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=15 pdr=43.37 firstDeliveryS=6.48 ctrlTx=1908831 setupMedS=0.95 setupMaxS=3.33 flowsNoDelivery=0 antTx[hello=179987,reactive=1385367,proactive=161995,repair=71165,linkfail=110067] antRx[hello=1483130,reactive=1425361,proactive=152870,repair=103466,linkfail=893490] linkfailProp=13852 linkfailBudgetDrop=5445 linkfailOrigSuppressed=14489 directedSteers=0 ptable[regAvg=13.67,regMax=29,virAvg=180.60,virMax=400] hold[setup=62/536.7ms/max2778.3ms reconv=5291/77.3ms/max200.0ms repair=19194/70.6ms/max2972.7ms] holdDrop[setup=8 reconv=23739 repair=42] repairDiscard=2325ev/2846pkt macReinject=21544
+##RUN## 15 anthocnet 43.4 137.9 1497.5 22.73 68.69 168.61 inf inf 96.3318
+##HOLD## 15 anthocnet 62 536.74 2778.30 5291 77.28 199.98 19194 70.60 2972.68
+##AIR## 15 anthocnet 3486.323 15559.214 7118.231 29.0709
+##ENERGY## 15 anthocnet 76693.023 2.759635 5.3769e-03 1.904
+##GOODPUT## 15 anthocnet 15.848
+##ROUTE## 15 anthocnet 0.9452 3.3326 0 0.38326 0.750 10645 4.8780 4.8842
+# road anthocnet seed=16 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=16 t=450.000 offStreetMaxM=0.000
+##DROPID## 16 anthocnet hopTx=241889 hopRx=210027 ackedHops=209871 macDrops=26837 reinjected=22314 macTerminal=4523 macLost=26681 queue=0 hopLoss=31862 overlap=-5181 unackedRx=156
+##REINJ## 16 anthocnet events=22314 parsed=22299 unparsedIcmp=15 unparsedOther=0 ofDelivered=158 pkts=9830 pktsDelivBefore=64 pktsDelivAfterOnly=4095 pktsNever=5671 pktsDupDeliv=71 dupRx=71 postTx=37182 postRx=21884 l3DropRoute=2824 l3DropTtl=21 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=16 pdr=41.29 firstDeliveryS=14.34 ctrlTx=2128297 setupMedS=0.52 setupMaxS=3.99 flowsNoDelivery=0 antTx[hello=179996,reactive=1599137,proactive=164926,repair=71751,linkfail=112240] antRx[hello=1478300,reactive=1645423,proactive=154615,repair=102924,linkfail=912858] linkfailProp=14040 linkfailBudgetDrop=5625 linkfailOrigSuppressed=15747 directedSteers=0 ptable[regAvg=13.31,regMax=30,virAvg=192.38,virMax=406] hold[setup=59/537.4ms/max2583.2ms reconv=5225/81.8ms/max200.0ms repair=19721/73.6ms/max2953.0ms] holdDrop[setup=0 reconv=24391 repair=62] repairDiscard=2551ev/3138pkt macReinject=22314
+##RUN## 16 anthocnet 41.3 153.3 1604.5 21.63 80.47 184.31 inf inf 113.5580
+##HOLD## 16 anthocnet 59 537.36 2583.16 5225 81.84 200.00 19721 73.60 2953.00
+##AIR## 16 anthocnet 3852.283 17076.008 7839.306 31.9640
+##ENERGY## 16 anthocnet 76992.766 2.911100 5.6701e-03 1.703
+##GOODPUT## 16 anthocnet 15.088
+##ROUTE## 16 anthocnet 0.5239 3.9874 0 0.39845 0.750 10531 4.9634 4.9695
+##MATCH## 13 anthocnet 28288 28288 1502.5 1502.5
+##MATCH## 14 anthocnet 27035 27035 1618.5 1618.5
+##MATCH## 15 anthocnet 27791 27791 1497.5 1497.5
+##MATCH## 16 anthocnet 26448 26448 1604.5 1604.5
+##COMMON## 13 anthocnet 28292 28292 1514.7 145.1 na 5.046 na
+##COMMON## 14 anthocnet 27039 27039 1634.9 148.1 na 4.915 na
+##COMMON## 15 anthocnet 27795 27795 1505.5 138.7 na 4.880 na
+##COMMON## 16 anthocnet 26450 26450 1613.3 154.0 na 4.963 na
+AntHocNet protocol comparison (mean of 4 run(s))
+  nodes=100 time=900.000s area=800.000x800.000m maxSpeed=20.000m/s pause=0.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+anthocnet       42.8      145.7       1555.8        22.40   74.12      176.58         inf         inf     104.337     76853.2      2.8078        4.96      0.9827       718.40
+# paths anthocnet divUsed=1.366 divMax=8.0 entropyBits=0.252 windowS=10.0 hopsMean=4.96 hopsMax=54.2
+# energy anthocnet initJ=5000.0 resMinJ=4226.7 resMeanJ=4231.5 resSdJ=1.722 firstDeathS=-1.0
+# drops anthocnet pdr=42.84 route=41.67 queue=0.00 mac=7.06 chan=7.81 ttl=0.73 sum=100.11 other=0.00 [route: setup=0.01 reconv=37.15 repair=4.70]
+# stddev anthocnet pdr=1.53 delay=6.4 delay99=64.7 nrl=5.014 nrl_bytes=7.248
+# reorder anthocnet ratio=0.0252 ratioWorstFlow=0.0382 extentMean=1.57 extentMax=11.00 bufMax=1406.75
+##PROV## commit=da146c662a9725eb04a72132837055c68ec9211f ref=main run_id=38848250626 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=compare
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=vanet nNodes=100 time=900 runs=4 firstRun=17 areaX=800 areaY=800 speed=20 speedMin=10 pause=0 range=300 propagation=urban mobility=manhattan blocksX=4 blocksY=4 streetWidth=20 transport=udp flows=20 cbrBps=2048 offTime=0 rateManager=constant2 protocols=anthocnet
+##CONFIG## attr HelloInterval=+5e+08ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+# road anthocnet seed=17 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=17 t=450.000 offStreetMaxM=0.000
+##DROPID## 17 anthocnet hopTx=268939 hopRx=235847 ackedHops=235708 macDrops=28124 reinjected=23215 macTerminal=4909 macLost=27985 queue=0 hopLoss=33092 overlap=-5107 unackedRx=139
+##REINJ## 17 anthocnet events=23215 parsed=23198 unparsedIcmp=17 unparsedOther=0 ofDelivered=135 pkts=10286 pktsDelivBefore=48 pktsDelivAfterOnly=4389 pktsNever=5849 pktsDupDeliv=69 dupRx=72 postTx=39419 postRx=23438 l3DropRoute=2730 l3DropTtl=31 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=17 pdr=44.85 firstDeliveryS=5.62 ctrlTx=2130515 setupMedS=0.93 setupMaxS=10.67 flowsNoDelivery=0 antTx[hello=180015,reactive=1592004,proactive=171710,repair=73265,linkfail=113218] antRx[hello=1455124,reactive=1638471,proactive=160949,repair=105277,linkfail=909452] linkfailProp=14647 linkfailBudgetDrop=5780 linkfailOrigSuppressed=16176 directedSteers=0 ptable[regAvg=11.70,regMax=26,virAvg=162.12,virMax=347] hold[setup=110/1002.1ms/max2914.2ms reconv=5483/82.5ms/max199.9ms repair=20697/74.5ms/max2995.5ms] holdDrop[setup=2 reconv=22463 repair=67] repairDiscard=2466ev/3083pkt macReinject=23215
+##RUN## 17 anthocnet 44.8 151.6 1655.5 24.03 72.50 181.22 inf inf 102.1027
+##HOLD## 17 anthocnet 110 1002.12 2914.18 5483 82.53 199.93 20697 74.50 2995.51
+##AIR## 17 anthocnet 3896.576 17356.443 8073.179 32.5847
+##ENERGY## 17 anthocnet 77040.657 2.621679 5.1078e-03 1.998
+##GOODPUT## 17 anthocnet 16.759
+##ROUTE## 17 anthocnet 0.9283 10.6736 0 0.38628 0.750 11344 4.8794 4.8857
+# road anthocnet seed=18 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=18 t=450.000 offStreetMaxM=0.000
+##DROPID## 18 anthocnet hopTx=250136 hopRx=218221 ackedHops=218082 macDrops=26752 reinjected=22099 macTerminal=4653 macLost=26613 queue=0 hopLoss=31915 overlap=-5302 unackedRx=139
+##REINJ## 18 anthocnet events=22099 parsed=22095 unparsedIcmp=4 unparsedOther=0 ofDelivered=146 pkts=9737 pktsDelivBefore=52 pktsDelivAfterOnly=4078 pktsNever=5607 pktsDupDeliv=57 dupRx=58 postTx=37201 postRx=22018 l3DropRoute=2761 l3DropTtl=25 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=18 pdr=43.48 firstDeliveryS=9.87 ctrlTx=2094854 setupMedS=1.47 setupMaxS=5.78 flowsNoDelivery=0 antTx[hello=180007,reactive=1568110,proactive=163674,repair=71842,linkfail=111009] antRx[hello=1475437,reactive=1615821,proactive=153736,repair=103114,linkfail=897641] linkfailProp=14149 linkfailBudgetDrop=5712 linkfailOrigSuppressed=15261 directedSteers=0 ptable[regAvg=13.10,regMax=33,virAvg=171.65,virMax=297] hold[setup=92/867.0ms/max2989.5ms reconv=5249/79.7ms/max200.0ms repair=19567/71.9ms/max2985.0ms] holdDrop[setup=21 reconv=23159 repair=85] repairDiscard=2475ev/3034pkt macReinject=22099
+##RUN## 18 anthocnet 43.5 143.2 1626.5 23.01 74.46 172.04 inf inf 104.8483
+##HOLD## 18 anthocnet 92 867.02 2989.49 5249 79.67 199.97 19567 71.88 2985.03
+##AIR## 18 anthocnet 3795.984 16769.581 7704.325 31.4110
+##ENERGY## 18 anthocnet 76936.939 2.734660 5.3296e-03 1.704
+##GOODPUT## 18 anthocnet 16.040
+##ROUTE## 18 anthocnet 1.4743 5.7793 0 0.37781 0.750 10623 4.8731 4.8798
+# road anthocnet seed=19 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=19 t=450.000 offStreetMaxM=0.000
+##DROPID## 19 anthocnet hopTx=238906 hopRx=207081 ackedHops=206934 macDrops=27142 reinjected=22500 macTerminal=4642 macLost=26995 queue=0 hopLoss=31825 overlap=-4830 unackedRx=147
+##REINJ## 19 anthocnet events=22500 parsed=22498 unparsedIcmp=2 unparsedOther=0 ofDelivered=151 pkts=9928 pktsDelivBefore=56 pktsDelivAfterOnly=4253 pktsNever=5619 pktsDupDeliv=67 dupRx=67 postTx=37799 postRx=22336 l3DropRoute=2712 l3DropTtl=13 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=19 pdr=44.71 firstDeliveryS=4.05 ctrlTx=2086252 setupMedS=1.10 setupMaxS=13.79 flowsNoDelivery=0 antTx[hello=180012,reactive=1554270,proactive=167407,repair=71873,linkfail=112389] antRx[hello=1474995,reactive=1599474,proactive=157772,repair=104250,linkfail=915552] linkfailProp=14324 linkfailBudgetDrop=5726 linkfailOrigSuppressed=15482 directedSteers=0 ptable[regAvg=11.45,regMax=26,virAvg=177.56,virMax=337] hold[setup=87/800.9ms/max2807.6ms reconv=5297/80.4ms/max200.0ms repair=20025/71.5ms/max2955.8ms] holdDrop[setup=12 reconv=22986 repair=75] repairDiscard=2423ev/2976pkt macReinject=22500
+##RUN## 19 anthocnet 44.7 142.8 1539.5 23.57 72.37 173.19 inf inf 101.8995
+##HOLD## 19 anthocnet 87 800.86 2807.63 5297 80.44 199.99 20025 71.49 2955.75
+##AIR## 19 anthocnet 3786.018 16783.115 7680.251 31.3882
+##ENERGY## 19 anthocnet 76935.777 2.668786 5.2000e-03 1.658
+##GOODPUT## 19 anthocnet 16.439
+##ROUTE## 19 anthocnet 1.0979 13.7900 0 0.38372 0.750 11055 4.8649 4.8703
+# road anthocnet seed=20 t=0.000 offStreetMaxM=0.000
+# road anthocnet seed=20 t=450.000 offStreetMaxM=0.000
+##DROPID## 20 anthocnet hopTx=228830 hopRx=198649 ackedHops=198491 macDrops=26052 reinjected=21590 macTerminal=4462 macLost=25894 queue=0 hopLoss=30181 overlap=-4287 unackedRx=158
+##REINJ## 20 anthocnet events=21590 parsed=21577 unparsedIcmp=13 unparsedOther=0 ofDelivered=173 pkts=9482 pktsDelivBefore=65 pktsDelivAfterOnly=3942 pktsNever=5475 pktsDupDeliv=70 dupRx=70 postTx=35358 postRx=20533 l3DropRoute=2735 l3DropTtl=16 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=20 pdr=43.80 firstDeliveryS=12.40 ctrlTx=2045540 setupMedS=1.28 setupMaxS=5.28 flowsNoDelivery=0 antTx[hello=179984,reactive=1524293,proactive=161617,repair=69491,linkfail=109952] antRx[hello=1486570,reactive=1569569,proactive=151844,repair=100068,linkfail=892095] linkfailProp=13811 linkfailBudgetDrop=5552 linkfailOrigSuppressed=15203 directedSteers=0 ptable[regAvg=13.48,regMax=30,virAvg=203.21,virMax=420] hold[setup=76/1053.7ms/max2993.6ms reconv=5137/80.6ms/max199.7ms repair=19060/71.6ms/max2975.4ms] holdDrop[setup=17 reconv=23561 repair=59] repairDiscard=2487ev/3050pkt macReinject=21590
+##RUN## 20 anthocnet 43.8 143.1 1604.5 22.67 73.79 170.99 inf inf 103.9388
+##HOLD## 20 anthocnet 76 1053.69 2993.61 5137 80.58 199.74 19060 71.62 2975.45
+##AIR## 20 anthocnet 3696.068 16490.196 7561.622 30.8310
+##ENERGY## 20 anthocnet 76872.248 2.772969 5.4021e-03 1.940
+##GOODPUT## 20 anthocnet 15.811
+##ROUTE## 20 anthocnet 1.2772 5.2784 0 0.38212 0.750 10586 4.8131 4.8190
+##MATCH## 17 anthocnet 29386 29386 1655.5 1655.5
+##MATCH## 18 anthocnet 28134 28134 1626.5 1626.5
+##MATCH## 19 anthocnet 28828 28828 1539.5 1539.5
+##MATCH## 20 anthocnet 27722 27722 1604.5 1604.5
+##COMMON## 17 anthocnet 29387 29387 1662.7 152.2 na 4.881 na
+##COMMON## 18 anthocnet 28137 28137 1639.6 143.9 na 4.874 na
+##COMMON## 19 anthocnet 28830 28830 1544.3 143.5 na 4.866 na
+##COMMON## 20 anthocnet 27723 27723 1623.4 143.8 na 4.815 na
+AntHocNet protocol comparison (mean of 4 run(s))
+  nodes=100 time=900.000s area=800.000x800.000m maxSpeed=20.000m/s pause=0.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+anthocnet       44.2      145.2       1606.5        23.32   73.28      174.36         inf         inf     103.197     76946.4      2.6995        4.86      0.9835       685.04
+# paths anthocnet divUsed=1.373 divMax=8.5 entropyBits=0.257 windowS=10.0 hopsMean=4.86 hopsMax=57.0
+# energy anthocnet initJ=5000.0 resMinJ=4225.7 resMeanJ=4230.5 resSdJ=1.825 firstDeathS=-1.0
+# drops anthocnet pdr=44.21 route=40.37 queue=0.00 mac=7.23 chan=7.56 ttl=0.73 sum=100.10 other=0.00 [route: setup=0.02 reconv=35.85 repair=4.71]
+# stddev anthocnet pdr=0.67 delay=4.3 delay99=49.3 nrl=1.014 nrl_bytes=1.433
+# reorder anthocnet ratio=0.0256 ratioWorstFlow=0.0365 extentMean=1.57 extentMax=10.00 bufMax=1465.75
+##PROV## commit=da146c662a9725eb04a72132837055c68ec9211f ref=main run_id=38848261248 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=compare

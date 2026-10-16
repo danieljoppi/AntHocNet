@@ -68,6 +68,8 @@ try:
 > Cells: `results/cells/grid-<mobility>-<channel>-olsr510.txt`, runs `36962722070` …
 > `36962733439`.
 
+**Re-measured for v2.2.0 (2026-10-16).** The [v2.2.0 campaign](v2.2.0-campaign.md#results) re-ran every cell on this page as its control generation, at `a8a16991`, with the shipped defaults and the same 20 seeds. Every `##RUN##` row is byte-identical to the cells this page cites. No default moved, so the numbers here stand as v2.2.0's. The control cells are `results/cells/grid-*-v220.txt`. What the campaign's four knobs do on this family is in [network-regimes.md §7](../network-regimes.md#7-measured-the-v220-knobs-per-regime).
+
 ## Restated on CBR sources (#521)
 
 > **All six cells were re-measured on constant-bit-rate sources.** Until

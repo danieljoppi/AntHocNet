@@ -35,6 +35,10 @@ hand over, ISLs fail and recover. The static ISL torus that came first is
 > number measured before `0b5a65ad` is superseded** — see
 > [the pairing bug](#the-cross-plane-pairing-bug-and-the-superseded-runs).
 
+**Re-measured for v2.2.0 (2026-10-16).** The [v2.2.0 campaign](../v2.2.0-campaign.md#results) re-ran every cell on this page as its control generation, at `a8a16991`, with the shipped defaults and the same 20 seeds. Every `##RUN##` row is byte-identical to the cells this page cites except AODV's, which differ through stock AODV's pointer-keyed socket map on multi-interface nodes ([#362](https://github.com/danieljoppi/AntHocNet/issues/362)); its paired deltas are within noise. No default moved, so the numbers here stand as v2.2.0's. The control cells are `results/cells/leo-*-v220.txt`. What the campaign's four knobs do on this family is in [network-regimes.md §7](../../network-regimes.md#7-measured-the-v220-knobs-per-regime).
+
+On this suite the campaign's `sinr` arm is **not** a no-op. The ISLs have no PHY SINR, but the ground-to-satellite access links are wireless and report it. On `starlink1` it buys +0.7 pp of PDR for +49 NRL. The faster hello (`hello500`) gives the campaign's largest PDR gain, +2.6 to +6.5 pp, at NRL +76 to +550, which roughly doubles the routing load. `repair200` never binds (byte-identical). `reconv1s` is noise on walker16; on the Starlink shells it trades about +100 to +120 ms of delay99 for at most +0.8 pp.
+
 ## The cells
 
 All cells: 4 ground-to-ground CBR flows (2 kbit/s each) between six cities

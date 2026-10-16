@@ -34,6 +34,8 @@ t = 0 position for the whole run. It is the community-network / Freifunk-class
 > [`results/cells/paper-mobile-jitter-cap1s.txt`](../../results/cells/paper-mobile-jitter-cap1s.txt).
 > Run IDs are in [Provenance](#provenance) below.
 
+**Re-measured for v2.2.0 (2026-10-16).** The [v2.2.0 campaign](v2.2.0-campaign.md#results) re-ran every cell on this page as its control generation, at `a8a16991`, with the shipped defaults and the same 20 seeds. Every `##RUN##` row is byte-identical to the cells this page cites. No default moved, so the numbers here stand as v2.2.0's. The control cells are `results/cells/static-mesh-v220.txt`. What the campaign's four knobs do on this family is in [network-regimes.md §7](../network-regimes.md#7-measured-the-v220-knobs-per-regime).
+
 ## Why this family, and why it is framed rather than built
 
 The [#298](https://github.com/danieljoppi/AntHocNet/issues/298) family scan

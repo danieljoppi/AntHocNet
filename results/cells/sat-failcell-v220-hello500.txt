@@ -1,0 +1,69 @@
+# v2.2.0 campaign (#565) sat-failcell-v220-hello500: 1 run(s) @65b7bde5 runs 38894932680 (hello500/sat-failcell); 20 seeds, 900 s (leo 300 s). Plan: docs/benchmarks/v2.2.0-campaign.md. The artifact carries no ##PROV## line, so each run's is rebuilt from the Actions run record (commit, ref, attempt) and the dispatch inputs.
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##RUN## 1 anthocnet 100.00 10.17 11.00 46.69 2.14 3.57 0.00
+# diag anthocnet seed=1 ctrlTx=122025 antTx[1=28797,2=210,4=6392,16=4,] antRx[1=113388,2=238,4=6824,16=12,]
+# failcell anthocnet seed=1 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1214
+##RUN## 2 anthocnet 100.00 10.15 11.00 46.64 2.14 3.57 0.00
+# diag anthocnet seed=2 ctrlTx=122291 antTx[1=28800,2=207,4=6563,16=4,] antRx[1=113402,2=234,4=7012,16=12,]
+# failcell anthocnet seed=2 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1248
+##RUN## 3 anthocnet 100.00 10.15 11.00 46.82 2.13 3.55 0.00
+# diag anthocnet seed=3 ctrlTx=121733 antTx[1=28805,2=207,4=6318,16=4,] antRx[1=113421,2=234,4=6684,16=12,]
+# failcell anthocnet seed=3 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1150
+##RUN## 4 anthocnet 100.00 10.16 11.00 46.64 2.14 3.57 0.00
+# diag anthocnet seed=4 ctrlTx=122141 antTx[1=28795,2=233,4=6434,16=4,] antRx[1=113375,2=264,4=6872,16=12,]
+# failcell anthocnet seed=4 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1562
+##RUN## 5 anthocnet 100.00 10.15 11.00 46.76 2.13 3.56 0.00
+# diag anthocnet seed=5 ctrlTx=122011 antTx[1=28797,2=184,4=6475,16=4,] antRx[1=113389,2=208,4=6901,16=12,]
+# failcell anthocnet seed=5 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1036
+##RUN## 6 anthocnet 100.00 10.17 11.00 46.77 2.14 3.57 0.00
+# diag anthocnet seed=6 ctrlTx=122280 antTx[1=28797,2=233,4=6652,16=4,] antRx[1=113386,2=264,4=7072,16=12,]
+# failcell anthocnet seed=6 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1176
+##RUN## 7 anthocnet 100.00 10.16 11.00 46.74 2.14 3.57 0.00
+# diag anthocnet seed=7 ctrlTx=122601 antTx[1=28795,2=256,4=6698,16=4,] antRx[1=113382,2=290,4=7165,16=12,]
+# failcell anthocnet seed=7 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1475
+##RUN## 8 anthocnet 100.00 10.17 11.00 46.72 2.15 3.58 0.00
+# diag anthocnet seed=8 ctrlTx=122784 antTx[1=28806,2=210,4=6987,16=4,] antRx[1=113424,2=238,4=7453,16=12,]
+# failcell anthocnet seed=8 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1205
+##RUN## 9 anthocnet 100.00 10.15 11.00 46.79 2.13 3.56 0.00
+# diag anthocnet seed=9 ctrlTx=122143 antTx[1=28804,2=184,4=6542,16=4,] antRx[1=113418,2=208,4=6979,16=12,]
+# failcell anthocnet seed=9 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1183
+##RUN## 10 anthocnet 100.00 10.15 11.00 46.63 2.15 3.58 0.00
+# diag anthocnet seed=10 ctrlTx=122548 antTx[1=28804,2=184,4=6723,16=4,] antRx[1=113415,2=208,4=7211,16=12,]
+# failcell anthocnet seed=10 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1206
+##RUN## 11 anthocnet 100.00 10.16 11.00 46.66 2.15 3.58 0.00
+# diag anthocnet seed=11 ctrlTx=122556 antTx[1=28801,2=233,4=6581,16=4,] antRx[1=113403,2=264,4=7083,16=12,]
+# failcell anthocnet seed=11 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1478
+##RUN## 12 anthocnet 100.00 10.15 11.00 46.80 2.13 3.56 0.00
+# diag anthocnet seed=12 ctrlTx=122110 antTx[1=28795,2=207,4=6515,16=4,] antRx[1=113379,2=234,4=6946,16=12,]
+# failcell anthocnet seed=12 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1205
+##RUN## 13 anthocnet 100.00 10.16 11.00 46.73 2.15 3.58 0.00
+# diag anthocnet seed=13 ctrlTx=122755 antTx[1=28806,2=233,4=6856,16=4,] antRx[1=113420,2=264,4=7337,16=12,]
+# failcell anthocnet seed=13 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1213
+##RUN## 14 anthocnet 100.00 10.15 11.00 46.75 2.16 3.59 0.00
+# diag anthocnet seed=14 ctrlTx=123478 antTx[1=28797,2=207,4=7372,16=4,] antRx[1=113387,2=234,4=7938,16=12,]
+# failcell anthocnet seed=14 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1216
+##RUN## 15 anthocnet 100.00 10.17 11.00 46.71 2.14 3.57 0.00
+# diag anthocnet seed=15 ctrlTx=122040 antTx[1=28807,2=210,4=6484,16=4,] antRx[1=113427,2=238,4=6892,16=12,]
+# failcell anthocnet seed=15 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1614
+##RUN## 16 anthocnet 100.00 10.15 11.00 46.70 2.14 3.57 0.00
+# diag anthocnet seed=16 ctrlTx=122238 antTx[1=28805,2=184,4=6507,16=4,] antRx[1=113421,2=208,4=6979,16=12,]
+# failcell anthocnet seed=16 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1123
+##RUN## 17 anthocnet 100.00 10.17 11.00 46.84 2.14 3.56 0.00
+# diag anthocnet seed=17 ctrlTx=122287 antTx[1=28800,2=233,4=6607,16=4,] antRx[1=113399,2=264,4=7032,16=12,]
+# failcell anthocnet seed=17 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1222
+##RUN## 18 anthocnet 100.00 10.15 11.00 46.74 2.13 3.56 0.00
+# diag anthocnet seed=18 ctrlTx=121804 antTx[1=28806,2=207,4=6380,16=4,] antRx[1=113423,2=234,4=6750,16=12,]
+# failcell anthocnet seed=18 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1245
+##RUN## 19 anthocnet 100.00 10.15 11.00 46.70 2.14 3.57 0.00
+# diag anthocnet seed=19 ctrlTx=122076 antTx[1=28809,2=184,4=6442,16=4,] antRx[1=113435,2=208,4=6885,16=12,]
+# failcell anthocnet seed=19 breakAt=450.0000 tDetect=0.0000 tReconverge=0.0803
+##RUN## 20 anthocnet 100.00 10.16 11.00 46.70 2.11 3.54 0.00
+# diag anthocnet seed=20 ctrlTx=120352 antTx[1=28799,2=233,4=5407,16=4,] antRx[1=113396,2=264,4=5644,16=12,]
+# failcell anthocnet seed=20 breakAt=450.0000 tDetect=0.0000 tReconverge=0.1064
++Grid torus 4x4 = 16 satellites, 32 ISLs (mean degree 4.00) @ 5.00 ms 10Mbps, 8 flows, 900.00 s, mean of 20 run(s)
+
+protocol          PDR%  delay(ms)  delay99(ms)  thrput(kbps)     NRL   NRLbytes  jitter(ms)
+-------------------------------------------------------------------------------------------
+anthocnet        100.0       10.2         11.0         46.73    2.14       3.57        0.00
+##PROV## commit=65b7bde5492d9ab7f25aed12cef713d2dda21b55 ref=main run_id=38894932680 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=isl-grid
