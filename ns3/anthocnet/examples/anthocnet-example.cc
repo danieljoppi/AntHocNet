@@ -46,9 +46,9 @@ int main(int argc, char* argv[]) {
     // Pin the paper's 2 Mbit/s radio: the ns-3 default (IdealWifiManager)
     // oscillates into DSSS 11 Mbps, which never delivers here, and halves
     // single-hop PDR (#51).
-    wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
-                                 "DataMode", StringValue("DsssRate2Mbps"),
-                                 "ControlMode", StringValue("DsssRate1Mbps"));
+    wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager", "DataMode",
+                                 StringValue("DsssRate2Mbps"), "ControlMode",
+                                 StringValue("DsssRate1Mbps"));
     YansWifiPhyHelper phy;
     YansWifiChannelHelper channel = YansWifiChannelHelper::Default();
     phy.SetChannel(channel.Create());
@@ -61,14 +61,13 @@ int main(int argc, char* argv[]) {
     Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable>();
     x->SetAttribute("Min", DoubleValue(0.0));
     x->SetAttribute("Max", DoubleValue(areaSize));
-    Ptr<RandomRectanglePositionAllocator> pos =
-        CreateObject<RandomRectanglePositionAllocator>();
+    Ptr<RandomRectanglePositionAllocator> pos = CreateObject<RandomRectanglePositionAllocator>();
     pos->SetX(x);
     pos->SetY(x);
     mobility.SetPositionAllocator(pos);
-    mobility.SetMobilityModel("ns3::RandomWaypointMobilityModel",
-                              "Speed", StringValue("ns3::UniformRandomVariable[Min=1.0|Max=5.0]"),
-                              "Pause", StringValue("ns3::ConstantRandomVariable[Constant=2.0]"),
+    mobility.SetMobilityModel("ns3::RandomWaypointMobilityModel", "Speed",
+                              StringValue("ns3::UniformRandomVariable[Min=1.0|Max=5.0]"), "Pause",
+                              StringValue("ns3::ConstantRandomVariable[Constant=2.0]"),
                               "PositionAllocator", PointerValue(pos));
     mobility.Install(nodes);
 
@@ -96,8 +95,7 @@ int main(int argc, char* argv[]) {
     onoff.SetAttribute("StopTime", TimeValue(Seconds(simTime - 1.0)));
     ApplicationContainer apps = onoff.Install(nodes.Get(0));
 
-    PacketSinkHelper sink("ns3::UdpSocketFactory",
-                          InetSocketAddress(Ipv4Address::GetAny(), port));
+    PacketSinkHelper sink("ns3::UdpSocketFactory", InetSocketAddress(Ipv4Address::GetAny(), port));
     ApplicationContainer sinkApps = sink.Install(nodes.Get(nNodes - 1));
     sinkApps.Start(Seconds(0.0));
 

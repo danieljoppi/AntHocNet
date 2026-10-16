@@ -72,10 +72,10 @@ constexpr int64_t kStreamStride = 1000000;
 void TakeStreams(int64_t& next, int64_t base, int64_t used, const char* what) {
     next += used;
     NS_ABORT_MSG_IF(next - base >= kStreamStride,
-                    "RNG stream budget exhausted after assigning " << what
-                    << ": this run has consumed " << (next - base)
-                    << " streams but kStreamStride is " << kStreamStride
-                    << " — seed blocks would overlap (#352). Raise the stride.");
+                    "RNG stream budget exhausted after assigning "
+                        << what << ": this run has consumed " << (next - base)
+                        << " streams but kStreamStride is " << kStreamStride
+                        << " — seed blocks would overlap (#352). Raise the stride.");
 }
 
 // #352: DsdvHelper is the one baseline helper with no AssignStreams() wrapper —
@@ -122,16 +122,16 @@ std::string PosStr() {
     if (!g_mobA || !g_mobB) return "";
     Vector a = g_mobA->GetPosition(), b = g_mobB->GetPosition();
     std::ostringstream os;
-    os << " d=" << g_mobA->GetDistanceFrom(g_mobB)
-       << " a=(" << a.x << "," << a.y << ") b=(" << b.x << "," << b.y << ")";
+    os << " d=" << g_mobA->GetDistanceFrom(g_mobB) << " a=(" << a.x << "," << a.y << ") b=(" << b.x
+       << "," << b.y << ")";
     return os.str();
 }
 
 void NoteDrop(const std::string& what, uint32_t size, const std::string& extra = "") {
     ++g_drops[what];
     if (g_dropLines < kMaxDropLines) {
-        std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds()
-                  << " " << what << " size=" << size << extra << "\n";
+        std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds() << " " << what
+                  << " size=" << size << extra << "\n";
         ++g_dropLines;
     }
 }
@@ -145,24 +145,39 @@ void PhyRxDropCb(std::string ctx, Ptr<const Packet> p, WifiPhyRxfailureReason re
 }
 void StaFailCb(std::string ctx, Mac48Address) { NoteDrop(ctx, 0, PosStr()); }
 void DistanceProbe() {
-    std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds()
-              << " probe" << PosStr() << "\n";
+    std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds() << " probe" << PosStr() << "\n";
 }
 void Ipv4DropCb(std::string ctx, const Ipv4Header&, Ptr<const Packet> p,
                 Ipv4L3Protocol::DropReason reason, Ptr<Ipv4>, uint32_t) {
     const char* name = nullptr;
     switch (reason) {
-        case Ipv4L3Protocol::DROP_TTL_EXPIRED:      name = "TTL_EXPIRED"; break;
-        case Ipv4L3Protocol::DROP_NO_ROUTE:         name = "NO_ROUTE"; break;
-        case Ipv4L3Protocol::DROP_BAD_CHECKSUM:     name = "BAD_CHECKSUM"; break;
-        case Ipv4L3Protocol::DROP_INTERFACE_DOWN:   name = "INTERFACE_DOWN"; break;
-        case Ipv4L3Protocol::DROP_ROUTE_ERROR:      name = "ROUTE_ERROR"; break;
-        case Ipv4L3Protocol::DROP_FRAGMENT_TIMEOUT: name = "FRAGMENT_TIMEOUT"; break;
-        default: break;
+        case Ipv4L3Protocol::DROP_TTL_EXPIRED:
+            name = "TTL_EXPIRED";
+            break;
+        case Ipv4L3Protocol::DROP_NO_ROUTE:
+            name = "NO_ROUTE";
+            break;
+        case Ipv4L3Protocol::DROP_BAD_CHECKSUM:
+            name = "BAD_CHECKSUM";
+            break;
+        case Ipv4L3Protocol::DROP_INTERFACE_DOWN:
+            name = "INTERFACE_DOWN";
+            break;
+        case Ipv4L3Protocol::DROP_ROUTE_ERROR:
+            name = "ROUTE_ERROR";
+            break;
+        case Ipv4L3Protocol::DROP_FRAGMENT_TIMEOUT:
+            name = "FRAGMENT_TIMEOUT";
+            break;
+        default:
+            break;
     }
     std::ostringstream what;
     what << ctx << ":";
-    if (name) what << name; else what << static_cast<int>(reason);
+    if (name)
+        what << name;
+    else
+        what << static_cast<int>(reason);
     NoteDrop(what.str(), p->GetSize());
 }
 
@@ -170,8 +185,8 @@ void Ipv4DropCb(std::string ctx, const Ipv4Header&, Ptr<const Packet> p,
 void AppTx(Ptr<const Packet>) {
     ++g_appTx;
     if (g_dropDiag && g_appTx <= 16) {
-        std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds()
-                  << " appTx#" << g_appTx << PosStr() << "\n";
+        std::cout << "  [dropdiag] t=" << Simulator::Now().GetSeconds() << " appTx#" << g_appTx
+                  << PosStr() << "\n";
     }
 }
 
@@ -182,23 +197,17 @@ void ConnectDropDiag(const NodeContainer& nodes, const NetDeviceContainer& devic
         std::string n = "n" + std::to_string(i);
         Ptr<WifiNetDevice> wd = DynamicCast<WifiNetDevice>(devices.Get(i));
         if (wd) {
-            wd->GetPhy()->TraceConnect("PhyRxDrop", n + "/phyRxDrop",
-                                       MakeCallback(&PhyRxDropCb));
-            wd->GetPhy()->TraceConnect("PhyTxDrop", n + "/phyTxDrop",
-                                       MakeCallback(&PacketDropCb));
+            wd->GetPhy()->TraceConnect("PhyRxDrop", n + "/phyRxDrop", MakeCallback(&PhyRxDropCb));
+            wd->GetPhy()->TraceConnect("PhyTxDrop", n + "/phyTxDrop", MakeCallback(&PacketDropCb));
             wd->GetPhy()->TraceConnect("PhyTxBegin", n + "/phyTxBegin",
                                        MakeCallback(&PhyTxBeginCb));
-            wd->GetMac()->TraceConnect("MacTxDrop", n + "/macTxDrop",
-                                       MakeCallback(&PacketDropCb));
-            wd->GetMac()->TraceConnect("MacRxDrop", n + "/macRxDrop",
-                                       MakeCallback(&PacketDropCb));
-            wd->GetMac()->TraceConnect("MacRx", n + "/macRx",
-                                       MakeCallback(&PacketCountCb));
+            wd->GetMac()->TraceConnect("MacTxDrop", n + "/macTxDrop", MakeCallback(&PacketDropCb));
+            wd->GetMac()->TraceConnect("MacRxDrop", n + "/macRxDrop", MakeCallback(&PacketDropCb));
+            wd->GetMac()->TraceConnect("MacRx", n + "/macRx", MakeCallback(&PacketCountCb));
+            wd->GetRemoteStationManager()->TraceConnect("MacTxDataFailed", n + "/staTxDataFailed",
+                                                        MakeCallback(&StaFailCb));
             wd->GetRemoteStationManager()->TraceConnect(
-                "MacTxDataFailed", n + "/staTxDataFailed", MakeCallback(&StaFailCb));
-            wd->GetRemoteStationManager()->TraceConnect(
-                "MacTxFinalDataFailed", n + "/staTxFinalDataFailed",
-                MakeCallback(&StaFailCb));
+                "MacTxFinalDataFailed", n + "/staTxFinalDataFailed", MakeCallback(&StaFailCb));
         }
         Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
         if (l3) l3->TraceConnect("Drop", n + "/ipDrop", MakeCallback(&Ipv4DropCb));
@@ -209,11 +218,11 @@ void ConnectDropDiag(const NodeContainer& nodes, const NetDeviceContainer& devic
 
 struct Params {
     uint32_t nNodes;
-    double   simTime;
-    double   areaX, areaY;
-    double   speed, pause, range;
+    double simTime;
+    double areaX, areaY;
+    double speed, pause, range;
     uint32_t nFlows;
-    double   cbrBps, startWindow;
+    double cbrBps, startWindow;
     std::string propagation;
     std::string rateManager;
 };
@@ -249,25 +258,23 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     if (P.rateManager == "arf") {
         wifi.SetRemoteStationManager("ns3::ArfWifiManager");
     } else if (P.rateManager.rfind("constant", 0) == 0) {
-        std::string rate = P.rateManager == "constant1"  ? "DsssRate1Mbps"
-                         : P.rateManager == "constant2"  ? "DsssRate2Mbps"
-                         : P.rateManager == "constant5"  ? "DsssRate5_5Mbps"
-                                                         : "DsssRate11Mbps";
-        wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
-                                     "DataMode", StringValue(rate),
+        std::string rate = P.rateManager == "constant1"   ? "DsssRate1Mbps"
+                           : P.rateManager == "constant2" ? "DsssRate2Mbps"
+                           : P.rateManager == "constant5" ? "DsssRate5_5Mbps"
+                                                          : "DsssRate11Mbps";
+        wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager", "DataMode", StringValue(rate),
                                      "ControlMode", StringValue("DsssRate1Mbps"));
     }  // "ideal": keep the WifiHelper default
     YansWifiPhyHelper phy;
     YansWifiChannelHelper channel;
     if (P.propagation == "tworay") {
         channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
-        channel.AddPropagationLoss("ns3::TwoRayGroundPropagationLossModel",
-                                   "Frequency", DoubleValue(2.4e9),
-                                   "HeightAboveZ", DoubleValue(1.5));
+        channel.AddPropagationLoss("ns3::TwoRayGroundPropagationLossModel", "Frequency",
+                                   DoubleValue(2.4e9), "HeightAboveZ", DoubleValue(1.5));
     } else if (P.range > 0.0) {
         channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
-        channel.AddPropagationLoss("ns3::RangePropagationLossModel",
-                                   "MaxRange", DoubleValue(P.range));
+        channel.AddPropagationLoss("ns3::RangePropagationLossModel", "MaxRange",
+                                   DoubleValue(P.range));
     } else {
         channel = YansWifiChannelHelper::Default();
     }
@@ -283,8 +290,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // MAC/Txop backoff and the rate manager in one call — and this harness can
     // select ArfWifiManager or IdealWifiManager via --rateManager, both of which
     // are stateful, so that last one is not hypothetical here.
-    TakeStreams(stream, streamBase, channel.AssignStreams(wifiChannel, stream),
-                "wifi channel");
+    TakeStreams(stream, streamBase, channel.AssignStreams(wifiChannel, stream), "wifi channel");
     TakeStreams(stream, streamBase, wifi.AssignStreams(devices, stream), "wifi");
 
     MobilityHelper mobility;
@@ -294,27 +300,23 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     Ptr<UniformRandomVariable> uy = CreateObject<UniformRandomVariable>();
     uy->SetAttribute("Min", DoubleValue(0.0));
     uy->SetAttribute("Max", DoubleValue(P.areaY));
-    Ptr<RandomRectanglePositionAllocator> pos =
-        CreateObject<RandomRectanglePositionAllocator>();
+    Ptr<RandomRectanglePositionAllocator> pos = CreateObject<RandomRectanglePositionAllocator>();
     pos->SetX(ux);
     pos->SetY(uy);
     mobility.SetPositionAllocator(pos);
     std::ostringstream speedStr, pauseStr;
     speedStr << "ns3::UniformRandomVariable[Min=1.0|Max=" << P.speed << "]";
     pauseStr << "ns3::ConstantRandomVariable[Constant=" << P.pause << "]";
-    mobility.SetMobilityModel("ns3::RandomWaypointMobilityModel",
-                              "Speed", StringValue(speedStr.str()),
-                              "Pause", StringValue(pauseStr.str()),
+    mobility.SetMobilityModel("ns3::RandomWaypointMobilityModel", "Speed",
+                              StringValue(speedStr.str()), "Pause", StringValue(pauseStr.str()),
                               "PositionAllocator", PointerValue(pos));
     // #352: the initial positions are drawn during Install(), so the allocator
     // has to be pinned BEFORE it — MobilityHelper::AssignStreams can only reach
     // the models (and, through RandomWaypoint, the allocator's later waypoint
     // draws) once they exist. Pinning `pos` covers both `ux` and `uy`.
-    TakeStreams(stream, streamBase, pos->AssignStreams(stream),
-                "position allocator");
+    TakeStreams(stream, streamBase, pos->AssignStreams(stream), "position allocator");
     mobility.Install(nodes);
-    TakeStreams(stream, streamBase, mobility.AssignStreams(nodes, stream),
-                "mobility");
+    TakeStreams(stream, streamBase, mobility.AssignStreams(nodes, stream), "mobility");
 
     // #352: the three routing helpers are hoisted out of the branches so their
     // AssignStreams() can run after Install() (SetRoutingHelper stores a Copy(),
@@ -334,8 +336,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else {
         // #448: an unknown arm must abort here, not run on the bare IP stack
         // and emit a plausible-looking 0 % row.
-        NS_ABORT_MSG("unknown protocol '" << proto
-                     << "' -- see --PrintHelp's --protocols list");
+        NS_ABORT_MSG("unknown protocol '" << proto << "' -- see --PrintHelp's --protocols list");
     }
     internet.Install(nodes);
     // The IPv4 stack is not stream-free: ArpL3Protocol owns m_requestJitter, a
@@ -348,19 +349,15 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // Each of these protocols builds a UniformRandomVariable per node (RREQ
     // jitter, hello jitter) at construction; pin them.
     if (proto == "aodv") {
-        TakeStreams(stream, streamBase, aodvHelper.AssignStreams(nodes, stream),
-                    "aodv routing");
+        TakeStreams(stream, streamBase, aodvHelper.AssignStreams(nodes, stream), "aodv routing");
     } else if (proto == "olsr") {
-        TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream),
-                    "olsr routing");
+        TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream), "olsr routing");
     } else if (proto == "dsdv") {
-        TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream),
-                    "dsdv routing");
+        TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream), "dsdv routing");
     } else {
         // #448: unreachable once the install chain above aborts, but the two
         // dispatch chains stay structurally parallel by convention — guard both.
-        NS_ABORT_MSG("unknown protocol '" << proto
-                     << "' -- see --PrintHelp's --protocols list");
+        NS_ABORT_MSG("unknown protocol '" << proto << "' -- see --PrintHelp's --protocols list");
     }
 
     for (uint32_t i = 0; i < nodes.GetN(); ++i) {
@@ -410,8 +407,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // than 3.36, but OnOffApplication has declared it throughout the matrix.
         Ptr<OnOffApplication> onoffApp = DynamicCast<OnOffApplication>(srcApp.Get(0));
         NS_ABORT_MSG_IF(!onoffApp, "expected an OnOffApplication to pin (#352)");
-        TakeStreams(stream, streamBase, onoffApp->AssignStreams(stream),
-                    "onoff application");
+        TakeStreams(stream, streamBase, onoffApp->AssignStreams(stream), "onoff application");
         srcApp.Get(0)->TraceConnectWithoutContext("Tx", MakeCallback(&AppTx));
         PacketSinkHelper sink("ns3::UdpSocketFactory",
                               InetSocketAddress(Ipv4Address::GetAny(), kDataPort));
@@ -435,16 +431,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     double totalDelay = 0.0;
     std::map<uint32_t, uint64_t> delayBins;
     double binWidth = 0.0;
-    Ptr<Ipv4FlowClassifier> classifier =
-        DynamicCast<Ipv4FlowClassifier>(fmHelper.GetClassifier());
+    Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier>(fmHelper.GetClassifier());
     for (auto& kv : monitor->GetFlowStats()) {
         Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(kv.first);
         if (t.destinationPort != kDataPort) continue;  // data flows only
         // #24 diag: per-flow raw counts so we can see whether the ~50% is a
         // halved metric vs. a real loss (printed to stdout; stderr is dropped).
-        std::cout << "  [diag " << proto << " seed=" << seed << "] flow "
-                  << t.sourceAddress << ":" << t.sourcePort << " -> "
-                  << t.destinationAddress << ":" << t.destinationPort
+        std::cout << "  [diag " << proto << " seed=" << seed << "] flow " << t.sourceAddress << ":"
+                  << t.sourcePort << " -> " << t.destinationAddress << ":" << t.destinationPort
                   << " tx=" << kv.second.txPackets << " rx=" << kv.second.rxPackets
                   << " lost=" << kv.second.lostPackets << "\n";
         tx += kv.second.txPackets;
@@ -459,9 +453,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // #24 ground truth: app-level sent vs sink-level received, independent of
     // FlowMonitor. If appTx≈appRx but FlowMonitor tx≈2*rx, FlowMonitor tx is
     // double-counted; if appRx≈appTx/2, the loss is real.
-    std::cout << "  [diag " << proto << " seed=" << seed << "] TOTALS"
-              << " fmTx=" << tx << " fmRx=" << rx
-              << " appTx=" << g_appTx << " appRx=" << g_appRx << "\n";
+    std::cout << "  [diag " << proto << " seed=" << seed << "] TOTALS" << " fmTx=" << tx
+              << " fmRx=" << rx << " appTx=" << g_appTx << " appRx=" << g_appRx << "\n";
     if (g_dropDiag) {
         std::cout << "  [dropdiag " << proto << " seed=" << seed << "] TOTALS";
         for (const auto& kv : g_drops) std::cout << " " << kv.first << "=" << kv.second;
@@ -474,7 +467,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         uint64_t target = static_cast<uint64_t>(0.99 * rx), cum = 0;
         for (auto& kv : delayBins) {
             cum += kv.second;
-            if (cum >= target) { r.delay99Ms = 1000.0 * (kv.first + 0.5) * binWidth; break; }
+            if (cum >= target) {
+                r.delay99Ms = 1000.0 * (kv.first + 0.5) * binWidth;
+                break;
+            }
         }
     }
     Simulator::Destroy();
@@ -511,21 +507,22 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("rateManager",
                  "Rate control: constant1|constant2|constant5|constant11 (fixed "
                  "DSSS rate; default constant2, the paper's radio) | arf | ideal "
-                 "(ns-3 default; loses ~50% single-hop, #51)", rateManager);
+                 "(ns-3 default; loses ~50% single-hop, #51)",
+                 rateManager);
     cmd.Parse(argc, argv);
     if (runs < 1) runs = 1;
 
     const bool paper = (scenario == "paper");
     Params P;
-    P.nNodes  = nNodes > 0 ? static_cast<uint32_t>(nNodes) : (paper ? 50 : 20);
+    P.nNodes = nNodes > 0 ? static_cast<uint32_t>(nNodes) : (paper ? 50 : 20);
     P.simTime = simTime >= 0 ? simTime : (paper ? 900.0 : 40.0);
-    P.areaX   = areaX >= 0 ? areaX : (area >= 0 ? area : (paper ? 1500.0 : 300.0));
-    P.areaY   = areaY >= 0 ? areaY : (area >= 0 ? area : (paper ? 300.0 : 300.0));
-    P.speed   = speed >= 0 ? speed : (paper ? 20.0 : 5.0);
-    P.pause   = pause >= 0 ? pause : (paper ? 30.0 : 1.0);
-    P.range   = range >= 0 ? range : (paper ? 300.0 : 0.0);
-    P.nFlows  = nFlows > 0 ? static_cast<uint32_t>(nFlows) : (paper ? 20 : 5);
-    P.cbrBps  = cbrBps >= 0 ? cbrBps : (paper ? 512.0 : 8000.0);
+    P.areaX = areaX >= 0 ? areaX : (area >= 0 ? area : (paper ? 1500.0 : 300.0));
+    P.areaY = areaY >= 0 ? areaY : (area >= 0 ? area : (paper ? 300.0 : 300.0));
+    P.speed = speed >= 0 ? speed : (paper ? 20.0 : 5.0);
+    P.pause = pause >= 0 ? pause : (paper ? 30.0 : 1.0);
+    P.range = range >= 0 ? range : (paper ? 300.0 : 0.0);
+    P.nFlows = nFlows > 0 ? static_cast<uint32_t>(nFlows) : (paper ? 20 : 5);
+    P.cbrBps = cbrBps >= 0 ? cbrBps : (paper ? 512.0 : 8000.0);
     P.startWindow = paper ? 180.0 : 5.0;
     P.propagation = propagation;
     P.rateManager = rateManager;
@@ -533,13 +530,13 @@ int main(int argc, char* argv[]) {
     std::vector<std::string> list;
     std::stringstream ss(protocols);
     std::string item;
-    while (std::getline(ss, item, ',')) if (!item.empty()) list.push_back(item);
+    while (std::getline(ss, item, ','))
+        if (!item.empty()) list.push_back(item);
 
     std::cout << "STOCK ns-3 baseline control (no AntHocNet) — mean of " << runs
-              << " run(s)\n  nodes=" << P.nNodes << " time=" << P.simTime
-              << "s area=" << P.areaX << "x" << P.areaY << "m speed=" << P.speed
-              << "m/s pause=" << P.pause << "s range=" << P.range
-              << "m flows=" << P.nFlows << " propagation=" << P.propagation
+              << " run(s)\n  nodes=" << P.nNodes << " time=" << P.simTime << "s area=" << P.areaX
+              << "x" << P.areaY << "m speed=" << P.speed << "m/s pause=" << P.pause
+              << "s range=" << P.range << "m flows=" << P.nFlows << " propagation=" << P.propagation
               << " rateManager=" << P.rateManager << "\n\n"
               << "protocol        PDR%  delay(ms)  delay99(ms)     NRL\n"
               << "--------------------------------------------------------\n";
@@ -557,14 +554,15 @@ int main(int argc, char* argv[]) {
         double pdr = 0, d = 0, d99 = 0, nrl = 0;
         for (uint32_t s = 1; s <= runs; ++s) {
             Result r = RunOne(proto, P, s);
-            pdr += r.pdr; d += r.meanDelayMs; d99 += r.delay99Ms; nrl += r.nrl;
+            pdr += r.pdr;
+            d += r.meanDelayMs;
+            d99 += r.delay99Ms;
+            nrl += r.nrl;
         }
         std::cout << std::left << std::setw(14) << proto << std::right << std::fixed
-                  << std::setprecision(1)
-                  << std::setw(7) << pdr / runs
-                  << std::setw(11) << d / runs
-                  << std::setw(13) << d99 / runs
-                  << std::setw(9) << std::setprecision(2) << nrl / runs << "\n";
+                  << std::setprecision(1) << std::setw(7) << pdr / runs << std::setw(11) << d / runs
+                  << std::setw(13) << d99 / runs << std::setw(9) << std::setprecision(2)
+                  << nrl / runs << "\n";
         std::cout.flags(coutFlags);
         std::cout.precision(coutPrec);
     }

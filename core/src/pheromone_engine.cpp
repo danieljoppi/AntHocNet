@@ -24,8 +24,8 @@ bool PheromoneEngine::hasRegularDestination(const PheromoneTable& table, NodeAdd
     return false;
 }
 
-void PheromoneEngine::updateRegular(PheromoneTable& table, NodeAddress dest,
-                                    NodeAddress neighbor, double phUpdate) const {
+void PheromoneEngine::updateRegular(PheromoneTable& table, NodeAddress dest, NodeAddress neighbor,
+                                    double phUpdate) const {
     // Reinforce only the travelled link. All aging is single-sourced into the
     // periodic, time-proportional evaporateAll (ADR-0012) — reinforcing no
     // longer ages competitors, which removes the reinforce-and-age coupling.
@@ -98,9 +98,8 @@ void PheromoneEngine::updateVirtual(PheromoneTable& table, const AntMessage& hel
     // real gradient, in the same units as regular pheromone (item 02/03).
     const NodeAddress neighbor = hello.src;
     for (const HelloDest& advert : hello.helloDests) {
-        const double bootstrapped = (advert.pheromone > 0.0)
-            ? 1.0 / (1.0 / advert.pheromone + hopCost)
-            : 0.0;
+        const double bootstrapped =
+            (advert.pheromone > 0.0) ? 1.0 / (1.0 / advert.pheromone + hopCost) : 0.0;
         double phValue = table.getPheromoneVirtual(advert.node, neighbor);
         table.setPheromoneVirtual(advert.node, neighbor, reinforce(phValue, bootstrapped));
     }
@@ -112,7 +111,8 @@ void PheromoneEngine::cleanNeighbor(PheromoneTable& table, NodeAddress neighbor)
     table.removeNeighbor(neighbor);
 }
 
-void PheromoneEngine::cleanNeighbor(PheromoneTable& table, NodeAddress neighbor, bool regular) const {
+void PheromoneEngine::cleanNeighbor(PheromoneTable& table, NodeAddress neighbor,
+                                    bool regular) const {
     const std::vector<NodeAddress> dests(
         regular ? std::vector<NodeAddress>(table.regularDestinations().begin(),
                                            table.regularDestinations().end())
@@ -130,5 +130,5 @@ void PheromoneEngine::cleanNeighbor(PheromoneTable& table, NodeAddress neighbor,
     }
 }
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet

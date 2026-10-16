@@ -38,19 +38,17 @@ constexpr uint8_t kHoldReasons = 3;
 /// same hold mechanic. It does NOT count packets released by a failed local
 /// repair (`DiscardPending`); those are a distinct drop cause and are counted
 /// by RoutingProtocol::RepairDiscardedPackets().
-struct HoldStats
-{
+struct HoldStats {
     uint64_t deliveredCount[kHoldReasons] = {0, 0, 0};
-    double   deliveredSumS[kHoldReasons]  = {0.0, 0.0, 0.0};
-    double   deliveredMaxS[kHoldReasons]  = {0.0, 0.0, 0.0};
-    uint64_t droppedCount[kHoldReasons]   = {0, 0, 0};
-    double   droppedSumS[kHoldReasons]    = {0.0, 0.0, 0.0};
+    double deliveredSumS[kHoldReasons] = {0.0, 0.0, 0.0};
+    double deliveredMaxS[kHoldReasons] = {0.0, 0.0, 0.0};
+    uint64_t droppedCount[kHoldReasons] = {0, 0, 0};
+    double droppedSumS[kHoldReasons] = {0.0, 0.0, 0.0};
 };
 
 /// One queued packet plus the callbacks needed to resume it once a route
 /// appears (or to error it when it expires).
-struct QueueEntry
-{
+struct QueueEntry {
     Ptr<const Packet> packet;
     Ipv4Header header;
     Ipv4RoutingProtocol::UnicastForwardCallback ucb;
@@ -63,8 +61,7 @@ struct QueueEntry
     uint8_t holdReason = HOLD_SETUP;
 };
 
-class RequestQueue
-{
+class RequestQueue {
 public:
     RequestQueue(uint32_t maxLen, Time timeout) : m_maxLen(maxLen), m_timeout(timeout) {}
 
@@ -118,7 +115,7 @@ private:
     HoldStats m_stats;
 };
 
-} // namespace anthocnet
-} // namespace ns3
+}  // namespace anthocnet
+}  // namespace ns3
 
-#endif // ANTHOCNET_RQUEUE_H
+#endif  // ANTHOCNET_RQUEUE_H

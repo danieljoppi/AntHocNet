@@ -11,9 +11,8 @@
 namespace anthocnet {
 namespace core {
 
-AntRouterLogic::AntRouterLogic(NodeAddress address, const Config& config, IClock& clock,
-                               IRng& rng, const ILinkMetric* metric,
-                               const ILinkState* linkState,
+AntRouterLogic::AntRouterLogic(NodeAddress address, const Config& config, IClock& clock, IRng& rng,
+                               const ILinkMetric* metric, const ILinkState* linkState,
                                const ILinkQuality* linkQuality)
     : address_(address),
       config_(config),
@@ -57,8 +56,10 @@ void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
     engine_.cleanNeighbor(table_, neighbor);
     lastSeen_.erase(neighbor);
     for (auto it = hopEstimate_.begin(); it != hopEstimate_.end();) {  // #185
-        if (it->first.second == neighbor) it = hopEstimate_.erase(it);
-        else ++it;
+        if (it->first.second == neighbor)
+            it = hopEstimate_.erase(it);
+        else
+            ++it;
     }
     txFailures_.erase(neighbor);
     if (had && observer_) observer_->onRouteChanged(neighbor, neighbor, false);
@@ -93,7 +94,10 @@ std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
     // route reappeared some other way (reactive ant, diffusion), just forget
     // the deadline; the normal flush path handles the queue.
     for (auto it = repairDeadline_.begin(); it != repairDeadline_.end();) {
-        if (now < it->second) { ++it; continue; }
+        if (now < it->second) {
+            ++it;
+            continue;
+        }
         const NodeAddress dest = it->first;
         it = repairDeadline_.erase(it);
         if (table_.bestRegular(dest) > config_.minPheromone) continue;
@@ -118,12 +122,12 @@ std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
         }
 
         AntMessage note;
-        note.type            = AntType::LinkFail;
-        note.direction       = AntDirection::Up;
-        note.src             = address_;
-        note.dst             = kInvalidAddress;
-        note.seqNum          = nextSeq();
-        note.timeStart       = now;
+        note.type = AntType::LinkFail;
+        note.direction = AntDirection::Up;
+        note.src = address_;
+        note.dst = kInvalidAddress;
+        note.seqNum = nextSeq();
+        note.timeStart = now;
         note.broadcastBudget = config_.repairMaxBroadcasts;
         note.helloDests.push_back({dest, 0.0});  // repair failed: no path left
         out.push_back(broadcastForward(note));
@@ -209,18 +213,17 @@ std::vector<RouteDecision> AntRouterLogic::reportNeighborLoss(NodeAddress n) {
     }
     if (note.helloDests.empty()) return {};
 
-    note.type           = AntType::LinkFail;
-    note.direction      = AntDirection::Up;
-    note.src            = address_;
-    note.dst            = kInvalidAddress;
-    note.seqNum         = nextSeq();
-    note.timeStart      = clock_.now();
+    note.type = AntType::LinkFail;
+    note.direction = AntDirection::Up;
+    note.src = address_;
+    note.dst = kInvalidAddress;
+    note.seqNum = nextSeq();
+    note.timeStart = clock_.now();
     note.broadcastBudget = config_.repairMaxBroadcasts;
     return {broadcastForward(note)};
 }
 
-std::vector<RouteDecision> AntRouterLogic::reportTxFailure(NodeAddress next,
-                                                          NodeAddress dataDest) {
+std::vector<RouteDecision> AntRouterLogic::reportTxFailure(NodeAddress next, NodeAddress dataDest) {
     if (next == kInvalidAddress) return {};
 
     // Debounce (issue #19): a single retry-limit drop in a dense/contended
@@ -263,9 +266,8 @@ std::vector<RouteDecision> AntRouterLogic::reportTxFailure(NodeAddress next,
             out.push_back(broadcastForward(rrfa));
             // Arm the wait/discard window (D6): a backward ant from dataDest
             // cancels it; onMaintenanceTick fires it.
-            const double wait = lostPathDelay > 0.0
-                                    ? config_.repairWaitFactor * lostPathDelay
-                                    : config_.repairTimeout;
+            const double wait = lostPathDelay > 0.0 ? config_.repairWaitFactor * lostPathDelay
+                                                    : config_.repairTimeout;
             repairDeadline_[dataDest] = now + wait;
         }
     }
@@ -305,15 +307,17 @@ std::vector<RouteDecision> AntRouterLogic::handleLinkFail(const AntMessage& note
     // us) already happened — only onward propagation is suppressed.
     if (!config_.enableLinkFail) return {};
 
-    prop.type      = AntType::LinkFail;
+    prop.type = AntType::LinkFail;
     prop.direction = AntDirection::Up;
-    prop.src       = address_;
-    prop.dst       = kInvalidAddress;
-    prop.seqNum    = nextSeq();
+    prop.src = address_;
+    prop.dst = kInvalidAddress;
+    prop.seqNum = nextSeq();
     prop.timeStart = clock_.now();
     RouteDecision d = broadcastForward(prop);
-    if (d.action == RouteAction::Broadcast) ++linkfailPropagations_;
-    else ++linkfailBudgetDrops_;
+    if (d.action == RouteAction::Broadcast)
+        ++linkfailPropagations_;
+    else
+        ++linkfailBudgetDrops_;
     return {d};
 }
 
@@ -415,11 +419,11 @@ std::vector<AntMessage> AntRouterLogic::createProactiveAnts() {
 
 AntMessage AntRouterLogic::createForwardAnt(AntType type, NodeAddress dest) {
     AntMessage m;
-    m.type      = type;
+    m.type = type;
     m.direction = AntDirection::Up;
-    m.src       = address_;
-    m.dst       = dest;
-    m.seqNum    = nextSeq();
+    m.src = address_;
+    m.dst = dest;
+    m.seqNum = nextSeq();
     m.timeStart = clock_.now();
     // Repair and proactive ants carry a per-path broadcast budget, decremented
     // at each hop ([1] §3.2/§3.5, and proactive per issue #45 — an unbounded
@@ -432,27 +436,28 @@ AntMessage AntRouterLogic::createForwardAnt(AntType type, NodeAddress dest) {
     // discovery. Its flood is bounded per (node, generation) instead, at the
     // broadcast site in onReceiveAnt (#173) — config_.reactiveMaxBroadcasts is
     // consumed there, not here.
-    if (type == AntType::Repair)        m.broadcastBudget = config_.repairMaxBroadcasts;
-    else if (type == AntType::Reactive) m.broadcastBudget = -1;  // see above
-    else                                m.broadcastBudget = config_.proactiveMaxBroadcasts;
+    if (type == AntType::Repair)
+        m.broadcastBudget = config_.repairMaxBroadcasts;
+    else if (type == AntType::Reactive)
+        m.broadcastBudget = -1;  // see above
+    else
+        m.broadcastBudget = config_.proactiveMaxBroadcasts;
     m.visited.push_back({address_, 0.0});  // source node enters the stack
     return m;
 }
 
-AntMessage AntRouterLogic::createHelloAnt() {
-    return createHelloAnt(config_.maxHelloAdverts);
-}
+AntMessage AntRouterLogic::createHelloAnt() { return createHelloAnt(config_.maxHelloAdverts); }
 
 AntMessage AntRouterLogic::createHelloAnt(std::size_t maxAdverts) {
     // Never emit more adverts than the codec accepts on decode (#186): an
     // over-long list would make every receiver drop the whole hello.
     maxAdverts = std::min<std::size_t>(maxAdverts, codec::kMaxHelloOnWire);
     AntMessage m;
-    m.type      = AntType::Hello;
+    m.type = AntType::Hello;
     m.direction = AntDirection::Up;
-    m.src       = address_;
-    m.dst       = kInvalidAddress;  // adapter maps to its broadcast address
-    m.seqNum    = nextSeq();
+    m.src = address_;
+    m.dst = kInvalidAddress;  // adapter maps to its broadcast address
+    m.seqNum = nextSeq();
     m.timeStart = clock_.now();
 
     // Origination: the adapter broadcasts every hello on its timer, so count it
@@ -493,14 +498,14 @@ AntMessage AntRouterLogic::createHelloAnt(std::size_t maxAdverts) {
 
 AntMessage AntRouterLogic::createBackAnt(const AntMessage& forward) {
     AntMessage b;
-    b.type      = forward.type;
+    b.type = forward.type;
     b.direction = AntDirection::Down;
-    b.src       = address_;          // swap: this node originates the back ant
-    b.dst       = forward.src;       // ...heading to the forward ant's source
-    b.seqNum    = nextSeq();
+    b.src = address_;     // swap: this node originates the back ant
+    b.dst = forward.src;  // ...heading to the forward ant's source
+    b.seqNum = nextSeq();
     b.timeStart = clock_.now();
-    b.lifeAnt   = forward.lifeAnt;
-    b.visited   = forward.visited;   // retrace the path
+    b.lifeAnt = forward.lifeAnt;
+    b.visited = forward.visited;  // retrace the path
     return b;
 }
 
@@ -514,9 +519,7 @@ NodeAddress AntRouterLogic::nextHopForData(NodeAddress dest, NodeAddress prevHop
     return table_.lookup(dest, config_.betaData, rng_, prevHop);
 }
 
-NodeAddress AntRouterLogic::randomDestination() {
-    return table_.randomDestination(rng_);
-}
+NodeAddress AntRouterLogic::randomDestination() { return table_.randomDestination(rng_); }
 
 void AntRouterLogic::stampForward(AntMessage& ant, NodeAddress nextHop) const {
     if (ant.visited.size() >= config_.maxPathLength) return;
@@ -591,8 +594,8 @@ double AntRouterLogic::backAntPheromone(const AntMessage& ant) const {
 
 void AntRouterLogic::computeBackAntState(AntMessage& ant) const {
     // The neighbour that forwarded this back ant is the last node it retraced.
-    ant.prevHop  = ant.history.empty() ? kInvalidAddress : ant.history.back().node;
-    ant.hops     = static_cast<int>(ant.history.size());
+    ant.prevHop = ant.history.empty() ? kInvalidAddress : ant.history.back().node;
+    ant.hops = static_cast<int>(ant.history.size());
     double t = 0.0;
     for (const AntHop& h : ant.history) t += h.time;
     ant.pathTime = t;
@@ -611,12 +614,11 @@ void AntRouterLogic::reinforceFromBackAnt(const AntMessage& ant) {
         // Seed from the first sample, and re-seed when the route itself has
         // lapsed (no regular pheromone left): an estimate for a path that no
         // longer exists must not bias the one that replaces it.
-        if (it == hopEstimate_.end() ||
-            table_.getPheromoneRegular(ant.src, ant.prevHop) <= 0.0) {
+        if (it == hopEstimate_.end() || table_.getPheromoneRegular(ant.src, ant.prevHop) <= 0.0) {
             hopEstimate_[key] = sample;
         } else {
-            it->second = config_.hopCountAlpha * it->second +
-                         (1.0 - config_.hopCountAlpha) * sample;
+            it->second =
+                config_.hopCountAlpha * it->second + (1.0 - config_.hopCountAlpha) * sample;
         }
         LinkObservation obs;
         obs.hops = hopEstimate_[key];
@@ -641,8 +643,7 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
     // (#177). Every other ant
     // (backward, hello, linkfail, proactive/repair forward) — and every ant
     // when multipath is off — keeps strict (src,seq) dedup.
-    if (config_.enableMultipath && incoming.isForward() &&
-        incoming.type == AntType::Reactive) {
+    if (config_.enableMultipath && incoming.isForward() && incoming.type == AntType::Reactive) {
         const auto hops = static_cast<std::uint32_t>(incoming.visited.size());
         Time travel = 0.0;
         for (const AntHop& h : incoming.visited) travel += h.time;
@@ -654,12 +655,10 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
         // then *this node* is the first hop the path will have, so use our own
         // address. Both readings agree that distinct branches out of the source
         // get distinct first hops, which is all the a2 rule needs.
-        const NodeAddress firstHop = incoming.visited.size() >= 2
-                                         ? incoming.visited[1].node
-                                         : address_;
-        if (!genQuality_.accept(incoming.src, incoming.seqNum, hops, travel,
-                                firstHop, config_.antAcceptanceFactor,
-                                config_.antAcceptanceFactorNewHop)) {
+        const NodeAddress firstHop =
+            incoming.visited.size() >= 2 ? incoming.visited[1].node : address_;
+        if (!genQuality_.accept(incoming.src, incoming.seqNum, hops, travel, firstHop,
+                                config_.antAcceptanceFactor, config_.antAcceptanceFactorNewHop)) {
             return {RouteDecision::drop()};
         }
     } else if (!history_.record(incoming.src, incoming.seqNum)) {
@@ -739,12 +738,11 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
             // bounded *per (node, generation)* — see allowBroadcast (#173).
             // Bounding it on the ant instead makes it a hop limit (#169).
             if (ant.type == AntType::Reactive &&
-                !genQuality_.allowBroadcast(ant.src, ant.seqNum,
-                                            config_.reactiveMaxBroadcasts)) {
+                !genQuality_.allowBroadcast(ant.src, ant.seqNum, config_.reactiveMaxBroadcasts)) {
                 return {RouteDecision::drop()};
             }
             stampForward(ant, kInvalidAddress);  // flood: every interface at once
-            return {broadcastForward(ant)};  // bounded per type (drop at budget 0)
+            return {broadcastForward(ant)};      // bounded per type (drop at budget 0)
         }
         // A proactive ant with a route is normally unicast, but with a small
         // per-hop probability it is broadcast instead to explore new paths
@@ -791,8 +789,7 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
     return {sendAnt(RouteAction::Unicast, next, ant)};
 }
 
-std::vector<RouteDecision> AntRouterLogic::onDataPacket(NodeAddress dest,
-                                                        NodeAddress prevHop) {
+std::vector<RouteDecision> AntRouterLogic::onDataPacket(NodeAddress dest, NodeAddress prevHop) {
     NodeAddress next = nextHopForData(dest, prevHop);
     if (next == kInvalidAddress) {
         // No route: always hold the data, but launch at most one reactive ant
@@ -823,5 +820,5 @@ std::vector<RouteDecision> AntRouterLogic::onDataPacket(NodeAddress dest,
     return {{RouteAction::Unicast, next, false, {}}};
 }
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet

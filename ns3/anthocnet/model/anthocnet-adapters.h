@@ -17,14 +17,12 @@
 namespace ns3 {
 namespace anthocnet {
 
-class Ns3Clock : public ::anthocnet::core::IClock
-{
+class Ns3Clock : public ::anthocnet::core::IClock {
 public:
     ::anthocnet::core::Time now() const override;
 };
 
-class Ns3Rng : public ::anthocnet::core::IRng
-{
+class Ns3Rng : public ::anthocnet::core::IRng {
 public:
     Ns3Rng();
     double uniform() override;
@@ -38,7 +36,7 @@ private:
     Ptr<UniformRandomVariable> m_rng;
 };
 
-} // namespace anthocnet
-} // namespace ns3
+}  // namespace anthocnet
+}  // namespace ns3
 
-#endif // ANTHOCNET_ADAPTERS_H
+#endif  // ANTHOCNET_ADAPTERS_H

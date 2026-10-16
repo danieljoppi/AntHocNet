@@ -112,7 +112,7 @@ int main() {
         b.type = AntType::Reactive;
         b.src = 3;
         b.dst = 9;
-        b.seqNum = 42;                       // same generation
+        b.seqNum = 42;  // same generation
         // 3 hops (<= 1.5*2) and total time 0.01 (<= 1.5*0.01): within the band.
         b.visited = {{3, 0.0}, {5, 0.005}, {6, 0.005}};
         auto second = router.onReceiveAnt(b, 6);
@@ -125,7 +125,7 @@ int main() {
         c.type = AntType::Reactive;
         c.src = 3;
         c.dst = 9;
-        c.seqNum = 42;                       // same generation
+        c.seqNum = 42;                                            // same generation
         c.visited = {{3, 0.0}, {5, 0.05}, {6, 0.05}, {7, 0.05}};  // 4 hops vs 2
         auto dropped = router.onReceiveAnt(c, 7);
         CHECK_EQ(dropped.size(), static_cast<std::size_t>(1));

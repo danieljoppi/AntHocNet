@@ -118,6 +118,8 @@ python3 docs/tools/check-mermaid.py .   # mermaid blocks render on GitHub
 python3 docs/tools/check-headers.py .   # SPDX headers on every source file
 mkdocs build --strict                   # nav + anchors (pages.yml builds it into /docs/)
 tools/release/check-bundle.sh           # release package: no agent files, tools present
+# C++ formatting (.clang-format, clang-format-18; lint.yml fails on a diff, #35):
+make format
 # C++ static checks (.clang-tidy; lint.yml runs them warn-only, #619):
 cmake -S core -B build-tidy/core -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake -S web  -B build-tidy/web  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON

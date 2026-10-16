@@ -10,10 +10,10 @@ int main() {
     // Dedup: first sighting is new, repeats are not.
     AntHistoryTracker h(/*maxEntries*/ 0);  // unbounded
     CHECK(h.record(5, 1));
-    CHECK(!h.record(5, 1));       // duplicate
+    CHECK(!h.record(5, 1));  // duplicate
     CHECK(h.seen(5, 1));
-    CHECK(h.record(5, 2));        // different seq
-    CHECK(h.record(6, 1));        // different src
+    CHECK(h.record(5, 2));  // different seq
+    CHECK(h.record(6, 1));  // different src
     CHECK(!h.seen(7, 1));
     CHECK_EQ(h.size(), static_cast<std::size_t>(3));
 
@@ -29,9 +29,9 @@ int main() {
     bounded.record(1, 2);
     bounded.record(1, 3);
     CHECK_EQ(bounded.size(), static_cast<std::size_t>(3));
-    bounded.record(1, 4);                  // evicts (1,1)
+    bounded.record(1, 4);  // evicts (1,1)
     CHECK_EQ(bounded.size(), static_cast<std::size_t>(3));
-    CHECK(!bounded.seen(1, 1));             // evicted
+    CHECK(!bounded.seen(1, 1));  // evicted
     CHECK(bounded.seen(1, 4));
     // The evicted entry is treated as new again.
     CHECK(bounded.record(1, 1));
@@ -50,7 +50,7 @@ int main() {
     // A small cap keeps this in microseconds; the production default allocates
     // orders of magnitude more.
     // ---------------------------------------------------------------------
-    const double a1 = 0.9, a2 = 2.0;   // the shipped acceptance factors (#177)
+    const double a1 = 0.9, a2 = 2.0;  // the shipped acceptance factors (#177)
 
     // accept(): the cap holds, and eviction is FIFO.
     {
@@ -94,7 +94,7 @@ int main() {
         CHECK(g.allowBroadcast(/*src*/ 7, /*seq*/ 1, /*maxBroadcasts*/ 2));
         CHECK(g.allowBroadcast(7, 2, 2));
         CHECK_EQ(g.size(), static_cast<std::size_t>(2));
-        CHECK(g.allowBroadcast(7, 3, 2));          // evicts generation 1
+        CHECK(g.allowBroadcast(7, 3, 2));  // evicts generation 1
         CHECK_EQ(g.size(), static_cast<std::size_t>(2));
 
         // The flood bound is per *resident* generation, not absolute: generation
@@ -109,11 +109,11 @@ int main() {
         // weaken the flood bound.
         CHECK(g.allowBroadcast(7, 1, 2));
         CHECK(g.allowBroadcast(7, 1, 2));
-        CHECK(!g.allowBroadcast(7, 1, 2));         // count binds again at 2
+        CHECK(!g.allowBroadcast(7, 1, 2));  // count binds again at 2
 
         // A generation that never left keeps its accumulated count.
-        CHECK(g.allowBroadcast(7, 3, 2));          // second claim
-        CHECK(!g.allowBroadcast(7, 3, 2));         // third refused
+        CHECK(g.allowBroadcast(7, 3, 2));   // second claim
+        CHECK(!g.allowBroadcast(7, 3, 2));  // third refused
     }
 
     // maxEntries == 0 means unbounded for GenerationTracker too, matching

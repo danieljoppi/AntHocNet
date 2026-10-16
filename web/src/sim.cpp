@@ -14,9 +14,9 @@ namespace ahn_web {
 
 namespace core = anthocnet::core;
 using core::AntMessage;
+using core::kInvalidAddress;
 using core::RouteAction;
 using core::RouteDecision;
-using core::kInvalidAddress;
 
 namespace {
 
@@ -68,7 +68,10 @@ int SplitMix64::uniformInt(int n) {
 // --- Node ---------------------------------------------------------------------
 
 Node::Node(World& w, int id, std::uint64_t seed)
-    : w_(w), id_(id), rng_(mixSeed(seed, id, 1)), timerRng_(mixSeed(seed, id, 2)),
+    : w_(w),
+      id_(id),
+      rng_(mixSeed(seed, id, 1)),
+      timerRng_(mixSeed(seed, id, 2)),
       mobRng_(mixSeed(seed, id, 3)) {}
 
 core::Time Node::now() const { return w_.now_; }
@@ -205,8 +208,10 @@ double detSin(double x) {
     // Reduce to [-pi, pi], fold to [-pi/2, pi/2], then the Taylor series to
     // x^19 (error < 1e-15 there). floor, +, -, *, / are exact-rounded IEEE.
     x -= 2 * kPi * std::floor(x / (2 * kPi) + 0.5);
-    if (x > kPi / 2) x = kPi - x;
-    else if (x < -kPi / 2) x = -kPi - x;
+    if (x > kPi / 2)
+        x = kPi - x;
+    else if (x < -kPi / 2)
+        x = -kPi - x;
     const double x2 = x * x;
     double term = x, sum = x;
     for (int k = 1; k <= 9; ++k) {
@@ -297,7 +302,8 @@ void World::extendLegs(Node& n, double until) const {
                     return nx >= 0 && nx <= blocksX_ && ny >= 0 && ny <= blocksY_;
                 };
                 const double u = r.uniform();
-                int want = u < 0.5 ? n.mhDir_ : (u < 0.75 ? (n.mhDir_ + 1) % 4 : (n.mhDir_ + 3) % 4);
+                int want =
+                    u < 0.5 ? n.mhDir_ : (u < 0.75 ? (n.mhDir_ + 1) % 4 : (n.mhDir_ + 3) % 4);
                 const int order[4] = {want, (n.mhDir_ + 1) % 4, (n.mhDir_ + 3) % 4,
                                       (n.mhDir_ + 2) % 4};
                 int dir = n.mhDir_;
@@ -371,11 +377,15 @@ bool World::lineOfSight(const Vec3& a, const Vec3& b) const {
                 } else {
                     const double r = q[k] / p[k];
                     if (p[k] < 0) {
-                        if (r > t1) inside = false;
-                        else if (r > t0) t0 = r;
+                        if (r > t1)
+                            inside = false;
+                        else if (r > t0)
+                            t0 = r;
                     } else {
-                        if (r < t0) inside = false;
-                        else if (r < t1) t1 = r;
+                        if (r < t0)
+                            inside = false;
+                        else if (r < t1)
+                            t1 = r;
                     }
                 }
             }
@@ -408,8 +418,8 @@ double World::propagation(int a, int b, double t) const {
 }
 
 double World::jittered(Node& n, double base, bool first) {
-    const double scale = first ? n.timerRng_.uniform()
-                               : n.timerRng_.uniform(1 - kTimerJitter, 1 + kTimerJitter);
+    const double scale =
+        first ? n.timerRng_.uniform() : n.timerRng_.uniform(1 - kTimerJitter, 1 + kTimerJitter);
     return base * scale;
 }
 
@@ -583,11 +593,13 @@ void World::enqueue(Node& n, Node::Pending p) {
     purge(n);
     if (p.firstQueued == 0) p.firstQueued = now_;
     p.expire = now_ + kQueueTimeout;
-    if (p.reconv && p.firstQueued + kReconvHoldCap < p.expire) p.expire = p.firstQueued + kReconvHoldCap;
+    if (p.reconv && p.firstQueued + kReconvHoldCap < p.expire)
+        p.expire = p.firstQueued + kReconvHoldCap;
     if (n.pending_.size() >= kQueueLen) {
         const Node::Pending old = n.pending_.front();
         n.pending_.pop_front();
-        emit(now_, Ev::Drop, n.id_, static_cast<int>(DropReason::QueueTimeout), old.flow, old.seq, 0);
+        emit(now_, Ev::Drop, n.id_, static_cast<int>(DropReason::QueueTimeout), old.flow, old.seq,
+             0);
     }
     n.pending_.push_back(p);
     emit(now_, Ev::Queue, n.id_, p.dst, p.flow, p.seq, 0);
@@ -612,7 +624,8 @@ void World::flushQueue(Node& n, NodeAddress dst) {
     purge(n);
     std::vector<Node::Pending> mine;
     std::deque<Node::Pending> kept;
-    for (const Node::Pending& p : n.pending_) (p.dst == dst ? mine.push_back(p) : kept.push_back(p));
+    for (const Node::Pending& p : n.pending_)
+        (p.dst == dst ? mine.push_back(p) : kept.push_back(p));
     n.pending_.swap(kept);
     for (Node::Pending& p : mine) {
         const NodeAddress next = n.logic_->nextHopForData(dst);

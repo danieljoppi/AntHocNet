@@ -113,7 +113,7 @@ public:
     virtual void onRouteChanged(NodeAddress /*dest*/, NodeAddress /*nb*/, bool /*added*/) {}
 };
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_PORTS_H
+#endif  // ANTHOCNET_CORE_PORTS_H

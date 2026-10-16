@@ -90,7 +90,7 @@ int main() {
         router.table().addNeighbor(7);
         router.table().setPheromoneVirtual(/*dest*/ 9, /*neighbor*/ 7, 0.5);
 
-        CHECK_EQ(router.nextHopForData(9), kInvalidAddress);   // data: regular only
+        CHECK_EQ(router.nextHopForData(9), kInvalidAddress);  // data: regular only
         CHECK_EQ(router.selectNextHop(9, /*proactive=*/true), 7);
     }
 
@@ -170,8 +170,7 @@ int main() {
 
         cfg.maxHelloAdverts = 1000;
         hello = populated(cfg, 100);
-        CHECK_EQ(hello.helloDests.size(),
-                 static_cast<std::size_t>(codec::kMaxHelloOnWire));
+        CHECK_EQ(hello.helloDests.size(), static_cast<std::size_t>(codec::kMaxHelloOnWire));
         AntMessage decoded;
         CHECK(codec::deserialize(codec::serialize(hello), decoded));
         CHECK_EQ(decoded.helloDests.size(), hello.helloDests.size());

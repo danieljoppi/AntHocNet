@@ -35,9 +35,9 @@ constexpr std::uint8_t kWireVersion = 0x03;
 /// Protocol bounds enforced on *decode* of untrusted input, mirroring the
 /// Config defaults so the codec stays standalone (golden rule #5). A frame
 /// declaring more elements than these is rejected, not just buffer-checked.
-constexpr std::uint16_t kMaxVisitedOnWire = 100;   ///< == Config::maxPathLength
-constexpr std::uint16_t kMaxHistoryOnWire = 100;   ///< retraced path ≤ path length
-constexpr std::uint16_t kMaxHelloOnWire   = 64;    ///< generous bound on adverts
+constexpr std::uint16_t kMaxVisitedOnWire = 100;  ///< == Config::maxPathLength
+constexpr std::uint16_t kMaxHistoryOnWire = 100;  ///< retraced path ≤ path length
+constexpr std::uint16_t kMaxHelloOnWire = 64;     ///< generous bound on adverts
 
 /// Number of bytes serialize() will produce for `msg`.
 std::size_t serializedSize(const AntMessage& msg);
@@ -56,8 +56,8 @@ inline bool deserialize(const std::vector<std::uint8_t>& bytes, AntMessage& msg)
     return deserialize(bytes.data(), bytes.size(), msg);
 }
 
-} // namespace codec
-} // namespace core
-} // namespace anthocnet
+}  // namespace codec
+}  // namespace core
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_ANT_MESSAGE_CODEC_H
+#endif  // ANTHOCNET_CORE_ANT_MESSAGE_CODEC_H

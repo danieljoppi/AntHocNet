@@ -38,10 +38,10 @@ namespace anthocnet {
 
 using ::anthocnet::core::AntMessage;
 using ::anthocnet::core::AntType;
+using ::anthocnet::core::kInvalidAddress;
+using ::anthocnet::core::NodeAddress;
 using ::anthocnet::core::RouteAction;
 using ::anthocnet::core::RouteDecision;
-using ::anthocnet::core::NodeAddress;
-using ::anthocnet::core::kInvalidAddress;
 
 NS_OBJECT_ENSURE_REGISTERED(RoutingProtocol);
 
@@ -96,14 +96,11 @@ TypeId RoutingProtocol::GetTypeId() {
             .SetParent<Ipv4RoutingProtocol>()
             .SetGroupName("AntHocNet")
             .AddConstructor<RoutingProtocol>()
-            .AddAttribute("HelloInterval", "Hello-ant beacon interval.",
-                          TimeValue(Seconds(1.0)),
-                          MakeTimeAccessor(&RoutingProtocol::m_helloInterval),
-                          MakeTimeChecker())
-            .AddAttribute("ProactiveInterval", "Proactive forward-ant interval.",
-                          TimeValue(Seconds(10.0)),
-                          MakeTimeAccessor(&RoutingProtocol::m_proactiveInterval),
-                          MakeTimeChecker())
+            .AddAttribute("HelloInterval", "Hello-ant beacon interval.", TimeValue(Seconds(1.0)),
+                          MakeTimeAccessor(&RoutingProtocol::m_helloInterval), MakeTimeChecker())
+            .AddAttribute(
+                "ProactiveInterval", "Proactive forward-ant interval.", TimeValue(Seconds(10.0)),
+                MakeTimeAccessor(&RoutingProtocol::m_proactiveInterval), MakeTimeChecker())
             .AddAttribute("TimerJitter",
                           "Relative jitter on the hello and proactive timers (#496). "
                           "> 0: each node's first firing is a uniform phase in "
@@ -112,26 +109,21 @@ TypeId RoutingProtocol::GetTypeId() {
                           "node beacons at the same instants and hidden terminals "
                           "collide on every hello (spurious neighbour evictions). "
                           "The NS-2 adapter has always jittered these timers.",
-                          DoubleValue(0.05),
-                          MakeDoubleAccessor(&RoutingProtocol::m_timerJitter),
+                          DoubleValue(0.05), MakeDoubleAccessor(&RoutingProtocol::m_timerJitter),
                           MakeDoubleChecker<double>(0.0, 0.5))
             .AddAttribute("Alpha",
                           "Evaporation retention factor per evaporation interval "
                           "(legacy ALFA, ADR-0012). NOT the thesis's alpha: that "
                           "is the hop-count moving average, HopCountAlpha (#185).",
-                          DoubleValue(0.7),
-                          MakeDoubleAccessor(&RoutingProtocol::m_alpha),
+                          DoubleValue(0.7), MakeDoubleAccessor(&RoutingProtocol::m_alpha),
                           MakeDoubleChecker<double>())
             .AddAttribute("BetaAnts", "Eq.1 exponent for ant next-hop choice (thesis beta1/beta2).",
-                          DoubleValue(20.0),
-                          MakeDoubleAccessor(&RoutingProtocol::m_betaAnts),
+                          DoubleValue(20.0), MakeDoubleAccessor(&RoutingProtocol::m_betaAnts),
                           MakeDoubleChecker<double>())
             .AddAttribute("BetaData", "Eq.1 exponent for greedy data routing (thesis beta3).",
-                          DoubleValue(20.0),
-                          MakeDoubleAccessor(&RoutingProtocol::m_betaData),
+                          DoubleValue(20.0), MakeDoubleAccessor(&RoutingProtocol::m_betaData),
                           MakeDoubleChecker<double>())
-            .AddAttribute("Gamma", "Reinforcement weight (GAMA).",
-                          DoubleValue(0.7),
+            .AddAttribute("Gamma", "Reinforcement weight (GAMA).", DoubleValue(0.7),
                           MakeDoubleAccessor(&RoutingProtocol::m_gamma),
                           MakeDoubleChecker<double>())
             .AddAttribute("HopCountAlpha",
@@ -141,19 +133,15 @@ TypeId RoutingProtocol::GetTypeId() {
                           "(#185). Ducatelle 2007: \"alpha is always kept on "
                           "0.7\". Default 0 = no smoothing (each ant's own hop "
                           "count, the pre-#185 behaviour). Range [0, 0.99].",
-                          DoubleValue(0.0),
-                          MakeDoubleAccessor(&RoutingProtocol::m_hopCountAlpha),
+                          DoubleValue(0.0), MakeDoubleAccessor(&RoutingProtocol::m_hopCountAlpha),
                           MakeDoubleChecker<double>(0.0, 0.99))
-            .AddAttribute("EnableProactive",
-                          "Master switch for proactive ants + diffusion.",
+            .AddAttribute("EnableProactive", "Master switch for proactive ants + diffusion.",
                           BooleanValue(true),
                           MakeBooleanAccessor(&RoutingProtocol::m_enableProactive),
                           MakeBooleanChecker())
-            .AddAttribute("EnableDiffusion",
-                          "Hello pheromone adverts + virtual table.",
-                          BooleanValue(true),
-                          MakeBooleanAccessor(&RoutingProtocol::m_enableDiffusion),
-                          MakeBooleanChecker())
+            .AddAttribute(
+                "EnableDiffusion", "Hello pheromone adverts + virtual table.", BooleanValue(true),
+                MakeBooleanAccessor(&RoutingProtocol::m_enableDiffusion), MakeBooleanChecker())
             .AddAttribute("EnableReactive",
                           "Reactive forward ants ([1] §3.1 route discovery). Off "
                           "removes the only source of regular pheromone, so data "
@@ -165,8 +153,7 @@ TypeId RoutingProtocol::GetTypeId() {
             .AddAttribute("EnableRepair",
                           "Local repair ants after a link break ([1] §3.5). Off "
                           "leaves reconvergence to a fresh reactive discovery.",
-                          BooleanValue(true),
-                          MakeBooleanAccessor(&RoutingProtocol::m_enableRepair),
+                          BooleanValue(true), MakeBooleanAccessor(&RoutingProtocol::m_enableRepair),
                           MakeBooleanChecker())
             .AddAttribute("EnableLinkFail",
                           "Link-failure notifications ([1] §3.5). Off suppresses "
@@ -219,8 +206,7 @@ TypeId RoutingProtocol::GetTypeId() {
                           MakeUintegerChecker<uint32_t>(0, 64))
             .AddAttribute("SessionTtl",
                           "Seconds a data session stays active for proactive probing.",
-                          DoubleValue(5.0),
-                          MakeDoubleAccessor(&RoutingProtocol::m_sessionTtl),
+                          DoubleValue(5.0), MakeDoubleAccessor(&RoutingProtocol::m_sessionTtl),
                           MakeDoubleChecker<double>())
             .AddAttribute("TxFailureThreshold",
                           "Consecutive MAC transmit-failures to the same next hop "
@@ -258,8 +244,7 @@ TypeId RoutingProtocol::GetTypeId() {
             .AddAttribute("RepairTimeout",
                           "Flat local-repair wait (s) when the lost path has no "
                           "usable delay estimate.",
-                          DoubleValue(1.0),
-                          MakeDoubleAccessor(&RoutingProtocol::m_repairTimeout),
+                          DoubleValue(1.0), MakeDoubleAccessor(&RoutingProtocol::m_repairTimeout),
                           MakeDoubleChecker<double>())
             .AddAttribute("HopTime",
                           "Fixed unloaded-hop reference time T_hop (s): weights "
@@ -268,8 +253,7 @@ TypeId RoutingProtocol::GetTypeId() {
                           "time. Default 3 ms, the value from the 2007 "
                           "Ducatelle thesis (#88); it was a provisional 50 ms "
                           "before that source was checked.",
-                          DoubleValue(0.003),
-                          MakeDoubleAccessor(&RoutingProtocol::m_hopTime),
+                          DoubleValue(0.003), MakeDoubleAccessor(&RoutingProtocol::m_hopTime),
                           MakeDoubleChecker<double>(0.0))
             .AddAttribute("EnableMultipath",
                           "Multipath reactive setup (issue #96, [1] §3.1): admit "
@@ -329,8 +313,7 @@ TypeId RoutingProtocol::GetTypeId() {
                           "paper's deliver-late vs discard trade; the #21 "
                           "frontier picked 3 s: delay99 7.6->2.1 s for "
                           "-2.4 pp PDR, still above AODV).",
-                          TimeValue(Seconds(3)),
-                          MakeTimeAccessor(&RoutingProtocol::m_queueTimeout),
+                          TimeValue(Seconds(3)), MakeTimeAccessor(&RoutingProtocol::m_queueTimeout),
                           MakeTimeChecker())
             .AddAttribute("ReconvHoldCap",
                           "Issue #21 lever L2 (multipath drop-vs-late trade): "
@@ -348,8 +331,7 @@ TypeId RoutingProtocol::GetTypeId() {
                           "the measured frontier. "
                           "0 = disabled (revert to QueueTimeout, pre-#103).",
                           TimeValue(Seconds(0.2)),
-                          MakeTimeAccessor(&RoutingProtocol::m_reconvHoldCap),
-                          MakeTimeChecker())
+                          MakeTimeAccessor(&RoutingProtocol::m_reconvHoldCap), MakeTimeChecker())
             .AddAttribute("RepairHoldCap",
                           "Issue #21 lever L2: same cap for REPAIR-held packets "
                           "(re-injected after a MAC transmit failure while local "
@@ -357,8 +339,7 @@ TypeId RoutingProtocol::GetTypeId() {
                           "(immediate flush when an alternate survives), so this "
                           "is secondary to ReconvHoldCap. 0 = disabled.",
                           TimeValue(Seconds(0)),
-                          MakeTimeAccessor(&RoutingProtocol::m_repairHoldCap),
-                          MakeTimeChecker())
+                          MakeTimeAccessor(&RoutingProtocol::m_repairHoldCap), MakeTimeChecker())
             .AddAttribute("ReactiveRetryInterval",
                           "How often to re-flood a reactive forward ant for "
                           "destinations that still have data waiting in the "
@@ -376,8 +357,7 @@ TypeId RoutingProtocol::GetTypeId() {
                           "EWMA weight of the previous estimate when smoothing "
                           "the measured per-packet MAC service time (issue #68; "
                           "the paper-family smoothing coefficient, cf. #70).",
-                          DoubleValue(0.7),
-                          MakeDoubleAccessor(&RoutingProtocol::m_macServiceAlpha),
+                          DoubleValue(0.7), MakeDoubleAccessor(&RoutingProtocol::m_macServiceAlpha),
                           MakeDoubleChecker<double>(0.0, 1.0))
             .AddAttribute("EnableMacMetric",
                           "Congestion-aware per-hop cost (item 10/A2): forward ants "
@@ -392,19 +372,16 @@ TypeId RoutingProtocol::GetTypeId() {
                           "thesis's SINR metric, eq. 4.11, #181). An unknown name is a "
                           "fatal configuration error.",
                           StringValue("classic"),
-                          MakeStringAccessor(&RoutingProtocol::m_linkMetric),
-                          MakeStringChecker())
+                          MakeStringAccessor(&RoutingProtocol::m_linkMetric), MakeStringChecker())
             .AddAttribute("SinrCriticalDb",
                           "SINR metric only (#181): a link whose SINR is at or below this "
                           "(dB) costs SinrPenaltyCost hops instead of one (thesis SINR_c).",
-                          DoubleValue(17.0),
-                          MakeDoubleAccessor(&RoutingProtocol::m_sinrCriticalDb),
+                          DoubleValue(17.0), MakeDoubleAccessor(&RoutingProtocol::m_sinrCriticalDb),
                           MakeDoubleChecker<double>())
             .AddAttribute("SinrPenaltyCost",
                           "SINR metric only (#181): the cost of a link at or below "
                           "SinrCriticalDb, in hops (thesis c_const).",
-                          DoubleValue(3.0),
-                          MakeDoubleAccessor(&RoutingProtocol::m_sinrPenaltyCost),
+                          DoubleValue(3.0), MakeDoubleAccessor(&RoutingProtocol::m_sinrPenaltyCost),
                           MakeDoubleChecker<double>(1.0))
             .AddTraceSource("Tx",
                             "An ant control packet was put on the medium by this "
@@ -458,8 +435,8 @@ void RoutingProtocol::onRouteChanged(::anthocnet::core::NodeAddress dest,
     m_routeChangedTrace(static_cast<uint32_t>(dest), static_cast<uint32_t>(nb), added);
 }
 
-void RoutingProtocol::GetPheromoneDiag(Ipv4Address dest, Ipv4Address neighbor,
-                                       double& regular, double& virt) const {
+void RoutingProtocol::GetPheromoneDiag(Ipv4Address dest, Ipv4Address neighbor, double& regular,
+                                       double& virt) const {
     regular = 0.0;
     virt = 0.0;
     if (!m_logic) return;
@@ -564,8 +541,7 @@ void RoutingProtocol::NotifyTxDequeue(uint32_t interface, Ptr<const Packet>) {
         const double sample = (now - st.lastDequeue).GetSeconds();
         if (sample > 0.0) {
             st.ewmaSec = st.ewmaSec > 0.0
-                             ? m_macServiceAlpha * st.ewmaSec +
-                                   (1.0 - m_macServiceAlpha) * sample
+                             ? m_macServiceAlpha * st.ewmaSec + (1.0 - m_macServiceAlpha) * sample
                              : sample;
         }
     }
@@ -583,8 +559,7 @@ void RoutingProtocol::NotifyAckedMpdu(Ptr<const AHN_WIFI_MPDU>) {
         if (sample > 0.0) {
             m_macServiceEwmaSec =
                 m_macServiceEwmaSec > 0.0
-                    ? m_macServiceAlpha * m_macServiceEwmaSec +
-                          (1.0 - m_macServiceAlpha) * sample
+                    ? m_macServiceAlpha * m_macServiceEwmaSec + (1.0 - m_macServiceAlpha) * sample
                     : sample;
         }
     }
@@ -761,18 +736,18 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         const ::anthocnet::core::ILinkMetric* metric =
             ::anthocnet::core::metrics::find(m_linkMetric);
         if (!metric) {
-            NS_FATAL_ERROR("anthocnet: unknown LinkMetric \"" << m_linkMetric << "\"; valid: "
-                           << ::anthocnet::core::metrics::registeredNames());
+            NS_FATAL_ERROR("anthocnet: unknown LinkMetric \""
+                           << m_linkMetric
+                           << "\"; valid: " << ::anthocnet::core::metrics::registeredNames());
         }
         m_logic.reset(new ::anthocnet::core::AntRouterLogic(
-            ToCore(iface.GetLocal()), m_config, m_clock, m_rng,
-            metric, /*linkState*/ this, /*linkQuality*/ this));
+            ToCore(iface.GetLocal()), m_config, m_clock, m_rng, metric, /*linkState*/ this,
+            /*linkQuality*/ this));
         m_logic->setObserver(this);  // fan core events to the trace sources
     }
 
     // One UDP socket per interface for ant control traffic.
-    Ptr<Socket> socket = Socket::CreateSocket(GetObject<Node>(),
-                                              UdpSocketFactory::GetTypeId());
+    Ptr<Socket> socket = Socket::CreateSocket(GetObject<Node>(), UdpSocketFactory::GetTypeId());
     NS_ASSERT(socket);
     socket->SetRecvCallback(MakeCallback(&RoutingProtocol::RecvAnt, this));
     socket->BindToNetDevice(l3->GetNetDevice(interface));
@@ -783,8 +758,7 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
 
     // Second socket bound to the subnet-broadcast address so this interface
     // actually receives the broadcast hello / forward ants.
-    Ptr<Socket> bcast = Socket::CreateSocket(GetObject<Node>(),
-                                             UdpSocketFactory::GetTypeId());
+    Ptr<Socket> bcast = Socket::CreateSocket(GetObject<Node>(), UdpSocketFactory::GetTypeId());
     NS_ASSERT(bcast);
     bcast->SetRecvCallback(MakeCallback(&RoutingProtocol::RecvAnt, this));
     bcast->BindToNetDevice(l3->GetNetDevice(interface));
@@ -804,11 +778,11 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
     if (wifi) {
         Ptr<WifiMac> wmac = wifi->GetMac();
         if (wmac) {
-            wmac->TraceConnectWithoutContext(
-                "DroppedMpdu", MakeCallback(&RoutingProtocol::NotifyTxError, this));
+            wmac->TraceConnectWithoutContext("DroppedMpdu",
+                                             MakeCallback(&RoutingProtocol::NotifyTxError, this));
             // Issue #68: sample measured MAC service time on each success.
-            wmac->TraceConnectWithoutContext(
-                "AckedMpdu", MakeCallback(&RoutingProtocol::NotifyAckedMpdu, this));
+            wmac->TraceConnectWithoutContext("AckedMpdu",
+                                             MakeCallback(&RoutingProtocol::NotifyAckedMpdu, this));
             // Keep the first wifi MAC for the item-10/A2 queue-occupancy signal.
             if (!m_wifiMac) m_wifiMac = wmac;
         }
@@ -906,8 +880,8 @@ void RoutingProtocol::NotifyRemoveAddress(uint32_t, Ipv4InterfaceAddress) {}
 
 // --- routing ----------------------------------------------------------------
 
-void RoutingProtocol::ResolveNextHop(NodeAddress next, Ipv4Address& gateway,
-                                     Ptr<NetDevice>& dev, uint32_t& iface) const {
+void RoutingProtocol::ResolveNextHop(NodeAddress next, Ipv4Address& gateway, Ptr<NetDevice>& dev,
+                                     uint32_t& iface) const {
     const Ipv4Address nextIp = ToIpv4(next);
 
     // 1. Directly attached: the next hop is on one of our own subnets. Every
@@ -915,13 +889,12 @@ void RoutingProtocol::ResolveNextHop(NodeAddress next, Ipv4Address& gateway,
     //    exactly its pre-#203 gateway/device.
     for (const auto& kv : m_socketAddresses) {
         const Ipv4InterfaceAddress& addr = kv.second;
-        if (addr.GetLocal().CombineMask(addr.GetMask()) ==
-            nextIp.CombineMask(addr.GetMask())) {
+        if (addr.GetLocal().CombineMask(addr.GetMask()) == nextIp.CombineMask(addr.GetMask())) {
             const int32_t i = m_ipv4->GetInterfaceForAddress(addr.GetLocal());
             if (i < 0) continue;
             gateway = nextIp;
-            iface   = static_cast<uint32_t>(i);
-            dev     = m_ipv4->GetNetDevice(iface);
+            iface = static_cast<uint32_t>(i);
+            dev = m_ipv4->GetNetDevice(iface);
             return;
         }
     }
@@ -932,14 +905,14 @@ void RoutingProtocol::ResolveNextHop(NodeAddress next, Ipv4Address& gateway,
     std::map<Ipv4Address, PeerRoute>::const_iterator it = m_peerRoutes.find(nextIp);
     if (it != m_peerRoutes.end() && it->second.iface < m_ipv4->GetNInterfaces()) {
         gateway = it->second.linkLocal;
-        iface   = it->second.iface;
-        dev     = m_ipv4->GetNetDevice(iface);
+        iface = it->second.iface;
+        dev = m_ipv4->GetNetDevice(iface);
         return;
     }
 
     // 3. Unknown next hop: degrade to the first interface exactly as before.
     gateway = nextIp;
-    iface   = static_cast<uint32_t>(
+    iface = static_cast<uint32_t>(
         m_ipv4->GetInterfaceForAddress(m_socketAddresses.begin()->second.GetLocal()));
     dev = m_ipv4->GetNetDevice(iface);
 }
@@ -952,7 +925,7 @@ Ptr<Ipv4Route> RoutingProtocol::LoopbackRoute(const Ipv4Header& header, Ptr<NetD
     for (const auto& kv : m_socketAddresses) {
         Ipv4InterfaceAddress addr = kv.second;
         if (!oif || m_ipv4->GetInterfaceForDevice(oif) ==
-                        (int) m_ipv4->GetInterfaceForAddress(addr.GetLocal())) {
+                        (int)m_ipv4->GetInterfaceForAddress(addr.GetLocal())) {
             route->SetSource(addr.GetLocal());
             break;
         }
@@ -966,8 +939,7 @@ Ptr<Ipv4Route> RoutingProtocol::LoopbackRoute(const Ipv4Header& header, Ptr<NetD
 }
 
 Ptr<Ipv4Route> RoutingProtocol::RouteOutput(Ptr<Packet> p, const Ipv4Header& header,
-                                            Ptr<NetDevice> oif,
-                                            Socket::SocketErrno& sockerr) {
+                                            Ptr<NetDevice> oif, Socket::SocketErrno& sockerr) {
     sockerr = Socket::ERROR_NOTERROR;
     if (!m_logic || m_socketAddresses.empty()) {
         sockerr = Socket::ERROR_NOROUTETOHOST;
@@ -999,8 +971,7 @@ Ptr<Ipv4Route> RoutingProtocol::RouteOutput(Ptr<Packet> p, const Ipv4Header& hea
 }
 
 bool RoutingProtocol::RouteInput(Ptr<const Packet> p, const Ipv4Header& header,
-                                 Ptr<const NetDevice> idev,
-                                 AHN_RI_CB(UnicastForwardCallback) ucb,
+                                 Ptr<const NetDevice> idev, AHN_RI_CB(UnicastForwardCallback) ucb,
                                  AHN_RI_CB(MulticastForwardCallback) mcb,
                                  AHN_RI_CB(LocalDeliverCallback) lcb,
                                  AHN_RI_CB(ErrorCallback) ecb) {
@@ -1068,8 +1039,8 @@ void RoutingProtocol::DeferredRouteOutput(Ptr<const Packet> p, const Ipv4Header&
     // #21 attribution: a deferred packet is either a first-time reactive setup
     // (this dest was never routed) or a reconvergence wait (route was known and
     // lost). NotifyTxError's re-injection path tags its own entries HOLD_REPAIR.
-    entry.holdReason = m_everRouted.count(ToCore(header.GetDestination()))
-                           ? HOLD_RECONV : HOLD_SETUP;
+    entry.holdReason =
+        m_everRouted.count(ToCore(header.GetDestination())) ? HOLD_RECONV : HOLD_SETUP;
     m_queue.Enqueue(entry);
 
     // Ask the core what to do; it returns Queue + a reactive forward ant.
@@ -1102,8 +1073,7 @@ void RoutingProtocol::SendAnt(const AntMessage& msg, Ipv4Address dest) {
     uint32_t ifIdx;
     ResolveNextHop(ToCore(dest), gateway, dev, ifIdx);
     for (auto& kv : m_socketAddresses) {
-        if (m_ipv4->GetInterfaceForAddress(kv.second.GetLocal()) ==
-            static_cast<int32_t>(ifIdx)) {
+        if (m_ipv4->GetInterfaceForAddress(kv.second.GetLocal()) == static_cast<int32_t>(ifIdx)) {
             kv.first->SendTo(packet->Copy(), 0, InetSocketAddress(gateway, ANT_PORT));
             return;
         }
@@ -1169,8 +1139,7 @@ void RoutingProtocol::RecvAnt(Ptr<Socket> socket) {
                 known = true;
             }
         }
-        const int32_t i =
-            known ? m_ipv4->GetInterfaceForAddress(ifaceAddr.GetLocal()) : -1;
+        const int32_t i = known ? m_ipv4->GetInterfaceForAddress(ifaceAddr.GetLocal()) : -1;
         if (i >= 0) {
             // #260: record both names the core may hold this neighbour under
             // (learnNeighbor sees the link-local prevHop on every ant and the
@@ -1242,8 +1211,8 @@ void RoutingProtocol::FlushQueue(NodeAddress coreDest) {
         route->SetSource(e.header.GetSource());
         route->SetOutputDevice(dev);
         if (!e.ucb.IsNull()) {
-            m_everRouted.insert(coreDest);      // #21: this dest has been routed
-            m_queue.NoteDelivered(e);           // #21: attribute this packet's hold
+            m_everRouted.insert(coreDest);  // #21: this dest has been routed
+            m_queue.NoteDelivered(e);       // #21: attribute this packet's hold
             e.ucb(route, e.packet, e.header);
         }
     }
@@ -1374,7 +1343,7 @@ void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI
     // so we still prune the dead neighbour even when the payload is opaque.
     NodeAddress dataDest = kInvalidAddress;
     Ptr<Packet> pkt = mpdu->GetPacket()->Copy();
-    Ipv4Header ipHeader;   // kept for re-injection (#46)
+    Ipv4Header ipHeader;  // kept for re-injection (#46)
     bool haveData = false;
     LlcSnapHeader llc;
     if (pkt->GetSize() >= llc.GetSerializedSize()) {
@@ -1440,8 +1409,10 @@ void RoutingProtocol::NotifyTxError(WifiMacDropReason reason, Ptr<const AHN_WIFI
             // above 65535; saturate rather than wrap (the cap then never fires
             // again for this packet, degrading to unlimited — harmless).
             if (count < 0xffff) tag.m_count = static_cast<uint16_t>(count + 1);
-            if (tagged) pkt->ReplacePacketTag(tag);
-            else pkt->AddPacketTag(tag);
+            if (tagged)
+                pkt->ReplacePacketTag(tag);
+            else
+                pkt->AddPacketTag(tag);
         }
         QueueEntry entry;
         entry.packet = pkt;
@@ -1499,7 +1470,7 @@ bool RoutingProtocol::IsMyOwnAddress(Ipv4Address src) const {
 }
 
 bool RoutingProtocol::SocketByBoundDevice::operator()(const Ptr<Socket>& a,
-                                                     const Ptr<Socket>& b) const {
+                                                      const Ptr<Socket>& b) const {
     // Issue #362: every socket is bound to its interface's device before it is
     // inserted, and there is one socket per device in each map, so the device
     // index is a unique, heap-independent key. The pointer tie-break only
@@ -1538,8 +1509,8 @@ Time RoutingProtocol::TimerDelay(Time base, bool first) {
 
 void RoutingProtocol::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit) const {
     std::ostream* os = stream->GetStream();
-    *os << "AntHocNet routing table for node "
-        << (m_ipv4 ? m_ipv4->GetObject<Node>()->GetId() : 0) << "\n";
+    *os << "AntHocNet routing table for node " << (m_ipv4 ? m_ipv4->GetObject<Node>()->GetId() : 0)
+        << "\n";
     if (m_logic) {
         const auto& table = m_logic->table();
         for (NodeAddress dest : table.regularDestinations()) {
@@ -1553,5 +1524,5 @@ void RoutingProtocol::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::U
     }
 }
 
-} // namespace anthocnet
-} // namespace ns3
+}  // namespace anthocnet
+}  // namespace ns3

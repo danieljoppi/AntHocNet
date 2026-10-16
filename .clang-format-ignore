@@ -1,0 +1,3 @@
+# Vendored ports of upstream ns-3 code (GNU style), kept diffable against
+# their origin; see .clang-format.
+ns3/baselines/**

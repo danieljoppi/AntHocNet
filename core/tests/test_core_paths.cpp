@@ -50,10 +50,10 @@ int main() {
         hello.direction = AntDirection::Up;
         hello.src = 3;
         hello.seqNum = 1;
-        hello.helloDests = {{9, 1.0}};   // neighbour 3 advertises a path to 9
+        hello.helloDests = {{9, 1.0}};  // neighbour 3 advertises a path to 9
 
         auto decisions = router.onReceiveAnt(hello, 3);
-        CHECK(decisions.empty());                          // hello is consumed
+        CHECK(decisions.empty());  // hello is consumed
         CHECK(router.table().getPheromoneVirtual(9, 3) > 0.0);
     }
 
@@ -99,7 +99,7 @@ int main() {
         auto d = router.onReceiveAnt(rrfa, 3);
         CHECK_EQ(d.size(), static_cast<std::size_t>(1));
         CHECK(d[0].action == RouteAction::Broadcast);
-        CHECK_EQ(d[0].message.visited.back().node, 4);   // stamped self
+        CHECK_EQ(d[0].message.visited.back().node, 4);  // stamped self
     }
 
     // --- repair forward ant reaching its destination spawns a back ant ----

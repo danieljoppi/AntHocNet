@@ -67,8 +67,14 @@ public:
     core::Time now() const { return clock_.now(); }
 
     // --- scriptable time-varying graph ------------------------------------
-    void linkUp(int a, int b) { adj_[a].insert(b); adj_[b].insert(a); }
-    void linkDown(int a, int b) { adj_[a].erase(b); adj_[b].erase(a); }
+    void linkUp(int a, int b) {
+        adj_[a].insert(b);
+        adj_[b].insert(a);
+    }
+    void linkDown(int a, int b) {
+        adj_[a].erase(b);
+        adj_[b].erase(a);
+    }
     bool adjacent(int a, int b) const {
         auto it = adj_.find(a);
         return it != adj_.end() && it->second.count(b) != 0;
@@ -104,8 +110,8 @@ public:
     }
 
     // --- counters (what trend scenarios assert on) -------------------------
-    int dataDelivered = 0;   ///< data packets that reached their destination
-    int dataDiscarded = 0;   ///< pending packets released by a repair timeout
+    int dataDelivered = 0;  ///< data packets that reached their destination
+    int dataDiscarded = 0;  ///< pending packets released by a repair timeout
     /// Data packets still buffered at `n` awaiting a route to `dest`.
     int pending(int n, core::NodeAddress dest) const {
         auto it = pending_.find(n);
@@ -122,8 +128,8 @@ public:
 
 private:
     struct Event {
-        core::Time            time;
-        std::uint64_t         seq;   ///< FIFO tie-break, for determinism
+        core::Time time;
+        std::uint64_t seq;  ///< FIFO tie-break, for determinism
         std::function<void()> fn;
         bool operator<(const Event& o) const {  // priority_queue = max-heap
             return time != o.time ? time > o.time : seq > o.seq;
@@ -138,12 +144,18 @@ private:
     }
 
     void macUnicast(int from, int to, const core::AntMessage& msg) {
-        if (!adjacent(from, to)) { txFailure(from, to, core::kInvalidAddress); return; }
+        if (!adjacent(from, to)) {
+            txFailure(from, to, core::kInvalidAddress);
+            return;
+        }
         at(now() + kHopDelay, [this, to, msg, from] { recvAnt(to, msg, from); });
     }
 
     void macSendData(int from, int to, core::NodeAddress dest) {
-        if (!adjacent(from, to)) { txFailure(from, to, dest); return; }
+        if (!adjacent(from, to)) {
+            txFailure(from, to, dest);
+            return;
+        }
         at(now() + kHopDelay, [this, to, from, dest] { recvData(to, from, dest); });
     }
 
@@ -162,8 +174,10 @@ private:
         for (const core::RouteDecision& d : decisions) {
             switch (d.action) {
                 case core::RouteAction::Unicast:
-                    if (d.hasMessage) macUnicast(at_node, d.nextHop, d.message);
-                    else              macSendData(at_node, d.nextHop, dataDest);
+                    if (d.hasMessage)
+                        macUnicast(at_node, d.nextHop, d.message);
+                    else
+                        macSendData(at_node, d.nextHop, dataDest);
                     break;
                 case core::RouteAction::Broadcast:
                     macBroadcast(at_node, d.message);
@@ -175,7 +189,7 @@ private:
                     dataDiscarded += pending(at_node, d.nextHop);
                     pending_[at_node].erase(d.nextHop);
                     break;
-                case core::RouteAction::Deliver:   // handled by recvAnt
+                case core::RouteAction::Deliver:  // handled by recvAnt
                 case core::RouteAction::Drop:
                 case core::RouteAction::None:
                     break;
@@ -191,7 +205,10 @@ private:
     }
 
     void recvData(int at_node, int prevHop, core::NodeAddress dest) {
-        if (at_node == dest) { ++dataDelivered; return; }
+        if (at_node == dest) {
+            ++dataDelivered;
+            return;
+        }
         execute(at_node, node(at_node).onDataPacket(dest, prevHop), dest);
     }
 
@@ -217,24 +234,26 @@ private:
     void proactiveTick(int i) {
         for (core::AntMessage& ant : node(i).createProactiveAnts()) {
             core::NodeAddress next = node(i).selectNextHop(ant.dst, /*proactive=*/true);
-            if (next == core::kInvalidAddress) macBroadcast(i, ant);
-            else                                macUnicast(i, next, ant);
+            if (next == core::kInvalidAddress)
+                macBroadcast(i, ant);
+            else
+                macUnicast(i, next, ant);
         }
         at(now() + cfg_.proactiveInterval, [this, i] { proactiveTick(i); });
     }
 
     core::Config cfg_;
-    FakeClock    clock_;
-    std::vector<std::unique_ptr<ScriptedRng>>           rngs_;
-    std::vector<std::unique_ptr<core::AntRouterLogic>>  nodes_;
-    std::map<int, std::set<int>>                        adj_;
-    std::priority_queue<Event>                          events_;
-    std::map<int, std::map<core::NodeAddress, int>>     pending_;
-    std::uint64_t seq_   = 0;
+    FakeClock clock_;
+    std::vector<std::unique_ptr<ScriptedRng>> rngs_;
+    std::vector<std::unique_ptr<core::AntRouterLogic>> nodes_;
+    std::map<int, std::set<int>> adj_;
+    std::priority_queue<Event> events_;
+    std::map<int, std::map<core::NodeAddress, int>> pending_;
+    std::uint64_t seq_ = 0;
     std::uint64_t steps_ = 0;
 };
 
-} // namespace test
-} // namespace anthocnet
+}  // namespace test
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_TESTBENCH_H
+#endif  // ANTHOCNET_CORE_TESTBENCH_H

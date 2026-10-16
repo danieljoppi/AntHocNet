@@ -84,17 +84,17 @@ enum class MobilityKind {
 /// A node's mobility model and its parameters.
 struct Mobility {
     MobilityKind kind = MobilityKind::Static;  ///< which model
-    double speedMin = 1;      ///< RWP / Manhattan: leg speed lower bound (m/s)
-    double speedMax = 10;     ///< RWP / Manhattan: leg speed upper bound (m/s)
-    double pause = 0;         ///< RWP: pause at each waypoint (s)
-    double gmMeanSpeed = 10;  ///< Gauss-Markov: mean speed (m/s)
-    double gmAlpha = 0.85;    ///< Gauss-Markov: memory (0 = random walk, 1 = straight line)
-    bool threeD = false;      ///< Gauss-Markov: also move in z
-    double orbitRadius = 0;   ///< Orbit: distance from the field's centre (m)
-    double orbitInc = 0;      ///< Orbit: inclination (rad)
-    double orbitRaan = 0;     ///< Orbit: right ascension of the ascending node (rad)
-    double orbitPhase = 0;    ///< Orbit: argument of latitude at t = 0 (rad)
-    double orbitRate = 0;     ///< Orbit: angular speed (rad/s)
+    double speedMin = 1;                       ///< RWP / Manhattan: leg speed lower bound (m/s)
+    double speedMax = 10;                      ///< RWP / Manhattan: leg speed upper bound (m/s)
+    double pause = 0;                          ///< RWP: pause at each waypoint (s)
+    double gmMeanSpeed = 10;                   ///< Gauss-Markov: mean speed (m/s)
+    double gmAlpha = 0.85;   ///< Gauss-Markov: memory (0 = random walk, 1 = straight line)
+    bool threeD = false;     ///< Gauss-Markov: also move in z
+    double orbitRadius = 0;  ///< Orbit: distance from the field's centre (m)
+    double orbitInc = 0;     ///< Orbit: inclination (rad)
+    double orbitRaan = 0;    ///< Orbit: right ascension of the ascending node (rad)
+    double orbitPhase = 0;   ///< Orbit: argument of latitude at t = 0 (rad)
+    double orbitRate = 0;    ///< Orbit: angular speed (rad/s)
 };
 
 /// sin / cos from arithmetic only (range reduction + Taylor series), so the
@@ -116,17 +116,17 @@ enum class ChannelKind {
 /// Event kinds of the log the front end animates and the parity test diffs.
 /// Append only: the JS front end and the trace format index these numerically.
 enum class Ev : int {
-    TxAnt = 1,       ///< node -> peer (-1 = broadcast); a=AntType, b=dir, v=arrival time
-    RxAnt = 2,       ///< node received from peer; a=AntType, b=dir
-    TxData = 3,      ///< node -> peer; a=flow, b=seq, v=arrival time
-    Deliver = 4,     ///< node = destination; a=flow, b=seq, v=end-to-end delay
-    Drop = 5,        ///< node; a=flow, b=seq, peer=DropReason
-    RouteAdd = 6,    ///< node; peer=next hop, a=destination
-    RouteDel = 7,    ///< node; peer=next hop, a=destination
-    Queue = 8,       ///< node; a=flow, b=seq, peer=destination
-    TxFail = 9,      ///< node -> peer unicast failed (out of range)
-    NodeDown = 10,   ///< node switched off
-    NodeUp = 11,     ///< node switched on
+    TxAnt = 1,      ///< node -> peer (-1 = broadcast); a=AntType, b=dir, v=arrival time
+    RxAnt = 2,      ///< node received from peer; a=AntType, b=dir
+    TxData = 3,     ///< node -> peer; a=flow, b=seq, v=arrival time
+    Deliver = 4,    ///< node = destination; a=flow, b=seq, v=end-to-end delay
+    Drop = 5,       ///< node; a=flow, b=seq, peer=DropReason
+    RouteAdd = 6,   ///< node; peer=next hop, a=destination
+    RouteDel = 7,   ///< node; peer=next hop, a=destination
+    Queue = 8,      ///< node; a=flow, b=seq, peer=destination
+    TxFail = 9,     ///< node -> peer unicast failed (out of range)
+    NodeDown = 10,  ///< node switched off
+    NodeUp = 11,    ///< node switched on
 };
 
 /// Why a data packet was lost (the `peer` field of an Ev::Drop event).
@@ -140,25 +140,25 @@ enum class DropReason : int {
 
 /// One entry of the event log (see Ev for what each field means per kind).
 struct LogEvent {
-    double t;   ///< simulated time (s)
-    Ev kind;    ///< what happened
-    int node;   ///< where it happened
-    int peer;   ///< the other node, -1 for broadcast, or a DropReason
-    int a;      ///< kind-specific (AntType, flow, destination)
-    int b;      ///< kind-specific (AntDirection, sequence number)
-    double v;   ///< kind-specific (arrival time, end-to-end delay)
+    double t;  ///< simulated time (s)
+    Ev kind;   ///< what happened
+    int node;  ///< where it happened
+    int peer;  ///< the other node, -1 for broadcast, or a DropReason
+    int a;     ///< kind-specific (AntType, flow, destination)
+    int b;     ///< kind-specific (AntDirection, sequence number)
+    double v;  ///< kind-specific (arrival time, end-to-end delay)
 };
 
 /// A constant-bit-rate data flow and its running totals.
 struct Flow {
-    int src;             ///< source node
-    int dst;             ///< destination node
-    double rate;         ///< packets per second
-    double start;        ///< first packet (s)
-    double stop;         ///< no packets after this (s)
-    int sent = 0;        ///< packets originated
-    int delivered = 0;   ///< packets that reached dst
-    double delaySum = 0; ///< sum of end-to-end delays of delivered packets (s)
+    int src;              ///< source node
+    int dst;              ///< destination node
+    double rate;          ///< packets per second
+    double start;         ///< first packet (s)
+    double stop;          ///< no packets after this (s)
+    int sent = 0;         ///< packets originated
+    int delivered = 0;    ///< packets that reached dst
+    double delaySum = 0;  ///< sum of end-to-end delays of delivered packets (s)
 };
 
 class World;
@@ -195,7 +195,7 @@ private:
         int flow, seq, src, dst, ttl, hops;
         NodeAddress prev;  ///< previous hop (A1 loop exclusion; re-injection)
         double created, firstQueued, expire;
-        bool reconv;       ///< held while a known route re-forms (#21 HOLD_RECONV)
+        bool reconv;  ///< held while a known route re-forms (#21 HOLD_RECONV)
     };
 
     World& w_;
@@ -363,7 +363,7 @@ private:
     double txDuration(std::size_t bytes) const { return bytes * 8.0 / bitrate_; }
     double propagation(int a, int b, double t) const;
 
-    SplitMix64 lossRng_;     ///< channel loss draws only
+    SplitMix64 lossRng_;  ///< channel loss draws only
     std::uint64_t seed_;
     anthocnet::core::Config config_;
     Vec3 area_{1000, 1000, 0};
@@ -382,17 +382,18 @@ private:
     bool started_ = false;
     std::vector<LogEvent> log_;
     std::uint64_t antTx_ = 0;
-    std::deque<std::pair<std::uint64_t, std::vector<std::uint8_t>>> xray_;  // (id, bytes), oldest first
+    std::deque<std::pair<std::uint64_t, std::vector<std::uint8_t>>>
+        xray_;  // (id, bytes), oldest first
 
     // adapter constants: the ns-3 attribute defaults (anthocnet-routing-protocol.cc)
-    static constexpr double kTimerJitter = 0.05;      // TimerJitter
-    static constexpr double kQueueTimeout = 3.0;      // QueueTimeout
-    static constexpr double kReconvHoldCap = 0.2;     // ReconvHoldCap
-    static constexpr double kRetryInterval = 0.25;    // ReactiveRetryInterval
-    static constexpr std::size_t kQueueLen = 64;      // RequestQueue maxLen
+    static constexpr double kTimerJitter = 0.05;    // TimerJitter
+    static constexpr double kQueueTimeout = 3.0;    // QueueTimeout
+    static constexpr double kReconvHoldCap = 0.2;   // ReconvHoldCap
+    static constexpr double kRetryInterval = 0.25;  // ReactiveRetryInterval
+    static constexpr std::size_t kQueueLen = 64;    // RequestQueue maxLen
     static constexpr int kTtl = 64;
     static constexpr std::size_t kDataBytes = 64 + 28;  // payload + IP/UDP
-    static constexpr int kMacRetries = 7;             // failure known after 7 tries
+    static constexpr int kMacRetries = 7;               // failure known after 7 tries
 };
 
 }  // namespace ahn_web

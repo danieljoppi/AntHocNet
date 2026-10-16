@@ -66,8 +66,7 @@ namespace anthocnet {
 class RoutingProtocol : public Ipv4RoutingProtocol,
                         public ::anthocnet::core::IRouterObserver,
                         public ::anthocnet::core::ILinkState,
-                        public ::anthocnet::core::ILinkQuality
-{
+                        public ::anthocnet::core::ILinkQuality {
 public:
     static TypeId GetTypeId();
     static const uint16_t ANT_PORT;  ///< UDP port for ant control traffic.
@@ -88,20 +87,20 @@ public:
     typedef void (*MacReinjectCallback)(const Ipv4Header& header, Ptr<const Packet> packet);
 
     // core::IRouterObserver
-    void onAntSent(::anthocnet::core::AntType type,
-                   ::anthocnet::core::AntDirection dir, bool broadcast) override;
+    void onAntSent(::anthocnet::core::AntType type, ::anthocnet::core::AntDirection dir,
+                   bool broadcast) override;
     void onAntReceived(::anthocnet::core::AntType type,
                        ::anthocnet::core::AntDirection dir) override;
-    void onRouteChanged(::anthocnet::core::NodeAddress dest,
-                        ::anthocnet::core::NodeAddress nb, bool added) override;
+    void onRouteChanged(::anthocnet::core::NodeAddress dest, ::anthocnet::core::NodeAddress nb,
+                        bool added) override;
 
     // #216 diagnostic: read the current regular and virtual pheromone for
     // (dest, neighbour), both given as canonical Ipv4 addresses. Zeroes when
     // the routing logic is not yet constructed. Read-only — used by the
     // isl-grid corridor cell's "# pher" sampler to watch whether a gradient
     // toward the clean corridor ever forms at the probe source.
-    void GetPheromoneDiag(Ipv4Address dest, Ipv4Address neighbor,
-                          double& regular, double& virt) const;
+    void GetPheromoneDiag(Ipv4Address dest, Ipv4Address neighbor, double& regular,
+                          double& virt) const;
 
     // core::ILinkState (item 10/A2): supply MAC congestion signals for the
     // congestion-aware per-hop metric. Only meaningful when EnableMacMetric is
@@ -121,8 +120,8 @@ public:
     void NotifyPhyRxSinr(Ptr<const Packet> packet, double sinrDb);
 
     // Ipv4RoutingProtocol
-    Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p, const Ipv4Header& header,
-                               Ptr<NetDevice> oif, Socket::SocketErrno& sockerr) override;
+    Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p, const Ipv4Header& header, Ptr<NetDevice> oif,
+                               Socket::SocketErrno& sockerr) override;
     bool RouteInput(Ptr<const Packet> p, const Ipv4Header& header, Ptr<const NetDevice> idev,
                     AHN_RI_CB(UnicastForwardCallback) ucb, AHN_RI_CB(MulticastForwardCallback) mcb,
                     AHN_RI_CB(LocalDeliverCallback) lcb, AHN_RI_CB(ErrorCallback) ecb) override;
@@ -145,12 +144,8 @@ public:
 
     /// Issue #20 diagnostics: LinkFail origin/propagation split from the core
     /// (origins = antTx[linkfail] − propagations; budget drops = suppressed).
-    uint64_t LinkfailPropagations() const {
-        return m_logic ? m_logic->linkfailPropagations() : 0;
-    }
-    uint64_t LinkfailBudgetDrops() const {
-        return m_logic ? m_logic->linkfailBudgetDrops() : 0;
-    }
+    uint64_t LinkfailPropagations() const { return m_logic ? m_logic->linkfailPropagations() : 0; }
+    uint64_t LinkfailBudgetDrops() const { return m_logic ? m_logic->linkfailBudgetDrops() : 0; }
     uint64_t LinkfailOriginsSuppressed() const {
         return m_logic ? m_logic->linkfailOriginsSuppressed() : 0;
     }
@@ -159,9 +154,7 @@ public:
     /// along the diffusion gradient instead of broadcast (EnableDirectedReactive).
     /// Zero on an enabled run means the gradient never covered a destination the
     /// regular table was missing, i.e. the switch was inert for this scenario.
-    uint64_t DirectedSteers() const {
-        return m_logic ? m_logic->directedSteers() : 0;
-    }
+    uint64_t DirectedSteers() const { return m_logic ? m_logic->directedSteers() : 0; }
 
     /// Issue #133 observability: per-node pheromone-table size gauge from the
     /// core — current (neighbor, dest) entry counts, split regular vs virtual.
@@ -259,8 +252,7 @@ private:
     /// per-packet MAC service time for the A2 congestion metric.
     void NotifyAckedMpdu(Ptr<const AHN_WIFI_MPDU> mpdu);
     // Resolve a failed next-hop MAC to a core address via the ARP caches.
-    bool MapMacToCore(const Mac48Address& mac,
-                      ::anthocnet::core::NodeAddress& out) const;
+    bool MapMacToCore(const Mac48Address& mac, ::anthocnet::core::NodeAddress& out) const;
 
     /// Issue #203: resolve a core next-hop name to the concrete way of reaching
     /// it — the gateway address to send to, the device to send it out of, and
@@ -299,7 +291,7 @@ private:
     /// interface index whose device shares a link with it; `linkLocal` is the
     /// address to send to on that link.
     struct PeerRoute {
-        uint32_t    iface = 0;
+        uint32_t iface = 0;
         Ipv4Address linkLocal;
     };
     /// Peer canonical address (how the core names it, i.e. how it appears in
@@ -345,42 +337,42 @@ private:
     double m_betaAnts;
     double m_betaData;
     double m_gamma;
-    double m_hopCountAlpha;           ///< #185: thesis alpha, eq. 4.2 (default 0 = off)
+    double m_hopCountAlpha;  ///< #185: thesis alpha, eq. 4.2 (default 0 = off)
     bool m_enableProactive;
     bool m_enableDiffusion;
-    bool m_enableReactive;            ///< reactive forward-ant gate (ablation)
-    bool m_enableRepair;              ///< local-repair ant gate (ablation)
-    bool m_enableLinkFail;            ///< link-failure notification gate (ablation)
-    bool m_enableDirectedReactive;    ///< steer reactive ants by the virtual table
+    bool m_enableReactive;          ///< reactive forward-ant gate (ablation)
+    bool m_enableRepair;            ///< local-repair ant gate (ablation)
+    bool m_enableLinkFail;          ///< link-failure notification gate (ablation)
+    bool m_enableDirectedReactive;  ///< steer reactive ants by the virtual table
     double m_proactiveBroadcastProb;
     double m_proactiveVirtualMargin;
-    uint32_t m_maxHelloAdverts;       ///< #186: diffusion advert cap k (thesis: 10)
+    uint32_t m_maxHelloAdverts;  ///< #186: diffusion advert cap k (thesis: 10)
     double m_sessionTtl;
     uint32_t m_txFailureThreshold;
     bool m_enableMacFailureDetector;
     uint32_t m_maxReinjectPerPacket;  ///< #386 remedy: path-global re-injection cap (0 = unlimited)
     double m_repairWaitFactor;
     double m_repairTimeout;
-    double m_hopTime;                 ///< T_hop unloaded-hop reference (s), #88
-    bool m_enableMultipath;           ///< multipath reactive setup gate, #96
-    double m_antAcceptanceFactor;     ///< multipath acceptance factor a1, #96/#177
+    double m_hopTime;                    ///< T_hop unloaded-hop reference (s), #88
+    bool m_enableMultipath;              ///< multipath reactive setup gate, #96
+    double m_antAcceptanceFactor;        ///< multipath acceptance factor a1, #96/#177
     double m_antAcceptanceFactorNewHop;  ///< disjoint-first-hop factor a2, #177
-    double m_linkfailNotifyInterval;  ///< issue #20 origin cooldown (s), 0 = off
-    Time m_queueTimeout;              ///< issue #21 pending-queue hold before drop
-    Time m_reconvHoldCap;             ///< issue #21 L2: cap on reconv holds (0 = off)
-    Time m_repairHoldCap;             ///< issue #21 L2: cap on repair holds (0 = off)
-    Time m_reactiveRetryInterval;     ///< issue #21 timer-driven re-discovery cadence (0 = off)
+    double m_linkfailNotifyInterval;     ///< issue #20 origin cooldown (s), 0 = off
+    Time m_queueTimeout;                 ///< issue #21 pending-queue hold before drop
+    Time m_reconvHoldCap;                ///< issue #21 L2: cap on reconv holds (0 = off)
+    Time m_repairHoldCap;                ///< issue #21 L2: cap on repair holds (0 = off)
+    Time m_reactiveRetryInterval;        ///< issue #21 timer-driven re-discovery cadence (0 = off)
     // Issue #68: measured per-packet MAC service time (EWMA of inter-ack
     // spacing while the MAC queue stays backlogged — pure service time, no
     // queue wait, so (Q+1)*T̂_mac does not double-count congestion).
-    double m_macServiceAlpha;         ///< EWMA smoothing (old-value weight)
-    double m_macServiceEwmaSec = 0.0; ///< 0 = no sample yet (core falls back)
-    Time m_lastAckTime;               ///< previous AckedMpdu timestamp
-    bool m_backlogAtLastAck = false;  ///< queue was non-empty at previous ack
-    bool m_enableMacMetric;  ///< item 10/A2 congestion-aware per-hop metric
-    std::string m_linkMetric;   ///< #144: core metric registry name ("classic", "sinr")
-    double m_sinrCriticalDb;    ///< #181: SINR_c (dB)
-    double m_sinrPenaltyCost;   ///< #181: c_const
+    double m_macServiceAlpha;          ///< EWMA smoothing (old-value weight)
+    double m_macServiceEwmaSec = 0.0;  ///< 0 = no sample yet (core falls back)
+    Time m_lastAckTime;                ///< previous AckedMpdu timestamp
+    bool m_backlogAtLastAck = false;   ///< queue was non-empty at previous ack
+    bool m_enableMacMetric;            ///< item 10/A2 congestion-aware per-hop metric
+    std::string m_linkMetric;          ///< #144: core metric registry name ("classic", "sinr")
+    double m_sinrCriticalDb;           ///< #181: SINR_c (dB)
+    double m_sinrPenaltyCost;          ///< #181: c_const
     /// #181: SINR of recently received MPDUs by packet UID (bounded FIFO), and
     /// the latest SINR per neighbour, set when an ant from it is received.
     std::deque<std::pair<uint64_t, double>> m_rxSinrByUid;
@@ -400,14 +392,13 @@ private:
     // sender never waits for it). Smoothing shares MacServiceAlpha.
     struct TxQueueState {
         Ptr<Queue<Packet>> queue;
-        double ewmaSec = 0.0;             ///< 0 = no sample yet (core falls back)
-        Time   lastDequeue;               ///< previous Dequeue timestamp
-        bool   backlogAtLastDequeue = false;
+        double ewmaSec = 0.0;  ///< 0 = no sample yet (core falls back)
+        Time lastDequeue;      ///< previous Dequeue timestamp
+        bool backlogAtLastDequeue = false;
     };
     std::map<uint32_t, TxQueueState> m_txQueues;  ///< iface index -> queue state
     void NotifyTxDequeue(uint32_t interface, Ptr<const Packet> p);
-    static void TxDequeueTrace(RoutingProtocol* self, uint32_t interface,
-                               Ptr<const Packet> p);
+    static void TxDequeueTrace(RoutingProtocol* self, uint32_t interface, Ptr<const Packet> p);
 
     // L3 forwarding callbacks cached from RouteInput (Ipv4L3Protocol passes the
     // same bound callbacks on every call). NotifyTxError needs them to re-inject
@@ -439,7 +430,7 @@ private:
     TracedCallback<const Ipv4Header&, Ptr<const Packet>> m_macReinjectSkipTrace;
 };
 
-} // namespace anthocnet
-} // namespace ns3
+}  // namespace anthocnet
+}  // namespace ns3
 
-#endif // ANTHOCNET_ROUTING_PROTOCOL_H
+#endif  // ANTHOCNET_ROUTING_PROTOCOL_H

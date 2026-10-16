@@ -50,13 +50,13 @@ namespace {
 // appends itself), so path[1] is the ant's first hop.
 core::AntMessage forwardAnt(std::vector<core::AntHop> path) {
     core::AntMessage m;
-    m.type      = core::AntType::Reactive;
+    m.type = core::AntType::Reactive;
     m.direction = core::AntDirection::Up;
-    m.src       = 3;
-    m.dst       = 9;
-    m.seqNum    = 42;
+    m.src = 3;
+    m.dst = 9;
+    m.seqNum = 42;
     m.timeStart = 0.0;
-    m.visited   = std::move(path);
+    m.visited = std::move(path);
     return m;
 }
 
@@ -90,8 +90,8 @@ std::uint64_t discoveryCost(int side, const core::Config& base) {
     core::Config cfg = base;
     // Isolate reactive discovery from the periodic mechanisms.
     cfg.enableEvaporation = false;
-    cfg.enableProactive   = false;
-    cfg.enableDiffusion   = false;
+    cfg.enableProactive = false;
+    cfg.enableDiffusion = false;
 
     const int n = side * side;
     test::Testbench tb(n, cfg);
@@ -101,8 +101,8 @@ std::uint64_t discoveryCost(int side, const core::Config& base) {
             for (int dr = -1; dr <= 1; ++dr) {
                 for (int dc = -1; dc <= 1; ++dc) {
                     const int nr = r + dr, nc = c + dc;
-                    if ((dr == 0 && dc == 0) || nr < 0 || nc < 0 ||
-                        nr >= side || nc >= side) continue;
+                    if ((dr == 0 && dc == 0) || nr < 0 || nc < 0 || nr >= side || nc >= side)
+                        continue;
                     tb.linkUp(id(r, c), id(nr, nc));
                 }
             }
@@ -115,7 +115,7 @@ std::uint64_t discoveryCost(int side, const core::Config& base) {
     for (int i = 0; i < n; ++i) before += tb.node(i).antsSent(core::AntType::Reactive);
 
     tb.sendData(0, n - 1);
-    tb.runUntil(cfg.helloInterval * 3.9);   // discovery takes ms; next hello at 4.0
+    tb.runUntil(cfg.helloInterval * 3.9);  // discovery takes ms; next hello at 4.0
 
     std::uint64_t after = 0;
     for (int i = 0; i < n; ++i) after += tb.node(i).antsSent(core::AntType::Reactive);
@@ -123,11 +123,14 @@ std::uint64_t discoveryCost(int side, const core::Config& base) {
 }
 
 // Deliveries over a static `hops`-hop line at the branch defaults.
-struct Outcome { int delivered; int offered; };
+struct Outcome {
+    int delivered;
+    int offered;
+};
 
 Outcome runLine(int hops) {
     core::Config cfg;
-    cfg.enableEvaporation = false;   // isolate discovery (ADR-0012)
+    cfg.enableEvaporation = false;  // isolate discovery (ADR-0012)
 
     const int n = hops + 1;
     test::Testbench tb(n, cfg);
@@ -159,7 +162,7 @@ int main() {
     // *inside* the 1.5 band on both metrics (3 <= 3.0, 0.012 <= 0.015) and
     // outside the 0.9 one (3 > 1.8), so it separates a1 from what ships.
     const std::vector<core::AntHop> viaSeenHop{{3, 0.0}, {4, 0.006}, {5, 0.006}};
-    const std::vector<core::AntHop> viaNewHop {{3, 0.0}, {5, 0.006}, {6, 0.006}};
+    const std::vector<core::AntHop> viaNewHop{{3, 0.0}, {5, 0.006}, {6, 0.006}};
 
     // 1. Repeat first hop (4, the same one the best ant used) -> judged against
     //    a1 = 0.9 and dropped, where the shipped single factor of 1.5 forwards
@@ -167,8 +170,8 @@ int main() {
     {
         CHECK(!secondAntAccepted(def, viaSeenHop));
 
-        core::Config shipped = def;   // what main does with the same two ants
-        shipped.antAcceptanceFactor       = 1.5;
+        core::Config shipped = def;  // what main does with the same two ants
+        shipped.antAcceptanceFactor = 1.5;
         shipped.antAcceptanceFactorNewHop = 1.5;
         CHECK(secondAntAccepted(shipped, viaSeenHop));
     }
@@ -180,7 +183,7 @@ int main() {
     {
         CHECK(secondAntAccepted(def, viaNewHop));
 
-        core::Config noBoost = def;   // a2 pulled down to a1: the boost is gone
+        core::Config noBoost = def;  // a2 pulled down to a1: the boost is gone
         noBoost.antAcceptanceFactorNewHop = def.antAcceptanceFactor;
         CHECK(!secondAntAccepted(noBoost, viaNewHop));
     }
@@ -188,8 +191,8 @@ int main() {
     // 2b. a2 relaxes the band, it does not disable it: a new first hop reached
     //     over a path far outside even the 2.0 band is still dropped.
     {
-        const std::vector<core::AntHop> farViaNewHop{
-            {3, 0.0}, {5, 0.02}, {6, 0.02}, {7, 0.02}, {8, 0.02}, {10, 0.02}};
+        const std::vector<core::AntHop> farViaNewHop{{3, 0.0},  {5, 0.02}, {6, 0.02},
+                                                     {7, 0.02}, {8, 0.02}, {10, 0.02}};
         CHECK(!secondAntAccepted(def, farViaNewHop));
     }
 
@@ -198,19 +201,20 @@ int main() {
     //    first column is the two-factor band's doing. The contrast column is
     //    the same run with the single 1.5 factor, i.e. #173's unbounded case.
     CHECK(def.reactiveMaxBroadcasts < 0);
-    std::printf("8-connected grid, one discovery corner to corner, no broadcast bound:\n"
-                "%-6s %-7s %14s %14s\n", "side", "nodes", "band 0.9/2.0", "single 1.5");
+    std::printf(
+        "8-connected grid, one discovery corner to corner, no broadcast bound:\n"
+        "%-6s %-7s %14s %14s\n",
+        "side", "nodes", "band 0.9/2.0", "single 1.5");
     for (int side = 3; side <= 7; ++side) {
         const int n = side * side;
 
         core::Config single = def;
-        single.antAcceptanceFactor       = 1.5;
+        single.antAcceptanceFactor = 1.5;
         single.antAcceptanceFactorNewHop = 1.5;
 
         const std::uint64_t armB = discoveryCost(side, def);
-        const std::uint64_t one  = discoveryCost(side, single);
-        std::printf("%-6d %-7d %14llu %14llu\n", side, n,
-                    static_cast<unsigned long long>(armB),
+        const std::uint64_t one = discoveryCost(side, single);
+        std::printf("%-6d %-7d %14llu %14llu\n", side, n, static_cast<unsigned long long>(armB),
                     static_cast<unsigned long long>(one));
 
         // O(n) as the grid grows. 8n is generous headroom and matches the bound

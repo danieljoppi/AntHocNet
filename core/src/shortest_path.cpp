@@ -72,8 +72,8 @@ void ShortestPathGraph::computeFrom(int source) {
             // the documented canonical tie-break. Each accepted relaxation
             // strictly decreases (dist, firstHop) lexicographically for v, so
             // the loop terminates.
-            const bool better = cand < have ||
-                                (cand == have && (haveHop == kNoNode || candHop < haveHop));
+            const bool better =
+                cand < have || (cand == have && (haveHop == kNoNode || candHop < haveHop));
             if (!better) continue;
             m_dist[static_cast<std::size_t>(v)] = cand;
             m_firstHop[static_cast<std::size_t>(v)] = candHop;

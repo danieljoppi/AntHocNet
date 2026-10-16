@@ -111,6 +111,23 @@ jobs:
           python3 tools/checks/check-site-links.py --self-test
           python3 tools/checks/check-site-links.py
 
+  clang-format:
+    name: C++ formatting (clang-format)
+    runs-on: ubuntu-latest
+    # #35: the project's own C++ -- core/, the browser adapter and the ns-3
+    # module -- is formatted by .clang-format (clang-format-18, the version on
+    # ubuntu-24.04 runners). ns3/baselines/ is excluded by .clang-format-ignore:
+    # the AOMDV/GPSR ports stay in upstream ns-3's style. A badly formatted file
+    # fails the job; `make format` fixes it.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: clang-format --dry-run -Werror
+        run: |
+          clang-format-18 --version
+          git ls-files 'core/*.cpp' 'core/*.h' 'web/src/*.cpp' 'web/include/*.h' \
+            'ns3/anthocnet/*.cc' 'ns3/anthocnet/*.h' \
+            | xargs clang-format-18 --dry-run -Werror
+
   clang-tidy:
     name: C++ static checks (clang-tidy, warn-only)
     runs-on: ubuntu-latest

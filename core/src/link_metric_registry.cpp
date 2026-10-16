@@ -13,7 +13,7 @@ namespace metrics {
 namespace {
 
 struct Entry {
-    const char*        name;
+    const char* name;
     const ILinkMetric* metric;
 };
 

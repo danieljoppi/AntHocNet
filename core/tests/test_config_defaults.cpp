@@ -45,22 +45,25 @@ int main() {
     CHECK_EQ(c.sessionTtl, 5.0);                // repo choice
     CHECK_EQ(c.proactiveVirtualMargin, 0.0);    // #180 gate OFF — deliberately NOT thesis 0.10
     CHECK_EQ(c.helloInterval, 1.0);             // [1] §3.3 fn.1
-    CHECK_EQ(c.proactiveInterval, 10.0);        // #182 repo value; thesis 2s is #248's A/B (#252/#254 leak)
-    CHECK_EQ(c.lifeAnt, 2.0);                   // legacy constant (inert, #182)
-    CHECK_EQ(c.allowedHelloLoss, 2);            // [1] §3.5 (digest: §3.3 fn.1)
-    CHECK_EQ(c.repairMaxBroadcasts, 2);         // [1] §3.5 (digest: §3.4)
-    CHECK_EQ(c.linkfailNotifyInterval, 5.0);    // #20 sweep
-    CHECK_EQ(c.txFailureThreshold, 3);          // #19 / ADR-0008 detector D
-    CHECK_EQ(c.reactiveMaxBroadcasts, -1);      // #177 unbounded (band self-limits; unit history #169/#173)
-    CHECK_EQ(c.enableMultipath, true);          // [1] §3.1 / #96
-    CHECK_EQ(c.antAcceptanceFactor, 0.9);       // thesis a1 (#177)
-    CHECK_EQ(c.antAcceptanceFactorNewHop, 2.0); // thesis a2 (#177)
-    CHECK_EQ(c.proactiveMaxBroadcasts, 2);      // [1] §3.3 / #45
-    CHECK_EQ(c.repairWaitFactor, 5.0);          // [1] §3.5 (digest: §3.4)
-    CHECK_EQ(c.repairTimeout, 1.0);             // repo fallback, unsourced
-    CHECK_EQ(c.networkDiameter, 30);            // legacy constant (dead in core/, #182)
-    CHECK_EQ(c.maxPathLength, static_cast<std::size_t>(100));  // golden rule 5; wire kMaxVisitedOnWire
-    CHECK_EQ(c.maxHistory, static_cast<std::size_t>(4096));    // golden rule 5
+    CHECK_EQ(c.proactiveInterval,
+             10.0);                   // #182 repo value; thesis 2s is #248's A/B (#252/#254 leak)
+    CHECK_EQ(c.lifeAnt, 2.0);         // legacy constant (inert, #182)
+    CHECK_EQ(c.allowedHelloLoss, 2);  // [1] §3.5 (digest: §3.3 fn.1)
+    CHECK_EQ(c.repairMaxBroadcasts, 2);       // [1] §3.5 (digest: §3.4)
+    CHECK_EQ(c.linkfailNotifyInterval, 5.0);  // #20 sweep
+    CHECK_EQ(c.txFailureThreshold, 3);        // #19 / ADR-0008 detector D
+    CHECK_EQ(c.reactiveMaxBroadcasts,
+             -1);                       // #177 unbounded (band self-limits; unit history #169/#173)
+    CHECK_EQ(c.enableMultipath, true);  // [1] §3.1 / #96
+    CHECK_EQ(c.antAcceptanceFactor, 0.9);        // thesis a1 (#177)
+    CHECK_EQ(c.antAcceptanceFactorNewHop, 2.0);  // thesis a2 (#177)
+    CHECK_EQ(c.proactiveMaxBroadcasts, 2);       // [1] §3.3 / #45
+    CHECK_EQ(c.repairWaitFactor, 5.0);           // [1] §3.5 (digest: §3.4)
+    CHECK_EQ(c.repairTimeout, 1.0);              // repo fallback, unsourced
+    CHECK_EQ(c.networkDiameter, 30);             // legacy constant (dead in core/, #182)
+    CHECK_EQ(c.maxPathLength,
+             static_cast<std::size_t>(100));  // golden rule 5; wire kMaxVisitedOnWire
+    CHECK_EQ(c.maxHistory, static_cast<std::size_t>(4096));  // golden rule 5
 
     return RUN_TESTS();
 }

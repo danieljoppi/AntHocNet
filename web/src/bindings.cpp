@@ -80,8 +80,8 @@ val pheromone(const World& w, int n, int dest) {
 val distribution(const World& w, int n, int dest, int prevHop) {
     const auto& logic = w.node(n).logic();
     std::vector<double> out;
-    for (const auto& e : logic.table().nextHopDistribution(dest, false, logic.config().betaData,
-                                                           prevHop)) {
+    for (const auto& e :
+         logic.table().nextHopDistribution(dest, false, logic.config().betaData, prevHop)) {
         out.push_back(e.first);
         out.push_back(e.second);
     }
@@ -149,14 +149,22 @@ void setMobility(World& w, int node, int kind, double a, double b, double c, boo
 void setConfig(World& w, const std::string& key, double v) {
     // Mission-scoped knobs only (ADR-0019: worlds never change these).
     auto& c = w.config();
-    if (key == "betaData") c.betaData = v;
-    else if (key == "betaAnts") c.betaAnts = v;
-    else if (key == "alpha") c.alpha = v;
-    else if (key == "helloInterval") c.helloInterval = v;
-    else if (key == "proactiveInterval") c.proactiveInterval = v;
-    else if (key == "enableProactive") c.enableProactive = v != 0;
-    else if (key == "enableMultipath") c.enableMultipath = v != 0;
-    else if (key == "enableRepair") c.enableRepair = v != 0;
+    if (key == "betaData")
+        c.betaData = v;
+    else if (key == "betaAnts")
+        c.betaAnts = v;
+    else if (key == "alpha")
+        c.alpha = v;
+    else if (key == "helloInterval")
+        c.helloInterval = v;
+    else if (key == "proactiveInterval")
+        c.proactiveInterval = v;
+    else if (key == "enableProactive")
+        c.enableProactive = v != 0;
+    else if (key == "enableMultipath")
+        c.enableMultipath = v != 0;
+    else if (key == "enableRepair")
+        c.enableRepair = v != 0;
 }
 
 double getConfig(World& w, const std::string& key) {
@@ -218,10 +226,13 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
         .function("nodeCount", &World::nodeCount)
         .function("pendingCount", &World::pendingCount)
         // As a double: a uint64 would reach JS as a BigInt and poison arithmetic.
-        .function("antTransmissions", optional_override([](const World& w) { return static_cast<double>(w.antTransmissions()); }))
+        .function("antTransmissions", optional_override([](const World& w) {
+                      return static_cast<double>(w.antTransmissions());
+                  }))
         .function("antBytes", &antBytes)
         .function("range", &World::range)
-        .function("channel", optional_override([](const World& w) { return static_cast<int>(w.channel()); }))
+        .function("channel",
+                  optional_override([](const World& w) { return static_cast<int>(w.channel()); }))
         .function("blocksX", &World::urbanBlocksX)
         .function("blocksY", &World::urbanBlocksY)
         .function("streetWidth", &World::streetWidth)

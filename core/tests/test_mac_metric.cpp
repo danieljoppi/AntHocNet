@@ -23,7 +23,7 @@ namespace {
 // must name the chosen next hop, broadcast/destination stamps must pass
 // kInvalidAddress (= "no single outgoing interface, aggregate").
 struct FakeLinkState : ILinkState {
-    int    q    = 0;
+    int q = 0;
     double tmac = 0.0;
     mutable std::vector<NodeAddress> queried;
     int macQueueLength(NodeAddress nextHop) const override {
@@ -39,13 +39,13 @@ struct FakeLinkState : ILinkState {
 // An in-transit forward ant that has just left `src` heading to `dst`.
 AntMessage inTransit(NodeAddress src, NodeAddress dst) {
     AntMessage a;
-    a.type      = AntType::Reactive;
+    a.type = AntType::Reactive;
     a.direction = AntDirection::Up;
-    a.src       = src;
-    a.dst       = dst;
-    a.seqNum    = 1;
+    a.src = src;
+    a.dst = dst;
+    a.seqNum = 1;
     a.timeStart = 0.0;
-    a.visited   = {{src, 0.0}};
+    a.visited = {{src, 0.0}};
     return a;
 }
 

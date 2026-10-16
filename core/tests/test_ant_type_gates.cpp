@@ -55,14 +55,15 @@ void testReactiveGateSuppressesDiscovery() {
         cfg.enableReactive = enabled;
         test::Testbench tb(5, cfg);
         buildLine(tb, 5);
-        tb.runUntil(3.0);              // let hello establish neighbours
+        tb.runUntil(3.0);  // let hello establish neighbours
         tb.sendData(0, 4);
         tb.runUntil(10.0);
 
         if (enabled) {
             CHECK(tb.dataDelivered > 0);  // reactive on: the line must be discovered and delivered
         } else {
-            CHECK(tb.dataDelivered == 0);  // reactive off: no discovery, so nothing can be delivered
+            CHECK(tb.dataDelivered ==
+                  0);  // reactive off: no discovery, so nothing can be delivered
             // The data must be *held*, not silently dropped — the gate removes
             // discovery, not the pending queue.
             CHECK(tb.pending(0, 4) > 0);  // reactive off: the packet must still be queued
@@ -87,10 +88,12 @@ void testLinkFailGateKeepsPruning() {
     tb.linkDown(0, 1);
     tb.runUntil(20.0);  // past allowedHelloLoss * helloInterval
     // Node 0 must have dropped 1 from its table (correctness half kept)...
-    CHECK(tb.node(0).table().bestRegular(2) <= cfg.minPheromone);  // the dead neighbour's routes must still be pruned
+    CHECK(tb.node(0).table().bestRegular(2) <=
+          cfg.minPheromone);  // the dead neighbour's routes must still be pruned
     // ...without emitting a LinkFail note for it.
-    CHECK(tb.node(0).antsSent(core::AntType::LinkFail) == 0);  // linkfail off: no notification may be originated
-    (void) before;
+    CHECK(tb.node(0).antsSent(core::AntType::LinkFail) ==
+          0);  // linkfail off: no notification may be originated
+    (void)before;
 }
 
 void testRepairGateSuppressesRepairAnts() {
@@ -106,13 +109,12 @@ void testRepairGateSuppressesRepairAnts() {
         tb.runUntil(3.0);
         tb.sendData(0, 3);
         tb.runUntil(8.0);
-        tb.linkDown(1, 2);           // break the middle of an active path
+        tb.linkDown(1, 2);  // break the middle of an active path
         tb.sendData(0, 3);
         tb.runUntil(25.0);
 
         const std::uint64_t repairs =
-            tb.node(0).antsSent(core::AntType::Repair) +
-            tb.node(1).antsSent(core::AntType::Repair);
+            tb.node(0).antsSent(core::AntType::Repair) + tb.node(1).antsSent(core::AntType::Repair);
         if (enabled) {
             CHECK(repairs > 0);  // repair on: a broken active path must launch a repair ant
         } else {
@@ -158,7 +160,7 @@ void testDirectedReactiveEngagesAndStillDelivers() {
     std::uint64_t steers = 0;
     for (int i = 0; i < 6; ++i) steers += tb.node(i).directedSteers();
 
-    CHECK(steers > 0);  // the diffusion gradient must steer at least one ant
+    CHECK(steers > 0);            // the diffusion gradient must steer at least one ant
     CHECK(tb.dataDelivered > 0);  // and steering must still reach the destination
 }
 
@@ -166,19 +168,19 @@ void testDirectedReactiveOffLeavesNoSteers() {
     core::Config cfg = baseConfig();
     cfg.enableProactive = true;
     cfg.enableDiffusion = true;
-    cfg.enableDirectedReactive = false;   // the shipped default
+    cfg.enableDirectedReactive = false;  // the shipped default
 
     test::Testbench tb(6, cfg);
     buildLine(tb, 6);
     tb.runUntil(3.0);
-    tb.sendData(4, 5);          // same gradient-establishing shape as above
+    tb.sendData(4, 5);  // same gradient-establishing shape as above
     tb.runUntil(18.0);
     tb.sendData(0, 5);
     tb.runUntil(30.0);
 
     std::uint64_t steers = 0;
     for (int i = 0; i < 6; ++i) steers += tb.node(i).directedSteers();
-    CHECK(steers == 0);  // default off: no ant may be steered
+    CHECK(steers == 0);           // default off: no ant may be steered
     CHECK(tb.dataDelivered > 0);  // default path must still deliver
 }
 

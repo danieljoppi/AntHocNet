@@ -47,8 +47,8 @@ std::uint64_t discoveryCost(int side, int reactiveBudget, bool multipath) {
             for (int dr = -1; dr <= 1; ++dr) {
                 for (int dc = -1; dc <= 1; ++dc) {
                     const int nr = r + dr, nc = c + dc;
-                    if ((dr == 0 && dc == 0) || nr < 0 || nc < 0 ||
-                        nr >= side || nc >= side) continue;
+                    if ((dr == 0 && dc == 0) || nr < 0 || nc < 0 || nr >= side || nc >= side)
+                        continue;
                     tb.linkUp(id(r, c), id(nr, nc));
                 }
             }
@@ -63,7 +63,7 @@ std::uint64_t discoveryCost(int side, int reactiveBudget, bool multipath) {
     for (int i = 0; i < n; ++i) before += tb.node(i).antsSent(core::AntType::Reactive);
 
     tb.sendData(0, n - 1);
-    tb.runUntil(cfg.helloInterval * 3.9);   // discovery takes ms; next hello at 4.0
+    tb.runUntil(cfg.helloInterval * 3.9);  // discovery takes ms; next hello at 4.0
 
     std::uint64_t after = 0;
     for (int i = 0; i < n; ++i) after += tb.node(i).antsSent(core::AntType::Reactive);
@@ -83,17 +83,17 @@ int main() {
     // Since #177 the default budget is -1, so the "default" column *is* the
     // band-only regime; the per-node bound of #174 is shown beside it at 2,
     // the value it had while it was the default.
-    std::printf("8-connected grid, one discovery corner to corner:\n"
-                "%-6s %-7s %14s %14s %14s\n",
-                "side", "nodes", "default", "budget=2", "multipath=off");
+    std::printf(
+        "8-connected grid, one discovery corner to corner:\n"
+        "%-6s %-7s %14s %14s %14s\n",
+        "side", "nodes", "default", "budget=2", "multipath=off");
     for (int side = 3; side <= 7; ++side) {
         const int n = side * side;
-        const std::uint64_t dflt      = discoveryCost(side, def.reactiveMaxBroadcasts, true);
-        const std::uint64_t perNode   = discoveryCost(side, 2, true);
-        const std::uint64_t dedup     = discoveryCost(side, -1, false);
+        const std::uint64_t dflt = discoveryCost(side, def.reactiveMaxBroadcasts, true);
+        const std::uint64_t perNode = discoveryCost(side, 2, true);
+        const std::uint64_t dedup = discoveryCost(side, -1, false);
         std::printf("%-6d %-7d %14llu %14llu %14llu\n", side, n,
-                    static_cast<unsigned long long>(dflt),
-                    static_cast<unsigned long long>(perNode),
+                    static_cast<unsigned long long>(dflt), static_cast<unsigned long long>(perNode),
                     static_cast<unsigned long long>(dedup));
 
         // 8n is generous headroom: the bound in force allows a few broadcasts

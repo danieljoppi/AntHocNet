@@ -19,28 +19,28 @@ namespace anthocnet {
 namespace core {
 
 enum class RouteAction {
-    None,       ///< Nothing to do.
-    Unicast,    ///< Send `message` to `nextHop`.
-    Broadcast,  ///< Link-layer broadcast `message`.
-    Queue,      ///< Hold the data packet pending a route to `nextHop`/dst.
-    Deliver,    ///< Destination reached: hand to the local transport.
-    Drop,       ///< Discard (loop, TTL, no route).
+    None,            ///< Nothing to do.
+    Unicast,         ///< Send `message` to `nextHop`.
+    Broadcast,       ///< Link-layer broadcast `message`.
+    Queue,           ///< Hold the data packet pending a route to `nextHop`/dst.
+    Deliver,         ///< Destination reached: hand to the local transport.
+    Drop,            ///< Discard (loop, TTL, no route).
     DiscardPending,  ///< Local repair timed out ([1] §3.5, D6): discard the
                      ///< data packets queued for destination `nextHop`.
 };
 
 struct RouteDecision {
-    RouteAction action  = RouteAction::None;
+    RouteAction action = RouteAction::None;
     NodeAddress nextHop = kInvalidAddress;
-    bool        hasMessage = false;  ///< Whether `message` is populated.
-    AntMessage  message;             ///< Ant to emit (Unicast/Broadcast).
+    bool hasMessage = false;  ///< Whether `message` is populated.
+    AntMessage message;       ///< Ant to emit (Unicast/Broadcast).
 
     static RouteDecision drop() { return {RouteAction::Drop, kInvalidAddress, false, {}}; }
     static RouteDecision none() { return {RouteAction::None, kInvalidAddress, false, {}}; }
     static RouteDecision deliver() { return {RouteAction::Deliver, kInvalidAddress, false, {}}; }
 };
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_ROUTE_DECISION_H
+#endif  // ANTHOCNET_CORE_ROUTE_DECISION_H

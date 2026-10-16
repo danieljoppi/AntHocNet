@@ -129,21 +129,21 @@ constexpr int64_t kAppStreamOffset = kStreamStride - 10000;
 void TakeStreams(int64_t& next, int64_t base, int64_t used, const char* what) {
     next += used;
     NS_ABORT_MSG_IF(next - base >= kAppStreamOffset,
-                    "RNG stream budget exhausted after assigning " << what
-                    << ": this run has consumed " << (next - base)
-                    << " streams but the application sub-block starts at "
-                    << kAppStreamOffset
-                    << " — blocks would overlap (#352/#517). Raise the stride.");
+                    "RNG stream budget exhausted after assigning "
+                        << what << ": this run has consumed " << (next - base)
+                        << " streams but the application sub-block starts at " << kAppStreamOffset
+                        << " — blocks would overlap (#352/#517). Raise the stride.");
 }
 
 // Advance the application counter and abort if the fixed sub-block is full.
 void TakeAppStreams(int64_t& next, int64_t base, int64_t used, const char* what) {
     next += used;
     NS_ABORT_MSG_IF(next - base >= kStreamStride,
-                    "RNG stream budget exhausted assigning " << what
-                    << ": the application sub-block (kStreamStride - "
-                    "kAppStreamOffset streams) is too small for this flow "
-                    "count (#517).");
+                    "RNG stream budget exhausted assigning "
+                        << what
+                        << ": the application sub-block (kStreamStride - "
+                           "kAppStreamOffset streams) is too small for this flow "
+                           "count (#517).");
 }
 
 // #352: DsdvHelper has no AssignStreams() wrapper in any ns-3 of the 3.36-3.48
@@ -177,7 +177,7 @@ int64_t AssignDsdvStreams(const NodeContainer& nodes, int64_t stream) {
 uint64_t g_refusedOrigin = 0;
 
 class SourceRefusalCounter : public Ipv4RoutingProtocol {
-  public:
+public:
     static TypeId GetTypeId() {
         static TypeId tid = TypeId("ns3::AnthocnetCompareSourceRefusalCounter")
                                 .SetParent<Ipv4RoutingProtocol>()
@@ -185,8 +185,8 @@ class SourceRefusalCounter : public Ipv4RoutingProtocol {
                                 .AddConstructor<SourceRefusalCounter>();
         return tid;
     }
-    Ptr<Ipv4Route> RouteOutput(Ptr<Packet>, const Ipv4Header& header,
-                               Ptr<NetDevice>, Socket::SocketErrno& sockerr) override {
+    Ptr<Ipv4Route> RouteOutput(Ptr<Packet>, const Ipv4Header& header, Ptr<NetDevice>,
+                               Socket::SocketErrno& sockerr) override {
         // Broadcast control never reaches RouteOutput (the UDP socket sends a
         // limited broadcast straight out of the interface), so a unicast
         // refusal here is a data send.
@@ -198,10 +198,8 @@ class SourceRefusalCounter : public Ipv4RoutingProtocol {
         return nullptr;
     }
     bool RouteInput(Ptr<const Packet>, const Ipv4Header&, Ptr<const NetDevice>,
-                    ORACLE_RI_CB(UnicastForwardCallback),
-                    ORACLE_RI_CB(MulticastForwardCallback),
-                    ORACLE_RI_CB(LocalDeliverCallback),
-                    ORACLE_RI_CB(ErrorCallback)) override {
+                    ORACLE_RI_CB(UnicastForwardCallback), ORACLE_RI_CB(MulticastForwardCallback),
+                    ORACLE_RI_CB(LocalDeliverCallback), ORACLE_RI_CB(ErrorCallback)) override {
         return false;
     }
     void NotifyInterfaceUp(uint32_t) override {}
@@ -209,12 +207,11 @@ class SourceRefusalCounter : public Ipv4RoutingProtocol {
     void NotifyAddAddress(uint32_t, Ipv4InterfaceAddress) override {}
     void NotifyRemoveAddress(uint32_t, Ipv4InterfaceAddress) override {}
     void SetIpv4(Ptr<Ipv4>) override {}
-    void PrintRoutingTable(Ptr<OutputStreamWrapper>,
-                           Time::Unit = Time::S) const override {}
+    void PrintRoutingTable(Ptr<OutputStreamWrapper>, Time::Unit = Time::S) const override {}
 };
 
 class SourceRefusalCounterHelper : public Ipv4RoutingHelper {
-  public:
+public:
     SourceRefusalCounterHelper* Copy() const override {
         return new SourceRefusalCounterHelper(*this);
     }
@@ -225,7 +222,7 @@ class SourceRefusalCounterHelper : public Ipv4RoutingHelper {
 
 uint64_t g_controlPkts = 0;
 uint64_t g_controlBytes = 0;
-bool     g_diag = false;
+bool g_diag = false;
 std::map<uint8_t, uint64_t> g_antTx;
 std::map<uint8_t, uint64_t> g_antRx;
 
@@ -331,13 +328,13 @@ void BreakIsl(Ptr<Ipv4> a, uint32_t ifA, Ptr<Ipv4> b, uint32_t ifB) {
 // the load as well as dodge it; the probe's counters and its own PDR/delay
 // (probePdr/probeDelayMs on the "# corridor" line, whole-run) are the cell's
 // verdict, not the background's path.
-double      g_corridorLoadAt = 0.0;  // s; counters gate on this
-Ipv4Address g_corridorDst;           // probe dst canonical (first-interface) addr
-uint32_t    g_ifLoaded = 0;          // src interface entering the east corridor
-uint32_t    g_ifClean = 0;           // src interface entering the west corridor
-uint64_t    g_viaLoaded = 0, g_viaClean = 0, g_viaOther = 0;
-uint64_t    g_probeTx = 0, g_probeRx = 0;
-double      g_probeDelay = 0.0;      // s, summed over delivered probe packets
+double g_corridorLoadAt = 0.0;  // s; counters gate on this
+Ipv4Address g_corridorDst;      // probe dst canonical (first-interface) addr
+uint32_t g_ifLoaded = 0;        // src interface entering the east corridor
+uint32_t g_ifClean = 0;         // src interface entering the west corridor
+uint64_t g_viaLoaded = 0, g_viaClean = 0, g_viaOther = 0;
+uint64_t g_probeTx = 0, g_probeRx = 0;
+double g_probeDelay = 0.0;  // s, summed over delivered probe packets
 
 // #216 mechanism sampler: while the corridor cell is on, print the probe
 // source's regular/virtual pheromone toward each corridor's first hop for the
@@ -347,20 +344,18 @@ double      g_probeDelay = 0.0;      // s, summed over delivered probe packets
 // whether a west (clean-corridor) gradient ever forms at the source, and
 // whether diffusion (the virtual column) feeds it.
 std::string g_pherProto;
-uint32_t    g_pherSeed = 0;
+uint32_t g_pherSeed = 0;
 Ipv4Address g_pherEast, g_pherWest;
 
 void PherSample(Ptr<Node> src) {
-    Ptr<ns3::anthocnet::RoutingProtocol> rp =
-        src->GetObject<ns3::anthocnet::RoutingProtocol>();
+    Ptr<ns3::anthocnet::RoutingProtocol> rp = src->GetObject<ns3::anthocnet::RoutingProtocol>();
     if (!rp) return;  // baselines carry no pheromone table
     double er, ev, wr, wv;
     rp->GetPheromoneDiag(g_corridorDst, g_pherEast, er, ev);
     rp->GetPheromoneDiag(g_corridorDst, g_pherWest, wr, wv);
     std::cout << std::fixed << std::setprecision(4) << "# pher " << g_pherProto
-              << " seed=" << g_pherSeed << " t=" << Simulator::Now().GetSeconds()
-              << " eastR=" << er << " eastV=" << ev << " westR=" << wr
-              << " westV=" << wv << std::endl;
+              << " seed=" << g_pherSeed << " t=" << Simulator::Now().GetSeconds() << " eastR=" << er
+              << " eastV=" << ev << " westR=" << wr << " westV=" << wv << std::endl;
 }
 
 void CorridorTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
@@ -377,25 +372,28 @@ void CorridorTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
     UdpHeader udp;
     if (c->PeekHeader(udp) == 0) return;
     if (udp.GetDestinationPort() != kDataPort) return;  // probe data only
-    if (iface == g_ifLoaded)     ++g_viaLoaded;
-    else if (iface == g_ifClean) ++g_viaClean;
-    else                         ++g_viaOther;
+    if (iface == g_ifLoaded)
+        ++g_viaLoaded;
+    else if (iface == g_ifClean)
+        ++g_viaClean;
+    else
+        ++g_viaOther;
 }
 
 struct Params {
     uint32_t rows;
     uint32_t cols;
-    double   simTime;
-    double   islDelayMs;
+    double simTime;
+    double islDelayMs;
     std::string islRate;
     uint32_t nFlows;
-    double   cbrBps;
-    bool     torus;
-    double   breakAt;   // #260: 0 = no scripted break
-    uint32_t breakA;    // node index of one break endpoint
-    uint32_t breakB;    // node index of the other
-    std::string corridorLoad;   // #216 cell 1: background rate; "" = cell off
-    double   corridorLoadAt;    // s; when the background load switches on
+    double cbrBps;
+    bool torus;
+    double breakAt;            // #260: 0 = no scripted break
+    uint32_t breakA;           // node index of one break endpoint
+    uint32_t breakB;           // node index of the other
+    std::string corridorLoad;  // #216 cell 1: background rate; "" = cell off
+    double corridorLoadAt;     // s; when the background load switches on
     // #432 item 3: ISLs absent from t=0, as normalized (min,max) node-index
     // pairs in --removeLinks order. Empty = the full +Grid.
     std::vector<std::pair<uint32_t, uint32_t>> removed;
@@ -464,15 +462,14 @@ std::vector<std::pair<uint32_t, uint32_t>> GridLinks(const Params& P) {
 std::vector<std::pair<uint32_t, uint32_t>> RemoveIsls(
     std::vector<std::pair<uint32_t, uint32_t>> links, const Params& P) {
     for (const auto& rm : P.removed) {
-        const auto it = std::find_if(
-            links.begin(), links.end(),
-            [&rm](const std::pair<uint32_t, uint32_t>& l) {
+        const auto it =
+            std::find_if(links.begin(), links.end(), [&rm](const std::pair<uint32_t, uint32_t>& l) {
                 return std::min(l.first, l.second) == rm.first &&
                        std::max(l.first, l.second) == rm.second;
             });
-        NS_ABORT_MSG_IF(it == links.end(),
-                        "--removeLinks names no built ISL: nodes " << rm.first
-                        << " and " << rm.second << " are not adjacent");
+        NS_ABORT_MSG_IF(it == links.end(), "--removeLinks names no built ISL: nodes "
+                                               << rm.first << " and " << rm.second
+                                               << " are not adjacent");
         links.erase(it);
     }
     return links;
@@ -488,26 +485,24 @@ std::vector<std::pair<uint32_t, uint32_t>> RemoveIsls(
 /// benchmark cycles in #19/#43 vs #51, in a place where it is nearly free to
 /// foreclose. Runs on every invocation, including the CI smoke on all five ns-3
 /// matrix legs.
-void CheckTopology(const std::vector<std::pair<uint32_t, uint32_t>>& links,
-                   const Params& P) {
+void CheckTopology(const std::vector<std::pair<uint32_t, uint32_t>>& links, const Params& P) {
     const uint32_t n = P.rows * P.cols;
     const uint32_t expected =
         P.rows * AxisLinks(P.cols, P.torus) + P.cols * AxisLinks(P.rows, P.torus);
-    NS_ABORT_MSG_UNLESS(links.size() == expected,
-                        "isl-grid topology: built " << links.size() << " links, expected "
-                        << expected << " for " << P.rows << "x" << P.cols
-                        << " torus=" << P.torus);
+    NS_ABORT_MSG_UNLESS(links.size() == expected, "isl-grid topology: built "
+                                                      << links.size() << " links, expected "
+                                                      << expected << " for " << P.rows << "x"
+                                                      << P.cols << " torus=" << P.torus);
 
     std::set<std::pair<uint32_t, uint32_t>> seen;
     std::vector<uint32_t> degree(n, 0);
     for (const auto& l : links) {
-        NS_ABORT_MSG_IF(l.first == l.second,
-                        "isl-grid topology: self-loop at node " << l.first);
+        NS_ABORT_MSG_IF(l.first == l.second, "isl-grid topology: self-loop at node " << l.first);
         const uint32_t a = std::min(l.first, l.second);
         const uint32_t b = std::max(l.first, l.second);
         NS_ABORT_MSG_UNLESS(seen.insert(std::make_pair(a, b)).second,
-                            "isl-grid topology: duplicate link " << a << "-" << b
-                            << " (a parallel link is not a torus)");
+                            "isl-grid topology: duplicate link "
+                                << a << "-" << b << " (a parallel link is not a torus)");
         degree[l.first]++;
         degree[l.second]++;
     }
@@ -517,9 +512,9 @@ void CheckTopology(const std::vector<std::pair<uint32_t, uint32_t>>& links,
     // regular, so the check applies only where the claim does.
     if (P.torus && P.rows > 2 && P.cols > 2) {
         for (uint32_t i = 0; i < n; ++i) {
-            NS_ABORT_MSG_UNLESS(degree[i] == 4,
-                                "isl-grid topology: node " << i << " has degree "
-                                << degree[i] << ", expected 4 on a full torus");
+            NS_ABORT_MSG_UNLESS(degree[i] == 4, "isl-grid topology: node "
+                                                    << i << " has degree " << degree[i]
+                                                    << ", expected 4 on a full torus");
         }
     }
 }
@@ -576,8 +571,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // and emit a plausible-looking 0 % row. dsdv IS dispatched (the #420
         // multi-ISL gate rejects it earlier, before RunOne), so it never lands
         // here.
-        NS_ABORT_MSG("unknown protocol '" << proto
-                     << "' -- see --PrintHelp's --protocols list");
+        NS_ABORT_MSG("unknown protocol '" << proto << "' -- see --PrintHelp's --protocols list");
     }
     internet.Install(nodes);
     // Pinned for the same reason as in anthocnet-compare: ArpL3Protocol owns a
@@ -591,14 +585,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         TakeStreams(stream, streamBase, ahnHelper.AssignStreams(nodes, stream),
                     "anthocnet routing");
     } else if (proto == "aodv") {
-        TakeStreams(stream, streamBase, aodvHelper.AssignStreams(nodes, stream),
-                    "aodv routing");
+        TakeStreams(stream, streamBase, aodvHelper.AssignStreams(nodes, stream), "aodv routing");
     } else if (proto == "olsr") {
-        TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream),
-                    "olsr routing");
+        TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream), "olsr routing");
     } else if (proto == "dsdv") {
-        TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream),
-                    "dsdv routing");
+        TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream), "dsdv routing");
     } else if (proto == "oracle") {
         // Returns 0 — the oracle draws nothing. Taken through the same path so
         // the zero is measured, not merely unwritten (#352).
@@ -607,8 +598,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else {
         // #448: unreachable once the install chain above aborts, but the two
         // dispatch chains stay structurally parallel by convention — guard both.
-        NS_ABORT_MSG("unknown protocol '" << proto
-                     << "' -- see --PrintHelp's --protocols list");
+        NS_ABORT_MSG("unknown protocol '" << proto << "' -- see --PrintHelp's --protocols list");
     }
 
     // One point-to-point link per ISL, each on its own /30 — the addressing a
@@ -650,11 +640,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             }
         }
         NS_ABORT_MSG_IF(breakIdx < 0, "--breakLink names no built ISL: nodes "
-                        << P.breakA << " and " << P.breakB << " are not adjacent");
+                                          << P.breakA << " and " << P.breakB
+                                          << " are not adjacent");
         std::pair<Ptr<Ipv4>, uint32_t> endA = ifs[breakIdx].Get(0);
         std::pair<Ptr<Ipv4>, uint32_t> endB = ifs[breakIdx].Get(1);
-        Simulator::Schedule(Seconds(P.breakAt), &BreakIsl, endA.first, endA.second,
-                            endB.first, endB.second);
+        Simulator::Schedule(Seconds(P.breakAt), &BreakIsl, endA.first, endA.second, endB.first,
+                            endB.second);
         // Every address of both endpoint satellites: the core may name the lost
         // neighbour by its canonical (first-interface) address or by the
         // link-local one its hellos arrive from, and a removal at either
@@ -671,8 +662,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             // the baselines and tDetect stays -1 (printed as nan).
             Ptr<Ipv4RoutingProtocol> rp = ip ? ip->GetRoutingProtocol() : nullptr;
             if (rp) {
-                rp->TraceConnectWithoutContext(
-                    "RouteChanged", MakeCallback(&FailcellRouteChanged));
+                rp->TraceConnectWithoutContext("RouteChanged", MakeCallback(&FailcellRouteChanged));
             }
         }
     }
@@ -756,8 +746,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         const uint32_t src = i;
         const uint32_t dst = nNodes - 1 - i;
         if (src == dst) continue;
-        OnOffHelper onoff("ns3::UdpSocketFactory",
-                          InetSocketAddress(nodeAddr[dst], kDataPort));
+        OnOffHelper onoff("ns3::UdpSocketFactory", InetSocketAddress(nodeAddr[dst], kDataPort));
         onoff.SetAttribute("DataRate", StringValue(rate.str()));
         onoff.SetAttribute("PacketSize", UintegerValue(64));
         // #521: constant bit rate, like the background load below. ns-3's
@@ -832,8 +821,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     if (P.breakAt > 0.0) {
         g_flowFirstRxAfter.assign(sinks.GetN(), -1.0);
         for (uint32_t f = 0; f < sinks.GetN(); ++f) {
-            sinks.Get(f)->TraceConnectWithoutContext(
-                "Rx", MakeBoundCallback(&FailcellSinkRx, f));
+            sinks.Get(f)->TraceConnectWithoutContext("Rx", MakeBoundCallback(&FailcellSinkRx, f));
         }
     }
 
@@ -861,8 +849,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     double totalDelay = 0.0, totalRxBytes = 0.0, totalJitter = 0.0, binWidth = 0.0;
     uint64_t rxForDelay = 0, jitterSamples = 0;
     std::map<uint32_t, uint64_t> delayBins;
-    Ptr<Ipv4FlowClassifier> classifier =
-        DynamicCast<Ipv4FlowClassifier>(fmHelper.GetClassifier());
+    Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier>(fmHelper.GetClassifier());
     for (auto& kv : monitor->GetFlowStats()) {
         Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(kv.first);
         if (t.destinationPort != kDataPort) continue;  // data flows only
@@ -893,8 +880,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     r.meanDelayMs = rxForDelay ? 1000.0 * totalDelay / rxForDelay : 0.0;
     r.throughputKbps = (totalRxBytes * 8.0 / 1000.0) / P.simTime;
     r.nrl = r.rxPackets ? static_cast<double>(g_controlPkts) / r.rxPackets : 0.0;
-    r.nrlBytes = totalRxBytes > 0.0
-        ? static_cast<double>(g_controlBytes) / totalRxBytes : 0.0;
+    r.nrlBytes = totalRxBytes > 0.0 ? static_cast<double>(g_controlBytes) / totalRxBytes : 0.0;
     r.jitterMs = jitterSamples ? 1000.0 * totalJitter / jitterSamples : 0.0;
     if (rxForDelay && binWidth > 0.0) {
         const uint64_t target = static_cast<uint64_t>(0.99 * rxForDelay);
@@ -914,28 +900,26 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // topology it must read mode=wired approx=0, i.e. exact.
     if (proto == "oracle") {
         NS_ABORT_MSG_IF(g_controlPkts != 0 || g_controlBytes != 0,
-                        "oracle arm transmitted " << g_controlPkts << " control packets ("
-                        << g_controlBytes << " B): the control is supposed to put NOTHING on "
-                        "the wire, so its NRL is no longer an upper-bound reference (#296)");
+                        "oracle arm transmitted "
+                            << g_controlPkts << " control packets (" << g_controlBytes
+                            << " B): the control is supposed to put NOTHING on "
+                               "the wire, so its NRL is no longer an upper-bound reference (#296)");
         Ptr<oracle::Topology> topo = oracleHelper.GetTopology();
-        std::cout << "##ORACLE## " << seed << ' ' << proto
-                  << " mode=" << topo->GetMode()
+        std::cout << "##ORACLE## " << seed << ' ' << proto << " mode=" << topo->GetMode()
                   << " approx=" << (topo->IsApproximate() ? 1 : 0)
-                  << " nodes=" << topo->GetNodeCount()
-                  << " edges=" << topo->GetEdgeCount()
+                  << " nodes=" << topo->GetNodeCount() << " edges=" << topo->GetEdgeCount()
                   << " recomputes=" << topo->GetRecomputeCount()
-                  << " changes=" << topo->GetTopologyChanges()
-                  << " range=" << std::fixed << std::setprecision(1) << topo->GetLinkRange()
-                  << " noRoute=" << topo->GetNoRouteCount()
-                  << " nrl=" << std::fixed << std::setprecision(2) << r.nrl
-                  << "\n";
+                  << " changes=" << topo->GetTopologyChanges() << " range=" << std::fixed
+                  << std::setprecision(1) << topo->GetLinkRange()
+                  << " noRoute=" << topo->GetNoRouteCount() << " nrl=" << std::fixed
+                  << std::setprecision(2) << r.nrl << "\n";
     }
 
     Simulator::Destroy();
     return r;
 }
 
-} // namespace
+}  // namespace
 
 int main(int argc, char* argv[]) {
     uint32_t rows = 6, cols = 6, nFlows = 4, runs = 1;
@@ -953,8 +937,10 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("rows", "Orbital planes (grid rows)", rows);
     cmd.AddValue("cols", "Satellites per plane (grid columns)", cols);
     cmd.AddValue("torus", "Wrap the grid edges (+Grid torus); false = open grid", torus);
-    cmd.AddValue("islDelayMs", "One-way ISL propagation delay (ms). LEO ISLs are "
-                               "3-18 ms depending on separation", islDelayMs);
+    cmd.AddValue("islDelayMs",
+                 "One-way ISL propagation delay (ms). LEO ISLs are "
+                 "3-18 ms depending on separation",
+                 islDelayMs);
     cmd.AddValue("islRate", "ISL data rate", islRate);
     cmd.AddValue("time", "Simulation time (s)", simTime);
     cmd.AddValue("flows", "Number of CBR flows", nFlows);
@@ -969,22 +955,31 @@ int main(int argc, char* argv[]) {
                  protocols);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies)", g_diag);
-    cmd.AddValue("breakLink", "Scripted ISL break (#260): endpoints as r1,c1,r2,c2 "
-                              "(must be adjacent); requires --breakAt", breakLink);
-    cmd.AddValue("breakAt", "Time (s) to cut --breakLink's ISL (both interfaces "
-                            "down via Ipv4::SetDown); 0 = no break", breakAt);
-    cmd.AddValue("corridorLoad", "Asymmetric-congestion cell (#216 cell 1): "
-                                 "background rate (e.g. 12Mbps) offered over one of "
-                                 "two equal-length row corridors; needs a torus with "
-                                 "even cols >= 4; empty = cell off", corridorLoad);
-    cmd.AddValue("corridorLoadAt", "Time (s) the corridor background load starts "
-                                   "(after route discovery settles)", corridorLoadAt);
-    cmd.AddValue("removeLinks", "Static ISL removals (#432 item 3): semicolon-"
-                                "separated r1,c1,r2,c2 endpoint quadruples, each "
-                                "adjacent on the grid (same rules as --breakLink). "
-                                "The named ISLs are never built, making the "
-                                "constellation deliberately irregular; the "
-                                "remaining graph must stay connected",
+    cmd.AddValue("breakLink",
+                 "Scripted ISL break (#260): endpoints as r1,c1,r2,c2 "
+                 "(must be adjacent); requires --breakAt",
+                 breakLink);
+    cmd.AddValue("breakAt",
+                 "Time (s) to cut --breakLink's ISL (both interfaces "
+                 "down via Ipv4::SetDown); 0 = no break",
+                 breakAt);
+    cmd.AddValue("corridorLoad",
+                 "Asymmetric-congestion cell (#216 cell 1): "
+                 "background rate (e.g. 12Mbps) offered over one of "
+                 "two equal-length row corridors; needs a torus with "
+                 "even cols >= 4; empty = cell off",
+                 corridorLoad);
+    cmd.AddValue("corridorLoadAt",
+                 "Time (s) the corridor background load starts "
+                 "(after route discovery settles)",
+                 corridorLoadAt);
+    cmd.AddValue("removeLinks",
+                 "Static ISL removals (#432 item 3): semicolon-"
+                 "separated r1,c1,r2,c2 endpoint quadruples, each "
+                 "adjacent on the grid (same rules as --breakLink). "
+                 "The named ISLs are never built, making the "
+                 "constellation deliberately irregular; the "
+                 "remaining graph must stay connected",
                  removeLinks);
     cmd.Parse(argc, argv);
 
@@ -1018,8 +1013,10 @@ int main(int argc, char* argv[]) {
         const uint32_t dstIdx = cols / 2;  // Idx(0, cols/2)
         for (uint32_t i = 0; i < nFlows && i < rows * cols; ++i) {
             NS_ABORT_MSG_IF(rows * cols - 1 - i == dstIdx,
-                            "--corridorLoad: standard flow " << i << " also targets "
-                            "the probe destination; lower --flows or grow the grid");
+                            "--corridorLoad: standard flow "
+                                << i
+                                << " also targets "
+                                   "the probe destination; lower --flows or grow the grid");
         }
     }
 
@@ -1034,15 +1031,14 @@ int main(int argc, char* argv[]) {
         while (std::getline(bs, tok, ',')) {
             std::stringstream ts(tok);
             uint32_t v = 0;
-            NS_ABORT_MSG_IF(!(ts >> v), "--breakLink expects r1,c1,r2,c2, got '"
-                            << breakLink << "'");
+            NS_ABORT_MSG_IF(!(ts >> v),
+                            "--breakLink expects r1,c1,r2,c2, got '" << breakLink << "'");
             rc.push_back(v);
         }
-        NS_ABORT_MSG_IF(rc.size() != 4, "--breakLink expects r1,c1,r2,c2, got '"
-                        << breakLink << "'");
+        NS_ABORT_MSG_IF(rc.size() != 4,
+                        "--breakLink expects r1,c1,r2,c2, got '" << breakLink << "'");
         NS_ABORT_MSG_IF(rc[0] >= rows || rc[2] >= rows || rc[1] >= cols || rc[3] >= cols,
-                        "--breakLink endpoint outside the " << rows << "x" << cols
-                        << " grid");
+                        "--breakLink endpoint outside the " << rows << "x" << cols << " grid");
         P.breakA = Idx(rc[0], rc[1], P);
         P.breakB = Idx(rc[2], rc[3], P);
         NS_ABORT_MSG_IF(P.breakA == P.breakB, "--breakLink endpoints are the same node");
@@ -1057,8 +1053,7 @@ int main(int argc, char* argv[]) {
         const std::vector<std::pair<uint32_t, uint32_t>> grid = GridLinks(P);
         std::set<std::pair<uint32_t, uint32_t>> built;
         for (const auto& l : grid) {
-            built.insert(std::make_pair(std::min(l.first, l.second),
-                                        std::max(l.first, l.second)));
+            built.insert(std::make_pair(std::min(l.first, l.second), std::max(l.first, l.second)));
         }
         std::stringstream rs(removeLinks);
         std::string quad;
@@ -1070,38 +1065,30 @@ int main(int argc, char* argv[]) {
                 std::stringstream ts(tok);
                 uint32_t v = 0;
                 NS_ABORT_MSG_IF(!(ts >> v),
-                                "--removeLinks expects r1,c1,r2,c2[;...], got '"
-                                << quad << "'");
+                                "--removeLinks expects r1,c1,r2,c2[;...], got '" << quad << "'");
                 rc.push_back(v);
             }
             NS_ABORT_MSG_IF(rc.size() != 4,
-                            "--removeLinks expects r1,c1,r2,c2[;...], got '"
-                            << quad << "'");
-            NS_ABORT_MSG_IF(rc[0] >= rows || rc[2] >= rows
-                            || rc[1] >= cols || rc[3] >= cols,
-                            "--removeLinks endpoint outside the " << rows << "x"
-                            << cols << " grid: '" << quad << "'");
+                            "--removeLinks expects r1,c1,r2,c2[;...], got '" << quad << "'");
+            NS_ABORT_MSG_IF(rc[0] >= rows || rc[2] >= rows || rc[1] >= cols || rc[3] >= cols,
+                            "--removeLinks endpoint outside the " << rows << "x" << cols
+                                                                  << " grid: '" << quad << "'");
             const uint32_t ra = Idx(rc[0], rc[1], P);
             const uint32_t rb = Idx(rc[2], rc[3], P);
             NS_ABORT_MSG_IF(ra == rb,
-                            "--removeLinks endpoints are the same node: '"
-                            << quad << "'");
-            const std::pair<uint32_t, uint32_t> key(std::min(ra, rb),
-                                                    std::max(ra, rb));
-            NS_ABORT_MSG_IF(!built.count(key),
-                            "--removeLinks names no built ISL: (" << rc[0] << ","
-                            << rc[1] << ") and (" << rc[2] << "," << rc[3]
-                            << ") are not adjacent on this grid");
-            NS_ABORT_MSG_IF(std::find(P.removed.begin(), P.removed.end(), key)
-                            != P.removed.end(),
-                            "--removeLinks removes the ISL '" << quad
-                            << "' twice");
+                            "--removeLinks endpoints are the same node: '" << quad << "'");
+            const std::pair<uint32_t, uint32_t> key(std::min(ra, rb), std::max(ra, rb));
+            NS_ABORT_MSG_IF(!built.count(key), "--removeLinks names no built ISL: ("
+                                                   << rc[0] << "," << rc[1] << ") and (" << rc[2]
+                                                   << "," << rc[3]
+                                                   << ") are not adjacent on this grid");
+            NS_ABORT_MSG_IF(std::find(P.removed.begin(), P.removed.end(), key) != P.removed.end(),
+                            "--removeLinks removes the ISL '" << quad << "' twice");
             P.removed.push_back(key);
         }
         // Connectivity of the remainder, checked once up front: BFS over the
         // surviving ISLs must reach every satellite.
-        const std::vector<std::pair<uint32_t, uint32_t>> left =
-            RemoveIsls(grid, P);
+        const std::vector<std::pair<uint32_t, uint32_t>> left = RemoveIsls(grid, P);
         const uint32_t n = rows * cols;
         std::vector<std::vector<uint32_t>> adj(n);
         for (const auto& l : left) {
@@ -1121,10 +1108,10 @@ int main(int argc, char* argv[]) {
                 }
             }
         }
-        NS_ABORT_MSG_IF(reached != n,
-                        "--removeLinks disconnects the constellation: only "
-                        << reached << " of " << n << " satellites reachable — "
-                        "PDR would measure connectivity, not routing (#432)");
+        NS_ABORT_MSG_IF(reached != n, "--removeLinks disconnects the constellation: only "
+                                          << reached << " of " << n
+                                          << " satellites reachable — "
+                                             "PDR would measure connectivity, not routing (#432)");
     }
 
     std::vector<std::string> list;
@@ -1163,12 +1150,13 @@ int main(int argc, char* argv[]) {
         }
         NS_ABORT_MSG_IF(maxDegree > 1,
                         "dsdv cannot run on this ISL topology: ns-3's DSDV assumes one "
-                        "non-loopback interface per node, but this " << rows << "x" << cols
-                        << (torus ? " torus" : " open grid") << " gives a satellite up to "
-                        << maxDegree << " ISLs, each on its own /30 — next hops learned on "
-                        "the other interfaces are unresolvable and DSDV forwards on a null "
-                        "output device (#420). Drop dsdv from --protocols; see "
-                        "docs/benchmarks/satellite/isl-grid.md.");
+                        "non-loopback interface per node, but this "
+                            << rows << "x" << cols << (torus ? " torus" : " open grid")
+                            << " gives a satellite up to " << maxDegree
+                            << " ISLs, each on its own /30 — next hops learned on "
+                               "the other interfaces are unresolvable and DSDV forwards on a null "
+                               "output device (#420). Drop dsdv from --protocols; see "
+                               "docs/benchmarks/satellite/isl-grid.md.");
     }
 
     std::vector<Result> agg(list.size());
@@ -1184,15 +1172,13 @@ int main(int argc, char* argv[]) {
             agg[i].nrl += r.nrl;
             agg[i].nrlBytes += r.nrlBytes;
             agg[i].jitterMs += r.jitterMs;
-            std::cout << std::fixed << std::setprecision(2)
-                      << "##RUN## " << s << ' ' << list[i]
-                      << ' ' << r.pdr << ' ' << r.meanDelayMs
-                      << ' ' << r.delay99Ms << ' ' << r.throughputKbps
-                      << ' ' << r.nrl << ' ' << r.nrlBytes
-                      << ' ' << r.jitterMs << std::endl;
+            std::cout << std::fixed << std::setprecision(2) << "##RUN## " << s << ' ' << list[i]
+                      << ' ' << r.pdr << ' ' << r.meanDelayMs << ' ' << r.delay99Ms << ' '
+                      << r.throughputKbps << ' ' << r.nrl << ' ' << r.nrlBytes << ' ' << r.jitterMs
+                      << std::endl;
             if (g_diag && list[i] == "anthocnet") {
-                std::cout << "# diag " << list[i] << " seed=" << s << " ctrlTx="
-                          << g_controlPkts << " antTx[";
+                std::cout << "# diag " << list[i] << " seed=" << s << " ctrlTx=" << g_controlPkts
+                          << " antTx[";
                 for (const auto& kv : g_antTx) {
                     std::cout << static_cast<int>(kv.first) << '=' << kv.second << ',';
                 }
@@ -1211,31 +1197,29 @@ int main(int argc, char* argv[]) {
                 for (double t : g_flowFirstRxAfter) {
                     if (t >= 0.0) tReconv = std::max(tReconv, t - P.breakAt);
                 }
-                std::cout << std::fixed << std::setprecision(4)
-                          << "# failcell " << list[i] << " seed=" << s
-                          << " breakAt=" << P.breakAt << " tDetect=";
-                if (g_tDetect >= 0.0) std::cout << g_tDetect;
-                else std::cout << "nan";
+                std::cout << std::fixed << std::setprecision(4) << "# failcell " << list[i]
+                          << " seed=" << s << " breakAt=" << P.breakAt << " tDetect=";
+                if (g_tDetect >= 0.0)
+                    std::cout << g_tDetect;
+                else
+                    std::cout << "nan";
                 std::cout << " tReconverge=";
-                if (tReconv >= 0.0) std::cout << tReconv;
-                else std::cout << "nan";
+                if (tReconv >= 0.0)
+                    std::cout << tReconv;
+                else
+                    std::cout << "nan";
                 std::cout << std::endl;
             }
             // #216 cell 1: the corridor split (counted from loadStart onward)
             // plus the probe flow's own whole-run PDR/delay — semantics at the
             // corridor globals in RunOne's file scope.
             if (!corridorLoad.empty()) {
-                const double probePdr =
-                    g_probeTx ? 100.0 * g_probeRx / g_probeTx : 0.0;
-                const double probeDelayMs =
-                    g_probeRx ? 1000.0 * g_probeDelay / g_probeRx : 0.0;
-                std::cout << std::fixed << std::setprecision(2)
-                          << "# corridor " << list[i] << " seed=" << s
-                          << " loadStart=" << corridorLoadAt
-                          << " viaLoaded=" << g_viaLoaded
-                          << " viaClean=" << g_viaClean
-                          << " viaOther=" << g_viaOther
-                          << " probePdr=" << probePdr
+                const double probePdr = g_probeTx ? 100.0 * g_probeRx / g_probeTx : 0.0;
+                const double probeDelayMs = g_probeRx ? 1000.0 * g_probeDelay / g_probeRx : 0.0;
+                std::cout << std::fixed << std::setprecision(2) << "# corridor " << list[i]
+                          << " seed=" << s << " loadStart=" << corridorLoadAt
+                          << " viaLoaded=" << g_viaLoaded << " viaClean=" << g_viaClean
+                          << " viaOther=" << g_viaOther << " probePdr=" << probePdr
                           << " probeDelayMs=" << probeDelayMs << std::endl;
             }
         }
@@ -1254,42 +1238,34 @@ int main(int argc, char* argv[]) {
                      "pdr_pct,delay_ms,delay99_ms,throughput_kbps,nrl,nrl_bytes,"
                      "jitter_ms\n";
         for (const auto& a : agg) {
-            std::cout << std::fixed << a.proto << ',' << runs << ',' << rows << ','
-                      << cols << ',' << nNodes << ',' << a.links << ','
-                      << std::setprecision(1) << islDelayMs << ',' << nFlows << ','
-                      << std::setprecision(1) << a.pdr << ','
-                      << a.meanDelayMs << ',' << a.delay99Ms << ','
-                      << std::setprecision(2) << a.throughputKbps << ','
-                      << std::setprecision(3) << a.nrl << ',' << a.nrlBytes << ','
-                      << std::setprecision(2) << a.jitterMs << '\n';
+            std::cout << std::fixed << a.proto << ',' << runs << ',' << rows << ',' << cols << ','
+                      << nNodes << ',' << a.links << ',' << std::setprecision(1) << islDelayMs
+                      << ',' << nFlows << ',' << std::setprecision(1) << a.pdr << ','
+                      << a.meanDelayMs << ',' << a.delay99Ms << ',' << std::setprecision(2)
+                      << a.throughputKbps << ',' << std::setprecision(3) << a.nrl << ','
+                      << a.nrlBytes << ',' << std::setprecision(2) << a.jitterMs << '\n';
         }
         return 0;
     }
 
     // Print the mean degree alongside the link count (#226): a wrong topology is
     // visible here to anyone reading a run by eye, not only to the assertions.
-    std::cout << std::fixed << std::setprecision(2)
-              << "+Grid " << (torus ? "torus" : "open") << ' ' << rows << 'x' << cols
-              << " = " << nNodes << " satellites, " << agg.front().links
-              << " ISLs (mean degree "
-              << (nNodes ? 2.0 * agg.front().links / nNodes : 0.0) << ")"
-              << " @ " << islDelayMs << " ms " << islRate << ", " << nFlows
-              << " flows, " << simTime << " s, mean of " << runs << " run(s)\n\n";
-    std::cout << std::setw(14) << std::left << "protocol" << std::right
-              << std::setw(8) << "PDR%" << std::setw(11) << "delay(ms)"
-              << std::setw(13) << "delay99(ms)" << std::setw(14) << "thrput(kbps)"
-              << std::setw(8) << "NRL" << std::setw(11) << "NRLbytes"
+    std::cout << std::fixed << std::setprecision(2) << "+Grid " << (torus ? "torus" : "open") << ' '
+              << rows << 'x' << cols << " = " << nNodes << " satellites, " << agg.front().links
+              << " ISLs (mean degree " << (nNodes ? 2.0 * agg.front().links / nNodes : 0.0) << ")"
+              << " @ " << islDelayMs << " ms " << islRate << ", " << nFlows << " flows, " << simTime
+              << " s, mean of " << runs << " run(s)\n\n";
+    std::cout << std::setw(14) << std::left << "protocol" << std::right << std::setw(8) << "PDR%"
+              << std::setw(11) << "delay(ms)" << std::setw(13) << "delay99(ms)" << std::setw(14)
+              << "thrput(kbps)" << std::setw(8) << "NRL" << std::setw(11) << "NRLbytes"
               << std::setw(12) << "jitter(ms)" << '\n';
     std::cout << std::string(91, '-') << '\n';
     for (const auto& a : agg) {
         std::cout << std::fixed << std::setw(14) << std::left << a.proto << std::right
-                  << std::setw(8) << std::setprecision(1) << a.pdr
-                  << std::setw(11) << a.meanDelayMs
-                  << std::setw(13) << a.delay99Ms
-                  << std::setw(14) << std::setprecision(2) << a.throughputKbps
-                  << std::setw(8) << std::setprecision(2) << a.nrl
-                  << std::setw(11) << a.nrlBytes
-                  << std::setw(12) << a.jitterMs << '\n';
+                  << std::setw(8) << std::setprecision(1) << a.pdr << std::setw(11) << a.meanDelayMs
+                  << std::setw(13) << a.delay99Ms << std::setw(14) << std::setprecision(2)
+                  << a.throughputKbps << std::setw(8) << std::setprecision(2) << a.nrl
+                  << std::setw(11) << a.nrlBytes << std::setw(12) << a.jitterMs << '\n';
     }
     return 0;
 }

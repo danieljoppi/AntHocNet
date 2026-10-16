@@ -35,7 +35,7 @@ void manet(World& w) {
     w.setDiskChannel(250);
     Mobility m;
     m.kind = MobilityKind::RandomWaypoint;
-    m.speedMin = 3;   // walking to cycling
+    m.speedMin = 3;  // walking to cycling
     m.speedMax = 15;
     m.pause = 5;
     for (int i = 0; i < 30; ++i) {
@@ -54,8 +54,7 @@ void mesh(World& w) {
     w.setArea(1000, 1000, 0);
     w.setDiskChannel(250);
     for (int i = 0; i < 5; ++i)
-        for (int j = 0; j < 5; ++j)
-        {
+        for (int j = 0; j < 5; ++j) {
             const double dx = (r.uniform() - 0.5) * 60, dy = (r.uniform() - 0.5) * 60;
             w.addNode(140 + i * 180 + dx, 140 + j * 180 + dy, 0);
         }
@@ -157,16 +156,16 @@ void town(World& w) {
     Mobility carry = walk;
     carry.speedMin = 1;
     carry.speedMax = 1.5;
-    carry.pause = 60;   // a laptop sits on a table most of the time
+    carry.pause = 60;  // a laptop sits on a table most of the time
     for (int i = 0; i < 30; ++i) {
         const double x = r.uniform() * 600, y = r.uniform() * 450;
         const int n = w.addNode(x, y, 0);
-        if (i % 4 == 3) {          // desktop PC
+        if (i % 4 == 3) {  // desktop PC
             w.setNodeRange(n, 250);
-        } else if (i % 4 == 2) {   // laptop
+        } else if (i % 4 == 2) {  // laptop
             w.setNodeRange(n, 180);
             w.setMobility(n, carry);
-        } else {                   // phone
+        } else {  // phone
             w.setNodeRange(n, 120);
             w.setMobility(n, walk);
         }
@@ -182,14 +181,22 @@ std::vector<std::string> scenarioNames() {
 }
 
 bool buildScenario(World& w, const std::string& name) {
-    if (name == "line") line(w);
-    else if (name == "manet") manet(w);
-    else if (name == "town") town(w);
-    else if (name == "mesh") mesh(w);
-    else if (name == "fanet") fanet(w);
-    else if (name == "vanet") vanet(w);
-    else if (name == "satellite") satellite(w);
-    else return false;
+    if (name == "line")
+        line(w);
+    else if (name == "manet")
+        manet(w);
+    else if (name == "town")
+        town(w);
+    else if (name == "mesh")
+        mesh(w);
+    else if (name == "fanet")
+        fanet(w);
+    else if (name == "vanet")
+        vanet(w);
+    else if (name == "satellite")
+        satellite(w);
+    else
+        return false;
     return true;
 }
 

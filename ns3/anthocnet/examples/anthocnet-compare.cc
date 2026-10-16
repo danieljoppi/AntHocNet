@@ -73,7 +73,6 @@
 // an LLC/SNAP header before the IP header.
 #include "ns3/llc-snap-header.h"
 
-
 #include "ns3/aodv-module.h"
 // #296: the vendored AOMDV baseline module (contrib/aomdv, installed together
 // with anthocnet by `make install-ns3`).
@@ -143,13 +142,13 @@ public:
                 .AddAttribute("BlocksY", "Blocks along y", UintegerValue(5),
                               MakeUintegerAccessor(&UrbanObstacleShadowingLossModel::m_blocksY),
                               MakeUintegerChecker<uint32_t>(1))
-                .AddAttribute("StreetWidth", "Street width (m); buildings are "
+                .AddAttribute("StreetWidth",
+                              "Street width (m); buildings are "
                               "inset by half of it from each street centre line",
                               DoubleValue(20.0),
                               MakeDoubleAccessor(&UrbanObstacleShadowingLossModel::m_street),
                               MakeDoubleChecker<double>(0.0))
-                .AddAttribute("DbPerCut", "Loss per building wall crossed (dB)",
-                              DoubleValue(9.0),
+                .AddAttribute("DbPerCut", "Loss per building wall crossed (dB)", DoubleValue(9.0),
                               MakeDoubleAccessor(&UrbanObstacleShadowingLossModel::m_dbPerCut),
                               MakeDoubleChecker<double>(0.0))
                 .AddAttribute("DbPerMeter", "Loss per metre inside buildings (dB)",
@@ -184,16 +183,21 @@ public:
                 if (xmin >= xmax || ymin >= ymax) continue;
                 // Liang-Barsky clip of the segment against the building.
                 double t0 = 0.0, t1 = 1.0;
-                const double pq[4][2] = {{-dx, a.x - xmin}, {dx, xmax - a.x},
-                                         {-dy, a.y - ymin}, {dy, ymax - a.y}};
+                const double pq[4][2] = {
+                    {-dx, a.x - xmin}, {dx, xmax - a.x}, {-dy, a.y - ymin}, {dy, ymax - a.y}};
                 bool outside = false;
                 for (const auto& e : pq) {
                     if (e[0] == 0.0) {
-                        if (e[1] < 0.0) { outside = true; break; }
+                        if (e[1] < 0.0) {
+                            outside = true;
+                            break;
+                        }
                     } else {
                         const double t = e[1] / e[0];
-                        if (e[0] < 0.0) t0 = std::max(t0, t);
-                        else t1 = std::min(t1, t);
+                        if (e[0] < 0.0)
+                            t0 = std::max(t0, t);
+                        else
+                            t1 = std::min(t1, t);
                     }
                 }
                 if (outside || t0 >= t1) continue;
@@ -272,11 +276,10 @@ constexpr int64_t kAppStreamOffset = kStreamStride - 10000;
 void TakeStreams(int64_t& next, int64_t base, int64_t used, const char* what) {
     next += used;
     NS_ABORT_MSG_IF(next - base >= kAppStreamOffset,
-                    "RNG stream budget exhausted after assigning " << what
-                    << ": this run has consumed " << (next - base)
-                    << " streams but the application sub-block starts at "
-                    << kAppStreamOffset
-                    << " — blocks would overlap (#352/#431). Raise the stride.");
+                    "RNG stream budget exhausted after assigning "
+                        << what << ": this run has consumed " << (next - base)
+                        << " streams but the application sub-block starts at " << kAppStreamOffset
+                        << " — blocks would overlap (#352/#431). Raise the stride.");
 }
 
 // #352: DsdvHelper is the one baseline helper with no AssignStreams() wrapper —
@@ -315,7 +318,7 @@ int64_t AssignDsdvStreams(const NodeContainer& nodes, int64_t stream) {
 uint64_t g_refusedOrigin = 0;
 
 class SourceRefusalCounter : public Ipv4RoutingProtocol {
-  public:
+public:
     static TypeId GetTypeId() {
         static TypeId tid = TypeId("ns3::AnthocnetCompareSourceRefusalCounter")
                                 .SetParent<Ipv4RoutingProtocol>()
@@ -323,8 +326,8 @@ class SourceRefusalCounter : public Ipv4RoutingProtocol {
                                 .AddConstructor<SourceRefusalCounter>();
         return tid;
     }
-    Ptr<Ipv4Route> RouteOutput(Ptr<Packet>, const Ipv4Header& header,
-                               Ptr<NetDevice>, Socket::SocketErrno& sockerr) override {
+    Ptr<Ipv4Route> RouteOutput(Ptr<Packet>, const Ipv4Header& header, Ptr<NetDevice>,
+                               Socket::SocketErrno& sockerr) override {
         // Broadcast control never reaches RouteOutput (the UDP socket sends a
         // limited broadcast straight out of the interface), so a unicast
         // refusal here is a data send.
@@ -336,10 +339,8 @@ class SourceRefusalCounter : public Ipv4RoutingProtocol {
         return nullptr;
     }
     bool RouteInput(Ptr<const Packet>, const Ipv4Header&, Ptr<const NetDevice>,
-                    ORACLE_RI_CB(UnicastForwardCallback),
-                    ORACLE_RI_CB(MulticastForwardCallback),
-                    ORACLE_RI_CB(LocalDeliverCallback),
-                    ORACLE_RI_CB(ErrorCallback)) override {
+                    ORACLE_RI_CB(UnicastForwardCallback), ORACLE_RI_CB(MulticastForwardCallback),
+                    ORACLE_RI_CB(LocalDeliverCallback), ORACLE_RI_CB(ErrorCallback)) override {
         return false;
     }
     void NotifyInterfaceUp(uint32_t) override {}
@@ -347,12 +348,11 @@ class SourceRefusalCounter : public Ipv4RoutingProtocol {
     void NotifyAddAddress(uint32_t, Ipv4InterfaceAddress) override {}
     void NotifyRemoveAddress(uint32_t, Ipv4InterfaceAddress) override {}
     void SetIpv4(Ptr<Ipv4>) override {}
-    void PrintRoutingTable(Ptr<OutputStreamWrapper>,
-                           Time::Unit = Time::S) const override {}
+    void PrintRoutingTable(Ptr<OutputStreamWrapper>, Time::Unit = Time::S) const override {}
 };
 
 class SourceRefusalCounterHelper : public Ipv4RoutingHelper {
-  public:
+public:
     SourceRefusalCounterHelper* Copy() const override {
         return new SourceRefusalCounterHelper(*this);
     }
@@ -635,8 +635,7 @@ uint64_t g_reinjSkips = 0;  // MacReinjectSkip trace fires (incl. unparsed)
 // MacReinject listener classifies those (unparsedIcmp/unparsedOther), and
 // scenario_check FAILs only when parsed + unparsed != events — the books must
 // close, but a non-data re-injection is a finding, not an error.
-bool ReinjKeyFromUdp(const Ipv4Header& ip, Ptr<const Packet> p,
-                     Address& flow, uint32_t& seq) {
+bool ReinjKeyFromUdp(const Ipv4Header& ip, Ptr<const Packet> p, Address& flow, uint32_t& seq) {
     if (ip.GetProtocol() != 17) return false;
     // #454: a continuation fragment's payload does not start with a UDP
     // header, so there is no (flow, seq) key to parse off it — and data never
@@ -673,8 +672,10 @@ void CountMacReinject(const Ipv4Header& ip, Ptr<const Packet> p) {
     if (!ReinjKeyFromUdp(ip, p, flow, seq)) {
         // Classify, don't drop on the floor: parsed + unparsed must equal
         // events or the books don't close (scenario_check FAILs that).
-        if (ip.GetProtocol() == 1) ++g_reinjUnparsedIcmp;
-        else ++g_reinjUnparsedOther;
+        if (ip.GetProtocol() == 1)
+            ++g_reinjUnparsedIcmp;
+        else
+            ++g_reinjUnparsedOther;
         return;
     }
     ++g_reinjParsed;
@@ -720,16 +721,15 @@ void CountMacReinjectSkip(const Ipv4Header& ip, Ptr<const Packet> p) {
 // DROP_ROUTE_ERROR, TTL exhaustion in DROP_TTL_EXPIRED. A re-injected key that
 // ends undelivered with NO L3 drop died in the medium/MAC — the residue the
 // #377/#388 drop identity is sensitive to.
-void CountReinjL3Drop(const Ipv4Header& ip, Ptr<const Packet> p,
-                      Ipv4L3Protocol::DropReason reason, Ptr<Ipv4>, uint32_t) {
+void CountReinjL3Drop(const Ipv4Header& ip, Ptr<const Packet> p, Ipv4L3Protocol::DropReason reason,
+                      Ptr<Ipv4>, uint32_t) {
     if (g_reinj.empty()) return;
     Address flow;
     uint32_t seq = 0;
     if (!ReinjKeyFromUdp(ip, p, flow, seq)) return;
     const auto it = g_reinj.find(std::make_pair(flow, seq));
     if (it == g_reinj.end()) return;
-    if (reason == Ipv4L3Protocol::DROP_ROUTE_ERROR ||
-        reason == Ipv4L3Protocol::DROP_NO_ROUTE) {
+    if (reason == Ipv4L3Protocol::DROP_ROUTE_ERROR || reason == Ipv4L3Protocol::DROP_NO_ROUTE) {
         ++it->second.l3DropRoute;
     } else if (reason == Ipv4L3Protocol::DROP_TTL_EXPIRED) {
         ++it->second.l3DropTtl;
@@ -745,8 +745,7 @@ void CountDataHopTx(Ptr<const Packet> p, Ptr<Ipv4> ipv4, uint32_t iface) {
             Address flow;
             uint32_t seq = 0;
             if (ReinjKeyFromIp(p, flow, seq)) {
-                g_routePending[flow][seq].push_back(
-                    ipv4->GetObject<Node>()->GetId());
+                g_routePending[flow][seq].push_back(ipv4->GetObject<Node>()->GetId());
             }
         }
         // #386: subsequent hops of re-injected packets. g_reinj only fills on
@@ -849,8 +848,8 @@ void PqTrackTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
     }
 }
 
-void PqTrackDrop(const Ipv4Header& ip, Ptr<const Packet> p,
-                 Ipv4L3Protocol::DropReason, Ptr<Ipv4>, uint32_t) {
+void PqTrackDrop(const Ipv4Header& ip, Ptr<const Packet> p, Ipv4L3Protocol::DropReason, Ptr<Ipv4>,
+                 uint32_t) {
     if (g_pqPending.empty()) return;
     Address flow;
     uint32_t seq = 0;
@@ -867,7 +866,7 @@ void PqTrackDrop(const Ipv4Header& ip, Ptr<const Packet> p,
 // (from the protocol's own item-15 Tx/Rx trace sources) and the time of the
 // first delivered data packet (works for every protocol, from the sink's Rx).
 bool g_diag = false;
-std::map<uint8_t, uint64_t> g_antTx;   // by AntType byte
+std::map<uint8_t, uint64_t> g_antTx;  // by AntType byte
 std::map<uint8_t, uint64_t> g_antRx;
 double g_firstDeliveryS = -1.0;
 // #23: per-flow route-setup latency. g_firstDeliveryS alone is the sim time of
@@ -902,7 +901,7 @@ void DiagSinkRxFlow(uint32_t idx, Ptr<const Packet> p, const Address& a) {
 // settle that empirically before pursuing A2 further (issue #73).
 bool g_qdiag = false;
 uint64_t g_qCount = 0, g_qNonzero = 0, g_qMax = 0;
-double   g_qSum = 0.0;
+double g_qSum = 0.0;
 
 static uint32_t NodeMacBacklog(Ptr<Node> node) {
     uint32_t total = 0;
@@ -976,24 +975,39 @@ double g_airTxS = 0.0, g_airRxS = 0.0, g_airCcaS = 0.0;
 
 void OnPhyState(uint32_t node, Time, Time duration, WifiPhyState state) {
     switch (state) {
-        case WifiPhyState::TX: g_airTxS += duration.GetSeconds(); break;
-        case WifiPhyState::RX: g_airRxS += duration.GetSeconds(); break;
-        case WifiPhyState::CCA_BUSY: g_airCcaS += duration.GetSeconds(); break;
-        default: break;
+        case WifiPhyState::TX:
+            g_airTxS += duration.GetSeconds();
+            break;
+        case WifiPhyState::RX:
+            g_airRxS += duration.GetSeconds();
+            break;
+        case WifiPhyState::CCA_BUSY:
+            g_airCcaS += duration.GetSeconds();
+            break;
+        default:
+            break;
     }
     double currentA;
     switch (state) {
-        case WifiPhyState::TX: currentA = g_energyTxA; break;
-        case WifiPhyState::RX: currentA = g_energyRxA; break;
+        case WifiPhyState::TX:
+            currentA = g_energyTxA;
+            break;
+        case WifiPhyState::RX:
+            currentA = g_energyRxA;
+            break;
         // CcaBusy and Switching draw the idle current — the same tie the
         // helper-based install kept (see the --idleCurrentA note below).
         case WifiPhyState::IDLE:
         case WifiPhyState::CCA_BUSY:
-        case WifiPhyState::SWITCHING: currentA = g_energyIdleA; break;
+        case WifiPhyState::SWITCHING:
+            currentA = g_energyIdleA;
+            break;
         // SLEEP/OFF: unreachable under AdhocWifiMac (no power save, and
         // nothing turns a PHY off any more — that was the leaking event's
         // job). Zero draw if a future config ever reaches them.
-        default: currentA = 0.0; break;
+        default:
+            currentA = 0.0;
+            break;
     }
     double& consumed = g_energyConsumedJ[node];
     consumed += duration.GetSeconds() * currentA * g_energyVoltV;
@@ -1101,15 +1115,15 @@ uint32_t g_hopMax = 0;
 // not a path that was used. The AntHocNet adapter already relies on this same
 // trace across the whole CI matrix (#68), so its availability is established.
 constexpr double kDefaultPathWindowS = 10.0;
-double   g_pathWindowS = kDefaultPathWindowS;
+double g_pathWindowS = kDefaultPathWindowS;
 uint64_t g_divWindow = 0;  // index of the window g_divCur is accumulating
 // (node index, destination IPv4) -> next-hop MAC (packed) -> data packets.
 // Holds the current window only and is flushed into the accumulators when time
 // crosses into the next one, so memory stays bounded however long the run is.
 std::map<std::pair<uint32_t, uint32_t>, std::map<uint64_t, uint32_t>> g_divCur;
 uint64_t g_divCells = 0;   // (node, dest, window) cells that carried data
-double   g_divSum = 0.0;   // sum over cells of distinct used next hops
-double   g_divEntSum = 0.0;  // sum over cells of the split's Shannon entropy
+double g_divSum = 0.0;     // sum over cells of distinct used next hops
+double g_divEntSum = 0.0;  // sum over cells of the split's Shannon entropy
 uint32_t g_divMax = 0;     // most distinct next hops seen in any one cell
 
 void FlushDiversityWindow() {
@@ -1159,8 +1173,7 @@ void CountAckedDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
         return;  // neither UDP nor TCP
     }
     ++g_ackedDataHops;  // #377
-    const uint64_t window =
-        static_cast<uint64_t>(Simulator::Now().GetSeconds() / g_pathWindowS);
+    const uint64_t window = static_cast<uint64_t>(Simulator::Now().GetSeconds() / g_pathWindowS);
     if (window != g_divWindow) {
         FlushDiversityWindow();
         g_divWindow = window;
@@ -1228,8 +1241,7 @@ void CountDeliveredHops(const Ipv4Header& ip, Ptr<const Packet> p, uint32_t) {
     const auto it = pend.find(seq);
     if (it != pend.end() && rx.find(seq) == rx.end()) {
         g_routeHopSum += it->second.size();
-        const auto id = g_routeIds.emplace(
-            it->second, static_cast<uint32_t>(g_routeIds.size()));
+        const auto id = g_routeIds.emplace(it->second, static_cast<uint32_t>(g_routeIds.size()));
         rx[seq] = RouteRx{id.first->second, seqTs.GetTs().GetSeconds()};
     }
     if (it != pend.end()) pend.erase(it);
@@ -1253,40 +1265,40 @@ void SampleQueues(NodeContainer nodes, double period, double until) {
 
 struct Params {
     uint32_t nNodes;
-    double   simTime;
-    double   areaX, areaY;
+    double simTime;
+    double areaX, areaY;
     // #480: vertical extent of the field (m). 0 (the default, and what every
     // published number was measured under) keeps the harness planar and
     // byte-identical; > 0 places and moves nodes in a 3-D box for the FANET
     // family (#300). See the --areaZ refusals in main() for the arms that
     // cannot honour it.
-    double   areaZ;
-    double   speed;
+    double areaZ;
+    double speed;
     // #482: lower bound of the per-node speed draw U(speedMin, speed). 1 m/s
     // (the default, and what every published number used) keeps the draw
     // byte-identical; the FANET preset raises it to 10 m/s.
-    double   speedMin;
-    double   pause;
-    double   range;     // 0 => ns-3 default channel (log-distance)
+    double speedMin;
+    double pause;
+    double range;  // 0 => ns-3 default channel (log-distance)
     uint32_t nFlows;
-    double   cbrBps;
+    double cbrBps;
     // #521: the sources' OnOff off-phase (s). 0 (default) = constant bit rate,
     // as every page documents. Before #521 the harness left ns-3's default of
     // 1 s on / 1 s off, which halved the offered rate; --offTime=1 reproduces
     // that schedule exactly, for paired A/B against the pre-#521 corpus.
-    double   offTime;
-    double   startWindow;
+    double offTime;
+    double startWindow;
     std::string propagation;  // "range" (disk, default) | "tworay" (two-ray ground, #24)
     std::string rateManager;  // "constant2" (paper's 2 Mbit/s radio, default) | ... (#51)
-    int32_t  sink;            // >=0: all flows converge on this node (gateway
+    int32_t sink;             // >=0: all flows converge on this node (gateway
                               // hotspot, #71); <0: default i->(n-1-i) pairing.
     // #209 energy model (see the provenance block above main()).
-    double   energyJ;         // initial energy per node (J)
-    double   voltageV;        // supply voltage (V)
-    double   txCurrentA, rxCurrentA, idleCurrentA;
+    double energyJ;   // initial energy per node (J)
+    double voltageV;  // supply voltage (V)
+    double txCurrentA, rxCurrentA, idleCurrentA;
     // #217: window over which "distinct next hops used for a destination" is
     // counted (s). See the path-diversity block above main().
-    double   pathWindowS;
+    double pathWindowS;
     // #61: mobility model. "rwp" (Random Waypoint, the default and the model
     // every published number was measured under) | "ssrwp" (steady-state RWP,
     // no speed-decay transient) | "gaussmarkov" (smooth correlated tracks).
@@ -1299,14 +1311,17 @@ struct Params {
     // urban channel (--propagation=urban) share one geometry: blocksX x blocksY
     // blocks over areaX x areaY, streets on the block edges.
     uint32_t blocksX, blocksY;
-    double   streetWidth;
+    double streetWidth;
     // #639: replay a scene. --mobility=trace moves the nodes along an ns-2
     // movement trace (Ns2MobilityHelper); --flowsFile replaces the generated
     // i -> n-1-i pairing with explicit flows. --dumpTrace / --dumpFlows write
     // a generated run's movement and flows in those formats, so a run can be
     // replayed -- and the replay checked byte-identical against it.
     std::string traceFile;
-    struct FlowSpec { uint32_t src, dst; double start, stop, bps; };
+    struct FlowSpec {
+        uint32_t src, dst;
+        double start, stop, bps;
+    };
     std::vector<FlowSpec> flowList;
     std::string dumpTrace, dumpFlows;
 };
@@ -1361,8 +1376,8 @@ static void TraceCourseChange(uint32_t i, Ptr<const MobilityModel> m) {
 //   * There is no pause: --pause is inert under this model.
 // All draws come from `u`, one stream pinned by the caller, consumed in node
 // order -- so the schedule is identical in every arm on a seed.
-void BuildManhattanWaypoints(Ptr<WaypointMobilityModel> wp,
-                             Ptr<UniformRandomVariable> u, const Params& P) {
+void BuildManhattanWaypoints(Ptr<WaypointMobilityModel> wp, Ptr<UniformRandomVariable> u,
+                             const Params& P) {
     const double bx = P.areaX / P.blocksX, by = P.areaY / P.blocksY;
     const double hLen = (P.blocksY + 1) * P.areaX;  // all horizontal streets
     const double vLen = (P.blocksX + 1) * P.areaY;  // all vertical streets
@@ -1396,10 +1411,12 @@ void BuildManhattanWaypoints(Ptr<WaypointMobilityModel> wp,
         // Drive to the next intersection along (dx, dy).
         double nx = x, ny = y;
         if (dx != 0) {
-            const double k = dx > 0 ? std::floor((x + eps) / bx) + 1 : std::ceil((x - eps) / bx) - 1;
+            const double k =
+                dx > 0 ? std::floor((x + eps) / bx) + 1 : std::ceil((x - eps) / bx) - 1;
             nx = std::min(std::max(k * bx, 0.0), P.areaX);
         } else {
-            const double k = dy > 0 ? std::floor((y + eps) / by) + 1 : std::ceil((y - eps) / by) - 1;
+            const double k =
+                dy > 0 ? std::floor((y + eps) / by) + 1 : std::ceil((y - eps) / by) - 1;
             ny = std::min(std::max(k * by, 0.0), P.areaY);
         }
         const double dist = std::abs(nx - x) + std::abs(ny - y);
@@ -1435,17 +1452,17 @@ struct Result {
     std::string proto;
     uint64_t txPackets = 0;
     uint64_t rxPackets = 0;
-    double pdr = 0.0;            // %
+    double pdr = 0.0;  // %
     double meanDelayMs = 0.0;
-    double delay99Ms = 0.0;      // 99th pct over *delivered* packets
+    double delay99Ms = 0.0;  // 99th pct over *delivered* packets
     double throughputKbps = 0.0;
-    double nrl = 0.0;            // control pkts / delivered data pkts
-    double nrlBytes = 0.0;       // #132: control bytes / delivered data bytes
+    double nrl = 0.0;       // control pkts / delivered data pkts
+    double nrlBytes = 0.0;  // #132: control bytes / delivered data bytes
     // #57 paper-parity / survivorship-safe QoS metrics:
-    double jitterMs = 0.0;       // mean delay jitter (the paper's QoS metric)
-    double jitterEq51Ms = 0.0;   // #89: the thesis's eq 5.1, a different quantity
-    double dOff50Ms = -1.0;      // delay at the 50th pct of *offered* (sent)
-    double dOff90Ms = -1.0;      // packets, undelivered = inf; -1 encodes inf
+    double jitterMs = 0.0;      // mean delay jitter (the paper's QoS metric)
+    double jitterEq51Ms = 0.0;  // #89: the thesis's eq 5.1, a different quantity
+    double dOff50Ms = -1.0;     // delay at the 50th pct of *offered* (sent)
+    double dOff90Ms = -1.0;     // packets, undelivered = inf; -1 encodes inf
     // #308: the delivered-delay histogram this run's percentiles were read
     // from, retained so a *matched-delivery* percentile can be taken after all
     // protocols have run. delay99 compares tails over different-sized
@@ -1486,7 +1503,7 @@ struct Result {
     double resMinJ = 0.0;        // residual energy across nodes: min / mean /
     double resMeanJ = 0.0;       // sample stddev (J) — the fairness spread
     double resSdJ = 0.0;
-    double firstDeathS = -1.0;   // -1 = no node died (see OnPhyState)
+    double firstDeathS = -1.0;  // -1 = no node died (see OnPhyState)
     // #212 packet reordering (definitions in docs/benchmarks/metrics.md):
     double reorderRatio = 0.0;     // RFC 4737 Type-P-Reordered fraction, [0,1]
     double reorderRatioMax = 0.0;  // worst single flow's ratio, [0,1]
@@ -1498,32 +1515,32 @@ struct Result {
     // applicable to this protocol** (emitted as a blank field, never a 0, so
     // "this protocol has no such cause" stays distinguishable from "measured
     // zero"); the three AntHocNet-only causes use it for every other arm.
-    double dropRoutePct = 0.0;   // L3 route failure (no route / route error)
-    double dropQueuePct = 0.0;   // interface/qdisc queue overflow; on the
-                                 // dsdv/aodv arms also the protocol's own
-                                 // pending-queue losses (#229, PqTrackTx)
-    double dropMacPct   = 0.0;   // MAC retry limit, terminal (not re-injected)
-    double dropChanPct  = 0.0;   // sent on the medium, never received
-    double dropTtlPct   = 0.0;   // IP TTL exhausted
-    double dropSetupPct  = -1.0; // AntHocNet: pending-queue loss, never routed
-    double dropReconvPct = -1.0; // AntHocNet: pending-queue loss, route lost
-    double dropRepairPct = -1.0; // AntHocNet: DiscardPending after a failed repair
-    double dropOtherPct  = 0.0;  // L3 drops in none of the buckets above (diag)
+    double dropRoutePct = 0.0;    // L3 route failure (no route / route error)
+    double dropQueuePct = 0.0;    // interface/qdisc queue overflow; on the
+                                  // dsdv/aodv arms also the protocol's own
+                                  // pending-queue losses (#229, PqTrackTx)
+    double dropMacPct = 0.0;      // MAC retry limit, terminal (not re-injected)
+    double dropChanPct = 0.0;     // sent on the medium, never received
+    double dropTtlPct = 0.0;      // IP TTL exhausted
+    double dropSetupPct = -1.0;   // AntHocNet: pending-queue loss, never routed
+    double dropReconvPct = -1.0;  // AntHocNet: pending-queue loss, route lost
+    double dropRepairPct = -1.0;  // AntHocNet: DiscardPending after a failed repair
+    double dropOtherPct = 0.0;    // L3 drops in none of the buckets above (diag)
     // #217 route quality. hops* are 0 when nothing was delivered and div*/
     // entropy are 0 when no data hop was ever acked, matching the `nrl` and
     // `energy_per_pkt_j` convention for an empty denominator.
-    double hopsMean = 0.0;       // mean hop count over delivered data packets
-    double hopsMax = 0.0;        // max hop count over delivered data packets
-    double divUsed = 0.0;        // mean distinct *used* next hops per cell
-    double divMax = 0.0;         // max distinct used next hops in any one cell
-    double divEntropyBits = 0.0; // mean Shannon entropy (bits) of the split
-    double jain = 0.0;           // Jain's index over per-flow delivered packets
+    double hopsMean = 0.0;        // mean hop count over delivered data packets
+    double hopsMax = 0.0;         // max hop count over delivered data packets
+    double divUsed = 0.0;         // mean distinct *used* next hops per cell
+    double divMax = 0.0;          // max distinct used next hops in any one cell
+    double divEntropyBits = 0.0;  // mean Shannon entropy (bits) of the split
+    double jain = 0.0;            // Jain's index over per-flow delivered packets
     // #294 item 4 route stability; ##ROUTE## is emitted only when routeValid
     // (UDP arms). setup* are -1 when no flow delivered or in converge mode,
     // where flows share one sink and there is no per-flow first delivery.
     bool routeValid = false;
-    double setupMedS = -1.0;     // median per-flow first delivery - app start
-    double setupMaxS = -1.0;     // worst flow's setup latency
+    double setupMedS = -1.0;  // median per-flow first delivery - app start
+    double setupMaxS = -1.0;  // worst flow's setup latency
     uint32_t flowsNoDelivery = 0;
     double pathChg = 0.0;        // fraction of consecutive delivered pairs whose path differs
     double pathLifeMedS = -1.0;  // median completed path lifetime (s); -1 = none completed
@@ -1553,24 +1570,24 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_firstDeathS = -1.0;
     g_airTxS = g_airRxS = g_airCcaS = 0.0;  // #308 phase 2 step 3
     g_rxSeq.clear();
-    g_rxArrival.clear();  // #89
-    g_rxDelayBySeq.clear();  // #308
-    g_rxHopsBySeq.clear();   // #308 phase 2
-    g_rxCount.clear();       // #386
+    g_rxArrival.clear();               // #89
+    g_rxDelayBySeq.clear();            // #308
+    g_rxHopsBySeq.clear();             // #308 phase 2
+    g_rxCount.clear();                 // #386
     g_routeOn = P.transport != "tcp";  // #294 item 4
     g_routePending.clear();
     g_routeIds.clear();
     g_routeRx.clear();
     g_routeHopSum = 0;
-    g_reinj.clear();         // #386
+    g_reinj.clear();                                         // #386
     g_reinjEvents = g_reinjParsed = g_reinjOfDelivered = 0;  // #386
     g_reinjUnparsedIcmp = g_reinjUnparsedOther = 0;          // #386
-    g_reinjSkip.clear();  // #402
-    g_reinjSkips = 0;     // #402
-    g_pqPending.clear();  // #229
-    g_pqEcbDrops = 0;     // #229
-    g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;  // #215
-    g_ackedDataHops = 0;  // #377
+    g_reinjSkip.clear();                                     // #402
+    g_reinjSkips = 0;                                        // #402
+    g_pqPending.clear();                                     // #229
+    g_pqEcbDrops = 0;                                        // #229
+    g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;          // #215
+    g_ackedDataHops = 0;                                     // #377
     // #217
     g_hopSum = g_hopCount = 0;
     g_hopMax = 0;
@@ -1593,12 +1610,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     if (P.rateManager == "arf") {
         wifi.SetRemoteStationManager("ns3::ArfWifiManager");
     } else if (P.rateManager.rfind("constant", 0) == 0) {
-        std::string rate = P.rateManager == "constant1"  ? "DsssRate1Mbps"
-                         : P.rateManager == "constant2"  ? "DsssRate2Mbps"
-                         : P.rateManager == "constant5"  ? "DsssRate5_5Mbps"
-                                                         : "DsssRate11Mbps";
-        wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
-                                     "DataMode", StringValue(rate),
+        std::string rate = P.rateManager == "constant1"   ? "DsssRate1Mbps"
+                           : P.rateManager == "constant2" ? "DsssRate2Mbps"
+                           : P.rateManager == "constant5" ? "DsssRate5_5Mbps"
+                                                          : "DsssRate11Mbps";
+        wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager", "DataMode", StringValue(rate),
                                      "ControlMode", StringValue("DsssRate1Mbps"));
     }  // "ideal": keep the WifiHelper default
     YansWifiPhyHelper phy;
@@ -1614,9 +1630,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // no links, the classic ns-3 footgun). Effective range is then governed
         // by tx power vs receiver sensitivity, not a hard cap.
         channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
-        channel.AddPropagationLoss("ns3::TwoRayGroundPropagationLossModel",
-                                   "Frequency", DoubleValue(2.4e9),
-                                   "HeightAboveZ", DoubleValue(1.5));
+        channel.AddPropagationLoss("ns3::TwoRayGroundPropagationLossModel", "Frequency",
+                                   DoubleValue(2.4e9), "HeightAboveZ", DoubleValue(1.5));
     } else if (P.propagation == "nakagami") {
         // #60: the fading arm. Two-ray path loss with Nakagami-m fast fading
         // stacked on top -- YansWifiChannelHelper chains loss models, and
@@ -1640,9 +1655,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // are pinned by the existing channel.AssignStreams call below, which
         // was written for precisely this case.
         channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
-        channel.AddPropagationLoss("ns3::TwoRayGroundPropagationLossModel",
-                                   "Frequency", DoubleValue(2.4e9),
-                                   "HeightAboveZ", DoubleValue(1.5));
+        channel.AddPropagationLoss("ns3::TwoRayGroundPropagationLossModel", "Frequency",
+                                   DoubleValue(2.4e9), "HeightAboveZ", DoubleValue(1.5));
         channel.AddPropagationLoss("ns3::NakagamiPropagationLossModel");
     } else if (P.propagation == "urban") {
         // #488: the VANET channel. The same two-ray path loss as the tworay
@@ -1652,21 +1666,18 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // --mobility=manhattan (main() refuses otherwise): vehicles must drive
         // the streets the buildings line, or they would sit inside them.
         channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
-        channel.AddPropagationLoss("ns3::TwoRayGroundPropagationLossModel",
-                                   "Frequency", DoubleValue(2.4e9),
-                                   "HeightAboveZ", DoubleValue(1.5));
-        channel.AddPropagationLoss("ns3::UrbanObstacleShadowingLossModel",
-                                   "AreaX", DoubleValue(P.areaX),
-                                   "AreaY", DoubleValue(P.areaY),
-                                   "BlocksX", UintegerValue(P.blocksX),
-                                   "BlocksY", UintegerValue(P.blocksY),
+        channel.AddPropagationLoss("ns3::TwoRayGroundPropagationLossModel", "Frequency",
+                                   DoubleValue(2.4e9), "HeightAboveZ", DoubleValue(1.5));
+        channel.AddPropagationLoss("ns3::UrbanObstacleShadowingLossModel", "AreaX",
+                                   DoubleValue(P.areaX), "AreaY", DoubleValue(P.areaY), "BlocksX",
+                                   UintegerValue(P.blocksX), "BlocksY", UintegerValue(P.blocksY),
                                    "StreetWidth", DoubleValue(P.streetWidth));
     } else if (P.range > 0.0) {
         // A clean disk model at the paper's transmission range (reproducible
         // connectivity, independent of tx-power/sensitivity defaults).
         channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
-        channel.AddPropagationLoss("ns3::RangePropagationLossModel",
-                                   "MaxRange", DoubleValue(P.range));
+        channel.AddPropagationLoss("ns3::RangePropagationLossModel", "MaxRange",
+                                   DoubleValue(P.range));
     } else {
         channel = YansWifiChannelHelper::Default();
     }
@@ -1680,8 +1691,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // fading model (Nakagami, ...) cannot reintroduce the position dependence.
     // WifiHelper::AssignStreams covers the PHY's reception-error variable, the
     // MAC/Txop backoff and the rate manager in one call.
-    TakeStreams(stream, streamBase, channel.AssignStreams(wifiChannel, stream),
-                "wifi channel");
+    TakeStreams(stream, streamBase, channel.AssignStreams(wifiChannel, stream), "wifi channel");
     TakeStreams(stream, streamBase, wifi.AssignStreams(devices, stream), "wifi");
 
     // --- energy accounting (#209, leak-free per #256) ------------------------
@@ -1732,8 +1742,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         Ptr<UniformRandomVariable> uz = CreateObject<UniformRandomVariable>();
         uz->SetAttribute("Min", DoubleValue(0.0));
         uz->SetAttribute("Max", DoubleValue(P.areaZ));
-        Ptr<RandomBoxPositionAllocator> box =
-            CreateObject<RandomBoxPositionAllocator>();
+        Ptr<RandomBoxPositionAllocator> box = CreateObject<RandomBoxPositionAllocator>();
         box->SetX(ux);
         box->SetY(uy);
         box->SetZ(uz);
@@ -1763,15 +1772,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // stationary position distribution is not uniform, so it must place
         // nodes itself. MinSpeed must be > 0 — the stationary distribution
         // divides by speed — which the 1.0 m/s floor above already satisfies.
-        mobility.SetMobilityModel("ns3::SteadyStateRandomWaypointMobilityModel",
-                                  "MinSpeed", DoubleValue(P.speedMin),
-                                  "MaxSpeed", DoubleValue(P.speed),
-                                  "MinPause", DoubleValue(P.pause),
-                                  "MaxPause", DoubleValue(P.pause),
-                                  "MinX", DoubleValue(0.0),
-                                  "MaxX", DoubleValue(P.areaX),
-                                  "MinY", DoubleValue(0.0),
-                                  "MaxY", DoubleValue(P.areaY));
+        mobility.SetMobilityModel(
+            "ns3::SteadyStateRandomWaypointMobilityModel", "MinSpeed", DoubleValue(P.speedMin),
+            "MaxSpeed", DoubleValue(P.speed), "MinPause", DoubleValue(P.pause), "MaxPause",
+            DoubleValue(P.pause), "MinX", DoubleValue(0.0), "MaxX", DoubleValue(P.areaX), "MinY",
+            DoubleValue(0.0), "MaxY", DoubleValue(P.areaY));
     } else if (P.mobility == "gaussmarkov") {
         // Gauss-Markov: velocity and direction are temporally correlated
         // (alpha = 0.85), so tracks are smooth rather than the sharp
@@ -1800,17 +1805,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // scenario_check.py's preflight refuses the combination rather than
         // letting a sweep believe it varied something.
         mobility.SetMobilityModel(
-            "ns3::GaussMarkovMobilityModel",
-            "Bounds", BoxValue(Box(0.0, P.areaX, 0.0, P.areaY, 0.0, P.areaZ)),
-            "TimeStep", TimeValue(Seconds(1.0)),
-            "Alpha", DoubleValue(0.85),
-            "MeanVelocity", StringValue(speedStr.str()),
-            "MeanDirection",
-            StringValue("ns3::UniformRandomVariable[Min=0.0|Max=6.283185307]"),
-            "MeanPitch",
-            StringValue(P.areaZ > 0.0
-                            ? "ns3::UniformRandomVariable[Min=-0.05|Max=0.05]"
-                            : "ns3::ConstantRandomVariable[Constant=0.0]"),
+            "ns3::GaussMarkovMobilityModel", "Bounds",
+            BoxValue(Box(0.0, P.areaX, 0.0, P.areaY, 0.0, P.areaZ)), "TimeStep",
+            TimeValue(Seconds(1.0)), "Alpha", DoubleValue(0.85), "MeanVelocity",
+            StringValue(speedStr.str()), "MeanDirection",
+            StringValue("ns3::UniformRandomVariable[Min=0.0|Max=6.283185307]"), "MeanPitch",
+            StringValue(P.areaZ > 0.0 ? "ns3::UniformRandomVariable[Min=-0.05|Max=0.05]"
+                                      : "ns3::ConstantRandomVariable[Constant=0.0]"),
             "NormalVelocity",
             StringValue("ns3::NormalRandomVariable[Mean=0.0|Variance=1.0|Bound=1.0]"),
             "NormalDirection",
@@ -1835,17 +1836,15 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else {
         // With --areaZ > 0 the waypoints come from the 3-D box allocator above,
         // so RWP legs are straight 3-D segments with no further change (#480).
-        mobility.SetMobilityModel("ns3::RandomWaypointMobilityModel",
-                                  "Speed", StringValue(speedStr.str()),
-                                  "Pause", StringValue(pauseStr.str()),
+        mobility.SetMobilityModel("ns3::RandomWaypointMobilityModel", "Speed",
+                                  StringValue(speedStr.str()), "Pause", StringValue(pauseStr.str()),
                                   "PositionAllocator", PointerValue(pos));
     }
     // #352: the initial positions are drawn during Install(), so the allocator
     // has to be pinned BEFORE it — MobilityHelper::AssignStreams can only reach
     // the models (and, through RandomWaypoint, the allocator's later waypoint
     // draws) once they exist.
-    TakeStreams(stream, streamBase, pos->AssignStreams(stream),
-                "position allocator");
+    TakeStreams(stream, streamBase, pos->AssignStreams(stream), "position allocator");
     if (P.mobility == "trace") {
         // #639: reserve exactly the streams the RWP default would take, so
         // every later stream (routing, MAC, applications) keeps the index it
@@ -1864,8 +1863,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         ns2.Install(nodes.Begin(), nodes.End());  // $node_(i) = the i-th node here
     } else {
         mobility.Install(nodes);
-        TakeStreams(stream, streamBase, mobility.AssignStreams(nodes, stream),
-                    "mobility");
+        TakeStreams(stream, streamBase, mobility.AssignStreams(nodes, stream), "mobility");
     }
     // #639: --dumpTrace records the first run's movement (see TraceDump).
     g_traceDump.active = !P.dumpTrace.empty() && !g_traceDump.done;
@@ -1926,8 +1924,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         auto geom = [nodes, proto, seed]() {
             double zMin = 0.0, zMax = 0.0;
             for (uint32_t i = 0; i < nodes.GetN(); ++i) {
-                const double z =
-                    nodes.Get(i)->GetObject<MobilityModel>()->GetPosition().z;
+                const double z = nodes.Get(i)->GetObject<MobilityModel>()->GetPosition().z;
                 if (i == 0 || z < zMin) zMin = z;
                 if (i == 0 || z > zMax) zMax = z;
             }
@@ -1990,8 +1987,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else {
         // #448: an unknown arm must abort here, not run on the bare IP stack
         // and emit a plausible-looking 0 % row.
-        NS_ABORT_MSG("unknown protocol '" << proto
-                     << "' -- see --PrintHelp's --protocols list");
+        NS_ABORT_MSG("unknown protocol '" << proto << "' -- see --PrintHelp's --protocols list");
     }
     internet.Install(nodes);
     // #296: gpsr's data packets carry a position header, injected by
@@ -2017,20 +2013,15 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         TakeStreams(stream, streamBase, ahnHelper.AssignStreams(nodes, stream),
                     "anthocnet routing");
     } else if (proto == "aodv") {
-        TakeStreams(stream, streamBase, aodvHelper.AssignStreams(nodes, stream),
-                    "aodv routing");
+        TakeStreams(stream, streamBase, aodvHelper.AssignStreams(nodes, stream), "aodv routing");
     } else if (proto == "aomdv") {
-        TakeStreams(stream, streamBase, aomdvHelper.AssignStreams(nodes, stream),
-                    "aomdv routing");
+        TakeStreams(stream, streamBase, aomdvHelper.AssignStreams(nodes, stream), "aomdv routing");
     } else if (proto == "olsr") {
-        TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream),
-                    "olsr routing");
+        TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream), "olsr routing");
     } else if (proto == "dsdv") {
-        TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream),
-                    "dsdv routing");
+        TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream), "dsdv routing");
     } else if (proto == "gpsr") {
-        TakeStreams(stream, streamBase, gpsrHelper.AssignStreams(nodes, stream),
-                    "gpsr routing");
+        TakeStreams(stream, streamBase, gpsrHelper.AssignStreams(nodes, stream), "gpsr routing");
     } else if (proto == "oracle") {
         // Pinned through the same path as every other arm even though the
         // oracle draws nothing: the count it returns is 0, and taking it here
@@ -2040,8 +2031,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else {
         // #448: unreachable once the install chain above aborts, but the two
         // dispatch chains stay structurally parallel by convention — guard both.
-        NS_ABORT_MSG("unknown protocol '" << proto
-                     << "' -- see --PrintHelp's --protocols list");
+        NS_ABORT_MSG("unknown protocol '" << proto << "' -- see --PrintHelp's --protocols list");
     }
 
     // Count routing-control transmissions uniformly at the IP layer. Connect to
@@ -2057,8 +2047,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             l3->TraceConnectWithoutContext("Tx", MakeCallback(&CountDataHopTx));
             l3->TraceConnectWithoutContext("Rx", MakeCallback(&CountDataHopRx));
             // #217 path length: TTL of every locally delivered data packet.
-            l3->TraceConnectWithoutContext("LocalDeliver",
-                                           MakeCallback(&CountDeliveredHops));
+            l3->TraceConnectWithoutContext("LocalDeliver", MakeCallback(&CountDeliveredHops));
         }
     }
     // #386: re-injection identity & fate. anthocnet + UDP only: the baselines
@@ -2072,20 +2061,18 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
             Ptr<Ipv4RoutingProtocol> rp = ip ? ip->GetRoutingProtocol() : nullptr;
             if (rp) {
-                rp->TraceConnectWithoutContext("MacReinject",
-                                               MakeCallback(&CountMacReinject));
+                rp->TraceConnectWithoutContext("MacReinject", MakeCallback(&CountMacReinject));
                 // #402: the capped-skip trace, same gate. Fires only when
                 // MaxReinjectPerPacket != 0, so every field it feeds is a
                 // measured zero on uncapped arms.
-                rp->TraceConnectWithoutContext(
-                    "MacReinjectSkip", MakeCallback(&CountMacReinjectSkip));
+                rp->TraceConnectWithoutContext("MacReinjectSkip",
+                                               MakeCallback(&CountMacReinjectSkip));
             }
             // l3Drop stage — isolated connect, cuttable with CountReinjL3Drop
             // if a CI ns-3 version rejects the "Drop" signature (#386).
             Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
             if (l3) {
-                l3->TraceConnectWithoutContext("Drop",
-                                               MakeCallback(&CountReinjL3Drop));
+                l3->TraceConnectWithoutContext("Drop", MakeCallback(&CountReinjL3Drop));
             }
         }
     }
@@ -2097,8 +2084,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
             if (l3) {
                 l3->TraceConnectWithoutContext("Tx", MakeCallback(&PqTrackTx));
-                l3->TraceConnectWithoutContext("Drop",
-                                               MakeCallback(&PqTrackDrop));
+                l3->TraceConnectWithoutContext("Drop", MakeCallback(&PqTrackDrop));
             }
         }
     }
@@ -2115,10 +2101,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // scenario_check.py FAILs whenever PDR is non-zero rather than letting a
         // silently-missing trace pass as "no multipath".
         if (wmac) {
-            wmac->TraceConnectWithoutContext("DroppedMpdu",
-                                             MakeCallback(&CountMacDataDrop));
-            wmac->TraceConnectWithoutContext(
-                "AckedMpdu", MakeBoundCallback(&CountAckedDataHop, i));
+            wmac->TraceConnectWithoutContext("DroppedMpdu", MakeCallback(&CountMacDataDrop));
+            wmac->TraceConnectWithoutContext("AckedMpdu", MakeBoundCallback(&CountAckedDataHop, i));
         }
     }
 
@@ -2175,7 +2159,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 onoff.SetAttribute("DataRate", StringValue(fr.str()));
                 onoff.SetAttribute("PacketSize", UintegerValue(64));
                 onoff.SetAttribute("EnableSeqTsSizeHeader", BooleanValue(true));
-                onoff.SetAttribute("OnTime", StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+                onoff.SetAttribute("OnTime",
+                                   StringValue("ns3::ConstantRandomVariable[Constant=1]"));
                 std::ostringstream off;
                 off << "ns3::ConstantRandomVariable[Constant=" << P.offTime << ']';
                 onoff.SetAttribute("OffTime", StringValue(off.str()));
@@ -2185,9 +2170,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             }
             g_flowStart.push_back(f.start);
             if (sinkAt.insert(f.dst).second) {
-                PacketSinkHelper sink(P.transport == "tcp" ? "ns3::TcpSocketFactory"
-                                                           : "ns3::UdpSocketFactory",
-                                      InetSocketAddress(Ipv4Address::GetAny(), port));
+                PacketSinkHelper sink(
+                    P.transport == "tcp" ? "ns3::TcpSocketFactory" : "ns3::UdpSocketFactory",
+                    InetSocketAddress(Ipv4Address::GetAny(), port));
                 sinks.Add(sink.Install(nodes.Get(f.dst)));
             }
         }
@@ -2227,8 +2212,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             }
             continue;
         }
-        OnOffHelper onoff("ns3::UdpSocketFactory",
-                          InetSocketAddress(ifs.GetAddress(dst), port));
+        OnOffHelper onoff("ns3::UdpSocketFactory", InetSocketAddress(ifs.GetAddress(dst), port));
         onoff.SetAttribute("DataRate", StringValue(rate.str()));
         onoff.SetAttribute("PacketSize", UintegerValue(64));
         // #212: carry a per-flow application sequence number so reordering can
@@ -2267,16 +2251,17 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         }
     }
     if (converge && P.sink >= 0 && static_cast<uint32_t>(P.sink) < P.nNodes) {
-        PacketSinkHelper sink(P.transport == "tcp" ? "ns3::TcpSocketFactory"
-                                                   : "ns3::UdpSocketFactory",
-                              InetSocketAddress(Ipv4Address::GetAny(), port));
+        PacketSinkHelper sink(
+            P.transport == "tcp" ? "ns3::TcpSocketFactory" : "ns3::UdpSocketFactory",
+            InetSocketAddress(Ipv4Address::GetAny(), port));
         sinks.Add(sink.Install(nodes.Get(P.sink)));
     }
     sinks.Start(Seconds(0.0));
     // #639: --dumpFlows writes the generated flows once, in --flowsFile format.
     if (g_traceDump.active && !P.dumpFlows.empty() && P.flowList.empty()) {
         std::ofstream ff(P.dumpFlows);
-        ff << std::setprecision(17) << "# src dst start stop cbrBps (anthocnet-compare --dumpFlows, #639)" << '\n';
+        ff << std::setprecision(17)
+           << "# src dst start stop cbrBps (anthocnet-compare --dumpFlows, #639)" << '\n';
         for (const Params::FlowSpec& f : dumped) {
             ff << f.src << ' ' << f.dst << ' ' << f.start << ' ' << f.stop << ' ' << f.bps << '\n';
         }
@@ -2334,8 +2319,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_flowFirstRx.assign(g_flowStart.size(), -1.0);
     if (perFlowSinks) {
         for (uint32_t i = 0; i < sinks.GetN(); ++i) {
-            sinks.Get(i)->TraceConnectWithoutContext(
-                "Rx", MakeBoundCallback(&DiagSinkRxFlow, i));
+            sinks.Get(i)->TraceConnectWithoutContext("Rx", MakeBoundCallback(&DiagSinkRxFlow, i));
         }
     }
 
@@ -2364,8 +2348,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // Queue-depth sampler (#73): start after a 10% warm-up so convergence
     // transients don't dominate, sample every 0.5 s until the run ends.
     if (g_qdiag) {
-        Simulator::Schedule(Seconds(P.simTime * 0.1), &SampleQueues, nodes, 0.5,
-                            P.simTime);
+        Simulator::Schedule(Seconds(P.simTime * 0.1), &SampleQueues, nodes, 0.5, P.simTime);
     }
 
     FlowMonitorHelper fmHelper;
@@ -2405,15 +2388,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             if (ps) rxBytes += ps->GetTotalRx();
         }
         r.rxAppBytes = rxBytes;
-        r.goodputKbps = P.simTime > 0.0
-                            ? 8.0 * static_cast<double>(rxBytes) / P.simTime / 1000.0
-                            : 0.0;
+        r.goodputKbps =
+            P.simTime > 0.0 ? 8.0 * static_cast<double>(rxBytes) / P.simTime / 1000.0 : 0.0;
     }
     double totalDelay = 0.0;
     uint64_t rxForDelay = 0;
     double totalRxBytes = 0.0;
-    double totalJitter = 0.0;    // #57: FlowMonitor jitterSum over data flows
-    uint64_t jitterSamples = 0;  // each flow contributes rx-1 jitter samples
+    double totalJitter = 0.0;                // #57: FlowMonitor jitterSum over data flows
+    uint64_t jitterSamples = 0;              // each flow contributes rx-1 jitter samples
     std::map<uint32_t, uint64_t> delayBins;  // aggregated delay histogram
     double binWidth = 0.0;
     // #215: IP-layer drop attribution, restricted to the data flows exactly the
@@ -2426,8 +2408,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // Restrict the delivery/delay/throughput metrics to the CBR *data* flows
     // (dest port kDataPort). FlowMonitor also classifies the routing-control
     // flows, which must not count toward PDR.
-    Ptr<Ipv4FlowClassifier> classifier =
-        DynamicCast<Ipv4FlowClassifier>(fmHelper.GetClassifier());
+    Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier>(fmHelper.GetClassifier());
     for (auto& kv : monitor->GetFlowStats()) {
         Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(kv.first);
         if (t.destinationPort != kDataPort) continue;  // data flows only
@@ -2450,14 +2431,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         }
         // #215 drop attribution for this data flow.
         const std::vector<uint32_t>& pd = kv.second.packetsDropped;
-        auto reason = [&pd](std::size_t i) -> uint64_t {
-            return i < pd.size() ? pd[i] : 0u;
-        };
-        dropRoute += reason(Ipv4FlowProbe::DROP_NO_ROUTE)
-                   + reason(Ipv4FlowProbe::DROP_ROUTE_ERROR);
+        auto reason = [&pd](std::size_t i) -> uint64_t { return i < pd.size() ? pd[i] : 0u; };
+        dropRoute += reason(Ipv4FlowProbe::DROP_NO_ROUTE) + reason(Ipv4FlowProbe::DROP_ROUTE_ERROR);
         dropTtl += reason(Ipv4FlowProbe::DROP_TTL_EXPIRE);
-        dropQueue += reason(Ipv4FlowProbe::DROP_QUEUE)
-                   + reason(Ipv4FlowProbe::DROP_QUEUE_DISC);
+        dropQueue += reason(Ipv4FlowProbe::DROP_QUEUE) + reason(Ipv4FlowProbe::DROP_QUEUE_DISC);
         for (uint32_t v : pd) dropL3Total += v;
     }
     // #464: the oracle refuses a locally originated send outright when its
@@ -2500,8 +2477,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     r.nrl = r.rxPackets ? static_cast<double>(g_controlPkts) / r.rxPackets : 0.0;
     // #132: same IP-layer counting point as nrl, but in bytes; delivered data
     // bytes are the FlowMonitor rxBytes already summed for throughput.
-    r.nrlBytes = totalRxBytes > 0.0
-        ? static_cast<double>(g_controlBytes) / totalRxBytes : 0.0;
+    r.nrlBytes = totalRxBytes > 0.0 ? static_cast<double>(g_controlBytes) / totalRxBytes : 0.0;
 
     r.jitterMs = jitterSamples ? 1000.0 * totalJitter / jitterSamples : 0.0;
 
@@ -2601,15 +2577,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // joules alone is not (every node's radio is on for the same wall time
         // whatever the protocol does). 0 when nothing was delivered, matching
         // how nrl handles the same case.
-        r.energyPerPktJ = r.rxPackets
-            ? consumed / static_cast<double>(r.rxPackets) : 0.0;
+        r.energyPerPktJ = r.rxPackets ? consumed / static_cast<double>(r.rxPackets) : 0.0;
         // #294 item 3: the same figure per delivered application *bit*, the
         // literature's cross-protocol energy column. Packet sizes are fixed
         // under CBR, so on UDP this is energyPerPktJ / (8 x payload); it is
         // measured from the sinks rather than derived so a TCP cell, whose
         // segments are not one size, reads correctly too.
-        r.energyPerBitJ = r.rxAppBytes
-            ? consumed / (8.0 * static_cast<double>(r.rxAppBytes)) : 0.0;
+        r.energyPerBitJ = r.rxAppBytes ? consumed / (8.0 * static_cast<double>(r.rxAppBytes)) : 0.0;
         if (!residual.empty()) {
             double sum = 0.0, sumSq = 0.0;
             r.resMinJ = residual[0];
@@ -2676,8 +2650,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 if (arr[i] > pref[i - 1]) continue;  // in order (s >= NextExp)
                 ++reordered;
                 const std::size_t j = static_cast<std::size_t>(
-                    std::upper_bound(pref.begin(), pref.begin() + i, arr[i])
-                    - pref.begin());
+                    std::upper_bound(pref.begin(), pref.begin() + i, arr[i]) - pref.begin());
                 const uint64_t ext = i - j;  // >= 1 for any reordered packet
                 extSum += ext;
                 ++extCount;
@@ -2693,10 +2666,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             uint64_t occ = 0, occMax = 0;
             for (uint32_t s : arr) {
                 arrived[static_cast<std::size_t>(
-                    std::lower_bound(ordered.begin(), ordered.end(), s)
-                    - ordered.begin())] = 1;
+                    std::lower_bound(ordered.begin(), ordered.end(), s) - ordered.begin())] = 1;
                 ++occ;
-                while (k < ordered.size() && arrived[k]) { --occ; ++k; }
+                while (k < ordered.size() && arrived[k]) {
+                    --occ;
+                    ++k;
+                }
                 if (occ > occMax) occMax = occ;
             }
             rxSeqTotal += arr.size();
@@ -2705,11 +2680,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             if (ratio > ratioMaxFlow) ratioMaxFlow = ratio;
             if (occMax > bufMax) bufMax = occMax;
         }
-        r.reorderRatio = rxSeqTotal
-            ? static_cast<double>(reorderedTotal) / rxSeqTotal : 0.0;
+        r.reorderRatio = rxSeqTotal ? static_cast<double>(reorderedTotal) / rxSeqTotal : 0.0;
         r.reorderRatioMax = ratioMaxFlow;
-        r.reorderExtMean = extCount
-            ? static_cast<double>(extSum) / extCount : 0.0;
+        r.reorderExtMean = extCount ? static_cast<double>(extSum) / extCount : 0.0;
         r.reorderExtMax = static_cast<double>(extMax);
         r.reorderBufMax = static_cast<double>(bufMax);
     }
@@ -2754,20 +2727,19 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 // A packet re-injected after a MAC failure (#46) and then aged
                 // out was still waiting for a route that had existed and did
                 // not come back — the reconvergence cause, not a separate one.
-                holdReconv += s.droppedCount[ns3::anthocnet::HOLD_RECONV]
-                            + s.droppedCount[ns3::anthocnet::HOLD_REPAIR];
+                holdReconv += s.droppedCount[ns3::anthocnet::HOLD_RECONV] +
+                              s.droppedCount[ns3::anthocnet::HOLD_REPAIR];
                 repairPkts += ahn->RepairDiscardedPackets();
                 reinjected += ahn->MacReinjectedPackets();
             }
-            r.dropSetupPct  = 100.0 * holdSetup / tx;
+            r.dropSetupPct = 100.0 * holdSetup / tx;
             r.dropReconvPct = 100.0 * holdReconv / tx;
             r.dropRepairPct = 100.0 * repairPkts / tx;
         }
         // Every one of these three ends in an error callback, so together they
         // are a *sub-breakdown* of dropRoutePct, not extra causes on top of it;
         // adding them to the identity would double-count.
-        const uint64_t macTerminal =
-            g_macDataDrops > reinjected ? g_macDataDrops - reinjected : 0;
+        const uint64_t macTerminal = g_macDataDrops > reinjected ? g_macDataDrops - reinjected : 0;
         // #402: capped-skip aggregates, in BOTH units. The ##REINJ## fields
         // partition distinct skipped keys (parallel to the pkts partition);
         // the mac attribution below needs EVENTS, because g_macDataDrops
@@ -2781,8 +2753,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // the first skip or by end of run). Empty map on every uncapped arm
         // (the adapter trace only fires under MaxReinjectPerPacket != 0), so
         // all of this is an arithmetic no-op there.
-        uint64_t skipsPkts = 0, skipsDelivBefore = 0, skipsDelivAfterOnly = 0,
-                 skipsNever = 0, skipsDelivEvents = 0;
+        uint64_t skipsPkts = 0, skipsDelivBefore = 0, skipsDelivAfterOnly = 0, skipsNever = 0,
+                 skipsDelivEvents = 0;
         for (const auto& kv : g_reinjSkip) {
             ++skipsPkts;
             uint32_t endCount = 0;
@@ -2791,14 +2763,15 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 const auto s = f->second.find(kv.first.second);
                 if (s != f->second.end()) endCount = s->second;
             }
-            if (kv.second.rxAtFirstSkip >= 1) ++skipsDelivBefore;
-            else if (endCount >= 1) ++skipsDelivAfterOnly;
-            else ++skipsNever;
-            if (kv.second.rxAtFirstSkip >= 1 || endCount >= 1)
-                skipsDelivEvents += kv.second.events;
+            if (kv.second.rxAtFirstSkip >= 1)
+                ++skipsDelivBefore;
+            else if (endCount >= 1)
+                ++skipsDelivAfterOnly;
+            else
+                ++skipsNever;
+            if (kv.second.rxAtFirstSkip >= 1 || endCount >= 1) skipsDelivEvents += kv.second.events;
         }
-        const double hopLoss = static_cast<double>(g_dataHopTx)
-                             - static_cast<double>(g_dataHopRx);
+        const double hopLoss = static_cast<double>(g_dataHopTx) - static_cast<double>(g_dataHopRx);
         // #377: a retry-limit drop is not necessarily a lost packet. 802.11
         // unicast is data then ACK, two independent chances to fail, and under
         // fading the data frame can arrive while its ACK does not: the peer
@@ -2815,10 +2788,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // Verified against both probe cells: the identity closes to 99.87 /
         // 100.00 / 100.22 for the three baselines and is a near no-op on
         // two-ray, where unackedRx is 0-13 packets per run.
-        const uint64_t unackedRx = g_dataHopRx > g_ackedDataHops
-            ? g_dataHopRx - g_ackedDataHops : 0;
-        const uint64_t macLost =
-            g_macDataDrops > unackedRx ? g_macDataDrops - unackedRx : 0;
+        const uint64_t unackedRx =
+            g_dataHopRx > g_ackedDataHops ? g_dataHopRx - g_ackedDataHops : 0;
+        const uint64_t macLost = g_macDataDrops > unackedRx ? g_macDataDrops - unackedRx : 0;
         // #229: the pending-queue conservation counters (dsdv/aodv arms; zero
         // everywhere else, making the two assignments below arithmetically
         // identical to their pre-#229 form on the anthocnet/olsr arms).
@@ -2836,9 +2808,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         //              stays untouched for the `other` diagnostic.
         const uint64_t pqSilent = g_pqPending.size();
         const uint64_t pqEcb = g_pqEcbDrops;
-        r.dropRoutePct = 100.0 * (dropRoute > pqEcb ? dropRoute - pqEcb : 0)
-                       / tx;
-        r.dropTtlPct   = 100.0 * dropTtl / tx;
+        r.dropRoutePct = 100.0 * (dropRoute > pqEcb ? dropRoute - pqEcb : 0) / tx;
+        r.dropTtlPct = 100.0 * dropTtl / tx;
         r.dropQueuePct = 100.0 * (dropQueue + pqSilent + pqEcb) / tx;
         // The correction applies to dropMacPct only where that column is
         // macDrops-based, i.e. where nothing was re-injected. AntHocNet's is
@@ -2865,14 +2836,15 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // ##DROPID## macTerminal field stays the RAW macDrops − reinjected.
         const uint64_t macTerminalCapAware =
             macTerminal > skipsDelivEvents ? macTerminal - skipsDelivEvents : 0;
-        r.dropMacPct   = 100.0 * (reinjected ? macTerminalCapAware : macLost) / tx;
-        r.dropChanPct  = 100.0 * (hopLoss - static_cast<double>(macLost)
-                                          - static_cast<double>(dropQueue)) / tx;
+        r.dropMacPct = 100.0 * (reinjected ? macTerminalCapAware : macLost) / tx;
+        r.dropChanPct =
+            100.0 * (hopLoss - static_cast<double>(macLost) - static_cast<double>(dropQueue)) / tx;
         // L3 drops in none of the buckets above (bad checksum, interface down,
         // fragment timeout — all structurally zero in this harness). Diagnostic
         // only: if it is ever non-zero it is the reason the identity misses.
         const uint64_t other = dropL3Total > dropRoute + dropTtl + dropQueue
-            ? dropL3Total - dropRoute - dropTtl - dropQueue : 0;
+                                   ? dropL3Total - dropRoute - dropTtl - dropQueue
+                                   : 0;
         r.dropOtherPct = 100.0 * other / tx;
         // #377: the raw counters behind the residual above, so the attribution
         // can be audited in counts rather than in percentages.
@@ -2911,10 +2883,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // counters, and printing them through the shared std::cout would
         // otherwise need a precision change that leaks into every line after
         // it.
-        const int64_t hopLossN = static_cast<int64_t>(g_dataHopTx)
-                               - static_cast<int64_t>(g_dataHopRx);
-        const int64_t overlap = static_cast<int64_t>(macLost)
-                              + static_cast<int64_t>(dropQueue) - hopLossN;
+        const int64_t hopLossN =
+            static_cast<int64_t>(g_dataHopTx) - static_cast<int64_t>(g_dataHopRx);
+        const int64_t overlap =
+            static_cast<int64_t>(macLost) + static_cast<int64_t>(dropQueue) - hopLossN;
         // Not emitted under TCP. Since #389 the counters above DO count TCP
         // data segments, but the drop-cause identity itself is unvalidated
         // under TCP — it was closed on per-packet UDP books, and TCP counts
@@ -2923,17 +2895,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // follow-up); same rule as ##HOLD##/##AIR## and #382 — an unvalidated
         // line would read as clean books, so absence is the encoding.
         if (P.transport != "tcp") {
-            std::cout << "##DROPID## " << seed << ' ' << proto
-                      << " hopTx=" << g_dataHopTx
-                      << " hopRx=" << g_dataHopRx
-                      << " ackedHops=" << g_ackedDataHops
-                      << " macDrops=" << g_macDataDrops
-                      << " reinjected=" << reinjected
-                      << " macTerminal=" << macTerminal
-                      << " macLost=" << macLost
-                      << " queue=" << dropQueue
-                      << " hopLoss=" << hopLossN
-                      << " overlap=" << overlap
+            std::cout << "##DROPID## " << seed << ' ' << proto << " hopTx=" << g_dataHopTx
+                      << " hopRx=" << g_dataHopRx << " ackedHops=" << g_ackedDataHops
+                      << " macDrops=" << g_macDataDrops << " reinjected=" << reinjected
+                      << " macTerminal=" << macTerminal << " macLost=" << macLost
+                      << " queue=" << dropQueue << " hopLoss=" << hopLossN << " overlap=" << overlap
                       << " unackedRx=" << unackedRx;
             // #229: the pending-queue conservation counters, appended at the
             // END and only on the arms whose hook is connected — on the other
@@ -2982,9 +2948,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                     const auto s = f->second.find(kv.first.second);
                     if (s != f->second.end()) endCount = s->second;
                 }
-                if (kv.second.rxAtFirstReinj >= 1) ++delivBefore;
-                else if (endCount >= 1) ++delivAfterOnly;
-                else ++never;
+                if (kv.second.rxAtFirstReinj >= 1)
+                    ++delivBefore;
+                else if (endCount >= 1)
+                    ++delivAfterOnly;
+                else
+                    ++never;
                 if (endCount >= 2) {
                     ++dupDeliv;
                     dupRx += endCount - 1;
@@ -2995,25 +2964,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 l3Ttl += kv.second.l3DropTtl;
                 l3Other += kv.second.l3DropOther;
             }
-            std::cout << "##REINJ## " << seed << ' ' << proto
-                      << " events=" << g_reinjEvents
-                      << " parsed=" << g_reinjParsed
-                      << " unparsedIcmp=" << g_reinjUnparsedIcmp
+            std::cout << "##REINJ## " << seed << ' ' << proto << " events=" << g_reinjEvents
+                      << " parsed=" << g_reinjParsed << " unparsedIcmp=" << g_reinjUnparsedIcmp
                       << " unparsedOther=" << g_reinjUnparsedOther
-                      << " ofDelivered=" << g_reinjOfDelivered
-                      << " pkts=" << pkts
+                      << " ofDelivered=" << g_reinjOfDelivered << " pkts=" << pkts
                       << " pktsDelivBefore=" << delivBefore
-                      << " pktsDelivAfterOnly=" << delivAfterOnly
-                      << " pktsNever=" << never
-                      << " pktsDupDeliv=" << dupDeliv
-                      << " dupRx=" << dupRx
-                      << " postTx=" << postTx
-                      << " postRx=" << postRx
-                      << " l3DropRoute=" << l3Route
-                      << " l3DropTtl=" << l3Ttl
-                      << " l3DropOther=" << l3Other
-                      << " skips=" << g_reinjSkips
-                      << " skipsPkts=" << skipsPkts
+                      << " pktsDelivAfterOnly=" << delivAfterOnly << " pktsNever=" << never
+                      << " pktsDupDeliv=" << dupDeliv << " dupRx=" << dupRx << " postTx=" << postTx
+                      << " postRx=" << postRx << " l3DropRoute=" << l3Route
+                      << " l3DropTtl=" << l3Ttl << " l3DropOther=" << l3Other
+                      << " skips=" << g_reinjSkips << " skipsPkts=" << skipsPkts
                       << " skipsDelivBefore=" << skipsDelivBefore
                       << " skipsDelivAfterOnly=" << skipsDelivAfterOnly
                       << " skipsNever=" << skipsNever << '\n';
@@ -3021,19 +2981,20 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     }
 
     // #217 route quality.
-    r.hopsMean = g_hopCount
-        ? static_cast<double>(g_hopSum) / static_cast<double>(g_hopCount) : 0.0;
+    r.hopsMean = g_hopCount ? static_cast<double>(g_hopSum) / static_cast<double>(g_hopCount) : 0.0;
     r.hopsMax = static_cast<double>(g_hopMax);
     r.divUsed = g_divCells ? g_divSum / static_cast<double>(g_divCells) : 0.0;
-    r.divEntropyBits =
-        g_divCells ? g_divEntSum / static_cast<double>(g_divCells) : 0.0;
+    r.divEntropyBits = g_divCells ? g_divEntSum / static_cast<double>(g_divCells) : 0.0;
     r.divMax = static_cast<double>(g_divMax);
 
     // #294 item 4 route stability (definitions in docs/benchmarks/metrics.md).
     if (g_routeOn) {
         std::vector<double> setup;
         for (std::size_t i = 0; i < g_flowFirstRx.size(); ++i) {
-            if (g_flowFirstRx[i] < 0.0) { ++r.flowsNoDelivery; continue; }
+            if (g_flowFirstRx[i] < 0.0) {
+                ++r.flowsNoDelivery;
+                continue;
+            }
             setup.push_back(g_flowFirstRx[i] - g_flowStart[i]);
         }
         if (!setup.empty()) {
@@ -3072,8 +3033,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             std::sort(life.begin(), life.end());
             r.pathLifeMedS = life[life.size() / 2];
         }
-        r.pathHopsMean = delivered
-            ? static_cast<double>(g_routeHopSum) / delivered : 0.0;
+        r.pathHopsMean = delivered ? static_cast<double>(g_routeHopSum) / delivered : 0.0;
         // A path hook that recorded nothing while packets were delivered is
         // blind on this arm, not measuring zero churn: GPSR puts its own header
         // between IP and UDP, so the (flow, seq) parse never matches. Emit no
@@ -3099,8 +3059,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             sum += v;
             sumSq += v * v;
         }
-        r.jain = (!x.empty() && sumSq > 0.0)
-            ? (sum * sum) / (static_cast<double>(x.size()) * sumSq) : 0.0;
+        r.jain = (!x.empty() && sumSq > 0.0) ? (sum * sum) / (static_cast<double>(x.size()) * sumSq)
+                                             : 0.0;
     }
 
     // #308 phase 2 step 4: gather the pending-queue hold-time attribution
@@ -3131,23 +3091,23 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // routes form (reactive ants sent vs received elsewhere; back-ant arrivals)
     // and when the first packet is delivered.
     if (g_diag) {
-        std::cout << std::fixed << std::setprecision(2)
-                  << "# diag " << proto << " seed=" << seed
-                  << " pdr=" << r.pdr
-                  << " firstDeliveryS=" << g_firstDeliveryS
+        std::cout << std::fixed << std::setprecision(2) << "# diag " << proto << " seed=" << seed
+                  << " pdr=" << r.pdr << " firstDeliveryS=" << g_firstDeliveryS
                   << " ctrlTx=" << g_controlPkts;
         // #23: route-setup latency per flow (first delivery − flow start).
         {
             std::vector<double> setup;
             uint32_t never = 0;
             for (std::size_t i = 0; i < g_flowFirstRx.size(); ++i) {
-                if (g_flowFirstRx[i] < 0.0) { ++never; continue; }
+                if (g_flowFirstRx[i] < 0.0) {
+                    ++never;
+                    continue;
+                }
                 setup.push_back(g_flowFirstRx[i] - g_flowStart[i]);
             }
             if (!setup.empty() || never > 0) {
                 std::sort(setup.begin(), setup.end());
-                std::cout << " setupMedS="
-                          << (setup.empty() ? -1.0 : setup[setup.size() / 2])
+                std::cout << " setupMedS=" << (setup.empty() ? -1.0 : setup[setup.size() / 2])
                           << " setupMaxS=" << (setup.empty() ? -1.0 : setup.back())
                           << " flowsNoDelivery=" << never;
             }
@@ -3157,15 +3117,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 auto it = m.find(k);
                 return it == m.end() ? static_cast<uint64_t>(0) : it->second;
             };
-            std::cout << " antTx[hello=" << n(g_antTx, 0x01)
-                      << ",reactive=" << n(g_antTx, 0x02)
-                      << ",proactive=" << n(g_antTx, 0x04)
-                      << ",repair=" << n(g_antTx, 0x08)
+            std::cout << " antTx[hello=" << n(g_antTx, 0x01) << ",reactive=" << n(g_antTx, 0x02)
+                      << ",proactive=" << n(g_antTx, 0x04) << ",repair=" << n(g_antTx, 0x08)
                       << ",linkfail=" << n(g_antTx, 0x10) << "]"
-                      << " antRx[hello=" << n(g_antRx, 0x01)
-                      << ",reactive=" << n(g_antRx, 0x02)
-                      << ",proactive=" << n(g_antRx, 0x04)
-                      << ",repair=" << n(g_antRx, 0x08)
+                      << " antRx[hello=" << n(g_antRx, 0x01) << ",reactive=" << n(g_antRx, 0x02)
+                      << ",proactive=" << n(g_antRx, 0x04) << ",repair=" << n(g_antRx, 0x08)
                       << ",linkfail=" << n(g_antRx, 0x10) << "]";
             // Issue #20: origin vs propagation split of the linkfail volume
             // (origins = antTx[linkfail] - linkfailProp; budgetDrop counts
@@ -3187,10 +3143,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 lfSuppressed += ahn->LinkfailOriginsSuppressed();
                 steers += ahn->DirectedSteers();
             }
-            std::cout << " linkfailProp=" << lfProp
-                      << " linkfailBudgetDrop=" << lfBudget
-                      << " linkfailOrigSuppressed=" << lfSuppressed
-                      << " directedSteers=" << steers;
+            std::cout << " linkfailProp=" << lfProp << " linkfailBudgetDrop=" << lfBudget
+                      << " linkfailOrigSuppressed=" << lfSuppressed << " directedSteers=" << steers;
 
             // Issue #133: pheromone-table size gauge at end of run. Per node
             // the table grows with destinations x neighbours (regular +
@@ -3216,8 +3170,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             std::cout << " ptable[regAvg="
                       << (ptNodes ? static_cast<double>(ptRegSum) / ptNodes : 0.0)
                       << ",regMax=" << ptRegMax
-                      << ",virAvg="
-                      << (ptNodes ? static_cast<double>(ptVirSum) / ptNodes : 0.0)
+                      << ",virAvg=" << (ptNodes ? static_cast<double>(ptVirSum) / ptNodes : 0.0)
                       << ",virMax=" << ptVirMax << "]";
 
             // Issue #21: pending-queue hold-time attribution. dOff50 is ~3 ms
@@ -3244,19 +3197,17 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             std::cout << " hold[";
             for (uint8_t r = 0; r < ns3::anthocnet::kHoldReasons; ++r) {
                 const double meanMs = hs.deliveredCount[r]
-                    ? 1000.0 * hs.deliveredSumS[r] / hs.deliveredCount[r] : 0.0;
-                std::cout << (r ? " " : "") << kReasonName[r] << "="
-                          << hs.deliveredCount[r] << "/" << std::setprecision(1)
-                          << meanMs << "ms/max" << std::setprecision(1)
+                                          ? 1000.0 * hs.deliveredSumS[r] / hs.deliveredCount[r]
+                                          : 0.0;
+                std::cout << (r ? " " : "") << kReasonName[r] << "=" << hs.deliveredCount[r] << "/"
+                          << std::setprecision(1) << meanMs << "ms/max" << std::setprecision(1)
                           << 1000.0 * hs.deliveredMaxS[r] << "ms";
             }
             std::cout << "] holdDrop[";
             for (uint8_t r = 0; r < ns3::anthocnet::kHoldReasons; ++r) {
-                std::cout << (r ? " " : "") << kReasonName[r] << "="
-                          << hs.droppedCount[r];
+                std::cout << (r ? " " : "") << kReasonName[r] << "=" << hs.droppedCount[r];
             }
-            std::cout << "]"
-                      << " repairDiscard=" << repairEvents << "ev/" << repairPkts
+            std::cout << "]" << " repairDiscard=" << repairEvents << "ev/" << repairPkts
                       << "pkt macReinject=" << macReinjected;
         }
         std::cout << "\n";
@@ -3268,8 +3219,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     if (g_qdiag) {
         const double mean = g_qCount ? g_qSum / g_qCount : 0.0;
         const double pct = g_qCount ? 100.0 * g_qNonzero / g_qCount : 0.0;
-        std::cout << std::fixed << std::setprecision(2)
-                  << "# qdiag " << proto << " seed=" << seed
+        std::cout << std::fixed << std::setprecision(2) << "# qdiag " << proto << " seed=" << seed
                   << " pdr=" << r.pdr << " meanQ=" << mean << " maxQ=" << g_qMax
                   << " pctNonzero=" << pct << " samples=" << g_qCount << "\n";
     }
@@ -3288,27 +3238,25 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     //     scenario_check reads to refuse to treat it as exact.
     if (proto == "oracle") {
         NS_ABORT_MSG_IF(g_controlPkts != 0 || g_controlBytes != 0,
-                        "oracle arm transmitted " << g_controlPkts << " control packets ("
-                        << g_controlBytes << " B): the control is supposed to put NOTHING on "
-                        "the wire, so its NRL is no longer an upper-bound reference (#296)");
+                        "oracle arm transmitted "
+                            << g_controlPkts << " control packets (" << g_controlBytes
+                            << " B): the control is supposed to put NOTHING on "
+                               "the wire, so its NRL is no longer an upper-bound reference (#296)");
         Ptr<oracle::Topology> topo = oracleHelper.GetTopology();
-        std::cout << "##ORACLE## " << seed << ' ' << proto
-                  << " mode=" << topo->GetMode()
+        std::cout << "##ORACLE## " << seed << ' ' << proto << " mode=" << topo->GetMode()
                   << " approx=" << (topo->IsApproximate() ? 1 : 0)
-                  << " nodes=" << topo->GetNodeCount()
-                  << " edges=" << topo->GetEdgeCount()
+                  << " nodes=" << topo->GetNodeCount() << " edges=" << topo->GetEdgeCount()
                   << " recomputes=" << topo->GetRecomputeCount()
-                  << " changes=" << topo->GetTopologyChanges()
-                  << " range=" << std::fixed << std::setprecision(1) << topo->GetLinkRange()
-                  << " noRoute=" << topo->GetNoRouteCount()
+                  << " changes=" << topo->GetTopologyChanges() << " range=" << std::fixed
+                  << std::setprecision(1) << topo->GetLinkRange() << " noRoute="
+                  << topo->GetNoRouteCount()
                   // #464: appended, never inserted — the split between the two
                   // failure paths, so the accounting can be audited rather than
                   // inferred. noRouteOrigin is folded into the offered count
                   // and the route column; noRouteForward was already booked.
                   << " noRouteOrigin=" << topo->GetNoRouteOriginCount()
-                  << " noRouteFwd=" << topo->GetNoRouteForwardCount()
-                  << " nrl=" << std::fixed << std::setprecision(2) << r.nrl
-                  << "\n";
+                  << " noRouteFwd=" << topo->GetNoRouteForwardCount() << " nrl=" << std::fixed
+                  << std::setprecision(2) << r.nrl << "\n";
     }
 
     Simulator::Destroy();
@@ -3320,14 +3268,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 int main(int argc, char* argv[]) {
     // Sentinels (<0 / 0) mean "unset" so a preset or the legacy defaults fill in.
     std::string scenario;
-    int32_t  nNodes = 0;
-    double   simTime = -1, area = -1, areaX = -1, areaY = -1, areaZ = -1;
-    double   speed = -1, speedMin = -1, pause = -1, range = -1, cbrBps = -1;
-    double   offTime = 0.0;  // #521
+    int32_t nNodes = 0;
+    double simTime = -1, area = -1, areaX = -1, areaY = -1, areaZ = -1;
+    double speed = -1, speedMin = -1, pause = -1, range = -1, cbrBps = -1;
+    double offTime = 0.0;               // #521
     uint32_t blocksX = 0, blocksY = 0;  // #488 grid; 0 = preset (4 vanet, else 5)
-    double   streetWidth = 20.0;        // #488
-    int32_t  nFlows = 0;
-    int32_t  sink = -1;
+    double streetWidth = 20.0;          // #488
+    int32_t nFlows = 0;
+    int32_t sink = -1;
     uint32_t runs = 0;  // 0 = unset; resolved below (preset-dependent, #58)
     // #126: first RNG run of this invocation. Runs cover
     // firstRun..firstRun+runs-1, so one point's 20 seeds can be split across
@@ -3341,45 +3289,58 @@ int main(int argc, char* argv[]) {
     std::string protocols = "anthocnet,aodv,olsr,dsdv";
 
     CommandLine cmd(__FILE__);
-    cmd.AddValue("scenario", "Preset: 'paper' (Broch/CMU calibration field), "
-                             "'thesis' (AntHocNet's own evaluation field, "
-                             "Ducatelle PhD 2007 §5.1.3 — #58), 'fanet' "
-                             "(3-D Gauss-Markov UAV field, #482; provenance in "
-                             "docs/benchmarks/scenarios/fanet.md) or 'vanet' "
-                             "(Manhattan street grid with urban building "
-                             "shadowing, #488; provenance in "
-                             "docs/benchmarks/scenarios/vanet.md)", scenario);
+    cmd.AddValue("scenario",
+                 "Preset: 'paper' (Broch/CMU calibration field), "
+                 "'thesis' (AntHocNet's own evaluation field, "
+                 "Ducatelle PhD 2007 §5.1.3 — #58), 'fanet' "
+                 "(3-D Gauss-Markov UAV field, #482; provenance in "
+                 "docs/benchmarks/scenarios/fanet.md) or 'vanet' "
+                 "(Manhattan street grid with urban building "
+                 "shadowing, #488; provenance in "
+                 "docs/benchmarks/scenarios/vanet.md)",
+                 scenario);
     cmd.AddValue("nNodes", "Number of nodes", nNodes);
     cmd.AddValue("time", "Simulation time (s)", simTime);
     cmd.AddValue("area", "Square area side (m); shorthand for areaX=areaY", area);
     cmd.AddValue("areaX", "Area width (m)", areaX);
     cmd.AddValue("areaY", "Area height (m)", areaY);
-    cmd.AddValue("areaZ", "Field altitude extent (m), #480. 0 (default; 300 "
-                          "for --scenario=fanet) = the "
-                          "planar field every published number used; > 0 "
-                          "places and moves nodes in a 3-D box (FANET, #300). "
-                          "Refused with tworay/nakagami (ground-reflection "
-                          "model), ssrwp (planar-only in ns-3) and the gpsr "
-                          "arm (2-D headers and planarization)", areaZ);
+    cmd.AddValue("areaZ",
+                 "Field altitude extent (m), #480. 0 (default; 300 "
+                 "for --scenario=fanet) = the "
+                 "planar field every published number used; > 0 "
+                 "places and moves nodes in a 3-D box (FANET, #300). "
+                 "Refused with tworay/nakagami (ground-reflection "
+                 "model), ssrwp (planar-only in ns-3) and the gpsr "
+                 "arm (2-D headers and planarization)",
+                 areaZ);
     cmd.AddValue("speed", "Max node speed (m/s)", speed);
-    cmd.AddValue("speedMin", "Min node speed (m/s): speeds are drawn "
-                             "U(speedMin, speed). Default 1 (10 for "
-                             "--scenario=fanet, #482)", speedMin);
+    cmd.AddValue("speedMin",
+                 "Min node speed (m/s): speeds are drawn "
+                 "U(speedMin, speed). Default 1 (10 for "
+                 "--scenario=fanet, #482)",
+                 speedMin);
     cmd.AddValue("pause", "Random-waypoint pause time (s)", pause);
     cmd.AddValue("range", "Transmission range (m); 0 = ns-3 default channel", range);
     cmd.AddValue("flows", "Number of CBR flows", nFlows);
     cmd.AddValue("cbrBps", "Per-flow CBR rate (bits/s)", cbrBps);
-    cmd.AddValue("offTime", "Source off-phase in s (#521). 0 (default) = "
-                            "constant bit rate; 1 = the pre-#521 schedule "
-                            "(ns-3's default 1 s on / 1 s off, half the "
-                            "stated rate), for paired A/B only", offTime);
-    cmd.AddValue("sink", "If >=0, all flows converge on this node (gateway "
-                         "hotspot, #71) instead of i->(n-1-i) pairing", sink);
-    cmd.AddValue("runs", "Number of RNG runs to average (seeds 1..runs); unset "
-                         "= 1, or 20 for --scenario=thesis (#58)", runs);
-    cmd.AddValue("firstRun", "First RNG run (seed) of this invocation; runs "
-                             "cover firstRun..firstRun+runs-1, so a point's "
-                             "seeds can split across dispatches (#126)",
+    cmd.AddValue("offTime",
+                 "Source off-phase in s (#521). 0 (default) = "
+                 "constant bit rate; 1 = the pre-#521 schedule "
+                 "(ns-3's default 1 s on / 1 s off, half the "
+                 "stated rate), for paired A/B only",
+                 offTime);
+    cmd.AddValue("sink",
+                 "If >=0, all flows converge on this node (gateway "
+                 "hotspot, #71) instead of i->(n-1-i) pairing",
+                 sink);
+    cmd.AddValue("runs",
+                 "Number of RNG runs to average (seeds 1..runs); unset "
+                 "= 1, or 20 for --scenario=thesis (#58)",
+                 runs);
+    cmd.AddValue("firstRun",
+                 "First RNG run (seed) of this invocation; runs "
+                 "cover firstRun..firstRun+runs-1, so a point's "
+                 "seeds can split across dispatches (#126)",
                  firstRun);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols",
@@ -3388,9 +3349,11 @@ int main(int argc, char* argv[]) {
                  "(upper bound, zero control traffic), off unless named.",
                  protocols);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies, first delivery)", g_diag);
-    cmd.AddValue("qdiag", "Emit per-run '# qdiag' lines: per-node MAC queue depth "
-                          "distribution (meanQ/maxQ/pctNonzero) — does A2 have a "
-                          "signal? (#73)", g_qdiag);
+    cmd.AddValue("qdiag",
+                 "Emit per-run '# qdiag' lines: per-node MAC queue depth "
+                 "distribution (meanQ/maxQ/pctNonzero) — does A2 have a "
+                 "signal? (#73)",
+                 g_qdiag);
     std::string mobilityModel;  // "" = preset default: gaussmarkov for fanet, else rwp
     std::string transport = "udp";
     std::string propagation;  // "" = preset default: urban for vanet, else range
@@ -3402,17 +3365,24 @@ int main(int argc, char* argv[]) {
                  "##GOODPUT##.",
                  transport);
     std::string traceFile, flowsFile, dumpTrace, dumpFlows;
-    cmd.AddValue("traceFile", "#639: with --mobility=trace, the ns-2 movement trace to "
-                              "replay ($node_(i) set X_/Y_/Z_, $ns_ at t \"$node_(i) "
-                              "setdest x y speed\"); nNodes is taken from it",
+    cmd.AddValue("traceFile",
+                 "#639: with --mobility=trace, the ns-2 movement trace to "
+                 "replay ($node_(i) set X_/Y_/Z_, $ns_ at t \"$node_(i) "
+                 "setdest x y speed\"); nNodes is taken from it",
                  traceFile);
-    cmd.AddValue("flowsFile", "#639: explicit flows, one 'src dst start stop cbrBps' "
-                              "per line ('#' comments); replaces the generated "
-                              "i -> n-1-i pairing and --flows", flowsFile);
-    cmd.AddValue("dumpTrace", "#639: write the first run's node movement to this file "
-                              "as an ns-2 trace (2-D fields only)", dumpTrace);
-    cmd.AddValue("dumpFlows", "#639: write the first run's generated flows to this "
-                              "file in --flowsFile format", dumpFlows);
+    cmd.AddValue("flowsFile",
+                 "#639: explicit flows, one 'src dst start stop cbrBps' "
+                 "per line ('#' comments); replaces the generated "
+                 "i -> n-1-i pairing and --flows",
+                 flowsFile);
+    cmd.AddValue("dumpTrace",
+                 "#639: write the first run's node movement to this file "
+                 "as an ns-2 trace (2-D fields only)",
+                 dumpTrace);
+    cmd.AddValue("dumpFlows",
+                 "#639: write the first run's generated flows to this "
+                 "file in --flowsFile format",
+                 dumpFlows);
     cmd.AddValue("mobility",
                  "Mobility model (#61): 'rwp' (Random Waypoint, default — the "
                  "model every published number was measured under) | 'ssrwp' "
@@ -3422,13 +3392,19 @@ int main(int argc, char* argv[]) {
                  "grid, Bai et al. 2003; --pause is inert under it) | 'trace' "
                  "(#639: replay --traceFile)",
                  mobilityModel);
-    cmd.AddValue("blocksX", "Manhattan grid / urban channel: blocks along x "
-                            "(#488; streets on the block edges). Default 5 "
-                            "(4 for --scenario=vanet)", blocksX);
-    cmd.AddValue("blocksY", "Manhattan grid / urban channel: blocks along y "
-                            "(#488). Default 5 (4 for --scenario=vanet)", blocksY);
-    cmd.AddValue("streetWidth", "Urban channel: street width (m); buildings are "
-                                "the blocks inset by half of it (#488)", streetWidth);
+    cmd.AddValue("blocksX",
+                 "Manhattan grid / urban channel: blocks along x "
+                 "(#488; streets on the block edges). Default 5 "
+                 "(4 for --scenario=vanet)",
+                 blocksX);
+    cmd.AddValue("blocksY",
+                 "Manhattan grid / urban channel: blocks along y "
+                 "(#488). Default 5 (4 for --scenario=vanet)",
+                 blocksY);
+    cmd.AddValue("streetWidth",
+                 "Urban channel: street width (m); buildings are "
+                 "the blocks inset by half of it (#488)",
+                 streetWidth);
     cmd.AddValue("propagation",
                  "Propagation loss model: 'range' (disk) | 'tworay' (#24) | "
                  "'nakagami' (#60: the same two-ray path loss plus Nakagami-m "
@@ -3442,7 +3418,8 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("rateManager",
                  "Rate control: constant1|constant2|constant5|constant11 (fixed "
                  "DSSS rate; default constant2, the paper's radio) | arf | ideal "
-                 "(ns-3 default; loses ~50% single-hop, #51)", rateManager);
+                 "(ns-3 default; loses ~50% single-hop, #51)",
+                 rateManager);
     // #209 energy model. Defaults and their provenance: see the kDefault*
     // block above. Overridable because they are modelling choices, not
     // measurements of this scenario's radio.
@@ -3451,22 +3428,27 @@ int main(int argc, char* argv[]) {
     double txCurrentA = kDefaultTxCurrentA;
     double rxCurrentA = kDefaultRxCurrentA;
     double idleCurrentA = kDefaultIdleCurrentA;
-    cmd.AddValue("energyJ", "Initial energy per node (J); default 5000 is sized "
-                            "so no node dies in a 900 s run (#209). 0 disables "
-                            "energy accounting; energy columns then read 0",
+    cmd.AddValue("energyJ",
+                 "Initial energy per node (J); default 5000 is sized "
+                 "so no node dies in a 900 s run (#209). 0 disables "
+                 "energy accounting; energy columns then read 0",
                  energyJ);
     cmd.AddValue("voltageV", "Energy-source supply voltage (V)", voltageV);
     cmd.AddValue("txCurrentA", "Radio transmit current (A)", txCurrentA);
     cmd.AddValue("rxCurrentA", "Radio receive current (A)", rxCurrentA);
-    cmd.AddValue("idleCurrentA", "Radio idle current (A); also applied to the "
-                                 "CCA-busy and switching states", idleCurrentA);
+    cmd.AddValue("idleCurrentA",
+                 "Radio idle current (A); also applied to the "
+                 "CCA-busy and switching states",
+                 idleCurrentA);
     // #217: the window over which concurrently-used next hops are counted.
     // Carried into the CSV (path_div_window_s) because it defines what the
     // diversity number means — see the path-diversity block above main().
     double pathWindowS = kDefaultPathWindowS;
-    cmd.AddValue("pathWindowS", "Window (s) over which distinct next hops used "
-                                "for a destination are counted as concurrent "
-                                "paths (#217); default 10", pathWindowS);
+    cmd.AddValue("pathWindowS",
+                 "Window (s) over which distinct next hops used "
+                 "for a destination are counted as concurrent "
+                 "paths (#217); default 10",
+                 pathWindowS);
     cmd.Parse(argc, argv);
 
     // 'paper' = the Broch/CMU MobiCom'98 field (the literature *calibration*
@@ -3505,11 +3487,10 @@ int main(int argc, char* argv[]) {
     // #482: refuse an unknown preset rather than silently running the legacy
     // defaults under a label that claims otherwise (a typo'd "fanet" would
     // otherwise produce a planar 20-node RWP run tagged scenario=fanet).
-    NS_ABORT_MSG_UNLESS(scenario.empty() || scenario == "paper" ||
-                            scenario == "thesis" || scenario == "fanet" ||
-                            scenario == "vanet",
-                        "unknown --scenario='" << scenario
-                        << "' (expected paper|thesis|fanet|vanet, or omit it)");
+    NS_ABORT_MSG_UNLESS(
+        scenario.empty() || scenario == "paper" || scenario == "thesis" || scenario == "fanet" ||
+            scenario == "vanet",
+        "unknown --scenario='" << scenario << "' (expected paper|thesis|fanet|vanet, or omit it)");
     const bool thesis = (scenario == "thesis");
     const bool paper = (scenario == "paper") || thesis;
     // #482 FANET preset (family #300). Scenario knobs ONLY (ADR-0019): no
@@ -3554,26 +3535,51 @@ int main(int argc, char* argv[]) {
     // historical default of 1. Explicit --runs=N always overrides.
     if (runs < 1) runs = thesis ? 20 : 1;
     Params P;
-    P.nNodes  = nNodes > 0 ? static_cast<uint32_t>(nNodes)
-                           : (thesis ? 100 : paper ? 50 : fanet ? 30 : vanet ? 100 : 20);
+    P.nNodes = nNodes > 0 ? static_cast<uint32_t>(nNodes)
+                          : (thesis  ? 100
+                             : paper ? 50
+                             : fanet ? 30
+                             : vanet ? 100
+                                     : 20);
     P.simTime = simTime >= 0 ? simTime : ((paper || fanet || vanet) ? 900.0 : 40.0);
-    P.areaX   = areaX >= 0 ? areaX
-                           : (area >= 0 ? area : (thesis ? 2400.0 : paper ? 1500.0 : fanet ? 1000.0 : vanet ? 800.0 : 300.0));
-    P.areaY   = areaY >= 0 ? areaY
-                           : (area >= 0 ? area : (thesis ? 800.0 : paper ? 300.0 : fanet ? 1000.0 : vanet ? 800.0 : 300.0));
+    P.areaX = areaX >= 0 ? areaX
+                         : (area >= 0 ? area
+                                      : (thesis  ? 2400.0
+                                         : paper ? 1500.0
+                                         : fanet ? 1000.0
+                                         : vanet ? 800.0
+                                                 : 300.0));
+    P.areaY = areaY >= 0 ? areaY
+                         : (area >= 0 ? area
+                                      : (thesis  ? 800.0
+                                         : paper ? 300.0
+                                         : fanet ? 1000.0
+                                         : vanet ? 800.0
+                                                 : 300.0));
     // -1 = unset (the preset decides); an explicit --areaZ=0 forces planar.
     NS_ABORT_MSG_UNLESS(areaZ >= 0.0 || areaZ == -1.0,
                         "--areaZ must be >= 0 (got " << areaZ << ")");
-    P.areaZ   = areaZ >= 0 ? areaZ : (fanet ? 300.0 : 0.0);
-    P.speed   = speed >= 0 ? speed : (thesis ? 10.0 : paper ? 20.0 : fanet ? 30.0 : vanet ? 20.0 : 5.0);
+    P.areaZ = areaZ >= 0 ? areaZ : (fanet ? 300.0 : 0.0);
+    P.speed = speed >= 0 ? speed
+                         : (thesis  ? 10.0
+                            : paper ? 20.0
+                            : fanet ? 30.0
+                            : vanet ? 20.0
+                                    : 5.0);
     P.speedMin = speedMin >= 0 ? speedMin : ((fanet || vanet) ? 10.0 : 1.0);
     NS_ABORT_MSG_UNLESS(P.speedMin <= P.speed,
-                        "--speedMin=" << P.speedMin << " exceeds the max speed "
-                        << P.speed << ": U(speedMin, speed) would be empty (#482)");
-    P.pause   = pause >= 0 ? pause : (paper ? 30.0 : (fanet || vanet) ? 0.0 : 1.0);
-    P.range   = range >= 0 ? range : (thesis ? 250.0 : paper ? 300.0 : fanet ? 350.0 : 0.0);
-    P.nFlows  = nFlows > 0 ? static_cast<uint32_t>(nFlows) : ((paper || vanet) ? 20 : fanet ? 10 : 5);
-    P.cbrBps  = cbrBps >= 0 ? cbrBps : ((thesis || fanet || vanet) ? 2048.0 : paper ? 512.0 : 8000.0);
+                        "--speedMin=" << P.speedMin << " exceeds the max speed " << P.speed
+                                      << ": U(speedMin, speed) would be empty (#482)");
+    P.pause = pause >= 0 ? pause : (paper ? 30.0 : (fanet || vanet) ? 0.0 : 1.0);
+    P.range = range >= 0 ? range : (thesis ? 250.0 : paper ? 300.0 : fanet ? 350.0 : 0.0);
+    P.nFlows = nFlows > 0 ? static_cast<uint32_t>(nFlows)
+                          : ((paper || vanet) ? 20
+                             : fanet          ? 10
+                                              : 5);
+    P.cbrBps = cbrBps >= 0 ? cbrBps
+                           : ((thesis || fanet || vanet) ? 2048.0
+                              : paper                    ? 512.0
+                                                         : 8000.0);
     P.offTime = offTime;
     P.startWindow = (paper || fanet || vanet) ? 180.0 : 5.0;
     if (mobilityModel.empty()) mobilityModel = fanet ? "gaussmarkov" : vanet ? "manhattan" : "rwp";
@@ -3597,8 +3603,8 @@ int main(int argc, char* argv[]) {
     if (fanet || vanet) {
         bool explicitRecompute = false;
         for (int k = 1; k < argc; ++k) {
-            if (std::string(argv[k]).find("oracle::Topology::RecomputeInterval")
-                != std::string::npos) {
+            if (std::string(argv[k]).find("oracle::Topology::RecomputeInterval") !=
+                std::string::npos) {
                 explicitRecompute = true;
             }
         }
@@ -3614,43 +3620,48 @@ int main(int argc, char* argv[]) {
     P.propagation = propagation;
     NS_ABORT_MSG_UNLESS(propagation == "range" || propagation == "tworay" ||
                             propagation == "nakagami" || propagation == "urban",
-                        "unknown --propagation='" << propagation
-                        << "' (expected range|tworay|nakagami|urban). Refusing rather "
-                           "than falling through to a default channel: the "
-                           "silent fallback would produce a plausible run of "
-                           "the wrong channel (#60).");
+                        "unknown --propagation='"
+                            << propagation
+                            << "' (expected range|tworay|nakagami|urban). Refusing rather "
+                               "than falling through to a default channel: the "
+                               "silent fallback would produce a plausible run of "
+                               "the wrong channel (#60).");
     P.mobility = mobilityModel;
     P.transport = transport;
     NS_ABORT_MSG_UNLESS(transport == "udp" || transport == "tcp",
-                        "unknown --transport='" << transport
-                        << "' (expected udp|tcp). Refusing rather than "
-                           "defaulting to udp: a typo would silently produce a "
-                           "UDP run labelled as a TCP one (#63).");
-    NS_ABORT_MSG_UNLESS(mobilityModel == "rwp" || mobilityModel == "ssrwp" ||
-                            mobilityModel == "gaussmarkov" ||
-                            mobilityModel == "manhattan" || mobilityModel == "trace",
-                        "unknown --mobility='" << mobilityModel
-                        << "' (expected rwp|ssrwp|gaussmarkov|manhattan|trace). Refusing rather "
-                           "than silently falling back to rwp: a typo would "
-                           "otherwise produce a plausible run of the wrong "
-                           "model (#61).");
+                        "unknown --transport='"
+                            << transport
+                            << "' (expected udp|tcp). Refusing rather than "
+                               "defaulting to udp: a typo would silently produce a "
+                               "UDP run labelled as a TCP one (#63).");
+    NS_ABORT_MSG_UNLESS(
+        mobilityModel == "rwp" || mobilityModel == "ssrwp" || mobilityModel == "gaussmarkov" ||
+            mobilityModel == "manhattan" || mobilityModel == "trace",
+        "unknown --mobility='"
+            << mobilityModel
+            << "' (expected rwp|ssrwp|gaussmarkov|manhattan|trace). Refusing rather "
+               "than silently falling back to rwp: a typo would "
+               "otherwise produce a plausible run of the wrong "
+               "model (#61).");
     // #480: arms that cannot honour a 3-D field are refused, never silently
     // flattened. A planar fallback would produce a plausible FANET-labelled
     // run of the wrong geometry -- the same failure class as the unknown-arm
     // refusals above.
     if (P.areaZ > 0.0) {
-        NS_ABORT_MSG_UNLESS(propagation == "range",
-                            "--propagation=" << propagation << " with --areaZ="
-                            << P.areaZ << ": two-ray ground reflection (and the "
-                            "nakagami arm stacked on it) assumes 1.5 m antennas "
-                            "over a ground plane, which is meaningless between "
-                            "aircraft. Use the disk ('range') channel; a 3-D "
-                            "fading arm is future work (#480, #60).");
+        NS_ABORT_MSG_UNLESS(
+            propagation == "range",
+            "--propagation=" << propagation << " with --areaZ=" << P.areaZ
+                             << ": two-ray ground reflection (and the "
+                                "nakagami arm stacked on it) assumes 1.5 m antennas "
+                                "over a ground plane, which is meaningless between "
+                                "aircraft. Use the disk ('range') channel; a 3-D "
+                                "fading arm is future work (#480, #60).");
         NS_ABORT_MSG_UNLESS(mobilityModel != "ssrwp",
-                            "--mobility=ssrwp with --areaZ=" << P.areaZ
-                            << ": ns-3's SteadyStateRandomWaypointMobilityModel "
-                            "is planar (a fixed Z), so it would silently "
-                            "flatten the field. Use rwp or gaussmarkov (#480).");
+                            "--mobility=ssrwp with --areaZ="
+                                << P.areaZ
+                                << ": ns-3's SteadyStateRandomWaypointMobilityModel "
+                                   "is planar (a fixed Z), so it would silently "
+                                   "flatten the field. Use rwp or gaussmarkov (#480).");
     }
     // #488: the street grid both the Manhattan model and the urban buildings
     // live on. Refusals, never silent fallbacks: each would otherwise produce a
@@ -3658,12 +3669,10 @@ int main(int argc, char* argv[]) {
     P.blocksX = blocksX;
     P.blocksY = blocksY;
     P.streetWidth = streetWidth;
-    NS_ABORT_MSG_UNLESS(blocksX >= 1 && blocksY >= 1,
-                        "--blocksX/--blocksY must be >= 1 (#488)");
+    NS_ABORT_MSG_UNLESS(blocksX >= 1 && blocksY >= 1, "--blocksX/--blocksY must be >= 1 (#488)");
     if (mobilityModel == "manhattan") {
-        NS_ABORT_MSG_UNLESS(P.areaZ == 0.0,
-                            "--mobility=manhattan with --areaZ=" << P.areaZ
-                            << ": a street grid is planar (#488)");
+        NS_ABORT_MSG_UNLESS(P.areaZ == 0.0, "--mobility=manhattan with --areaZ="
+                                                << P.areaZ << ": a street grid is planar (#488)");
         NS_ABORT_MSG_UNLESS(P.speedMin > 0.0,
                             "--mobility=manhattan needs --speedMin > 0: each leg's "
                             "duration is its length over a speed drawn "
@@ -3678,11 +3687,12 @@ int main(int argc, char* argv[]) {
                             "--mobility=trace that drives the same streets): the "
                             "buildings are the street grid's blocks, and vehicles "
                             "off the streets would sit inside them (#488)");
-        NS_ABORT_MSG_UNLESS(streetWidth > 0.0 &&
-                                streetWidth < std::min(P.areaX / blocksX, P.areaY / blocksY),
-                            "--streetWidth=" << streetWidth << " must be > 0 and "
-                            "narrower than a block (" << P.areaX / blocksX << " x "
-                            << P.areaY / blocksY << " m) (#488)");
+        NS_ABORT_MSG_UNLESS(
+            streetWidth > 0.0 && streetWidth < std::min(P.areaX / blocksX, P.areaY / blocksY),
+            "--streetWidth=" << streetWidth
+                             << " must be > 0 and "
+                                "narrower than a block ("
+                             << P.areaX / blocksX << " x " << P.areaY / blocksY << " m) (#488)");
     }
     P.rateManager = rateManager;
     P.sink = sink;
@@ -3700,7 +3710,8 @@ int main(int argc, char* argv[]) {
     P.dumpTrace = dumpTrace;
     P.dumpFlows = dumpFlows;
     if (P.mobility == "trace") {
-        NS_ABORT_MSG_IF(traceFile.empty(), "--mobility=trace needs --traceFile=<ns-2 trace> (#639)");
+        NS_ABORT_MSG_IF(traceFile.empty(),
+                        "--mobility=trace needs --traceFile=<ns-2 trace> (#639)");
         std::ifstream tf(traceFile);
         NS_ABORT_MSG_UNLESS(tf, "--traceFile='" << traceFile << "' cannot be opened (#639)");
         std::string line;
@@ -3714,9 +3725,10 @@ int main(int argc, char* argv[]) {
                 NS_ABORT_MSG_IF(close == std::string::npos,
                                 traceFile << ":" << lineNo << ": unterminated $node_( (#639)");
                 const std::string id = line.substr(at + 7, close - at - 7);
-                NS_ABORT_MSG_UNLESS(!id.empty() && id.find_first_not_of("0123456789") == std::string::npos,
-                                    traceFile << ":" << lineNo << ": node id '" << id
-                                    << "' is not a non-negative integer (#639)");
+                NS_ABORT_MSG_UNLESS(
+                    !id.empty() && id.find_first_not_of("0123456789") == std::string::npos,
+                    traceFile << ":" << lineNo << ": node id '" << id
+                              << "' is not a non-negative integer (#639)");
                 maxId = std::max<int64_t>(maxId, std::stoll(id));
             }
         }
@@ -3725,15 +3737,16 @@ int main(int argc, char* argv[]) {
         for (int k = 1; k < argc; ++k) {
             if (std::string(argv[k]).rfind("--nNodes=", 0) == 0) explicitN = true;
         }
-        NS_ABORT_MSG_IF(explicitN && P.nNodes != static_cast<uint32_t>(maxId + 1),
-                        "--nNodes=" << P.nNodes << " but the trace names " << maxId + 1
-                        << " nodes (#639)");
+        NS_ABORT_MSG_IF(
+            explicitN && P.nNodes != static_cast<uint32_t>(maxId + 1),
+            "--nNodes=" << P.nNodes << " but the trace names " << maxId + 1 << " nodes (#639)");
         P.nNodes = static_cast<uint32_t>(maxId + 1);
     }
     NS_ABORT_MSG_IF(!dumpTrace.empty() && P.areaZ > 0.0,
                     "--dumpTrace writes ns-2 setdest, which is 2-D; refusing a 3-D field (#639)");
     if (!flowsFile.empty()) {
-        NS_ABORT_MSG_IF(P.sink >= 0, "--flowsFile and --sink both choose the flows; use one (#639)");
+        NS_ABORT_MSG_IF(P.sink >= 0,
+                        "--flowsFile and --sink both choose the flows; use one (#639)");
         std::ifstream ff(flowsFile);
         NS_ABORT_MSG_UNLESS(ff, "--flowsFile='" << flowsFile << "' cannot be opened (#639)");
         std::string line;
@@ -3747,18 +3760,23 @@ int main(int argc, char* argv[]) {
             long long src = -1, dst = -1;
             double start = -1, stop = -1, bps = -1;
             std::string extra;
-            NS_ABORT_MSG_UNLESS((ls >> src >> dst >> start >> stop >> bps) && !(ls >> extra),
-                                flowsFile << ":" << lineNo << ": expected 'src dst start stop cbrBps' (#639)");
+            NS_ABORT_MSG_UNLESS(
+                (ls >> src >> dst >> start >> stop >> bps) && !(ls >> extra),
+                flowsFile << ":" << lineNo << ": expected 'src dst start stop cbrBps' (#639)");
             NS_ABORT_MSG_UNLESS(src >= 0 && dst >= 0 && src < static_cast<long long>(P.nNodes) &&
                                     dst < static_cast<long long>(P.nNodes) && src != dst,
-                                flowsFile << ":" << lineNo << ": node ids must be distinct and in [0, "
-                                << P.nNodes << ") (#639)");
+                                flowsFile << ":" << lineNo
+                                          << ": node ids must be distinct and in [0, " << P.nNodes
+                                          << ") (#639)");
             NS_ABORT_MSG_UNLESS(start >= 0.0 && start < stop && start < P.simTime && bps > 0.0,
-                                flowsFile << ":" << lineNo << ": need 0 <= start < stop, start < --time="
-                                << P.simTime << " and cbrBps > 0 (#639)");
-            P.flowList.push_back({static_cast<uint32_t>(src), static_cast<uint32_t>(dst), start, stop, bps});
+                                flowsFile << ":" << lineNo
+                                          << ": need 0 <= start < stop, start < --time="
+                                          << P.simTime << " and cbrBps > 0 (#639)");
+            P.flowList.push_back(
+                {static_cast<uint32_t>(src), static_cast<uint32_t>(dst), start, stop, bps});
         }
-        NS_ABORT_MSG_IF(P.flowList.empty(), "--flowsFile='" << flowsFile << "' lists no flows (#639)");
+        NS_ABORT_MSG_IF(P.flowList.empty(),
+                        "--flowsFile='" << flowsFile << "' lists no flows (#639)");
         P.nFlows = static_cast<uint32_t>(P.flowList.size());
     }
 
@@ -3779,10 +3797,11 @@ int main(int argc, char* argv[]) {
         for (const std::string& proto : list) {
             NS_ABORT_MSG_UNLESS(proto != "gpsr",
                                 "--protocols includes gpsr with --areaZ="
-                                << P.areaZ << ": the vendored GPSR is planar "
-                                "(2-D headers, 2-D planarization) and would "
-                                "route on projected positions. Drop it from "
-                                "--protocols for a 3-D field (#480).");
+                                    << P.areaZ
+                                    << ": the vendored GPSR is planar "
+                                       "(2-D headers, 2-D planarization) and would "
+                                       "route on projected positions. Drop it from "
+                                       "--protocols for a 3-D field (#480).");
         }
     }
 
@@ -3827,10 +3846,10 @@ int main(int argc, char* argv[]) {
     // outermost, so the comparison is only possible after the whole grid exists.
     struct MatchCell {
         std::map<uint32_t, uint64_t> hist;
-        double   binWidth = 0.0;
+        double binWidth = 0.0;
         uint64_t rx = 0;
-        double   delay99Ms = 0.0;
-        std::map<Address, std::map<uint32_t, double>> bySeq;  // #308
+        double delay99Ms = 0.0;
+        std::map<Address, std::map<uint32_t, double>> bySeq;        // #308
         std::map<Address, std::map<uint32_t, uint32_t>> hopsBySeq;  // #308 phase 2
     };
     // #308/#369: record what this invocation actually ran, in the compact
@@ -3847,9 +3866,8 @@ int main(int argc, char* argv[]) {
     // a mis-read position in a provenance row would misattribute a whole
     // campaign, and there is no `# stddev` cross-check to catch it the way
     // there is for the metric columns.
-    std::cout << "##CONFIG## scenario=" << scenario
-              << " nNodes=" << P.nNodes << " time=" << P.simTime
-              << " runs=" << runs << " firstRun=" << firstRun
+    std::cout << "##CONFIG## scenario=" << scenario << " nNodes=" << P.nNodes
+              << " time=" << P.simTime << " runs=" << runs << " firstRun=" << firstRun
               << " areaX=" << P.areaX << " areaY=" << P.areaY;
     // #480: only a 3-D field names its z extent, so every planar run's
     // ##CONFIG## row stays byte-identical to the published corpus.
@@ -3858,8 +3876,7 @@ int main(int argc, char* argv[]) {
     // #482: like areaZ, only a non-default floor is named, keeping every
     // existing ##CONFIG## row byte-identical.
     if (P.speedMin != 1.0) std::cout << " speedMin=" << P.speedMin;
-    std::cout << " pause=" << P.pause
-              << " range=" << P.range << " propagation=" << P.propagation
+    std::cout << " pause=" << P.pause << " range=" << P.range << " propagation=" << P.propagation
               << " mobility=" << P.mobility;
     // #488: the grid geometry, named only when a grid is in use, so every
     // other row stays byte-identical.
@@ -3870,12 +3887,11 @@ int main(int argc, char* argv[]) {
     // #639: a replayed scene names its files; other rows stay byte-identical.
     if (!P.traceFile.empty()) std::cout << " traceFile=" << P.traceFile;
     if (!P.flowList.empty()) std::cout << " flowsFile=" << flowsFile;
-    std::cout << " transport=" << P.transport
-              << " flows=" << P.nFlows << " cbrBps=" << P.cbrBps
+    std::cout << " transport=" << P.transport << " flows=" << P.nFlows << " cbrBps="
+              << P.cbrBps
               // #521: always named, so a post-fix row is distinguishable
               // from the pre-#521 corpus, whose rows lack the key.
-              << " offTime=" << P.offTime
-              << " rateManager=" << P.rateManager
+              << " offTime=" << P.offTime << " rateManager=" << P.rateManager
               << " protocols=" << protocols << '\n';
     // Every AntHocNet attribute at its *effective* value. ns-3 routes
     // `--ns3::anthocnet::RoutingProtocol::X=Y` through Config::SetDefault,
@@ -3896,8 +3912,7 @@ int main(int argc, char* argv[]) {
                 const TypeId::AttributeInformation info = tid.GetAttribute(a);
                 if (!info.initialValue || !info.checker) continue;
                 std::cout << "##CONFIG## attr " << info.name << '='
-                          << info.initialValue->SerializeToString(info.checker)
-                          << '\n';
+                          << info.initialValue->SerializeToString(info.checker) << '\n';
             }
         }
     }
@@ -3912,11 +3927,11 @@ int main(int argc, char* argv[]) {
                 const TypeId::AttributeInformation info = otid.GetAttribute(a);
                 if (info.name != "RecomputeInterval") continue;
                 if (!info.initialValue || !info.checker) break;
-                const std::string v =
-                    info.initialValue->SerializeToString(info.checker);
+                const std::string v = info.initialValue->SerializeToString(info.checker);
                 if (v != "+1e+09ns") {
                     std::cout << "##CONFIG## attr ns3::oracle::Topology::"
-                                 "RecomputeInterval=" << v << '\n';
+                                 "RecomputeInterval="
+                              << v << '\n';
                 }
                 break;
             }
@@ -3934,14 +3949,12 @@ int main(int argc, char* argv[]) {
                 if (info.name != "SocketType") continue;
                 if (!info.initialValue || !info.checker) break;
                 std::cout << "##CONFIG## attr ns3::TcpL4Protocol::SocketType="
-                          << info.initialValue->SerializeToString(info.checker)
-                          << '\n';
+                          << info.initialValue->SerializeToString(info.checker) << '\n';
                 break;
             }
         }
     }
-    std::vector<std::vector<MatchCell>> matchGrid(
-        list.size(), std::vector<MatchCell>(runs));
+    std::vector<std::vector<MatchCell>> matchGrid(list.size(), std::vector<MatchCell>(runs));
     for (std::size_t i = 0; i < list.size(); ++i) {
         for (uint32_t s = firstRun; s < firstRun + runs; ++s) {
             Result r = RunOne(list[i], P, s);
@@ -3959,16 +3972,16 @@ int main(int argc, char* argv[]) {
             // mean±sd. Same field order/precision as the final table and the
             // workflow's ##BENCH## re-emit; dOff percentiles print "inf" like
             // the table when -1 (infinite).
-            std::cout << std::fixed << "##RUN## " << s << ' ' << list[i]
-                      << ' ' << std::setprecision(1) << r.pdr
-                      << ' ' << std::setprecision(1) << r.meanDelayMs
-                      << ' ' << std::setprecision(1) << r.delay99Ms
-                      << ' ' << std::setprecision(2) << r.throughputKbps
-                      << ' ' << std::setprecision(2) << r.nrl
-                      << ' ' << std::setprecision(2) << r.jitterMs;
+            std::cout << std::fixed << "##RUN## " << s << ' ' << list[i] << ' '
+                      << std::setprecision(1) << r.pdr << ' ' << std::setprecision(1)
+                      << r.meanDelayMs << ' ' << std::setprecision(1) << r.delay99Ms << ' '
+                      << std::setprecision(2) << r.throughputKbps << ' ' << std::setprecision(2)
+                      << r.nrl << ' ' << std::setprecision(2) << r.jitterMs;
             for (double v : {r.dOff50Ms, r.dOff90Ms}) {
-                if (v < 0) std::cout << " inf";
-                else std::cout << ' ' << std::setprecision(1) << v;
+                if (v < 0)
+                    std::cout << " inf";
+                else
+                    std::cout << ' ' << std::setprecision(1) << v;
             }
             // #132: keep the per-run row field-aligned with the mean row, so
             // paired per-seed statistics cover nrl_bytes too.
@@ -3993,40 +4006,34 @@ int main(int argc, char* argv[]) {
             if (r.holdValid) {
                 std::cout << std::fixed << "##HOLD## " << s << ' ' << list[i];
                 for (uint8_t hr = 0; hr < ns3::anthocnet::kHoldReasons; ++hr) {
-                    const double meanMs = r.hold.deliveredCount[hr]
-                        ? 1000.0 * r.hold.deliveredSumS[hr] / r.hold.deliveredCount[hr]
-                        : 0.0;
-                    std::cout << ' ' << r.hold.deliveredCount[hr]
-                              << ' ' << std::setprecision(2) << meanMs
-                              << ' ' << std::setprecision(2)
+                    const double meanMs =
+                        r.hold.deliveredCount[hr]
+                            ? 1000.0 * r.hold.deliveredSumS[hr] / r.hold.deliveredCount[hr]
+                            : 0.0;
+                    std::cout << ' ' << r.hold.deliveredCount[hr] << ' ' << std::setprecision(2)
+                              << meanMs << ' ' << std::setprecision(2)
                               << 1000.0 * r.hold.deliveredMaxS[hr];
                 }
                 std::cout << "\n";
             }
             if (r.airTxS >= 0.0) {
-                const double nodeSeconds =
-                    static_cast<double>(P.nNodes) * P.simTime;
+                const double nodeSeconds = static_cast<double>(P.nNodes) * P.simTime;
                 const double busy = r.airTxS + r.airRxS + r.airCcaS;
-                std::cout << std::fixed << "##AIR## " << s << ' ' << list[i]
-                          << ' ' << std::setprecision(3) << r.airTxS
-                          << ' ' << std::setprecision(3) << r.airRxS
-                          << ' ' << std::setprecision(3) << r.airCcaS
-                          << ' ' << std::setprecision(4)
-                          << (nodeSeconds > 0.0 ? 100.0 * busy / nodeSeconds : 0.0)
-                          << "\n";
+                std::cout << std::fixed << "##AIR## " << s << ' ' << list[i] << ' '
+                          << std::setprecision(3) << r.airTxS << ' ' << std::setprecision(3)
+                          << r.airRxS << ' ' << std::setprecision(3) << r.airCcaS << ' '
+                          << std::setprecision(4)
+                          << (nodeSeconds > 0.0 ? 100.0 * busy / nodeSeconds : 0.0) << "\n";
                 // #294 item 3 / #483: the energy family per seed, so it pairs
                 // and carries a CI like every other per-seed row. Until now it
                 // was only printed as a mean over runs ('# energy', the CSV),
                 // which no interval can be built from. Same gate as ##AIR##
                 // (both need the energy model on, #270): absent, not zero,
                 // under --energyJ=0.
-                std::cout << "##ENERGY## " << s << ' ' << list[i]
-                          << ' ' << std::setprecision(3) << r.energyJ
-                          << ' ' << std::setprecision(6) << r.energyPerPktJ
-                          << ' ' << std::scientific << std::setprecision(4)
-                          << r.energyPerBitJ << std::fixed
-                          << ' ' << std::setprecision(3) << r.resSdJ
-                          << "\n";
+                std::cout << "##ENERGY## " << s << ' ' << list[i] << ' ' << std::setprecision(3)
+                          << r.energyJ << ' ' << std::setprecision(6) << r.energyPerPktJ << ' '
+                          << std::scientific << std::setprecision(4) << r.energyPerBitJ
+                          << std::fixed << ' ' << std::setprecision(3) << r.resSdJ << "\n";
             }
             // #63: application bytes delivered per second, from the
             // PacketSinks. Emitted on every run, not only TCP ones: on UDP it
@@ -4034,22 +4041,18 @@ int main(int argc, char* argv[]) {
             // cross-check that the metric is wired correctly. On TCP the gap
             // between the two is the retransmission overhead, and ##GOODPUT##
             // -- not pdr, not thrput -- is the cell's headline.
-            std::cout << std::fixed << "##GOODPUT## " << s << ' ' << list[i]
-                      << ' ' << std::setprecision(3) << r.goodputKbps << "\n";
+            std::cout << std::fixed << "##GOODPUT## " << s << ' ' << list[i] << ' '
+                      << std::setprecision(3) << r.goodputKbps << "\n";
             // #294 item 4: route stability per seed. UDP arms only — absent,
             // not zero, under TCP, where the (flow, seq) path identity does
             // not exist (the #382 rule).
             if (r.routeValid) {
-                std::cout << std::fixed << "##ROUTE## " << s << ' ' << list[i]
-                          << ' ' << std::setprecision(4) << r.setupMedS
-                          << ' ' << std::setprecision(4) << r.setupMaxS
-                          << ' ' << r.flowsNoDelivery
-                          << ' ' << std::setprecision(5) << r.pathChg
-                          << ' ' << std::setprecision(3) << r.pathLifeMedS
-                          << ' ' << r.pathLifeN
-                          << ' ' << std::setprecision(4) << r.pathHopsMean
-                          << ' ' << std::setprecision(4) << r.hopsMean
-                          << "\n";
+                std::cout << std::fixed << "##ROUTE## " << s << ' ' << list[i] << ' '
+                          << std::setprecision(4) << r.setupMedS << ' ' << std::setprecision(4)
+                          << r.setupMaxS << ' ' << r.flowsNoDelivery << ' ' << std::setprecision(5)
+                          << r.pathChg << ' ' << std::setprecision(3) << r.pathLifeMedS << ' '
+                          << r.pathLifeN << ' ' << std::setprecision(4) << r.pathHopsMean << ' '
+                          << std::setprecision(4) << r.hopsMean << "\n";
             }
             agg[i].pdr += r.pdr;
             agg[i].delay += r.meanDelayMs;
@@ -4064,8 +4067,14 @@ int main(int argc, char* argv[]) {
             agg[i].delay99Sq += r.delay99Ms * r.delay99Ms;
             agg[i].nrlSq += r.nrl * r.nrl;
             agg[i].nrlBytesSq += r.nrlBytes * r.nrlBytes;
-            if (r.dOff50Ms < 0) agg[i].off50Inf = true; else agg[i].dOff50 += r.dOff50Ms;
-            if (r.dOff90Ms < 0) agg[i].off90Inf = true; else agg[i].dOff90 += r.dOff90Ms;
+            if (r.dOff50Ms < 0)
+                agg[i].off50Inf = true;
+            else
+                agg[i].dOff50 += r.dOff50Ms;
+            if (r.dOff90Ms < 0)
+                agg[i].off90Inf = true;
+            else
+                agg[i].dOff90 += r.dOff90Ms;
             agg[i].energy += r.energyJ;
             agg[i].energyPerPkt += r.energyPerPktJ;
             agg[i].resMin += r.resMinJ;
@@ -4115,8 +4124,7 @@ int main(int argc, char* argv[]) {
         agg[i].resMin /= runs;
         agg[i].resMean /= runs;
         agg[i].resSd /= runs;
-        agg[i].firstDeath = agg[i].deathRuns
-            ? agg[i].firstDeath / agg[i].deathRuns : -1.0;
+        agg[i].firstDeath = agg[i].deathRuns ? agg[i].firstDeath / agg[i].deathRuns : -1.0;
         agg[i].reordRatio /= runs;
         agg[i].reordRatioMax /= runs;
         agg[i].reordExtMean /= runs;
@@ -4187,8 +4195,7 @@ int main(int argc, char* argv[]) {
             uint64_t cum = 0;
             for (const auto& kv : c.hist) {
                 cum += kv.second;
-                if (cum >= targetCount)
-                    return 1000.0 * (kv.first + 0.5) * c.binWidth;
+                if (cum >= targetCount) return 1000.0 * (kv.first + 0.5) * c.binWidth;
             }
             return -1.0;  // fewer deliveries than the target: undefined here
         };
@@ -4197,18 +4204,22 @@ int main(int argc, char* argv[]) {
             bool have = false;
             for (std::size_t i = 0; i < list.size(); ++i) {
                 const uint64_t rx = matchGrid[i][s - firstRun].rx;
-                if (!have || rx < rxMin) { rxMin = rx; have = true; }
+                if (!have || rx < rxMin) {
+                    rxMin = rx;
+                    have = true;
+                }
             }
             if (!have || rxMin == 0) continue;
             const uint64_t target = static_cast<uint64_t>(0.99 * rxMin);
             for (std::size_t i = 0; i < list.size(); ++i) {
                 const MatchCell& c = matchGrid[i][s - firstRun];
                 const double matched = quantileAt(c, target);
-                std::cout << std::fixed << "##MATCH## " << s << ' ' << list[i]
-                          << ' ' << c.rx << ' ' << rxMin
-                          << ' ' << std::setprecision(1) << c.delay99Ms << ' ';
-                if (matched < 0) std::cout << "na";
-                else std::cout << std::setprecision(1) << matched;
+                std::cout << std::fixed << "##MATCH## " << s << ' ' << list[i] << ' ' << c.rx << ' '
+                          << rxMin << ' ' << std::setprecision(1) << c.delay99Ms << ' ';
+                if (matched < 0)
+                    std::cout << "na";
+                else
+                    std::cout << std::setprecision(1) << matched;
                 std::cout << "\n";
             }
         }
@@ -4251,10 +4262,13 @@ int main(int argc, char* argv[]) {
                 std::set<std::pair<Address, uint32_t>> mine;
                 for (const auto& f : matchGrid[i][s - firstRun].bySeq)
                     for (const auto& kv : f.second) mine.insert({f.first, kv.first});
-                if (first) { common = mine; first = false; continue; }
+                if (first) {
+                    common = mine;
+                    first = false;
+                    continue;
+                }
                 std::set<std::pair<Address, uint32_t>> both;
-                std::set_intersection(common.begin(), common.end(),
-                                      mine.begin(), mine.end(),
+                std::set_intersection(common.begin(), common.end(), mine.begin(), mine.end(),
                                       std::inserter(both, both.begin()));
                 common.swap(both);
             }
@@ -4265,8 +4279,10 @@ int main(int argc, char* argv[]) {
                 for (const auto& f : matchGrid[i][s - firstRun].bySeq) {
                     for (const auto& kv : f.second) {
                         ++nSelf;
-                        if (common.count({f.first, kv.first})) inCommon.push_back(kv.second);
-                        else surplus.push_back(kv.second);
+                        if (common.count({f.first, kv.first}))
+                            inCommon.push_back(kv.second);
+                        else
+                            surplus.push_back(kv.second);
                     }
                 }
                 // #308 phase 2: the same split over hop counts. Averaged over
@@ -4286,26 +4302,33 @@ int main(int argc, char* argv[]) {
                     }
                 }
                 const double p99c = pct(inCommon, 0.99);
-                const double meanc = inCommon.empty() ? -1.0 :
-                    1000.0 * std::accumulate(inCommon.begin(), inCommon.end(), 0.0)
-                    / inCommon.size();
+                const double meanc =
+                    inCommon.empty()
+                        ? -1.0
+                        : 1000.0 * std::accumulate(inCommon.begin(), inCommon.end(), 0.0) /
+                              inCommon.size();
                 const double p99s = pct(surplus, 0.99);
                 const double hopsc = hopNC ? static_cast<double>(hopSumC) / hopNC : -1.0;
                 const double hopss = hopNS ? static_cast<double>(hopSumS) / hopNS : -1.0;
-                std::cout << std::fixed << "##COMMON## " << s << ' ' << list[i]
-                          << ' ' << nSelf << ' ' << common.size()
-                          << ' ' << std::setprecision(1) << p99c
-                          << ' ' << std::setprecision(1) << meanc << ' ';
-                if (p99s < 0) std::cout << "na";
-                else std::cout << std::setprecision(1) << p99s;
+                std::cout << std::fixed << "##COMMON## " << s << ' ' << list[i] << ' ' << nSelf
+                          << ' ' << common.size() << ' ' << std::setprecision(1) << p99c << ' '
+                          << std::setprecision(1) << meanc << ' ';
+                if (p99s < 0)
+                    std::cout << "na";
+                else
+                    std::cout << std::setprecision(1) << p99s;
                 // Appended, never inserted: the fields above are consumed
                 // positionally by the issue-thread tooling and docs/benchmarks.
                 std::cout << ' ';
-                if (hopsc < 0) std::cout << "na";
-                else std::cout << std::setprecision(3) << hopsc;
+                if (hopsc < 0)
+                    std::cout << "na";
+                else
+                    std::cout << std::setprecision(3) << hopsc;
                 std::cout << ' ';
-                if (hopss < 0) std::cout << "na";
-                else std::cout << std::setprecision(3) << hopss;
+                if (hopss < 0)
+                    std::cout << "na";
+                else
+                    std::cout << std::setprecision(3) << hopss;
                 std::cout << "\n";
             }
         }
@@ -4352,49 +4375,36 @@ int main(int argc, char* argv[]) {
             return o.str();
         };
         for (std::size_t i = 0; i < list.size(); ++i) {
-            std::cout << list[i] << ',' << runs << ',' << P.nNodes << ','
-                      << std::setprecision(0) << P.areaX << ','
-                      << std::setprecision(0) << P.speed << ',' << P.nFlows << ','
-                      << std::setprecision(1) << agg[i].pdr << ','
-                      << std::setprecision(1) << agg[i].delay << ','
-                      << std::setprecision(2) << agg[i].thrput << ','
-                      << std::setprecision(1) << agg[i].delay99 << ','
-                      << std::setprecision(3) << agg[i].nrl << ','
-                      << std::setprecision(2) << agg[i].jitter << ','
-                      << std::setprecision(1) << agg[i].dOff50 << ','
-                      << std::setprecision(1) << agg[i].dOff90 << ','
-                      << std::setprecision(2) << agg[i].pdrSd << ','
-                      << std::setprecision(1) << agg[i].delaySd << ','
-                      << std::setprecision(1) << agg[i].delay99Sd << ','
-                      << std::setprecision(3) << agg[i].nrlSd << ','
-                      << std::setprecision(3) << agg[i].nrlBytes << ','
-                      << std::setprecision(2) << agg[i].energy << ','
-                      << std::setprecision(4) << agg[i].energyPerPkt << ','
-                      << std::setprecision(2) << agg[i].resMin << ','
-                      << std::setprecision(2) << agg[i].resMean << ','
-                      << std::setprecision(3) << agg[i].resSd << ','
-                      << std::setprecision(2) << P.energyJ << ','
-                      << std::setprecision(1) << agg[i].firstDeath << ','
-                      << std::setprecision(4) << agg[i].reordRatio << ','
-                      << std::setprecision(4) << agg[i].reordRatioMax << ','
-                      << std::setprecision(2) << agg[i].reordExtMean << ','
-                      << std::setprecision(2) << agg[i].reordExtMax << ','
-                      << std::setprecision(2) << agg[i].reordBufMax << ','
-                      << std::setprecision(3) << agg[i].dropRoute << ','
-                      << std::setprecision(3) << agg[i].dropQueue << ','
-                      << std::setprecision(3) << agg[i].dropMac << ','
-                      << std::setprecision(3) << agg[i].dropChan << ','
-                      << std::setprecision(3) << agg[i].dropTtl << ','
-                      << optPct(agg[i].dropSetup) << ','
-                      << optPct(agg[i].dropReconv) << ','
-                      << optPct(agg[i].dropRepair) << ','
-                      << std::setprecision(2) << agg[i].hopsMean << ','
-                      << std::setprecision(1) << agg[i].hopsMax << ','
-                      << std::setprecision(3) << agg[i].divUsed << ','
-                      << std::setprecision(1) << agg[i].divMax << ','
-                      << std::setprecision(3) << agg[i].divEntropy << ','
-                      << std::setprecision(1) << P.pathWindowS << ','
-                      << std::setprecision(4) << agg[i].jain << ','
+            std::cout << list[i] << ',' << runs << ',' << P.nNodes << ',' << std::setprecision(0)
+                      << P.areaX << ',' << std::setprecision(0) << P.speed << ',' << P.nFlows << ','
+                      << std::setprecision(1) << agg[i].pdr << ',' << std::setprecision(1)
+                      << agg[i].delay << ',' << std::setprecision(2) << agg[i].thrput << ','
+                      << std::setprecision(1) << agg[i].delay99 << ',' << std::setprecision(3)
+                      << agg[i].nrl << ',' << std::setprecision(2) << agg[i].jitter << ','
+                      << std::setprecision(1) << agg[i].dOff50 << ',' << std::setprecision(1)
+                      << agg[i].dOff90 << ',' << std::setprecision(2) << agg[i].pdrSd << ','
+                      << std::setprecision(1) << agg[i].delaySd << ',' << std::setprecision(1)
+                      << agg[i].delay99Sd << ',' << std::setprecision(3) << agg[i].nrlSd << ','
+                      << std::setprecision(3) << agg[i].nrlBytes << ',' << std::setprecision(2)
+                      << agg[i].energy << ',' << std::setprecision(4) << agg[i].energyPerPkt << ','
+                      << std::setprecision(2) << agg[i].resMin << ',' << std::setprecision(2)
+                      << agg[i].resMean << ',' << std::setprecision(3) << agg[i].resSd << ','
+                      << std::setprecision(2) << P.energyJ << ',' << std::setprecision(1)
+                      << agg[i].firstDeath << ',' << std::setprecision(4) << agg[i].reordRatio
+                      << ',' << std::setprecision(4) << agg[i].reordRatioMax << ','
+                      << std::setprecision(2) << agg[i].reordExtMean << ',' << std::setprecision(2)
+                      << agg[i].reordExtMax << ',' << std::setprecision(2) << agg[i].reordBufMax
+                      << ',' << std::setprecision(3) << agg[i].dropRoute << ','
+                      << std::setprecision(3) << agg[i].dropQueue << ',' << std::setprecision(3)
+                      << agg[i].dropMac << ',' << std::setprecision(3) << agg[i].dropChan << ','
+                      << std::setprecision(3) << agg[i].dropTtl << ',' << optPct(agg[i].dropSetup)
+                      << ',' << optPct(agg[i].dropReconv) << ',' << optPct(agg[i].dropRepair) << ','
+                      << std::setprecision(2) << agg[i].hopsMean << ',' << std::setprecision(1)
+                      << agg[i].hopsMax << ',' << std::setprecision(3) << agg[i].divUsed << ','
+                      << std::setprecision(1) << agg[i].divMax << ',' << std::setprecision(3)
+                      << agg[i].divEntropy << ',' << std::setprecision(1) << P.pathWindowS << ','
+                      << std::setprecision(4) << agg[i].jain
+                      << ','
                       // #89: appended last — the CSV is append-only and
                       // consumers read by header name.
                       << std::setprecision(2) << agg[i].jitterEq51 << '\n';
@@ -4403,10 +4413,10 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "AntHocNet protocol comparison (mean of " << runs << " run(s))\n"
-              << "  nodes=" << P.nNodes << " time=" << P.simTime << "s area="
-              << P.areaX << "x" << P.areaY << "m maxSpeed=" << P.speed
-              << "m/s pause=" << P.pause << "s flows=" << P.nFlows
-              << (P.sink >= 0 ? " sink=" + std::to_string(P.sink) : "") << "\n\n";
+              << "  nodes=" << P.nNodes << " time=" << P.simTime << "s area=" << P.areaX << "x"
+              << P.areaY << "m maxSpeed=" << P.speed << "m/s pause=" << P.pause
+              << "s flows=" << P.nFlows << (P.sink >= 0 ? " sink=" + std::to_string(P.sink) : "")
+              << "\n\n";
     // First six fields (proto..NRL) are position-stable: the workflows' compact
     // ##BENCH## re-emit and bench_parse.py read them by position. The #57 QoS
     // columns (jitter, offered-load 90th pct) are appended to the right, then
@@ -4418,37 +4428,35 @@ int main(int argc, char* argv[]) {
     // dispersion does, rather than widening the fixed-width table further.
     // #217 appends two more headline columns (mean hop count, Jain's fairness);
     // used-next-hop diversity and its entropy go on the '# paths' lines.
-    std::cout << std::left << std::setw(12) << "protocol"
-              << std::right << std::setw(8) << "PDR%" << std::setw(11) << "delay(ms)"
-              << std::setw(13) << "delay99(ms)" << std::setw(13) << "thrput(kbps)"
-              << std::setw(8) << "NRL"
-              << std::setw(12) << "jitter(ms)" << std::setw(12) << "dOff50(ms)"
-              << std::setw(12) << "dOff90(ms)" << std::setw(12) << "nrlBytes"
-              << std::setw(12) << "energy(J)" << std::setw(12) << "J/pkt"
-              << std::setw(12) << "hops" << std::setw(12) << "jain"
+    std::cout << std::left << std::setw(12) << "protocol" << std::right << std::setw(8) << "PDR%"
+              << std::setw(11) << "delay(ms)" << std::setw(13) << "delay99(ms)" << std::setw(13)
+              << "thrput(kbps)" << std::setw(8) << "NRL" << std::setw(12) << "jitter(ms)"
+              << std::setw(12) << "dOff50(ms)" << std::setw(12) << "dOff90(ms)" << std::setw(12)
+              << "nrlBytes" << std::setw(12) << "energy(J)" << std::setw(12) << "J/pkt"
+              << std::setw(12) << "hops" << std::setw(12)
+              << "jain"
               // #89: eq 5.1 sits next to the FlowMonitor jitter it is NOT
               // interchangeable with; see docs/benchmarks/metrics.md.
               << std::setw(13) << "jitterEq51" << "\n";
     std::cout << std::string(174, '-') << "\n";
     for (std::size_t i = 0; i < list.size(); ++i) {
         std::cout << std::left << std::setw(12) << list[i] << std::right << std::fixed
-                  << std::setw(8) << std::setprecision(1) << agg[i].pdr
-                  << std::setw(11) << std::setprecision(1) << agg[i].delay
-                  << std::setw(13) << std::setprecision(1) << agg[i].delay99
-                  << std::setw(13) << std::setprecision(2) << agg[i].thrput
-                  << std::setw(8) << std::setprecision(2) << agg[i].nrl
-                  << std::setw(12) << std::setprecision(2) << agg[i].jitter;
+                  << std::setw(8) << std::setprecision(1) << agg[i].pdr << std::setw(11)
+                  << std::setprecision(1) << agg[i].delay << std::setw(13) << std::setprecision(1)
+                  << agg[i].delay99 << std::setw(13) << std::setprecision(2) << agg[i].thrput
+                  << std::setw(8) << std::setprecision(2) << agg[i].nrl << std::setw(12)
+                  << std::setprecision(2) << agg[i].jitter;
         for (double v : {agg[i].dOff50, agg[i].dOff90}) {
-            if (v < 0) std::cout << std::setw(12) << "inf";
-            else std::cout << std::setw(12) << std::setprecision(1) << v;
+            if (v < 0)
+                std::cout << std::setw(12) << "inf";
+            else
+                std::cout << std::setw(12) << std::setprecision(1) << v;
         }
-        std::cout << std::setw(12) << std::setprecision(3) << agg[i].nrlBytes
-                  << std::setw(12) << std::setprecision(1) << agg[i].energy
-                  << std::setw(12) << std::setprecision(4) << agg[i].energyPerPkt
-                  << std::setw(12) << std::setprecision(2) << agg[i].hopsMean
-                  << std::setw(12) << std::setprecision(4) << agg[i].jain
-                  << std::setw(13) << std::setprecision(2) << agg[i].jitterEq51
-                  << "\n";
+        std::cout << std::setw(12) << std::setprecision(3) << agg[i].nrlBytes << std::setw(12)
+                  << std::setprecision(1) << agg[i].energy << std::setw(12) << std::setprecision(4)
+                  << agg[i].energyPerPkt << std::setw(12) << std::setprecision(2) << agg[i].hopsMean
+                  << std::setw(12) << std::setprecision(4) << agg[i].jain << std::setw(13)
+                  << std::setprecision(2) << agg[i].jitterEq51 << "\n";
     }
     // #217 path detail: used-path diversity (distinct next hops that actually
     // carried data for a destination, within a --pathWindowS window), the
@@ -4456,14 +4464,12 @@ int main(int argc, char* argv[]) {
     // entropy ~0 is a single-path protocol — the expected reading for aodv,
     // olsr and dsdv, and the instrumentation's self-check.
     for (std::size_t i = 0; i < list.size(); ++i) {
-        std::cout << std::fixed << "# paths " << list[i]
-                  << " divUsed=" << std::setprecision(3) << agg[i].divUsed
-                  << " divMax=" << std::setprecision(1) << agg[i].divMax
+        std::cout << std::fixed << "# paths " << list[i] << " divUsed=" << std::setprecision(3)
+                  << agg[i].divUsed << " divMax=" << std::setprecision(1) << agg[i].divMax
                   << " entropyBits=" << std::setprecision(3) << agg[i].divEntropy
                   << " windowS=" << std::setprecision(1) << P.pathWindowS
                   << " hopsMean=" << std::setprecision(2) << agg[i].hopsMean
-                  << " hopsMax=" << std::setprecision(1) << agg[i].hopsMax
-                  << "\n";
+                  << " hopsMax=" << std::setprecision(1) << agg[i].hopsMax << "\n";
     }
     // #209 energy detail: residual-energy spread across nodes (the fairness
     // signal — a protocol that funnels traffic through one relay drains it
@@ -4471,13 +4477,11 @@ int main(int argc, char* argv[]) {
     // case at the default --energyJ). '# ' prefix keeps these off the
     // CSV/##BENCH## paths, same as the '# stddev' lines.
     for (std::size_t i = 0; i < list.size(); ++i) {
-        std::cout << std::fixed << "# energy " << list[i]
-                  << " initJ=" << std::setprecision(1) << P.energyJ
-                  << " resMinJ=" << std::setprecision(1) << agg[i].resMin
+        std::cout << std::fixed << "# energy " << list[i] << " initJ=" << std::setprecision(1)
+                  << P.energyJ << " resMinJ=" << std::setprecision(1) << agg[i].resMin
                   << " resMeanJ=" << std::setprecision(1) << agg[i].resMean
                   << " resSdJ=" << std::setprecision(3) << agg[i].resSd
-                  << " firstDeathS=" << std::setprecision(1) << agg[i].firstDeath
-                  << "\n";
+                  << " firstDeathS=" << std::setprecision(1) << agg[i].firstDeath << "\n";
     }
     // #215 drop causes: why the packets PDR is missing went missing, as a % of
     // offered. `sum` is pdr + the five protocol-agnostic causes and should read
@@ -4488,32 +4492,28 @@ int main(int argc, char* argv[]) {
     // prefix keeps the line off the CSV/##BENCH## paths, like '# energy'.
     auto opt = [](double v) {
         std::ostringstream o;
-        if (v < 0.0) o << "-";
-        else o << std::fixed << std::setprecision(2) << v;
+        if (v < 0.0)
+            o << "-";
+        else
+            o << std::fixed << std::setprecision(2) << v;
         return o.str();
     };
     for (std::size_t i = 0; i < list.size(); ++i) {
-        const double sum = agg[i].pdr + agg[i].dropRoute + agg[i].dropQueue
-                         + agg[i].dropMac + agg[i].dropChan + agg[i].dropTtl;
+        const double sum = agg[i].pdr + agg[i].dropRoute + agg[i].dropQueue + agg[i].dropMac +
+                           agg[i].dropChan + agg[i].dropTtl;
         std::cout << std::fixed << std::setprecision(2) << "# drops " << list[i]
-                  << " pdr=" << agg[i].pdr
-                  << " route=" << agg[i].dropRoute
-                  << " queue=" << agg[i].dropQueue
-                  << " mac=" << agg[i].dropMac
-                  << " chan=" << agg[i].dropChan
-                  << " ttl=" << agg[i].dropTtl
-                  << " sum=" << sum
-                  << " other=" << agg[i].dropOther
-                  << " [route: setup=" << opt(agg[i].dropSetup)
-                  << " reconv=" << opt(agg[i].dropReconv)
-                  << " repair=" << opt(agg[i].dropRepair) << "]\n";
+                  << " pdr=" << agg[i].pdr << " route=" << agg[i].dropRoute
+                  << " queue=" << agg[i].dropQueue << " mac=" << agg[i].dropMac
+                  << " chan=" << agg[i].dropChan << " ttl=" << agg[i].dropTtl << " sum=" << sum
+                  << " other=" << agg[i].dropOther << " [route: setup=" << opt(agg[i].dropSetup)
+                  << " reconv=" << opt(agg[i].dropReconv) << " repair=" << opt(agg[i].dropRepair)
+                  << "]\n";
     }
     // #28 dispersion: '# ' prefix keeps these out of the CSV/##BENCH## paths.
     if (runs > 1) {
         for (std::size_t i = 0; i < list.size(); ++i) {
-            std::cout << std::fixed << "# stddev " << list[i]
-                      << " pdr=" << std::setprecision(2) << agg[i].pdrSd
-                      << " delay=" << std::setprecision(1) << agg[i].delaySd
+            std::cout << std::fixed << "# stddev " << list[i] << " pdr=" << std::setprecision(2)
+                      << agg[i].pdrSd << " delay=" << std::setprecision(1) << agg[i].delaySd
                       << " delay99=" << std::setprecision(1) << agg[i].delay99Sd
                       << " nrl=" << std::setprecision(3) << agg[i].nrlSd
                       << " nrl_bytes=" << std::setprecision(3) << agg[i].nrlBytesSd << "\n";
@@ -4538,12 +4538,12 @@ int main(int argc, char* argv[]) {
     // half of encoding absence, the emission has to go too.
     if (P.transport != "tcp") {
         for (std::size_t i = 0; i < list.size(); ++i) {
-            std::cout << std::fixed << "# reorder " << list[i]
-                      << " ratio=" << std::setprecision(4) << agg[i].reordRatio
-                      << " ratioWorstFlow=" << std::setprecision(4) << agg[i].reordRatioMax
-                      << " extentMean=" << std::setprecision(2) << agg[i].reordExtMean
-                      << " extentMax=" << std::setprecision(2) << agg[i].reordExtMax
-                      << " bufMax=" << std::setprecision(2) << agg[i].reordBufMax << "\n";
+            std::cout << std::fixed << "# reorder " << list[i] << " ratio=" << std::setprecision(4)
+                      << agg[i].reordRatio << " ratioWorstFlow=" << std::setprecision(4)
+                      << agg[i].reordRatioMax << " extentMean=" << std::setprecision(2)
+                      << agg[i].reordExtMean << " extentMax=" << std::setprecision(2)
+                      << agg[i].reordExtMax << " bufMax=" << std::setprecision(2)
+                      << agg[i].reordBufMax << "\n";
         }
     }
     return 0;

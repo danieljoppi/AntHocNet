@@ -69,12 +69,8 @@ Counts run(double margin, double interval, bool churn) {
         // alternative ready or discovery has to run again.
         for (int t = 20; t < 120; t += 10) {
             const int k = (t / 10) % 3;
-            tb.at(static_cast<core::Time>(t), [&tb, k] {
-                tb.linkDown(id(k, k), id(k, k + 1));
-            });
-            tb.at(static_cast<core::Time>(t + 4), [&tb, k] {
-                tb.linkUp(id(k, k), id(k, k + 1));
-            });
+            tb.at(static_cast<core::Time>(t), [&tb, k] { tb.linkDown(id(k, k), id(k, k + 1)); });
+            tb.at(static_cast<core::Time>(t + 4), [&tb, k] { tb.linkUp(id(k, k), id(k, k + 1)); });
         }
     }
 
@@ -83,30 +79,30 @@ Counts run(double margin, double interval, bool churn) {
     Counts n;
     for (int i = 0; i < 16; ++i) {
         n.proactive += tb.node(i).antsSent(core::AntType::Proactive);
-        n.reactive  += tb.node(i).antsSent(core::AntType::Reactive);
-        n.repair    += tb.node(i).antsSent(core::AntType::Repair);
-        n.linkfail  += tb.node(i).antsSent(core::AntType::LinkFail);
-        n.hello     += tb.node(i).antsSent(core::AntType::Hello);
+        n.reactive += tb.node(i).antsSent(core::AntType::Reactive);
+        n.repair += tb.node(i).antsSent(core::AntType::Repair);
+        n.linkfail += tb.node(i).antsSent(core::AntType::LinkFail);
+        n.hello += tb.node(i).antsSent(core::AntType::Hello);
     }
     n.delivered = tb.dataDelivered;
     return n;
 }
 
 void report(const char* label, const Counts& c) {
-    std::printf("%-28s proact=%5llu reactive=%5llu repair=%4llu linkfail=%4llu "
-                "hello=%6llu | control=%6llu delivered=%4llu\n",
-                label,
-                (unsigned long long) c.proactive, (unsigned long long) c.reactive,
-                (unsigned long long) c.repair, (unsigned long long) c.linkfail,
-                (unsigned long long) c.hello,
-                (unsigned long long) c.control(), (unsigned long long) c.delivered);
+    std::printf(
+        "%-28s proact=%5llu reactive=%5llu repair=%4llu linkfail=%4llu "
+        "hello=%6llu | control=%6llu delivered=%4llu\n",
+        label, (unsigned long long)c.proactive, (unsigned long long)c.reactive,
+        (unsigned long long)c.repair, (unsigned long long)c.linkfail, (unsigned long long)c.hello,
+        (unsigned long long)c.control(), (unsigned long long)c.delivered);
 }
 
 }  // namespace
 
 int main() {
     for (bool churn : {false, true}) {
-        std::printf("\n=== churn=%s ===\n", churn ? "YES (active path breaks)" : "no (static graph)");
+        std::printf("\n=== churn=%s ===\n",
+                    churn ? "YES (active path breaks)" : "no (static graph)");
         report("main    (gate off, 10s)", run(0.00, 10.0, churn));
         report("gate ON only     (10s)", run(0.10, 10.0, churn));
         report("rate ONLY(gate off, 2s)", run(0.00, 2.0, churn));

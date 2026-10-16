@@ -41,12 +41,11 @@
 #include "ns3/anthocnet-routing-protocol.h"
 
 using namespace ns3;
+using ::anthocnet::core::AntDirection;
 using ::anthocnet::core::AntMessage;
 using ::anthocnet::core::AntType;
-using ::anthocnet::core::AntDirection;
 
-class AntHeaderRoundTripTestCase : public TestCase
-{
+class AntHeaderRoundTripTestCase : public TestCase {
 public:
     AntHeaderRoundTripTestCase() : TestCase("AntHeader serialize/deserialize round-trip") {}
 
@@ -56,7 +55,7 @@ public:
         m.direction = AntDirection::Down;
         m.src = 3;
         m.dst = 17;
-        m.seqNum = 70000;       // > 16 bits
+        m.seqNum = 70000;  // > 16 bits
         m.timeStart = 1.25;
         m.lifeAnt = 2.0;
         m.broadcastBudget = 2;
@@ -72,10 +71,10 @@ public:
         packet->RemoveHeader(in);
         const AntMessage& r = in.Message();
 
-        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(r.type),
-                              static_cast<int>(AntType::Proactive), "type");
-        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(r.direction),
-                              static_cast<int>(AntDirection::Down), "direction");
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(r.type), static_cast<int>(AntType::Proactive),
+                              "type");
+        NS_TEST_ASSERT_MSG_EQ(static_cast<int>(r.direction), static_cast<int>(AntDirection::Down),
+                              "direction");
         NS_TEST_ASSERT_MSG_EQ(r.src, 3, "src");
         NS_TEST_ASSERT_MSG_EQ(r.dst, 17, "dst");
         NS_TEST_ASSERT_MSG_EQ(r.seqNum, 70000u, "seqNum");
@@ -92,11 +91,9 @@ public:
 };
 
 // Deterministic multi-hop delivery over SimpleNetDevices.
-class AntHocNetDeliveryTestCase : public TestCase
-{
+class AntHocNetDeliveryTestCase : public TestCase {
 public:
-    AntHocNetDeliveryTestCase()
-        : TestCase("Multi-hop delivery over a 3-node line"), m_rxBytes(0) {}
+    AntHocNetDeliveryTestCase() : TestCase("Multi-hop delivery over a 3-node line"), m_rxBytes(0) {}
 
     void DoRun() override {
         RngSeedManager::SetSeed(1);
@@ -142,8 +139,7 @@ public:
         Simulator::Run();
         Simulator::Destroy();
 
-        NS_TEST_ASSERT_MSG_GT(m_rxBytes, 0u,
-                              "node 2 received no data over the 2-hop path");
+        NS_TEST_ASSERT_MSG_GT(m_rxBytes, 0u, "node 2 received no data over the 2-hop path");
     }
 
 private:
@@ -167,8 +163,7 @@ private:
 // forwarded packets for 10.1.2.2 back out of its 10.1.1.0/24 device, and
 // backward ants unicast to a canonical address that is not on the link they
 // were sent over.
-class MultiInterfaceDeliveryTestCase : public TestCase
-{
+class MultiInterfaceDeliveryTestCase : public TestCase {
 public:
     MultiInterfaceDeliveryTestCase()
         : TestCase("Multi-hop delivery through a multi-interface node (#203)"), m_rxBytes(0) {}
@@ -242,12 +237,15 @@ private:
 // least as large as any single queue. A node-wide signal cannot pass this —
 // it would read the same value for both hops, which is exactly the silent
 // failure #206 exists to prevent.
-class PerHopCongestionSignalTestCase : public TestCase
-{
+class PerHopCongestionSignalTestCase : public TestCase {
 public:
     PerHopCongestionSignalTestCase()
         : TestCase("Per-next-hop congestion signal on non-wifi devices (#206)"),
-          m_qLoaded(0), m_qIdle(0), m_qAggregate(0), m_tLoaded(0.0), m_tIdle(0.0) {}
+          m_qLoaded(0),
+          m_qIdle(0),
+          m_qAggregate(0),
+          m_tLoaded(0.0),
+          m_tIdle(0.0) {}
 
     void DoRun() override {
         using ns3::anthocnet::RoutingProtocol;
@@ -294,35 +292,28 @@ public:
         }
 
         Simulator::Schedule(Seconds(13.0), &PerHopCongestionSignalTestCase::Probe, this,
-                            nodes.Get(1),
-                            RoutingProtocol::ToCore(rightIfs.GetAddress(1)),
+                            nodes.Get(1), RoutingProtocol::ToCore(rightIfs.GetAddress(1)),
                             RoutingProtocol::ToCore(leftIfs.GetAddress(0)));
 
         Simulator::Stop(Seconds(15.0));
         Simulator::Run();
         Simulator::Destroy();
 
-        NS_TEST_ASSERT_MSG_GT(m_qLoaded, 0,
-                              "no backlog read toward the loaded next hop");
+        NS_TEST_ASSERT_MSG_GT(m_qLoaded, 0, "no backlog read toward the loaded next hop");
         // The instant-drain queue can momentarily hold the packet being
         // serialised within a timestep; anything beyond that is a real backlog
         // and breaks the discrimination this test pins.
-        NS_TEST_ASSERT_MSG_LT(m_qIdle, 2,
-                              "backlog read toward the idle next hop");
-        NS_TEST_ASSERT_MSG_GT(m_qLoaded, m_qIdle,
-                              "signal does not discriminate between next hops");
+        NS_TEST_ASSERT_MSG_LT(m_qIdle, 2, "backlog read toward the idle next hop");
+        NS_TEST_ASSERT_MSG_GT(m_qLoaded, m_qIdle, "signal does not discriminate between next hops");
         NS_TEST_ASSERT_MSG_GT_OR_EQ(m_qAggregate, m_qLoaded,
                                     "aggregate smaller than a single queue");
         // Service time toward the loaded hop: sampled (positive) and at the
         // serialisation scale — 1000 B at 32 kb/s is 0.25 s; ants are smaller.
         // A value near an ISL's propagation delay would mean the decomposition
         // folded propagation in, which it must not.
-        NS_TEST_ASSERT_MSG_GT(m_tLoaded, 0.0,
-                              "no service-time sample toward the loaded next hop");
-        NS_TEST_ASSERT_MSG_LT(m_tLoaded, 1.0,
-                              "service time off the serialisation scale");
-        NS_TEST_ASSERT_MSG_EQ(m_tIdle, 0.0,
-                              "service-time sample on the never-backlogged link");
+        NS_TEST_ASSERT_MSG_GT(m_tLoaded, 0.0, "no service-time sample toward the loaded next hop");
+        NS_TEST_ASSERT_MSG_LT(m_tLoaded, 1.0, "service time off the serialisation scale");
+        NS_TEST_ASSERT_MSG_EQ(m_tIdle, 0.0, "service-time sample on the never-backlogged link");
     }
 
 private:
@@ -338,11 +329,11 @@ private:
             relay->GetObject<ns3::anthocnet::RoutingProtocol>();
         NS_TEST_ASSERT_MSG_EQ((rp != nullptr), true, "relay has no AntHocNet protocol");
         if (!rp) return;
-        m_qLoaded    = rp->macQueueLength(towardLoaded);
-        m_qIdle      = rp->macQueueLength(towardIdle);
+        m_qLoaded = rp->macQueueLength(towardLoaded);
+        m_qIdle = rp->macQueueLength(towardIdle);
         m_qAggregate = rp->macQueueLength(::anthocnet::core::kInvalidAddress);
-        m_tLoaded    = rp->macServiceTime(towardLoaded);
-        m_tIdle      = rp->macServiceTime(towardIdle);
+        m_tLoaded = rp->macServiceTime(towardLoaded);
+        m_tIdle = rp->macServiceTime(towardIdle);
     }
 
     int m_qLoaded;
@@ -353,8 +344,7 @@ private:
 };
 
 // B3 — address mapping never aliases the core's kInvalidAddress sentinel.
-class AddressMappingTestCase : public TestCase
-{
+class AddressMappingTestCase : public TestCase {
 public:
     AddressMappingTestCase() : TestCase("ToCore/ToIpv4 address mapping (B3)") {}
 
@@ -363,8 +353,8 @@ public:
         const ::anthocnet::core::NodeAddress invalid = ::anthocnet::core::kInvalidAddress;
 
         // The limited broadcast must never collide with "no route" (-1).
-        NS_TEST_ASSERT_MSG_NE(RoutingProtocol::ToCore(Ipv4Address("255.255.255.255")),
-                              invalid, "broadcast aliases kInvalidAddress");
+        NS_TEST_ASSERT_MSG_NE(RoutingProtocol::ToCore(Ipv4Address("255.255.255.255")), invalid,
+                              "broadcast aliases kInvalidAddress");
 
         // MSB-set / arbitrary unicast addresses round-trip without aliasing it.
         const char* addrs[] = {"128.0.0.1", "200.1.2.3", "10.1.0.5", "192.168.1.1"};
@@ -383,8 +373,7 @@ public:
 // The WifiMac "DroppedMpdu" trace must drive a bounded repair ant, observed via
 // the protocol's "Tx" trace (type == Repair). SimpleNetDevice has no such
 // failure model, so this case requires real wifi.
-class RepairAntOnLinkBreakTestCase : public TestCase
-{
+class RepairAntOnLinkBreakTestCase : public TestCase {
 public:
     RepairAntOnLinkBreakTestCase()
         : TestCase("Repair ant fires on MAC tx-failure (detector D)"), m_repairAnts(0) {}
@@ -401,8 +390,8 @@ public:
         wifi.SetStandard(WIFI_STANDARD_80211b);
         YansWifiChannelHelper channel;
         channel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
-        channel.AddPropagationLoss("ns3::RangePropagationLossModel",
-                                   "MaxRange", DoubleValue(120.0));
+        channel.AddPropagationLoss("ns3::RangePropagationLossModel", "MaxRange",
+                                   DoubleValue(120.0));
         YansWifiPhyHelper phy;
         phy.SetChannel(channel.Create());
         WifiMacHelper mac;
@@ -484,14 +473,13 @@ private:
 // by the module's CMakeLists for ns-3 >= 3.42.
 #ifdef ANTHOCNET_NS3_SCOPED_TEST_ENUMS
 #define AHN_TEST_TYPE_UNIT TestSuite::Type::UNIT
-#define AHN_TEST_QUICK     TestCase::Duration::QUICK
+#define AHN_TEST_QUICK TestCase::Duration::QUICK
 #else
 #define AHN_TEST_TYPE_UNIT UNIT
-#define AHN_TEST_QUICK     TestCase::QUICK
+#define AHN_TEST_QUICK TestCase::QUICK
 #endif
 
-class AntHocNetTestSuite : public TestSuite
-{
+class AntHocNetTestSuite : public TestSuite {
 public:
     AntHocNetTestSuite() : TestSuite("anthocnet", AHN_TEST_TYPE_UNIT) {
         AddTestCase(new AntHeaderRoundTripTestCase(), AHN_TEST_QUICK);

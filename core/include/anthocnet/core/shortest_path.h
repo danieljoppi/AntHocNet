@@ -48,7 +48,7 @@ namespace anthocnet {
 namespace core {
 
 class ShortestPathGraph {
-  public:
+public:
     /// Returned by firstHopTo() when there is no path (and for the source).
     static const int kNoNode = -1;
     /// Returned by distanceTo() when there is no path.
@@ -89,7 +89,7 @@ class ShortestPathGraph {
      */
     int firstHopTo(int node) const;
 
-  private:
+private:
     struct Edge {
         int to;
         double weight;

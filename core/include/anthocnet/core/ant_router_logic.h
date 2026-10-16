@@ -40,8 +40,7 @@ public:
     /// signals for the item-10/A2 metric (nullptr => wall-clock per-hop time).
     /// Both default to null, so existing adapter call sites are unchanged.
     AntRouterLogic(NodeAddress address, const Config& config, IClock& clock, IRng& rng,
-                   const ILinkMetric* metric = nullptr,
-                   const ILinkState* linkState = nullptr,
+                   const ILinkMetric* metric = nullptr, const ILinkState* linkState = nullptr,
                    const ILinkQuality* linkQuality = nullptr);
 
     NodeAddress address() const { return address_; }
@@ -214,19 +213,19 @@ private:
     /// previous stamp.
     double localHopCost(const AntMessage& ant, NodeAddress nextHop) const;
 
-    NodeAddress     address_;
-    Config          config_;
-    IClock&         clock_;
-    IRng&           rng_;
-    PheromoneTable  table_;
+    NodeAddress address_;
+    Config config_;
+    IClock& clock_;
+    IRng& rng_;
+    PheromoneTable table_;
     PheromoneEngine engine_;
-    ClassicMetric   defaultMetric_;        ///< used when no metric is injected
-    const ILinkMetric* metric_;            ///< pheromone strategy (item 16)
-    const ILinkState* linkState_;          ///< MAC congestion signals (item 10/A2), optional
-    const ILinkQuality* linkQuality_;      ///< per-neighbour SINR (#181), optional
+    ClassicMetric defaultMetric_;      ///< used when no metric is injected
+    const ILinkMetric* metric_;        ///< pheromone strategy (item 16)
+    const ILinkState* linkState_;      ///< MAC congestion signals (item 10/A2), optional
+    const ILinkQuality* linkQuality_;  ///< per-neighbour SINR (#181), optional
     AntHistoryTracker history_;
-    GenerationTracker genQuality_;   ///< multipath acceptance filter (#96)
-    std::uint32_t   seqNum_ = 0;
+    GenerationTracker genQuality_;  ///< multipath acceptance filter (#96)
+    std::uint32_t seqNum_ = 0;
     std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
     std::map<NodeAddress, double> lastSeen_;        ///< neighbor -> last reception time
     /// #185: smoothed hop count ĥ per (destination, next hop), the thesis's
@@ -237,21 +236,24 @@ private:
     std::map<NodeAddress, double> lastReactive_;    ///< dest -> last reactive-ant time
     std::map<NodeAddress, double> lastRepair_;      ///< dest -> last repair-ant time
     std::map<NodeAddress, double> repairDeadline_;  ///< dest -> repair wait expiry (D6)
-    std::map<NodeAddress, int>    txFailures_;      ///< next hop -> consecutive MAC tx-failures (detector D debounce)
-    double lastEvaporation_ = 0.0;                  ///< last evaporateAll time
+    std::map<NodeAddress, int>
+        txFailures_;  ///< next hop -> consecutive MAC tx-failures (detector D debounce)
+    double lastEvaporation_ = 0.0;  ///< last evaporateAll time
 
-    IRouterObserver* observer_ = nullptr;           ///< optional, item 15
-    std::map<AntType, std::uint64_t> antsSent_;     ///< sent counters by type
-    std::map<AntType, std::uint64_t> antsReceived_; ///< received counters by type
-    std::uint64_t linkfailPropagations_ = 0;        ///< re-broadcast LinkFails (issue #20)
-    std::uint64_t linkfailBudgetDrops_  = 0;        ///< budget-suppressed propagations (issue #20)
-    std::uint64_t linkfailOriginsSuppressed_ = 0;   ///< cooldown-suppressed advertisements (issue #20)
-    std::uint64_t repairDiscards_ = 0;              ///< expired local repairs that discarded pending data (#215)
-    std::uint64_t directedSteers_ = 0;              ///< reactive ants unicast along the diffusion gradient
+    IRouterObserver* observer_ = nullptr;            ///< optional, item 15
+    std::map<AntType, std::uint64_t> antsSent_;      ///< sent counters by type
+    std::map<AntType, std::uint64_t> antsReceived_;  ///< received counters by type
+    std::uint64_t linkfailPropagations_ = 0;         ///< re-broadcast LinkFails (issue #20)
+    std::uint64_t linkfailBudgetDrops_ = 0;          ///< budget-suppressed propagations (issue #20)
+    std::uint64_t linkfailOriginsSuppressed_ =
+        0;  ///< cooldown-suppressed advertisements (issue #20)
+    std::uint64_t repairDiscards_ =
+        0;  ///< expired local repairs that discarded pending data (#215)
+    std::uint64_t directedSteers_ = 0;  ///< reactive ants unicast along the diffusion gradient
     std::map<NodeAddress, double> lastLinkfailNotify_;  ///< dest -> last originated LinkFail time
 };
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_ANT_ROUTER_LOGIC_H
+#endif  // ANTHOCNET_CORE_ANT_ROUTER_LOGIC_H

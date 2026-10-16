@@ -65,8 +65,8 @@ Scenario makeGrid(bool torus) {
             if (r + 1 < 4 || torus) s.links.push_back({id(r, c), id((r + 1) % 4, c)});
         }
     }
-    s.sessions = {{id(0, 0), id(3, 3)}, {id(3, 3), id(0, 0)},
-                  {id(0, 3), id(3, 0)}, {id(3, 0), id(0, 3)}};
+    s.sessions = {
+        {id(0, 0), id(3, 3)}, {id(3, 3), id(0, 0)}, {id(0, 3), id(3, 0)}, {id(3, 0), id(0, 3)}};
     return s;
 }
 
@@ -85,18 +85,20 @@ struct Counts {
     // against the CLOSEST neighbour c (minimum hop distance to d). Either c has
     // no regular route to advertise at all (coverage), or it has one that is
     // older and/or lower than the farther neighbour's (freshness).
-    std::uint64_t steadyFarther = 0, closestNoRoute = 0, closestHasRoute = 0,
-                  vargYounger = 0, vargHigherAdvert = 0;
+    std::uint64_t steadyFarther = 0, closestNoRoute = 0, closestHasRoute = 0, vargYounger = 0,
+                  vargHigherAdvert = 0;
     std::vector<double> ageVarg, ageClosest;
 };
 
-core::NodeAddress argmaxRegular(const core::PheromoneTable& t, core::NodeAddress d,
-                                double floor) {
+core::NodeAddress argmaxRegular(const core::PheromoneTable& t, core::NodeAddress d, double floor) {
     core::NodeAddress best = core::kInvalidAddress;
     double bv = floor;
     for (core::NodeAddress nb : t.neighbors()) {
         const double r = t.getPheromoneRegular(d, nb);
-        if (r > bv) { bv = r; best = nb; }
+        if (r > bv) {
+            bv = r;
+            best = nb;
+        }
     }
     return best;
 }
@@ -152,7 +154,8 @@ void run(const Scenario& sc) {
                 for (core::NodeAddress d : tbl.regularDestinations()) {
                     const double b = tbl.bestRegular(d);
                     auto it = fresh.find({n, d});
-                    if (it == fresh.end()) fresh[{n, d}] = {b, tq};
+                    if (it == fresh.end())
+                        fresh[{n, d}] = {b, tq};
                     else {
                         if (b > it->second.first + 1e-12) it->second.second = tq;
                         it->second.first = b;
@@ -179,11 +182,15 @@ void run(const Scenario& sc) {
                     double bv = cfg.minPheromone;
                     for (core::NodeAddress nb : table.neighbors()) {
                         const double v = table.getPheromoneVirtual(d, nb);
-                        if (v > bv) { bv = v; vArg = nb; }
+                        if (v > bv) {
+                            bv = v;
+                            vArg = nb;
+                        }
                     }
                     if (vArg == core::kInvalidAddress) continue;
                     const int di = dist[static_cast<std::size_t>(d)][static_cast<std::size_t>(i)];
-                    const int dn = dist[static_cast<std::size_t>(d)][static_cast<std::size_t>(vArg)];
+                    const int dn =
+                        dist[static_cast<std::size_t>(d)][static_cast<std::size_t>(vArg)];
                     const bool reflected =
                         argmaxRegular(tb.node(static_cast<int>(vArg)).table(), d,
                                       cfg.minPheromone) == static_cast<core::NodeAddress>(i);
@@ -204,8 +211,8 @@ void run(const Scenario& sc) {
                             for (core::NodeAddress nb : table.neighbors()) {
                                 const int n = static_cast<int>(nb);
                                 if (n < 0 || n >= sc.numNodes) continue;
-                                const int dnb = dist[static_cast<std::size_t>(d)]
-                                                    [static_cast<std::size_t>(n)];
+                                const int dnb =
+                                    dist[static_cast<std::size_t>(d)][static_cast<std::size_t>(n)];
                                 if (cl < 0 ||
                                     dnb < dist[static_cast<std::size_t>(d)]
                                               [static_cast<std::size_t>(cl)] ||
@@ -239,11 +246,14 @@ void run(const Scenario& sc) {
                         for (core::NodeAddress nb : table.neighbors()) {
                             const double m = std::max(table.getPheromoneRegular(d, nb),
                                                       table.getPheromoneVirtual(d, nb));
-                            if (m > bb) { bb = m; bArg = nb; }
+                            if (m > bb) {
+                                bb = m;
+                                bArg = nb;
+                            }
                         }
                         if (bArg != core::kInvalidAddress) {
-                            const int db = dist[static_cast<std::size_t>(d)]
-                                               [static_cast<std::size_t>(bArg)];
+                            const int db =
+                                dist[static_cast<std::size_t>(d)][static_cast<std::size_t>(bArg)];
                             if (db > di) ++c.blendFarther;
                             if (argmaxRegular(tb.node(static_cast<int>(bArg)).table(), d,
                                               cfg.minPheromone) ==
@@ -264,17 +274,18 @@ void run(const Scenario& sc) {
     for (const auto& row : {std::make_pair("regular-absent ", &regAbsent),
                             std::make_pair("regular-present", &regPresent)}) {
         const Counts& c = *row.second;
-        std::printf("  %s  n=%6llu  closer=%5.1f%%  farther=%5.1f%%  "
-                    "reflected=%5.1f%%  farther&reflected=%5.1f%% (%llu of %llu farther)\n",
-                    row.first, (unsigned long long) c.total, pct(c.closer, c.total),
-                    pct(c.farther, c.total), pct(c.reflected, c.total),
-                    pct(c.fartherReflected, c.total),
-                    (unsigned long long) c.fartherReflected, (unsigned long long) c.farther);
+        std::printf(
+            "  %s  n=%6llu  closer=%5.1f%%  farther=%5.1f%%  "
+            "reflected=%5.1f%%  farther&reflected=%5.1f%% (%llu of %llu farther)\n",
+            row.first, (unsigned long long)c.total, pct(c.closer, c.total), pct(c.farther, c.total),
+            pct(c.reflected, c.total), pct(c.fartherReflected, c.total),
+            (unsigned long long)c.fartherReflected, (unsigned long long)c.farther);
     }
-    std::printf("  regular-absent farther cases: %llu at t<20s (formation transient), "
-                "%llu where vArg holds no regular route to d (stale advert)\n",
-                (unsigned long long) regAbsent.fartherEarly,
-                (unsigned long long) regAbsent.fartherVargNoRoute);
+    std::printf(
+        "  regular-absent farther cases: %llu at t<20s (formation transient), "
+        "%llu where vArg holds no regular route to d (stale advert)\n",
+        (unsigned long long)regAbsent.fartherEarly,
+        (unsigned long long)regAbsent.fartherVargNoRoute);
     {
         const Counts& a = regAbsent;
         auto med = [](std::vector<double> v) {
@@ -282,27 +293,31 @@ void run(const Scenario& sc) {
             std::sort(v.begin(), v.end());
             return v[v.size() / 2];
         };
-        std::printf("  #476 steady regular-absent farther (t>=20s): %llu — closest neighbour has "
-                    "NO route: %llu; has a route: %llu (farther nb younger: %llu, "
-                    "higher advert: %llu; median entry age farther=%.2fs closest=%.2fs)\n",
-                    (unsigned long long) a.steadyFarther, (unsigned long long) a.closestNoRoute,
-                    (unsigned long long) a.closestHasRoute, (unsigned long long) a.vargYounger,
-                    (unsigned long long) a.vargHigherAdvert, med(a.ageVarg), med(a.ageClosest));
+        std::printf(
+            "  #476 steady regular-absent farther (t>=20s): %llu — closest neighbour has "
+            "NO route: %llu; has a route: %llu (farther nb younger: %llu, "
+            "higher advert: %llu; median entry age farther=%.2fs closest=%.2fs)\n",
+            (unsigned long long)a.steadyFarther, (unsigned long long)a.closestNoRoute,
+            (unsigned long long)a.closestHasRoute, (unsigned long long)a.vargYounger,
+            (unsigned long long)a.vargHigherAdvert, med(a.ageVarg), med(a.ageClosest));
     }
-    std::printf("  proactive blend max(r,v), regular-present: argmax farther=%5.1f%%  "
-                "argmax reflected=%5.1f%%\n",
-                pct(regPresent.blendFarther, regPresent.total),
-                pct(regPresent.blendReflected, regPresent.total));
+    std::printf(
+        "  proactive blend max(r,v), regular-present: argmax farther=%5.1f%%  "
+        "argmax reflected=%5.1f%%\n",
+        pct(regPresent.blendFarther, regPresent.total),
+        pct(regPresent.blendReflected, regPresent.total));
 }
 
 }  // namespace
 
 int main() {
-    std::printf("advert-reflection sizing (#263) on current code "
-                "(#262 aging clock, #472 advert cap k = %zu)\n",
-                core::Config().maxHelloAdverts);
-    std::printf("old-clock reference (#180): regular-absent 'virtual argmax moves farther' "
-                "= 8.4%% on grid-4x4; reflection caused all 3 genuine mis-steers\n");
+    std::printf(
+        "advert-reflection sizing (#263) on current code "
+        "(#262 aging clock, #472 advert cap k = %zu)\n",
+        core::Config().maxHelloAdverts);
+    std::printf(
+        "old-clock reference (#180): regular-absent 'virtual argmax moves farther' "
+        "= 8.4%% on grid-4x4; reflection caused all 3 genuine mis-steers\n");
     for (const Scenario& sc : {makeLine(), makeGrid(false), makeGrid(true)}) run(sc);
     return 0;
 }

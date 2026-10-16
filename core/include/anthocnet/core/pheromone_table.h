@@ -28,9 +28,9 @@ namespace core {
 
 class PheromoneTable {
 public:
-    using Key            = std::pair<NodeAddress, NodeAddress>;  // (neighbor, dest)
-    using PheromoneMap   = std::map<Key, double>;
-    using NeighborSet    = std::set<NodeAddress>;
+    using Key = std::pair<NodeAddress, NodeAddress>;  // (neighbor, dest)
+    using PheromoneMap = std::map<Key, double>;
+    using NeighborSet = std::set<NodeAddress>;
     using DestinationSet = std::set<NodeAddress>;
 
     // --- entry management -------------------------------------------------
@@ -61,9 +61,7 @@ public:
     /// to observe growth over long runs. Read-only; no routing behaviour.
     std::size_t numEntriesRegular() const { return pheromoneRegular_.size(); }
     std::size_t numEntriesVirtual() const { return pheromoneVirtual_.size(); }
-    std::size_t numEntries() const {
-        return pheromoneRegular_.size() + pheromoneVirtual_.size();
-    }
+    std::size_t numEntries() const { return pheromoneRegular_.size() + pheromoneVirtual_.size(); }
 
     // --- neighbour management --------------------------------------------
     void addNeighbor(NodeAddress neighbor);
@@ -82,8 +80,8 @@ public:
     /// `exclude` (e.g. the previous hop for data) is skipped unless it is the
     /// only option, so a packet isn't sent back the way it came (A1).
     /// Returns kInvalidAddress when no route exists.
-    NodeAddress nextNeighborNode(NodeAddress dest, bool isProactiveAnt, double beta,
-                                 IRng& rng, NodeAddress exclude = kInvalidAddress) const;
+    NodeAddress nextNeighborNode(NodeAddress dest, bool isProactiveAnt, double beta, IRng& rng,
+                                 NodeAddress exclude = kInvalidAddress) const;
 
     /// The probability distribution nextNeighborNode() samples from, for the
     /// same arguments: one (neighbour, probability) pair per candidate, in
@@ -106,14 +104,14 @@ private:
                           NodeAddress exclude) const;
     double sumMaxProbability(NodeAddress dest, double beta, NodeAddress exclude) const;
 
-    PheromoneMap   pheromoneRegular_;
-    PheromoneMap   pheromoneVirtual_;
-    NeighborSet    neighborTable_;
+    PheromoneMap pheromoneRegular_;
+    PheromoneMap pheromoneVirtual_;
+    NeighborSet neighborTable_;
     DestinationSet destRegular_;
     DestinationSet destVirtual_;
 };
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_PHEROMONE_TABLE_H
+#endif  // ANTHOCNET_CORE_PHEROMONE_TABLE_H

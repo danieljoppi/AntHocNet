@@ -8,11 +8,12 @@
 # Usage:
 #   make test                                   # build + run core unit tests
 #   make bench-core                             # core speed benchmarks (ns/op)
+#   make format                                 # clang-format the C++ (#35)
 #   make doctor       NS3DIR=/path/to/ns-3-dev   # check the ns-3 tree first
 #   make install-ns3  NS3DIR=/path/to/ns-3-dev   # BASELINES=0: AntHocNet only
 #   make uninstall-ns3 NS3DIR=/path/to/ns-3-dev
 
-.PHONY: test core-test bench-core doctor install-ns3 uninstall-ns3 clean
+.PHONY: test core-test bench-core format doctor install-ns3 uninstall-ns3 clean
 
 test: core-test
 
@@ -25,6 +26,13 @@ bench-core:
 	cmake -S core -B core/build -DCMAKE_BUILD_TYPE=Release
 	cmake --build core/build -j --target bench_core
 	core/build/bench_core $(BENCH_ARGS)
+
+# The project's own C++ (.clang-format; ns3/baselines/ is excluded by
+# .clang-format-ignore). CI runs the same file list with --dry-run -Werror.
+CLANG_FORMAT ?= clang-format-18
+format:
+	git ls-files 'core/*.cpp' 'core/*.h' 'web/src/*.cpp' 'web/include/*.h' \
+	  'ns3/anthocnet/*.cc' 'ns3/anthocnet/*.h' | xargs $(CLANG_FORMAT) -i
 
 doctor:
 	@$(MAKE) --no-print-directory -C ns3 doctor NS3DIR=$(NS3DIR)
