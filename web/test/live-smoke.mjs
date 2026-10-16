@@ -6,7 +6,8 @@
 //      WASM content hash from web/build-site.sh), so it tests the new deploy
 //      and not the CDN's cached copy of the old one;
 //   1. opens the game, runs it at full speed and requires the HUD's delivered
-//      counter to leave zero, with no page error;
+//      counter to leave zero, with no page error (three attempts a minute
+//      apart, logging what each failed one saw);
 //   2. opens a docs page, an API page and the Workshop: top bar, no page error;
 //   3. opens a URL that does not exist: HTTP 404, and the 404 page carries the
 //      top bar with a home link under the base path.
@@ -44,25 +45,44 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || 
 // Material loads mermaid from a CDN; a CDN hiccup is not this site's error.
 const own = (errors) => errors.filter((e) => !/^Invalid script: https?:\/\//.test(e));
 
-// 1. The game runs and delivers.
+// 1. The game runs and delivers. The edge can serve a mix of the old and the
+// new deploy for a few minutes (Pages caches for 10 minutes, and step 0 only
+// proves engine.js is new). So a game that never ticks is retried twice, a
+// minute apart, before it fails, and every failed attempt logs what the page
+// saw: the clock, the HUD, failed or 4xx/5xx requests and console errors.
 {
-  const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
-  const errors = [];
-  p.on('pageerror', (e) => errors.push(e.message));
-  await p.goto(base + '#manet?seed=1');
-  await p.waitForFunction(() => document.getElementById('clock')?.textContent.includes('t 0:0'), null, { timeout: 30000 })
-    .catch(() => fail('game: the world clock never started'));
-  // Read the HUD as a visitor would: the fastest speed, then the delivered
-  // counter ("✓ delivered/sent") must leave zero.
-  await p.locator('.speeds button').last().click().catch(() => {});
-  await p.waitForFunction(() => /✓ [1-9]/.test(document.getElementById('stDelivered')?.textContent || ''), null, { timeout: 30000 })
-    .catch(() => {});
-  const hud = (await p.locator('#stDelivered').textContent().catch(() => '')) || '';
-  const deliveries = Number((hud.match(/✓ (\d+)/) || [])[1] || 0);
-  if (!deliveries) fail(`game: no delivered packet within 30 s (HUD "${hud}")`);
-  if (own(errors).length) fail(`game: page errors: ${own(errors).join(' | ')}`);
-  if (deliveries && !own(errors).length) console.log(`ok: game — ${deliveries} deliveries, no page errors`);
-  await p.close();
+  const attempt = async () => {
+    const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+    const errors = [], console_ = [], requests = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    p.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') console_.push(`${m.type()}: ${m.text()}`); });
+    p.on('requestfailed', (r) => requests.push(`${r.failure()?.errorText || 'failed'} ${r.url()}`));
+    p.on('response', (r) => { if (r.status() >= 400) requests.push(`HTTP ${r.status()} ${r.url()}`); });
+    await p.goto(base + '#manet?seed=1');
+    await p.waitForFunction(() => document.getElementById('clock')?.textContent.includes('t 0:0'), null, { timeout: 30000 })
+      .catch(() => {});
+    // Read the HUD as a visitor would: the fastest speed, then the delivered
+    // counter ("✓ delivered/sent") must leave zero.
+    await p.locator('.speeds button').last().click().catch(() => {});
+    await p.waitForFunction(() => /✓ [1-9]/.test(document.getElementById('stDelivered')?.textContent || ''), null, { timeout: 30000 })
+      .catch(() => {});
+    const hud = (await p.locator('#stDelivered').textContent().catch(() => '')) || '';
+    const clock = (await p.locator('#clock').textContent().catch(() => '')) || '';
+    await p.close();
+    const deliveries = Number((hud.match(/✓ (\d+)/) || [])[1] || 0);
+    return { deliveries, hud, clock: clock.trim(), errors: own(errors), console_, requests };
+  };
+  let r;
+  for (let i = 1; i <= 3; i++) {
+    r = await attempt();
+    if (r.deliveries && !r.errors.length) break;
+    console.log(`game attempt ${i}: HUD "${r.hud}", clock "${r.clock}"`);
+    for (const line of [...r.errors.map((e) => 'page error: ' + e), ...r.console_, ...r.requests].slice(0, 20)) console.log('  ' + line);
+    if (i < 3) await new Promise((res) => setTimeout(res, 60000));
+  }
+  if (!r.deliveries) fail(`game: no delivered packet within 30 s in 3 attempts (HUD "${r.hud}", clock "${r.clock}")`);
+  if (r.errors.length) fail(`game: page errors: ${r.errors.join(' | ')}`);
+  if (r.deliveries && !r.errors.length) console.log(`ok: game — ${r.deliveries} deliveries, no page errors`);
 }
 
 // 2. A docs page, an API page and the Workshop carry the top bar.
