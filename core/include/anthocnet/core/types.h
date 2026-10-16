@@ -26,7 +26,7 @@ using Time = double;
 /// "No such node / no route" sentinel, mirroring the legacy use of -1.
 constexpr NodeAddress kInvalidAddress = -1;
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_TYPES_H
+#endif  // ANTHOCNET_CORE_TYPES_H

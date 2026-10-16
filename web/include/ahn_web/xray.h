@@ -38,7 +38,8 @@ inline std::string antJson(const std::vector<std::uint8_t>& bytes) {
         s += "\":[";
         bool first = true;
         for (const auto& e : list) {
-            std::snprintf(buf, sizeof buf, "%s[%d,%.17g]", first ? "" : ",", static_cast<int>(e.node), second(e));
+            std::snprintf(buf, sizeof buf, "%s[%d,%.17g]", first ? "" : ",",
+                          static_cast<int>(e.node), second(e));
             s += buf;
             first = false;
         }
@@ -56,7 +57,8 @@ inline std::string antJson(const std::vector<std::uint8_t>& bytes) {
     num("length", static_cast<double>(bytes.size()));
     pairs("visited", m.visited, [](const anthocnet::core::AntHop& h) { return h.time; });
     pairs("history", m.history, [](const anthocnet::core::AntHop& h) { return h.time; });
-    pairs("helloDests", m.helloDests, [](const anthocnet::core::HelloDest& d) { return d.pheromone; });
+    pairs("helloDests", m.helloDests,
+          [](const anthocnet::core::HelloDest& d) { return d.pheromone; });
     return s + "}";
 }
 

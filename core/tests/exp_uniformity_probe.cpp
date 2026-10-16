@@ -102,8 +102,8 @@ Scenario makeGrid() {
             if (r + 1 < 4) s.links.push_back({id(r, c), id(r + 1, c)});
         }
     }
-    s.sessions = {{id(0, 0), id(3, 3)}, {id(3, 3), id(0, 0)},
-                  {id(0, 3), id(3, 0)}, {id(3, 0), id(0, 3)}};
+    s.sessions = {
+        {id(0, 0), id(3, 3)}, {id(3, 3), id(0, 0)}, {id(0, 3), id(3, 0)}, {id(3, 0), id(0, 3)}};
     return s;
 }
 
@@ -194,8 +194,12 @@ ScenarioResult runScenario(const Scenario& sc) {
                         const double r = table.getPheromoneRegular(d, nb);
                         if (v <= cfg.minPheromone || r <= cfg.minPheromone) continue;
                         const double ratio = v / r;
-                        if (matched == 0) { lo = hi = ratio; }
-                        else { lo = std::min(lo, ratio); hi = std::max(hi, ratio); }
+                        if (matched == 0) {
+                            lo = hi = ratio;
+                        } else {
+                            lo = std::min(lo, ratio);
+                            hi = std::max(hi, ratio);
+                        }
                         ++matched;
                     }
                     if (matched >= 2) res.crossNbSpread.push_back(hi / lo);
@@ -245,24 +249,25 @@ void report(const Scenario& sc, const ScenarioResult& res, std::vector<double>& 
         byPair[std::make_tuple(s.node, s.dest, s.nb)].push_back(s.ratio);
     }
 
-    std::printf("v/r percentiles: p10=%.4f p25=%.4f p50=%.4f p75=%.4f p90=%.4f  min=%.4f max=%.4f\n",
-                percentile(ratios, 0.10), percentile(ratios, 0.25), percentile(ratios, 0.50),
-                percentile(ratios, 0.75), percentile(ratios, 0.90),
-                percentile(ratios, 0.0), percentile(ratios, 1.0));
+    std::printf(
+        "v/r percentiles: p10=%.4f p25=%.4f p50=%.4f p75=%.4f p90=%.4f  min=%.4f max=%.4f\n",
+        percentile(ratios, 0.10), percentile(ratios, 0.25), percentile(ratios, 0.50),
+        percentile(ratios, 0.75), percentile(ratios, 0.90), percentile(ratios, 0.0),
+        percentile(ratios, 1.0));
 
     std::printf("by node degree:\n");
     for (const auto& kv : byDegree) {
-        std::printf("  deg=%d  n=%5d  median=%.4f  p10=%.4f  p90=%.4f\n",
-                    kv.first, static_cast<int>(kv.second.size()),
-                    percentile(kv.second, 0.50), percentile(kv.second, 0.10),
-                    percentile(kv.second, 0.90));
+        std::printf("  deg=%d  n=%5d  median=%.4f  p10=%.4f  p90=%.4f\n", kv.first,
+                    static_cast<int>(kv.second.size()), percentile(kv.second, 0.50),
+                    percentile(kv.second, 0.10), percentile(kv.second, 0.90));
     }
 
     // Per-pair spread across snapshot phase: max/min and IQR-ratio (p75/p25)
     // of v/r within one (node, dest, neighbour) across its snapshots.
     // Restricted to t >= 20 s so the route-formation transient (first reactive
     // discovery + first advert propagation) does not masquerade as phase swing.
-    std::map<std::tuple<int, core::NodeAddress, core::NodeAddress>, std::vector<double>> byPairSteady;
+    std::map<std::tuple<int, core::NodeAddress, core::NodeAddress>, std::vector<double>>
+        byPairSteady;
     for (const Sample& s : res.samples) {
         if (s.t >= 20.0) byPairSteady[std::make_tuple(s.node, s.dest, s.nb)].push_back(s.ratio);
     }
@@ -274,26 +279,27 @@ void report(const Scenario& sc, const ScenarioResult& res, std::vector<double>& 
     }
     std::printf("per-pair phase spread (t>=20s, pairs with >=8 snaps: %d):\n",
                 static_cast<int>(spreads.size()));
-    std::printf("  max/min : median=%.4f  p90=%.4f  max=%.4f\n",
-                percentile(spreads, 0.50), percentile(spreads, 0.90),
-                percentile(spreads, 1.0));
-    std::printf("  p75/p25 : median=%.4f  p90=%.4f  max=%.4f\n",
-                percentile(iqrs, 0.50), percentile(iqrs, 0.90),
-                percentile(iqrs, 1.0));
+    std::printf("  max/min : median=%.4f  p90=%.4f  max=%.4f\n", percentile(spreads, 0.50),
+                percentile(spreads, 0.90), percentile(spreads, 1.0));
+    std::printf("  p75/p25 : median=%.4f  p90=%.4f  max=%.4f\n", percentile(iqrs, 0.50),
+                percentile(iqrs, 0.90), percentile(iqrs, 1.0));
 
-    std::printf("cross-neighbour spread within (node,dest) at one snapshot (n=%d): median=%.4f p90=%.4f\n",
-                static_cast<int>(res.crossNbSpread.size()),
-                percentile(res.crossNbSpread, 0.50), percentile(res.crossNbSpread, 0.90));
+    std::printf(
+        "cross-neighbour spread within (node,dest) at one snapshot (n=%d): median=%.4f p90=%.4f\n",
+        static_cast<int>(res.crossNbSpread.size()), percentile(res.crossNbSpread, 0.50),
+        percentile(res.crossNbSpread, 0.90));
 
     std::printf("gate-site ratio bestVirtual/bestRegular:\n");
-    std::printf("  all pairs with route     p10=%.4f p25=%.4f p50=%.4f p75=%.4f p90=%.4f max=%.4f\n",
-                percentile(res.gateRatioAll, 0.10), percentile(res.gateRatioAll, 0.25),
-                percentile(res.gateRatioAll, 0.50), percentile(res.gateRatioAll, 0.75),
-                percentile(res.gateRatioAll, 0.90), percentile(res.gateRatioAll, 1.0));
-    std::printf("  session (src,dest) only  p10=%.4f p25=%.4f p50=%.4f p75=%.4f p90=%.4f max=%.4f\n",
-                percentile(res.gateRatioSrc, 0.10), percentile(res.gateRatioSrc, 0.25),
-                percentile(res.gateRatioSrc, 0.50), percentile(res.gateRatioSrc, 0.75),
-                percentile(res.gateRatioSrc, 0.90), percentile(res.gateRatioSrc, 1.0));
+    std::printf(
+        "  all pairs with route     p10=%.4f p25=%.4f p50=%.4f p75=%.4f p90=%.4f max=%.4f\n",
+        percentile(res.gateRatioAll, 0.10), percentile(res.gateRatioAll, 0.25),
+        percentile(res.gateRatioAll, 0.50), percentile(res.gateRatioAll, 0.75),
+        percentile(res.gateRatioAll, 0.90), percentile(res.gateRatioAll, 1.0));
+    std::printf(
+        "  session (src,dest) only  p10=%.4f p25=%.4f p50=%.4f p75=%.4f p90=%.4f max=%.4f\n",
+        percentile(res.gateRatioSrc, 0.10), percentile(res.gateRatioSrc, 0.25),
+        percentile(res.gateRatioSrc, 0.50), percentile(res.gateRatioSrc, 0.75),
+        percentile(res.gateRatioSrc, 0.90), percentile(res.gateRatioSrc, 1.0));
     std::printf("gate pass rate, bestVirtual >= k * bestRegular:\n");
     std::printf("  %-26s", "k =");
     for (int m = 0; m < kNumGateK; ++m) std::printf("  %5.2f", kGateK[m]);
@@ -304,7 +310,7 @@ void report(const Scenario& sc, const ScenarioResult& res, std::vector<double>& 
                                            static_cast<double>(res.gateTotalAll)
                                      : 0.0);
     }
-    std::printf("  (n=%llu)\n  %-26s", (unsigned long long) res.gateTotalAll,
+    std::printf("  (n=%llu)\n  %-26s", (unsigned long long)res.gateTotalAll,
                 "session (src,dest) only");
     for (int m = 0; m < kNumGateK; ++m) {
         std::printf("  %4.1f%%", res.gateTotalSrc
@@ -312,17 +318,19 @@ void report(const Scenario& sc, const ScenarioResult& res, std::vector<double>& 
                                            static_cast<double>(res.gateTotalSrc)
                                      : 0.0);
     }
-    std::printf("  (n=%llu)\n", (unsigned long long) res.gateTotalSrc);
+    std::printf("  (n=%llu)\n", (unsigned long long)res.gateTotalSrc);
 }
 
 }  // namespace
 
 int main() {
-    std::printf("uniformity probe on the #262 aging clock "
-                "(virtual ages in evaporateAll, same alpha^(dt/interval) as regular)\n");
-    std::printf("old-clock reference (#180, 2026-07-30 comment): median v/r 0.49; "
-                "deg1 1.18 / deg2 0.54-0.61 / deg3 0.28-0.40 / deg4 0.28-0.41; "
-                "per-entry phase swing 0.0557 -> 11968\n");
+    std::printf(
+        "uniformity probe on the #262 aging clock "
+        "(virtual ages in evaporateAll, same alpha^(dt/interval) as regular)\n");
+    std::printf(
+        "old-clock reference (#180, 2026-07-30 comment): median v/r 0.49; "
+        "deg1 1.18 / deg2 0.54-0.61 / deg3 0.28-0.40 / deg4 0.28-0.41; "
+        "per-entry phase swing 0.0557 -> 11968\n");
 
     std::vector<double> allRatios;
     for (const Scenario& sc : {makeLine(), makeGrid(), makeStar()}) {

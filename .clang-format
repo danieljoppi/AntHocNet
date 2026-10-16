@@ -1,0 +1,18 @@
+# C++ formatting for the project's own code (#35): core/, the browser adapter
+# (web/src, web/include) and the ns-3 module (ns3/anthocnet). Close to the
+# style the code was written in: Google base, 4-space indent, 100 columns.
+# ns3/baselines/ is excluded (.clang-format-ignore): AOMDV and GPSR are ports
+# of upstream ns-3 code in its GNU style, kept diffable against their origin.
+# CI: lint.yml `clang-format` (clang-format-18, --dry-run -Werror).
+BasedOnStyle: Google
+IndentWidth: 4
+ColumnLimit: 100
+AccessModifierOffset: -4
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+SortIncludes: Never
+ReflowComments: false
+DerivePointerAlignment: false
+PointerAlignment: Left
+SpacesBeforeTrailingComments: 2

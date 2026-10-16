@@ -15,20 +15,23 @@ using anthocnet::test::ScriptedRng;
 namespace {
 
 struct RecordingObserver : IRouterObserver {
-    struct Sent { AntType type; AntDirection dir; bool broadcast; };
+    struct Sent {
+        AntType type;
+        AntDirection dir;
+        bool broadcast;
+    };
     std::vector<Sent> sent;
     std::vector<AntType> received;
     int routeAdds = 0;
     int routeRemoves = 0;
 
-    void onAntSent(AntType t, AntDirection d, bool b) override {
-        sent.push_back({t, d, b});
-    }
-    void onAntReceived(AntType t, AntDirection /*d*/) override {
-        received.push_back(t);
-    }
+    void onAntSent(AntType t, AntDirection d, bool b) override { sent.push_back({t, d, b}); }
+    void onAntReceived(AntType t, AntDirection /*d*/) override { received.push_back(t); }
     void onRouteChanged(NodeAddress /*dest*/, NodeAddress /*nb*/, bool added) override {
-        if (added) ++routeAdds; else ++routeRemoves;
+        if (added)
+            ++routeAdds;
+        else
+            ++routeRemoves;
     }
 };
 

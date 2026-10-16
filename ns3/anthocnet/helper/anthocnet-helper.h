@@ -14,8 +14,7 @@
 
 namespace ns3 {
 
-class AntHocNetHelper : public Ipv4RoutingHelper
-{
+class AntHocNetHelper : public Ipv4RoutingHelper {
 public:
     AntHocNetHelper();
 
@@ -32,6 +31,6 @@ private:
     ObjectFactory m_agentFactory;
 };
 
-} // namespace ns3
+}  // namespace ns3
 
-#endif // ANTHOCNET_HELPER_H
+#endif  // ANTHOCNET_HELPER_H

@@ -29,8 +29,8 @@ public:
 
     /// Reinforce the (dest, neighbor) regular link travelled by an ant. Aging
     /// of other links is handled separately by evaporateAll (ADR-0012).
-    void updateRegular(PheromoneTable& table, NodeAddress dest,
-                       NodeAddress neighbor, double phUpdate) const;
+    void updateRegular(PheromoneTable& table, NodeAddress dest, NodeAddress neighbor,
+                       double phUpdate) const;
 
     /// Time-proportional aging of every regular AND virtual link by
     /// alpha^(dt/interval), pruning links below minPheromone. Driven by the
@@ -57,7 +57,7 @@ private:
     const Config config_;
 };
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_PHEROMONE_ENGINE_H
+#endif  // ANTHOCNET_CORE_PHEROMONE_ENGINE_H

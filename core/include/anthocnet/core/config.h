@@ -92,8 +92,8 @@ struct Config {
     /// sinrPenaltyCost hops instead of one. "In simulation tests using IEEE
     /// 802.11b radios sending at 2Mbps, we empirically set SINR_c to 17dB and
     /// c_const to 3." -- Ducatelle, PhD thesis, USI Lugano, 2007, §4.2.6.
-    double sinrCriticalDb = 17.0;   ///< SINR_c (dB)
-    double sinrPenaltyCost = 3.0;   ///< c_const (> 1)
+    double sinrCriticalDb = 17.0;  ///< SINR_c (dB)
+    double sinrPenaltyCost = 3.0;  ///< c_const (> 1)
 
     /// Links whose pheromone drops below this are pruned.
     double minPheromone = 0.00001;  ///< MIN_PHEROMONE
@@ -102,7 +102,7 @@ struct Config {
     /// only source of aging (reinforcement no longer ages competitors). Each
     /// tick ages every regular link by alpha^(dt/evaporationInterval). Gated so
     /// item 08 can run the paper-faithful "running-average only" ablation.
-    bool   enableEvaporation   = true;
+    bool enableEvaporation = true;
     double evaporationInterval = 1.0;  ///< reference interval (s) for the decay.
 
     /// At most one reactive forward ant per destination per this window, so a
@@ -112,8 +112,8 @@ struct Config {
 
     /// Proactive / diffusion subsystem (ADR-0007), config-gated so the
     /// benchmark ablation (item 08) can justify the shipped default.
-    bool enableProactive = true;   ///< master: proactive ants + diffusion.
-    bool enableDiffusion = true;   ///< hello pheromone adverts + virtual table.
+    bool enableProactive = true;  ///< master: proactive ants + diffusion.
+    bool enableDiffusion = true;  ///< hello pheromone adverts + virtual table.
 
     /// Diffusion advert cap k: at most this many destinations per hello ant
     /// (#186). 2007 thesis: "picks a maximum number k of destinations it has
@@ -144,7 +144,7 @@ struct Config {
     /// something else installs them — which is exactly the interaction
     /// `enableDirectedReactive` + `enableDiffusion` is there to test.
     bool enableReactive = true;  ///< reactive forward ants (route discovery).
-    bool enableRepair   = true;  ///< local repair ants after a link break ([1] §3.5).
+    bool enableRepair = true;    ///< local repair ants after a link break ([1] §3.5).
     bool enableLinkFail = true;  ///< link-failure notifications ([1] §3.5).
 
     /// Directed reactive discovery (default **off** — an explicit deviation
@@ -220,7 +220,7 @@ struct Config {
     double proactiveVirtualMargin = 0.0;
 
     /// Timer intervals (seconds).
-    double helloInterval     = 1.0;
+    double helloInterval = 1.0;
     /// Proactive forward-ant period per active session. 10.0 is the
     /// long-standing repo value with no recorded source (#182); the thesis's
     /// §5.3.3 measured optimum is 2 s, but adopting it is #248's sweep to
@@ -228,7 +228,7 @@ struct Config {
     /// which the per-merge refresh measured as NRL ×4.7 / PDR −12 pp at
     /// paper-base (#254). Do not change this default without that A/B.
     double proactiveInterval = 10.0;
-    double lifeAnt           = 2.0;
+    double lifeAnt = 2.0;
 
     /// A neighbour is presumed gone after this many missed hellos
     /// (maxIdle = helloInterval * allowedHelloLoss), per [1] §3.5.
@@ -374,10 +374,10 @@ struct Config {
     /// dedup history, so a long-running simulation cannot grow them without
     /// limit (a latent issue in the original fixed-size malloc arrays).
     std::size_t maxPathLength = 100;
-    std::size_t maxHistory    = 4096;
+    std::size_t maxHistory = 4096;
 };
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_CONFIG_H
+#endif  // ANTHOCNET_CORE_CONFIG_H

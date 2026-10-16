@@ -43,11 +43,14 @@ struct Network {
 
     void addNode(int addr, const Config& cfg) {
         rngs.push_back(std::unique_ptr<ScriptedRng>(new ScriptedRng({0.5})));
-        nodes.push_back(std::unique_ptr<AntRouterLogic>(
-            new AntRouterLogic(addr, cfg, clock, *rngs.back())));
+        nodes.push_back(
+            std::unique_ptr<AntRouterLogic>(new AntRouterLogic(addr, cfg, clock, *rngs.back())));
     }
 
-    void link(int a, int b) { adj[a].insert(b); adj[b].insert(a); }
+    void link(int a, int b) {
+        adj[a].insert(b);
+        adj[b].insert(a);
+    }
 
     void dispatch(int from, const std::vector<RouteDecision>& decisions) {
         for (const RouteDecision& d : decisions) {
@@ -77,7 +80,7 @@ struct Network {
     }
 };
 
-} // namespace
+}  // namespace
 
 int main() {
     Config cfg;

@@ -75,8 +75,8 @@ int main() {
         AntMessage back;
         back.type = AntType::Reactive;
         back.direction = AntDirection::Down;
-        back.src = 9;   // the destination that answered
-        back.dst = 0;   // back at the origin after this hop
+        back.src = 9;  // the destination that answered
+        back.dst = 0;  // back at the origin after this hop
         back.seqNum = 1;
         back.history.push_back({9, 1.0});    // link 8 -> 9, written at node 8
         back.history.push_back({8, 1.0});    // link 7 -> 8, written at node 7
@@ -110,7 +110,8 @@ int main() {
         router.learnNeighbor(5);
         router.learnNeighbor(6);  // no sample -> good -> cost 1
         CHECK(router.table().getPheromoneRegular(4, 4) > router.table().getPheromoneRegular(5, 5));
-        CHECK_NEAR(router.table().getPheromoneRegular(4, 4), router.table().getPheromoneRegular(6, 6), 1e-12);
+        CHECK_NEAR(router.table().getPheromoneRegular(4, 4),
+                   router.table().getPheromoneRegular(6, 6), 1e-12);
     }
 
     // 6. No port injected: every link is good, so the metric is hop count.

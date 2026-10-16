@@ -24,9 +24,9 @@ namespace core {
 /// Carries path aggregates and node-local signals only — never per-hop
 /// downstream vectors (the wire carries one scalar cost per hop, ADR-0009).
 struct LinkObservation {
-    double hops     = 0.0;  ///< hops to the destination; fractional once smoothed (#185).
+    double hops = 0.0;      ///< hops to the destination; fractional once smoothed (#185).
     double pathTime = 0.0;  ///< accumulated time estimate (seconds, item 02).
-    double hopTime  = 0.0;  ///< config T_hop (seconds).
+    double hopTime = 0.0;   ///< config T_hop (seconds).
 };
 
 /// Maps an observation to a pheromone (goodness; higher == better).
@@ -71,7 +71,7 @@ inline double sinrLinkCost(double sinrDb, double criticalDb, double penalty) {
     return (std::isnan(sinrDb) || sinrDb > criticalDb) ? 1.0 : penalty;
 }
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_LINK_METRIC_H
+#endif  // ANTHOCNET_CORE_LINK_METRIC_H

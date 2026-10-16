@@ -42,13 +42,16 @@ namespace {
 class XorShiftRng : public IRng {
 public:
     double uniform() override { return (next() >> 11) * (1.0 / 9007199254740992.0); }
-    int uniformInt(int n) override { return static_cast<int>(next() % static_cast<std::uint64_t>(n)); }
+    int uniformInt(int n) override {
+        return static_cast<int>(next() % static_cast<std::uint64_t>(n));
+    }
     std::uint64_t next() {
         s_ ^= s_ >> 12;
         s_ ^= s_ << 25;
         s_ ^= s_ >> 27;
         return s_ * 0x2545F4914F6CDD1DULL;
     }
+
 private:
     std::uint64_t s_ = 0x9E3779B97F4A7C15ULL;
 };
@@ -62,7 +65,7 @@ struct Result {
 };
 
 double g_target = 0.2;  // seconds per round
-int    g_rounds = 7;
+int g_rounds = 7;
 
 // body(n) runs the operation n times.
 Result measure(const std::string& name, const std::function<void(std::uint64_t)>& body) {
@@ -76,7 +79,8 @@ Result measure(const std::string& name, const std::function<void(std::uint64_t)>
         body(n);
         double s = seconds(t0, Clock::now());
         if (s >= g_target / 10 || n >= (1ULL << 40)) {
-            n = std::max<std::uint64_t>(1, static_cast<std::uint64_t>(n * (g_target / std::max(s, 1e-9))));
+            n = std::max<std::uint64_t>(
+                1, static_cast<std::uint64_t>(n * (g_target / std::max(s, 1e-9))));
             break;
         }
         n *= 4;
@@ -124,14 +128,20 @@ AntMessage fullForwardAnt() {
     return m;
 }
 
-} // namespace
+}  // namespace
 
 int main(int argc, char** argv) {
     bool csv = false;
     for (int i = 1; i < argc; ++i) {
-        if (std::strcmp(argv[i], "--csv") == 0) csv = true;
-        else if (std::strcmp(argv[i], "--quick") == 0) { g_target = 0.02; g_rounds = 3; }
-        else { std::fprintf(stderr, "usage: %s [--csv] [--quick]\n", argv[0]); return 2; }
+        if (std::strcmp(argv[i], "--csv") == 0)
+            csv = true;
+        else if (std::strcmp(argv[i], "--quick") == 0) {
+            g_target = 0.02;
+            g_rounds = 3;
+        } else {
+            std::fprintf(stderr, "usage: %s [--csv] [--quick]\n", argv[0]);
+            return 2;
+        }
     }
 
     const Config cfg;
@@ -158,14 +168,15 @@ int main(int argc, char** argv) {
     for (int degree : {4, 16, 64}) {
         XorShiftRng rng;
         PheromoneTable t = makeTable(degree, 8, rng);
-        results.push_back(measure("select_next_hop_" + std::to_string(degree), [&](std::uint64_t n) {
-            std::uint64_t acc = 0;
-            for (std::uint64_t i = 0; i < n; ++i) {
-                auto dest = static_cast<NodeAddress>(1000 + i % 8);
-                acc += t.nextNeighborNode(dest, false, cfg.betaData, rng);
-            }
-            g_sink = g_sink + acc;
-        }));
+        results.push_back(
+            measure("select_next_hop_" + std::to_string(degree), [&](std::uint64_t n) {
+                std::uint64_t acc = 0;
+                for (std::uint64_t i = 0; i < n; ++i) {
+                    auto dest = static_cast<NodeAddress>(1000 + i % 8);
+                    acc += t.nextNeighborNode(dest, false, cfg.betaData, rng);
+                }
+                g_sink = g_sink + acc;
+            }));
     }
 
     // 3. Codec of a full forward ant (kMaxVisitedOnWire hops).
@@ -190,7 +201,8 @@ int main(int argc, char** argv) {
     {
         AntHistoryTracker h(cfg.maxHistory);
         std::uint32_t seq = 0;
-        for (std::size_t i = 0; i < cfg.maxHistory; ++i) h.record(static_cast<NodeAddress>(i % 32), seq++);
+        for (std::size_t i = 0; i < cfg.maxHistory; ++i)
+            h.record(static_cast<NodeAddress>(i % 32), seq++);
         results.push_back(measure("history_dedup", [&](std::uint64_t n) {
             std::uint64_t fresh = 0;
             for (std::uint64_t i = 0; i < n; ++i) {
@@ -203,7 +215,8 @@ int main(int argc, char** argv) {
 
     if (csv) {
         std::printf("case,ns_per_op,min_ns,max_ns\n");
-        for (const auto& r : results) std::printf("%s,%.2f,%.2f,%.2f\n", r.name.c_str(), r.median, r.min, r.max);
+        for (const auto& r : results)
+            std::printf("%s,%.2f,%.2f,%.2f\n", r.name.c_str(), r.median, r.min, r.max);
     } else {
         std::printf("%-24s %12s %12s %12s\n", "case", "ns/op", "min", "max");
         for (const auto& r : results)

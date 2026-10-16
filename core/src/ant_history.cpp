@@ -55,10 +55,8 @@ void noteFirstHop(std::vector<NodeAddress>& seen, NodeAddress firstHop) {
 
 }  // namespace
 
-bool GenerationTracker::accept(NodeAddress src, std::uint32_t seqNum,
-                               std::uint32_t hops, Time time,
-                               NodeAddress firstHop, double factor,
-                               double factorNewHop) {
+bool GenerationTracker::accept(NodeAddress src, std::uint32_t seqNum, std::uint32_t hops, Time time,
+                               NodeAddress firstHop, double factor, double factorNewHop) {
     const Key key{src, seqNum};
     auto it = best_.find(key);
     if (it == best_.end()) {
@@ -85,8 +83,7 @@ bool GenerationTracker::accept(NodeAddress src, std::uint32_t seqNum,
     // ants refresh the per-metric minima.
     Best& b = it->second;
     const double f = isNewFirstHop(b.firstHops, firstHop) ? factorNewHop : factor;
-    if (static_cast<double>(hops) <= f * static_cast<double>(b.hops) &&
-        time <= f * b.time) {
+    if (static_cast<double>(hops) <= f * static_cast<double>(b.hops) && time <= f * b.time) {
         if (hops < b.hops) b.hops = hops;
         if (time < b.time) b.time = time;
         noteFirstHop(b.firstHops, firstHop);
@@ -95,9 +92,8 @@ bool GenerationTracker::accept(NodeAddress src, std::uint32_t seqNum,
     return false;
 }
 
-bool GenerationTracker::allowBroadcast(NodeAddress src, std::uint32_t seqNum,
-                                      int maxBroadcasts) {
-    if (maxBroadcasts < 0) return true;               // unlimited
+bool GenerationTracker::allowBroadcast(NodeAddress src, std::uint32_t seqNum, int maxBroadcasts) {
+    if (maxBroadcasts < 0) return true;  // unlimited
     const Key key{src, seqNum};
     auto it = best_.find(key);
     if (it == best_.end()) {
@@ -123,5 +119,5 @@ void GenerationTracker::clear() {
     insertionOrder_.clear();
 }
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet

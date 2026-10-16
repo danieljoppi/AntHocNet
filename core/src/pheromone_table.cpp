@@ -16,9 +16,7 @@ void PheromoneTable::addNeighbor(NodeAddress neighbor) {
     destVirtual_.insert(neighbor);
 }
 
-void PheromoneTable::removeNeighbor(NodeAddress neighbor) {
-    neighborTable_.erase(neighbor);
-}
+void PheromoneTable::removeNeighbor(NodeAddress neighbor) { neighborTable_.erase(neighbor); }
 
 void PheromoneTable::addPheromoneRegular(NodeAddress dest, NodeAddress neighbor, double value) {
     destRegular_.insert(dest);
@@ -77,8 +75,8 @@ void PheromoneTable::setPheromoneVirtual(NodeAddress dest, NodeAddress neighbor,
     pheromoneVirtual_[{neighbor, dest}] = value;
 }
 
-double PheromoneTable::sumProbability(const PheromoneMap& table, NodeAddress dest,
-                                      double beta, NodeAddress exclude) const {
+double PheromoneTable::sumProbability(const PheromoneMap& table, NodeAddress dest, double beta,
+                                      NodeAddress exclude) const {
     double sum = 0.0;
     for (NodeAddress neighbor : neighborTable_) {
         if (neighbor == exclude) continue;
@@ -89,8 +87,7 @@ double PheromoneTable::sumProbability(const PheromoneMap& table, NodeAddress des
     return sum;
 }
 
-double PheromoneTable::sumMaxProbability(NodeAddress dest, double beta,
-                                         NodeAddress exclude) const {
+double PheromoneTable::sumMaxProbability(NodeAddress dest, double beta, NodeAddress exclude) const {
     double sum = 0.0;
     for (NodeAddress neighbor : neighborTable_) {
         if (neighbor == exclude) continue;
@@ -103,9 +100,8 @@ double PheromoneTable::sumMaxProbability(NodeAddress dest, double beta,
     return sum;
 }
 
-NodeAddress PheromoneTable::nextNeighborNode(NodeAddress dest, bool isProactiveAnt,
-                                             double beta, IRng& rng,
-                                             NodeAddress exclude) const {
+NodeAddress PheromoneTable::nextNeighborNode(NodeAddress dest, bool isProactiveAnt, double beta,
+                                             IRng& rng, NodeAddress exclude) const {
     // Unknown destination: no route. Data requires a regular entry; a proactive
     // ant may also route toward a purely-diffused (virtual-only) destination so
     // diffusion can extend reach (ADR-0007).
@@ -198,5 +194,5 @@ NodeAddress PheromoneTable::randomDestination(IRng& rng) const {
     return dest;
 }
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet

@@ -47,8 +47,8 @@ int main() {
     //    the better neighbour wins for the whole sweep.
     const int linear = countBetterChosen(table, /*beta=*/1.0);
     const int greedy = countBetterChosen(table, /*betaData=*/20.0);
-    CHECK_EQ(linear, 6);   // 2.0 / (2.0 + 1.0) of nine draws
-    CHECK_EQ(greedy, 9);   // 2^20 / (2^20 + 1) ~ 1.0
+    CHECK_EQ(linear, 6);  // 2.0 / (2.0 + 1.0) of nine draws
+    CHECK_EQ(greedy, 9);  // 2^20 / (2^20 + 1) ~ 1.0
     CHECK(greedy > linear);
 
     // 2. Ants and data go through different exponents, so for a fixed r they can
@@ -64,7 +64,7 @@ int main() {
         router.table().setPheromoneRegular(9, 1, 2.0);
         router.table().setPheromoneRegular(9, 2, 1.0);
 
-        NodeAddress antHop  = router.selectNextHop(9, /*proactive=*/false);
+        NodeAddress antHop = router.selectNextHop(9, /*proactive=*/false);
         NodeAddress dataHop = router.nextHopForData(9);
         CHECK_EQ(antHop, 2);
         CHECK_EQ(dataHop, 1);

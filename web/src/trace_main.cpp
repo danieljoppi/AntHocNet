@@ -29,7 +29,8 @@ int main(int argc, char** argv) {
         while (std::getline(std::cin, line)) {
             std::vector<std::uint8_t> bytes;
             for (std::size_t i = 0; i + 1 < line.size(); i += 2) {
-                bytes.push_back(static_cast<std::uint8_t>(std::strtoul(line.substr(i, 2).c_str(), nullptr, 16)));
+                bytes.push_back(static_cast<std::uint8_t>(
+                    std::strtoul(line.substr(i, 2).c_str(), nullptr, 16)));
             }
             std::printf("%s\n", ahn_web::antJson(bytes).c_str());
         }
@@ -57,8 +58,8 @@ int main(int argc, char** argv) {
         }
         for (std::size_t f = 0; f < w.flows().size(); ++f) {
             const ahn_web::Flow& fl = w.flows()[f];
-            std::printf("# flow %zu %d->%d sent=%d delivered=%d delaySum=%.9g\n", f, fl.src,
-                        fl.dst, fl.sent, fl.delivered, fl.delaySum);
+            std::printf("# flow %zu %d->%d sent=%d delivered=%d delaySum=%.9g\n", f, fl.src, fl.dst,
+                        fl.sent, fl.delivered, fl.delaySum);
         }
     }
     return 0;

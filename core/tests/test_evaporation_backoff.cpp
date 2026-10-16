@@ -58,7 +58,7 @@ int main() {
         router.learnNeighbor(5);
         router.table().setPheromoneRegular(9, 5, 0.8);
 
-        clock.advance(1.0);              // < maxIdle, == evaporationInterval
+        clock.advance(1.0);  // < maxIdle, == evaporationInterval
         router.onMaintenanceTick();
         CHECK_NEAR(router.table().getPheromoneRegular(9, 5), 0.8 * 0.7, 1e-9);
     }

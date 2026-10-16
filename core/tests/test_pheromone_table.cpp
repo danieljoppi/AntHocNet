@@ -82,10 +82,10 @@ int main() {
     // via that neighbour from both maps and the gauge follows.
     Config cfg;
     PheromoneEngine engine(cfg);
-    engine.cleanNeighbor(table, /*neighbor*/ 2);   // drops virtual (dest 10 via 2)
+    engine.cleanNeighbor(table, /*neighbor*/ 2);  // drops virtual (dest 10 via 2)
     CHECK_EQ(table.numEntriesVirtual(), static_cast<std::size_t>(1));
     CHECK_EQ(table.numEntries(), static_cast<std::size_t>(1));
-    engine.cleanNeighbor(table, /*neighbor*/ 1);   // drops virtual (dest 9 via 1)
+    engine.cleanNeighbor(table, /*neighbor*/ 1);  // drops virtual (dest 9 via 1)
     CHECK_EQ(table.numEntriesVirtual(), static_cast<std::size_t>(0));
     CHECK_EQ(table.numEntries(), static_cast<std::size_t>(0));
 

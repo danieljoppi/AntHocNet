@@ -24,12 +24,12 @@ namespace core {
 /// took to reach it from the previous hop.
 struct AntHop {
     NodeAddress node = kInvalidAddress;
-    Time        time = 0.0;
+    Time time = 0.0;
 };
 
 using VisitedPath = std::vector<AntHop>;
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_VISITED_PATH_H
+#endif  // ANTHOCNET_CORE_VISITED_PATH_H

@@ -19,8 +19,7 @@
 namespace ns3 {
 namespace anthocnet {
 
-class AntHeader : public Header
-{
+class AntHeader : public Header {
 public:
     AntHeader() = default;
     explicit AntHeader(const ::anthocnet::core::AntMessage& msg) : m_message(msg) {}
@@ -41,7 +40,7 @@ private:
     ::anthocnet::core::AntMessage m_message;
 };
 
-} // namespace anthocnet
-} // namespace ns3
+}  // namespace anthocnet
+}  // namespace ns3
 
-#endif // ANTHOCNET_PACKET_H
+#endif  // ANTHOCNET_PACKET_H

@@ -109,5 +109,5 @@ uint32_t RequestQueue::Size() {
     return static_cast<uint32_t>(m_queue.size());
 }
 
-} // namespace anthocnet
-} // namespace ns3
+}  // namespace anthocnet
+}  // namespace ns3

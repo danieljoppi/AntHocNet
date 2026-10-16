@@ -26,13 +26,13 @@ double BitsToDouble(uint64_t bits) {
     return v;
 }
 
-constexpr uint32_t kHopSize = 4 + 8;     // int32 node + double time
-constexpr uint32_t kHelloSize = 4 + 8;   // int32 node + double pheromone
+constexpr uint32_t kHopSize = 4 + 8;    // int32 node + double time
+constexpr uint32_t kHelloSize = 4 + 8;  // int32 node + double pheromone
 // prevHop/hops/pathTime/pheromone are reconstructed locally (ADR-0009), not sent.
 constexpr uint32_t kFixedSize = 1 + 1 + 4 + 4 + 4 + 8 + 8 + 4;
 constexpr uint32_t kCounts = 2 + 2 + 2;
 
-} // namespace
+}  // namespace
 
 NS_OBJECT_ENSURE_REGISTERED(AntHeader);
 
@@ -44,9 +44,7 @@ TypeId AntHeader::GetTypeId() {
     return tid;
 }
 
-TypeId AntHeader::GetInstanceTypeId() const {
-    return GetTypeId();
-}
+TypeId AntHeader::GetInstanceTypeId() const { return GetTypeId(); }
 
 uint32_t AntHeader::GetSerializedSize() const {
     return 1 /*version*/ + kFixedSize + kCounts +
@@ -88,35 +86,43 @@ uint32_t AntHeader::Deserialize(Buffer::Iterator start) {
     Buffer::Iterator i = start;
     auto& m = m_message;
     i.ReadU8();  // wire-version byte (self-generated packets are trusted)
-    m.type      = static_cast<::anthocnet::core::AntType>(i.ReadU8());
+    m.type = static_cast<::anthocnet::core::AntType>(i.ReadU8());
     m.direction = static_cast<::anthocnet::core::AntDirection>(i.ReadU8());
-    m.src       = static_cast<int32_t>(i.ReadU32());
-    m.dst       = static_cast<int32_t>(i.ReadU32());
-    m.seqNum    = i.ReadU32();
+    m.src = static_cast<int32_t>(i.ReadU32());
+    m.dst = static_cast<int32_t>(i.ReadU32());
+    m.seqNum = i.ReadU32();
     m.timeStart = BitsToDouble(i.ReadU64());
-    m.lifeAnt   = BitsToDouble(i.ReadU64());
+    m.lifeAnt = BitsToDouble(i.ReadU64());
     m.broadcastBudget = static_cast<int>(i.ReadU32());
 
     const uint16_t nv = i.ReadU16();
     m.visited.resize(nv);
-    for (auto& h : m.visited) { h.node = static_cast<int32_t>(i.ReadU32()); h.time = BitsToDouble(i.ReadU64()); }
+    for (auto& h : m.visited) {
+        h.node = static_cast<int32_t>(i.ReadU32());
+        h.time = BitsToDouble(i.ReadU64());
+    }
     const uint16_t nh = i.ReadU16();
     m.history.resize(nh);
-    for (auto& h : m.history) { h.node = static_cast<int32_t>(i.ReadU32()); h.time = BitsToDouble(i.ReadU64()); }
+    for (auto& h : m.history) {
+        h.node = static_cast<int32_t>(i.ReadU32());
+        h.time = BitsToDouble(i.ReadU64());
+    }
     const uint16_t nd = i.ReadU16();
     m.helloDests.resize(nd);
-    for (auto& d : m.helloDests) { d.node = static_cast<int32_t>(i.ReadU32()); d.pheromone = BitsToDouble(i.ReadU64()); }
+    for (auto& d : m.helloDests) {
+        d.node = static_cast<int32_t>(i.ReadU32());
+        d.pheromone = BitsToDouble(i.ReadU64());
+    }
 
     return i.GetDistanceFrom(start);
 }
 
 void AntHeader::Print(std::ostream& os) const {
     os << "AntHocNet type=" << static_cast<int>(m_message.type)
-       << " dir=" << static_cast<int>(m_message.direction)
-       << " src=" << m_message.src << " dst=" << m_message.dst
-       << " seq=" << m_message.seqNum
+       << " dir=" << static_cast<int>(m_message.direction) << " src=" << m_message.src
+       << " dst=" << m_message.dst << " seq=" << m_message.seqNum
        << " path=" << m_message.visited.size();
 }
 
-} // namespace anthocnet
-} // namespace ns3
+}  // namespace anthocnet
+}  // namespace ns3

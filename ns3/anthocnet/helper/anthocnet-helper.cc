@@ -12,17 +12,12 @@
 
 namespace ns3 {
 
-AntHocNetHelper::AntHocNetHelper() {
-    m_agentFactory.SetTypeId("ns3::anthocnet::RoutingProtocol");
-}
+AntHocNetHelper::AntHocNetHelper() { m_agentFactory.SetTypeId("ns3::anthocnet::RoutingProtocol"); }
 
-AntHocNetHelper* AntHocNetHelper::Copy() const {
-    return new AntHocNetHelper(*this);
-}
+AntHocNetHelper* AntHocNetHelper::Copy() const { return new AntHocNetHelper(*this); }
 
 Ptr<Ipv4RoutingProtocol> AntHocNetHelper::Create(Ptr<Node> node) const {
-    Ptr<anthocnet::RoutingProtocol> agent =
-        m_agentFactory.Create<anthocnet::RoutingProtocol>();
+    Ptr<anthocnet::RoutingProtocol> agent = m_agentFactory.Create<anthocnet::RoutingProtocol>();
     node->AggregateObject(agent);
     return agent;
 }
@@ -38,8 +33,7 @@ int64_t AntHocNetHelper::AssignStreams(NodeContainer c, int64_t stream) {
         Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
         NS_ASSERT_MSG(ipv4, "AntHocNetHelper::AssignStreams(): node has no Ipv4");
         Ptr<Ipv4RoutingProtocol> proto = ipv4->GetRoutingProtocol();
-        Ptr<anthocnet::RoutingProtocol> ahn =
-            DynamicCast<anthocnet::RoutingProtocol>(proto);
+        Ptr<anthocnet::RoutingProtocol> ahn = DynamicCast<anthocnet::RoutingProtocol>(proto);
         if (ahn) {
             currentStream += ahn->AssignStreams(currentStream);
         }
@@ -48,8 +42,8 @@ int64_t AntHocNetHelper::AssignStreams(NodeContainer c, int64_t stream) {
     // core streams keep their pre-#496 indices (TimerJitter=0 stays
     // byte-identical to the old fixed timers).
     for (auto i = c.Begin(); i != c.End(); ++i) {
-        Ptr<anthocnet::RoutingProtocol> ahn = DynamicCast<anthocnet::RoutingProtocol>(
-            (*i)->GetObject<Ipv4>()->GetRoutingProtocol());
+        Ptr<anthocnet::RoutingProtocol> ahn =
+            DynamicCast<anthocnet::RoutingProtocol>((*i)->GetObject<Ipv4>()->GetRoutingProtocol());
         if (ahn) {
             currentStream += ahn->AssignTimerStreams(currentStream);
         }
@@ -57,4 +51,4 @@ int64_t AntHocNetHelper::AssignStreams(NodeContainer c, int64_t stream) {
     return (currentStream - stream);
 }
 
-} // namespace ns3
+}  // namespace ns3

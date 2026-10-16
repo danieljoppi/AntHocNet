@@ -76,8 +76,8 @@ const ILinkMetric* find(const std::string& name);
 /// to ignore — hence the throw.
 const ILinkMetric& get(const std::string& name);
 
-} // namespace metrics
-} // namespace core
-} // namespace anthocnet
+}  // namespace metrics
+}  // namespace core
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_LINK_METRIC_REGISTRY_H
+#endif  // ANTHOCNET_CORE_LINK_METRIC_REGISTRY_H

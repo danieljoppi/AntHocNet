@@ -25,9 +25,7 @@ using anthocnet::test::ScriptedRng;
 
 namespace {
 
-double unit(std::mt19937& g) {
-    return std::uniform_real_distribution<double>(0.0, 1.0)(g);
-}
+double unit(std::mt19937& g) { return std::uniform_real_distribution<double>(0.0, 1.0)(g); }
 
 // --- Selection is a valid distribution -------------------------------------
 // Every stochastic next-hop is a neighbour that actually holds pheromone for
@@ -47,8 +45,8 @@ void propSelection(std::mt19937& g) {
         for (int draw = 0; draw < 40; ++draw) {
             ScriptedRng rng({unit(g)});
             const NodeAddress hop = table.lookup(dest, beta, rng);
-            CHECK(hop != kInvalidAddress);                 // a route exists
-            CHECK(withPheromone.count(hop) == 1);          // and it bears pheromone
+            CHECK(hop != kInvalidAddress);         // a route exists
+            CHECK(withPheromone.count(hop) == 1);  // and it bears pheromone
             CHECK(table.getPheromoneRegular(dest, hop) > 0.0);
         }
     }
@@ -75,8 +73,8 @@ void propEvaporation(std::mt19937& g) {
         PheromoneEngine e(c);
         const double v = 1000.0 * unit(g);
         const double ev = e.evaporate(v);
-        CHECK(ev <= v + 1e-9);   // never grows
-        CHECK(ev >= -1e-9);      // never negative
+        CHECK(ev <= v + 1e-9);  // never grows
+        CHECK(ev >= -1e-9);     // never negative
     }
 
     // An un-reinforced link decays monotonically and is pruned in bounded steps.
@@ -96,8 +94,8 @@ void propEvaporation(std::mt19937& g) {
         }
         ++steps;
     }
-    CHECK(steps < kMaxSteps);                          // converged
-    CHECK_EQ(table.getPheromoneRegular(7, 3), 0.0);    // link pruned
+    CHECK(steps < kMaxSteps);                        // converged
+    CHECK_EQ(table.getPheromoneRegular(7, 3), 0.0);  // link pruned
 }
 
 // --- Reinforce is a convex combination (contraction toward the update) -----
@@ -116,17 +114,17 @@ void propReinforce(std::mt19937& g) {
 
 // --- Codec round-trips any valid message -----------------------------------
 void propCodecRoundTrip(std::mt19937& g) {
-    const AntType types[] = {AntType::Hello, AntType::Reactive, AntType::Proactive,
-                             AntType::Repair, AntType::LinkFail};
+    const AntType types[] = {AntType::Hello, AntType::Reactive, AntType::Proactive, AntType::Repair,
+                             AntType::LinkFail};
     for (int iter = 0; iter < 300; ++iter) {
         AntMessage m;
-        m.type      = types[g() % 5];
+        m.type = types[g() % 5];
         m.direction = (g() % 2) ? AntDirection::Up : AntDirection::Down;
-        m.src       = static_cast<NodeAddress>(g());
-        m.dst       = static_cast<NodeAddress>(g());
-        m.seqNum    = g();
+        m.src = static_cast<NodeAddress>(g());
+        m.dst = static_cast<NodeAddress>(g());
+        m.seqNum = g();
         m.timeStart = 1000.0 * unit(g);
-        m.lifeAnt   = 100.0 * unit(g);
+        m.lifeAnt = 100.0 * unit(g);
         m.broadcastBudget = static_cast<int>(g() % 10) - 1;  // [-1, 8]
 
         const int nv = static_cast<int>(g() % (codec::kMaxVisitedOnWire + 1));
@@ -173,8 +171,8 @@ void propDedupBound() {
     AntHistoryTracker tracker(cap);
     const std::uint32_t total = 3 * static_cast<std::uint32_t>(cap);
     for (std::uint32_t i = 0; i < total; ++i) {
-        CHECK(tracker.record(/*src=*/1, i));        // each (src,seq) is new
-        CHECK(tracker.size() <= cap);               // never exceeds the cap
+        CHECK(tracker.record(/*src=*/1, i));  // each (src,seq) is new
+        CHECK(tracker.size() <= cap);         // never exceeds the cap
     }
     // Only the most recent `cap` insertions survive (oldest evicted first).
     for (std::uint32_t i = 0; i < total; ++i) {

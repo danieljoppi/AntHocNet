@@ -40,7 +40,7 @@ int main() {
         AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);
         router.learnNeighbor(5);
 
-        clock.advance(cfg.helloInterval);          // < maxIdle
+        clock.advance(cfg.helloInterval);  // < maxIdle
         router.onMaintenanceTick();
         CHECK_EQ(router.table().numNeighbors(), static_cast<std::size_t>(1));
     }
@@ -53,8 +53,8 @@ int main() {
         router.learnNeighbor(5);
 
         clock.advance(1.5);
-        router.learnNeighbor(5);                   // refresh
-        clock.advance(1.0);                        // 1.0 since refresh < maxIdle
+        router.learnNeighbor(5);  // refresh
+        clock.advance(1.0);       // 1.0 since refresh < maxIdle
         router.onMaintenanceTick();
         CHECK_EQ(router.table().numNeighbors(), static_cast<std::size_t>(1));
 
@@ -77,7 +77,10 @@ int main() {
         for (const RouteDecision& d : decs) {
             if (d.action == RouteAction::Broadcast && d.message.type == AntType::LinkFail) {
                 for (const HelloDest& a : d.message.helloDests) {
-                    if (a.node == 9) { found = true; CHECK_NEAR(a.pheromone, 0.0, 1e-12); }
+                    if (a.node == 9) {
+                        found = true;
+                        CHECK_NEAR(a.pheromone, 0.0, 1e-12);
+                    }
                 }
             }
         }
@@ -180,7 +183,8 @@ int main() {
     //    notification, and broadcasts a counted bounded Repair ant toward the
     //    failed data destination (no alternate path survives).
     {
-        Config cfg1 = cfg; cfg1.txFailureThreshold = 1;  // act on the first failure
+        Config cfg1 = cfg;
+        cfg1.txFailureThreshold = 1;  // act on the first failure
         FakeClock clock;
         ScriptedRng rng({0.5});
         AntRouterLogic router(/*addr*/ 0, cfg1, clock, rng);
@@ -208,7 +212,8 @@ int main() {
     // 8. reportTxFailure for a failed *ant* (no dataDest) cleans up but sends no
     //    repair ant.
     {
-        Config cfg1 = cfg; cfg1.txFailureThreshold = 1;
+        Config cfg1 = cfg;
+        cfg1.txFailureThreshold = 1;
         FakeClock clock;
         ScriptedRng rng({0.5});
         AntRouterLogic router(/*addr*/ 0, cfg1, clock, rng);
@@ -225,29 +230,31 @@ int main() {
     // 9. Debounce (issue #19): failures below the threshold do NOT evict, and a
     //    reception in between resets the streak so transient drops are absorbed.
     {
-        Config cfg3 = cfg; cfg3.txFailureThreshold = 3;
+        Config cfg3 = cfg;
+        cfg3.txFailureThreshold = 3;
         FakeClock clock;
         ScriptedRng rng({0.5});
         AntRouterLogic router(/*addr*/ 0, cfg3, clock, rng);
         router.learnNeighbor(5);
 
-        CHECK(router.reportTxFailure(5, 9).empty());   // 1
-        CHECK(router.reportTxFailure(5, 9).empty());   // 2 (still < 3)
+        CHECK(router.reportTxFailure(5, 9).empty());  // 1
+        CHECK(router.reportTxFailure(5, 9).empty());  // 2 (still < 3)
         CHECK_EQ(router.table().numNeighbors(), static_cast<std::size_t>(1));
 
-        router.learnNeighbor(5);                       // reception resets the streak
-        CHECK(router.reportTxFailure(5, 9).empty());   // 1 again
-        CHECK(router.reportTxFailure(5, 9).empty());   // 2
+        router.learnNeighbor(5);                      // reception resets the streak
+        CHECK(router.reportTxFailure(5, 9).empty());  // 1 again
+        CHECK(router.reportTxFailure(5, 9).empty());  // 2
         CHECK_EQ(router.table().numNeighbors(), static_cast<std::size_t>(1));
 
-        router.reportTxFailure(5, 9);                  // 3 -> evict
+        router.reportTxFailure(5, 9);  // 3 -> evict
         CHECK_EQ(router.table().numNeighbors(), static_cast<std::size_t>(0));
     }
 
     // 10. Repair guard ([1] §3.5 "no other path available"): if a route to the
     //     destination survives via another neighbour, no repair ant is sent.
     {
-        Config cfg1 = cfg; cfg1.txFailureThreshold = 1;
+        Config cfg1 = cfg;
+        cfg1.txFailureThreshold = 1;
         FakeClock clock;
         ScriptedRng rng({0.5});
         AntRouterLogic router(/*addr*/ 0, cfg1, clock, rng);
@@ -266,7 +273,8 @@ int main() {
     //     the maintenance tick emit DiscardPending for the destination plus a
     //     LinkFail notification.
     {
-        Config cfg1 = cfg; cfg1.txFailureThreshold = 1;
+        Config cfg1 = cfg;
+        cfg1.txFailureThreshold = 1;
         FakeClock clock;
         ScriptedRng rng({0.5});
         AntRouterLogic router(/*addr*/ 0, cfg1, clock, rng);
@@ -294,7 +302,10 @@ int main() {
             }
             if (d.action == RouteAction::Broadcast && d.message.type == AntType::LinkFail) {
                 for (const HelloDest& a : d.message.helloDests) {
-                    if (a.node == 9) { notified = true; CHECK_NEAR(a.pheromone, 0.0, 1e-12); }
+                    if (a.node == 9) {
+                        notified = true;
+                        CHECK_NEAR(a.pheromone, 0.0, 1e-12);
+                    }
                 }
             }
         }
@@ -316,7 +327,8 @@ int main() {
     // 12. A backward ant from the destination within the window cancels the
     //     pending discard (the repair succeeded).
     {
-        Config cfg1 = cfg; cfg1.txFailureThreshold = 1;
+        Config cfg1 = cfg;
+        cfg1.txFailureThreshold = 1;
         FakeClock clock;
         ScriptedRng rng({0.5});
         AntRouterLogic router(/*addr*/ 0, cfg1, clock, rng);
@@ -347,7 +359,8 @@ int main() {
     // 13. A route restored by other means (reactive ant, diffusion) also
     //     defuses the deadline: it lapses without a discard or notification.
     {
-        Config cfg1 = cfg; cfg1.txFailureThreshold = 1;
+        Config cfg1 = cfg;
+        cfg1.txFailureThreshold = 1;
         FakeClock clock;
         ScriptedRng rng({0.5});
         AntRouterLogic router(/*addr*/ 0, cfg1, clock, rng);
@@ -369,8 +382,8 @@ int main() {
         AntRouterLogic router(/*addr*/ 0, cfg, clock, rng);  // interval = 1.0 default
         auto hasLinkFail = [](const std::vector<RouteDecision>& decs) {
             for (const RouteDecision& d : decs) {
-                if (d.action == RouteAction::Broadcast &&
-                    d.message.type == AntType::LinkFail) return true;
+                if (d.action == RouteAction::Broadcast && d.message.type == AntType::LinkFail)
+                    return true;
             }
             return false;
         };
@@ -378,13 +391,13 @@ int main() {
         router.table().setPheromoneRegular(9, 5, 0.8);
         CHECK(hasLinkFail(router.reportNeighborLoss(5)));  // first loss notifies
 
-        router.table().setPheromoneRegular(9, 5, 0.8);     // flap: route re-forms
-        clock.advance(0.4);                                // inside the window
+        router.table().setPheromoneRegular(9, 5, 0.8);  // flap: route re-forms
+        clock.advance(0.4);                             // inside the window
         CHECK(!hasLinkFail(router.reportNeighborLoss(5)));
         CHECK_EQ(router.linkfailOriginsSuppressed(), static_cast<std::uint64_t>(1));
 
-        router.table().setPheromoneRegular(9, 5, 0.8);     // flap again
-        clock.advance(cfg.linkfailNotifyInterval + 0.1);   // window elapsed
+        router.table().setPheromoneRegular(9, 5, 0.8);    // flap again
+        clock.advance(cfg.linkfailNotifyInterval + 0.1);  // window elapsed
         CHECK(hasLinkFail(router.reportNeighborLoss(5)));
 
         // interval = 0 disables the cooldown entirely.
@@ -410,8 +423,8 @@ int main() {
         mp.enableMultipath = true;
         auto hasLinkFail = [](const std::vector<RouteDecision>& decs) {
             for (const RouteDecision& d : decs) {
-                if (d.action == RouteAction::Broadcast &&
-                    d.message.type == AntType::LinkFail) return true;
+                if (d.action == RouteAction::Broadcast && d.message.type == AntType::LinkFail)
+                    return true;
             }
             return false;
         };
@@ -419,13 +432,13 @@ int main() {
         FakeClock clock;
         ScriptedRng rng({0.5});
         AntRouterLogic router(/*addr*/ 0, mp, clock, rng);
-        router.table().setPheromoneRegular(9, 5, 0.8);  // best path via 5
-        router.table().setPheromoneRegular(9, 6, 0.5);  // usable alternate via 6
+        router.table().setPheromoneRegular(9, 5, 0.8);      // best path via 5
+        router.table().setPheromoneRegular(9, 6, 0.5);      // usable alternate via 6
         CHECK(!hasLinkFail(router.reportNeighborLoss(5)));  // alternate -> suppressed
         CHECK_EQ(router.linkfailOriginsSuppressed(), static_cast<std::uint64_t>(1));
 
-        clock.advance(mp.linkfailNotifyInterval + 0.1);  // outside the #20 cooldown
-        CHECK(hasLinkFail(router.reportNeighborLoss(6)));   // last path -> notify
+        clock.advance(mp.linkfailNotifyInterval + 0.1);    // outside the #20 cooldown
+        CHECK(hasLinkFail(router.reportNeighborLoss(6)));  // last path -> notify
 
         // Gate off, same topology: losing the best hop notifies (pre-#96).
         Config sp = cfg;

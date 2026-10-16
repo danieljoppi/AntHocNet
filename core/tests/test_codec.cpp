@@ -9,16 +9,16 @@ using namespace anthocnet::core;
 
 int main() {
     AntMessage m;
-    m.type      = AntType::Proactive;
+    m.type = AntType::Proactive;
     m.direction = AntDirection::Down;
-    m.src       = 3;
-    m.dst       = 17;
-    m.seqNum    = 70000;          // > 16 bits, exercises the widened field
+    m.src = 3;
+    m.dst = 17;
+    m.seqNum = 70000;  // > 16 bits, exercises the widened field
     m.timeStart = 1.25;
-    m.lifeAnt   = 2.0;
+    m.lifeAnt = 2.0;
     m.broadcastBudget = 2;
-    m.visited   = {{3, 0.0}, {4, 0.01}, {7, 0.02}};
-    m.history   = {{17, 0.05}};
+    m.visited = {{3, 0.0}, {4, 0.01}, {7, 0.02}};
+    m.history = {{17, 0.05}};
     m.helloDests = {{8, 1.0}, {9, 0.5}};
 
     std::vector<std::uint8_t> bytes;
@@ -96,7 +96,7 @@ int main() {
     // (regression for golden rule #5 at the wire boundary).
     {
         AntMessage big;
-        big.type      = AntType::Reactive;
+        big.type = AntType::Reactive;
         big.direction = AntDirection::Up;
         for (std::size_t i = 0; i <= codec::kMaxVisitedOnWire; ++i) {
             big.visited.push_back({static_cast<NodeAddress>(i), 0.0});

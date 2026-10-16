@@ -42,9 +42,9 @@ public:
 private:
     using Key = std::pair<NodeAddress, std::uint32_t>;
 
-    std::size_t        maxEntries_;
-    std::set<Key>      entries_;
-    std::deque<Key>    insertionOrder_;  // for FIFO eviction
+    std::size_t maxEntries_;
+    std::set<Key> entries_;
+    std::deque<Key> insertionOrder_;  // for FIFO eviction
 };
 
 /// Multipath acceptance filter for reactive forward ants ([1] §3.1, issue #96).
@@ -90,9 +90,8 @@ public:
     /// (a2) when `firstHop` is not among those already admitted for this
     /// generation and `factor` (a1) when it is. Admitted ants refresh the
     /// per-metric minimums and record their first hop. Returns false to drop.
-    bool accept(NodeAddress src, std::uint32_t seqNum, std::uint32_t hops,
-                Time time, NodeAddress firstHop, double factor,
-                double factorNewHop);
+    bool accept(NodeAddress src, std::uint32_t seqNum, std::uint32_t hops, Time time,
+                NodeAddress firstHop, double factor, double factorNewHop);
 
     /// Claim one broadcast of this generation *at this node* (#173). Returns
     /// false once `maxBroadcasts` have already been claimed; `maxBroadcasts < 0`
@@ -116,8 +115,8 @@ public:
 private:
     struct Best {
         std::uint32_t hops;
-        Time          time;
-        int           broadcasts;
+        Time time;
+        int broadcasts;
         /// First hops of the ants admitted for this generation, capped at
         /// kMaxFirstHops. A vector, not a set: it holds <= 8 elements, so a
         /// linear scan beats a node-per-entry container.
@@ -125,12 +124,12 @@ private:
     };
     using Key = std::pair<NodeAddress, std::uint32_t>;
 
-    std::size_t        maxEntries_;
+    std::size_t maxEntries_;
     std::map<Key, Best> best_;
-    std::deque<Key>    insertionOrder_;  // for FIFO eviction
+    std::deque<Key> insertionOrder_;  // for FIFO eviction
 };
 
-} // namespace core
-} // namespace anthocnet
+}  // namespace core
+}  // namespace anthocnet
 
-#endif // ANTHOCNET_CORE_ANT_HISTORY_H
+#endif  // ANTHOCNET_CORE_ANT_HISTORY_H
