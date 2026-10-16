@@ -1,5 +1,6 @@
 {
   "_comment": "Download budget for the game shell (#624): everything a first visit to the game fetches, docs and API excluded. Raise only by a deliberate commit that says why.",
-  "raw_kb": 512,
-  "gzip_kb": 160
+  "raw_kb": 640,
+  "gzip_kb": 200,
+  "_why": "2026-10-15, v2.2.0: 512/160 -> 640/200 KB. The campaign (#566-#570), the string layer with en and pt-BR (#622, ~36 KB gzipped together), the tuning bench (#638), the X-ray (#637) and the ns-3 export (#640) put the shell at 557 KB raw / 188 KB gzipped, with both language files precached so the game also plays offline in Portuguese. The WASM core is unchanged."
 }

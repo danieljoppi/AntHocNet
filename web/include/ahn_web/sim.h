@@ -27,6 +27,7 @@
 #include <queue>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "anthocnet/core/ant_router_logic.h"
@@ -210,6 +211,7 @@ private:
     mutable bool rwpPaused_ = false;
     std::unique_ptr<anthocnet::core::AntRouterLogic> logic_;
     bool up_ = true;
+    double range_ = -1;     ///< own radio range (#568); < 0 = the world's
     double busyUntil_ = 0;  ///< FIFO transmitter
     std::deque<Pending> pending_;
     std::set<NodeAddress> everRouted_;
@@ -240,6 +242,12 @@ public:
     void setLossProbability(double p) { loss_ = p; }
     /// Add a node at (x, y, z); returns its address.
     int addNode(double x, double y, double z);
+    /// Give `node` its own radio range in metres (#568: a device class). On
+    /// the disk and urban channels two nodes link iff they are within
+    /// min(range_a, range_b). A node never given one uses the world range(),
+    /// so every existing world is unchanged.
+    void setNodeRange(int node, double range);
+    /// `node`'s radio range: its own, else the world range().
     /// Give `node` a mobility model (Manhattan snaps it to an intersection).
     void setMobility(int node, const Mobility& m);
     /// Add a CBR flow; returns its index.
@@ -288,6 +296,12 @@ public:
     void clearLog() { log_.clear(); }
     /// Ant transmissions so far (control overhead).
     std::uint64_t antTransmissions() const { return antTx_; }
+    /// X-ray (#637): how many ant transmissions the ring keeps.
+    static constexpr std::size_t kXrayRing = 512;
+    /// X-ray (#637): the serialized bytes of ant transmission `id` -- the
+    /// id-th TxAnt event since start(), from 0 -- if it is among the last
+    /// kXrayRing; else empty. A copy kept for inspection: no decision reads it.
+    const std::vector<std::uint8_t>& antBytes(std::uint64_t id) const;
     /// Street grid blocks along x (Urban).
     int urbanBlocksX() const { return blocksX_; }
     /// Street grid blocks along y (Urban).
@@ -296,6 +310,7 @@ public:
     double streetWidth() const { return streetWidth_; }
     /// Radio range in metres (Disk, Urban).
     double range() const { return range_; }
+    double nodeRange(int node) const;
     /// The link rule in use.
     ChannelKind channel() const { return channel_; }
     /// Field size in metres.
@@ -367,6 +382,7 @@ private:
     bool started_ = false;
     std::vector<LogEvent> log_;
     std::uint64_t antTx_ = 0;
+    std::deque<std::pair<std::uint64_t, std::vector<std::uint8_t>>> xray_;  // (id, bytes), oldest first
 
     // adapter constants: the ns-3 attribute defaults (anthocnet-routing-protocol.cc)
     static constexpr double kTimerJitter = 0.05;      // TimerJitter

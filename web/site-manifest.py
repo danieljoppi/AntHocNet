@@ -18,8 +18,8 @@ import sys
 from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SHELL_DIRS = ("js", "css", "img", "shell")
-SHELL_FILES = ("index.html", "workshop.html", "manifest.webmanifest", "anthocnet.js", "anthocnet.wasm")
+SHELL_DIRS = ("js", "css", "img", "shell", "i18n")
+SHELL_FILES = ("index.html", "workshop.html", "manifest.webmanifest", "anthocnet.js", "anthocnet.wasm", "config-fields.json")
 
 
 def main(out: str) -> int:

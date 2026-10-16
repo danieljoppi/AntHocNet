@@ -141,15 +141,50 @@ void satellite(World& w) {
     w.addFlow(18, 61, 4, 5, 1e9);
 }
 
+void town(World& w) {
+    // Ad hoc town (#568, campaign chapter 1): devices with different radios.
+    // Phones are carried at walking pace and reach least; laptops move now and
+    // then; desktop PCs stay put indoors and reach furthest. A link needs both
+    // ends in range, so a phone next to a PC still only reaches 120 m.
+    SplitMix64 r = placement(w);
+    w.setArea(600, 450, 0);
+    w.setDiskChannel(250);
+    Mobility walk;
+    walk.kind = MobilityKind::RandomWaypoint;
+    walk.speedMin = 1;  // strolling to walking
+    walk.speedMax = 2;
+    walk.pause = 10;
+    Mobility carry = walk;
+    carry.speedMin = 1;
+    carry.speedMax = 1.5;
+    carry.pause = 60;   // a laptop sits on a table most of the time
+    for (int i = 0; i < 30; ++i) {
+        const double x = r.uniform() * 600, y = r.uniform() * 450;
+        const int n = w.addNode(x, y, 0);
+        if (i % 4 == 3) {          // desktop PC
+            w.setNodeRange(n, 250);
+        } else if (i % 4 == 2) {   // laptop
+            w.setNodeRange(n, 180);
+            w.setMobility(n, carry);
+        } else {                   // phone
+            w.setNodeRange(n, 120);
+            w.setMobility(n, walk);
+        }
+    }
+    w.addFlow(0, 29, 2, 5, 1e9);
+    w.addFlow(5, 16, 2, 6, 1e9);
+}
+
 }  // namespace
 
 std::vector<std::string> scenarioNames() {
-    return {"line", "manet", "mesh", "fanet", "vanet", "satellite"};
+    return {"line", "manet", "town", "mesh", "fanet", "vanet", "satellite"};
 }
 
 bool buildScenario(World& w, const std::string& name) {
     if (name == "line") line(w);
     else if (name == "manet") manet(w);
+    else if (name == "town") town(w);
     else if (name == "mesh") mesh(w);
     else if (name == "fanet") fanet(w);
     else if (name == "vanet") vanet(w);

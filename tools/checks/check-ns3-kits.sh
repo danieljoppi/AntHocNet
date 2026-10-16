@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# The learn site's "Export to ns-3" kits run (#640). The pages job exports one
+# kit per built-in world with web/tools/export-kit.mjs (the code behind the
+# game's button); this runs each kit's own run.sh in an ns-3 tree with
+# AntHocNet installed and requires AntHocNet to deliver: a kit that replays a
+# scene nobody can route in, or that ns-3 refuses, fails here.
+#
+# Usage: check-ns3-kits.sh <ns3-dir> <kits-dir> "<world> [<world> ...]"
+set -euo pipefail
+NS3DIR=${1:?usage: check-ns3-kits.sh <ns3-dir> <kits-dir> "<worlds>"}
+KITS=${2:?}
+WORLDS=${3:?}
+fail=0
+for w in $WORLDS; do
+  kit="$KITS/$w"
+  [ -f "$kit/run.sh" ] || { echo "FAIL: $w: no kit at $kit"; fail=1; continue; }
+  for f in README.md run.sh; do [ -s "$kit/$f" ] || { echo "FAIL: $w: $f missing or empty"; fail=1; }; done
+  if ! out=$(NS3DIR="$NS3DIR" bash "$kit/run.sh" 2>"$kit/stderr.log"); then
+    echo "FAIL: $w: run.sh failed:"; tail -5 "$kit/stderr.log"; fail=1; continue
+  fi
+  # The harnesses' table row: "<arm> <PDR%> <delay> ..."
+  pdr=$(printf '%s\n' "$out" | awk '$1=="anthocnet" && $2 ~ /^[0-9.]+$/ {print $2; exit}')
+  if awk -v p="${pdr:-0}" 'BEGIN{exit !(p>0)}'; then echo "ok: $w kit — anthocnet PDR ${pdr}% on ns-3"
+  else echo "FAIL: $w kit — anthocnet delivered nothing (PDR=${pdr:-none})"; printf '%s\n' "$out" | tail -8; fail=1; fi
+done
+[ "$fail" -eq 0 ] && echo "ns-3 kits: PASS" || { echo "ns-3 kits: FAIL"; exit 1; }

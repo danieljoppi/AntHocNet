@@ -11,6 +11,7 @@
 
 #include "ahn_web/scenarios.h"
 #include "ahn_web/sim.h"
+#include "ahn_web/xray.h"
 
 using namespace emscripten;
 using ahn_web::World;
@@ -94,6 +95,20 @@ val destinations(const World& w, int n) {
     return val::global("Int32Array").new_(typed_memory_view(out.size(), out.data()));
 }
 
+/// Flow definitions as a flat [src, dst, rate, start, stop, ...] array (the
+/// ns-3 export kit, #640, writes them as a --flowsFile).
+val flowSpecs(const World& w) {
+    std::vector<double> out;
+    for (const ahn_web::Flow& f : w.flows()) {
+        out.push_back(f.src);
+        out.push_back(f.dst);
+        out.push_back(f.rate);
+        out.push_back(f.start);
+        out.push_back(f.stop);
+    }
+    return val::global("Float64Array").new_(typed_memory_view(out.size(), out.data()));
+}
+
 /// Flow stats as a flat [src, dst, sent, delivered, delaySum, ...] array.
 val flowStats(const World& w) {
     std::vector<double> out;
@@ -157,6 +172,18 @@ double getConfig(World& w, const std::string& key) {
     return 0;
 }
 
+// X-ray (#637): the bytes of ant transmission `id` (a copy), or an empty array
+// once the ring has dropped it. Read-only.
+val antBytes(const World& w, double id) {
+    const std::vector<std::uint8_t>& b = w.antBytes(static_cast<std::uint64_t>(id));
+    return val::global("Uint8Array").new_(typed_memory_view(b.size(), b.data()));
+}
+
+// X-ray: bytes -> the core codec's decoding, as JSON (ahn_web::antJson).
+std::string decodeAnt(const val& bytes) {
+    return ahn_web::antJson(convertJSArrayToNumberVector<std::uint8_t>(bytes));
+}
+
 val scenarioList() {
     val arr = val::array();
     for (const std::string& s : ahn_web::scenarioNames()) arr.call<void>("push", s);
@@ -167,6 +194,7 @@ val scenarioList() {
 
 EMSCRIPTEN_BINDINGS(anthocnet) {
     function("scenarios", &scenarioList);
+    function("decodeAnt", &decodeAnt);
     class_<World>("World")
         .constructor(&makeWorld, allow_raw_pointers())
         .function("setArea", &World::setArea)
@@ -176,6 +204,8 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
         .function("addIslLink", &World::addIslLink)
         .function("cutIslLink", &World::cutIslLink)
         .function("addNode", &World::addNode)
+        .function("setNodeRange", &World::setNodeRange)
+        .function("nodeRange", &World::nodeRange)
         .function("setMobility", &setMobility)
         .function("addFlow", &World::addFlow)
         .function("setConfig", &setConfig)
@@ -189,6 +219,7 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
         .function("pendingCount", &World::pendingCount)
         // As a double: a uint64 would reach JS as a BigInt and poison arithmetic.
         .function("antTransmissions", optional_override([](const World& w) { return static_cast<double>(w.antTransmissions()); }))
+        .function("antBytes", &antBytes)
         .function("range", &World::range)
         .function("channel", optional_override([](const World& w) { return static_cast<int>(w.channel()); }))
         .function("blocksX", &World::urbanBlocksX)
@@ -203,5 +234,6 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
         .function("pheromone", &pheromone)
         .function("destinations", &destinations)
         .function("distribution", &distribution)
-        .function("flowStats", &flowStats);
+        .function("flowStats", &flowStats)
+        .function("flowSpecs", &flowSpecs);
 }

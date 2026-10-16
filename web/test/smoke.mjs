@@ -2,7 +2,8 @@
 // headless Chromium:
 //   1. opens every world, runs it, and requires no console errors and at
 //      least one backward ant and one delivered packet in the event stream;
-//   2. plays mission 2 ("Send the scouts") to completion with scripted input;
+//   2. plays mission 2 ("Send the scouts") to completion with scripted input,
+//      and again in Portuguese (2b, #622); the tuning bench (2c, #638); the X-ray on touch (2d, #637); the ns-3 export (2e, #640);
 //   3. runs axe-core on the front page as a first visit sees it (the hub up
 //      over the default world) and fails on serious or critical violations;
 //   3b. the site shell (#626): the hub's buttons and #play, the one top bar
@@ -62,7 +63,7 @@ async function page(hash) {
 }
 
 // 1. Every world runs and the core does its job in it.
-for (const world of ['line', 'manet', 'mesh', 'fanet', 'vanet', 'satellite']) {
+for (const world of ['line', 'manet', 'town', 'mesh', 'fanet', 'vanet', 'satellite']) {
   const { p, errors } = await page(`#${world}?seed=1`);
   await p.waitForFunction(() => document.getElementById('clock')?.textContent.includes('t 0:0'), null, { timeout: 15000 });
   // Count kinds from the event stream: subscribe through the playground hook.
@@ -116,6 +117,113 @@ for (const world of ['line', 'manet', 'mesh', 'fanet', 'vanet', 'satellite']) {
   const stars = await p.locator('#missionBody .stars').first().getAttribute('aria-label');
   if (errors.length) fail(`mission 2: console errors: ${errors.join(' | ')}`);
   else console.log(`ok: mission 2 completed (${stars})`);
+  await p.close();
+}
+
+// 2b. Portuguese (#622): a viewer who picked pt-BR gets the page in it --
+//     <html lang>, the chrome, a world that delivers, a mission played to the
+//     end in Portuguese -- and axe finds nothing serious there either.
+{
+  const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.addInitScript(() => { try { localStorage.setItem('ahn-lang', 'pt-BR'); } catch { /* none */ } });
+  await p.goto(base + '#line?seed=1');
+  // The clock's text is in the static page; the mission list is drawn by boot.
+  await p.locator('#missionBody .missions button').first().waitFor({ timeout: 15000 });
+  const lang = await p.evaluate(() => document.documentElement.lang);
+  const tools = (await p.locator('.toolbox .titlebar').first().textContent()).trim();
+  if (lang !== 'pt-BR' || tools !== 'Ferramentas') fail(`pt-BR: lang=${lang}, tools title "${tools}"`);
+  await p.getByRole('button', { name: /2\. Mande as batedoras/ }).click();
+  await p.getByRole('button', { name: '5', exact: true }).click({ timeout: 15000 });
+  await p.getByText('Pronto.').waitFor({ timeout: 60000 }).catch(() => fail('pt-BR: mission 2 did not finish'));
+  const debrief = (await p.locator('#missionBody').textContent()) || '';
+  if (!/Foram 5 saltos/.test(debrief)) fail(`pt-BR: mission debrief not in Portuguese: ${debrief.slice(0, 120)}`);
+  await p.addScriptTag({ content: axeSource });
+  const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+    .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+    .map((v) => `${v.id} (${v.impact}): ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join('; ')}`));
+  if (result.length) fail(`axe (pt-BR): ${result.join(' | ')}`);
+  if (errors.length) fail(`pt-BR: page errors: ${errors.join(' | ')}`);
+  if (!result.length && !errors.length && lang === 'pt-BR') console.log('ok: pt-BR — chrome, mission 2 played to the end, axe clean');
+  await p.close();
+}
+
+// 2c. The tuning bench (#638): every exposed field shows its doc, default,
+//     provenance and attribute; moving one restarts the world with a ghost
+//     beside it and writes the ns-3 line; axe is clean with the bench open.
+{
+  const { p, errors } = await page('#mesh?seed=2');
+  await p.waitForFunction(() => document.getElementById('clock')?.textContent.includes('t 0:0'), null, { timeout: 15000 });
+  await p.locator('#benchWin summary').click();
+  const rows = await p.locator('#benchBody .bench-row').count();
+  const attrs = await p.locator('#benchBody .bench-row p code').count();
+  if (rows < 8 || attrs < rows) fail(`bench: ${rows} rows, ${attrs} attributes`);
+  await p.locator('#bench-betaData').evaluate((el) => { el.value = '10'; el.dispatchEvent(new Event('change')); });
+  await p.locator('.speeds button').last().click();
+  await p.waitForFunction(() => document.querySelectorAll('#benchBody .bench-stats tbody tr').length === 2, null, { timeout: 15000 })
+    .catch(() => fail('bench: the ghost comparison never appeared'));
+  const line = (await p.locator('#benchBody .bench-line').textContent()).trim();
+  if (line !== '--ns3::anthocnet::RoutingProtocol::BetaData=10') fail(`bench: ns-3 line "${line}"`);
+  await p.addScriptTag({ content: axeSource });
+  const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+    .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+    .map((v) => `${v.id} (${v.impact}): ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join('; ')}`));
+  if (result.length) fail(`axe (bench open): ${result.join(' | ')}`);
+  if (errors.length) fail(`bench: console errors: ${errors.join(' | ')}`);
+  if (!result.length && !errors.length && line.endsWith('BetaData=10')) console.log(`ok: tuning bench — ${rows} fields, ghost running, line "${line}", axe clean`);
+  await p.close();
+}
+
+// 2d. The X-ray (#637), on a touch screen: select a node from the keyboard,
+//     tap one of its recent ants -- the world pauses and the Query window
+//     shows the ant's fields and its bytes, coloured per field -- axe clean.
+{
+  const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, hasTouch: true });
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.goto(base + '#line?seed=1');
+  await p.locator('#missionBody .missions button').first().waitFor({ timeout: 15000 });
+  await p.locator('.speeds button').last().click();
+  await p.waitForTimeout(3000);
+  await p.locator('#map').focus();
+  await p.keyboard.press(']');
+  const chip = p.locator('#inspBody button.chip-btn').first();
+  await chip.waitFor({ timeout: 15000 }).catch(() => fail('x-ray: no recent ants listed for node 0'));
+  await chip.tap();
+  const spans = await p.locator('#inspBody .xray-bytes .xr').count().catch(() => 0);
+  const fields = await p.locator('#inspBody .xray-fields tbody tr').count().catch(() => 0);
+  const paused = await p.locator('.speeds button[data-speed="0"]').getAttribute('aria-pressed');
+  if (spans < 9 || fields < 9 || paused !== 'true') fail(`x-ray: ${spans} byte ranges, ${fields} fields, paused=${paused}`);
+  await p.addScriptTag({ content: axeSource });
+  const result = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+    .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+    .map((v) => `${v.id} (${v.impact}): ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join('; ')}`));
+  if (result.length) fail(`axe (x-ray): ${result.join(' | ')}`);
+  if (errors.length) fail(`x-ray: page errors: ${errors.join(' | ')}`);
+  if (spans >= 9 && !result.length && !errors.length) console.log(`ok: x-ray — tap paused the world, ${fields} fields, ${spans} byte ranges, axe clean`);
+  await p.close();
+}
+
+// 2e. Take it to ns-3 (#640): after a few seconds of a world, "Export to
+//     ns-3" downloads a zip holding the four kit files, built in the page.
+{
+  const { p, errors } = await page('#manet?seed=1');
+  await p.locator('#missionBody .missions button').first().waitFor({ timeout: 15000 });
+  await p.locator('.speeds button').last().click();
+  await p.waitForTimeout(4000);
+  const [download] = await Promise.all([p.waitForEvent('download', { timeout: 15000 }), p.locator('#kitExport').click()]);
+  const file = await download.path();
+  const bytes = fs.readFileSync(file);
+  const names = [];
+  for (let i = 0; i + 30 < bytes.length; i++) {
+    if (bytes.readUInt32LE(i) === 0x04034b50) names.push(bytes.subarray(i + 30, i + 30 + bytes.readUInt16LE(i + 26)).toString());
+  }
+  const want = ['mobility.ns_movements', 'flows.txt', 'run.sh', 'README.md'];
+  const ok = want.every((n) => names.some((x) => x.endsWith('/' + n)));
+  if (!ok || !download.suggestedFilename().endsWith('.zip')) fail(`export: ${download.suggestedFilename()} holds ${names.join(', ')}`);
+  if (errors.length) fail(`export: console errors: ${errors.join(' | ')}`);
+  if (ok && !errors.length) console.log(`ok: export — ${download.suggestedFilename()} with ${names.length} files`);
   await p.close();
 }
 
@@ -353,6 +461,46 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
   await p.close();
 } else {
   console.log('skip: docs/API not assembled (web/build-site.sh only); web/build-pages.sh adds them');
+}
+
+// 3c. The campaign (#566/#567/#569): the chapter map, a briefing, the Plan
+//     phase with the device dock, a run, and the debrief -- level 1.2 played to
+//     the end through the UI, with axe (serious/critical) on every screen, day
+//     and night.
+for (const scheme of ['light', 'dark']) {
+  const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: scheme });
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.addInitScript(() => { try { localStorage.setItem('ahn-campaign-v1', JSON.stringify({ '1.1': 3 })); } catch { /* none */ } });
+  await p.addInitScript({ content: axeSource });
+  const axe = async (what) => {
+    const v = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+      .filter((x) => x.impact === 'serious' || x.impact === 'critical').map((x) => x.id + ': ' + x.nodes.slice(0, 2).map((n) => n.target.join(' ')).join('; ')));
+    if (v.length) fail(`campaign ${what} (${scheme}): ${v.join(' | ')}`);
+    return v.length;
+  };
+  await p.goto(base + '#campaign');
+  await p.locator('#campaign .chip-btn', { hasText: 'Across the street' }).waitFor({ timeout: 15000 });
+  let bad = await axe('map');
+  if (await p.locator('#campaign .chip-btn', { hasText: 'Follow the scent' }).isEnabled()) fail(`campaign (${scheme}): 1.3 should be locked until 1.2 is cleared`);
+  await p.locator('#campaign .chip-btn', { hasText: 'Across the street' }).click();
+  await p.locator('#campaign button', { hasText: 'Plan' }).waitFor();
+  bad += await axe('briefing');
+  await p.locator('#campaign button', { hasText: 'Plan' }).click();
+  await p.locator('#hud button', { hasText: 'Run' }).waitFor();
+  await p.locator('#dock .dock-btn').first().click();
+  bad += await axe('plan phase');
+  // Place the laptop where the par solution does (a pixel click depends on the view).
+  await p.evaluate(async () => { const { playground } = await import('./js/app.js'); playground.onPlace(250, 150); });
+  await p.locator('#hud button', { hasText: 'Run' }).click();
+  await p.evaluate(async () => { const { playground } = await import('./js/app.js'); playground.setSpeed(20); });
+  await p.locator('#campTitle', { hasText: 'cleared' }).waitFor({ timeout: 30000 }).catch(() => fail(`campaign (${scheme}): level 1.2 did not clear`));
+  bad += await axe('debrief');
+  const stars = await p.evaluate(() => JSON.parse(localStorage.getItem('ahn-campaign-v1') || '{}')['1.2'] || 0);
+  if (!stars) fail(`campaign (${scheme}): no stars recorded for 1.2`);
+  if (errors.length) fail(`campaign (${scheme}): page errors: ${errors.join(' | ')}`);
+  else if (!bad && stars) console.log(`ok: campaign (${scheme}) — map, briefing, plan, run, debrief; 1.2 cleared with ${stars} stars; axe clean`);
+  await p.close();
 }
 
 // 4. The default ad hoc world mixes walking and standing phones (#542 follow-up).

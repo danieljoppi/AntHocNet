@@ -9,15 +9,32 @@
  * the browser runs the same core, deciding the same things, as native.
  *
  * Usage: ahn-web-trace [seconds=60] [seed=1]
+ *        ahn-web-trace --decode   (hex ant bytes per stdin line -> the X-ray's
+ *                                  JSON, #637; web/test/xray.test.mjs)
  */
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <vector>
 #include <string>
 
 #include "ahn_web/scenarios.h"
 #include "ahn_web/sim.h"
+#include "ahn_web/xray.h"
 
 int main(int argc, char** argv) {
+    if (argc > 1 && std::strcmp(argv[1], "--decode") == 0) {
+        std::string line;
+        while (std::getline(std::cin, line)) {
+            std::vector<std::uint8_t> bytes;
+            for (std::size_t i = 0; i + 1 < line.size(); i += 2) {
+                bytes.push_back(static_cast<std::uint8_t>(std::strtoul(line.substr(i, 2).c_str(), nullptr, 16)));
+            }
+            std::printf("%s\n", ahn_web::antJson(bytes).c_str());
+        }
+        return 0;
+    }
     const double seconds = argc > 1 ? std::strtod(argv[1], nullptr) : 60.0;
     const unsigned long long seed = argc > 2 ? std::strtoull(argv[2], nullptr, 10) : 1ULL;
     for (const std::string& name : ahn_web::scenarioNames()) {

@@ -13,6 +13,7 @@ gates protect that claim — keep both green before pushing a `web/` change.
 |---|---|
 | `web/src/`, `web/include/ahn_web/` | the C++ browser adapter (scheduler, radio, mobility, scenarios) |
 | `web/site/` | the game: `index.html`, `js/app.js` (playground), `js/iso.js` (renderer), `js/worlds.js`, `js/missions-data.js`, `css/learn.css` |
+| `web/site/js/campaign/` | the campaign (#566/#567): `engine.js` (levels as data, the runner, stars, progress, unlocking; no DOM), `levels.js` (chapters 1-2), `campaign.js` (map, briefing, HUD + device dock, debrief); `web/test/levels.mjs` plays every par solution on 5 seeds in Node |
 | `web/build-site.sh` | assembles `web/build-site/` (WASM + the game) |
 | `web/site-manifest.py`, `web/site/sw.js`, `web/size-budget.json` | offline play (#624): the service worker's precache list and build id are filled at assembly; the game shell must stay under the budget (512 KB raw / 160 KB gzipped), or `build-site.sh` fails. Raise the budget only in a commit that says why |
 | `web/build-pages.sh` | the whole Pages site: game + docs (`/docs/`) + API (`/api/`) + redirects; `pages.yml` and CI's smoke both use it |

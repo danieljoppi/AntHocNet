@@ -1,0 +1,1033 @@
+{
+  "bar": {
+    "home": "AntHocNet: início",
+    "places": "Lugares",
+    "play": "Jogar",
+    "guide": "Guia de campo",
+    "lab": "Laboratório",
+    "shop": "Oficina",
+    "arch": "Arquivo",
+    "searchLabel": "Buscar na documentação",
+    "search": "Buscar na colônia…",
+    "theme": "Alternar entre dia e noite",
+    "themeTitle": "Dia / noite",
+    "source": "Código no GitHub"
+  },
+  "ui": {
+    "description": "Um city-builder de redes e formigas: posicione celulares, mova-os, crie fluxos e veja o núcleo de roteamento real do AntHocNet, compilado para WebAssembly, encontrar e reparar rotas.",
+    "menubar": "Controles do jogo",
+    "speed": "Velocidade da simulação",
+    "speed0": "Pausar (espaço)",
+    "speed1": "Ritmo de formiga: 0,05×",
+    "speed2": "Devagar: 0,25×",
+    "speed3": "Tempo real: 1×",
+    "speed4": "Rápido: 5×",
+    "stepTitle": "Avançar até a próxima formiga ou pacote (.)",
+    "tools": "Ferramentas",
+    "mapTools": "Ferramentas do mapa",
+    "tool": {
+      "inspectTitle": "Inspecionar (1): clique num nó para ler sua tabela de roteamento",
+      "moveTitle": "Mover (2): arraste um nó; arraste o chão para deslocar a vista",
+      "buildTitle": "Construir (3): coloque um novo nó no mapa (no mundo ad hoc: um celular que fica parado)",
+      "bulldozeTitle": "Demolir (4): desligue ou ligue um nó; corte um enlace de satélite",
+      "flowTitle": "Fluxo (5): clique numa origem e depois num destino",
+      "inspect": "Inspecionar",
+      "move": "Mover",
+      "build": "Construir",
+      "bulldoze": "Demolir",
+      "flow": "Fluxo"
+    },
+    "rotLTitle": "Girar para a esquerda (Q)",
+    "rotL": "Girar a vista para a esquerda",
+    "rotRTitle": "Girar para a direita (E)",
+    "rotR": "Girar a vista para a direita",
+    "zoomInTitle": "Aproximar (+)",
+    "zoomIn": "Aproximar",
+    "zoomOutTitle": "Afastar (−)",
+    "zoomOut": "Afastar",
+    "centerTitle": "Centralizar o mapa (0)",
+    "center": "Centralizar o mapa",
+    "mapWin": "Mapa",
+    "map": "Mapa da rede",
+    "hud": "Fase",
+    "dock": "Dispositivos que você pode posicionar",
+    "campaign": "Campanha",
+    "st": {
+      "clock": "Tempo simulado",
+      "delivered": "Pacotes de dados entregues / enviados",
+      "dropped": "Pacotes de dados descartados",
+      "budget": "Custo de controle: transmissões de formigas por pacote entregue (a sobrecarga de roteamento, NRL)",
+      "routes": "Quantas vezes a rota de feromônio mais forte de um fluxo mudou para outro caminho",
+      "health": "Saúde da rede: taxa de entrega nos últimos 10 s"
+    },
+    "ticker": "Notícias da rede",
+    "watchLabel": "Mostrar feromônio em direção a",
+    "title": "AntHocNet — aprenda roteamento por colônia de formigas jogando",
+    "skip": "Pular para o mapa",
+    "world": "Mundo",
+    "seed": "Semente",
+    "step": "Passo",
+    "language": "Idioma",
+    "hub": {
+      "play": "Jogar",
+      "title": "Ajude as formigas a achar o caminho",
+      "intro": "Cada dispositivo neste campo roda o núcleo de roteamento real do AntHocNet, compilado para WebAssembly. Conserte uma rede quebrada, e as formigas fazem o roteamento.",
+      "listCampaign": "<b>Campanha</b> um capítulo por tipo de rede: a cidade ad hoc e a malha do bairro agora; carros, drones e satélites em seguida",
+      "listFree": "<b>Jogo livre</b> celulares, malha, carros, drones, satélites",
+      "listDrills": "<b>Treinos</b> as oito missões da Academia, uma para cada coisa que as formigas fazem",
+      "campaign": "▶ Campanha",
+      "continue": "▶ Continuar",
+      "free": "Jogo livre",
+      "drills": "Treinos",
+      "guideK": "Guia de campo",
+      "guideH": "Como a colônia roteia",
+      "guideP": "Roteamento por colônia de formigas, os cinco tipos de formiga, como o código é construído e por que cada tipo de rede é diferente.",
+      "labK": "Laboratório",
+      "labH": "O que medimos",
+      "labP": "Resultados por tipo de rede no ns-3, com intervalos de confiança, e como cada número é produzido.",
+      "shopK": "Oficina",
+      "shopH": "Leve para o ns-3",
+      "shopP": "A API do núcleo como um formigueiro vivo, e a instalação no ns-3 como uma missão que você confere com <code>make doctor</code>.",
+      "archK": "Arquivo",
+      "archH": "Decisões e próximos passos",
+      "archP": "O roteiro, cada registro de decisão, a fidelidade ao artigo e a pesquisa por trás do plano."
+    },
+    "view": "Vista",
+    "overlays": "Camadas",
+    "ov": {
+      "route": "rota mais forte",
+      "pheromone": "feromônio",
+      "links": "enlaces de rádio",
+      "hello": "hellos",
+      "labels": "todos os rótulos"
+    },
+    "mapHelp": "Teclado: ? abre a página do Guia de campo deste mundo, ao lado do mapa; 1 a 5 escolhem uma ferramenta; [ e ] selecionam o nó anterior ou o próximo; as setas movem o nó selecionado (ou deslocam a vista); o liga ou desliga o nó; Q e E giram; mais e menos aproximam e afastam; espaço pausa. Cada evento também é escrito no diário das formigas, abaixo do mapa.",
+    "mast": "O Diário do Feromônio",
+    "newsStart": "Os repórteres estão a postos. Construa, quebre e observe.",
+    "missions": "Missões",
+    "query": "Consulta",
+    "inspHint": "Escolha <b>Inspecionar</b> e clique num nó para ler o que a sua tabela de roteamento guarda.",
+    "watch": "Feromônio para",
+    "legend": "Legenda",
+    "log": "Diário das formigas",
+    "logf": {
+      "hello": "hellos",
+      "data": "dados",
+      "ants": "formigas",
+      "routes": "rotas"
+    },
+    "share": "Compartilhar esta partida",
+    "restart": "Recomeçar",
+    "about": {
+      "title": "Como a colônia roteia",
+      "intro": "AntHocNet é um protocolo de roteamento por colônia de formigas para redes sem infraestrutura fixa — celulares, drones, carros, satélites. Este repositório o implementa uma única vez, num núcleo independente de simulador, e roda esse núcleo no ns-3 e nesta página.",
+      "s1h": "As formigas procuram",
+      "s1": "Um nó com dados e sem rota envia formigas reativas de ida. Cada uma que chega ao destino vira uma formiga de volta.",
+      "s2h": "As formigas deixam feromônio",
+      "s2": "A formiga de volta refaz o caminho até a origem e deixa feromônio em cada salto: mais nos caminhos curtos e rápidos, menos nos lentos.",
+      "s3h": "Os pacotes seguem o cheiro",
+      "s3": "Cada pacote de dados escolhe o próximo salto ao acaso, com peso dado pelo feromônio elevado a β = 20 — por isso a melhor trilha quase sempre vence.",
+      "s4h": "A colônia mantém tudo atualizado",
+      "s4": "Os hellos descobrem vizinhos, formigas proativas reamostram as rotas em uso, e avisos de falha de enlace e formigas de reparo remendam uma rota quando um celular vai embora."
+    },
+    "foot": {
+      "docs": "Documentação (em inglês)",
+      "results": "Resultados medidos",
+      "api": "Referência da API",
+      "source": "Código no GitHub",
+      "note": "Nada medido neste jogo é um número de benchmark; as páginas de resultados são."
+    },
+    "bench": "Bancada de ajuste",
+    "benchOpen": "Mude um parâmetro do protocolo"
+  },
+  "app": {
+    "newNetwork": "Uma nova rede entra no ar.",
+    "worldTitle": "Mundo: {title}",
+    "notBenchmark": "Nada medido aqui é um número de benchmark.",
+    "fieldGuide": "Guia de campo: {label} →",
+    "watchNode": "nó {n} (D{id})",
+    "watchNothing": "nada",
+    "maxFlows": "No máximo {n} fluxos.",
+    "toolHint": {
+      "inspect": "Inspecionar: clique num nó para ler sua tabela de roteamento.",
+      "move": "Mover: arraste um nó para outro lugar; arraste o chão para deslocar a vista.",
+      "build": "Construir: clique no chão para erguer um novo nó.",
+      "bulldozeSat": "Demolir: clique num nó para desligá-lo/ligá-lo, ou num enlace para cortá-lo.",
+      "bulldoze": "Demolir: clique num nó para desligá-lo; clique de novo para religá-lo.",
+      "flow": "Fluxo: clique num nó de origem e depois num destino."
+    },
+    "news": {
+      "newFlow": "Novo serviço: o fluxo {id} vai levar dois pacotes por segundo do nó {src} ao nó {dst}. Formigas estão sendo enviadas para achar o caminho.",
+      "linkfail": "O nó {n} avisa seus vizinhos: uma rota que passava por ele acabou de quebrar.",
+      "firstDelivery": "O fluxo {id} está aberto: o primeiro pacote chegou ao nó {n} em {ms} ms, por um caminho que as formigas encontraram.",
+      "delivered": "{n} pacotes entregues até agora. A colônia mantém as trilhas frescas.",
+      "drop": "Pacote perdido no nó {n}: {why}.",
+      "txfail": "O enlace {n}–{p} caiu: o rádio do nó {n} não teve resposta. O reparo está em andamento.",
+      "down": "O nó {n} sai do ar. Os vizinhos vão perceber quando os hellos dele pararem.",
+      "up": "O nó {n} voltou ao ar e está dizendo hello.",
+      "routeSwitch": "A trilha mais forte do fluxo {id} mudou: agora {path} ({hops} saltos).",
+      "islCut": "Enlace entre satélites {a}–{b} cortado. As formigas vão achar o caminho mais longo.",
+      "built": "Nó {n} construído e no ar. Ele vai conhecer os vizinhos pelos hellos deles."
+    },
+    "log": {
+      "txAntAll": "n{n} → todos os vizinhos: {kind}",
+      "txAnt": "n{n} → n{p}: {kind}",
+      "txData": "n{n} → n{p}: pacote de dados (fluxo {a} #{b})",
+      "deliver": "n{n}: entregou fluxo {a} #{b} após {ms} ms",
+      "drop": "n{n}: descartou fluxo {a} #{b}: {why}",
+      "queue": "n{n}: segurando fluxo {a} #{b}, ainda sem rota para n{p}",
+      "txFail": "n{n} → n{p}: sem resposta (fora de alcance), enlace dado como quebrado",
+      "nbAdd": "n{n}: conheceu o vizinho n{p}",
+      "routeAdd": "n{n}: novo feromônio em direção a n{a} via n{p}",
+      "nbDel": "n{n}: perdeu o vizinho n{p}",
+      "routeDel": "n{n}: perdeu a rota em direção a n{a} via n{p}",
+      "down": "n{n} desligado",
+      "up": "n{n} ligado",
+      "other": "evento {k}"
+    },
+    "insp": {
+      "moving": "em movimento a {v} m/s",
+      "still": "parado",
+      "node": "Nó {n}",
+      "on": "no ar",
+      "off": "desligado",
+      "summary": "{q} pacote(s) esperando · rotas para {d} nó(s)",
+      "caption": "Em direção ao nó {d}, direto da tabela de feromônio do núcleo",
+      "via": "via",
+      "reg": "τ regular",
+      "vir": "τ virtual",
+      "next": "próximo pacote de dados",
+      "noteDist": "A última coluna é a própria probabilidade do núcleo para o próximo pacote de dados: feromônio elevado a β = 20, normalizado. A trilha mais forte vence quase sempre — quase.",
+      "noteNone": "Ainda não há feromônio em direção a este destino: um pacote aqui esperaria enquanto uma formiga reativa procura.",
+      "watched": "Este é o destino em observação."
+    },
+    "st": {
+      "ants": "formigas {n}",
+      "perPkt": "{x}/pct",
+      "routes": "trocas de rota {n}"
+    },
+    "toast": {
+      "placeInside": "Posicione dentro do mapa.",
+      "staysPut": "Esse fica onde está.",
+      "noBuildSat": "Satélites são lançados, não construídos: escolha outro mundo para construir.",
+      "buildInside": "Construa dentro do campo.",
+      "maxNodes": "O mapa comporta no máximo {n} nós.",
+      "source": "Origem: nó {n}. Agora clique no destino.",
+      "sameNode": "Escolha outro nó como destino.",
+      "switchedOff": "Nó {n} desligado.",
+      "switchedOn": "Nó {n} ligado.",
+      "pressRun": "Aperte Rodar para começar a fase.",
+      "copied": "Link copiado: mesmo mundo, mesma semente, mesma partida."
+    },
+    "legend": {
+      "route": "rota de feromônio mais forte",
+      "reactive": "formiga reativa (procurando)",
+      "backward": "formiga de volta (deixando feromônio)",
+      "proactive": "formiga proativa (explorando)",
+      "repair": "formiga de reparo",
+      "linkfail": "aviso de falha de enlace",
+      "data": "pacote de dados",
+      "hello": "hello (sinalizador)",
+      "pheromone": "trilha de feromônio"
+    },
+    "continue": "▶ Continuar: {id} {title}",
+    "bootFail": "Não foi possível iniciar o núcleo WebAssembly: {err}"
+  },
+  "engine": {
+    "drop": {
+      "1": "limite de saltos (laço)",
+      "2": "sem rota a tempo (tempo de fila esgotado)",
+      "3": "a rota não voltou dentro do limite de espera da reconvergência",
+      "4": "reparo local expirou",
+      "5": "nó desligado",
+      "other": "descartado"
+    },
+    "kind": {
+      "hello": "hello",
+      "reactive": "formiga reativa de ida",
+      "backward": "formiga de volta",
+      "proactive": "formiga proativa de ida",
+      "repair": "formiga de reparo",
+      "linkfail": "aviso de falha de enlace",
+      "data": "pacote de dados"
+    }
+  },
+  "world": {
+    "line": {
+      "title": "Seis em fila",
+      "blurb": "Seis nós que só escutam os vizinhos imediatos, e um fluxo de ponta a ponta. A menor rede em que rotear chega a ser uma questão.",
+      "honest": "Rádio didático: disco unitário, alcance de 250 m, 2 Mbit/s, sem colisões.",
+      "read": {
+        "label": "Os cinco tipos de formiga"
+      }
+    },
+    "manet": {
+      "title": "MANET ad hoc (padrão)",
+      "blurb": "30 celulares num campo aberto: a rede para a qual os artigos do AntHocNet foram escritos. Vinte são carregados por pessoas (random waypoint, 3–15 m/s: de caminhada a bicicleta) e deixam pegadas; dez ficam parados. Enlaces surgem e caem conforme as pessoas se movem; a trilha em negrito é a rota de feromônio mais forte de cada fluxo, e você pode vê-la mudar.",
+      "honest": "Rádio didático: disco unitário, alcance de 250 m. Os resultados medidos de MANET usam os canais two-ray e Nakagami do ns-3.",
+      "results": {
+        "label": "Resultados da grade MANET"
+      },
+      "read": {
+        "label": "Regimes de rede: o campo ad hoc"
+      }
+    },
+    "town": {
+      "title": "Cidade ad hoc: celulares, notebooks, PCs",
+      "blurb": "30 dispositivos numa cidade pequena, sem infraestrutura: cada dispositivo é um roteador. Celulares andam no passo de quem os carrega e alcançam 120 m; notebooks mudam de lugar de vez em quando e alcançam 180 m; PCs de mesa ficam dentro de casa e alcançam 250 m. Um enlace precisa que as duas pontas se alcancem, então um celular ao lado de um PC ainda só fala a 120 m.",
+      "honest": "Rádio didático: disco unitário com um alcance por classe de dispositivo, 2 Mbit/s. Os resultados medidos de MANET usam um único rádio do ns-3 para todos os nós.",
+      "results": {
+        "label": "Resultados da grade MANET"
+      },
+      "read": {
+        "label": "Regimes de rede: o campo ad hoc"
+      }
+    },
+    "mesh": {
+      "title": "Malha Wi-Fi estática",
+      "blurb": "Uma malha comunitária: nada se move. Todo enlace que existe permanece. Veja o que as formigas continuam gastando depois que as rotas são encontradas.",
+      "honest": "Rádio didático: disco unitário, alcance de 250 m.",
+      "results": {
+        "label": "Resultados da malha estática"
+      },
+      "read": {
+        "label": "Regimes de rede: uma malha que nunca se move"
+      }
+    },
+    "fanet": {
+      "title": "FANET: um enxame de drones",
+      "blurb": "20 drones voando num padrão Gauss–Markov em 3-D a cerca de 20 m/s. Os enlaces duram segundos, não minutos. A altitude aparece como tamanho e tom.",
+      "honest": "Rádio didático: disco unitário em 3-D, alcance de 300 m. Os resultados medidos de FANET usam o ns-3 com mobilidade Gauss–Markov em 3-D.",
+      "results": {
+        "label": "Resultados de FANET"
+      },
+      "read": {
+        "label": "Regimes de rede: enlaces que duram segundos"
+      }
+    },
+    "vanet": {
+      "title": "VANET: carros numa cidade",
+      "blurb": "30 veículos numa grade de ruas estilo Manhattan. Os prédios bloqueiam o rádio, então um enlace morre no instante em que um carro dobra a esquina.",
+      "honest": "Rádio didático: disco unitário cortado por prédios. Os resultados medidos de VANET usam o two-ray do ns-3 mais sombreamento por prédios.",
+      "results": {
+        "label": "Resultados de VANET"
+      },
+      "read": {
+        "label": "Regimes de rede: enlaces cortados por prédios"
+      }
+    },
+    "satellite": {
+      "title": "Satélites: uma constelação Walker",
+      "blurb": "64 satélites em 8 planos orbitais, a 1200 km de altura e 53°. Os satélites de um plano compartilham uma órbita (um anel); os planos estão girados 45° entre si, então cada anel é uma órbita diferente. Cada satélite mantém quatro enlaces +grid — à frente e atrás no seu plano, e na mesma posição dos planos vizinhos — e o atraso deles muda conforme as órbitas se movem.",
+      "honest": "Órbitas didáticas: uma volta leva 120 s, cerca de 55× mais rápido que uma órbita real a 1200 km (109 min), para você ver o movimento; o atraso do enlace é a distância real na velocidade da luz (≈19 ms no mesmo plano). Os resultados medidos usam a mobilidade LEO do ns-3 (walker16, Starlink shell 1).",
+      "results": {
+        "label": "Resultados da constelação em movimento"
+      },
+      "read": {
+        "label": "Regimes de rede: por que satélites são diferentes"
+      }
+    }
+  },
+  "missions": {
+    "title": "Missões",
+    "campaignNote": "A campanha joga estas lições como fases.",
+    "campaignBtn": "▶ Campanha",
+    "group": {
+      "Academy": "Treinos (a Academia)",
+      "Worlds": "Desafios dos mundos"
+    },
+    "stars": "{n} de 3 estrelas",
+    "total": "{n} / {max} estrelas. Ou simplesmente jogue: todas as ferramentas funcionam fora das missões também.",
+    "missionTitle": "Missão {n}: {title}",
+    "hint": "Dica",
+    "back": "← Missões",
+    "knob": "Ajuste da missão: {knobs} (desfeito quando você sai).",
+    "accomplished": "Missão cumprida: “{title}”. {stars}",
+    "done": "Pronto.",
+    "next": "Próxima: {title}",
+    "all": "Todas as missões",
+    "node": "nó {n}",
+    "measuring": "Medindo",
+    "window": "{label}: t = {t} de {t1} s"
+  },
+  "mission": {
+    "hello": {
+      "title": "Olá, vizinhos",
+      "intro": "Cada nó diz hello uma vez por segundo. Um nó que perde dois hellos seguidos de um vizinho esquece esse vizinho.",
+      "goal": "Arraste o nó 5 para longe do nó 4 até o nó 4 esquecê-lo, e depois traga-o de volta até serem vizinhos de novo.",
+      "debrief": "Os hellos são como um nó descobre com quem pode falar; o núcleo cria uma pequena entrada de feromônio para cada vizinho novo e apaga todas quando o vizinho fica em silêncio (ADR-0008, detector A).",
+      "hints": [
+        "O rádio alcança 250 m: arraste o nó 5 bem para longe do nó 4.",
+        "Esquecer leva cerca de dois segundos de tempo simulado; procure \"perdeu o vizinho\" no diário."
+      ],
+      "run": {
+        "waiting": "Esperando o nó 4 esquecer o nó 5…",
+        "forgot": "O nó 4 esqueceu o nó 5. Agora traga o nó 5 de volta.",
+        "done": "Eles se reencontraram em t = {t} s: um hello bastou."
+      }
+    },
+    "scouts": {
+      "title": "Mande as batedoras",
+      "intro": "O nó 0 começa a enviar para o nó 5 em t = 2 s, mas nunca ouviu falar do nó 5. Antes de qualquer dado andar, ele difunde uma formiga reativa de ida, que cada nó retransmite até que uma chegue ao nó 5.",
+      "goal": "Preveja quantos saltos a formiga bem-sucedida percorre e depois veja acontecer.",
+      "debrief": "As formigas reativas de ida se espalham, cada uma lembrando o caminho que fez. A primeira a chegar vira uma formiga de volta e refaz o mesmo caminho até a origem.",
+      "hints": [
+        "Cada nó só escuta os vizinhos imediatos.",
+        "Conte os espaços entre o nó 0 e o nó 5."
+      ],
+      "run": {
+        "q": "Quantos saltos do nó 0 ao nó 5?",
+        "right": "Certo. Veja as formigas laranja se espalharem.",
+        "wrong": "Vamos ver: observe as formigas laranja se espalharem.",
+        "count": "{n} transmissões de formigas reativas até agora",
+        "done": "Foram 5 saltos. O primeiro pacote chegou {ms} ms depois de enviado, após {n} transmissões de formigas reativas."
+      }
+    },
+    "way-back": {
+      "title": "O caminho de volta",
+      "intro": "Quando uma formiga de ida chega ao destino, uma formiga de volta refaz o caminho dela. Em cada salto, ela deposita feromônio no enlace por onde veio, mais quando o caminho é mais rápido.",
+      "goal": "O nó 0 está prestes a procurar o nó 24. Preveja qual dos vizinhos dele vai terminar com mais feromônio em direção ao nó 24.",
+      "debrief": "O depósito é o inverso do tempo estimado do caminho, combinado com o valor antigo (γ = 0,7). Com o tempo, o melhor enlace acumula mais.",
+      "hints": [
+        "Veja onde o nó 24 está no mapa.",
+        "Menos saltos e menos fila significam mais feromônio."
+      ],
+      "run": {
+        "q": "Qual vizinho do nó 0 vai levar mais feromônio em direção ao nó 24?",
+        "picked": "Você escolheu o nó {n}. Veja a trilha azul crescer a partir do nó 0.",
+        "done": "O nó {n} tem mais (τ = {tau}).",
+        "yours": "O nó {n} tem {tau}."
+      }
+    },
+    "scent": {
+      "title": "Siga o cheiro",
+      "intro": "Um pacote de dados não segue uma rota fixa. Cada nó escolhe o próximo salto ao acaso, com peso dado pelo feromônio elevado à potência β = 20, então a melhor trilha vence na maioria das vezes, mas não sempre.",
+      "goal": "Preveja o próximo salto do nó 0 para oito pacotes de dados. Sua pontuação é comparada às probabilidades do próprio núcleo.",
+      "debrief": "Esta é a regra de roteamento estocástico (a Eq. 1 do artigo). A potência β = 20 a deixa quase gulosa; um β menor espalharia o tráfego de forma mais equilibrada entre os caminhos.",
+      "hints": [
+        "Use Inspecionar no nó 0: a tabela mostra a probabilidade exata de cada escolha.",
+        "Escolher sempre o vizinho mais provável é a melhor estratégia, mas até ela pode errar."
+      ],
+      "run": {
+        "waiting": "Esperando a rota se formar…",
+        "round": "Rodada {r} de 8: {hits} acertos até agora",
+        "q": "Pacote {r}: para onde o nó 0 vai mandá-lo?",
+        "went": "Foi para o nó {went} (p = {pw}). Você escolheu o nó {pick} (p = {pp}).",
+        "done": "{hits} de 8 acertos. A probabilidade somada das suas escolhas foi {p} de um máximo de 8."
+      }
+    },
+    "two-roads": {
+      "title": "Dois caminhos",
+      "intro": "Como a escolha é aleatória, o tráfego pode se dividir entre vários caminhos ao mesmo tempo. Isso é roteamento multicaminho, a principal característica do AntHocNet.",
+      "goal": "Flagre qualquer nó mandando os pacotes do fluxo 0 para dois vizinhos diferentes.",
+      "debrief": "O multicaminho espalha a carga e deixa um reserva pronto quando um enlace quebra. O núcleo só mantém um segundo caminho se as formigas dele foram quase tão boas (o fator de aceitação, #96).",
+      "hints": [
+        "As divisões acontecem onde dois enlaces têm feromônio parecido.",
+        "Arraste um nó para que dois caminhos fiquem igualmente curtos."
+      ],
+      "run": {
+        "watching": "Observando cada salto do fluxo 0…",
+        "done": "O nó {n} mandou o fluxo 0 para os nós {a} e {b}: dois caminhos ao mesmo tempo."
+      }
+    },
+    "cut": {
+      "title": "Corte o cabo",
+      "intro": "Enlaces quebram. O nó que percebe envia um aviso de falha de enlace, e formigas de reparo procuram outro caminho enquanto os pacotes retidos esperam.",
+      "goal": "Demola um nó que esteja levando o fluxo 0 e veja quantos pacotes a rede perde nos 10 s seguintes.",
+      "debrief": "O reparo local e o multicaminho mantêm as perdas baixas: muitas vezes já existe uma segunda trilha, e os pacotes passam para ela dentro de um período de hello.",
+      "hints": [
+        "Procure as caixas roxas do fluxo 0 e escolha um nó no meio do caminho delas.",
+        "Menos perdas valem mais estrelas; a sorte de onde você corta também conta."
+      ],
+      "run": {
+        "start": "Demola um nó no caminho do fluxo 0.",
+        "down": "O nó {n} caiu. Contando perdas por 10 s…",
+        "wrong": "O nó {n} não estava levando o fluxo 0. Demola-o de novo para religá-lo e escolha outro.",
+        "lost": "{n} pacote(s) perdido(s) até agora",
+        "done": "O fluxo 0 perdeu {n} pacote(s); a entrega seguinte veio {ms} ms depois do corte.",
+        "doneNever": "O fluxo 0 perdeu {n} pacote(s); a entrega seguinte nunca veio (o fluxo ficou isolado)."
+      }
+    },
+    "fresh": {
+      "title": "Mantenha fresco",
+      "intro": "Formigas proativas reconferem uma rota enquanto ela está em uso, então a trilha acompanha os nós quando eles se movem. Esta missão as desliga por uma rodada (um ajuste de missão identificado) e compara.",
+      "goal": "Observe 40 s com as formigas proativas desligadas e depois 40 s com elas ligadas.",
+      "debrief": "A amostragem proativa custa formigas, mas numa rede em movimento ela acha rotas melhores antes que as antigas quebrem. No rádio didático a diferença é pequena e depende da semente; as ablações medidas estão nas páginas de resultados.",
+      "hints": [
+        "Só observe: a missão roda as duas metades para você."
+      ],
+      "run": {
+        "knob": "Ajuste da missão: enableProactive = 0 nesta metade.",
+        "off": "Proativas desligadas",
+        "on": "Proativas ligadas (padrão)",
+        "done": "Desligadas: {offP} entregues, {offA} transmissões de formigas. Ligadas: {onP} entregues, {onA} transmissões de formigas. Mesma semente, mesmo movimento."
+      }
+    },
+    "boss": {
+      "title": "Comande a cidade",
+      "intro": "Três fluxos cruzam uma rede em movimento que nem sempre está conectada. Você é quem planeja a rede.",
+      "goal": "De t = 10 s a t = 70 s, entregue pelo menos 95% de todos os pacotes. Você pode posicionar até 4 celulares retransmissores (eles ficam onde você os colocar).",
+      "debrief": "Em redes móveis esparsas, quem limita a entrega são as partições, não o roteamento: nenhum protocolo atravessa um vão sem rádio. É por isso que os resultados medidos incluem um oráculo que conhece a topologia inteira.",
+      "hints": [
+        "Veja onde os pacotes são descartados (✕) e ponha um celular retransmissor para cobrir esse vão.",
+        "Um retransmissor numa área central movimentada ajuda todos os fluxos."
+      ],
+      "run": {
+        "done": "{p} entregues ({d} de {s}) com {n} retransmissor(es) posicionado(s).",
+        "doneOver": "{p} entregues ({d} de {s}) com {n} retransmissor(es) posicionado(s) — acima do limite de 4."
+      }
+    },
+    "mesh-quiet": {
+      "title": "Malha: ela fica em silêncio algum dia?",
+      "intro": "Numa malha estática nada se move e nenhum enlace quebra.",
+      "goal": "Depois que todas as rotas são encontradas, o AntHocNet para de enviar formigas?",
+      "debrief": "Não: formigas proativas e hellos continuam amostrando enlaces que nunca vão mudar. Na malha estática medida, é por isso que OLSR e DSDV superam o AntHocNet por pouco, com menos sobrecarga.",
+      "hints": [
+        "As formigas proativas rodam num temporizador enquanto há dados fluindo."
+      ],
+      "run": {
+        "q": "As formigas param depois que as rotas são encontradas?",
+        "yes": "Sim, nada muda",
+        "no": "Não, elas continuam amostrando",
+        "counting": "Contando formigas depois de t = 20 s",
+        "done": "De t = 20 a 50 s, com todas as rotas estabelecidas há tempo: {n} transmissões de formigas (sem contar os hellos)."
+      }
+    },
+    "fanet-relay": {
+      "title": "FANET: mais rápido que as tabelas",
+      "intro": "Drones a 20 m/s mantêm enlaces por segundos, não minutos.",
+      "goal": "Mantenha a entrega em 80% ou mais de t = 5 a t = 35 s. Você pode lançar até 2 drones retransmissores.",
+      "debrief": "Movimento rápido e tridimensional é onde o AntHocNet se saiu melhor nas medições: suas formigas reamostram mais depressa que o ciclo de atualização de um protocolo de tabela, e a entrega do OLSR desaba.",
+      "hints": [
+        "Lance retransmissores onde o enxame fica ralo entre uma origem e o seu destino."
+      ],
+      "run": {
+        "done": "{p} entregues com {n} retransmissor(es)."
+      }
+    },
+    "vanet-corner": {
+      "title": "VANET: depois da esquina",
+      "intro": "Os prédios bloqueiam o rádio. Dois carros a um quarteirão de distância podem estar bem dentro do alcance e mesmo assim não se ouvir.",
+      "goal": "Espere uma transmissão falhar e diga por que ela falhou.",
+      "debrief": "Na grade de ruas, os enlaces morrem nas esquinas, não no limite do alcance do rádio. É por isso que o AntHocNet perde tanto tráfego com a reconvergência ali (#537), e por isso sua vantagem de sobrecarga se inverte.",
+      "hints": [
+        "Veja se há um prédio entre os dois carros."
+      ],
+      "run": {
+        "waiting": "Esperando uma transmissão falhar…",
+        "q": "O nó {n} acabou de falhar ao alcançar o nó {p}. Por quê?",
+        "far": "Eles se afastaram demais",
+        "building": "Há um prédio no caminho",
+        "doneBuilding": "Eles estavam a {d} m de distância, com um rádio de {r} m: dentro do alcance, então foi um prédio que cortou o enlace.",
+        "doneFar": "Eles estavam a {d} m de distância, com um rádio de {r} m: simplesmente fora de alcance."
+      }
+    },
+    "sat-failcell": {
+      "title": "Satélites: o enlace que falhou",
+      "intro": "Os enlaces entre satélites são fixos e previsíveis, até que um falha.",
+      "goal": "Corte um enlace entre satélites que o fluxo 0 esteja usando e meça quanto tempo leva até os pacotes voltarem a passar.",
+      "debrief": "Na grade ISL medida, o AntHocNet reconverge em cerca de 0,125 s, a 11 ms de um oráculo que conhece a topologia instantaneamente.",
+      "hints": [
+        "Observe as caixas roxas do fluxo 0 e clique, com Demolir, no enlace por onde elas passam."
+      ],
+      "run": {
+        "start": "Corte um enlace que o fluxo 0 esteja usando.",
+        "cut": "Enlace cortado. Medindo a recuperação…",
+        "wrong": "O fluxo 0 não estava usando esse enlace. Tente um por onde os pacotes passam.",
+        "done": "O fluxo 0 voltou a entregar {ms} ms depois do corte."
+      }
+    }
+  },
+  "doc": {
+    "howItWorks": "Como o AntHocNet funciona",
+    "antTypes": "Tipos de formiga",
+    "pheromonePaper": "O feromônio e o artigo",
+    "configBeta": "Configuração: β",
+    "antTypesRepair": "Tipos de formiga: reparo e falha de enlace",
+    "antTypesProactive": "Tipos de formiga: proativas",
+    "results": "Resultados medidos",
+    "manetOracle": "Resultados de MANET com o oráculo",
+    "methodology": "Metodologia",
+    "staticMesh": "Resultados da malha estática",
+    "fanet": "Resultados de FANET",
+    "vanet": "Resultados de VANET",
+    "satellite": "Resultados de satélites",
+    "acoModel": "O modelo ACO",
+    "antTypesProactiveAnts": "Tipos de formiga: formigas proativas",
+    "manetGrid": "Resultados da grade MANET",
+    "metricsNrl": "Métricas: NRL",
+    "regimes": "Regimes de rede"
+  },
+  "device": {
+    "phone": {
+      "label": "Celular",
+      "note": "levado no passo de quem anda; alcance curto"
+    },
+    "laptop": {
+      "label": "Notebook",
+      "note": "muda de lugar de vez em quando"
+    },
+    "pc": {
+      "label": "PC de mesa",
+      "note": "fixo, dentro de casa"
+    },
+    "router": {
+      "label": "Roteador de telhado",
+      "note": "fixo, num telhado"
+    },
+    "repeater": {
+      "label": "Repetidor",
+      "note": "fixo, barato, alcance curto"
+    },
+    "gateway": {
+      "label": "Roteador doméstico",
+      "note": "fixo, dentro de casa"
+    }
+  },
+  "chapter": {
+    "1": {
+      "title": "Cidade ad hoc",
+      "family": "MANET",
+      "blurb": "Celulares, notebooks e PCs falando direto: sem roteadores, sem infraestrutura. Cada dispositivo é um roteador.",
+      "results": {
+        "label": "Resultados da grade MANET"
+      }
+    },
+    "2": {
+      "title": "Malha do bairro",
+      "family": "malha Wi-Fi estática",
+      "blurb": "Roteadores de telhado para uma vila. Nada se move; então o que as formigas continuam fazendo?",
+      "results": {
+        "label": "Resultados da malha estática"
+      }
+    },
+    "3": {
+      "title": "Ruas da cidade",
+      "family": "VANET"
+    },
+    "4": {
+      "title": "Floresta",
+      "family": "FANET"
+    },
+    "5": {
+      "title": "Órbita",
+      "family": "satélites"
+    },
+    "6": {
+      "title": "Zona de desastre",
+      "family": "resposta a emergências"
+    },
+    "7": {
+      "title": "Zona contestada",
+      "family": "rádio tático"
+    },
+    "8": {
+      "title": "Do céu ao espaço",
+      "family": "espaço-ar-terra"
+    }
+  },
+  "level": {
+    "1_1": {
+      "title": "Primeiro hello",
+      "mechanism": "hellos e tabelas de vizinhos",
+      "story": "Ana e Ben estão em lados opostos da praça, de celular na mão. Os celulares alcançam 120 m; eles estão a 220 m um do outro.",
+      "hints": [
+        "Arraste o Ben (o celular da direita) em direção à Ana até os anéis de alcance se sobreporem.",
+        "Os celulares deles se escutam a até 120 m."
+      ],
+      "debrief": "Uma vez por segundo, cada dispositivo diz hello. Um dispositivo que escuta um hello põe o remetente na sua tabela de vizinhos, com uma pequena entrada de feromônio para ele; dois hellos perdidos e ele esquece."
+    },
+    "1_2": {
+      "title": "Do outro lado da rua",
+      "mechanism": "formigas reativas de ida, formigas de volta e feromônio",
+      "story": "Duas casas, a 340 m uma da outra, querem uma videochamada entre seus PCs de mesa, que alcançam 250 m. Você tem um notebook para pôr no meio.",
+      "hints": [
+        "Um notebook alcança 180 m, e um enlace precisa que as duas pontas se alcancem.",
+        "Ponha-o no meio da rua, a até 180 m das duas casas."
+      ],
+      "debrief": "O primeiro PC nunca tinha ouvido falar do segundo, então inundou a rede com uma formiga reativa de ida. A cópia que chegou virou uma formiga de volta e refez o mesmo caminho, deixando feromônio em cada salto. Depois disso, os dados seguem o feromônio."
+    },
+    "1_3": {
+      "title": "Siga o cheiro",
+      "mechanism": "escolha do próximo salto por feromônio^β",
+      "story": "Uma chamada do PC da escola para o PC da biblioteca pode passar por qualquer um de dois notebooks. Um caminho foi reforçado por muitas formigas de volta; o outro, só por algumas.",
+      "hints": [
+        "O feromônio define as chances; ele não faz a escolha sozinho.",
+        "Olhe o inspetor: cada vizinho mostra seu feromônio e sua parte dos sorteios."
+      ],
+      "debrief": "Os dados escolhem o próximo salto com probabilidade proporcional ao feromônio elevado a β (20 para dados), então um caminho só um pouco melhor leva quase todo o tráfego enquanto o outro continua conhecido. É assim que o AntHocNet mantém vários caminhos vivos a baixo custo.",
+      "quiz1": {
+        "question": "A maioria dos pacotes da escola passa pelo notebook com mais feromônio. Por que \"a maioria\", e não \"todos\"?",
+        "options": [
+          "Cada pacote escolhe um vizinho ao acaso, com peso dado pelo feromônio elevado a uma potência β, então o caminho mais forte vence a maioria dos sorteios, não todos",
+          "Os pacotes se alternam entre os notebooks para dividir a carga",
+          "O notebook mais fraco só é usado quando o mais forte está ocupado"
+        ]
+      }
+    },
+    "1_4": {
+      "title": "O café",
+      "mechanism": "formigas proativas e a troca da rota mais forte",
+      "story": "O PC do café e o PC da padaria conversam por meio de quem estiver passando. As pessoas vêm e vão; quando não há ninguém no meio, a chamada cai.",
+      "hints": [
+        "Um PC de mesa nunca vai embora.",
+        "Ponha-o no meio do caminho entre as duas lojas: a 240 m de cada uma."
+      ],
+      "debrief": "Enquanto a chamada dura, formigas proativas de ida continuam amostrando os caminhos, então, quando alguém passa levando uma rota melhor, a rota mais forte muda para ela, e volta quando a pessoa vai embora. O PC que você pôs é o caminho que nunca vai embora."
+    },
+    "1_5": {
+      "title": "Dois caminhos para casa",
+      "mechanism": "multicaminho e reparo",
+      "story": "Um notebook num banco leva sozinho a chamada entre as duas casas. Em t = 40 s, o dono fecha a tampa.",
+      "hints": [
+        "Antes de a tampa fechar, dê à chamada um segundo caminho.",
+        "Um PC do outro lado da rua, ao alcance das duas casas."
+      ],
+      "debrief": "Com um segundo caminho, o AntHocNet mantém feromônio nos dois. Quando o notebook some, as casas percebem em dois hellos perdidos e o tráfego já tem para onde ir; uma formiga de reparo local ou um aviso de falha de enlace resolve o resto."
+    },
+    "1_6": {
+      "title": "Hora do rush",
+      "mechanism": "tudo o que veio antes, e o custo das formigas",
+      "story": "Três chamadas cruzam a praça da cidade na hora do rush, e uma multidão de celulares passa por ela. Você pode pagar três PCs, mas uma rede barata e silenciosa ganha mais estrelas.",
+      "hints": [
+        "As três chamadas cruzam o meio da praça.",
+        "Toda casa está a até 250 m do centro: um PC ali leva as três chamadas."
+      ],
+      "debrief": "Cada dispositivo que você acrescenta é mais um roteador mandando hellos e repassando formigas, então a sobrecarga da rede (formigas por pacote entregue) cresce junto. A troca medida do AntHocNet na grade MANET é exatamente esta: entrega comprada com tráfego de controle."
+    },
+    "2_1": {
+      "title": "Telhados",
+      "mechanism": "rotas encontradas uma vez numa topologia que nunca se move",
+      "story": "Quatro casas querem alcançar o gateway da vila, na praça. Os roteadores domésticos delas alcançam 150 m; a praça fica a 400 m.",
+      "hints": [
+        "Um roteador de telhado alcança 300 m, mas um roteador doméstico só 150 m: o roteador precisa ficar perto de cada casa.",
+        "Um roteador perto de cada casa, cada um a até 300 m da praça."
+      ],
+      "debrief": "Numa malha que nunca se move, as primeiras formigas de volta acham as rotas e elas continuam achadas: a entrega é quase perfeita desde os primeiros segundos."
+    },
+    "2_2": {
+      "title": "Ela fica em silêncio algum dia?",
+      "mechanism": "o custo da amostragem proativa em enlaces estáveis",
+      "story": "A malha da vila está montada e todas as rotas foram encontradas. Nada se move. Observe o contador de formigas.",
+      "hints": [
+        "Compare as formigas dos últimos dez segundos com as dos dez primeiros.",
+        "O AntHocNet amostra por temporizador, não por mudança."
+      ],
+      "debrief": "O AntHocNet manda hellos a cada segundo e formigas proativas a cada dez segundos de sessão, por mais estável que a rede esteja. Numa malha estática isso é pura sobrecarga; um modo silencioso que recua em enlaces estáveis está planejado para a v2.3.0 (#571) e vai aparecer aqui como uma melhoria.",
+      "quiz1": {
+        "question": "Todas as rotas foram encontradas e nada se move. As formigas param?",
+        "options": [
+          "Não: hellos e formigas proativas continuam voando no mesmo ritmo, mude algo ou não",
+          "Sim: depois que todas as rotas são encontradas, a rede fica em silêncio",
+          "Só os hellos param"
+        ]
+      }
+    },
+    "2_3": {
+      "title": "Tempestade",
+      "mechanism": "reparo numa rede estática",
+      "story": "A malha leva o tráfego de duas casas até a praça por um único roteador de telhado. Em t = 30 s, um raio o derruba.",
+      "hints": [
+        "A casa do oeste só alcança a praça pelo roteador do canto superior esquerdo.",
+        "Um segundo roteador perto da casa do oeste, do outro lado, mantém um caminho aquecido."
+      ],
+      "debrief": "Quando o roteador caiu, os vizinhos perderam os hellos dele e o descartaram; o segundo caminho que você construiu já tinha feromônio, então o tráfego passou para ele na hora, em vez de esperar uma nova inundação."
+    },
+    "2_4": {
+      "title": "Conecte a vila",
+      "mechanism": "multicaminho e a pontuação de sobrecarga",
+      "story": "Seis casas, um gateway da vila e um orçamento. Toda casa precisa alcançar a praça; quanto menos formigas forem necessárias, melhor.",
+      "hints": [
+        "Cada casa de canto precisa de um roteador a até 150 m, e esse roteador a até 300 m da praça.",
+        "As duas casas do meio estão perto o bastante para um repetidor cada."
+      ],
+      "debrief": "Uma malha sai mais barata quando cada dispositivo tem só os vizinhos necessários: cada roteador a mais acrescenta hellos e tráfego de formigas para cada rota que passa por ele. Os resultados medidos da malha estática mostram o AntHocNet entregando quase tudo ali, e pagando por isso em tráfego de controle."
+    }
+  },
+  "campaign": {
+    "err": {
+      "notOffered": "{cls} não está à venda nesta fase",
+      "limit": "no máximo {n} × {label}",
+      "outside": "{label} posicionado fora do mapa",
+      "budget": "acima do orçamento: {cost} de {budget}",
+      "fixed": "esse dispositivo fica onde está",
+      "planning": "os dispositivos são movidos durante o planejamento"
+    },
+    "obj": {
+      "deliverAll": "Entregar {p} % de todas as chamadas de t = {from} a {to} s",
+      "deliver": "Entregar {p} % da chamada {calls} de t = {from} a {to} s",
+      "connect": "Conectar a chamada {call} em até {s} s"
+    },
+    "and": " e ",
+    "chipOpen": "Fase {id}, {title}: {n} de 3 estrelas",
+    "chipLocked": "Fase {id}, {title}: bloqueada",
+    "chapter": "Capítulo {n}: {title}",
+    "arrives": "({family}) chega na {v}.",
+    "title": "Campanha",
+    "intro": "Cada capítulo é um tipo de rede. Conserte o que está quebrado com os dispositivos à venda; o núcleo real do AntHocNet faz o roteamento.",
+    "totalStars": "{n} / {max} estrelas.",
+    "next": "Em breve",
+    "free": "Jogo livre",
+    "coins": "{n} moedas",
+    "upTo": "até {n}",
+    "nothingToBuy": "Nada para comprar nesta fase: use o que está no mapa.",
+    "level": "Fase {id}: {title}",
+    "goals": "Objetivos",
+    "rules": "Orçamento: {budget} moedas. Estrelas: uma pelos objetivos, uma por guardar {keep} moedas, uma por uma rede silenciosa (poucas formigas por pacote entregue). Uma dica custa uma estrela.",
+    "devices": "Dispositivos",
+    "planNote": "Você começa pausado, na fase de Planejamento: posicione dispositivos e aperte Rodar. Ensina: {mechanism}.",
+    "plan": "▶ Planejar",
+    "backMap": "← Mapa",
+    "honest": "Rádio didático: disco unitário com um alcance por classe de dispositivo, 2 Mbit/s, sem colisões.",
+    "headline": "Fase {id}: {title}. Planeje sua rede e aperte Rodar.",
+    "dockTitle": "{k}: {label}, {range} m, {cost} moedas",
+    "left": "restam {n}",
+    "placeHelp": "{label}: clique no mapa, ou mova o cursor com as setas e aperte Enter.",
+    "placed": "{label} posicionado. Restam {n} moedas.",
+    "right": "Certo.",
+    "notQuite": "Não exatamente: {answer}.",
+    "budgetTitle": "Moedas que ainda dá para gastar",
+    "clockTitle": "Tempo simulado / duração da fase",
+    "run": "▶ Rodar",
+    "hint": "Dica (−★)",
+    "retry": "Tentar de novo",
+    "map": "Mapa",
+    "running": "Rodando. Veja as formigas acharem o caminho.",
+    "cleared": "Fase {id} concluída",
+    "notYet": "Fase {id}: ainda não",
+    "wellRouted": "Bem roteado.",
+    "missed": "Nem todos os objetivos foram cumpridos. Tente outro posicionamento.",
+    "coinsLeft": "Moedas restantes: {n}",
+    "nrl": "formigas por pacote entregue: {x}",
+    "hintsUsed": "dicas usadas: {n}",
+    "whatYouSaw": "O que você viu: {mechanism}",
+    "nextLevel": "Próxima: {id} {title}"
+  },
+  "reader": {
+    "title": "Guia de campo",
+    "liveTitle": "A simulação continua rodando enquanto você lê",
+    "live": "o mundo continua rodando",
+    "out": "Abrir a página completa",
+    "close": "Fechar o leitor",
+    "opening": "Abrindo…",
+    "failed": "Não foi possível abrir esta página aqui ({err}).",
+    "newTab": "Abrir numa nova aba →",
+    "fullPage": "abra a página completa",
+    "diagram": "Um diagrama é desenhado aqui na página completa:"
+  },
+  "nest": {
+    "surface": {
+      "ns3": {
+        "title": "Módulo ns-3"
+      },
+      "web": {
+        "title": "Adaptador do navegador (este jogo)"
+      }
+    },
+    "chamber": {
+      "tunnels": {
+        "title": "Túneis: as portas",
+        "blurb": "Tudo o que o núcleo precisa de um simulador, como pequenas interfaces em ports.h: um relógio, uma fonte aleatória, temporizadores, a lista de vizinhos, o estado dos enlaces e um observador. Um adaptador as implementa; o núcleo nunca inclui um cabeçalho de simulador."
+      },
+      "queen": {
+        "title": "Câmara da rainha",
+        "blurb": "O protocolo: toda formiga e todo pacote de dados passam pelo AntRouterLogic, que devolve uma RouteDecision (enviar, difundir, descartar, entregar) para o adaptador executar. Lógica pura, sem E/S."
+      },
+      "store": {
+        "title": "Depósito de feromônio",
+        "blurb": "O estado de roteamento de cada nó: feromônio regular e virtual por (vizinho, destino), e as regras que o depositam, difundem e evaporam."
+      },
+      "gate": {
+        "title": "O portão",
+        "blurb": "O que vai para o ar: uma formiga como um tipo de valor simples, serializada pelo codec no formato canônico de transmissão (wire-format.md)."
+      },
+      "senses": {
+        "title": "Sentidos",
+        "blurb": "Como um enlace é avaliado: o registro de métricas e a métrica clássica de salto + tempo que o artigo usa."
+      },
+      "memory": {
+        "title": "Memória",
+        "blurb": "Quais formigas um nó já viu, para que uma inundação pare e gerações antigas sejam ignoradas."
+      },
+      "rules": {
+        "title": "Pedra das regras",
+        "blurb": "Cada parâmetro ajustável com seu padrão; a procedência de cada um está na página de configuração."
+      },
+      "map": {
+        "title": "Sala dos mapas",
+        "blurb": "A camada de caminhos mínimos sobre a qual o controle do oráculo é construído (um limite, não um concorrente)."
+      }
+    }
+  },
+  "quest": {
+    "tree": {
+      "title": "Uma árvore do ns-3 onde instalar",
+      "note": {
+        "todo": "Rode make doctor NS3DIR=/caminho/para/ns-3 e cole a saída.",
+        "notTree": "Esse caminho não é uma árvore do ns-3 (sem contrib/ ou CMakeLists.txt).",
+        "untested": "ns-3 {v}: fora da faixa testada 3.36–3.48.",
+        "readonly": "contrib/ não tem permissão de escrita: a instalação copia para lá.",
+        "ok": "ns-3 {v}, contrib/ com permissão de escrita."
+      }
+    },
+    "tools": {
+      "title": "Ferramentas: CMake, um compilador C++17, Python",
+      "note": {
+        "todo": "make doctor confere isto também.",
+        "missing": "Faltando: {list}.",
+        "ok": "CMake {cmake}, {cxx}, Python {py}."
+      }
+    },
+    "install": {
+      "title": "AntHocNet em contrib/",
+      "note": {
+        "todo": "make install-ns3 NS3DIR=… (acrescente BASELINES=0 para só o AntHocNet) e depois make doctor de novo.",
+        "notYet": "Ainda não instalado: make install-ns3 NS3DIR=…",
+        "without": "Instalado, sem {list}: os harnesses de comparação são pulados (BASELINES=0).",
+        "ok": "Instalado, com os módulos de comparação."
+      }
+    },
+    "build": {
+      "title": "Compilado",
+      "note": {
+        "ok": "A biblioteca do módulo está compilada.",
+        "todo": "Configure e compile, depois make doctor de novo."
+      }
+    },
+    "test": {
+      "title": "A suíte de testes passa",
+      "note": {
+        "fail": "A suíte de testes anthocnet falhou: confira o log de compilação ou abra uma issue com a saída.",
+        "ok": "Ida e volta do cabeçalho e entrega em múltiplos saltos: PASS.",
+        "todo": "Rode ./test.py -s anthocnet e cole a saída."
+      }
+    }
+  },
+  "ws": {
+    "surface": "SUPERFÍCIE · os adaptadores",
+    "fn": "{n} função pública",
+    "fns": "{n} funções públicas",
+    "liveNone": "Ao vivo: o nó {n} ainda não tem feromônio.",
+    "via": "via {n}: {v}",
+    "live": "Ao vivo, getPheromoneRegular no nó {n} em direção a {d}: {vals}",
+    "world": "mundo: ad hoc, semente 1 · t {t}",
+    "state": {
+      "ok": "ok",
+      "warn": "aviso",
+      "fail": "falhou",
+      "todo": "a fazer"
+    }
+  },
+  "wsui": {
+    "description": "O núcleo do AntHocNet desenhado como um formigueiro, iluminado por um mundo em execução, e o guia de instalação no ns-3 como uma missão que você confere colando a saída de make doctor.",
+    "nestLabel": "Os componentes do núcleo como câmaras de um formigueiro; escolha uma para ler a API dela",
+    "title": "AntHocNet — a Oficina: a API do núcleo e a instalação no ns-3",
+    "nestTitle": "O Formigueiro: a API do núcleo, ao vivo",
+    "starting": "iniciando um mundo…",
+    "nestFoot": "As câmaras brilham quando o mundo ad hoc em execução as usa. Toda classe pública em <code>core/include</code> tem uma câmara; a CI confere isso.",
+    "choose": "Escolha uma câmara",
+    "chooseNote": "Cada câmara é uma parte do núcleo. Escolha uma para ver suas classes, o que fazem e um link para a referência completa da API.",
+    "questTitle": "Missão: trabalho de campo — instale o AntHocNet no ns-3",
+    "questIntro": "Rode cada comando no seu ns-3 e cole a saída abaixo. Ela é lida aqui, no seu navegador; nada é enviado. Sem um checkout? A <a href=\"https://github.com/danieljoppi/AntHocNet/releases/latest\">versão publicada</a> tem um tarball pronto para <code>contrib/</code>.",
+    "paste": "Cole a saída de <code>make doctor</code> ou de <code>./test.py -s anthocnet</code>",
+    "check": "Conferir",
+    "reset": "Recomeçar"
+  },
+  "bench": {
+    "unavailable": "A bancada não conseguiu carregar os dados dos parâmetros.",
+    "on": "ligado",
+    "off": "desligado",
+    "copied": "Copiado: cole depois do seu comando anthocnet-compare.",
+    "copy": "Copiar a linha do ns-3",
+    "reset": "Voltar aos padrões",
+    "default": "Padrão {v}.",
+    "attr": "ns-3:",
+    "provTitle": {
+      "paper": "O valor vem do artigo do AntHocNet ou da tese de 2007",
+      "measured": "O valor foi escolhido ou confirmado por uma medição pareada neste repositório",
+      "repo": "Uma escolha deste repositório; configuration.md explica por quê",
+      "unrecorded": "Ainda sem procedência registrada (configuration.md §3.2)"
+    },
+    "prov": {
+      "paper": "artigo",
+      "measured": "medido",
+      "repo": "escolha do repositório",
+      "unrecorded": "sem registro"
+    },
+    "noGhost": "Tire um parâmetro do padrão: um fantasma da mesma semente com os padrões roda ao lado, apagado no mapa.",
+    "pdr": "entregues",
+    "delay": "atraso médio",
+    "packets": "pacotes",
+    "yours": "seus ajustes",
+    "ghost": "fantasma (padrões)",
+    "ghostNote": "Mesma semente, mesmos fluxos, avançando em sincronia. Mover ou desligar nós muda só a sua partida, não o fantasma. O rádio didático não é o ns-3: as páginas medidas são.",
+    "notInLevel": "A bancada funciona no jogo livre; uma fase da campanha mantém as próprias regras.",
+    "noChange": "(todos os parâmetros no padrão)",
+    "intro": "Cada parâmetro mostra seu comentário de documentação do config.h, seu padrão com a origem desse valor e seu atributo do ns-3. Uma mudança reinicia este mundo na mesma semente.",
+    "compare": "Sua partida contra o fantasma",
+    "ns3": "A mesma mudança no ns-3",
+    "ns3Note": "Acrescente estas opções a um comando anthocnet-compare; a CI as roda nele."
+  },
+  "xray": {
+    "gone": "Esta formiga saiu do buffer do raio X (ele guarda as últimas 512 transmissões). Pause antes, ou escolha uma recente a partir de um nó.",
+    "bad": "Estes bytes não decodificam.",
+    "title": "Formiga #{id}",
+    "type": {
+      "hello": "hello",
+      "reactive": "formiga reativa",
+      "proactive": "formiga proativa",
+      "repair": "formiga de reparo",
+      "linkfail": "aviso de falha de enlace",
+      "unknown": "tipo desconhecido"
+    },
+    "dir": {
+      "forward": "de ida",
+      "backward": "de volta"
+    },
+    "bytes": "{n} bytes no ar",
+    "fieldsCaption": "Os campos, como o core::codec decodifica estes bytes",
+    "bytesLabel": "Os bytes da formiga em hexadecimal, coloridos por campo",
+    "offset": "bytes {from}–{to}",
+    "wire": "Layout do quadro (wire-format.md) →",
+    "note": "Toda formiga que o adaptador envia passa pelo codec::serialize; o jogo guarda uma cópia das últimas 512 para esta vista. Nada lê a cópia para decidir coisa alguma.",
+    "back": "← Voltar ao nó",
+    "recent": "Raio X das últimas formigas deste nó:"
+  },
+  "kit": {
+    "readme": {
+      "title": "{title} — no ns-3",
+      "from": "Exportado do site do AntHocNet (mundo `{world}`, semente {seed}, {time} s gravados).",
+      "intro": "O jogo rodou o núcleo do AntHocNet num rádio didático; este kit roda a mesma cena no ns-3.",
+      "runH": "Como rodar",
+      "step1": "Uma árvore do ns-3 (3.36–3.48) com o AntHocNet em `contrib/`:",
+      "step1a": "a partir de um checkout: `make install-ns3 NS3DIR=/caminho/para/ns-3`, ou",
+      "step1b": "a partir de uma versão publicada: `tar -xzf anthocnet-ns3-modules-<versão>.tar.gz -C /caminho/para/ns-3/contrib`,",
+      "step1c": "ou a imagem pronta: `docker run --rm -it -v \"$PWD\":/kit ghcr.io/danieljoppi/ns3:3.42` (ns-3 em `/opt/ns-3`).",
+      "step2": "Confira: `make doctor NS3DIR=/caminho/para/ns-3` (a missão de instalação da Oficina lê a saída).",
+      "step3": "Configure e compile o ns-3 com os exemplos e depois: `NS3DIR=/caminho/para/ns-3 bash run.sh`.",
+      "cmdIntro": "O comando, se você já tem os arquivos:",
+      "filesH": "O que vem no kit",
+      "sat": "`run.sh` — a casca Walker em movimento que este mundo desenha (8 planos × 8 satélites, 1200 km, 53°) no `leo-walker`, que precisa do ns-3 3.48 ou mais novo. O leo-walker tem seus próprios fluxos entre estações em terra, então os fluxos do jogo não são reproduzidos. Com só 64 satélites, a elevação mínima das estações cai para 10°, para que toda cidade veja algum.",
+      "mobility": "`mobility.ns_movements` — onde cada nó esteve, como um trace de movimento do ns-2: a posição inicial e depois um `setdest` por trecho de 0,5 s. Em 2-D: a altitude do jogo é descartada.",
+      "flows": "`flows.txt` — os fluxos, `src dst start stop cbrBps`, com pacotes de 64 bytes como o `anthocnet-compare` envia.",
+      "run": "`run.sh` — o `anthocnet-compare` reproduzindo os dois (`--mobility=trace`, `--flowsFile`), com o canal deste mundo.",
+      "attrs": "Suas mudanças na bancada de ajuste, como atributos do ns-3: `{attrs}`.",
+      "whyH": "Por que os números são diferentes",
+      "why": "Espere números diferentes; é justamente para isso que você roda. O rádio do jogo é um modelo didático:",
+      "disk": "**Um disco unitário.** Dois nós se escutam perfeitamente dentro do alcance e nada fora dele. Aqui o ns-3 roda Wi-Fi sobre um canal limitado por alcance (ou o canal urbano: o mesmo, cortado por prédios), com tempos de quadro reais.",
+      "mac": "**Sem colisões, sem disputa no MAC.** O jogo entrega todo quadro num enlace livre; o MAC 802.11 do ns-3 disputa o meio, espera, colide e retransmite, então áreas movimentadas perdem pacotes e ganham atraso.",
+      "queue": "**Sem limite de fila.** As filas das interfaces do ns-3 enchem e descartam.",
+      "core": "**O mesmo núcleo.** Toda decisão de roteamento, nos dois, é do núcleo do AntHocNet; só o rádio e o MAC abaixo dele mudam.",
+      "publishedH": "A versão medida",
+      "published": "Este é um mundo pronto na sua semente padrão. Os resultados medidos no ns-3, com várias sementes, para essa família de redes estão em [{label}]({href})."
+    },
+    "oneRange": "Um único alcance de rádio para todos os nós ({range} m): os alcances por dispositivo deste mundo não são modelados pelo anthocnet-compare.",
+    "flat": "Achatado para 2-D: a reprodução de trace do anthocnet-compare é plana, então a altitude dos drones é descartada.",
+    "export": "Exportar para o ns-3",
+    "exportTitle": "Baixe esta cena como um kit do ns-3: o trace de movimento, os fluxos, o run.sh e um README",
+    "copyCmd": "Copiar o comando",
+    "copied": "Copiado. Salve o kit para ter os arquivos: o comando os lê.",
+    "none": "Rode o mundo por alguns segundos antes: o kit grava para onde os nós vão.",
+    "saved": "{file} salvo: descompacte e rode o run.sh."
+  }
+}

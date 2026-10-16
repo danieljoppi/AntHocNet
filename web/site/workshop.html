@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AntHocNet — the Workshop: the core's API and the ns-3 install</title>
-  <meta name="description" content="The AntHocNet core drawn as an ant nest, lit by a running world, and the ns-3 install guide as a quest you check by pasting make doctor.">
+  <title data-i18n="wsui.title">AntHocNet — the Workshop: the core's API and the ns-3 install</title>
+  <meta name="description" data-i18n-attr="content:wsui.description" content="The AntHocNet core drawn as an ant nest, lit by a running world, and the ns-3 install guide as a quest you check by pasting make doctor.">
   <link rel="icon" href="img/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0f766e">
@@ -16,23 +16,23 @@
   <!--AHN-TOPBAR shop-->
   <main class="ws">
     <section class="window ws-nest" aria-labelledby="nestTitle">
-      <div class="titlebar"><span id="nestTitle">The Nest: the core's API, live</span>
-        <span class="ws-live" id="nestLive">starting a world…</span></div>
-      <div class="ws-map"><svg id="nest" viewBox="0 0 948 700" role="group" aria-label="The core's components as chambers of a nest; choose one to read its API"></svg></div>
-      <p class="muted small ws-foot">Chambers glow when the running ad hoc world uses them. Every public class in <code>core/include</code> has a chamber; CI checks it.</p>
+      <div class="titlebar"><span id="nestTitle" data-i18n="wsui.nestTitle">The Nest: the core's API, live</span>
+        <span class="ws-live" id="nestLive" data-i18n="wsui.starting">starting a world…</span></div>
+      <div class="ws-map"><svg id="nest" viewBox="0 0 948 700" role="group" data-i18n-attr="aria-label:wsui.nestLabel" aria-label="The core's components as chambers of a nest; choose one to read its API"></svg></div>
+      <p class="muted small ws-foot" data-i18n-html="wsui.nestFoot">Chambers glow when the running ad hoc world uses them. Every public class in <code>core/include</code> has a chamber; CI checks it.</p>
     </section>
     <section class="window ws-detail" aria-labelledby="chamberTitle" aria-live="polite">
-      <div class="titlebar" id="chamberTitle">Choose a chamber</div>
-      <div class="body" id="chamberBody"><p class="muted">Each chamber is a part of the core. Choose one to see its classes, what they do, and a link into the full API reference.</p></div>
+      <div class="titlebar" id="chamberTitle" data-i18n="wsui.choose">Choose a chamber</div>
+      <div class="body" id="chamberBody"><p class="muted" data-i18n="wsui.chooseNote">Each chamber is a part of the core. Choose one to see its classes, what they do, and a link into the full API reference.</p></div>
     </section>
     <section class="window ws-quest" aria-labelledby="questTitle">
-      <div class="titlebar"><span id="questTitle">Quest: Field engineer — install AntHocNet in ns-3</span><span class="ws-score" id="questScore">0 / 5</span></div>
+      <div class="titlebar"><span id="questTitle" data-i18n="wsui.questTitle">Quest: Field engineer — install AntHocNet in ns-3</span><span class="ws-score" id="questScore">0 / 5</span></div>
       <div class="body">
-        <p>Run each command in your ns-3 setup and paste the output below. It is read here, in your browser; nothing is uploaded. No checkout? The <a href="https://github.com/danieljoppi/AntHocNet/releases/latest">release</a> has a drop-in tarball for <code>contrib/</code>.</p>
+        <p data-i18n-html="wsui.questIntro">Run each command in your ns-3 setup and paste the output below. It is read here, in your browser; nothing is uploaded. No checkout? The <a href="https://github.com/danieljoppi/AntHocNet/releases/latest">release</a> has a drop-in tarball for <code>contrib/</code>.</p>
         <ol class="ws-steps" id="questSteps"></ol>
-        <label for="questPaste" class="ws-label">Paste <code>make doctor</code> or <code>./test.py -s anthocnet</code> output</label>
+        <label for="questPaste" class="ws-label" data-i18n-html="wsui.paste">Paste <code>make doctor</code> or <code>./test.py -s anthocnet</code> output</label>
         <textarea id="questPaste" rows="5" spellcheck="false" placeholder="##DOCTOR## v=1 ns3=3.42 cmake=3.28.3 …"></textarea>
-        <div class="row"><button type="button" class="bevel primary" id="questCheck">Check</button><button type="button" class="bevel" id="questReset">Start over</button></div>
+        <div class="row"><button type="button" class="bevel primary" id="questCheck" data-i18n="wsui.check">Check</button><button type="button" class="bevel" id="questReset" data-i18n="wsui.reset">Start over</button></div>
       </div>
     </section>
   </main>

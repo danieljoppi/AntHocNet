@@ -1,7 +1,11 @@
 // Unit test for the install quest's parser (#636): real `make doctor` output
 // (ns3/doctor.sh, as CI runs it) and real `./test.py` lines, no browser.
 // Usage: node web/test/quest.test.mjs
+import { readFileSync } from 'node:fs';
 import { parseDoctor, testsPassed, testsFailed, STEPS } from '../site/js/install-steps.js';
+import { useStrings } from '../site/js/i18n.js';
+
+useStrings(JSON.parse(readFileSync(new URL('../site/i18n/en.json', import.meta.url), 'utf8')));
 
 let failed = 0;
 const eq = (name, got, want) => {

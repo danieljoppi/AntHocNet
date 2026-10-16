@@ -5,6 +5,8 @@
 // reader is presentation only: it never touches the simulation (golden rule 9),
 // which keeps running underneath.
 
+import { t } from './i18n.js';
+
 const $ = (id) => document.getElementById(id);
 let current = null; // URL of the page on show
 let lastFocus = null;
@@ -21,10 +23,10 @@ function shell() {
   el.hidden = true;
   el.innerHTML = `
     <div class="titlebar reader-bar">
-      <span id="readerTitle">Field guide</span>
-      <span class="reader-live" title="The simulation keeps running while you read">the world keeps running</span>
-      <a class="bevel reader-out" id="readerOut" href="#" target="_blank" rel="noopener" aria-label="Open the full page">↗</a>
-      <button type="button" class="bevel" id="readerClose" aria-label="Close the reader">✕</button>
+      <span id="readerTitle">${t('reader.title')}</span>
+      <span class="reader-live" title="${t('reader.liveTitle')}">${t('reader.live')}</span>
+      <a class="bevel reader-out" id="readerOut" href="#" target="_blank" rel="noopener" aria-label="${t('reader.out')}">↗</a>
+      <button type="button" class="bevel" id="readerClose" aria-label="${t('reader.close')}">✕</button>
     </div>
     <div class="reader-body" id="readerBody" tabindex="-1"></div>`;
   document.body.append(el);
@@ -56,9 +58,9 @@ export async function openReader(href, title) {
   current = url.href;
   el.hidden = false;
   const body = $('readerBody');
-  $('readerTitle').textContent = title || 'Field guide';
+  $('readerTitle').textContent = title || t('reader.title');
   $('readerOut').href = url.href;
-  body.innerHTML = '<p class="muted">Opening…</p>';
+  body.innerHTML = `<p class="muted">${t('reader.opening')}</p>`;
   let doc;
   try {
     const res = await fetch(url.href.split('#')[0]);
@@ -67,8 +69,8 @@ export async function openReader(href, title) {
   } catch (err) {
     body.innerHTML = '';
     const p = document.createElement('p');
-    p.append(`Could not open this page here (${err.message}). `);
-    const a = Object.assign(document.createElement('a'), { href: url.href, textContent: 'Open it in a new tab →', target: '_blank' });
+    p.append(t('reader.failed', { err: err.message }) + ' ');
+    const a = Object.assign(document.createElement('a'), { href: url.href, textContent: t('reader.newTab'), target: '_blank' });
     p.append(a);
     body.append(p);
     return;
@@ -80,8 +82,8 @@ export async function openReader(href, title) {
   article.querySelectorAll('pre.mermaid, .mermaid').forEach((n) => {
     const note = document.createElement('p');
     note.className = 'reader-note';
-    const a = Object.assign(document.createElement('a'), { href: url.href, target: '_blank', rel: 'noopener', textContent: 'open the full page' });
-    note.append('A diagram is drawn here on the full page: ', a, '.');
+    const a = Object.assign(document.createElement('a'), { href: url.href, target: '_blank', rel: 'noopener', textContent: t('reader.fullPage') });
+    note.append(t('reader.diagram') + ' ', a, '.');
     n.replaceWith(note);
   });
   // The page's breadcrumb, without its first step (the site root: the reader is already there).
