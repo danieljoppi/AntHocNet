@@ -8,6 +8,17 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v2.2.0 (2026-10-16)
+
+### Feat
+
+- **learn-site**: the campaign (chapters 1-2), pt-br, the tuning bench, the x-ray and the ns-3 export (#670)
+- **ns3**: replay a scene, from an ns-2 movement trace and a flow list (#669)
+- **learn-site**: play offline, installable, with a size budget (#668)
+- **bench**: core speed benchmarks, tracked on every merge (#661)
+- **core**: the thesis's sinr link metric, through a per-neighbour link-quality port (#659)
+- **learn-site**: a linked breadcrumb on every docs and api page (#653)
+
 ## v2.1.0 (2026-10-09)
 
 ### Feat
