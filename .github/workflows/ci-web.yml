@@ -1,0 +1,155 @@
+name: CI / web
+
+# The browser adapter, the Pages site, and the ns-3 export kits the site makes.
+# Called by ci.yml (#610: ci.yml split by area behind the one CI gate, #607);
+# not triggered on its own. Same jobs, same checks as before the split.
+on:
+  workflow_call:
+    inputs:
+      code:
+        description: "'true' when code changed (the browser adapter and the kits run)"
+        type: string
+        required: true
+      site:
+        description: "'true' when anything the Pages site is built from changed"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  web-parity:
+    name: browser adapter — native vs WASM parity (#544)
+    if: inputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # ADR-0021: the learn site runs core/ as WebAssembly. This job builds the
+    # browser adapter natively and with Emscripten, runs every built-in
+    # scenario for four seeds in both, and requires byte-identical decision
+    # traces -- so the game can never drift from the protocol it teaches.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install emsdk (pinned; .github/actions/setup-emsdk)
+        uses: ./.github/actions/setup-emsdk
+      - name: Native vs WASM decision-trace parity
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          web/test/parity.sh 120 "1 2 7 42"
+      - name: X-ray -- the native codec decodes the page's ant bytes to the same fields (#637)
+        # parity.sh has built both ahn-web-trace (native) and the WASM module.
+        run: node web/test/xray.test.mjs
+
+  # The whole Pages site, tested as deployed (#626): built by web/build-pages.sh
+  # (the game, the docs, the API, the redirects -- what pages.yml publishes),
+  # then crawled (every internal link, asset and anchor resolves; the top bar
+  # on every page) and driven in a browser (every world, the hub, the reader,
+  # the Workshop, axe on every docs page). Runs on every PR that touches the
+  # site, docs-only PRs included -- they skip the simulator jobs, not this.
+  pages:
+    name: Pages site — build, crawl, browser smoke + axe (#626)
+    if: inputs.site == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install emsdk (pinned; .github/actions/setup-emsdk)
+        uses: ./.github/actions/setup-emsdk
+      - name: Install-quest parser unit test (#636)
+        run: node web/test/quest.test.mjs
+      - name: Translations complete, no English left in code (#622)
+        # Every key in web/site/i18n/en.json exists (with the same {placeholders})
+        # in every other language file; no multi-word English literal remains in
+        # web/site/js; index.html and workshop.html text is marked data-i18n.
+        run: python3 web/tools/i18n-check.py
+      - name: Install pinned mkdocs-material
+        uses: ./.github/actions/python-tools
+        with:
+          packages: mkdocs-material
+      - name: Assemble the whole site, as pages.yml does (#626)
+        run: |
+          sudo apt-get install -y --no-install-recommends doxygen >/dev/null
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          web/build-pages.sh web/build-site
+      - name: Crawl the built site (links, assets, anchors, top bar)
+        run: |
+          python3 tools/checks/check-site.py --self-test
+          python3 tools/checks/check-site.py web/build-site
+      - name: Tuning bench -- ghost lockstep and the copied ns-3 line (#638)
+        run: node web/test/bench.test.mjs web/build-site
+      - name: Export an ns-3 kit per world (#640)
+        # web/tools/export-kit.mjs runs the game's own export code (kit.js) on
+        # the WASM core; the ns3-kits job runs each kit in the ns-3 image. The
+        # sparse VANET world needs two minutes to deliver.
+        run: |
+          for w in line manet town mesh fanet satellite; do
+            node web/tools/export-kit.mjs web/build-site "$w" web/build-kits/"$w" 40
+          done
+          node web/tools/export-kit.mjs web/build-site vanet web/build-kits/vanet 120
+      - name: Upload the kits
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ns3-kits
+          path: web/build-kits
+          retention-days: 3
+      - name: Campaign levels clear with their par solutions (#567)
+        # Every level in web/site/js/campaign/levels.js, played from its data
+        # with its par solution on five seeds, must clear; with no action it
+        # must not. Node only: the WASM core runs in Node.
+        run: node web/test/levels.mjs web/build-site
+      - name: Learn-site browser smoke (#548)
+        # Every world runs with no console error, a backward ant and a delivery;
+        # all worlds share the protocol defaults (ADR-0019); mission 2 plays to
+        # the end; the hub, the one top bar on game/docs/API and the Try-it rail
+        # work (#626); axe-core finds no serious/critical violations on the hub,
+        # every docs page and an API page, day and night, nor on the game, a
+        # docs page and the Workshop on a phone (390 px, no sideways scroll).
+        # playwright-core / axe-core pinned; Chromium from Playwright's own CDN.
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright-core@1.56.1 axe-core@4.10.2
+          npx --no-install playwright-core install --with-deps chromium
+          node "$GITHUB_WORKSPACE/web/test/smoke.mjs" "$GITHUB_WORKSPACE/web/build-site"
+
+  # The learn site's "Export to ns-3" kits (#640), as the pages job exported
+  # them, run in the ns-3 image: every world's kit must deliver. Wi-Fi worlds
+  # replay through anthocnet-compare (#639) on 3.42; the satellite kit is
+  # leo-walker's moving shell, which needs 3.48.
+  ns3-kits:
+    name: ns-3 export kits run and deliver (#640)
+    runs-on: ubuntu-latest
+    needs: pages
+    if: inputs.code == 'true' && needs.pages.result == 'success'
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ns3:${{ matrix.version }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: '3.42'
+            worlds: 'line manet town mesh fanet vanet'
+          - version: '3.48'
+            worlds: 'satellite'
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install AntHocNet module
+        uses: ./.github/actions/ns3-install
+      - name: Configure and build the harnesses
+        run: |
+          cd /opt/ns-3
+          ./ns3 configure --enable-examples \
+            --enable-modules='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          ./ns3 build
+      - name: Download the kits
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ns3-kits
+          path: kits
+      - name: Run every kit
+        run: bash tools/checks/check-ns3-kits.sh /opt/ns-3 "$GITHUB_WORKSPACE/kits" "${{ matrix.worlds }}"

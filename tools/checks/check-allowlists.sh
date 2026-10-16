@@ -9,7 +9,7 @@
 # Why this exists. Adding oracle (#419), gpsr (#412) and aomdv (#414) meant
 # editing TEN independently hand-maintained lists; FOUR were missed, each
 # failing silently or misleadingly (#421, #423, #435):
-#   - ci.yml's two mods= lines             -> compile error on all 5 versions
+#   - ci-ns3.yml's two mods= lines             -> compile error on all 5 versions
 #   - paper-benchmark.yml's ##BENCH## awk  -> arm silently absent from the
 #     published compact block
 #   - check-determinism.sh's filter_rows() -> arm dropped from BOTH sides of
@@ -120,8 +120,8 @@ $lines
 EOF
 }
 
-check_module_list .github/workflows/ci.yml \
-    "^[[:space:]]*mods='" 2 "ci.yml mods= (ns3-build + ns3-asan)"
+check_module_list .github/workflows/ci-ns3.yml \
+    "^[[:space:]]*mods='" 2 "ci-ns3.yml mods= (ns3-build + ns3-asan)"
 check_module_list .github/workflows/benchmarks.yml \
     "--enable-modules='" 1 "benchmarks.yml --enable-modules"
 check_module_list .github/workflows/paper-benchmark.yml \
@@ -130,7 +130,7 @@ check_module_list .github/workflows/scenario-matrix.yml \
     "--enable-modules='" 1 "scenario-matrix.yml --enable-modules"
 check_module_list .github/workflows/satellite-benchmark.yml \
     "--enable-modules='" 1 "satellite-benchmark.yml --enable-modules"
-# The devcontainer mirrors ci.yml's ns3-build recipe (#334) — an eleventh
+# The devcontainer mirrors ci-ns3.yml's ns3-build recipe (#334) — an eleventh
 # hand-maintained copy, found while writing this gate (#435).
 check_module_list .devcontainer/post-create.sh \
     "^[[:space:]]*mods='" 1 "post-create.sh mods= (devcontainer)"

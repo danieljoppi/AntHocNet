@@ -1,0 +1,21 @@
+# Shared setup (#610): the pinned Emscripten SDK. The toolchain is part of the
+# native-vs-WASM parity claim (#544), so every job that builds the browser
+# adapter takes the same version from here: tag 4.0.10 = commit 62a853cd.
+# Installed in $RUNNER_TEMP/emsdk; a later step activates it with
+#   source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+name: Set up the pinned emsdk
+description: Clone, install and activate the Emscripten SDK at the project's pinned version.
+inputs:
+  version:
+    description: emsdk tag and SDK version (keep one pin for every job)
+    default: '4.0.10'
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        V: ${{ inputs.version }}
+      run: |
+        git clone --depth 1 --branch "$V" https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+        "$RUNNER_TEMP/emsdk/emsdk" install "$V"
+        "$RUNNER_TEMP/emsdk/emsdk" activate "$V"

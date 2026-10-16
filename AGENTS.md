@@ -66,7 +66,7 @@ Because you cannot build a simulator here, the **CI matrix is how you validate
 an adapter change**: develop, push a branch, open a PR, and read the job
 results.
 
-- `ci.yml` builds the **NS-3 module against the prebuilt GHCR images across
+- `ci-ns3.yml` (called by `ci.yml`) builds the **NS-3 module against the prebuilt GHCR images across
   ns-3.36–3.48** (e2e delivery smoke). Iterate on failures from the job logs —
   cross-version API drift is the usual cause (e.g. ns-3.36's non-`const`
   `Histogram` accessors, `RouteInput` by-value vs const-ref, scoped TestSuite
@@ -92,7 +92,7 @@ results.
 ### Validating the browser adapter and the learn site
 
 The `web-parity` CI job is the gate; locally (needs an activated emsdk, pinned
-in `ci.yml`):
+in `.github/actions/setup-emsdk`):
 
 ```bash
 web/test/parity.sh 120 "1 2 7 42"      # native vs WASM decision traces, byte-identical

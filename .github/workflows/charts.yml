@@ -68,7 +68,9 @@ jobs:
       - name: Install matplotlib
         # Pinned in requirements-dev.txt: a matplotlib release changes the
         # rendered pixels, so a float here would recommit every PNG.
-        run: pip install -c requirements-dev.txt matplotlib
+        uses: ./.github/actions/python-tools
+        with:
+          packages: matplotlib
       - name: Render
         run: python3 ns3/tools/family-charts.py
       - name: Show what changed
