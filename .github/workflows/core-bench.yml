@@ -83,10 +83,14 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
           cat "$GITHUB_STEP_SUMMARY"
+      - name: Install pinned matplotlib
+        if: github.event_name != 'pull_request'
+        uses: ./.github/actions/python-tools
+        with:
+          packages: matplotlib
       - name: Record and chart (main only)
         if: github.event_name != 'pull_request'
         run: |
-          pip install -c requirements-dev.txt matplotlib
           "$RUNNER_TEMP/head/bench_core" --csv | tee "$RUNNER_TEMP/run.csv"
           cpu=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')
           python3 tools/bench/core_bench.py record "$RUNNER_TEMP/run.csv" \

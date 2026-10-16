@@ -1,0 +1,114 @@
+name: CI / core
+
+# The simulator-free core: unit tests, sanitizers, coverage, codec fuzzing.
+# Called by ci.yml (#610: ci.yml split by area behind the one CI gate, #607);
+# not triggered on its own. Same jobs, same checks as before the split.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  core:
+    name: core library + unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake g++
+      - name: Build and test core
+        run: make test
+  core-sanitizers:
+    name: core under ASan + UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake g++
+      - name: Build core with sanitizers and run tests
+        run: |
+          cmake -S core -B core/build-san -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all -g"
+          cmake --build core/build-san -j
+          cd core/build-san && ctest --output-on-failure
+  core-coverage:
+    name: core test coverage (gcov, report-only)
+    runs-on: ubuntu-latest
+    # Which parts of core/ do the 18 ctest targets actually execute? The repo's
+    # expensive failures (D2 evaporation, the #19 detector-D storm, the 8-bit
+    # sequence wrap) were all behaviour in paths nothing exercised, so make that
+    # answerable instead of intuited — and use it to aim new tests.
+    #
+    # Report-only on purpose (#162): there is deliberately **no --fail-under**
+    # threshold here. Coverage is a map of untested paths, not a target; a floor
+    # chosen before a baseline exists is either meaningless or an obstacle that
+    # gets disabled the first time it bites. Observe the number across a few
+    # merges, then pick a floor from evidence in a follow-up.
+    #
+    # No container/simulator: core/ builds standalone in seconds (golden rule 1).
+    # Adapter coverage would mean instrumenting a containerized ns-3 build and is
+    # out of scope.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Install pinned gcovr
+        uses: ./.github/actions/python-tools
+        with:
+          packages: gcovr
+      - name: Install toolchain
+        # gcovr is pinned so the reported baseline stays comparable across
+        # merges — its per-version gcov parsing shifts the numbers. The pin
+        # lives in requirements-dev.txt so Dependabot can see it; bump it
+        # there, noting the step change in the PR.
+        run: |
+          sudo apt-get update && sudo apt-get install -y cmake g++
+      - name: Build core with gcov instrumentation
+        run: |
+          cmake -S core -B core/build-coverage -DCMAKE_BUILD_TYPE=Debug \
+            -DANTHOCNET_COVERAGE=ON
+          cmake --build core/build-coverage -j
+      - name: Run the unit tests (emits the .gcda counters)
+        run: cd core/build-coverage && ctest --output-on-failure
+      - name: Report coverage of core/src + core/include
+        # --exclude drops core/tests/ so the number measures coverage *of* the
+        # core, not of the tests (which are ~100% by construction and would
+        # dilute it). --txt gives the per-file table, --print-summary the overall
+        # line/function/branch totals; both land in the job log, and the drill-
+        # down HTML + Cobertura XML go to the artifact below.
+        run: |
+          mkdir -p coverage
+          gcovr --root . core/build-coverage \
+            --filter 'core/src/' --filter 'core/include/' \
+            --exclude 'core/tests/' \
+            --txt --print-summary \
+            --html-details coverage/index.html \
+            --xml-pretty --xml coverage/coverage.xml \
+            --json-summary coverage/summary.json
+      - name: Upload the detailed report (HTML + Cobertura XML)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: core-coverage-report
+          path: coverage/
+          retention-days: 14
+      # The README badge's number is published by pages.yml (#333), which
+      # recomputes it with this job's build, filters and gcovr pin.
+  codec-fuzz:
+    name: codec fuzz (libFuzzer, 60s)
+    runs-on: ubuntu-latest
+    # The codec is the only parser of untrusted network bytes (item 12), so fuzz
+    # its decode path against a small seed corpus. ubuntu-latest's clang ships
+    # the libFuzzer/ASan runtimes; a crash/UB/over-read fails the job.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build the codec fuzz target (clang + libFuzzer/ASan)
+        run: |
+          cmake -S core -B core/build-fuzz -DANTHOCNET_FUZZ=ON -DCMAKE_CXX_COMPILER=clang++
+          cmake --build core/build-fuzz --target fuzz_codec
+      - name: Fuzz the decode path for 60s
+        run: |
+          core/build-fuzz/tests/fuzz_codec -max_total_time=60 -print_final_stats=1 \
+            core/tests/fuzz_corpus

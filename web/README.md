@@ -26,7 +26,7 @@ protocol by running **the** protocol, not a look-alike.
 cmake -S web -B web/build && cmake --build web/build -j
 web/build/ahn-web-trace 60 1 | head
 
-# WebAssembly (needs an activated emsdk, pinned in ci.yml)
+# WebAssembly (needs an activated emsdk, pinned in .github/actions/setup-emsdk)
 emcmake cmake -S web -B web/build-wasm && cmake --build web/build-wasm -j
 #   -> web/build-wasm/anthocnet.{js,wasm}: the ES module the site loads
 #   -> web/build-wasm/ahn-web-trace.js:    the parity runner (node)

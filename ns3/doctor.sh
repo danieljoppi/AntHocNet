@@ -25,7 +25,7 @@ ok() { say ok "$1"; }
 warn() { say warn "$1"; warns=$((warns + 1)); }
 fail() { say FAIL "$1"; fails=$((fails + 1)); }
 
-# Supported range: the CI matrix (ci.yml ns3-build) — keep the two in step.
+# Supported range: the CI matrix (ci-ns3.yml ns3-build) — keep the two in step.
 MIN_MINOR=36
 MAX_MINOR=48
 

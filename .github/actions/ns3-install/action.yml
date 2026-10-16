@@ -1,0 +1,30 @@
+# Shared setup (#610): install AntHocNet into the ns-3 tree of the GHCR image
+# (/opt/ns-3), the first step of every ns-3 container job. Configure and build
+# stay in each job: they genuinely differ (test filters, sanitizers, profiles).
+name: Install AntHocNet into /opt/ns-3
+description: make install-ns3, or unpack the drop-in release tarball (#606).
+inputs:
+  baselines:
+    description: "'1' installs the comparison modules (AOMDV, GPSR, oracle) too; '0' AntHocNet alone"
+    default: '1'
+  from-tarball:
+    description: "'true' builds the release tarball and unpacks it, proving the asset users download"
+    default: 'false'
+  ns3dir:
+    description: the ns-3 tree
+    default: /opt/ns-3
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        BASELINES: ${{ inputs.baselines }}
+        TARBALL: ${{ inputs.from-tarball }}
+        NS3DIR: ${{ inputs.ns3dir }}
+      run: |
+        if [ "$TARBALL" = true ]; then
+          tools/release/module-tarball.sh ci /tmp/tarball
+          tar -xzf /tmp/tarball/anthocnet-ns3-modules-ci.tar.gz -C "$NS3DIR/contrib"
+        else
+          make install-ns3 NS3DIR="$NS3DIR" BASELINES="$BASELINES"
+        fi

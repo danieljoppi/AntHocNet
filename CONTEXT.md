@@ -116,7 +116,7 @@ results/                  ← raw benchmark data: cells/, campaign/ (never hand-
 api/                      ← Doxygen config (published at /api/)
 paper/                    ← paper source
 .claude/skills/           ← agent procedures (not shipped in releases)
-.github/workflows/ci.yml  ← core tests + NS-3 matrix + WASM parity
+.github/workflows/ci.yml  ← the CI gate; calls ci-core / ci-web / ci-ns3 (core tests, WASM parity, NS-3 matrix)
 ```
 
 ## 6. Bugs fixed during the extraction (see `docs/porting-notes.md`)

@@ -3,7 +3,7 @@
 # Claude Code on the web container, at the versions CI pins.
 #
 #   always:        ruff, mkdocs-material, pyyaml (from requirements-dev.txt)
-#   AHN_WEB=1:     emsdk at ci.yml's pinned version + playwright-core/axe-core
+#   AHN_WEB=1:     emsdk at CI's pinned version + playwright-core/axe-core
 #                  (for web/test/parity.sh and web/test/smoke.mjs)
 #
 # A no-op outside cloud sessions (CLAUDE_CODE_REMOTE unset): local machines
@@ -25,8 +25,8 @@ fi
 
 # Browser toolchain, opt-in (it is large).
 if [ "${AHN_WEB:-0}" = "1" ]; then
-    # The emsdk pin is the first `--branch X` in ci.yml (its web-parity job).
-    ver=$(grep -o -- '--branch [0-9.]*' .github/workflows/ci.yml | head -n 1 | awk '{print $2}')
+    # The emsdk pin is the setup-emsdk action's default (#610).
+    ver=$(grep -oE "default: '[0-9.]+'" .github/actions/setup-emsdk/action.yml | head -n 1 | tr -dc '0-9.')
     ver=${ver:-4.0.10}
     em="$HOME/.cache/emsdk"
     if [ ! -x "$em/upstream/emscripten/emcc" ]; then
@@ -37,8 +37,8 @@ if [ "${AHN_WEB:-0}" = "1" ]; then
     fi
     pw="$HOME/.cache/ahn-node"
     if [ ! -d "$pw/node_modules/playwright-core" ]; then
-        pwv=$(grep -o 'playwright-core@[0-9.]*' .github/workflows/ci.yml | head -n 1)
-        axv=$(grep -o 'axe-core@[0-9.]*' .github/workflows/ci.yml | head -n 1)
+        pwv=$(grep -o 'playwright-core@[0-9.]*' .github/workflows/ci-web.yml | head -n 1)
+        axv=$(grep -o 'axe-core@[0-9.]*' .github/workflows/ci-web.yml | head -n 1)
         mkdir -p "$pw" && (cd "$pw" && npm install -s --no-audit --no-fund "${pwv:-playwright-core}" "${axv:-axe-core}" >/dev/null 2>&1) \
             || log "npm install failed"
     fi
