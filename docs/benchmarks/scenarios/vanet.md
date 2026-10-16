@@ -18,6 +18,8 @@ try:
 > read them against each other and against the [VANET anchors](#anchors),
 > never against the Broch floor, which is RWP-only.
 
+**Re-measured for v2.2.0 (2026-10-16).** The [v2.2.0 campaign](../v2.2.0-campaign.md#results) re-ran every cell on this page as its control generation, at `a8a16991`, with the shipped defaults and the same 20 seeds. Every `##RUN##` row is byte-identical to the cells this page cites. No default moved, so the numbers here stand as v2.2.0's. The control cells are `results/cells/vanet-*-v220.txt`. What the campaign's four knobs do on this family is in [network-regimes.md §7](../../network-regimes.md#7-measured-the-v220-knobs-per-regime).
+
 ## What it stresses
 
 Vehicular ad hoc networks in a city. Three things change against the open
@@ -313,7 +315,36 @@ This is the knob-watchlist item #301 named (`HelloInterval` vs link
 lifetime, hold caps under corridor-shaped reconvergence). ADR-0019 forbids
 retuning per family before a measured A/B, so it is recorded as a follow-up,
 [#537](https://github.com/danieljoppi/AntHocNet/issues/537), not changed here: a paired `HelloInterval` / `ReconvHoldCap` A/B on
-this cell, and a corner-aware link-lifetime rule for the preflight.
+this cell, and a corner-aware link-lifetime rule for the preflight. Both have
+since landed: the preflight rule in v2.2.0's phase 0, and the A/B in the
+v2.2.0 campaign (the next section).
+
+### Tuning for urban VANET (v2.2.0 campaign)
+
+The [v2.2.0 campaign](../v2.2.0-campaign.md#results) ran #537's A/B on this
+page's two cells, together with the hold-cap and link-metric arms, on the
+same 20 seeds as the control. Each knob below **helps on this regime**. None
+became a default, because each costs delivery in another family (ADR-0019;
+[network-regimes.md §7](../../network-regimes.md#7-measured-the-v220-knobs-per-regime)).
+If you run urban vehicular networks, these are measured settings to start from:
+
+| attribute | main cell (100 vehicles) | sparse cell (40) | costs elsewhere |
+|---|---|---|---|
+| `ReconvHoldCap=1s` | PDR **+5.3 pp**, delay99 +210 to +340 ms | PDR **+6.2 pp**, delay99 +360 ms, NRL −3 to −4 | grid on Nakagami: PDR −1.4 to −6.0 pp |
+| `HelloInterval=500ms` | PDR **+1.9 pp**, delay99 −15 % | PDR +0.5 pp, delay99 −100 ms, NRL +1.7 | MANET grid: PDR −0.5 to −8 pp |
+| `RepairHoldCap=200ms` | PDR **+1.1 pp**, delay99 **−1.1 s**, NRL −11 | PDR −0.2 pp, delay99 −340 ms | grid two-ray, sparse FANET: PDR −0.3 to −1.0 pp |
+| `LinkMetric=sinr` | **avoid**: PDR −1.6 pp, delay99 +1 s, NRL +13 | PDR +0.4 pp, delay99 +1.5 s | — |
+
+The ns-3 attribute prefix is `--ns3::anthocnet::RoutingProtocol::`.
+
+**The knobs were measured one at a time, never combined.** The pre-registered
+`combined` arm runs only when two defaults move, and none did. Their gains are
+not known to add.
+
+**None of them closes the reconvergence gap.** At best a knob claws back
+5–6 pp of the 39.6 pp to the oracle. The loss is set by link lifetime at
+corners (above), which no timer fixes. That is why v2.3.0's link-lifetime
+mechanism ([#574](https://github.com/danieljoppi/AntHocNet/issues/574)) keeps its place.
 
 ### Threats to validity
 

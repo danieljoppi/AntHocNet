@@ -239,6 +239,40 @@ That asymmetry is the satellite research programme
 ([#192](https://github.com/danieljoppi/AntHocNet/issues/192)), not a defect
 list.
 
+## 7. Measured: the v2.2.0 knobs per regime
+
+Section 6 says which mechanisms are live in each regime. The
+[v2.2.0 campaign](benchmarks/v2.2.0-campaign.md#results) measured four
+pending-queue and link knobs in **every** family:
+- 18 cells;
+- 20 seeds;
+- paired per seed against the shipped defaults.
+
+None moved a default: each loses delivery somewhere (ADR-0019). This table
+is what each one does where, so a reader who runs one regime can still use
+it. Each entry shows AntHocNet's paired change in PDR, delay99 and NRL; "≡"
+marks byte-identical runs, where the knob never binds.
+
+| knob (attribute) | MANET grid | static mesh | FANET | VANET | satellite ISL grid | LEO shells |
+|---|---|---|---|---|---|---|
+| `RepairHoldCap=200ms` ([#433](https://github.com/danieljoppi/AntHocNet/issues/433)) | two-ray: PDR −0.3 to −1.0 pp, d99 −3 to −13 %; Nakagami: PDR noise, d99 −22 to −33 %, NRL −4 to −9 % | ≡ | main: d99 −10 %; sparse: PDR −0.4 pp, d99 −22 % | **main: PDR +1.1 pp, d99 −1.1 s, NRL −11 (recommended)**; sparse: PDR −0.2 pp, d99 −340 ms | ≡ | ≡ |
+| `LinkMetric=sinr` ([#181](https://github.com/danieljoppi/AntHocNet/issues/181), ADR-0024) | two-ray: PDR +0.1 to +0.4 pp; Nakagami: d99 up to +98 ms, NRL +1 to +2.4 | d99 +0.4 ms | main: PDR +0.4 pp, d99 +18 ms; sparse: d99 +535 ms | **main: PDR −1.6 pp, d99 +1 s, NRL +13 (avoid)**; sparse: PDR +0.4 pp, d99 +1.5 s | PDR and delay identical (no PHY SINR on a p2p ISL: falls back to hop count) | starlink1: PDR +0.7 pp at NRL +49 (the access links do report SINR) |
+| `HelloInterval=500ms` ([#537](https://github.com/danieljoppi/AntHocNet/issues/537)) | **PDR −0.5 to −8.0 pp, NRL +3.8 to +20 (avoid)** | PDR −0.4 pp, NRL +3.3 | PDR +0.5 to +0.6 pp, NRL +0.9 to +1.5 | **main: PDR +1.9 pp, d99 −15 % (recommended)**; sparse: PDR +0.5 pp, NRL +1.7 | PDR ≡, NRL +1 to +18 (pure beacon cost) | PDR +2.6 to +6.5 pp, NRL +76 to +550 (load roughly doubles) |
+| `ReconvHoldCap=1s` ([#537](https://github.com/danieljoppi/AntHocNet/issues/537)) | two-ray: PDR +0.3 to +1.2 pp, d99 +6 to +36 %; **Nakagami: PDR −1.4 to −6.0 pp, d99 +310 to +470 ms (avoid)** | noise | main: PDR +1.3 pp; sparse: PDR +4.4 pp; d99 +180 to +590 ms | **main: PDR +5.3 pp; sparse: PDR +6.2 pp; d99 +210 to +360 ms (recommended where delay is tolerable)** | ≡ | walker16: noise; Starlink: PDR +0.5 to +0.8 pp, d99 +100 to +120 ms |
+
+Read the table by the regime's link-break signature:
+
+- **Breaks that are clean and frequent** (VANET corners, sparse FANET) reward
+  every knob that waits or re-detects faster: the hold caps and the faster hello.
+- **Breaks that are transient fades** (Nakagami) punish waiting.
+  Held packets queue behind ones the next attempt would have delivered, and
+  faster beacons add contention.
+- **Breaks that cannot happen to the routing** (the ISL torus, the static
+  mesh) leave the caps idle. The hello pays its beacons and buys nothing.
+
+These are the same three signatures section 4 derives from the topology. The
+campaign's contribution is the measured size of each effect.
+
 ## Provenance of the numbers
 
 Measurements are from this repository's own CI, not from the literature:

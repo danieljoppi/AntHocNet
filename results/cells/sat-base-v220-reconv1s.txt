@@ -1,0 +1,49 @@
+# v2.2.0 campaign (#565) sat-base-v220-reconv1s: 1 run(s) @8da0fe27 runs 38915800687 (reconv1s/sat-base); 20 seeds, 900 s (leo 300 s). Plan: docs/benchmarks/v2.2.0-campaign.md. The artifact carries no ##PROV## line, so each run's is rebuilt from the Actions run record (commit, ref, attempt) and the dispatch inputs.
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##RUN## 1 anthocnet 100.00 10.15 11.00 46.69 1.15 1.89 0.00
+# diag anthocnet seed=1 ctrlTx=65828 antTx[1=14397,2=184,4=6178,] antRx[1=57588,2=208,4=6572,]
+##RUN## 2 anthocnet 100.00 10.15 11.00 46.64 1.17 1.91 0.00
+# diag anthocnet seed=2 ctrlTx=66814 antTx[1=14402,2=207,4=6866,] antRx[1=57608,2=234,4=7313,]
+##RUN## 3 anthocnet 100.00 10.15 11.00 46.82 1.16 1.90 0.00
+# diag anthocnet seed=3 ctrlTx=66609 antTx[1=14404,2=207,4=6812,] antRx[1=57616,2=234,4=7223,]
+##RUN## 4 anthocnet 100.00 10.15 11.00 46.64 1.16 1.90 0.00
+# diag anthocnet seed=4 ctrlTx=66168 antTx[1=14399,2=207,4=6442,] antRx[1=57596,2=234,4=6843,]
+##RUN## 5 anthocnet 100.00 10.15 11.00 46.76 1.17 1.91 0.00
+# diag anthocnet seed=5 ctrlTx=66656 antTx[1=14400,2=184,4=6736,] antRx[1=57600,2=208,4=7196,]
+##RUN## 6 anthocnet 100.00 10.15 11.00 46.77 1.16 1.90 0.00
+# diag anthocnet seed=6 ctrlTx=66132 antTx[1=14395,2=207,4=6362,] antRx[1=57576,2=234,4=6774,]
+##RUN## 7 anthocnet 100.00 10.15 11.00 46.74 1.16 1.90 0.00
+# diag anthocnet seed=7 ctrlTx=66525 antTx[1=14400,2=230,4=6682,] antRx[1=57600,2=260,4=7092,]
+##RUN## 8 anthocnet 100.00 10.15 11.00 46.72 1.15 1.89 0.00
+# diag anthocnet seed=8 ctrlTx=65565 antTx[1=14404,2=184,4=6130,] antRx[1=57616,2=208,4=6464,]
+##RUN## 9 anthocnet 100.00 10.15 11.00 46.79 1.15 1.89 0.00
+# diag anthocnet seed=9 ctrlTx=65953 antTx[1=14400,2=184,4=6267,] antRx[1=57600,2=208,4=6671,]
+##RUN## 10 anthocnet 100.00 10.15 11.00 46.63 1.16 1.91 0.00
+# diag anthocnet seed=10 ctrlTx=66352 antTx[1=14406,2=184,4=6507,] antRx[1=57624,2=208,4=6947,]
+##RUN## 11 anthocnet 100.00 10.15 11.00 46.66 1.17 1.91 0.00
+# diag anthocnet seed=11 ctrlTx=66804 antTx[1=14402,2=207,4=6877,] antRx[1=57608,2=234,4=7316,]
+##RUN## 12 anthocnet 100.00 10.15 11.00 46.80 1.16 1.90 0.00
+# diag anthocnet seed=12 ctrlTx=66395 antTx[1=14394,2=207,4=6596,] antRx[1=57576,2=234,4=7015,]
+##RUN## 13 anthocnet 100.00 10.15 11.00 46.73 1.17 1.91 0.00
+# diag anthocnet seed=13 ctrlTx=66763 antTx[1=14404,2=207,4=6843,] antRx[1=57616,2=234,4=7283,]
+##RUN## 14 anthocnet 100.00 10.15 11.00 46.75 1.16 1.90 0.00
+# diag anthocnet seed=14 ctrlTx=66555 antTx[1=14396,2=207,4=6676,] antRx[1=57584,2=234,4=7114,]
+##RUN## 15 anthocnet 100.00 10.15 11.00 46.71 1.16 1.90 0.00
+# diag anthocnet seed=15 ctrlTx=66362 antTx[1=14407,2=184,4=6597,] antRx[1=57628,2=208,4=7012,]
+##RUN## 16 anthocnet 100.00 10.15 11.00 46.70 1.16 1.90 0.00
+# diag anthocnet seed=16 ctrlTx=66417 antTx[1=14401,2=184,4=6625,] antRx[1=57604,2=208,4=7055,]
+##RUN## 17 anthocnet 100.00 10.15 11.00 46.84 1.16 1.90 0.00
+# diag anthocnet seed=17 ctrlTx=66311 antTx[1=14406,2=207,4=6497,] antRx[1=57624,2=234,4=6904,]
+##RUN## 18 anthocnet 100.00 10.15 11.00 46.74 1.16 1.90 0.00
+# diag anthocnet seed=18 ctrlTx=66511 antTx[1=14406,2=207,4=6568,] antRx[1=57624,2=234,4=7013,]
+##RUN## 19 anthocnet 100.00 10.15 11.00 46.70 1.17 1.91 0.00
+# diag anthocnet seed=19 ctrlTx=66819 antTx[1=14396,2=184,4=6903,] antRx[1=57584,2=208,4=7366,]
+##RUN## 20 anthocnet 100.00 10.15 11.00 46.70 1.16 1.90 0.00
+# diag anthocnet seed=20 ctrlTx=66186 antTx[1=14401,2=207,4=6467,] antRx[1=57604,2=234,4=6859,]
++Grid torus 4x4 = 16 satellites, 32 ISLs (mean degree 4.00) @ 5.00 ms 10Mbps, 8 flows, 900.00 s, mean of 20 run(s)
+
+protocol          PDR%  delay(ms)  delay99(ms)  thrput(kbps)     NRL   NRLbytes  jitter(ms)
+-------------------------------------------------------------------------------------------
+anthocnet        100.0       10.2         11.0         46.73    1.16       1.90        0.00
+##PROV## commit=8da0fe27fffa7bd3ca1a72307444e69595f7a34a ref=main run_id=38915800687 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=isl-grid

@@ -33,6 +33,10 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 > carry their own provenance (corridor/failcell `820f5cf`, seam cell
 > `5220bd0`).
 
+**Re-measured for v2.2.0 (2026-10-16).** The [v2.2.0 campaign](../v2.2.0-campaign.md#results) re-ran every cell on this page as its control generation, at `a8a16991`, with the shipped defaults and the same 20 seeds. Every `##RUN##` row is byte-identical to the cells this page cites except AODV's, which differ through stock AODV's pointer-keyed socket map on multi-interface nodes ([#362](https://github.com/danieljoppi/AntHocNet/issues/362)); its paired deltas are within noise. No default moved, so the numbers here stand as v2.2.0's. The control cells are `results/cells/sat-*-v220.txt`. What the campaign's four knobs do on this family is in [network-regimes.md §7](../../network-regimes.md#7-measured-the-v220-knobs-per-regime).
+
+On this suite the campaign's `sinr` arm is the hop-count metric under another name. A point-to-point ISL has no PHY SINR ([ADR-0024](../../adr/0024-per-neighbour-link-quality-port.md)), so the metric falls back, and PDR and delay are identical to the control. The two hold caps (`repair200`, `reconv1s`) never bind: their cells are byte-identical. The faster hello (`hello500`) costs NRL +1 to +18 and buys nothing on a fixed topology.
+
 ## Re-measured with arm-independent flow schedules (#517)
 
 > **Every cell was re-measured after the #517 fix.** Before it, the harness
