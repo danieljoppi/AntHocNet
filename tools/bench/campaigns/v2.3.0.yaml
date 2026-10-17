@@ -1,0 +1,76 @@
+# The v2.3.0 campaign (docs/benchmarks/v2.3.0-campaign.md): every regime-gated
+# mechanism of v2.3.0 against the shipped defaults, in all 18 published cells,
+# paired per seed. Pre-registered: this file is merged with the plan page
+# before the first dispatch, and the jobs run at main after the mechanisms'
+# code is merged.
+#
+#   python3 tools/bench/campaign.py plan tools/bench/campaigns/v2.3.0.yaml
+generation: v230
+ref: main
+cap: 12
+control: control
+
+arms:
+  control: ""
+  ll: "--ns3::anthocnet::RoutingProtocol::EnableLinkLifetime=true"
+  quiet: "--ns3::anthocnet::RoutingProtocol::EnableQuietMode=true"
+  evap: "--ns3::anthocnet::RoutingProtocol::EnableAdaptiveEvaporation=true"
+  energy: "--ns3::anthocnet::RoutingProtocol::LinkMetric=energy"
+  timing: "--timingProfile=propagation"
+  p2phello: "--ns3::anthocnet::RoutingProtocol::P2pHelloEvery=5"
+
+x-grid: &grid {scenario: paper, version: 3.42-opt, nNodes: 50, time: 900, runs: 20, areaX: 1500, areaY: 300, speed: 20, range: 300, transport: udp, harness: compare, protocols: anthocnet}
+x-fanet: &fanet {scenario: fanet, version: 3.42-opt, nNodes: 30, time: 900, runs: 20, areaX: 1000, areaY: 1000, pause: 0, speed: 30, propagation: range, mobility: gaussmarkov, transport: udp, harness: compare, protocols: anthocnet}
+x-vanet: &vanet {scenario: vanet, version: 3.42-opt, time: 900, areaX: 800, areaY: 800, pause: 0, speed: 20, range: 300, propagation: urban, mobility: manhattan, transport: udp, harness: compare, protocols: anthocnet}
+x-isl: &isl {harness: isl-grid, version: 3.42-opt, torus: "true", islDelayMs: 5, islRate: 10Mbps, time: 900, runs: 20, cbrBps: 4096, protocols: anthocnet}
+x-leo: &leo {harness: leo-walker, version: "3.48", time: 300, runs: 20, flows: 4, cbrBps: 2048, islRate: 10Mbps, protocols: anthocnet}
+
+# armArgs.ll: the range the link-lifetime prediction assumes is the cell's
+# radio range. On the satellite cells it is a 5000 km proxy for the longest
+# ISL (point-to-point links have no radio range; see the plan page).
+cells:
+  grid-rwp-tworay: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: tworay, pause: 30}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=300"}}
+  grid-rwp-nakagami: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: nakagami, pause: 30}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=300"}}
+  grid-ssrwp-tworay: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: ssrwp, propagation: tworay, pause: 30}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=300"}}
+  grid-ssrwp-nakagami: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: ssrwp, propagation: nakagami, pause: 30}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=300"}}
+  grid-gaussmarkov-tworay: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: gaussmarkov, propagation: tworay, pause: 0}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=300"}}
+  grid-gaussmarkov-nakagami: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: gaussmarkov, propagation: nakagami, pause: 0}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=300"}}
+  static-mesh: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: range, pause: 900}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=300"}}
+  fanet-main: {workflow: paper-benchmark.yml, inputs: {<<: *fanet, range: 350}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=350"}}
+  fanet-sparse: {workflow: paper-benchmark.yml, inputs: {<<: *fanet, range: 250}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=250"}}
+  vanet-main: {workflow: paper-benchmark.yml, inputs: {<<: *vanet, nNodes: 100, runs: 4}, blocks: [1, 5, 9, 13, 17], armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=300"}}
+  vanet-sparse: {workflow: paper-benchmark.yml, inputs: {<<: *vanet, nNodes: 40, runs: 10}, blocks: [1, 11], armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=300"}}
+  sat-base: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 4, cols: 4, flows: 8}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  sat-failcell: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 4, cols: 4, flows: 8, extraArgs: "--breakLink=0,0,3,0 --breakAt=450"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  sat-corridor: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 6, cols: 6, flows: 0, extraArgs: "--corridorLoad=12Mbps --corridorLoadAt=15"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  sat-seam: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 6, cols: 6, flows: 8, extraArgs: "--removeLinks=5,1,0,1;5,2,0,2;5,3,0,3;5,4,0,4;5,5,0,5"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-walker16-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: anthocnet, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-walker16-aodv: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: aodv, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-walker16-olsr: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: olsr, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-walker16-oracle: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-walker16-oracle-delay: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle-delay, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-walker16-geo-greedy: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: geo-greedy, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-starlink1-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: anthocnet, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-starlink1-aodv: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: aodv, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-starlink1-oracle: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-starlink1-oracle-delay: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle-delay, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-starlink1-geo-greedy: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: geo-greedy, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-starlink1-storm-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: anthocnet, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-starlink1-storm-aodv: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: aodv, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-starlink1-storm-oracle: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-starlink1-storm-oracle-delay: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle-delay, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+  leo-starlink1-storm-geo-greedy: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: geo-greedy, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01"}, armArgs: {ll: "--ns3::anthocnet::RoutingProtocol::LinkLifetimeRange=5000000"}}
+
+jobs:
+  # Control: every protocol each cell publishes, at the shipped defaults.
+  - {arms: [control], cells: [grid-rwp-tworay, grid-rwp-nakagami, grid-ssrwp-tworay, grid-ssrwp-nakagami, grid-gaussmarkov-tworay, grid-gaussmarkov-nakagami, static-mesh], inputs: {protocols: "anthocnet,aodv,olsr,dsdv,oracle"}}
+  - {arms: [control], cells: [fanet-main, fanet-sparse], inputs: {protocols: "anthocnet,aodv,olsr,dsdv,aomdv,oracle"}}
+  - {arms: [control], cells: [vanet-main, vanet-sparse], inputs: {protocols: "anthocnet,aodv,olsr,dsdv,aomdv,gpsr,oracle"}}
+  - {arms: [control], cells: [sat-base, sat-failcell, sat-corridor, sat-seam], inputs: {protocols: "anthocnet,aodv,olsr,oracle"}}
+  - {arms: [control], cells: [leo-walker16-anthocnet, leo-starlink1-anthocnet, leo-starlink1-storm-anthocnet, leo-walker16-aodv, leo-walker16-olsr, leo-walker16-oracle, leo-walker16-oracle-delay, leo-walker16-geo-greedy, leo-starlink1-aodv, leo-starlink1-oracle, leo-starlink1-oracle-delay, leo-starlink1-geo-greedy, leo-starlink1-storm-aodv, leo-starlink1-storm-oracle, leo-starlink1-storm-oracle-delay, leo-starlink1-storm-geo-greedy]}
+  # The mechanisms, AntHocNet only, in every family (ADR-0019).
+  - {arms: [ll, quiet, evap, energy], cells: [grid-rwp-tworay, grid-rwp-nakagami, grid-ssrwp-tworay, grid-ssrwp-nakagami, grid-gaussmarkov-tworay, grid-gaussmarkov-nakagami, static-mesh, fanet-main, fanet-sparse, vanet-main, vanet-sparse, sat-base, sat-failcell, sat-corridor, sat-seam, leo-walker16-anthocnet, leo-starlink1-anthocnet, leo-starlink1-storm-anthocnet]}
+  # Satellite-only mechanisms: the timing profile is a satellite-harness option,
+  # and the hello throttle is safe only where a failed ISL goes down (isl-grid).
+  - {arms: [timing], cells: [sat-base, sat-failcell, sat-corridor, sat-seam, leo-walker16-anthocnet, leo-starlink1-anthocnet, leo-starlink1-storm-anthocnet]}
+  - {arms: [p2phello], cells: [sat-base, sat-failcell, sat-corridor, sat-seam]}
