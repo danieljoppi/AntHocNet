@@ -15,8 +15,7 @@ One struct, two surfaces:
 
 | Layer | File | What it is |
 |---|---|---|
-| Core | [`core/include/anthocnet/core/config.h`](../core/include/anthocnet/core/config.h) | `anthocnet::core::Config` — **45 fields**, plain C++14 aggregate with default member initializers. The single source of truth; `AntRouterLogic` reads nothing else. |
-| Core | [`core/include/anthocnet/core/config.h`](../core/include/anthocnet/core/config.h) | `anthocnet::core::Config` — **46 fields**, plain C++14 aggregate with default member initializers. The single source of truth; `AntRouterLogic` reads nothing else. |
+| Core | [`core/include/anthocnet/core/config.h`](../core/include/anthocnet/core/config.h) | `anthocnet::core::Config` — **55 fields**, plain C++14 aggregate with default member initializers. The single source of truth; `AntRouterLogic` reads nothing else. |
 | NS-3 | [`ns3/anthocnet/model/anthocnet-routing-protocol.cc`](../ns3/anthocnet/model/anthocnet-routing-protocol.cc) | 30 `AddAttribute` blocks on `ns3::anthocnet::RoutingProtocol`. **24** of them write into `Config`; the other 6 are adapter-side state (queue timeouts, hold caps, the MAC failure detector, the MAC service-time EWMA, the adapter's own reactive-retry timer). |
 
 So a field is either a core default only or reachable as an ns-3 attribute —
@@ -102,8 +101,7 @@ The `ns-3 attribute` column is the name you pass to
 `--ns3::anthocnet::RoutingProtocol::<name>`; `—` means the field is core-only
 (edit `config.h` and rebuild).
 
-### 3.1 All 45 fields
-### 3.1 All 46 fields
+### 3.1 All 55 fields
 
 | parameter | default | unit | ns-3 attribute | source | what it affects |
 |---|---|---|---|---|---|

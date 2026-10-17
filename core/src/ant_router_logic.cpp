@@ -461,6 +461,8 @@ bool AntRouterLogic::quietAllows(NodeAddress dest) {
     }
     ++q.skipped;
     return false;
+}
+
 void AntRouterLogic::updateChurn(double dt) {
     if (dt <= 0.0) return;
     // EWMA of an event rate: each tick contributes changed/dt with weight
