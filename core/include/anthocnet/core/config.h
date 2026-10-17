@@ -94,6 +94,10 @@ struct Config {
     /// c_const to 3." -- Ducatelle, PhD thesis, USI Lugano, 2007, §4.2.6.
     double sinrCriticalDb = 17.0;  ///< SINR_c (dB)
     double sinrPenaltyCost = 3.0;  ///< c_const (> 1)
+    /// #145 energy metric: a node with less than this residual fraction
+    /// prices its hop as if it had exactly this much (cost <= 1 / floor).
+    /// `repo choice`.
+    double energyCostFloor = 0.01;
 
     /// Links whose pheromone drops below this are pruned.
     double minPheromone = 0.00001;  ///< MIN_PHEROMONE

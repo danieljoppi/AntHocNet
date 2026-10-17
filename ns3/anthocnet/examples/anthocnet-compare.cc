@@ -973,6 +973,15 @@ double g_energyTxA = 0.0, g_energyRxA = 0.0, g_energyIdleA = 0.0;
 // RX plus CCA_BUSY is what it saw others put there.
 double g_airTxS = 0.0, g_airRxS = 0.0, g_airCcaS = 0.0;
 
+/// #145: node `node`'s residual energy fraction, for the energy metric.
+double ResidualEnergyFraction(uint32_t node) {
+    if (g_energyInitJ <= 0.0 || node >= g_energyConsumedJ.size()) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+    const double left = (g_energyInitJ - g_energyConsumedJ[node]) / g_energyInitJ;
+    return left < 0.0 ? 0.0 : left;
+}
+
 void OnPhyState(uint32_t node, Time, Time duration, WifiPhyState state) {
     switch (state) {
         case WifiPhyState::TX:
@@ -1990,6 +1999,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         NS_ABORT_MSG("unknown protocol '" << proto << "' -- see --PrintHelp's --protocols list");
     }
     internet.Install(nodes);
+    // #145: the energy metric reads each node's battery through this probe.
+    // Only an anthocnet arm with energy accounting on gets one; elsewhere the
+    // metric sees "unknown" and degrades to hop count.
+    if (proto == "anthocnet" && P.energyJ > 0.0) {
+        for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+            Ptr<ns3::anthocnet::RoutingProtocol> ahn = DynamicCast<ns3::anthocnet::RoutingProtocol>(
+                nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol());
+            if (ahn) ahn->SetEnergyProbe(MakeBoundCallback(&ResidualEnergyFraction, i));
+        }
+    }
     // #296: gpsr's data packets carry a position header, injected by
     // re-pointing the UDP down target — the helper wires that after the stack
     // exists, exactly as the dwosion examples do (scoped to this run's nodes,

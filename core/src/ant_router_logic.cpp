@@ -680,9 +680,13 @@ double AntRouterLogic::localHopCost(const AntMessage& ant, NodeAddress nextHop) 
 
 double AntRouterLogic::linkCost(NodeAddress neighbor) const {
     if (!metric_->usesLinkQuality()) return config_.hopTimeSec;
-    const double sinr = linkQuality_ ? linkQuality_->sinrDbFrom(neighbor)
-                                     : std::numeric_limits<double>::quiet_NaN();
-    return sinrLinkCost(sinr, config_.sinrCriticalDb, config_.sinrPenaltyCost);
+    HopSignals s;
+    if (linkQuality_) s.sinrDb = linkQuality_->sinrDbFrom(neighbor);
+    if (energy_) s.residualEnergy = energy_->residualEnergyFraction();
+    s.sinrCriticalDb = config_.sinrCriticalDb;
+    s.sinrPenaltyCost = config_.sinrPenaltyCost;
+    s.energyFloor = config_.energyCostFloor;
+    return metric_->hopCost(s);
 }
 
 NodeAddress AntRouterLogic::advanceBackAnt(AntMessage& ant) const {

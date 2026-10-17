@@ -29,9 +29,11 @@ struct Entry {
 const std::vector<Entry>& table() {
     static const ClassicMetric classic;
     static const SinrMetric sinr;
+    static const EnergyMetric energy;
     static const std::vector<Entry> entries = {
         {kClassic, &classic},
         {kSinr, &sinr},
+        {kEnergy, &energy},
     };
     return entries;
 }

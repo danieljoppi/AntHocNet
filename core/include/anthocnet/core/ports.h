@@ -110,6 +110,15 @@ public:
     virtual bool self(Kinematics& out) const = 0;
 };
 
+/// This node's residual energy (#145): the fraction of its initial battery
+/// left, 0..1. NaN when the adapter has no energy model, which the energy
+/// metric reads as "no evidence", so the metric degrades to hop count.
+class IEnergy {
+public:
+    virtual ~IEnergy() = default;
+    virtual double residualEnergyFraction() const = 0;
+};
+
 /// Optional observer the core notifies of routing events (item 15). It only
 /// *reports* — it never makes routing decisions or does I/O, so the core stays
 /// pure. Adapters implement it to fan events out to their native trace

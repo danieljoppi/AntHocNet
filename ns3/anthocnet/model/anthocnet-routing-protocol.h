@@ -67,6 +67,7 @@ class RoutingProtocol : public Ipv4RoutingProtocol,
                         public ::anthocnet::core::IRouterObserver,
                         public ::anthocnet::core::ILinkState,
                         public ::anthocnet::core::ILinkQuality,
+                        public ::anthocnet::core::IEnergy,
                         public ::anthocnet::core::IKinematics {
 public:
     static TypeId GetTypeId();
@@ -119,6 +120,14 @@ public:
     double sinrDbFrom(::anthocnet::core::NodeAddress neighbor) const override;
     /// Called by the PHY monitor hook for every received MPDU (#181).
     void NotifyPhyRxSinr(Ptr<const Packet> packet, double sinrDb);
+
+    // core::IEnergy (#145): this node's residual energy fraction (0..1), from
+    // a probe the scenario sets, because energy accounting is the scenario's
+    // (anthocnet-compare integrates the PHY state trace, #256). NaN when no
+    // probe is set: the energy metric then degrades to hop count.
+    double residualEnergyFraction() const override;
+    /// Set the probe residualEnergyFraction() reads (#145).
+    void SetEnergyProbe(Callback<double> probe) { m_energyProbe = probe; }
 
     // core::IKinematics (#573, ADR-0025): this node's position and velocity
     // from its aggregated MobilityModel; false when it has none. Only read
@@ -369,6 +378,12 @@ private:
     double m_adaptiveEvapMin;          ///< #572
     double m_adaptiveEvapMax;          ///< #572
     double m_adaptiveEvapTau;          ///< #572
+    bool m_enableReactive;           ///< reactive forward-ant gate (ablation)
+    bool m_enableRepair;             ///< local-repair ant gate (ablation)
+    bool m_enableLinkFail;           ///< link-failure notification gate (ablation)
+    bool m_enableDirectedReactive;   ///< steer reactive ants by the virtual table
+    bool m_shareKinematics;          ///< hellos carry position/velocity (ADR-0025)
+    Callback<double> m_energyProbe;  ///< residual energy fraction source (#145)
     double m_proactiveBroadcastProb;
     double m_proactiveVirtualMargin;
     uint32_t m_maxHelloAdverts;  ///< #186: diffusion advert cap k (thesis: 10)

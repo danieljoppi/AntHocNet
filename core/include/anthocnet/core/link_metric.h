@@ -16,6 +16,7 @@
 #define ANTHOCNET_CORE_LINK_METRIC_H
 
 #include <cmath>
+#include <limits>
 
 namespace anthocnet {
 namespace core {
@@ -29,6 +30,17 @@ struct LinkObservation {
     double hopTime = 0.0;   ///< config T_hop (seconds).
 };
 
+/// What a node knows about one of its own links when a link-quality metric
+/// prices it (#181, #145). Unknown signals are NaN, and every metric must read
+/// NaN as "no evidence against this link".
+struct HopSignals {
+    double sinrDb = std::numeric_limits<double>::quiet_NaN();          ///< ILinkQuality
+    double residualEnergy = std::numeric_limits<double>::quiet_NaN();  ///< IEnergy, 0..1
+    double sinrCriticalDb = 17.0;                                      ///< Config::sinrCriticalDb
+    double sinrPenaltyCost = 3.0;                                      ///< Config::sinrPenaltyCost
+    double energyFloor = 0.01;                                         ///< Config::energyCostFloor
+};
+
 /// Maps an observation to a pheromone (goodness; higher == better).
 struct ILinkMetric {
     virtual ~ILinkMetric() = default;
@@ -40,6 +52,11 @@ struct ILinkMetric {
     /// estimate c_i^n of the cost to go from i to the next hop n"), and uses
     /// the same link cost wherever it adds one hop to a path.
     virtual bool usesLinkQuality() const { return false; }
+    /// The cost of one of this node's own links, for a metric that
+    /// usesLinkQuality(): the per-hop value a node writes into the hop a
+    /// backward ant came over, and adds wherever it extends a path by one hop.
+    /// Never called for a metric that does not use link quality.
+    virtual double hopCost(const HopSignals& /*s*/) const { return 1.0; }
 };
 
 /// The canonical AntHocNet metric (Eq.2): blend the path-time estimate with the
@@ -63,6 +80,7 @@ struct SinrMetric : ILinkMetric {
         return cost > 0.0 ? 1.0 / cost : 0.0;
     }
     bool usesLinkQuality() const override { return true; }
+    double hopCost(const HopSignals& s) const override;
 };
 
 /// Eq. 4.11: 1 for a link whose SINR is above `criticalDb`, `penalty` for one
@@ -70,6 +88,32 @@ struct SinrMetric : ILinkMetric {
 inline double sinrLinkCost(double sinrDb, double criticalDb, double penalty) {
     return (std::isnan(sinrDb) || sinrDb > criticalDb) ? 1.0 : penalty;
 }
+
+inline double SinrMetric::hopCost(const HopSignals& s) const {
+    return sinrLinkCost(s.sinrDb, s.sinrCriticalDb, s.sinrPenaltyCost);
+}
+
+/// The energy-aware metric (#145, the BeeAdHoc / EEABR line): a hop costs
+/// 1 / e, where e is the residual energy fraction of the node that forwards
+/// over it, floored so an almost-empty node costs a large but finite amount.
+/// A route costs the sum over its relays, and the pheromone is the inverse,
+/// so traffic shifts away from drained nodes before they die. Each node
+/// prices only its own hop, from its own battery, so nothing new travels on
+/// the wire (the per-hop scalar of ADR-0009, as for SINR, ADR-0024).
+/// Unknown energy (NaN) costs 1: the metric then degrades to hop count,
+/// never to a wrong ranking.
+struct EnergyMetric : ILinkMetric {
+    double pheromone(const LinkObservation& o) const override {
+        const double cost = o.pathTime > o.hops ? o.pathTime : o.hops;
+        return cost > 0.0 ? 1.0 / cost : 0.0;
+    }
+    bool usesLinkQuality() const override { return true; }
+    double hopCost(const HopSignals& s) const override {
+        if (std::isnan(s.residualEnergy)) return 1.0;
+        const double e = s.residualEnergy < s.energyFloor ? s.energyFloor : s.residualEnergy;
+        return e >= 1.0 ? 1.0 : 1.0 / e;
+    }
+};
 
 }  // namespace core
 }  // namespace anthocnet

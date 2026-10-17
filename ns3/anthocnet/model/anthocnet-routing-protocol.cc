@@ -815,6 +815,10 @@ double RoutingProtocol::sinrDbFrom(NodeAddress neighbor) const {
     return it == m_neighborSinrDb.end() ? std::numeric_limits<double>::quiet_NaN() : it->second;
 }
 
+double RoutingProtocol::residualEnergyFraction() const {
+    return m_energyProbe.IsNull() ? std::numeric_limits<double>::quiet_NaN() : m_energyProbe();
+}
+
 // --- #573: own position and velocity (core::IKinematics, ADR-0025) ----------
 
 bool RoutingProtocol::self(::anthocnet::core::Kinematics& out) const {
@@ -891,6 +895,7 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
             /*linkQuality*/ this));
         m_logic->setObserver(this);    // fan core events to the trace sources
         m_logic->setKinematics(this);  // ADR-0025; read only with ShareKinematics
+        m_logic->setEnergy(this);      // #145; read only by the energy metric
     }
 
     // One UDP socket per interface for ant control traffic.

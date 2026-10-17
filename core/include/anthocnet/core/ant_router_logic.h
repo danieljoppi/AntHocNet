@@ -59,6 +59,9 @@ public:
     /// #574: the next-hop weight link-lifetime prediction gives `neighbor`
     /// now: 1 when the gate is off or either side's kinematics are unknown.
     double linkLifetimeWeight(NodeAddress neighbor) const;
+    /// Attach the residual-energy port (#145; nullptr = unknown). Read only
+    /// by a metric that prices hops by energy.
+    void setEnergy(const IEnergy* energy) { energy_ = energy; }
     /// What `neighbor`'s last hello said about its position and velocity,
     /// extrapolated to now (p + v*(now - t_rx)). False when it is unknown: no
     /// hello from it carried a section, the last one did not, or the
@@ -246,6 +249,7 @@ private:
     std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
     std::map<NodeAddress, double> lastSeen_;        ///< neighbor -> last reception time
     const IKinematics* kinematics_ = nullptr;       ///< own position (ADR-0025), optional
+    const IEnergy* energy_ = nullptr;               ///< own battery (#145), optional
     /// ADR-0025: neighbour -> (kinematics its last hello carried, receive
     /// time). Only filled when Config::shareKinematics is on; erased with the
     /// neighbour (loseNeighbor) and by a hello that carries no section.
