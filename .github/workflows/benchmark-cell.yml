@@ -1,0 +1,208 @@
+name: Benchmark cell
+
+# One benchmark workflow for every harness (#612). It runs one cell (one
+# harness invocation, any number of seeds) and, if asked, opens a PR that
+# adds the cell to results/cells/ with its provenance and its scenario_check
+# verdict. That replaces the "save the artifact, rebuild the provenance,
+# commit by hand" loop.
+#
+# Every dispatch shape of the older workflows fits here, because `args` is
+# the harness's own command line:
+#   paper-benchmark.yml      harness=anthocnet-compare, args = its flags
+#                            (--scenario=paper --runs=20 ... --diag)
+#   satellite-benchmark.yml  harness=isl-grid | leo-walker, args = the flags
+#                            those inputs expanded to, plus extraArgs
+#   scenario-matrix.yml      one dispatch per sweep point; a sweep is a set
+#                            of cells (tools/bench/campaign.py dispatches sets)
+# rescue-artifacts.yml is recovery, not a dispatch shape, and stays. The
+# older workflows stay for one release of overlap (v2.3.0); they go in
+# v2.4.0 once campaign.py dispatches here.
+#
+# The bot PR is opened with the workflow's own token. Two consequences:
+# - it needs the repository setting "Allow GitHub Actions to create and
+#   approve pull requests"; without it the branch is still pushed, and the
+#   job summary links it;
+# - CI does not run on a PR a workflow token opens. The PR only adds a data
+#   file; close and reopen it if a check is wanted.
+on:
+  workflow_dispatch:
+    inputs:
+      harness:
+        description: 'anthocnet-compare (MANET/mesh/FANET/VANET) | isl-grid | leo-walker (ns-3 >= 3.48)'
+        type: choice
+        options: [anthocnet-compare, isl-grid, leo-walker]
+        default: anthocnet-compare
+      args:
+        description: 'The harness flags, verbatim (e.g. --scenario=paper --runs=20 --protocols=anthocnet,aodv,olsr,dsdv,oracle --diag)'
+        required: true
+      version:
+        description: 'ns-3 image tag (3.42-opt for campaigns; 3.48 for leo-walker)'
+        default: '3.42-opt'
+      cell:
+        description: 'Cell name: the PR adds results/cells/<cell>.txt (required with open_pr)'
+        default: ''
+      title:
+        description: "One line for the cell's header, e.g. 'static mesh (paper field, pause=900, disk) 20 seeds'"
+        default: ''
+      open_pr:
+        description: 'Open a PR adding the cell (with provenance and the scenario_check verdict)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  run:
+    name: ${{ inputs.harness }} ${{ inputs.cell }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360   # the hosted-runner ceiling (#121)
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ns3:${{ inputs.version }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check the inputs
+        env:
+          CELL: ${{ inputs.cell }}
+          OPEN_PR: ${{ inputs.open_pr }}
+        run: |
+          if [ "$OPEN_PR" = "true" ] && ! printf '%s' "$CELL" | grep -qE '^[a-z0-9][a-z0-9.-]*$'; then
+            echo "open_pr needs a cell name of [a-z0-9.-] (got '$CELL')"; exit 1
+          fi
+      - name: Install AntHocNet module
+        run: make install-ns3 NS3DIR=/opt/ns-3
+      - name: Resolve ns-3 build profile (#123)
+        # Same rule as paper-benchmark.yml: state the image's profile
+        # explicitly, so the reconfigure never downgrades an -opt image.
+        env:
+          VERSION_TAG: ${{ inputs.version }}
+        run: |
+          profile="${NS3_PROFILE:-}"
+          if [ -z "$profile" ]; then
+            case "$VERSION_TAG" in *-opt) profile=release ;; *) profile=default ;; esac
+          fi
+          flag=""
+          [ "$profile" = "default" ] || flag="-d $profile"
+          echo "ns-3 build profile: $profile"
+          echo "NS3_PROFILE=$profile" >> "$GITHUB_ENV"
+          echo "NS3_PROFILE_FLAG=$flag" >> "$GITHUB_ENV"
+      - name: Configure and build
+        run: |
+          cd /opt/ns-3
+          # $NS3_PROFILE_FLAG unquoted on purpose: empty must expand to nothing.
+          ./ns3 configure $NS3_PROFILE_FLAG --enable-examples \
+            --enable-modules='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          ./ns3 build && ./ns3 show profile
+      - name: Run the cell
+        shell: bash
+        env:
+          HARNESS: ${{ inputs.harness }}
+          ARGS: ${{ inputs.args }}
+        run: |
+          cd /opt/ns-3
+          set -o pipefail
+          timewrap=""
+          [ -x /usr/bin/time ] && timewrap="/usr/bin/time -v -o $GITHUB_WORKSPACE/time-v.log"
+          # As paper-benchmark (#256): cap the address space below the
+          # runner's, so an over-large cell dies by bad_alloc and keeps its logs.
+          ulimit -v 13631488 || true
+          echo "running: $HARNESS $ARGS"
+          $timewrap ./ns3 run "$HARNESS $ARGS" 2>"$GITHUB_WORKSPACE/ns3-stderr.log" \
+            | tee "$GITHUB_WORKSPACE/results.txt" \
+            || { echo "--- ns-3 run FAILED; stderr tail ---"; tail -n 60 "$GITHUB_WORKSPACE/ns3-stderr.log"; exit 1; }
+      - name: Stamp provenance into the results file (#674)
+        if: always()
+        shell: bash
+        env:
+          HARNESS: ${{ inputs.harness }}
+          ARGS: ${{ inputs.args }}
+        run: |
+          prov="##PROV## commit=$GITHUB_SHA ref=$GITHUB_REF_NAME run_id=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT image=ghcr.io/${{ github.repository_owner }}/ns3:${{ inputs.version }} profile=$NS3_PROFILE harness=$HARNESS"
+          echo "AHN_PROV=$prov" >> "$GITHUB_ENV"
+          if [ -f "$GITHUB_WORKSPACE/results.txt" ]; then
+            echo "##ARGS## $HARNESS $ARGS" >> "$GITHUB_WORKSPACE/results.txt"
+            echo "$prov" >> "$GITHUB_WORKSPACE/results.txt"
+          fi
+      - name: scenario_check verdict
+        if: always()
+        shell: bash
+        run: |
+          [ -f "$GITHUB_WORKSPACE/results.txt" ] || exit 0
+          python3 tools/bench/scenario_check.py results "$GITHUB_WORKSPACE/results.txt" \
+            | tee "$GITHUB_WORKSPACE/verdict.txt"
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: benchmark-cell
+          path: |
+            results.txt
+            verdict.txt
+            ns3-stderr.log
+            time-v.log
+          retention-days: 30
+      - name: Compact result block (cheap to fetch via get_job_logs tail)
+        if: always()
+        shell: bash
+        run: |
+          f="$GITHUB_WORKSPACE/results.txt"
+          [ -f "$f" ] || { echo "FAIL: no results file"; exit 1; }
+          grep -E '^(##RUN##|##BENCH##|protocol|[a-z][a-z-]+ +[0-9])' "$f" | tail -n 40 || true
+          if ! grep -qE '^(##RUN##|[a-z][a-z-]+ +[0-9])' "$f"; then
+            echo "FAIL: no result rows (#28)"; exit 1
+          fi
+          tail -n 1 "$GITHUB_WORKSPACE/verdict.txt" 2>/dev/null || true
+          echo "$AHN_PROV"
+
+  pr:
+    name: Open a PR with the cell
+    needs: run
+    if: ${{ inputs.open_pr }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: benchmark-cell
+          path: ${{ runner.temp }}/cell
+      - name: Commit the cell on a branch and open the PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CELL: ${{ inputs.cell }}
+          TITLE: ${{ inputs.title }}
+          HARNESS: ${{ inputs.harness }}
+          ARGS: ${{ inputs.args }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          dir="$RUNNER_TEMP/cell"
+          dest="results/cells/${CELL}.txt"
+          branch="bench/${CELL}-${GITHUB_RUN_ID}"
+          # The cell format the pages cite: a one-line header, then the
+          # harness output (its ##CONFIG##/##RUN## rows), then ##ARGS##/##PROV##.
+          { echo "# ${TITLE:-$CELL} @${GITHUB_SHA:0:8} run ${GITHUB_RUN_ID} (benchmark-cell.yml, #612)"
+            cat "$dir/results.txt"; } > "$dest"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add "$dest"
+          git commit -q -m "docs(bench): add the ${CELL} cell (run ${GITHUB_RUN_ID})"
+          git push -q origin "$branch"
+          verdict=$(cat "$dir/verdict.txt" 2>/dev/null || echo "no verdict (scenario_check did not run)")
+          body=$(printf '%s\n' \
+            "Adds \`${dest}\` from [run ${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})." \
+            "" "**Dispatch:** \`${HARNESS} ${ARGS}\` on \`ns3:${VERSION}\` at ${GITHUB_SHA}." \
+            "" "**scenario_check results:**" '```' "$verdict" '```' \
+            "" "Opened by benchmark-cell.yml (#612). CI does not run on a workflow-opened PR; close and reopen it to run checks.")
+          if ! gh pr create --base "${GITHUB_REF_NAME}" --head "$branch" \
+                 --title "docs(bench): add the ${CELL} cell (run ${GITHUB_RUN_ID})" --body "$body"; then
+            url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${GITHUB_REF_NAME}...${branch}?expand=1"
+            echo "::warning::could not open the PR (is 'Allow GitHub Actions to create pull requests' off?). The branch is pushed: $url"
+            echo "Branch pushed; open the PR here: $url" >> "$GITHUB_STEP_SUMMARY"
+          fi

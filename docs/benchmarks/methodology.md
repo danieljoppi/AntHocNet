@@ -1303,6 +1303,21 @@ is always attributable to a profile after the fact.
 
 ## The campaign loop, end to end
 
+**One cell, one workflow ([#612](https://github.com/danieljoppi/AntHocNet/issues/612)).**
+`benchmark-cell.yml` runs any harness (`anthocnet-compare`, `isl-grid` or
+`leo-walker`) with its own command line in `args`. It stamps `##ARGS##`
+and `##PROV##` into the results file, runs `scenario_check.py results`,
+and, with `open_pr`, opens a PR that adds `results/cells/<cell>.txt` with
+the verdict in its body. The flags are the harness's own, so every older
+dispatch shape fits:
+- a `paper-benchmark.yml` run is `harness=anthocnet-compare`;
+- a `satellite-benchmark.yml` run is `isl-grid` or `leo-walker` with the
+  flags its inputs expanded to;
+- a `scenario-matrix.yml` sweep is one dispatch per point.
+
+The three older workflows stay through v2.3.0, because `campaign.py`
+dispatches to them. They are removed in v2.4.0.
+
 Dispatching a run is the easy part; the loop exists so that a number cannot
 reach a document without passing the gates. Scripts do the arithmetic and the
 verdict — never eyeball a table ([ADR-0014](../adr/0014-agent-skills-are-script-first.md)).

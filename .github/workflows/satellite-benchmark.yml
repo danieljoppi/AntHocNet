@@ -1,5 +1,9 @@
 name: Satellite benchmark (manual)
 
+# Superseded by benchmark-cell.yml (#612), which runs any harness with its
+# own flags and can open a PR with the cell. Kept through v2.3.0 for overlap
+# (campaign.py still dispatches here); removed in v2.4.0.
+
 # The satellite regime's counterpart of paper-benchmark.yml (#192 track).
 # Runs the isl-grid harness — a +Grid torus of point-to-point ISLs, every node
 # holding one interface per link — instead of the wifi MANET field. Manual
