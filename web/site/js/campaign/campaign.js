@@ -7,6 +7,7 @@
 // yet running.
 import { DEVICES, LevelRun, loadProgress, recordStars, isUnlocked, STEP } from './engine.js';
 import { CHAPTERS, LEVELS, levelById } from './levels.js';
+import { UPGRADES, upgradesFor, loadChoices, saveChoice, upgradeName } from './upgrades.js';
 import { t, num, has, localized } from '../i18n.js';
 
 /** A link label: a doc.* key, or an API name shown as is. */
@@ -32,6 +33,11 @@ function el(tag, attrs = {}, ...kids) {
 }
 const starsText = (n) => '★'.repeat(n) + '☆'.repeat(3 - n);
 const starsEl = (n) => el('span', { class: 'stars', 'aria-label': t('missions.stars', { n }) }, starsText(n));
+
+// The classroom link (#623): #campaign?open=all opens every level for this
+// visit, so a lab can start at 3.4 or 5.3. Progress is not written by it.
+const classroom = () => /^#campaign\?(?:.*&)?open=all\b/.test(location.hash);
+const isOpen = (l, levels, p) => classroom() || isUnlocked(l, levels, p);
 
 export function initCampaign(pg) {
   const sheet = $('campaign');
@@ -63,7 +69,7 @@ export function initCampaign(pg) {
       const ls = LEVELS.filter((l) => l.chapter === c.n);
       const got = ls.reduce((a, l) => a + (progress[l.id] || 0), 0);
       const chips = el('ol', { class: 'chips' }, ...ls.map((l) => {
-        const open = isUnlocked(l, LEVELS, progress);
+        const open = isOpen(l, LEVELS, progress);
         const n = progress[l.id] || 0;
         return el('li', {}, el('button', {
           type: 'button', class: `chip-btn bevel${n ? ' done' : ''}`, disabled: !open,
@@ -81,7 +87,41 @@ export function initCampaign(pg) {
       el('p', {}, t('campaign.intro') + ' ', el('b', {}, t('campaign.totalStars', { n: total, max: LEVELS.length * 3 }))),
       ...chapters, el('h3', {}, t('campaign.next')), later,
       el('div', { class: 'choices' },
+        el('button', { type: 'button', class: 'bevel', onclick: openUpgrades }, t('campaign.upgrades')),
         el('button', { type: 'button', class: 'bevel', onclick: freePlay }, t('campaign.free'))));
+  }
+
+  // --- upgrades (#579): real gated mechanisms, earned by clearing a level ----------
+  function openUpgrades() {
+    progress = loadProgress();
+    const cards = el('ul', { class: 'device-cards upgrades' }, ...UPGRADES.map((u) => {
+      const open = (progress[u.unlock] || 0) > 0;
+      return el('li', { class: 'window' },
+        el('b', {}, upgradeName(u)), ' ', el('span', { class: 'chip' }, open ? t('campaign.upgradeOpen') : t('campaign.upgradeLocked', { id: u.unlock })),
+        el('p', { class: 'small' }, t(`upgrade.${u.id}.what`)),
+        el('p', { class: 'small' }, el('b', {}, t('campaign.upgradeMeasured') + ' '), t(`upgrade.${u.id}.measured`)),
+        el('p', { class: 'small muted' }, t('campaign.upgradeHelps', { chapters: u.helps.join(', ') }) + ' · ',
+          el('a', { href: `https://github.com/danieljoppi/AntHocNet/issues/${u.issue}` }, `#${u.issue}`)));
+    }));
+    show(t('campaign.upgrades'), el('p', {}, t('campaign.upgradesIntro')), cards,
+      el('div', { class: 'choices' }, el('button', { type: 'button', class: 'bevel', onclick: openMap }, t('campaign.backMap'))));
+  }
+
+  function upgradeToggles(l) {
+    const offered = upgradesFor(l, progress);
+    if (!offered.length) return [];
+    const chosen = new Set(loadChoices()[l.id] || []);
+    return [el('h3', {}, t('campaign.upgrades')),
+      el('ul', { class: 'goals upgrade-toggles' }, ...offered.map((u) => {
+        const box = el('input', { type: 'checkbox', id: `up-${u.id}` });
+        box.checked = chosen.has(u.id);
+        box.addEventListener('change', () => {
+          if (box.checked) chosen.add(u.id); else chosen.delete(u.id);
+          saveChoice(l.id, [...chosen]);
+        });
+        return el('li', {}, box, ' ', el('label', { for: `up-${u.id}` }, el('b', {}, upgradeName(u)), ' — ', t(`upgrade.${u.id}.what`)));
+      })),
+      el('p', { class: 'small muted' }, t('campaign.upgradesNote'))];
   }
 
   function openBriefing(l) {
@@ -101,6 +141,7 @@ export function initCampaign(pg) {
       el('h3', {}, t('campaign.goals')), el('ul', { class: 'goals' }, ...goals),
       el('p', { class: 'small' }, t('campaign.rules', { budget: l.budget, keep: l.stars?.budgetLeft ?? 0 })),
       el('h3', {}, t('campaign.devices')), cards,
+      ...upgradeToggles(l),
       el('p', { class: 'small muted' }, t('campaign.planNote', { mechanism: l.mechanism })),
       el('div', { class: 'choices' },
         el('button', { type: 'button', class: 'bevel primary', onclick: () => startLevel(l) }, t('campaign.plan')),
@@ -125,14 +166,15 @@ export function initCampaign(pg) {
     leaveLevel();
     hideSheet();
     level = l;
-    run = new LevelRun(pg.M, l, 1);
+    const ups = upgradesFor(l, progress).map((u) => u.id).filter((id) => (loadChoices()[l.id] || []).includes(id));
+    run = new LevelRun(pg.M, l, 1, { upgrades: ups });
     const chapter = CHAPTERS.find((c) => c.n === l.chapter);
     const read = l.debrief.links.find(([, h]) => h.startsWith('docs/') && !h.startsWith('docs/benchmarks/'));
     await pg.load(null, 1, {
       world: run.world, plan: true,
       meta: {
         title: t('campaign.level', { id: l.id, title: l.title }), sprite: 'phone', sprites: spritesFor(),
-        blurb: l.story,
+        blurb: ups.length ? `${l.story} ${t('campaign.upgradesOn', { list: ups.map((id) => upgradeName(UPGRADES.find((u) => u.id === id))).join(', ') })}` : l.story,
         honest: t('campaign.honest'),
         results: chapter.results,
         read: read ? { href: read[1], label: label(read[0]) } : null,
@@ -282,10 +324,11 @@ export function initCampaign(pg) {
     pg.setSpeed(0);
     run.sample();
     const s = run.score();
+    const earned = s.cleared && !(progress[level.id] > 0) ? UPGRADES.find((u) => u.unlock === level.id) : null;
     if (s.cleared) recordStars(progress, level.id, s.stars);
     const lv = level;
     const next = LEVELS[LEVELS.indexOf(lv) + 1];
-    const nextOpen = next && isUnlocked(next, LEVELS, loadProgress());
+    const nextOpen = next && isOpen(next, LEVELS, loadProgress());
     const rows = s.objectives.map((x) => el('li', { class: x.done ? 'done' : 'missed' },
       el('span', { 'aria-hidden': 'true' }, x.done ? '✓ ' : '✕ '), x.text,
       x.o.kind === 'deliver' ? ` — ${Math.round((x.value || 0) * 100)} %` : ''));
@@ -298,6 +341,7 @@ export function initCampaign(pg) {
         + ' · ' + t('campaign.nrl', { x: Number.isFinite(s.nrl) ? num(s.nrl, 1) : '—' }) + (s.nrlStar ? ' ★' : '')
         + (run.hintsUsed ? ' · ' + t('campaign.hintsUsed', { n: run.hintsUsed }) : '')),
       el('h3', {}, t('campaign.whatYouSaw', { mechanism: lv.mechanism })), el('p', {}, lv.debrief.text), links,
+      earned ? el('p', { class: 'window upgrade-earned' }, el('b', {}, t('campaign.upgradeEarned', { name: upgradeName(earned) })), ' ', t(`upgrade.${earned.id}.what`)) : null,
       el('div', { class: 'choices' },
         el('button', { type: 'button', class: 'bevel', onclick: () => startLevel(lv) }, t('campaign.retry')),
         nextOpen ? el('button', { type: 'button', class: 'bevel primary', onclick: () => openBriefing(next) }, t('campaign.nextLevel', { id: next.id, title: next.title })) : null,
@@ -356,7 +400,7 @@ export function initCampaign(pg) {
   }, true);
 
   sheet.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !run) hideSheet(); });
-  addEventListener('hashchange', () => { if (location.hash === '#campaign') openMap(); });
+  addEventListener('hashchange', () => { if (location.hash.startsWith('#campaign')) openMap(); });
 
   function hasProgress() { return Object.keys(loadProgress()).length > 0; }
   function continueLevel() {

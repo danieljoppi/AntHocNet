@@ -881,7 +881,7 @@ function hub(fresh) {
 
 // --- boot ---------------------------------------------------------------------------------
 function parseHash() {
-  const m = /^#([a-z]+)(?:\?seed=(\d+))?/.exec(location.hash === '#play' || location.hash === '#campaign' ? '' : location.hash);
+  const m = /^#([a-z]+)(?:\?seed=(\d+))?/.exec(location.hash === '#play' || location.hash.startsWith('#campaign') ? '' : location.hash);
   return m ? { world: m[1], seed: Number(m[2] || 1) } : { world: 'manet', seed: 1 };
 }
 
@@ -897,7 +897,7 @@ async function boot() {
   setTool('inspect');
   $('toast').hidden = true;
   const fresh = !location.hash; // a plain visit to the front page, not a shared run
-  const wantCampaign = location.hash === '#campaign';
+  const wantCampaign = location.hash.startsWith('#campaign');  // #campaign?open=all: the classroom link (#623)
   const h = parseHash();
   await load(h.world, h.seed);
   playground.campaign = initCampaign(playground);

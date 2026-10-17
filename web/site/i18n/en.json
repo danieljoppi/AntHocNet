@@ -72,7 +72,7 @@
       "play": "Play",
       "title": "Help the ants find the way",
       "intro": "Every device on this field runs the real AntHocNet routing core, compiled to WebAssembly. Fix a broken network, and the ants do the routing.",
-      "listCampaign": "<b>Campaign</b> one chapter per kind of network: ad hoc town and the neighbourhood mesh now, cars, drones and satellites next",
+      "listCampaign": "<b>Campaign</b> one chapter per kind of network: ad hoc town, the neighbourhood mesh, city streets, the forest and orbit",
       "listFree": "<b>Free play</b> phones, mesh, cars, drones, satellites",
       "listDrills": "<b>Drills</b> the eight Academy missions, one per thing the ants do",
       "campaign": "▶ Campaign",
@@ -90,7 +90,8 @@
       "shopP": "The core's API as a live ant nest, and the ns-3 install as a quest you check with <code>make doctor</code>.",
       "archK": "Archive",
       "archH": "Decisions and what's next",
-      "archP": "The roadmap, every decision record, fidelity to the paper, and the research behind the plan."
+      "archP": "The roadmap, every decision record, fidelity to the paper, and the research behind the plan.",
+      "listTeach": "<b>Teach</b> five <a href=\"docs/teaching/\">lab sheets</a> with answer keys, built on the game"
     },
     "view": "View",
     "overlays": "Overlays",
@@ -1043,7 +1044,16 @@
     "nrl": "ants per delivered packet: {x}",
     "hintsUsed": "hints used: {n}",
     "whatYouSaw": "What you saw: {mechanism}",
-    "nextLevel": "Next: {id} {title}"
+    "nextLevel": "Next: {id} {title}",
+    "upgrades": "Upgrades",
+    "upgradesIntro": "Each upgrade is a real mechanism from the protocol's core, off by default. Clearing a level earns it; then you can switch it on, level by level, in the briefing. The site's defaults never change: an upgrade is your labelled choice, and the campaign measured what it does.",
+    "upgradeOpen": "earned",
+    "upgradeLocked": "clear {id} to earn",
+    "upgradeMeasured": "Measured:",
+    "upgradeHelps": "pays off in chapter {chapters}",
+    "upgradesNote": "Switched on for this level only. Stars are scored the same way with or without.",
+    "upgradesOn": "Upgrades on: {list}.",
+    "upgradeEarned": "Upgrade earned: {name}."
   },
   "reader": {
     "title": "Field guide",
@@ -1271,5 +1281,27 @@
     "copied": "Copied. Save the kit for its files: the command reads them.",
     "none": "Run the world a few seconds first: the kit records where the nodes go.",
     "saved": "Saved {file}: unzip it and run run.sh."
+  },
+  "upgrade": {
+    "quiet": {
+      "name": "Quiet mode",
+      "what": "Proactive ants back off while a route stays the same, and come back when it changes.",
+      "measured": "The v2.3.0 campaign measures it in every network family; the result appears here when the campaign lands."
+    },
+    "lookahead": {
+      "name": "Look-ahead",
+      "what": "Hellos carry position and velocity; a next hop whose link is about to break counts for less.",
+      "measured": "The v2.3.0 campaign measures it in every network family; the result appears here when the campaign lands."
+    },
+    "battery": {
+      "name": "Battery saver",
+      "what": "Hops through nodes with little battery left cost more, so routes go around tired drones.",
+      "measured": "The v2.3.0 campaign measures it in every network family; the result appears here when the campaign lands."
+    },
+    "longhaul": {
+      "name": "Long-haul timing",
+      "what": "The hop time is the real propagation delay between satellites, not a Wi-Fi hop's 3 ms.",
+      "measured": "The v2.3.0 campaign measures it in every network family; the result appears here when the campaign lands."
+    }
   }
 }

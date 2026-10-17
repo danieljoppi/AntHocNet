@@ -98,6 +98,10 @@ jobs:
         # with its par solution on five seeds, must clear; with no action it
         # must not. Node only: the WASM core runs in Node.
         run: node web/test/levels.mjs web/build-site
+      - name: Classroom lab answer keys hold (#623)
+        # Every number docs/teaching/answer-keys.md states, re-measured on the
+        # WASM core at the sheet's seed, with the claim each key makes.
+        run: node web/test/labs.mjs web/build-site
       - name: Learn-site browser smoke (#548)
         # Every world runs with no console error, a backward ant and a delivery;
         # all worlds share the protocol defaults (ADR-0019); mission 2 plays to

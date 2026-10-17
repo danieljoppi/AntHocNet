@@ -25,6 +25,7 @@
 //   par: [{ class, x, y } | { move, x, y } | { answer }]  -- clears the level
 
 import { localized, t } from '../i18n.js';
+import { applyUpgrades } from './upgrades.js';
 
 /** Device classes (#568): a radio range, a mobility and a sprite. */
 /** Their label and note are i18n keys device.<class>.{label,note} (#622). */
@@ -167,11 +168,13 @@ const flowTotals = (w) => {
  * read from flow statistics sampled on the STEP grid and from Deliver events.
  */
 export class LevelRun {
-  constructor(M, level, seed, { world } = {}) {
+  constructor(M, level, seed, { world, upgrades = [] } = {}) {
     this.level = level;
     this.seed = seed;
     const built = world ? { world, ids: [], sats: [] } : buildWorld(M, level, seed);
     this.world = built.world;
+    this.upgrades = upgrades;   // #579: mission-scoped, applied before start()
+    applyUpgrades(this.world, level, upgrades, EARTH + SHELL_ALT);
     this.ids = built.ids;
     this.sats = built.sats;
     this.placed = [];

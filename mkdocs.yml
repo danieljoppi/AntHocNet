@@ -96,6 +96,14 @@ nav:
       - architecture.md
       - software-layers.md
       - network-regimes.md
+      - Classroom pack:
+          - teaching/README.md
+          - teaching/lab-1-reactive-proactive.md
+          - teaching/lab-2-mesh-overhead.md
+          - teaching/lab-3-vanet-reconvergence.md
+          - teaching/lab-4-satellite-handover.md
+          - teaching/lab-5-multipath.md
+          - teaching/answer-keys.md
   - Lab:
       - Overview: places/lab.md
       - benchmarks.md

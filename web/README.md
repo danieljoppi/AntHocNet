@@ -134,6 +134,15 @@ level) lives in `localStorage` under `ahn-campaign-v1`, read and written in
 try/catch. Chapters unlock 1 → 2 → 3, 4, 5 (any order) → 6-8 → 9; levels in
 a chapter open in order.
 
+Upgrades (#579, `web/site/js/campaign/upgrades.js`) are real default-off core
+mechanisms. Each is earned by clearing one level: Quiet mode by 2.2,
+Look-ahead by 3.3, Battery saver by 4.2, Long-haul timing by 5.2. The player
+switches an upgrade on per level in the briefing. `LevelRun` applies it
+through `setConfig` or `setLinkMetric` before the world starts, so it is
+mission-scoped and never a world default (ADR-0019). The choices are kept in
+`localStorage` under `ahn-upgrades-v1`. `levels.mjs` checks that each
+upgrade reaches the core.
+
 ```bash
 web/build-site.sh && node web/test/levels.mjs web/build-site
 ```

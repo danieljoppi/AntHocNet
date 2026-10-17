@@ -10,4 +10,5 @@ and why each kind of network behaves differently. Every page has a world in
 [**Architecture** <span>One core, thin adapters: the ports, the decision flow, where each piece lives.</span>](../architecture.md)
 [**Software layers** <span>The stack, the mechanisms and the switches that gate them.</span>](../software-layers.md)
 [**Network regimes** <span>Why phones, meshes, cars, drones and satellites are different routing problems.</span>](../network-regimes.md)
+[**Classroom pack** <span>Five lab sheets for a networking course: predict, run it in the game, explain, compare with ns-3. Answer keys included.</span>](../teaching/README.md)
 </div>
