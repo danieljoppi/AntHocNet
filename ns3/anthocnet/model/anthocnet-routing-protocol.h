@@ -374,6 +374,11 @@ private:
     uint32_t m_maxHelloAdverts;  ///< #186: diffusion advert cap k (thesis: 10)
     double m_sessionTtl;
     uint32_t m_txFailureThreshold;
+    /// #204: on point-to-point interfaces, send a hello only every this many
+    /// hello ticks (1 = every tick, the default and the old behaviour); on
+    /// the ticks in between, an up interface vouches for its peers.
+    uint32_t m_p2pHelloEvery = 1;
+    uint64_t m_helloTicks = 0;  ///< hello ticks so far (#204)
     bool m_enableMacFailureDetector;
     uint32_t m_maxReinjectPerPacket;  ///< #386 remedy: path-global re-injection cap (0 = unlimited)
     double m_repairWaitFactor;

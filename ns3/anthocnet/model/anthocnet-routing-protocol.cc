@@ -177,6 +177,15 @@ TypeId RoutingProtocol::GetTypeId() {
                           BooleanValue(true),
                           MakeBooleanAccessor(&RoutingProtocol::m_enableLinkFail),
                           MakeBooleanChecker())
+            .AddAttribute("P2pHelloEvery",
+                          "On point-to-point interfaces (ISLs), send a hello only every "
+                          "this many hello ticks (#204). In between, an interface that "
+                          "is up refreshes its known peers' liveness, as a hello would. "
+                          "1 = every tick (default, the old behaviour). Use it only "
+                          "where an ISL failure takes the interface down (Ipv4::SetDown): "
+                          "a link that silently drops while up would stay alive.",
+                          UintegerValue(1), MakeUintegerAccessor(&RoutingProtocol::m_p2pHelloEvery),
+                          MakeUintegerChecker<uint32_t>(1))
             .AddAttribute("EnableDirectedReactive",
                           "Steer a reactive forward ant along the diffused virtual "
                           "gradient (ADR-0007) instead of broadcasting, when the "
@@ -1377,7 +1386,29 @@ void RoutingProtocol::HelloTimerExpire() {
         // LinkFail broadcasts and repair-timeout DiscardPending actions (D6).
         ExecuteDecisions(m_logic->onMaintenanceTick(), kInvalidAddress);
         AntMessage hello = m_logic->createHelloAnt();
-        SendAnt(hello, Ipv4Address("255.255.255.255"));
+        const bool p2pTick = m_helloTicks++ % m_p2pHelloEvery == 0;
+        if (p2pTick) {
+            SendAnt(hello, Ipv4Address("255.255.255.255"));
+        } else {
+            // #204: this tick skips the point-to-point interfaces. Shared media
+            // still get their hello; an ISL that is up vouches for the peers
+            // heard on it (#260's per-interface names), exactly as receiving
+            // their hello would have (learnNeighbor on both names).
+            Ptr<Packet> packet = Create<Packet>();
+            packet->AddHeader(AntHeader(hello));
+            for (auto& kv : m_socketAddresses) {
+                const int32_t i = m_ipv4->GetInterfaceForAddress(kv.second.GetLocal());
+                if (i >= 0 && m_ipv4->GetNetDevice(i)->IsPointToPoint()) {
+                    if (!m_ipv4->IsUp(i)) continue;
+                    auto nit = m_ifaceNeighbors.find(static_cast<uint32_t>(i));
+                    if (nit == m_ifaceNeighbors.end()) continue;
+                    for (NodeAddress n : nit->second) m_logic->learnNeighbor(n);
+                    continue;
+                }
+                kv.first->SendTo(packet->Copy(), 0,
+                                 InetSocketAddress(kv.second.GetBroadcast(), ANT_PORT));
+            }
+        }
     }
     m_helloTimer.Schedule(TimerDelay(m_helloInterval, false));
 }
