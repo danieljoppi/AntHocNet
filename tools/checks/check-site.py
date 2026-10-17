@@ -118,9 +118,10 @@ def check(site: str) -> list[str]:
             if not os.path.exists(target):
                 errs.append(f"{rel}: {attr}={url} -> {os.path.relpath(target, site)} does not exist")
                 continue
-            # The game's front page routes on its hash (#play, #vanet?seed=1):
-            # those are not element ids. Doxygen's anchors are its own.
-            game_root = target == os.path.join(site, "index.html")
+            # The game's front page routes on its hash (#play, #vanet?seed=1),
+            # and so does the ns-3 replay page (#manet, #641): those are not
+            # element ids. Doxygen's anchors are its own.
+            game_root = target in (os.path.join(site, "index.html"), os.path.join(site, "replay.html"))
             if frag and target.endswith(".html") and target in pages and not game_root \
                     and not target.startswith(os.path.join(site, "api")):
                 t = pages[target]
