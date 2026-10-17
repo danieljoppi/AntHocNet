@@ -268,10 +268,11 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
         .function("setBattery", &World::setBattery)
         .function("batteryLeft", &World::batteryLeft)
         .function("setGroundStation", &World::setGroundStation)
-        .function("zones", optional_override([](const World& w) {
-                      const std::vector<double> z = w.zonesFlat();
-                      return val::global("Float64Array").new_(typed_memory_view(z.size(), z.data()));
-                  }))
+        .function(
+            "zones", optional_override([](const World& w) {
+                const std::vector<double> z = w.zonesFlat();
+                return val::global("Float64Array").new_(typed_memory_view(z.size(), z.data()));
+            }))
         .function("addFlow", &World::addFlow)
         .function("setConfig", &setConfig)
         .function("setLinkMetric", &World::setLinkMetric)
