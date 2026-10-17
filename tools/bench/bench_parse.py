@@ -32,6 +32,17 @@ materiality-threshold verdict for that pair — per-seed evidence beats
 thresholds. The legacy sign-test line (#128) is kept: sign-consistency is
 PAIRED-NOISE when neither direction reaches >2/3 of the runs.
 
+Baseline control (#675): ``--control BEFORE AFTER`` checks that every
+protocol other than ``--proto`` has identical ``##RUN##`` rows in the two
+cells, seed by seed. That is the attribution rule: baselines are untouched
+code on identical seeds, so if one moved, the harness moved and the --proto
+delta is not attributable to the change. One difference is classified instead
+of failed: stock ns-3 AODV on a satellite cell (harness isl-grid or
+leo-walker). Its socket map is keyed by heap address, so on a multi-interface
+node any unrelated allocation change reorders its sends (#362). Such a row is
+``ORDER-ONLY`` when every paired 95% CI (PDR, delay99, NRL) straddles zero,
+and FAIL otherwise. Exit 1 on any FAIL.
+
 Column-mapping self-check (#293): ``##RUN##`` fields are positional, so a
 mis-ordered mapping produces a plausible table with delay where jitter should
 be — it cannot crash. Any cell carrying both ``##RUN##`` rows and the
@@ -345,6 +356,40 @@ def ci_line(proto, per_run):
     return f"  n={n}: " + "  ".join(bits)
 
 
+# Harnesses whose nodes all have several interfaces, where stock AODV's
+# pointer-keyed socket map makes its send order heap-dependent (#362, #675).
+MULTI_IFACE = re.compile(r"\bharness=(isl-grid|leo-walker)\b")
+
+
+def control(before_text, after_text, proto):
+    """Baseline control over two cells (#675). Returns (lines, failed)."""
+    before, after = parse_runs(before_text), parse_runs(after_text)
+    multi = bool(MULTI_IFACE.search(before_text + after_text))
+    lines, failed = [], False
+    for p in sorted((set(before) | set(after)) - {proto}):
+        b, a = before.get(p), after.get(p)
+        if not b or not a:
+            lines.append(f"  {p}: only in {'after' if a else 'before'} — not compared")
+            continue
+        common = sorted(set(b) & set(a))
+        moved = [r for r in common if b[r] != a[r]]
+        if not moved:
+            lines.append(f"  {p}: identical on {len(common)} seed(s)")
+            continue
+        ps = paired_stats(b, a)
+        detail = f"{len(moved)}/{len(common)} seed(s) differ"
+        if ps:
+            detail += f"; {fmt_paired(ps)}"
+        if p == "aodv" and multi and ps and ps[2] == "PAIRED-NOISE":
+            lines.append(f"  {p}: ORDER-ONLY ({detail}) — stock AODV's "
+                         "pointer-keyed sockets on a multi-interface cell "
+                         "(#362, #675)")
+        else:
+            failed = True
+            lines.append(f"  {p}: FAIL ({detail})")
+    return lines, failed
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("files", nargs="+")
@@ -352,7 +397,27 @@ def main():
     ap.add_argument("--proto", default="anthocnet", help="protocol to compare")
     ap.add_argument("--ab", action="store_true",
                     help="read files as (off,on) pairs; flag cross-pair sign flips")
+    ap.add_argument("--control", action="store_true",
+                    help="BEFORE AFTER: every other protocol's ##RUN## rows "
+                         "must be identical (#675)")
     args = ap.parse_args()
+
+    if args.control:
+        if len(args.files) != 2:
+            sys.exit("--control takes exactly two files: BEFORE AFTER")
+        texts = []
+        for path in args.files:
+            with open(path) as fh:
+                texts.append(fh.read())
+        lines, failed = control(texts[0], texts[1], args.proto)
+        print(f"control (baselines vs {args.proto}): "
+              f"{label_of(args.files[0], texts[0])} -> "
+              f"{label_of(args.files[1], texts[1])}")
+        print("\n".join(lines))
+        print("control: FAIL — a baseline moved; the delta is NOT attributable "
+              "(#51-class)" if failed else
+              "control: OK — the delta is attributable to the change")
+        sys.exit(1 if failed else 0)
 
     cells = []
     for path in args.files:

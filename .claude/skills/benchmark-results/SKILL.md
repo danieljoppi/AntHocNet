@@ -89,14 +89,40 @@ When a cell carries `##RUN##` per-seed rows, three things appear automatically:
 from the CSV's `pdr_sd`/`runs`; blank for pre-#28 CSVs). The shared math
 lives in `stats_util.py`; `test_stats.py` covers it (runs in `lint.yml`).
 
-## Dispatching runs (not scriptable here)
+## Dispatching runs
 
-`workflow_dispatch` POSTs 403 from a script, so fire runs via
-`mcp__github__actions_run_trigger` (workflow `paper-benchmark.yml`). Drive
+Fire a single run via `mcp__github__actions_run_trigger` (workflow
+`paper-benchmark.yml`). Drive
 scenario knobs through the `extraArgs` input, e.g.
 `--cbrBps=8000 --sink=25 --flows=30 --ns3::anthocnet::RoutingProtocol::EnableMacMetric=true`.
 Pair every ON run with an identical OFF run for a clean A/B (baselines are
 deterministic on identical seeds).
+
+**A campaign (more than a handful of runs) goes through
+`tools/bench/campaign.py` and a committed plan** (#662). The plan is
+`tools/bench/campaigns/<release>.yaml`: cells, arms and which arm runs where;
+`campaigns/v2.2.0-phase2.yaml` is the worked example. The plan is committed in
+the PR that pre-registers the campaign.
+
+```bash
+C=tools/bench/campaign.py; P=tools/bench/campaigns/v2.3.0.yaml
+python3 $C plan $P                            # review the job list; sends nothing
+python3 $C dispatch $P --log runs.tsv         # up to the cap (12), then exits
+python3 $C status $P --log runs.tsv           # per label: run id, state
+python3 $C collect $P --log runs.tsv --out results/cells [--from DIR]
+python3 $C verdicts $P --dir results/cells    # bench_parse --ab per arm x cell
+```
+
+- **The cap leaves PR CI its runners.** v2.2.0's phase 1 dispatched 36 jobs at
+  once and PR CI queued for hours. Never hand-dispatch a campaign.
+- **`dispatch` is resumable.** It skips labels already in the log and exits
+  at the cap. Re-run it from a scheduled check-in every 60–90 min; an agent's
+  background tasks die at 2 h, and a campaign takes about 10 h.
+- **`collect --from DIR`** reads `DIR/<label>/<results file>`, for an
+  environment where `gh api` cannot follow the artifact's blob redirect.
+  There, get each artifact's signed URL with
+  `mcp__github__actions_get` (`download_workflow_run_artifact`) and `curl` it,
+  changing `\u0026` to `&`.
 
 ## The full campaign loop (dispatch → fetch → parse)
 
@@ -130,7 +156,12 @@ The cross-session procedure (formerly buried in issue #91's session notes):
    above the line rather than a workflow that failed to emit it.
 5. **Parse by script, never by eye**: `bench_parse.py` for `##BENCH##` cells,
    `sweep_summary.py` for campaign CSVs (below).
-6. **Record** the verdict + run IDs on the relevant issue (ADR-0013).
+6. **Attribution control** when a campaign changes code between two
+   generations: `bench_parse.py --control BEFORE AFTER` on a cell run with
+   every protocol. Every baseline's `##RUN##` rows must be identical; stock
+   AODV on a satellite cell may read ORDER-ONLY (#675, heap-ordered sockets),
+   anything else that moved is a FAIL and the delta is not attributable.
+7. **Record** the verdict + run IDs on the relevant issue (ADR-0013).
 
 ## Campaign CSVs (`sweep_summary.py`)
 

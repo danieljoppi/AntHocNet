@@ -1,0 +1,66 @@
+# The v2.2.0 campaign's phase 2 (#565, docs/benchmarks/v2.2.0-campaign.md),
+# written down after the fact as a campaign.py plan (#662). It reproduces the
+# 99 jobs the prototype dispatcher sent, label for label and input for input.
+# It is a worked example of the format; v2.3.0's campaign pre-registers its
+# own plan next to it. The prototype labelled the attribution jobs
+# "attrib/<cell>"; here the arm is "attrib-repair200", the suffix of the
+# committed files.
+#
+#   python3 tools/bench/campaign.py plan tools/bench/campaigns/v2.2.0-phase2.yaml
+#
+# Phase 1 (control, every protocol) ran before the tool existed, from 36 hand
+# dispatches; its files are results/cells/<cell>-v220.txt. The leo-walker
+# cells' arm files were saved without the "-anthocnet" this plan's cell names
+# carry.
+generation: v220
+ref: main
+cap: 12
+control: control
+
+arms:
+  control: ""
+  recheck: ""
+  attrib-repair200: "--ns3::anthocnet::RoutingProtocol::RepairHoldCap=200ms"
+  repair200: "--ns3::anthocnet::RoutingProtocol::RepairHoldCap=200ms"
+  sinr: "--ns3::anthocnet::RoutingProtocol::LinkMetric=sinr"
+  hello500: "--ns3::anthocnet::RoutingProtocol::HelloInterval=500ms"
+  reconv1s: "--ns3::anthocnet::RoutingProtocol::ReconvHoldCap=1s"
+
+# YAML anchors keep each family's shared inputs in one place.
+x-grid: &grid {scenario: paper, version: 3.42-opt, nNodes: 50, time: 900, runs: 20, areaX: 1500, areaY: 300, speed: 20, range: 300, transport: udp, harness: compare, protocols: anthocnet}
+x-fanet: &fanet {scenario: fanet, version: 3.42-opt, nNodes: 30, time: 900, runs: 20, areaX: 1000, areaY: 1000, pause: 0, speed: 30, propagation: range, mobility: gaussmarkov, transport: udp, harness: compare, protocols: anthocnet}
+x-vanet: &vanet {scenario: vanet, version: 3.42-opt, time: 900, areaX: 800, areaY: 800, pause: 0, speed: 20, range: 300, propagation: urban, mobility: manhattan, transport: udp, harness: compare, protocols: anthocnet}
+x-isl: &isl {harness: isl-grid, version: 3.42-opt, torus: "true", islDelayMs: 5, islRate: 10Mbps, time: 900, runs: 20, cbrBps: 4096, protocols: anthocnet}
+x-leo: &leo {harness: leo-walker, version: "3.48", time: 300, runs: 20, flows: 4, cbrBps: 2048, islRate: 10Mbps, protocols: anthocnet}
+
+cells:
+  grid-rwp-tworay: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: tworay, pause: 30}}
+  grid-rwp-nakagami: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: nakagami, pause: 30}}
+  grid-ssrwp-tworay: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: ssrwp, propagation: tworay, pause: 30}}
+  grid-ssrwp-nakagami: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: ssrwp, propagation: nakagami, pause: 30}}
+  grid-gaussmarkov-tworay: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: gaussmarkov, propagation: tworay, pause: 0}}
+  grid-gaussmarkov-nakagami: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: gaussmarkov, propagation: nakagami, pause: 0}}
+  static-mesh: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: range, pause: 900}}
+  fanet-main: {workflow: paper-benchmark.yml, inputs: {<<: *fanet, range: 350}}
+  fanet-sparse: {workflow: paper-benchmark.yml, inputs: {<<: *fanet, range: 250}}
+  vanet-main: {workflow: paper-benchmark.yml, inputs: {<<: *vanet, nNodes: 100, runs: 4}, blocks: [1, 5, 9, 13, 17]}
+  vanet-sparse: {workflow: paper-benchmark.yml, inputs: {<<: *vanet, nNodes: 40, runs: 10}, blocks: [1, 11]}
+  sat-base: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 4, cols: 4, flows: 8}}
+  sat-failcell: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 4, cols: 4, flows: 8, extraArgs: "--breakLink=0,0,3,0 --breakAt=450"}}
+  sat-corridor: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 6, cols: 6, flows: 0, extraArgs: "--corridorLoad=12Mbps --corridorLoadAt=15"}}
+  sat-seam: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 6, cols: 6, flows: 8, extraArgs: "--removeLinks=5,1,0,1;5,2,0,2;5,3,0,3;5,4,0,4;5,5,0,5"}}
+  leo-walker16-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-starlink1-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-starlink1-storm-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+
+jobs:
+  # 1. The harness at main reproduces phase 1: defaults, every protocol.
+  - {arms: [recheck], cells: [grid-rwp-tworay], inputs: {protocols: "anthocnet,aodv,olsr,dsdv,oracle"}}
+  # 2. Attribution control: repair200 with every protocol, one cell per family.
+  - {arms: [attrib-repair200], cells: [grid-rwp-tworay, static-mesh], inputs: {protocols: "anthocnet,aodv,olsr,dsdv,oracle"}}
+  - {arms: [attrib-repair200], cells: [fanet-sparse], inputs: {protocols: "anthocnet,aodv,olsr,dsdv,aomdv,oracle"}}
+  - {arms: [attrib-repair200], cells: [vanet-sparse], inputs: {protocols: "anthocnet,aodv,olsr,dsdv,aomdv,gpsr,oracle"}}
+  - {arms: [attrib-repair200], cells: [sat-base], inputs: {protocols: "anthocnet,aodv,olsr,oracle"}}
+  # 3. The arms, AntHocNet only. hello500 and reconv1s were screened on
+  #    VANET main first, passed, and then faced every other cell.
+  - {arms: [repair200, sinr, hello500, reconv1s], cells: "*"}
