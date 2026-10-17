@@ -99,6 +99,13 @@ public:
     /// Uniformly pick a known regular destination, or kInvalidAddress if none.
     NodeAddress randomDestination(IRng& rng) const;
 
+    /// Per-neighbour multipliers on the pheromone used for next-hop choice
+    /// (link-lifetime discount, #574). nullptr (the default) means none, and
+    /// selection is then arithmetically identical to a table without this
+    /// hook. A neighbour missing from the map is not discounted. The map is
+    /// owned by the caller and must outlive its use.
+    void setLinkWeights(const std::map<NodeAddress, double>* weights) { linkWeights_ = weights; }
+
 private:
     /// One candidate's selection weight, pow(pheromone, beta) (#655).
     struct Term {
@@ -109,6 +116,13 @@ private:
     /// the old sumProbability / sumMaxProbability computed (#655).
     void selectionTerms(NodeAddress dest, bool isProactiveAnt, double beta, NodeAddress exclude,
                         std::vector<Term>& terms, double& phSum) const;
+    /// `ph` times `neighbor`'s link weight, or `ph` untouched without one.
+    double weighted(NodeAddress neighbor, double ph) const {
+        if (!linkWeights_) return ph;
+        auto it = linkWeights_->find(neighbor);
+        return it == linkWeights_->end() ? ph : ph * it->second;
+    }
+    const std::map<NodeAddress, double>* linkWeights_ = nullptr;  ///< #574, optional
     /// Scratch buffer for nextNeighborNode, kept to avoid an allocation per
     /// decision. Not part of the table's state.
     mutable std::vector<Term> terms_;

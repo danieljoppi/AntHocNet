@@ -29,6 +29,7 @@ set(ANTHOCNET_TESTS
   test_next_hop_distribution
   test_sinr_metric
   test_kinematics
+  test_link_lifetime
 )
 
 foreach(test ${ANTHOCNET_TESTS})

@@ -351,6 +351,10 @@ private:
     bool m_enableLinkFail;          ///< link-failure notification gate (ablation)
     bool m_enableDirectedReactive;  ///< steer reactive ants by the virtual table
     bool m_shareKinematics;         ///< hellos carry position/velocity (ADR-0025)
+    bool m_enableLinkLifetime;      ///< discount soon-to-break next hops (#574)
+    double m_linkLifetimeRange;     ///< range (m) the LET prediction assumes
+    double m_linkLifetimeHorizon;   ///< LET (s) at or above which no discount applies
+    double m_linkLifetimeFloor;     ///< smallest weight a predicted-short link keeps
     double m_proactiveBroadcastProb;
     double m_proactiveVirtualMargin;
     uint32_t m_maxHelloAdverts;  ///< #186: diffusion advert cap k (thesis: 10)

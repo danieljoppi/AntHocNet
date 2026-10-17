@@ -65,6 +65,10 @@ RoutingProtocol::RoutingProtocol()
       m_enableLinkFail(true),
       m_enableDirectedReactive(false),
       m_shareKinematics(false),
+      m_enableLinkLifetime(false),
+      m_linkLifetimeRange(250.0),
+      m_linkLifetimeHorizon(3.0),
+      m_linkLifetimeFloor(0.05),
       m_proactiveBroadcastProb(0.1),
       m_proactiveVirtualMargin(0.0),
       m_maxHelloAdverts(10),
@@ -181,6 +185,31 @@ TypeId RoutingProtocol::GetTypeId() {
                           BooleanValue(false),
                           MakeBooleanAccessor(&RoutingProtocol::m_shareKinematics),
                           MakeBooleanChecker())
+            .AddAttribute("EnableLinkLifetime",
+                          "Discount next hops whose link is predicted to break soon "
+                          "(#574): pheromone x min(1, LET / LinkLifetimeHorizon), "
+                          "floored at LinkLifetimeFloor, for next-hop choice only. "
+                          "LET from both nodes' kinematics (implies ShareKinematics). "
+                          "Default off.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableLinkLifetime),
+                          MakeBooleanChecker())
+            .AddAttribute("LinkLifetimeRange",
+                          "Radio range (m) the link-lifetime prediction assumes (#574). "
+                          "Set it to the scenario's range.",
+                          DoubleValue(250.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_linkLifetimeRange),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("LinkLifetimeHorizon",
+                          "Predicted link lifetime (s) at or above which a next hop is "
+                          "not discounted (#574).",
+                          DoubleValue(3.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_linkLifetimeHorizon),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute(
+                "LinkLifetimeFloor", "Smallest weight a link predicted to break keeps (#574).",
+                DoubleValue(0.05), MakeDoubleAccessor(&RoutingProtocol::m_linkLifetimeFloor),
+                MakeDoubleChecker<double>(0.0, 1.0))
             .AddAttribute("ProactiveBroadcastProb",
                           "Per-hop explore-broadcast probability for proactive ants.",
                           DoubleValue(0.1),
@@ -598,6 +627,10 @@ void RoutingProtocol::DoInitialize() {
     m_config.enableLinkFail = m_enableLinkFail;
     m_config.enableDirectedReactive = m_enableDirectedReactive;
     m_config.shareKinematics = m_shareKinematics;
+    m_config.enableLinkLifetime = m_enableLinkLifetime;
+    m_config.linkLifetimeRange = m_linkLifetimeRange;
+    m_config.linkLifetimeHorizon = m_linkLifetimeHorizon;
+    m_config.linkLifetimeFloor = m_linkLifetimeFloor;
     m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
     m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
     m_config.maxHelloAdverts = m_maxHelloAdverts;
@@ -739,6 +772,10 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.enableLinkFail = m_enableLinkFail;
         m_config.enableDirectedReactive = m_enableDirectedReactive;
         m_config.shareKinematics = m_shareKinematics;
+        m_config.enableLinkLifetime = m_enableLinkLifetime;
+        m_config.linkLifetimeRange = m_linkLifetimeRange;
+        m_config.linkLifetimeHorizon = m_linkLifetimeHorizon;
+        m_config.linkLifetimeFloor = m_linkLifetimeFloor;
         m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
         m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
         m_config.maxHelloAdverts = m_maxHelloAdverts;

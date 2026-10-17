@@ -3,6 +3,7 @@
 
 #include "anthocnet/core/ant_router_logic.h"
 #include "anthocnet/core/ant_message_codec.h"  // kMaxHelloOnWire (#186)
+#include "anthocnet/core/link_lifetime.h"
 
 #include <algorithm>
 #include <cmath>
@@ -478,7 +479,7 @@ AntMessage AntRouterLogic::createHelloAnt(std::size_t maxAdverts) {
     // ADR-0025: say where we are, when we know. A value float32 cannot carry
     // is not sent, since receivers reject a non-finite section with the
     // whole hello, and liveness matters more than position.
-    if (config_.shareKinematics && kinematics_) {
+    if (sharingKinematics() && kinematics_) {
         Kinematics k;
         if (kinematics_->self(k)) {
             bool ok = true;
@@ -538,11 +539,30 @@ AntMessage AntRouterLogic::createBackAnt(const AntMessage& forward) {
 // --- routing primitives -----------------------------------------------------
 
 NodeAddress AntRouterLogic::selectNextHop(NodeAddress dest, bool proactive) {
+    if (config_.enableLinkLifetime) refreshLinkWeights();  // #574
     return table_.nextNeighborNode(dest, proactive, config_.betaAnts, rng_);
 }
 
 NodeAddress AntRouterLogic::nextHopForData(NodeAddress dest, NodeAddress prevHop) {
+    if (config_.enableLinkLifetime) refreshLinkWeights();  // #574
     return table_.lookup(dest, config_.betaData, rng_, prevHop);
+}
+
+double AntRouterLogic::linkLifetimeWeight(NodeAddress neighbor) const {
+    if (!config_.enableLinkLifetime || !kinematics_) return 1.0;
+    Kinematics self, nb;
+    if (!kinematics_->self(self) || !neighborKinematics(neighbor, nb)) return 1.0;
+    const double let = linkExpiryTime(self, nb, config_.linkLifetimeRange);
+    return core::linkLifetimeWeight(let, config_.linkLifetimeHorizon, config_.linkLifetimeFloor);
+}
+
+void AntRouterLogic::refreshLinkWeights() {
+    linkWeights_.clear();
+    for (NodeAddress n : table_.neighbors()) {
+        const double w = linkLifetimeWeight(n);
+        if (w < 1.0) linkWeights_[n] = w;
+    }
+    table_.setLinkWeights(&linkWeights_);
 }
 
 NodeAddress AntRouterLogic::randomDestination() { return table_.randomDestination(rng_); }
@@ -702,7 +722,7 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
 
     if (incoming.type == AntType::Hello) {
         learnNeighbor(incoming.src);
-        if (config_.shareKinematics) {  // ADR-0025
+        if (sharingKinematics()) {  // ADR-0025
             if (incoming.hasKinematics)
                 neighborKinematics_[incoming.src] = {incoming.kinematics, clock_.now()};
             else

@@ -56,6 +56,9 @@ public:
     /// Attach the port that says where this node is (ADR-0025; nullptr =
     /// unknown). Read only when Config::shareKinematics is on.
     void setKinematics(const IKinematics* kinematics) { kinematics_ = kinematics; }
+    /// #574: the next-hop weight link-lifetime prediction gives `neighbor`
+    /// now: 1 when the gate is off or either side's kinematics are unknown.
+    double linkLifetimeWeight(NodeAddress neighbor) const;
     /// What `neighbor`'s last hello said about its position and velocity,
     /// extrapolated to now (p + v*(now - t_rx)). False when it is unknown: no
     /// hello from it carried a section, the last one did not, or the
@@ -241,6 +244,13 @@ private:
     /// time). Only filled when Config::shareKinematics is on; erased with the
     /// neighbour (loseNeighbor) and by a hello that carries no section.
     std::map<NodeAddress, std::pair<Kinematics, double>> neighborKinematics_;
+    /// #574: per-neighbour next-hop weights, refreshed before each choice
+    /// and handed to the pheromone table (only when enableLinkLifetime).
+    std::map<NodeAddress, double> linkWeights_;
+    /// shareKinematics, or implied by a consumer that needs it (#574).
+    bool sharingKinematics() const { return config_.shareKinematics || config_.enableLinkLifetime; }
+    /// Recompute linkWeights_ for the current neighbours (#574).
+    void refreshLinkWeights();
     /// #185: smoothed hop count ĥ per (destination, next hop), the thesis's
     /// eq. 4.2 state. Only populated when Config::hopCountAlpha > 0; entries for
     /// a neighbour are erased with it (loseNeighbor), so it is bounded by the

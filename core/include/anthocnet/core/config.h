@@ -182,6 +182,28 @@ struct Config {
     /// what the hellos carry (25 bytes more when the position is known).
     bool shareKinematics = false;
 
+    /// #574: discount next hops whose link is predicted to break soon. Each
+    /// neighbour's pheromone is multiplied, for next-hop choice only (ants and
+    /// data), by min(1, LET / linkLifetimeHorizon), floored at
+    /// linkLifetimeFloor. LET is the link expiration time (Su, Lee and Gerla
+    /// 2001) from this node's and the neighbour's kinematics (ADR-0025) and
+    /// linkLifetimeRange. A neighbour whose kinematics are unknown is not
+    /// discounted. Turning this on implies shareKinematics. Default off:
+    /// byte-identical when off (ADR-0020's check). The deposits themselves are
+    /// untouched, so a discount never outlives the prediction behind it.
+    bool enableLinkLifetime = false;
+    /// Radio range (m) the prediction assumes. `repo choice`: the paper
+    /// cell's disk range is 300 m and the two-ray decode radius ~250 m, so
+    /// 250 m; set it to the scenario's range when measuring.
+    double linkLifetimeRange = 250.0;
+    /// A link predicted to live at least this long (s) is not discounted.
+    /// `repo choice`: 3 hello periods, the threshold scenario_check.py's #481
+    /// rule uses for "links that live too short for neighbour detection".
+    double linkLifetimeHorizon = 3.0;
+    /// The smallest weight a predicted-short link keeps (discouraged, never
+    /// removed: a node whose links are all short must still forward).
+    double linkLifetimeFloor = 0.05;
+
     /// Per-hop probability that an in-transit proactive forward ant is broadcast
     /// to explore for new paths rather than unicast along pheromone ([1] §3.3).
     double proactiveBroadcastProb = 0.1;
