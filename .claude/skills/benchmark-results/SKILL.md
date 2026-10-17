@@ -156,7 +156,12 @@ The cross-session procedure (formerly buried in issue #91's session notes):
    above the line rather than a workflow that failed to emit it.
 5. **Parse by script, never by eye**: `bench_parse.py` for `##BENCH##` cells,
    `sweep_summary.py` for campaign CSVs (below).
-6. **Record** the verdict + run IDs on the relevant issue (ADR-0013).
+6. **Attribution control** when a campaign changes code between two
+   generations: `bench_parse.py --control BEFORE AFTER` on a cell run with
+   every protocol. Every baseline's `##RUN##` rows must be identical; stock
+   AODV on a satellite cell may read ORDER-ONLY (#675, heap-ordered sockets),
+   anything else that moved is a FAIL and the delta is not attributable.
+7. **Record** the verdict + run IDs on the relevant issue (ADR-0013).
 
 ## Campaign CSVs (`sweep_summary.py`)
 

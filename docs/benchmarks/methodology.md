@@ -911,6 +911,22 @@ be expressed against them.
 > validity to state wherever one is published. `isl-grid` also keeps its own
 > determinism gate ([`check-determinism.sh`](../../tools/checks/check-determinism.sh)):
 > identical invocations are reproducible, which is the weaker property.
+>
+> **The same exposure reaches across commits, and the attribution control
+> classifies it ([#675](https://github.com/danieljoppi/AntHocNet/issues/675)).**
+> A code change anywhere in the process (v2.2.0's first one was #659, which
+> touches neither AODV nor the satellite harnesses) shifts the heap, so AODV's
+> satellite rows move between two commits even with the same invocation. The
+> v2.2.0 re-baseline found this on all four ISL-grid cells and all three LEO
+> shells; every other row reproduced byte for byte. The treatment is
+> `bench_parse.py --control BEFORE AFTER`. It requires every baseline's
+> per-seed `##RUN##` rows to be identical, except stock AODV on an `isl-grid`
+> or `leo-walker` cell. There, a difference is reported as **ORDER-ONLY** when
+> the paired 95% CIs of PDR, delay99 and NRL all straddle zero, and FAILs
+> otherwise. On the v2.2.0 attribution control (`sat-base`, `repair200`) that
+> reads 16 of 20 seeds differing, dPDR −0.00 [−0.01, +0.00] pp: ORDER-ONLY.
+> AODV is not vendored and patched: the papers cite *stock* AODV, and the
+> difference never reaches a paired verdict.
 
 > **Campaign data produced before #352 carries a structure dependence.** Within
 > one invocation it is internally consistent (and per-seed pairing across

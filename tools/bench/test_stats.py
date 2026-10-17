@@ -59,6 +59,65 @@ def approx(a, b, tol=1e-3):
     assert abs(a - b) <= tol, f"{a} != {b} (tol {tol})"
 
 
+# ---- #675 baseline control --------------------------------------------------
+
+def _ctl_cell(rows, harness="compare"):
+    """A cell from {proto: [(pdr, delay99, nrl), ...]}, seeds 1..n."""
+    out = []
+    for proto, vals in rows.items():
+        for seed, (pdr, d99, nrl) in enumerate(vals, 1):
+            out.append(f"##RUN## {seed} {proto} {pdr} 10.0 {d99} 9.0 {nrl}")
+    out.append(f"##PROV## commit=0123456 harness={harness}")
+    return "\n".join(out) + "\n"
+
+
+AODV = [(98.0 + i * 0.1, 50.0 + i, 2.0 + i * 0.01) for i in range(10)]
+# The same seeds, nudged both ways: what a heap-order change does to AODV.
+AODV_REORDERED = [(p + (0.02 if i % 2 else -0.02), d, n)
+                  for i, (p, d, n) in enumerate(AODV)]
+
+
+@case("#675 control: identical baselines pass")
+def _control_identical():
+    cell = _ctl_cell({"anthocnet": AODV, "aodv": AODV, "olsr": AODV})
+    after = _ctl_cell({"anthocnet": AODV_REORDERED, "aodv": AODV, "olsr": AODV})
+    lines, failed = bp.control(cell, after, "anthocnet")
+    assert not failed, lines
+    assert any("aodv: identical on 10" in ln for ln in lines), lines
+
+
+@case("#675 control: AODV reordered on a satellite cell is ORDER-ONLY")
+def _control_order_only():
+    for harness in ("isl-grid", "leo-walker"):
+        before = _ctl_cell({"aodv": AODV}, harness)
+        after = _ctl_cell({"aodv": AODV_REORDERED}, harness)
+        lines, failed = bp.control(before, after, "anthocnet")
+        assert not failed and "ORDER-ONLY" in lines[0], lines
+
+
+@case("#675 control: the same AODV shift on a single-interface cell FAILs")
+def _control_wifi_fails():
+    lines, failed = bp.control(_ctl_cell({"aodv": AODV}),
+                               _ctl_cell({"aodv": AODV_REORDERED}), "anthocnet")
+    assert failed and "FAIL" in lines[0], lines
+
+
+@case("#675 control: a real AODV shift on a satellite cell still FAILs")
+def _control_real_shift():
+    shifted = [(p - 1.0, d, n) for p, d, n in AODV]
+    lines, failed = bp.control(_ctl_cell({"aodv": AODV}, "isl-grid"),
+                               _ctl_cell({"aodv": shifted}, "isl-grid"), "anthocnet")
+    assert failed and "PAIRED-WORSE" in lines[0], lines
+
+
+@case("#675 control: any other baseline that moves on a satellite cell FAILs")
+def _control_olsr_fails():
+    lines, failed = bp.control(_ctl_cell({"olsr": AODV}, "isl-grid"),
+                               _ctl_cell({"olsr": AODV_REORDERED}, "isl-grid"),
+                               "anthocnet")
+    assert failed, lines
+
+
 # ---- t quantiles -----------------------------------------------------------
 
 @case("t975 matches the standard table at df=1/4/19/30")
