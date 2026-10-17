@@ -137,6 +137,11 @@ struct Params {
     bool csv = false, series = false;
     std::string shell;
     std::string pairs = "default";
+    /// #205: "terrestrial" keeps every AntHocNet default (T_hop = 3 ms, the
+    /// 2007 thesis's wifi hop). "propagation" sets T_hop to this shell's mean
+    /// ISL propagation delay at t = 0, the unloaded per-hop time of a link
+    /// whose delay is propagation, not contention.
+    std::string timingProfile = "terrestrial";
 };
 
 struct Result {
@@ -808,6 +813,34 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
             shift = k;
         }
     }
+    // #205: the propagation timing profile. T_hop becomes the mean +grid ISL
+    // propagation delay (in-plane and cross-plane links weighted by count,
+    // the 2-plane shell's single cross link included), read before any
+    // interface is up, so every node's core is built with it. Serialisation
+    // at the ISL rate (64 B data, ~0.05 ms at 10 Mb/s) is left out: it is
+    // two orders of magnitude below propagation.
+    if (P.timingProfile == "propagation" && proto == "anthocnet") {
+        const double inPlaneM = Dist(PosOf(w.sats.Get(0)), PosOf(w.sats.Get(1)));
+        const double crossM = bestMean * 1000.0;
+        const double nIn = static_cast<double>(S) * Pn;
+        const double nCross = Pn < 2 ? 0.0 : (Pn == 2 ? S : static_cast<double>(S) * Pn);
+        const double meanM = (nIn * inPlaneM + nCross * crossM) / (nIn + nCross);
+        const double hopTime = meanM / kLightSpeed;
+        for (NodeContainer::Iterator it = all.Begin(); it != all.End(); ++it) {
+            Ptr<Ipv4RoutingProtocol> rp = (*it)->GetObject<Ipv4>()->GetRoutingProtocol();
+            rp->SetAttribute("HopTime", DoubleValue(hopTime));
+        }
+        static bool profilePrinted = false;  // pure geometry: identical every run
+        if (!profilePrinted) {
+            profilePrinted = true;
+            std::cout << std::fixed << std::setprecision(3)
+                      << "# anchor timing profile=propagation meanIslKm=" << meanM / 1000.0
+                      << " hopTimeMs=" << 1000.0 * hopTime << "\n";
+        }
+    } else if (P.timingProfile != "terrestrial") {
+        NS_ABORT_MSG("unknown --timingProfile '" << P.timingProfile
+                                                 << "' (terrestrial, propagation)");
+    }
     for (uint32_t p = 0; p < Pn; ++p) {
         for (uint32_t s = 0; s < S; ++s) {
             const uint32_t i = p * S + s;
@@ -1245,6 +1278,10 @@ int main(int argc, char* argv[]) {
                  "the oracle's staleness by that period",
                  P.oracleInterval);
     cmd.AddValue("series", "print the per-second delay series of flow 0", P.series);
+    cmd.AddValue("timingProfile",
+                 "AntHocNet timing (#205): terrestrial (the defaults, T_hop = 3 ms) | "
+                 "propagation (T_hop = this shell's mean ISL propagation delay)",
+                 P.timingProfile);
     cmd.AddValue("csv", "machine-readable rows", P.csv);
     cmd.Parse(argc, argv);
     if (P.shell == "starlink1") {
