@@ -28,7 +28,21 @@ REPO = Path(__file__).resolve().parents[2]
 BINDINGS = REPO / "web/src/bindings.cpp"
 CONFIG_H = REPO / "core/include/anthocnet/core/config.h"
 CONFIG_MD = REPO / "docs/configuration.md"
+NS3_PROTOCOL = REPO / "ns3/anthocnet/model/anthocnet-routing-protocol.cc"
 PREFIX = "--ns3::anthocnet::RoutingProtocol::"
+
+
+def time_attrs() -> set[str]:
+    """ns-3 attributes declared with a TimeValue: their flags take "250ms".
+    The rest of the seconds-valued fields (HopTime) are DoubleValues."""
+    src = NS3_PROTOCOL.read_text(encoding="utf-8")
+    out = set()
+    for m in re.finditer(
+        r'\.AddAttribute\(\s*"(\w+)"(.*?)(?=\.AddAttribute\(|\Z)', src, re.DOTALL
+    ):
+        if "TimeValue(" in m.group(2):
+            out.add(m.group(1))
+    return out
 
 
 def exposed() -> list[str]:
@@ -96,7 +110,7 @@ def badges(source: str) -> list[str]:
 
 
 def build() -> tuple[list[dict], list[str]]:
-    head, rows = header_fields(), table_rows()
+    head, rows, timed = header_fields(), table_rows(), time_attrs()
     fields, errors = [], []
     for key in exposed():
         h, r = head.get(key), rows.get(key)
@@ -111,7 +125,11 @@ def build() -> tuple[list[dict], list[str]]:
         if not h or not r:
             continue
         kind = (
-            "bool" if h["ctype"] == "bool" else "time" if r["unit"] == "s" else "number"
+            "bool"
+            if h["ctype"] == "bool"
+            else "time"
+            if r["attr"] in timed
+            else "number"
         )
         default = h["default"] == "true" if kind == "bool" else float(h["default"])
         fields.append(
