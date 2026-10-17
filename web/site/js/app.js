@@ -121,6 +121,7 @@ async function load(worldId, seed, opts = {}) {
   R.setWorld({
     areaX: w.areaX(), areaY: w.areaY(), areaZ: w.areaZ(), channel: w.channel(),
     blocksX: w.blocksX(), blocksY: w.blocksY(), streetWidth: w.streetWidth(), range: w.range(),
+    zones: Array.from(w.zones()),
     sprite: opts.meta ? opts.meta.sprite : worldById(playground.worldId).sprite,
     sprites: opts.meta ? opts.meta.sprites : null,
   });

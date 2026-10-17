@@ -9,6 +9,7 @@
 #include <limits>
 
 #include "anthocnet/core/ant_message_codec.h"
+#include "anthocnet/core/link_metric_registry.h"
 
 namespace ahn_web {
 
@@ -111,7 +112,7 @@ int World::addNode(double x, double y, double z) {
     Node& n = *nodes_.back();
     n.legs_.push_back(Leg{0, kForever, Vec3{x, y, z}, Vec3{x, y, z}});
     if (started_) {
-        n.logic_.reset(new core::AntRouterLogic(id, config_, n, n));
+        n.logic_.reset(new core::AntRouterLogic(id, config_, n, n, metric_));
         n.logic_->setObserver(&n);
         n.logic_->setKinematics(&n);
         n.logic_->setEnergy(&n);
@@ -160,7 +161,7 @@ void World::start() {
     started_ = true;
     for (auto& np : nodes_) {
         Node& n = *np;
-        n.logic_.reset(new core::AntRouterLogic(n.id_, config_, n, n));
+        n.logic_.reset(new core::AntRouterLogic(n.id_, config_, n, n, metric_));
         n.logic_->setObserver(&n);
         n.logic_->setKinematics(&n);
         n.logic_->setEnergy(&n);  // #575; read only by the energy metric
@@ -444,15 +445,33 @@ bool World::lineOfSight(const Vec3& a, const Vec3& b) const {
 
 void World::setNodeRange(int node, double range) { nodes_.at(node)->range_ = range; }
 
+bool World::setLinkMetric(const std::string& name) {
+    const core::ILinkMetric* m = core::metrics::find(name);
+    if (!m || started_) return false;
+    metric_ = m;
+    return true;
+}
+
 // --- #575: attenuation zones, batteries, ground stations ---------------------
 
-void World::addAttenuationZone(const std::vector<double>& xy, double factor) {
-    zones_.push_back(Zone{xy, factor});
+void World::addAttenuationZone(const std::vector<double>& xy, double factor, double top) {
+    zones_.push_back(Zone{xy, factor, top});
+}
+
+std::vector<double> World::zonesFlat() const {
+    std::vector<double> out;
+    for (const Zone& z : zones_) {
+        out.push_back(z.factor);
+        out.push_back(static_cast<double>(z.xy.size() / 2));
+        out.insert(out.end(), z.xy.begin(), z.xy.end());
+    }
+    return out;
 }
 
 double World::rangeFactorAt(const Vec3& p) const {
     double f = 1;
     for (const Zone& z : zones_) {
+        if (p.z >= z.top) continue;  // above the canopy
         // Even-odd ray casting along +x: arithmetic only.
         const std::size_t n = z.xy.size() / 2;
         bool in = false;

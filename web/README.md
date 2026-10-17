@@ -73,7 +73,7 @@ traces byte-identically:
 
 ```js
 w.setRoute(20, [200,200,0, 600,200,0, 600,600,0, 200,600,0], 8); // a bus line, 8 m/s, looping
-w.addAttenuationZone([80,80, 360,80, 360,720, 80,720], 0.5);     // canopy: range x0.5 inside
+w.addAttenuationZone([80,80, 360,80, 360,720, 80,720], 0.5, 30); // canopy: range x0.5 inside, below 30 m
 w.setBattery(12, 120); w.batteryLeft(12);  // J; idle 0.82 W, +0.32 W while sending; off when empty
 w.setGroundStation(64, 25);                // Isl channel: link to satellites >= 25 deg up
 w.setOrbit(7, 7.571e6, 53, 45, 0, 120);    // radius m, inclination/RAAN/phase deg, period s
@@ -83,7 +83,8 @@ w.setOrbit(7, 7.571e6, 53, 45, 0, 120);    // radius m, inclination/RAAN/phase d
   a constant speed, looping. A node with no mobility stays put, so a roadside
   unit inside a mobile world is just a static node with a longer range.
 - **Attenuation zones:** polygons (even-odd point test) that scale the range
-  of a link end inside them. Overlapping zones take the smallest factor.
+  of a link end inside them and below the zone's top (30 m by default: a drone
+  above the canopy is not in it). Overlapping zones take the smallest factor.
 - **Battery:** drains at the idle draw all the time and at the transmit
   draw while a frame is on the air. These are the Halperin et al. (HotPower'10)
   powers `anthocnet-compare` models. The node switches off (event 10) when

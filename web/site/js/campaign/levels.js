@@ -19,11 +19,26 @@ export const CHAPTERS = [
     results: { href: RES + 'grid/' } },
   { n: 2,
     results: { href: RES + 'static-mesh/' } },
+  { n: 3,
+    results: { href: RES + 'scenarios/vanet/' } },
+  { n: 4,
+    results: { href: RES + 'scenarios/fanet/' } },
+  { n: 5,
+    results: { href: RES + 'satellite/leo-walker/' } },
 ].map((c) => {
   localized(c, `chapter.${c.n}`, ['title', 'family', 'blurb']);
   localized(c.results, `chapter.${c.n}.results`, ['label']);
   return c;
 });
+
+// Chapters 3-5 (#576-#578) build on the #575 adapter features.
+const CITY = { area: [800, 800], channel: 'urban', range: 300, blocks: [4, 4], street: 20 };
+const STREET = [0, 200, 400, 600, 800];
+const car = (i, j) => ({ class: 'car', x: STREET[i], y: STREET[j] });
+const FOREST = { area: [800, 800, 200], range: 300 };
+const canopy = (x0, x1) => ({ poly: [x0, 0, x1, 0, x1, 800, x0, 800], factor: 0.5 });
+const SKY = { area: [2.2e7, 2.2e7], channel: 'isl', shell: { planes: 8, slots: 8 } };
+const station = (lat, lon) => ({ class: 'station', lat, lon });
 
 export const LEVELS = [
   // --- Chapter 1: Ad hoc town (MANET) ------------------------------------------
@@ -260,6 +275,157 @@ export const LEVELS = [
       { class: 'router', x: 190, y: 430 }, { class: 'router', x: 710, y: 430 },
       { class: 'repeater', x: 450, y: 170 }, { class: 'repeater', x: 450, y: 430 },
     ],
+  },
+
+  // --- Chapter 3: City streets (VANET, #576) --------------------------------------
+  // The street grid of the vanet world: 4 x 4 blocks of 200 m, buildings cut
+  // every link that leaves its street. Cars 300 m, roadside units 400 m.
+  {
+    id: '3.1', chapter: 3,
+    world: { ...CITY, devices: [car(0, 2), car(2, 2), car(4, 2), car(2, 0)],
+             flows: [{ src: 0, dst: 2, rate: 2, start: 3 }] },
+    budget: 0, palette: [], duration: 60,
+    objectives: [{ kind: 'quiz', answer: 0 }],
+    stars: { budgetLeft: 0, maxNrl: 1e9 },
+    debrief: { links: [['doc.vanet', RES + 'scenarios/vanet/'], ['doc.regimes', DOC + 'network-regimes/']] },
+    par: [{ answer: 0 }],
+  },
+  {
+    id: '3.2', chapter: 3,
+    world: { ...CITY, devices: [car(0, 0), car(4, 4), car(4, 0), car(0, 4), car(1, 2), car(3, 2), car(2, 1), car(2, 3)],
+             flows: [{ src: 0, dst: 1, rate: 2, start: 3 }, { src: 2, dst: 3, rate: 2, start: 4 }] },
+    budget: 160, palette: [{ class: 'rsu', cost: 40, limit: 4 }], duration: 120,
+    objectives: [{ kind: 'deliver', flows: 'all', ratio: 0.3, from: 20, to: 120 }],
+    stars: { budgetLeft: 40, maxNrl: 60 },
+    debrief: { links: [['doc.vanet', RES + 'scenarios/vanet/'], ['AntRouterLogic::learnNeighbor', ARL]] },
+    par: [{ class: 'rsu', x: 200, y: 200 }, { class: 'rsu', x: 600, y: 600 }, { class: 'rsu', x: 600, y: 200 }, { class: 'rsu', x: 200, y: 600 }],
+  },
+  {
+    id: '3.3', chapter: 3,
+    world: { ...CITY, devices: [{ class: 'rsu', x: 0, y: 400 }, { class: 'rsu', x: 800, y: 400 },
+                               { class: 'bus', x: 200, y: 200, route: [[200, 200], [600, 200], [600, 600], [200, 600]] }],
+             flows: [{ src: 0, dst: 1, rate: 2, start: 3 }] },
+    budget: 40, palette: [{ class: 'rsu', cost: 40, limit: 1 }], duration: 150,
+    objectives: [{ kind: 'deliver', flows: [0], ratio: 0.8, from: 30, to: 150 }],
+    stars: { budgetLeft: 0, maxNrl: 80 },
+    debrief: { links: [['doc.vanet', RES + 'scenarios/vanet/'], ['doc.antTypesRepair', DOC + 'ant-types/#repair-ants']] },
+    par: [{ class: 'rsu', x: 400, y: 400 }],
+  },
+  {
+    id: '3.4', chapter: 3,
+    world: { ...CITY, devices: [car(0, 0), car(4, 4), car(4, 0), car(0, 4), car(1, 1), car(3, 3), car(1, 3), car(3, 1),
+                               car(2, 2), car(2, 0), car(2, 4), car(0, 2), car(4, 2), car(1, 2), car(3, 2), car(2, 1)],
+             flows: [{ src: 0, dst: 1, rate: 2, start: 3 }, { src: 2, dst: 3, rate: 2, start: 4 }] },
+    budget: 200, palette: [{ class: 'rsu', cost: 40, limit: 5 }], duration: 160,
+    hazards: [4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((device) => ({ at: 60, do: 'down', device })),
+    objectives: [
+      { kind: 'deliver', flows: 'all', ratio: 0.5, from: 10, to: 60 },
+      { kind: 'deliver', flows: 'all', ratio: 0.2, from: 70, to: 160 },
+    ],
+    stars: { budgetLeft: 0, maxNrl: 60 },
+    debrief: { links: [['doc.vanet', RES + 'scenarios/vanet/'], ['doc.regimes', DOC + 'network-regimes/']] },
+    par: [{ class: 'rsu', x: 200, y: 200 }, { class: 'rsu', x: 600, y: 600 }, { class: 'rsu', x: 600, y: 200 }, { class: 'rsu', x: 200, y: 600 }, { class: 'rsu', x: 400, y: 400 }],
+  },
+  // --- Chapter 4: Forest (FANET, #577) --------------------------------------------
+  // Canopy halves any radio below 30 m inside it. Rangers 300 m on the ground;
+  // relay drones 300 m, 120 m up, on batteries.
+  {
+    id: '4.1', chapter: 4,
+    world: { ...FOREST, zones: [canopy(120, 380), canopy(420, 680)],
+             devices: [{ class: 'ranger', x: 110, y: 400 }, { class: 'ranger', x: 690, y: 400 }],
+             flows: [{ src: 0, dst: 1, rate: 2, start: 3 }] },
+    budget: 30, palette: [{ class: 'ranger', cost: 30, limit: 1 }], duration: 60,
+    objectives: [{ kind: 'deliver', flows: [0], ratio: 0.9, from: 10, to: 60 }],
+    stars: { budgetLeft: 0, maxNrl: 30 },
+    debrief: { links: [['doc.fanet', RES + 'scenarios/fanet/'], ['doc.regimes', DOC + 'network-regimes/']] },
+    par: [{ class: 'ranger', x: 400, y: 400 }],
+  },
+  {
+    id: '4.2', chapter: 4,
+    world: { ...FOREST, zones: [canopy(150, 650)],
+             devices: [{ class: 'ranger', x: 130, y: 400 }, { class: 'ranger', x: 670, y: 400 }],
+             flows: [{ src: 0, dst: 1, rate: 2, start: 3 }] },
+    budget: 50, palette: [{ class: 'drone', cost: 50, limit: 1, moves: false, spec: { battery: 75 } }], duration: 120,
+    objectives: [{ kind: 'deliver', flows: [0], ratio: 0.85, from: 10, to: 80 }, { kind: 'quiz', answer: 0 }],
+    stars: { budgetLeft: 0, maxNrl: 30 },
+    debrief: { links: [['doc.fanet', RES + 'scenarios/fanet/'], ['doc.howItWorks', DOC + 'ant-colony-routing/']] },
+    par: [{ class: 'drone', x: 400, y: 400 }, { answer: 0 }],
+  },
+  {
+    id: '4.3', chapter: 4,
+    world: { ...FOREST,
+             devices: [{ class: 'ranger', x: 60, y: 60 }, { class: 'ranger', x: 740, y: 740 },
+                       { class: 'drone', x: 300, y: 300 }, { class: 'drone', x: 500, y: 500 }],
+             flows: [{ src: 0, dst: 1, rate: 2, start: 3 }] },
+    budget: 150, palette: [{ class: 'drone', cost: 50, limit: 3, moves: false }], duration: 120,
+    objectives: [{ kind: 'quiz', answer: 0 }, { kind: 'deliver', flows: [0], ratio: 0.8, from: 20, to: 120 }],
+    stars: { budgetLeft: 0, maxNrl: 40 },
+    debrief: { links: [['doc.fanet', RES + 'scenarios/fanet/'], ['doc.antTypesRepair', DOC + 'ant-types/#repair-ants']] },
+    par: [{ answer: 0 }, { class: 'drone', x: 220, y: 220 }, { class: 'drone', x: 400, y: 400 }, { class: 'drone', x: 580, y: 580 }],
+  },
+  {
+    id: '4.4', chapter: 4,
+    world: { ...FOREST, zones: [canopy(200, 560)],
+             devices: [{ class: 'ranger', x: 80, y: 400 },
+                       { class: 'ranger', x: 680, y: 300, route: [[680, 300], [720, 600], [640, 700], [680, 300]], speed: 1.5 }],
+             flows: [{ src: 1, dst: 0, rate: 2, start: 3 }] },
+    budget: 150, palette: [{ class: 'drone', cost: 50, limit: 3, moves: false }], duration: 150,
+    objectives: [{ kind: 'deliver', flows: [0], ratio: 0.8, from: 20, to: 150 }],
+    stars: { budgetLeft: 0, maxNrl: 40 },
+    debrief: { links: [['doc.fanet', RES + 'scenarios/fanet/'], ['doc.regimes', DOC + 'network-regimes/']] },
+    par: [{ class: 'drone', x: 260, y: 400 }, { class: 'drone', x: 480, y: 430 }, { class: 'drone', x: 650, y: 500 }],
+  },
+  // --- Chapter 5: Orbit (satellite, #578) -----------------------------------------
+  // The teaching shell (8 planes x 8, 1200 km, a 120 s orbit) and ground
+  // stations that see satellites 25 deg above their horizon.
+  {
+    id: '5.1', chapter: 5,
+    world: { ...SKY, devices: [station(48.9, 2.4), station(-8.8, 13.2)], flows: [{ src: 0, dst: 1, rate: 2, start: 3 }] },
+    budget: 0, palette: [], duration: 90,
+    objectives: [{ kind: 'connect', flow: 0, within: 15 }, { kind: 'quiz', answer: 0 }],
+    stars: { budgetLeft: 0, maxNrl: 1e9 },
+    debrief: { links: [['doc.satellite', RES + 'satellite/leo-walker/'], ['doc.regimes', DOC + 'network-regimes/']] },
+    par: [{ answer: 0 }],
+  },
+  {
+    id: '5.2', chapter: 5,
+    world: { ...SKY, devices: [station(40.7, -74.0), station(38.7, -9.1)], flows: [{ src: 0, dst: 1, rate: 2, start: 3 }] },
+    budget: 0, palette: [], duration: 90,
+    objectives: [{ kind: 'quiz', answer: 0 }, { kind: 'deliver', flows: [0], ratio: 0.3, from: 10, to: 90 }],
+    stars: { budgetLeft: 0, maxNrl: 1e9 },
+    debrief: { links: [['doc.satellite', RES + 'satellite/isl-grid/'], ['doc.configBeta', DOC + 'configuration/']] },
+    par: [{ answer: 0 }],
+  },
+  {
+    id: '5.3', chapter: 5,
+    world: { ...SKY, devices: [station(48.9, 2.4), station(-8.8, 13.2)], flows: [{ src: 0, dst: 1, rate: 2, start: 3 }] },
+    budget: 0, palette: [], duration: 120,
+    hazards: [{ at: 40, do: 'cut', a: 0, b: 1 }, { at: 40, do: 'cut', a: 0, b: 8 }, { at: 40, do: 'cut', a: 1, b: 2 }],
+    objectives: [{ kind: 'quiz', answer: 0 }, { kind: 'deliver', flows: [0], ratio: 0.5, from: 50, to: 120 }],
+    stars: { budgetLeft: 0, maxNrl: 1e9 },
+    debrief: { links: [['doc.satellite', RES + 'satellite/isl-grid/'], ['AntRouterLogic::loseNeighbor', ARL]] },
+    par: [{ answer: 0 }],
+  },
+  {
+    id: '5.4', chapter: 5,
+    world: { ...SKY, devices: [station(48.9, 2.4), station(-8.8, 13.2), station(40.7, -74.0), station(-23.5, -46.6)],
+             flows: [{ src: 0, dst: 1, rate: 2, start: 3 }, { src: 2, dst: 3, rate: 2, start: 4 }] },
+    budget: 0, palette: [], duration: 150,
+    hazards: [{ at: 60, do: 'storm', every: 10, offset: 3 }],
+    objectives: [{ kind: 'quiz', answer: 0 }, { kind: 'deliver', flows: 'all', ratio: 0.3, from: 70, to: 150 }],
+    stars: { budgetLeft: 0, maxNrl: 1e9 },
+    debrief: { links: [['doc.satellite', RES + 'satellite/leo-walker/'], ['doc.antTypesRepair', DOC + 'ant-types/#repair-ants']] },
+    par: [{ answer: 0 }],
+  },
+  {
+    id: '5.5', chapter: 5,
+    world: { ...SKY, shell: { planes: 8, slots: 8, skip: [2] },
+             devices: [station(48.9, 2.4), station(-8.8, 13.2)], flows: [{ src: 0, dst: 1, rate: 2, start: 3 }] },
+    budget: 0, palette: [], duration: 90,
+    objectives: [{ kind: 'quiz', answer: 0 }, { kind: 'deliver', flows: [0], ratio: 0.3, from: 10, to: 90 }],
+    stars: { budgetLeft: 0, maxNrl: 1e9 },
+    debrief: { links: [['doc.satellite', RES + 'satellite/leo-walker/'], ['doc.regimes', DOC + 'network-regimes/']] },
+    par: [{ answer: 0 }],
   },
 ].map((l) => {
   const key = `level.${l.id.replace('.', '_')}`;

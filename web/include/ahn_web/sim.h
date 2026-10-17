@@ -267,10 +267,11 @@ public:
     /// `node`'s radio range: its own, else the world range().
     /// Give `node` a mobility model (Manhattan snaps it to an intersection).
     void setMobility(int node, const Mobility& m);
-    /// #575: inside the polygon `xy` (x0, y0, x1, y1, ...), radio range is
-    /// scaled by `factor` (a canopy, rubble). A link uses each end's own
-    /// scaled range; where zones overlap the smallest factor applies.
-    void addAttenuationZone(const std::vector<double>& xy, double factor);
+    /// #575: inside the polygon `xy` (x0, y0, x1, y1, ...) and below `top`
+    /// metres, radio range is scaled by `factor` (a canopy, rubble: a drone
+    /// above the trees is not in it). A link uses each end's own scaled
+    /// range; where zones overlap the smallest factor applies.
+    void addAttenuationZone(const std::vector<double>& xy, double factor, double top = 30);
     /// #575: give `node` a battery of `joules`. It drains at kIdleW all the
     /// time and kTxW while transmitting, and the node switches off when it is
     /// empty. Accounting only: it never touches a routing decision.
@@ -284,6 +285,10 @@ public:
     void setGroundStation(int node, double minElevationDeg);
     /// Add a CBR flow; returns its index.
     int addFlow(int src, int dst, double rate, double start, double stop);
+    /// #579: the link metric every node is built with, by registry name
+    /// ("classic", "sinr", "energy"); false if unknown. Before start() only:
+    /// an upgrade, like a mission knob, never a world's default.
+    bool setLinkMetric(const std::string& name);
     /// The protocol Config every node is built with -- the core defaults.
     /// Worlds never change it (ADR-0019); a mission's labelled knob may.
     anthocnet::core::Config& config() { return config_; }
@@ -345,6 +350,8 @@ public:
     double nodeRange(int node) const;
     /// The link rule in use.
     ChannelKind channel() const { return channel_; }
+    /// #575: the attenuation zones as [factor, n, x0, y0, ... x(n-1), y(n-1), ...].
+    std::vector<double> zonesFlat() const;
     /// Field size in metres.
     Vec3 area() const { return area_; }
 
@@ -400,6 +407,7 @@ private:
     SplitMix64 lossRng_;  ///< channel loss draws only
     std::uint64_t seed_;
     anthocnet::core::Config config_;
+    const anthocnet::core::ILinkMetric* metric_ = nullptr;  ///< #579; nullptr = classic
     Vec3 area_{1000, 1000, 0};
     ChannelKind channel_ = ChannelKind::Disk;
     double range_ = 250;
@@ -422,6 +430,7 @@ private:
     struct Zone {
         std::vector<double> xy;
         double factor;
+        double top;
     };
     std::vector<Zone> zones_;  ///< #575 attenuation zones
     /// The smallest attenuation factor of the zones containing (x, y), or 1.

@@ -7,8 +7,11 @@
 //
 // Level schema (web/README.md documents it):
 //   id, chapter, title, story, mechanism       -- text
-//   world: { area: [x, y], range,               -- the field and default radio
-//            devices: [{ class, x, y, moves, draggable }],  pre-placed, 0..n-1
+//   world: { area: [x, y, z?], range,           -- the field and default radio
+//            channel: 'disk' | 'urban' | 'isl',  -- urban: blocks [bx, by], street
+//            zones: [{ poly: [x0, y0, ...], factor }],   canopy (#575)
+//            shell: { planes, slots, inc, period },      satellites (isl, #575)
+//            devices: [{ class, x, y, z, lat, lon, route, battery, moves, draggable }],
 //            flows: [{ src, dst, rate, start }] }  device indices
 //   budget, palette: [{ class, cost, limit, moves }]  what the player may place
 //                                                (moves: false = set down still)
@@ -32,6 +35,21 @@ export const DEVICES = Object.freeze(Object.fromEntries(Object.entries({
   router:   { range: 300, sprite: 'tower', moves: null },
   repeater: { range: 200, sprite: 'tower', moves: null },
   gateway:  { range: 150, sprite: 'pc', moves: null },
+  // Chapters 3-5 (#576-#578). A car drives the street grid (Manhattan); a
+  // bus follows its device's route; a roadside unit stands at a corner.
+  car:      { range: 300, sprite: 'car', moves: { kind: 3, min: 10, max: 20, pause: 0 } },
+  bus:      { range: 300, sprite: 'car', moves: null, route: 8 },
+  rsu:      { range: 400, sprite: 'tower', moves: null },
+  // A relay drone flies a 3-D Gauss-Markov path on a battery; rangers and
+  // sensor posts stand on the forest floor.
+  drone:    { range: 300, sprite: 'drone', moves: { kind: 2, min: 15, max: 0.85, pause: 0, threeD: true }, z: 120, battery: 300 },
+  ranger:   { range: 300, sprite: 'phone', moves: null },
+  sensor:   { range: 150, sprite: 'tower', moves: null },
+  // A ground station on the globe links to satellites 25 deg above its
+  // horizon; a satellite is placed on an orbit (its plane by RAAN).
+  station:  { range: 0, sprite: 'tower', moves: null, ground: 25 },
+  dish:     { range: 0, sprite: 'tower', moves: null, ground: 60 },  // a small dish: sees only near-zenith satellites
+  satellite:{ range: 0, sprite: 'satellite', moves: null, orbit: true },
 }).map(([k, d]) => [k, localized(d, `device.${k}`, ['label', 'note'])])));
 
 /** Seconds of simulated time per runner step (hazards and samples land on it). */
@@ -49,31 +67,91 @@ export function validatePlacements(level, placements) {
     if (slot.limit && used[p.class] > slot.limit) errors.push(t('campaign.err.limit', { n: slot.limit, label: DEVICES[p.class].label }));
     cost += slot.cost;
     const [ax, ay] = level.world.area;
-    if (p.x < 0 || p.y < 0 || p.x > ax || p.y > ay) errors.push(t('campaign.err.outside', { label: DEVICES[p.class].label }));
+    const sited = DEVICES[p.class]?.ground || DEVICES[p.class]?.orbit;  // placed by site, not by (x, y)
+    if (!sited && (p.x < 0 || p.y < 0 || p.x > ax || p.y > ay)) errors.push(t('campaign.err.outside', { label: DEVICES[p.class].label }));
   }
   if (cost > level.budget) errors.push(t('campaign.err.budget', { cost, budget: level.budget }));
   return { cost, errors };
 }
 
-/** Add one device to a world; returns its node id. */
-export function addDevice(w, cls, x, y, moves = true) {
+// The Earth's radius and the teaching shell (the satellite world's): orbits
+// take `period` seconds, ~55x faster than real ones, so the motion shows.
+const EARTH = 6.371e6;
+const SHELL_ALT = 1.2e6;
+
+/** A point on the Earth's surface, in the field frame (centre = field centre). */
+export function surface(w, lat, lon) {
+  const r = Math.PI / 180, cx = w.areaX() / 2, cy = w.areaY() / 2;
+  return [cx + EARTH * Math.cos(lat * r) * Math.cos(lon * r), cy + EARTH * Math.cos(lat * r) * Math.sin(lon * r), EARTH * Math.sin(lat * r)];
+}
+
+/**
+ * Add one device to a world; returns its node id. `spec` carries what a class
+ * needs beyond (x, y): z, a route, a battery, (lat, lon) for a ground
+ * station, (raan, phase) for a satellite.
+ */
+export function addDevice(w, cls, x, y, moves = true, spec = {}) {
   const d = DEVICES[cls];
   if (!d) throw new Error(`unknown device class ${cls}`); // i18n-ok: a programming error, not player text
-  const id = w.addNode(x, y, 0);
-  w.setNodeRange(id, d.range);
-  if (moves && d.moves) w.setMobility(id, d.moves.kind, d.moves.min, d.moves.max, d.moves.pause, false);
+  let id;
+  if (d.ground) {
+    const [sx, sy, sz] = surface(w, spec.lat ?? y, spec.lon ?? x);
+    id = w.addNode(sx, sy, sz);
+    w.setGroundStation(id, d.ground);
+    return id;
+  }
+  if (d.orbit) {
+    id = w.addNode(0, 0, 0);
+    w.setOrbit(id, EARTH + SHELL_ALT, spec.inc ?? 53, spec.raan ?? x, spec.phase ?? y, spec.period ?? 120);
+    return id;
+  }
+  id = w.addNode(x, y, spec.z ?? d.z ?? 0);
+  if (d.range) w.setNodeRange(id, d.range);
+  if (spec.route) w.setRoute(id, spec.route.flatMap(([px, py]) => [px, py, 0]), spec.speed ?? d.route);
+  else if (moves && d.moves) w.setMobility(id, d.moves.kind, d.moves.min, d.moves.max, d.moves.pause, !!d.moves.threeD);
+  const battery = spec.battery ?? d.battery;
+  if (battery) w.setBattery(id, battery);
   return id;
 }
 
-/** Build a level's world (not started): its devices, then its flows. */
+/** The teaching shell: planes x slots satellites on the +grid, as the satellite world. */
+function buildShell(w, shell) {
+  const { planes, slots } = shell;
+  const ids = [];
+  const skip = new Set(shell.skip || []);  // a plane left empty: a coverage gap
+  for (let p = 0; p < planes; p++) {
+    for (let s = 0; s < slots; s++) {
+      const id = w.addNode(0, 0, 0);
+      if (skip.has(p)) w.setNodeUp(id, false);
+      w.setOrbit(id, EARTH + SHELL_ALT, shell.inc ?? 53, p * 360 / planes, s * 360 / slots + p * 360 / (planes * slots), shell.period ?? 120);
+      ids.push(id);
+    }
+  }
+  for (let p = 0; p < planes; p++) {
+    for (let s = 0; s < slots; s++) {
+      w.addIslLink(ids[p * slots + s], ids[p * slots + (s + 1) % slots]);
+      if (planes > 1) w.addIslLink(ids[p * slots + s], ids[((p + 1) % planes) * slots + s]);
+    }
+  }
+  return ids;
+}
+
+/** Build a level's world (not started): its field, devices, then its flows. */
 export function buildWorld(M, level, seed) {
   const w = new M.World(seed, '');
-  const [ax, ay] = level.world.area;
-  w.setArea(ax, ay, 0);
-  w.setDiskChannel(level.world.range ?? 250);
-  const ids = level.world.devices.map((d) => addDevice(w, d.class, d.x, d.y, d.moves !== false));
-  for (const f of level.world.flows) w.addFlow(ids[f.src], ids[f.dst], f.rate ?? 2, f.start ?? 2, 1e9);
-  return { world: w, ids };
+  const lw = level.world;
+  const [ax, ay, az = 0] = lw.area;
+  w.setArea(ax, ay, az);
+  if (lw.channel === 'urban') w.setUrbanChannel(lw.range ?? 300, lw.blocks?.[0] ?? 4, lw.blocks?.[1] ?? 4, lw.street ?? 20);
+  else if (lw.channel === 'isl') w.setIslChannel();
+  else w.setDiskChannel(lw.range ?? 250);
+  for (const z of lw.zones || []) w.addAttenuationZone(z.poly, z.factor, z.top ?? 30);
+  const ids = lw.devices.map((d) => addDevice(w, d.class, d.x, d.y, d.moves !== false, d));
+  // Satellites come after the devices, so device indices (flows, hazards)
+  // stay the level's own; hazards address a satellite as 'sat:k'.
+  const sats = lw.shell ? buildShell(w, lw.shell) : [];
+  for (const f of lw.flows) w.addFlow(ids[f.src], ids[f.dst], f.rate ?? 2, f.start ?? 2, 1e9);
+  return { world: w, ids, sats };
 }
 
 const flowTotals = (w) => {
@@ -92,9 +170,10 @@ export class LevelRun {
   constructor(M, level, seed, { world } = {}) {
     this.level = level;
     this.seed = seed;
-    const built = world ? { world, ids: [] } : buildWorld(M, level, seed);
+    const built = world ? { world, ids: [], sats: [] } : buildWorld(M, level, seed);
     this.world = built.world;
     this.ids = built.ids;
+    this.sats = built.sats;
     this.placed = [];
     this.hintsUsed = 0;
     this.samples = [];          // [t, per-flow {sent, delivered}]
@@ -110,7 +189,7 @@ export class LevelRun {
     const { errors } = validatePlacements(this.level, [...this.placed, { class: cls, x, y }]);
     if (errors.length) throw new Error(errors[0]);
     const slot = this.level.palette.find((p) => p.class === cls);
-    const id = addDevice(this.world, cls, x, y, slot.moves !== false);
+    const id = addDevice(this.world, cls, x, y, slot.moves !== false, slot.spec || {});
     this.placed.push({ class: cls, x, y, id });
     return id;
   }
@@ -163,10 +242,17 @@ export class LevelRun {
     (this.level.hazards || []).forEach((h, i) => {
       if (this.hazardsDone.has(i) || h.at > t) return;
       this.hazardsDone.add(i);
-      const node = h.device < this.ids.length ? this.ids[h.device] : h.device;
+      const node = typeof h.device === 'string' && h.device.startsWith('sat:')
+        ? this.sats[Number(h.device.slice(4))]
+        : h.device < this.ids.length ? this.ids[h.device] : h.device;
       if (h.do === 'down') this.world.setNodeUp(node, false);
       else if (h.do === 'up') this.world.setNodeUp(node, true);
       else if (h.do === 'move') this.world.moveNode(node, h.to[0], h.to[1], 0);
+      else if (h.do === 'cut') this.world.cutIslLink(this.sats[h.a], this.sats[h.b]);
+      else if (h.do === 'storm') {
+        // A solar storm: every k-th satellite fails (deterministic, no draw).
+        for (let s = h.offset ?? 0; s < this.sats.length; s += h.every) this.world.setNodeUp(this.sats[s], false);
+      }
     });
   }
 

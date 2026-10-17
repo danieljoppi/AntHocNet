@@ -582,6 +582,42 @@
     "gateway": {
       "label": "Roteador doméstico",
       "note": "fixo, dentro de casa"
+    },
+    "car": {
+      "label": "Carro",
+      "note": "percorre a malha de ruas"
+    },
+    "bus": {
+      "label": "Ônibus",
+      "note": "uma linha fixa, sempre o mesmo trajeto"
+    },
+    "rsu": {
+      "label": "Unidade de beira de estrada",
+      "note": "fixa, numa esquina"
+    },
+    "drone": {
+      "label": "Drone de retransmissão",
+      "note": "a 120 m de altura, com bateria"
+    },
+    "ranger": {
+      "label": "Rádio de guarda florestal",
+      "note": "no chão da floresta"
+    },
+    "sensor": {
+      "label": "Poste de sensor",
+      "note": "fixo, alcance curto"
+    },
+    "station": {
+      "label": "Estação terrena",
+      "note": "vê satélites 25° acima do horizonte"
+    },
+    "dish": {
+      "label": "Antena pequena",
+      "note": "vê só satélites quase a pino"
+    },
+    "satellite": {
+      "label": "Satélite",
+      "note": "no seu plano orbital"
     }
   },
   "chapter": {
@@ -603,15 +639,27 @@
     },
     "3": {
       "title": "Ruas da cidade",
-      "family": "VANET"
+      "family": "VANET",
+      "blurb": "Carros numa malha de ruas com prédios altos. Um enlace só vive enquanto as duas pontas enxergam a mesma rua.",
+      "results": {
+        "label": "Resultados VANET"
+      }
     },
     "4": {
       "title": "Floresta",
-      "family": "FANET"
+      "family": "FANET",
+      "blurb": "Guardas florestais sob a copa das árvores e drones de retransmissão acima dela. As folhas cortam o alcance; as baterias acabam.",
+      "results": {
+        "label": "Resultados FANET"
+      }
     },
     "5": {
       "title": "Órbita",
-      "family": "satélites"
+      "family": "satélites",
+      "blurb": "Estações terrenas e uma camada de satélites em movimento. Os enlaces vêm e vão num horário fixado pelas órbitas.",
+      "results": {
+        "label": "Resultados de satélite"
+      }
     },
     "6": {
       "title": "Zona de desastre",
@@ -742,6 +790,200 @@
         "As duas casas do meio estão perto o bastante para um repetidor cada."
       ],
       "debrief": "Uma malha sai mais barata quando cada dispositivo tem só os vizinhos necessários: cada roteador a mais acrescenta hellos e tráfego de formigas para cada rota que passa por ele. Os resultados medidos da malha estática mostram o AntHocNet entregando quase tudo ali, e pagando por isso em tráfego de controle."
+    },
+    "3_1": {
+      "title": "Virando a esquina",
+      "mechanism": "prédios e tempo de vida do enlace",
+      "story": "Quatro carros, uma chamada entre os dois nas pontas de uma rua. Veja o que acontece com o enlace quando um carro vira.",
+      "hints": [
+        "Siga o carro 1 e observe seus enlaces quando ele chega a uma esquina.",
+        "O rádio é o mesmo em todo lugar. O que muda numa esquina é o que fica entre os carros."
+      ],
+      "debrief": "Na cidade, raramente é a distância entre dois carros que encerra o enlace: é um prédio, no instante em que um deles vira. A célula VANET medida perde cerca de um terço do tráfego exatamente assim, e uma rota que estava boa há um segundo some. A previsão do tempo de vida do enlace (#574) é a tentativa da v2.3.0 de ver a quebra chegando.",
+      "quiz1": {
+        "question": "A chamada cai logo depois que um carro entra numa rua lateral. Por quê?",
+        "options": [
+          "Os prédios da esquina agora bloqueiam a linha de visada entre os dois carros",
+          "O carro saiu do alcance do rádio",
+          "O rádio do carro desligou na esquina"
+        ]
+      }
+    },
+    "3_2": {
+      "title": "Unidades de beira de estrada",
+      "mechanism": "retransmissores fixos numa rede móvel",
+      "story": "Duas chamadas atravessam a cidade entre carros nos seus cantos. Eles se perdem entre os quarteirões. Coloque unidades de beira de estrada onde as ruas se cruzam.",
+      "hints": [
+        "Uma unidade num cruzamento enxerga as duas ruas.",
+        "Os cruzamentos internos são os mais usados pelos carros."
+      ],
+      "debrief": "Uma unidade de beira de estrada nunca se move, então os enlaces que forma com os carros duram enquanto cada carro fica numa das suas duas ruas. Isso dá às formigas pontos de apoio numa rede em que todos os outros enlaces duram pouco."
+    },
+    "3_3": {
+      "title": "Linha de ônibus",
+      "mechanism": "mobilidade previsível vs. um retransmissor fixo",
+      "story": "Duas unidades nas bordas opostas da cidade querem conversar. Um ônibus dá a volta no anel interno a cada dois minutos. O orçamento dá para só mais uma unidade.",
+      "hints": [
+        "O ônibus alguma vez enxerga as duas unidades ao mesmo tempo?",
+        "A rua entre as duas unidades passa pelo centro da cidade."
+      ],
+      "debrief": "O ônibus é perfeitamente previsível, mas nunca fica onde poderia ligar as duas unidades ao mesmo tempo, então nunca leva a chamada. Uma unidade fixa no meio leva. Saber onde um enlace vai estar é a ideia do upgrade Antecipação: a previsão do tempo de vida do enlace, que desconta um próximo salto cujo enlace está para cair."
+    },
+    "3_4": {
+      "title": "Engarrafamento",
+      "mechanism": "reconvergência (o achado do #537)",
+      "story": "Hora do rush: dezesseis carros, duas chamadas. Aos 60 s, dez estacionam e desligam, e as ruas esvaziam. Mantenha as duas chamadas nas duas fases.",
+      "hints": [
+        "O trânsito denso se sustenta sozinho; planeje para as ruas vazias.",
+        "Primeiro os cantos, depois o centro."
+      ],
+      "debrief": "Quando as ruas esvaziam, todas as rotas que as formigas construíram pelos carros estacionados somem ao mesmo tempo, e a rede precisa achar outras. Isso é reconvergência, a maior perda medida na página VANET. Unidades fixas dão às novas rotas onde se apoiar."
+    },
+    "4_1": {
+      "title": "Sob a copa",
+      "mechanism": "qualidade do enlace vs. distância",
+      "story": "Dois guardas florestais nas bordas de um bosque. As árvores reduzem pela metade o alcance de qualquer rádio debaixo delas. Você tem só mais um rádio.",
+      "hints": [
+        "Um rádio entre as árvores alcança metade da distância.",
+        "Procure a clareira."
+      ],
+      "debrief": "Sob a copa, um rádio de 300 m alcança 150 m. A mesma distância que funciona numa clareira falha entre as árvores. Onde fica o retransmissor importa tanto quanto a distância entre as pontas."
+    },
+    "4_2": {
+      "title": "Olhos no céu",
+      "mechanism": "enlaces em 3-D e baterias",
+      "story": "Um vale cheio de árvores: nenhum rádio de chão o atravessa. Um drone de retransmissão pode pairar acima da copa, onde as folhas não chegam. A bateria dele é pequena.",
+      "hints": [
+        "Acima de 30 m a copa não importa.",
+        "Observe a bateria do drone: o que acontece depois de um minuto e meio?"
+      ],
+      "debrief": "Acima das árvores o drone liga os dois guardas com alcance total. Mas um drone é uma bateria com hélices: quando ela acaba, o enlace some, e as formigas precisam achar outro caminho. Trocar drones a tempo, ou desviar dos cansados (o upgrade Poupa-bateria, a métrica que considera energia), é como as FANETs vivem.",
+      "quiz1": {
+        "question": "O drone paira e a chamada está perfeita. O que a encerra?",
+        "options": [
+          "A bateria do drone acaba e ele desliga",
+          "A copa cresce",
+          "Nada: um drone pairando liga para sempre"
+        ]
+      }
+    },
+    "4_3": {
+      "title": "Mais rápido que as tabelas",
+      "mechanism": "por que o reparo reativo vence tabelas velhas em alta velocidade",
+      "story": "Dois drones fazem patrulhas rápidas entre dois guardas em cantos opostos. A chamada vive caindo: os drones se movem mais rápido do que as rotas se acomodam. Você pode acrescentar retransmissores pairando.",
+      "hints": [
+        "Um enlace com um drone em movimento vive segundos.",
+        "Uma corrente de drones pairando não se move."
+      ],
+      "debrief": "Em velocidades de VANT um enlace pode acabar antes que qualquer atualização de tabela perceba. O AntHocNet repara localmente e de forma reativa, o que ajuda, mas a página FANET medida mostra a alavanca real: mais retransmissores, mais bem colocados.",
+      "quiz1": {
+        "question": "Por que a chamada vive caindo enquanto os drones fazem patrulhas rápidas?",
+        "options": [
+          "Cada enlace vive só segundos, menos do que o tempo de atualizar as rotas",
+          "As baterias dos drones estão vazias",
+          "Os guardas estão longe demais para conversar"
+        ]
+      }
+    },
+    "4_4": {
+      "title": "Trilheiro perdido",
+      "mechanism": "partições num enxame em 3-D",
+      "story": "Um trilheiro percorre uma trilha do outro lado do bosque. O rádio dele precisa alcançar o posto dos guardas na outra borda, atravessando a copa. Três drones pairando.",
+      "hints": [
+        "O trilheiro nunca para de andar: cubra a trilha toda.",
+        "Espace os drones para que cada um enxergue o próximo."
+      ],
+      "debrief": "Uma corrente de drones é tão forte quanto o seu salto mais longo, e o trilheiro se move numa das pontas. Um enxame que mantém uma pessoa em movimento conectada precisa cobrir onde ela pode estar, não só onde está."
+    },
+    "5_1": {
+      "title": "Primeiro contato",
+      "mechanism": "handover: mudanças de enlace programadas",
+      "story": "Paris e Luanda, duas estações terrenas, uma chamada pela camada de satélites. Observe os enlaces das estações enquanto os satélites passam.",
+      "hints": [
+        "Selecione uma estação e veja com qual satélite ela fala.",
+        "Cada satélite passa por cima em um ou dois minutos."
+      ],
+      "debrief": "Uma estação terrena vê cada satélite só durante parte da passagem, e então passa para o próximo. Numa constelação real isso acontece a cada 15 s mais ou menos, num horário que as órbitas fixam de antemão. Cada handover é uma quebra de enlace que as formigas precisam contornar.",
+      "quiz1": {
+        "question": "A chamada continua funcionando, mas o enlace da estação vive mudando de satélite. Por quê?",
+        "options": [
+          "Cada satélite desce abaixo de 25° e a estação passa para o próximo que sobe",
+          "Os satélites estão falhando um após o outro",
+          "A estação terrena se move"
+        ]
+      }
+    },
+    "5_2": {
+      "title": "Atravessando o oceano",
+      "mechanism": "múltiplos saltos por enlaces entre satélites; atraso de propagação",
+      "story": "De Nova York a Lisboa: nenhum satélite enxerga as duas. A chamada atravessa o oceano salto a salto pelos enlaces entre satélites.",
+      "hints": [
+        "Conte os saltos da rota.",
+        "A luz leva cerca de 3,3 ms a cada 1000 km."
+      ],
+      "debrief": "Cada salto entre satélites soma seu atraso de propagação: milhares de quilômetros à velocidade da luz. O tempo de salto padrão do AntHocNet é o de um salto Wi-Fi, 3 ms; o upgrade Tempo de longa distância (#205) o define pelo atraso de propagação real do enlace.",
+      "quiz1": {
+        "question": "O que domina o atraso de um pacote atravessando o oceano pela constelação?",
+        "options": [
+          "A propagação: milhares de quilômetros por salto à velocidade da luz",
+          "A espera em filas nos satélites",
+          "Os rádios das estações terrenas"
+        ]
+      }
+    },
+    "5_3": {
+      "title": "O enlace que falhou",
+      "mechanism": "reconvergência numa topologia determinística",
+      "story": "Paris a Luanda pela constelação. Aos 40 s, três enlaces entre satélites falham de uma vez. Preveja, depois observe.",
+      "hints": [
+        "A grade +grid tem mais de um caminho.",
+        "As notificações LinkFail espalham a notícia; as formigas acham o resto."
+      ],
+      "debrief": "Uma constelação em grade +grid tem muitos caminhos equivalentes, então perder alguns enlaces custa uma reconvergência, não a chamada. A página ISL-grid medida cronometra exatamente isso: a detecção, depois a nova rota.",
+      "quiz1": {
+        "question": "Três enlaces da rota falham aos 40 s. O que acontece com a chamada?",
+        "options": [
+          "Pausa por pouco tempo, depois as formigas acham outro caminho pela grade",
+          "Para de vez: aqueles enlaces eram o único caminho",
+          "Nada: os pacotes nunca percebem"
+        ]
+      }
+    },
+    "5_4": {
+      "title": "Tempestade solar",
+      "mechanism": "reparo de falha em massa (a célula de tempestade S1)",
+      "story": "Duas chamadas atravessam a constelação. Aos 60 s uma tempestade solar derruba um satélite em cada dez. Nada a construir: preveja, depois observe.",
+      "hints": [
+        "Quais rotas usavam um satélite que caiu?",
+        "As formigas de reparo trabalham localmente, todas ao mesmo tempo."
+      ],
+      "debrief": "Uma tempestade quebra muitas rotas no mesmo instante, e todo nó perto de um satélite caído repara ao mesmo tempo. A célula de tempestade Starlink medida mostra a queda e a recuperação; esta fase mostra a mesma forma em escala didática.",
+      "quiz1": {
+        "question": "Um satélite em cada dez falha de uma vez. O que faz a curva de entrega?",
+        "options": [
+          "Cai enquanto as rotas pelos satélites mortos são reparadas, depois se recupera",
+          "Vai a zero e fica lá",
+          "Não muda: um em dez é pouco demais para importar"
+        ]
+      }
+    },
+    "5_5": {
+      "title": "Janela de lançamento",
+      "mechanism": "por que as órbitas diferem: planos e cobertura",
+      "story": "Um plano orbital da constelação está vazio: seus satélites nunca foram lançados. Paris e Luanda ainda conversam, mas pior. Há um lançamento reservado: qual plano ele deve preencher?",
+      "hints": [
+        "Olhe a lacuna nos anéis das órbitas.",
+        "Satélites de um mesmo plano compartilham um anel."
+      ],
+      "debrief": "Cada plano cobre uma faixa da Terra enquanto ela gira. Um plano vazio é uma lacuna que se move pelo mapa, e as chamadas que a atravessam perdem seus caminhos mais curtos. Preencher o próprio plano da lacuna restaura a grade: voltam os enlaces no mesmo plano e entre planos.",
+      "quiz1": {
+        "question": "Um plano da constelação está vazio. Onde deve ir o novo satélite?",
+        "options": [
+          "No plano vazio, para fechar a lacuna de cobertura",
+          "No plano mais cheio, ao lado de mais satélites",
+          "Em qualquer lugar: um satélite não muda a cobertura"
+        ]
+      }
     }
   },
   "campaign": {

@@ -174,8 +174,8 @@ void setOrbit(World& w, int node, double radius, double incDeg, double raanDeg, 
 }
 
 // #575: an attenuation zone from a flat [x0, y0, x1, y1, ...] polygon.
-void addAttenuationZone(World& w, const val& xy, double factor) {
-    w.addAttenuationZone(convertJSArrayToNumberVector<double>(xy), factor);
+void addAttenuationZone(World& w, const val& xy, double factor, double top) {
+    w.addAttenuationZone(convertJSArrayToNumberVector<double>(xy), factor, top > 0 ? top : 30);
 }
 
 void setConfig(World& w, const std::string& key, double v) {
@@ -268,8 +268,13 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
         .function("setBattery", &World::setBattery)
         .function("batteryLeft", &World::batteryLeft)
         .function("setGroundStation", &World::setGroundStation)
+        .function("zones", optional_override([](const World& w) {
+                      const std::vector<double> z = w.zonesFlat();
+                      return val::global("Float64Array").new_(typed_memory_view(z.size(), z.data()));
+                  }))
         .function("addFlow", &World::addFlow)
         .function("setConfig", &setConfig)
+        .function("setLinkMetric", &World::setLinkMetric)
         .function("getConfig", &getConfig)
         .function("start", &World::start)
         .function("advanceTo", &World::advanceTo)
