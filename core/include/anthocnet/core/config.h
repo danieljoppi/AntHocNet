@@ -203,6 +203,23 @@ struct Config {
     /// The smallest weight a predicted-short link keeps (discouraged, never
     /// removed: a node whose links are all short must still forward).
     double linkLifetimeFloor = 0.05;
+    /// #571 quiet mode: back proactive ants off on a stable route. Each
+    /// proactive round, an active destination whose best next hop is the same
+    /// as last round, with its pheromone within quietTolerance (relative),
+    /// counts one more stable round; its ant is then sent only every
+    /// min(quietMaxBackoff, quietBackoffFactor^stable) rounds. A changed best
+    /// hop, a pheromone outside the tolerance, a lost neighbour or a new one
+    /// resets the destination (or, for neighbour events, every destination)
+    /// to one ant per round. Default off: byte-identical when off.
+    bool enableQuietMode = false;
+    /// Relative pheromone change that still counts as "the same route".
+    /// `repo choice`.
+    double quietTolerance = 0.2;
+    /// Geometric growth of the back-off, in proactive rounds. `repo choice`.
+    double quietBackoffFactor = 2.0;
+    /// Longest back-off, in proactive rounds (8 x the 10 s default interval
+    /// = 80 s between probes of a stable route). `repo choice`.
+    int quietMaxBackoff = 8;
 
     /// Per-hop probability that an in-transit proactive forward ant is broadcast
     /// to explore for new paths rather than unicast along pheromone ([1] §3.3).

@@ -355,6 +355,10 @@ private:
     double m_linkLifetimeRange;     ///< range (m) the LET prediction assumes
     double m_linkLifetimeHorizon;   ///< LET (s) at or above which no discount applies
     double m_linkLifetimeFloor;     ///< smallest weight a predicted-short link keeps
+    bool m_enableQuietMode;         ///< back proactive ants off on stable routes (#571)
+    double m_quietTolerance;        ///< relative pheromone change still "stable"
+    double m_quietBackoffFactor;    ///< geometric back-off growth, in rounds
+    uint32_t m_quietMaxBackoff;     ///< back-off cap, in proactive rounds
     double m_proactiveBroadcastProb;
     double m_proactiveVirtualMargin;
     uint32_t m_maxHelloAdverts;  ///< #186: diffusion advert cap k (thesis: 10)

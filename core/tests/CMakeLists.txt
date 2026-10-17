@@ -30,6 +30,7 @@ set(ANTHOCNET_TESTS
   test_sinr_metric
   test_kinematics
   test_link_lifetime
+  test_quiet_mode
 )
 
 foreach(test ${ANTHOCNET_TESTS})

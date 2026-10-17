@@ -49,6 +49,7 @@ void AntRouterLogic::learnNeighbor(NodeAddress neighbor) {
     engine_.updateRegular(table_, neighbor, neighbor, metric_->pheromone(obs));
     lastSeen_[neighbor] = clock_.now();  // liveness: any reception refreshes it
     txFailures_.erase(neighbor);         // a reception clears the tx-failure streak (#19)
+    if (isNew) quiet_.clear();           // #571: a new neighbour may offer a new route
     if (isNew && observer_) observer_->onRouteChanged(neighbor, neighbor, true);
 }
 
@@ -73,6 +74,7 @@ void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
     }
     txFailures_.erase(neighbor);
     neighborKinematics_.erase(neighbor);  // ADR-0025
+    if (had) quiet_.clear();              // #571: a lost link wakes every route
     if (had && observer_) observer_->onRouteChanged(neighbor, neighbor, false);
 }
 
@@ -409,10 +411,11 @@ std::vector<AntMessage> AntRouterLogic::createProactiveAnts() {
     const double now = clock_.now();
     for (auto it = activeSessions_.begin(); it != activeSessions_.end();) {
         if (now - it->second > config_.sessionTtl) {
+            quiet_.erase(it->first);         // #571
             it = activeSessions_.erase(it);  // expired session
             continue;
         }
-        if (!shouldSendProactive(it->first)) {
+        if (!shouldSendProactive(it->first) || !quietAllows(it->first)) {
             ++it;  // session stays active; we just skip this tick's ant
             continue;
         }
@@ -424,6 +427,35 @@ std::vector<AntMessage> AntRouterLogic::createProactiveAnts() {
         ++it;
     }
     return ants;
+}
+
+bool AntRouterLogic::quietAllows(NodeAddress dest) {
+    if (!config_.enableQuietMode) return true;
+    // The best regular next hop now (ties go to the lowest address, the
+    // table's iteration order, so the choice is deterministic).
+    NodeAddress best = kInvalidAddress;
+    double bestPh = 0.0;
+    for (NodeAddress n : table_.neighbors()) {
+        const double ph = table_.getPheromoneRegular(dest, n);
+        if (ph > bestPh) {
+            bestPh = ph;
+            best = n;
+        }
+    }
+    QuietState& q = quiet_[dest];
+    const bool same = best != kInvalidAddress && best == q.best &&
+                      std::fabs(bestPh - q.pheromone) <= config_.quietTolerance * q.pheromone;
+    q.stable = same ? q.stable + 1 : 0;
+    q.best = best;
+    q.pheromone = bestPh;
+    double backoff = std::pow(config_.quietBackoffFactor, q.stable);
+    if (backoff > config_.quietMaxBackoff) backoff = config_.quietMaxBackoff;
+    if (q.skipped + 1 >= backoff) {
+        q.skipped = 0;
+        return true;
+    }
+    ++q.skipped;
+    return false;
 }
 
 // --- ant construction -------------------------------------------------------

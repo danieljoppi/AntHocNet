@@ -69,6 +69,10 @@ RoutingProtocol::RoutingProtocol()
       m_linkLifetimeRange(250.0),
       m_linkLifetimeHorizon(3.0),
       m_linkLifetimeFloor(0.05),
+      m_enableQuietMode(false),
+      m_quietTolerance(0.2),
+      m_quietBackoffFactor(2.0),
+      m_quietMaxBackoff(8),
       m_proactiveBroadcastProb(0.1),
       m_proactiveVirtualMargin(0.0),
       m_maxHelloAdverts(10),
@@ -210,6 +214,28 @@ TypeId RoutingProtocol::GetTypeId() {
                 "LinkLifetimeFloor", "Smallest weight a link predicted to break keeps (#574).",
                 DoubleValue(0.05), MakeDoubleAccessor(&RoutingProtocol::m_linkLifetimeFloor),
                 MakeDoubleChecker<double>(0.0, 1.0))
+            .AddAttribute("EnableQuietMode",
+                          "Back proactive ants off on a stable route (#571): a "
+                          "destination whose best next hop and pheromone do not change "
+                          "is probed every QuietBackoffFactor^k rounds, up to "
+                          "QuietMaxBackoff; any route change or neighbour event resets "
+                          "it. Default off.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableQuietMode),
+                          MakeBooleanChecker())
+            .AddAttribute("QuietTolerance",
+                          "Relative pheromone change that still counts as a stable "
+                          "route (#571).",
+                          DoubleValue(0.2), MakeDoubleAccessor(&RoutingProtocol::m_quietTolerance),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("QuietBackoffFactor",
+                          "Geometric growth of the quiet-mode back-off (#571).", DoubleValue(2.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_quietBackoffFactor),
+                          MakeDoubleChecker<double>(1.0))
+            .AddAttribute(
+                "QuietMaxBackoff", "Longest quiet-mode back-off, in proactive rounds (#571).",
+                UintegerValue(8), MakeUintegerAccessor(&RoutingProtocol::m_quietMaxBackoff),
+                MakeUintegerChecker<uint32_t>(1))
             .AddAttribute("ProactiveBroadcastProb",
                           "Per-hop explore-broadcast probability for proactive ants.",
                           DoubleValue(0.1),
@@ -631,6 +657,10 @@ void RoutingProtocol::DoInitialize() {
     m_config.linkLifetimeRange = m_linkLifetimeRange;
     m_config.linkLifetimeHorizon = m_linkLifetimeHorizon;
     m_config.linkLifetimeFloor = m_linkLifetimeFloor;
+    m_config.enableQuietMode = m_enableQuietMode;
+    m_config.quietTolerance = m_quietTolerance;
+    m_config.quietBackoffFactor = m_quietBackoffFactor;
+    m_config.quietMaxBackoff = static_cast<int>(m_quietMaxBackoff);
     m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
     m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
     m_config.maxHelloAdverts = m_maxHelloAdverts;
@@ -776,6 +806,10 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.linkLifetimeRange = m_linkLifetimeRange;
         m_config.linkLifetimeHorizon = m_linkLifetimeHorizon;
         m_config.linkLifetimeFloor = m_linkLifetimeFloor;
+        m_config.enableQuietMode = m_enableQuietMode;
+        m_config.quietTolerance = m_quietTolerance;
+        m_config.quietBackoffFactor = m_quietBackoffFactor;
+        m_config.quietMaxBackoff = static_cast<int>(m_quietMaxBackoff);
         m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
         m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
         m_config.maxHelloAdverts = m_maxHelloAdverts;

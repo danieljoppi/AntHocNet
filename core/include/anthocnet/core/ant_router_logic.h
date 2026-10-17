@@ -274,6 +274,19 @@ private:
         0;  ///< expired local repairs that discarded pending data (#215)
     std::uint64_t directedSteers_ = 0;  ///< reactive ants unicast along the diffusion gradient
     std::map<NodeAddress, double> lastLinkfailNotify_;  ///< dest -> last originated LinkFail time
+
+    /// #571 quiet mode, per active destination: the route last seen and how
+    /// long it has been stable. Only used when Config::enableQuietMode.
+    struct QuietState {
+        NodeAddress best = kInvalidAddress;  ///< best regular next hop last round
+        double pheromone = 0.0;              ///< its pheromone last round
+        int stable = 0;                      ///< consecutive stable rounds
+        int skipped = 0;                     ///< rounds since this dest's last ant
+    };
+    std::map<NodeAddress, QuietState> quiet_;
+    /// True when quiet mode lets `dest`'s proactive ant go this round (and
+    /// advances its state). Always true with the gate off.
+    bool quietAllows(NodeAddress dest);
 };
 
 }  // namespace core
