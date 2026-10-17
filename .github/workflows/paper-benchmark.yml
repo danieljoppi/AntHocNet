@@ -238,6 +238,19 @@ jobs:
             echo "--- ns-3 stderr tail (non-fatal) ---"
             tail -n 20 "$GITHUB_WORKSPACE/ns3-stderr.log"
           fi
+      - name: Stamp provenance into the results file
+        # #674: ##PROV## used to reach the job log only, so a cell saved from
+        # the artifact had to rebuild its provenance from the run record. The
+        # same line now ends the results file too, and the compact step below
+        # echoes this exact string, so log and artifact cannot disagree.
+        if: always()
+        shell: bash
+        run: |
+          prov="##PROV## commit=$GITHUB_SHA ref=$GITHUB_REF_NAME run_id=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT image=ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }} profile=$NS3_PROFILE harness=${{ github.event.inputs.harness }}"
+          echo "AHN_PROV=$prov" >> "$GITHUB_ENV"
+          if [ -f "$GITHUB_WORKSPACE/paper-results.txt" ]; then
+            echo "$prov" >> "$GITHUB_WORKSPACE/paper-results.txt"
+          fi
       - name: Upload results
         # if: always() + stderr/time-v in the artifact — a failed run is
         # exactly when the forensics are needed (#256), and skipping upload on
@@ -403,4 +416,4 @@ jobs:
           # that is how three cancelled ablation arms became unrecoverable.
           # Emitted LAST, after ##PERF##, so it is the line a cheap log tail is
           # least likely to lose.
-          echo "##PROV## commit=$GITHUB_SHA ref=$GITHUB_REF_NAME run_id=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT image=ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }} profile=$NS3_PROFILE harness=${{ github.event.inputs.harness }}"
+          echo "$AHN_PROV"
