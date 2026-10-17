@@ -93,6 +93,9 @@ for (const world of ['line', 'manet', 'town', 'mesh', 'fanet', 'vanet', 'satelli
   await p.waitForFunction(() => document.getElementById('clock')?.textContent.includes('t 0:0'), null, { timeout: 15000 });
   const configs = await p.evaluate(async () => {
     const { playground } = await import('./js/app.js');
+    // The static page already reads "t 0:00.00", so the clock wait above can
+    // return before the engine is up: wait for the core itself.
+    for (let i = 0; !playground.M && i < 300; i++) await new Promise((r) => setTimeout(r, 50));
     const keys = ['betaData', 'betaAnts', 'alpha', 'helloInterval', 'proactiveInterval', 'enableProactive', 'enableMultipath', 'enableRepair'];
     const out = {};
     for (const world of playground.M.scenarios()) {
