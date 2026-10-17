@@ -114,6 +114,7 @@ int World::addNode(double x, double y, double z) {
         n.logic_.reset(new core::AntRouterLogic(id, config_, n, n));
         n.logic_->setObserver(&n);
         n.logic_->setKinematics(&n);
+        n.logic_->setEnergy(&n);
         armTimers(n);
     }
     return id;
@@ -131,6 +132,10 @@ void World::setMobility(int node, const Mobility& m) {
         p.z = 0;
     }
     if (m.kind == MobilityKind::Orbit) p = orbitPosition(m, Vec3{area_.x / 2, area_.y / 2, 0}, 0);
+    if (m.kind == MobilityKind::Route && !m.route.empty()) {
+        p = m.route.front();  // #575: a route starts at its first waypoint
+        n.routeIdx_ = 0;
+    }
     n.legs_.assign(1, Leg{0, 0, p, p});
     n.gmSpeed_ = m.gmMeanSpeed;
     n.gmDir_ = Vec3{1, 0, 0};
@@ -158,7 +163,12 @@ void World::start() {
         n.logic_.reset(new core::AntRouterLogic(n.id_, config_, n, n));
         n.logic_->setObserver(&n);
         n.logic_->setKinematics(&n);
+        n.logic_->setEnergy(&n);  // #575; read only by the energy metric
         armTimers(n);
+        if (n.battery0_ >= 0) {
+            const int id = n.id_;
+            schedule(now_ + 1.0, [this, id] { batteryTimer(id); });
+        }
     }
     for (std::size_t f = 0; f < flows_.size(); ++f) {
         const int id = static_cast<int>(f);
@@ -283,6 +293,19 @@ void World::extendLegs(Node& n, double until) const {
                 if (q.z > zmax) q.z = 2 * zmax - q.z, d.z = -d.z;
                 n.gmDir_ = d;
                 n.legs_.push_back(Leg{t0, t0 + 1.0, p, q});
+                break;
+            }
+            case MobilityKind::Route: {
+                // #575: drive to the next waypoint at speedMin, then the one
+                // after, looping. Arithmetic only, no draw.
+                const std::vector<Vec3>& rt = n.mob_.route;
+                if (rt.size() < 2 || n.mob_.speedMin <= 0) {
+                    n.legs_.push_back(Leg{t0, kForever, p, p});
+                    break;
+                }
+                n.routeIdx_ = (n.routeIdx_ + 1) % rt.size();
+                const Vec3 q = rt[n.routeIdx_];
+                n.legs_.push_back(Leg{t0, t0 + dist(p, q) / n.mob_.speedMin, p, q});
                 break;
             }
             case MobilityKind::Orbit: {
@@ -421,6 +444,84 @@ bool World::lineOfSight(const Vec3& a, const Vec3& b) const {
 
 void World::setNodeRange(int node, double range) { nodes_.at(node)->range_ = range; }
 
+// --- #575: attenuation zones, batteries, ground stations ---------------------
+
+void World::addAttenuationZone(const std::vector<double>& xy, double factor) {
+    zones_.push_back(Zone{xy, factor});
+}
+
+double World::rangeFactorAt(const Vec3& p) const {
+    double f = 1;
+    for (const Zone& z : zones_) {
+        // Even-odd ray casting along +x: arithmetic only.
+        const std::size_t n = z.xy.size() / 2;
+        bool in = false;
+        for (std::size_t i = 0, j = n - 1; i < n; j = i++) {
+            const double xi = z.xy[2 * i], yi = z.xy[2 * i + 1];
+            const double xj = z.xy[2 * j], yj = z.xy[2 * j + 1];
+            if ((yi > p.y) != (yj > p.y) && p.x < (xj - xi) * (p.y - yi) / (yj - yi) + xi) in = !in;
+        }
+        if (in && z.factor < f) f = z.factor;
+    }
+    return f;
+}
+
+void World::setBattery(int node, double joules) {
+    Node& n = *nodes_.at(node);
+    n.battery0_ = n.battery_ = joules;
+    n.batteryAt_ = now_;
+    if (started_) schedule(now_ + 1.0, [this, node] { batteryTimer(node); });
+}
+
+double World::batteryLeft(int node) {
+    Node& n = *nodes_.at(node);
+    if (n.battery0_ < 0) return -1;
+    drainBattery(n, 0);
+    return n.battery_;
+}
+
+void World::drainBattery(Node& n, double txSeconds) {
+    if (n.battery0_ < 0 || !n.up_) return;
+    n.battery_ -= kIdleW * (now_ - n.batteryAt_) + (kTxW - kIdleW) * txSeconds;
+    n.batteryAt_ = now_;
+    if (n.battery_ <= 0) {
+        n.battery_ = 0;
+        setNodeUp(n.id_, false);  // the battery is empty: the device stops
+    }
+}
+
+void World::batteryTimer(int node) {
+    Node& n = *nodes_[node];
+    drainBattery(n, 0);
+    if (n.battery_ > 0) schedule(now_ + 1.0, [this, node] { batteryTimer(node); });
+}
+
+double Node::residualEnergyFraction() const {
+    if (battery0_ <= 0) return std::numeric_limits<double>::quiet_NaN();
+    const double left = battery_ - World::kIdleW * (w_.now_ - batteryAt_);
+    return left > 0 ? left / battery0_ : 0.0;
+}
+
+void World::setGroundStation(int node, double minElevationDeg) {
+    constexpr double kPi = 3.141592653589793;
+    nodes_.at(node)->groundMinSinEl_ = detSin(minElevationDeg * kPi / 180);
+}
+
+bool World::groundSees(int g, int s, double t) const {
+    // Elevation of s above g's horizon: sin(el) = (d . u) / |d|, where u is
+    // the unit radius through g and d = s - g. Compared as sines, so no
+    // inverse trig: only + - * / and sqrt, which round alike natively and in
+    // WASM.
+    const Vec3 c{area_.x / 2, area_.y / 2, 0};
+    const Vec3 pg = positionAt(g, t), ps = positionAt(s, t);
+    const Vec3 u{pg.x - c.x, pg.y - c.y, pg.z - c.z};
+    const Vec3 d{ps.x - pg.x, ps.y - pg.y, ps.z - pg.z};
+    const double lu = std::sqrt(u.x * u.x + u.y * u.y + u.z * u.z);
+    const double ld = std::sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
+    if (lu == 0 || ld == 0) return false;
+    return (d.x * u.x + d.y * u.y + d.z * u.z) / (lu * ld) >= nodes_[g]->groundMinSinEl_;
+}
+
 double World::nodeRange(int node) const {
     const double own = nodes_.at(node)->range_;
     return own < 0 ? range_ : own;
@@ -428,11 +529,23 @@ double World::nodeRange(int node) const {
 
 bool World::linkUpAt(int a, int b, double t) const {
     if (a == b || !nodes_[a]->up_ || !nodes_[b]->up_) return false;
-    if (channel_ == ChannelKind::Isl) return isl_.count({std::min(a, b), std::max(a, b)}) > 0;
+    if (channel_ == ChannelKind::Isl) {
+        // #575: a ground station links to the satellites it sees, never to
+        // another station; satellites link only by their ISLs.
+        const bool ga = nodes_[a]->groundMinSinEl_ <= 1, gb = nodes_[b]->groundMinSinEl_ <= 1;
+        if (ga || gb) return ga != gb && (ga ? groundSees(a, b, t) : groundSees(b, a, t));
+        return isl_.count({std::min(a, b), std::max(a, b)}) > 0;
+    }
     const Vec3 pa = positionAt(a, t), pb = positionAt(b, t);
     // #568: a link needs both ends to reach; nodes without a device range use
     // the world's, so min(range_, range_) keeps every existing world as it was.
-    if (dist(pa, pb) > std::min(nodeRange(a), nodeRange(b))) return false;
+    // #575: an attenuation zone scales the range of an end inside it.
+    double ra = nodeRange(a), rb = nodeRange(b);
+    if (!zones_.empty()) {
+        ra *= rangeFactorAt(pa);
+        rb *= rangeFactorAt(pb);
+    }
+    if (dist(pa, pb) > std::min(ra, rb)) return false;
     return channel_ != ChannelKind::Urban || lineOfSight(pa, pb);
 }
 
@@ -480,6 +593,7 @@ void World::sendAnt(Node& n, const AntMessage& m, int to) {
     const double start = std::max(now_, n.busyUntil_);
     const double dur = txDuration(bytes.size() + 28);
     n.busyUntil_ = start + dur;
+    if (n.battery0_ >= 0) drainBattery(n, dur);  // #575
     const int from = n.id_;
     const int type = static_cast<int>(m.type), dir = static_cast<int>(m.direction);
     if (to < 0) {
@@ -574,6 +688,7 @@ void World::sendData(Node& n, Node::Pending p, int next) {
     const double start = std::max(now_, n.busyUntil_);
     const double dur = txDuration(kDataBytes);
     n.busyUntil_ = start + dur;
+    if (n.battery0_ >= 0) drainBattery(n, dur);  // #575
     const int from = n.id_;
     if (linkUpAt(from, next, start) && !(loss_ > 0 && lossRng_.uniform() < loss_)) {
         const double at = start + dur + propagation(from, next, start);

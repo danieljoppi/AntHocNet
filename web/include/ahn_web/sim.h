@@ -79,6 +79,7 @@ enum class MobilityKind {
     GaussMarkov,     ///< correlated speed and heading, 1 s steps, optionally 3-D
     Manhattan,       ///< street grid: straight 0.5, left/right 0.25 at each corner
     Orbit,           ///< circular orbit around the field's centre (satellites)
+    Route,           ///< #575: a fixed route (a bus line): waypoint to waypoint, looping
 };
 
 /// A node's mobility model and its parameters.
@@ -88,13 +89,14 @@ struct Mobility {
     double speedMax = 10;                      ///< RWP / Manhattan: leg speed upper bound (m/s)
     double pause = 0;                          ///< RWP: pause at each waypoint (s)
     double gmMeanSpeed = 10;                   ///< Gauss-Markov: mean speed (m/s)
-    double gmAlpha = 0.85;   ///< Gauss-Markov: memory (0 = random walk, 1 = straight line)
-    bool threeD = false;     ///< Gauss-Markov: also move in z
-    double orbitRadius = 0;  ///< Orbit: distance from the field's centre (m)
-    double orbitInc = 0;     ///< Orbit: inclination (rad)
-    double orbitRaan = 0;    ///< Orbit: right ascension of the ascending node (rad)
-    double orbitPhase = 0;   ///< Orbit: argument of latitude at t = 0 (rad)
-    double orbitRate = 0;    ///< Orbit: angular speed (rad/s)
+    double gmAlpha = 0.85;    ///< Gauss-Markov: memory (0 = random walk, 1 = straight line)
+    bool threeD = false;      ///< Gauss-Markov: also move in z
+    double orbitRadius = 0;   ///< Orbit: distance from the field's centre (m)
+    double orbitInc = 0;      ///< Orbit: inclination (rad)
+    double orbitRaan = 0;     ///< Orbit: right ascension of the ascending node (rad)
+    double orbitPhase = 0;    ///< Orbit: argument of latitude at t = 0 (rad)
+    double orbitRate = 0;     ///< Orbit: angular speed (rad/s)
+    std::vector<Vec3> route;  ///< Route: waypoints, driven in order at speedMin, looping
 };
 
 /// sin / cos from arithmetic only (range reduction + Taylor series), so the
@@ -167,6 +169,7 @@ class World;
 class Node : public anthocnet::core::IClock,
              public anthocnet::core::IRng,
              public anthocnet::core::IRouterObserver,
+             public anthocnet::core::IEnergy,
              public anthocnet::core::IKinematics {
 public:
     /// Created by World::addNode(); `seed` derives the node's streams.
@@ -182,6 +185,10 @@ public:
     /// IKinematics (ADR-0025): position and the current leg's velocity. Read
     /// by the core only when Config::shareKinematics is on.
     bool self(anthocnet::core::Kinematics& out) const override;
+
+    /// IEnergy (#575, #145): the battery's residual fraction, NaN without a
+    /// battery. Read only by the energy metric.
+    double residualEnergyFraction() const override;
 
     /// IRouterObserver: report-only -- route changes feed the event log.
     void onRouteChanged(NodeAddress dest, NodeAddress nb, bool added) override;
@@ -222,6 +229,11 @@ private:
     std::set<NodeAddress> everRouted_;
     Mobility mob_;
     mutable std::vector<Leg> legs_;
+    mutable std::size_t routeIdx_ = 0;  ///< Route: the waypoint the current leg ends at
+    double battery0_ = -1;              ///< #575: initial energy (J); < 0 = no battery
+    double battery_ = 0;                ///< energy left (J)
+    double batteryAt_ = 0;              ///< when battery_ was last brought up to date
+    double groundMinSinEl_ = 2;         ///< #575: sin(min elevation); > 1 = not a ground station
 };
 
 /// The whole simulation: nodes, radio, mobility, traffic and the event queue.
@@ -255,6 +267,21 @@ public:
     /// `node`'s radio range: its own, else the world range().
     /// Give `node` a mobility model (Manhattan snaps it to an intersection).
     void setMobility(int node, const Mobility& m);
+    /// #575: inside the polygon `xy` (x0, y0, x1, y1, ...), radio range is
+    /// scaled by `factor` (a canopy, rubble). A link uses each end's own
+    /// scaled range; where zones overlap the smallest factor applies.
+    void addAttenuationZone(const std::vector<double>& xy, double factor);
+    /// #575: give `node` a battery of `joules`. It drains at kIdleW all the
+    /// time and kTxW while transmitting, and the node switches off when it is
+    /// empty. Accounting only: it never touches a routing decision.
+    void setBattery(int node, double joules);
+    /// #575: energy left in `node`'s battery (J), or -1 without one.
+    double batteryLeft(int node);
+    /// #575: make `node` a ground station on the satellite (Isl) channel. It
+    /// links to any satellite at least `minElevationDeg` above its horizon,
+    /// the horizon being the plane normal to the Earth's radius through it
+    /// (the Earth's centre is the field's centre, as for orbits).
+    void setGroundStation(int node, double minElevationDeg);
     /// Add a CBR flow; returns its index.
     int addFlow(int src, int dst, double rate, double start, double stop);
     /// The protocol Config every node is built with -- the core defaults.
@@ -392,6 +419,19 @@ private:
     std::deque<std::pair<std::uint64_t, std::vector<std::uint8_t>>>
         xray_;  // (id, bytes), oldest first
 
+    struct Zone {
+        std::vector<double> xy;
+        double factor;
+    };
+    std::vector<Zone> zones_;  ///< #575 attenuation zones
+    /// The smallest attenuation factor of the zones containing (x, y), or 1.
+    double rangeFactorAt(const Vec3& p) const;
+    /// Bring `n`'s battery up to now; switch it off when empty.
+    void drainBattery(Node& n, double txSeconds);
+    void batteryTimer(int node);
+    /// Whether ground station g sees satellite s at time t.
+    bool groundSees(int g, int s, double t) const;
+
     // adapter constants: the ns-3 attribute defaults (anthocnet-routing-protocol.cc)
     static constexpr double kTimerJitter = 0.05;    // TimerJitter
     static constexpr double kQueueTimeout = 3.0;    // QueueTimeout
@@ -401,6 +441,10 @@ private:
     static constexpr int kTtl = 64;
     static constexpr std::size_t kDataBytes = 64 + 28;  // payload + IP/UDP
     static constexpr int kMacRetries = 7;               // failure known after 7 tries
+    // #575 battery draw: the single-antenna 802.11n NIC anthocnet-compare
+    // models (Halperin et al., HotPower'10): idle 0.82 W, transmitting 1.14 W.
+    static constexpr double kIdleW = 0.82;
+    static constexpr double kTxW = 1.14;
 };
 
 }  // namespace ahn_web

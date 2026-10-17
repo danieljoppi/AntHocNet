@@ -146,6 +146,38 @@ void setMobility(World& w, int node, int kind, double a, double b, double c, boo
     w.setMobility(node, m);
 }
 
+// #575: a fixed route (a bus line) through flat [x0, y0, z0, x1, ...] waypoints,
+// driven at `speed` m/s, looping.
+void setRoute(World& w, int node, const val& xyz, double speed) {
+    const std::vector<double> v = convertJSArrayToNumberVector<double>(xyz);
+    ahn_web::Mobility m;
+    m.kind = ahn_web::MobilityKind::Route;
+    m.speedMin = speed;
+    for (std::size_t i = 0; i + 2 < v.size(); i += 3)
+        m.route.push_back(ahn_web::Vec3{v[i], v[i + 1], v[i + 2]});
+    w.setMobility(node, m);
+}
+
+// #575 orbit binding: a circular orbit around the field's centre, with its
+// plane in degrees and its period in seconds (the launch-window level).
+void setOrbit(World& w, int node, double radius, double incDeg, double raanDeg, double phaseDeg,
+              double periodS) {
+    constexpr double kPi = 3.141592653589793;
+    ahn_web::Mobility m;
+    m.kind = ahn_web::MobilityKind::Orbit;
+    m.orbitRadius = radius;
+    m.orbitInc = incDeg * kPi / 180;
+    m.orbitRaan = raanDeg * kPi / 180;
+    m.orbitPhase = phaseDeg * kPi / 180;
+    m.orbitRate = periodS > 0 ? 2 * kPi / periodS : 0;
+    w.setMobility(node, m);
+}
+
+// #575: an attenuation zone from a flat [x0, y0, x1, y1, ...] polygon.
+void addAttenuationZone(World& w, const val& xy, double factor) {
+    w.addAttenuationZone(convertJSArrayToNumberVector<double>(xy), factor);
+}
+
 void setConfig(World& w, const std::string& key, double v) {
     // Mission-scoped knobs only (ADR-0019: worlds never change these).
     auto& c = w.config();
@@ -230,6 +262,12 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
         .function("setNodeRange", &World::setNodeRange)
         .function("nodeRange", &World::nodeRange)
         .function("setMobility", &setMobility)
+        .function("setRoute", &setRoute)
+        .function("setOrbit", &setOrbit)
+        .function("addAttenuationZone", &addAttenuationZone)
+        .function("setBattery", &World::setBattery)
+        .function("batteryLeft", &World::batteryLeft)
+        .function("setGroundStation", &World::setGroundStation)
         .function("addFlow", &World::addFlow)
         .function("setConfig", &setConfig)
         .function("getConfig", &getConfig)
