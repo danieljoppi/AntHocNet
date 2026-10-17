@@ -103,6 +103,8 @@ _Measured at [`54cdfae`](https://github.com/danieljoppi/AntHocNet/commit/54cdfae
 
 ![scenario taxonomy](benchmarks/discrete-summary.png)
 
+_Reproduce: `make reproduce FIG=discrete-summary` explains how; the data behind it is a workflow artifact, so it is re-run, not re-rendered ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
+
 | scenario | class | anthocnet | aodv | olsr | dsdv |
 |---|---|---:|---:|---:|---:|
 | [dense-small](benchmarks/scenarios/dense-small.md) | dense / low-mobility | 38.3 ± 5.7 | 38.6 ± 7.9 | 22.1 ± 5.3 | 20.2 ± 5.6 |
@@ -123,6 +125,8 @@ The ranking-stability statement that reads it is on the
 [VANET page](benchmarks/scenarios/vanet.md#ranking-stability-across-four-families).
 
 ![AntHocNet minus AODV across four families: delivery gains on MANET, static mesh and FANET and a tie on VANET; a shorter tail in every cell; the overhead advantage shrinks and reverses as links get shorter-lived](benchmarks/charts/families-vs-aodv.png)
+
+_Reproduce: `make reproduce FIG=families-vs-aodv` re-renders it from the committed data and diffs the PNG ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
 
 | family | page | chart |
 |---|---|---|

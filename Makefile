@@ -12,8 +12,11 @@
 #   make doctor       NS3DIR=/path/to/ns-3-dev   # check the ns-3 tree first
 #   make install-ns3  NS3DIR=/path/to/ns-3-dev   # BASELINES=0: AntHocNet only
 #   make uninstall-ns3 NS3DIR=/path/to/ns-3-dev
+#   make reproduce-list                         # every published figure (#621)
+#   make reproduce FIG=grid                     # re-render from committed data, diff the PNG
+#   make reproduce FIG=grid MODE=rerun NS3DIR=… # re-measure a cell, validate, render
 
-.PHONY: test core-test bench-core format doctor install-ns3 uninstall-ns3 clean
+.PHONY: test core-test bench-core format doctor install-ns3 uninstall-ns3 clean reproduce reproduce-list
 
 test: core-test
 
@@ -45,3 +48,13 @@ uninstall-ns3:
 
 clean:
 	rm -rf core/build
+
+# One command per published figure (#621): results/figures.yml maps each PNG
+# under docs/benchmarks/ to its data, renderer and re-run recipe.
+# REPRODUCE_ARGS passes through, e.g. --cell sat-failcell --runs 2 --time 500.
+reproduce:
+	@test -n "$(FIG)" || { echo "usage: make reproduce FIG=<name> [MODE=rerun NS3DIR=...]; make reproduce-list"; exit 2; }
+	python3 tools/reproduce.py $(FIG) $(if $(filter rerun,$(MODE)),--rerun $(if $(NS3DIR),--ns3dir $(NS3DIR)),--from-data) $(REPRODUCE_ARGS)
+
+reproduce-list:
+	@python3 tools/reproduce.py list

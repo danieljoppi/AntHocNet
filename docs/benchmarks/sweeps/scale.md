@@ -191,6 +191,8 @@ _Sweep `scale` — mean of 20 run(s) per point, every baseline on identical real
 >
 > ![sweep: scale on CBR sources (#521)](../sweep-scale.png)
 >
+> _Reproduce: `make reproduce FIG=sweep-scale` re-renders it from the committed data and diffs the PNG ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
+>
 > | scale factor | protocol | PDR % ±95 | mean delay (ms) ±95 | 99th delay (ms) ±95 | throughput (kbps) | NRL ±95 | jitter (ms) | dOff90 (ms) |
 > |---:|----------|----------:|--------------------:|--------------------:|------------------:|--------:|------------:|------------:|
 > | 1.0 | anthocnet | 97.5 ± 0.2 | 18.3 ± 0.7 | 241.6 ± 9.4 | 12.84 | 9.394 ± 0.28 | 27.33 | 42.4 |

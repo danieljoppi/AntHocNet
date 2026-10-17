@@ -80,6 +80,8 @@ even the 256-node walker16 cell took 5 h 54 min of CI for 20 seeds.
 
 ![Moving LEO constellation: PDR, packets lost per scheduled handover and delay99 per arm, with the delay oracle as a reference line](../charts/constellation.png)
 
+_Reproduce: `make reproduce FIG=constellation` re-renders it from the committed data and diffs the PNG; `MODE=rerun NS3DIR=…` re-measures a cell first ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
+
 - **AntHocNet beats AODV on every cell, by more as the shell grows:** +15.5 pp
   PDR on walker16, +28.2 pp on Starlink S1, +32.3 pp under the S1 storm — all
   20 of 20 seeds, Wilcoxon p = 1.9e-06 — with lower mean delay on every cell.
@@ -249,6 +251,8 @@ setup — `--pairs=hypatia`, the delay oracle re-solved every 0.1 s, 1000 s,
 one flow.
 
 ![Paris–Luanda RTT on Starlink S1 under the delay oracle, with Hypatia's published 85–117 ms band](../charts/calibration-hypatia.png)
+
+_Reproduce: `make reproduce FIG=calibration-hypatia` re-renders it from the committed data and diffs the PNG ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
 
 | | min | p25 | p50 | p75 | p95 | max |
 |---|---|---|---|---|---|---|

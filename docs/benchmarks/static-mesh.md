@@ -73,6 +73,8 @@ Whatever AntHocNet loses here, it loses to its own machinery.
 >
 > ![Static mesh on CBR sources: every arm delivers above 97 %, OLSR and DSDV lead AntHocNet by a fraction of a point, AODV trails; AntHocNet's delay99 and NRL are far below AODV's and above OLSR's](charts/family-static-mesh.png)
 >
+> _Reproduce: `make reproduce FIG=family-static-mesh` re-renders it from the committed data and diffs the PNG; `MODE=rerun NS3DIR=…` re-measures a cell first ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
+>
 > _Bars: mean of 20 seeds, AntHocNet highlighted; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99); vertical line: the oracle control. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `static-mesh-cbr521.txt`; the table below carries every value._
 >
 > | protocol | PDR % | mean delay (ms) | delay99 (ms, bootstrap) | NRL | energy (mJ/bit) |

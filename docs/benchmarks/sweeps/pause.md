@@ -152,6 +152,8 @@ _Sweep `pause` — mean of 20 run(s) per point, every baseline on identical real
 >
 > ![sweep: pause on CBR sources (#521)](../sweep-pause.png)
 >
+> _Reproduce: `make reproduce FIG=sweep-pause` re-renders it from the committed data and diffs the PNG ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
+>
 > | pause time (s) | protocol | PDR % ±95 | mean delay (ms) ±95 | 99th delay (ms) ±95 | throughput (kbps) | NRL ±95 | jitter (ms) | dOff90 (ms) |
 > |---:|----------|----------:|--------------------:|--------------------:|------------------:|--------:|------------:|------------:|
 > | 0 | anthocnet | 91.0 ± 0.5 | 30.5 ± 1.1 | 490.6 ± 35.6 | 11.99 | 13.986 ± 0.38 | 45.83 | inf |

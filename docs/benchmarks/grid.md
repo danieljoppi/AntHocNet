@@ -91,6 +91,8 @@ try:
 >
 > ![MANET grid on CBR sources, six mobility-by-channel cells: AntHocNet delivers the most of the three arms in every cell, at or above the oracle on two-ray and below it on Nakagami; its delay99 sits between OLSR's and AODV's on two-ray; OLSR has the lowest NRL and AODV the highest](charts/grid.png)
 >
+> _Reproduce: `make reproduce FIG=grid` re-renders it from the committed data and diffs the PNG; `MODE=rerun NS3DIR=…` re-measures a cell first ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
+>
 > _Dots: mean of 20 seeds; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99); black tick: the oracle control, `approx=1` on these channels ([#431](https://github.com/danieljoppi/AntHocNet/issues/431): its delay99 is not a bound on Nakagami). DSDV is in the cells and tables, not plotted, to keep three series apart. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `grid-*-cbr521.txt`._
 >
 > Cells: `results/cells/grid-<mobility>-<channel>-cbr521.txt`. Each marker carries

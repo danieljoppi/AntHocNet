@@ -9,6 +9,43 @@ validation anchors that gate publishing them. Part of the
 
 ## Reproducing a run
 
+### Reproduce a published figure ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))
+
+Every chart under `docs/benchmarks/` has an entry in
+[`results/figures.yml`](https://github.com/danieljoppi/AntHocNet/blob/main/results/figures.yml).
+The entry gives the committed data the chart is drawn from, the script that
+draws it, and how to re-measure each cell. One command per figure:
+
+```bash
+make reproduce-list                     # every figure, and what each can do
+make reproduce FIG=grid                 # seconds: re-render from committed data, diff the PNG
+make reproduce FIG=satellite MODE=rerun NS3DIR=/opt/ns-3 \
+  REPRODUCE_ARGS="--cell sat-failcell"  # hours: re-run the cell, scenario_check, render
+```
+
+**From data.** The renderers are deterministic, so the re-render is
+compared byte for byte with the committed PNG. Anything but `identical` is a
+finding. CI checks that every PNG has an entry (`tools/reproduce.py check`
+in lint.yml).
+
+**Re-run.** The harness runs in an ns-3 tree that carries the module, such
+as the image's `/opt/ns-3` or a tree after `make install-ns3`.
+- **Flags.** An `anthocnet-compare` cell is re-run from its own `##CONFIG##`
+  lines: the scenario flags plus every AntHocNet attribute at its recorded
+  value. The isl-grid and leo-walker harnesses print no such line, so the
+  manifest spells out their dispatch inputs.
+- **Validation.** The new cell goes through `scenario_check.py results`.
+- **Rendering.** The figure is drawn with the new cell in place of the
+  committed one, in a scratch directory. Nothing in the repository changes.
+- **Short runs.** `REPRODUCE_ARGS="--runs 2 --time 60"` makes a smoke run.
+  Its figure has fewer seeds than the published one, and its caption does
+  not say so.
+
+Two kinds of figure cannot be re-rendered:
+- `discrete-summary.png` is drawn from a per-merge workflow artifact, so its
+  entry is re-run only (`benchmarks.yml`);
+- the `*-v1.3.0` sweep charts are frozen snapshots kept for the record.
+
 The [scenario pages](scenarios/) cover a small, fast scenario set used for a
 quick regression signal.
 To reproduce the **paper's base scenario** (50 nodes, 1500×300 m, random-waypoint

@@ -1,0 +1,160 @@
+# Every published figure, and how to make it again (#621).
+#
+#   make reproduce-list                       # the figures below
+#   make reproduce FIG=grid                   # re-render from committed data, diff the PNG
+#   make reproduce FIG=family-static-mesh MODE=rerun NS3DIR=/path/to/ns-3
+#
+# Per figure:
+#   image     the committed PNG
+#   page      the results page that shows it
+#   render    a renderer below, or `none` when the data is not committed
+#   data      the committed inputs (globs allowed); every match must exist
+#   rerun     how to re-measure, one entry per cell:
+#               cell: results/cells/<name>.txt -- the file the re-run replaces
+#               harness: anthocnet-compare | isl-grid | leo-walker
+#               args: the harness flags, OR from-config: true to take them from
+#                     the cell's own ##CONFIG## line (anthocnet-compare cells)
+#             or `workflow:` for figures only a GitHub workflow can remake
+#   frozen    a dated snapshot kept for the record: no renderer, by design
+# tools/reproduce.py check (CI, charts.yml) fails if a PNG under
+# docs/benchmarks/ has no entry here, or an entry's data is missing.
+
+renderers:
+  family-charts: python3 ns3/tools/family-charts.py --cells {cells} --outdir {out} --sweep-outdir {out}
+  core-bench: python3 tools/bench/core_bench.py chart --out {out}/core-speed.png
+
+figures:
+  family-static-mesh:
+    image: docs/benchmarks/charts/family-static-mesh.png
+    page: docs/benchmarks/static-mesh.md
+    render: family-charts
+    data: [results/cells/static-mesh-cbr521.txt]
+    rerun:
+      - {cell: results/cells/static-mesh-cbr521.txt, harness: anthocnet-compare, from-config: true}
+
+  family-fanet:
+    image: docs/benchmarks/charts/family-fanet.png
+    page: docs/benchmarks/scenarios/fanet.md
+    render: family-charts
+    data: [results/cells/fanet-main-cbr521.txt, results/cells/fanet-sparse-cbr521.txt]
+    rerun:
+      - {cell: results/cells/fanet-main-cbr521.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/fanet-sparse-cbr521.txt, harness: anthocnet-compare, from-config: true}
+
+  family-vanet:
+    image: docs/benchmarks/charts/family-vanet.png
+    page: docs/benchmarks/scenarios/vanet.md
+    render: family-charts
+    data: [results/cells/vanet-main.txt, results/cells/vanet-sparse.txt]
+    rerun:
+      - {cell: results/cells/vanet-main.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/vanet-sparse.txt, harness: anthocnet-compare, from-config: true}
+
+  grid:
+    image: docs/benchmarks/charts/grid.png
+    page: docs/benchmarks/grid.md
+    render: family-charts
+    data: ["results/cells/grid-*-*-cbr521.txt"]
+    rerun:
+      - {cell: results/cells/grid-rwp-tworay-cbr521.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/grid-rwp-nakagami-cbr521.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/grid-ssrwp-tworay-cbr521.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/grid-ssrwp-nakagami-cbr521.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/grid-gaussmarkov-tworay-cbr521.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/grid-gaussmarkov-nakagami-cbr521.txt, harness: anthocnet-compare, from-config: true}
+
+  satellite:
+    image: docs/benchmarks/charts/satellite.png
+    page: docs/benchmarks/satellite/isl-grid.md
+    render: family-charts
+    data: [results/cells/sat-corridor-app517.txt, results/cells/sat-failcell-app517.txt]
+    rerun:
+      # The isl-grid harness prints no ##CONFIG## line; these are the
+      # satellite-benchmark.yml inputs the cells were dispatched with.
+      - cell: results/cells/sat-failcell-app517.txt
+        harness: isl-grid
+        args: --rows=4 --cols=4 --torus=true --islDelayMs=5 --islRate=10Mbps --time=900 --runs=20 --flows=8 --cbrBps=4096 --diag --protocols=anthocnet,aodv,olsr,oracle --breakLink=0,0,3,0 --breakAt=450
+      - cell: results/cells/sat-corridor-app517.txt
+        harness: isl-grid
+        args: --rows=6 --cols=6 --torus=true --islDelayMs=5 --islRate=10Mbps --time=900 --runs=20 --flows=0 --cbrBps=4096 --diag --protocols=anthocnet,aodv,olsr,oracle --corridorLoad=12Mbps --corridorLoadAt=15
+
+  families-vs-aodv:
+    image: docs/benchmarks/charts/families-vs-aodv.png
+    page: docs/benchmarks.md
+    render: family-charts
+    data: ["results/cells/grid-*-*-cbr521.txt", results/cells/static-mesh-cbr521.txt,
+           results/cells/fanet-main-cbr521.txt, results/cells/fanet-sparse-cbr521.txt,
+           results/cells/vanet-main.txt, results/cells/vanet-sparse.txt]
+    rerun: same cells as family-* and grid
+
+  constellation:
+    image: docs/benchmarks/charts/constellation.png
+    page: docs/benchmarks/satellite/leo-walker.md
+    render: family-charts
+    data: ["results/cells/leo-walker16-*.txt", "results/cells/leo-starlink1-*.txt"]
+    rerun:
+      # ns-3.48 only (leo-walker needs it), one arm per dispatch (#362).
+      # Shown for walker16's AntHocNet arm; the other arms swap --protocols,
+      # starlink1 uses --planes=72 --sats=22 --phasing=39 --altitude=550
+      # --oracleInterval=1, and the storm adds --massFailAt=150
+      # (tools/bench/campaigns/v2.3.0.yaml holds every cell's inputs).
+      - cell: results/cells/leo-walker16-anthocnet.txt
+        harness: leo-walker
+        args: --time=300 --runs=20 --flows=4 --cbrBps=2048 --islRate=10Mbps --protocols=anthocnet --planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01
+
+  calibration-hypatia:
+    image: docs/benchmarks/charts/calibration-hypatia.png
+    page: docs/benchmarks/satellite/leo-walker.md
+    render: family-charts
+    data: [results/cells/leo-hypatia-calib-oracle-delay.txt]
+    rerun: see leo-walker.md, "Calibration against Hypatia"
+
+  sweep-area:
+    image: docs/benchmarks/sweep-area.png
+    page: docs/benchmarks/sweeps/area.md
+    render: family-charts
+    data: ["results/campaign/3723328*-run.csv"]
+    rerun: {workflow: scenario-matrix.yml, note: "900 s, 20 seeds per point; the run ids are SWEEP_SOURCES in family-charts.py"}
+
+  sweep-pause:
+    image: docs/benchmarks/sweep-pause.png
+    page: docs/benchmarks/sweeps/pause.md
+    render: family-charts
+    data: ["results/campaign/3723329*-run.csv"]
+    rerun: {workflow: scenario-matrix.yml, note: "900 s, 20 seeds per point"}
+
+  sweep-scale:
+    image: docs/benchmarks/sweep-scale.png
+    page: docs/benchmarks/sweeps/scale.md
+    render: family-charts
+    data: [results/campaign/37233299992-run.csv, "results/campaign/pooled-scale-*-20261005.csv"]
+    rerun: {workflow: scenario-matrix.yml, note: "900 s, 20 seeds per point"}
+
+  core-speed:
+    image: docs/benchmarks/charts/core-speed.png
+    page: docs/benchmarks/core-speed.md
+    render: core-bench
+    data: [results/core-bench/history.csv]
+    rerun: {workflow: core-bench.yml, note: "locally: make bench-core; the chart is one point per merge to main"}
+
+  discrete-summary:
+    image: docs/benchmarks/discrete-summary.png
+    page: docs/benchmarks.md
+    # Drawn on every merge from that run's scenarios.csv, which is a workflow
+    # artifact, not committed: there is nothing to re-render from.
+    render: none
+    data: []
+    rerun: {workflow: benchmarks.yml, note: "the named-scenario taxonomy, 120 s x 10 seeds, on every merge"}
+
+  sweep-area-v1.3.0:
+    image: docs/benchmarks/sweep-area-v1.3.0.png
+    page: docs/benchmarks/sweeps/area.md
+    frozen: "the v1.3.0 sweep, kept for the record; superseded by sweep-area"
+  sweep-pause-v1.3.0:
+    image: docs/benchmarks/sweep-pause-v1.3.0.png
+    page: docs/benchmarks/sweeps/pause.md
+    frozen: "the v1.3.0 sweep, kept for the record; superseded by sweep-pause"
+  sweep-scale-v1.3.0:
+    image: docs/benchmarks/sweep-scale-v1.3.0.png
+    page: docs/benchmarks/sweeps/scale.md
+    frozen: "the v1.3.0 sweep, kept for the record; superseded by sweep-scale"
