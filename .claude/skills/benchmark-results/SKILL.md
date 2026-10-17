@@ -27,7 +27,9 @@ fetch cheap:
   upload step, so `get_job_logs` with `tail_lines: 8` captures just the numbers.
   The very last line of that block is `##PROV## commit=…` (#365) — the commit
   the cell was measured at. Keep it in whatever you save: it is what makes the
-  saved file self-describing after the run's logs expire.
+  saved file self-describing after the run's logs expire. The artifact's
+  results file ends with the same line (#674), so a cell saved from the
+  artifact needs no provenance rebuilt from the run record.
 - Otherwise fetch ~55 tail lines (the human table sits just above the
   upload/cleanup noise) and save it.
 - **Whole log to a file, not to context:** `mcp__github__get_job_logs` with

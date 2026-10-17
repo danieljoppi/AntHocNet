@@ -163,6 +163,19 @@ jobs:
             echo "--- ns-3 stderr tail (non-fatal) ---"
             tail -n 20 "$GITHUB_WORKSPACE/ns3-stderr.log"
           fi
+      - name: Stamp provenance into the results file
+        # #674: ##PROV## used to reach the job log only, so a cell saved from
+        # the artifact had to rebuild its provenance from the run record. The
+        # same line now ends the results file too, and the compact step below
+        # echoes this exact string, so log and artifact cannot disagree.
+        if: always()
+        shell: bash
+        run: |
+          prov="##PROV## commit=$GITHUB_SHA ref=$GITHUB_REF_NAME run_id=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT image=ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }} profile=$NS3_PROFILE harness=${{ github.event.inputs.harness }}"
+          echo "AHN_PROV=$prov" >> "$GITHUB_ENV"
+          if [ -f "$GITHUB_WORKSPACE/satellite-results.txt" ]; then
+            echo "$prov" >> "$GITHUB_WORKSPACE/satellite-results.txt"
+          fi
       - name: Upload results
         # if: always(): a failed run is exactly when the stderr + time -v
         # forensics are needed (#256's lesson — three SIGKILLed paper runs
@@ -190,9 +203,9 @@ jobs:
             keep='^# series'
             case "${{ github.event.inputs.extraArgs }}" in *--series*) keep='^$' ;; esac
             grep -E '^(#|protocol|[a-z][a-z-]+ +[0-9])' "$GITHUB_WORKSPACE/satellite-results.txt" \
-              | grep -v "$keep"
+              | grep -v "$keep" | grep -v '^##PROV##'
           else
-            tail -n 30 "$GITHUB_WORKSPACE/satellite-results.txt"
+            grep -v '^##PROV##' "$GITHUB_WORKSPACE/satellite-results.txt" | tail -n 30
           fi
           if [ -f "$GITHUB_WORKSPACE/time-v.log" ]; then
             wall=$(grep -oP 'Elapsed \(wall clock\) time.*: \K.*' "$GITHUB_WORKSPACE/time-v.log" || true)
@@ -203,4 +216,4 @@ jobs:
           # same reason as paper-benchmark's ##PROV## — the harness cannot know
           # its own commit, and a run ID stops resolving to one once the run's
           # logs expire. Emitted last so a cheap tail keeps it.
-          echo "##PROV## commit=$GITHUB_SHA ref=$GITHUB_REF_NAME run_id=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT image=ghcr.io/${{ github.repository_owner }}/ns3:${{ github.event.inputs.version }} profile=$NS3_PROFILE harness=${{ github.event.inputs.harness }}"
+          echo "$AHN_PROV"
