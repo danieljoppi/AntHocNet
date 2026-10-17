@@ -117,6 +117,14 @@ jobs:
           cat "dist/anthocnet-ns3-modules-${VER}.tar.gz.sha256"
           echo "MOD_SHA256=$(cut -d' ' -f1 < "dist/anthocnet-ns3-modules-${VER}.tar.gz.sha256")" >> "$GITHUB_ENV"
 
+      - name: Bake recipe for this release (#613)
+        # ns-3's own installer: the module tarball above as an ns-contrib
+        # module. bake.yml tests the same template against a served tarball.
+        run: |
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/anthocnet-ns3-modules-${VER}.tar.gz"
+          sed -e "s|@URL@|${url}|" -e "s|@VERSION@|${VER}|" packaging/bake/anthocnet.xml.in \
+            > "dist/anthocnet-${VER}.bakeconf.xml"
+
       - name: SBOM of the install bundle (#614)
         # SPDX JSON of what ships: the unpacked bundle directory that the zip
         # is made from, so the SBOM describes exactly the released files.
@@ -198,6 +206,7 @@ jobs:
             dist/anthocnet-ns3-modules-${{ env.VER }}.tar.gz
             dist/anthocnet-ns3-modules-${{ env.VER }}.tar.gz.sha256
             dist/anthocnet-${{ env.VER }}.spdx.json
+            dist/anthocnet-${{ env.VER }}.bakeconf.xml
             dist/anthocnet-${{ env.VER }}.provenance.sigstore.json
           generate_release_notes: true
           body: |
@@ -213,6 +222,10 @@ jobs:
             no checkout needed, `tar -xzf anthocnet-ns3-modules-${{ env.VER }}.tar.gz -C /path/to/ns-3/contrib`,
             then configure and build ns-3. The same files are on the generated
             `ns3-module` branch. SHA-256: `${{ env.MOD_SHA256 }}`.
+            **With bake** (ns-3's installer): copy `anthocnet-${{ env.VER }}.bakeconf.xml`
+            into your bake checkout's `contrib/`, then
+            `./bake.py configure -e ns-3.42 -e anthocnet && ./bake.py download && ./bake.py build`.
+
             Pre-built simulator images are on GHCR (see `docker/README.md`),
             including release-pinned tags `anthocnet-ns3:<sim-version>-${{ env.TAG }}`.
 

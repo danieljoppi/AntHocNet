@@ -1,0 +1,29 @@
+<?xml version="1.0" ?>
+<!--
+  Bake recipe for AntHocNet as an ns-3 contrib module (#613).
+
+  release.yml fills @VERSION@ and @URL@ and attaches the result to each
+  release as anthocnet-<version>.bakeconf.xml; .github/workflows/bake.yml
+  builds it against a served tarball. Usage, from a bake checkout:
+
+    mkdir -p contrib && cp anthocnet-<version>.bakeconf.xml contrib/
+    ./bake.py configure -e ns-3.42 -e anthocnet
+    ./bake.py download && ./bake.py build
+
+  The source is the release's drop-in module tarball. It also carries the
+  comparison modules (aomdv, gpsr, oracle); extract_directory keeps only
+  contrib/anthocnet, the build its README calls "AntHocNet alone".
+-->
+<configuration>
+  <modules>
+    <module name="anthocnet" type="ns-contrib" min_version="ns-3.36">
+      <source type="archive">
+        <attribute name="url" value="@URL@"/>
+        <attribute name="extract_directory" value="anthocnet"/>
+        <attribute name="module_directory" value="anthocnet"/>
+      </source>
+      <build type="none">
+      </build>
+    </module>
+  </modules>
+</configuration>

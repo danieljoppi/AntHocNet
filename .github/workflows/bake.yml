@@ -1,0 +1,64 @@
+name: Bake
+
+# AntHocNet through ns-3's own installer (#613): the bake recipe that
+# release.yml attaches to every release (packaging/bake/anthocnet.xml.in),
+# exercised end to end the way a user runs it:
+#   ./bake.py configure -e ns-3.42 -e anthocnet && ./bake.py download && ./bake.py build
+# The recipe's URL points at this commit's drop-in module tarball, served on
+# localhost, so a change to the tarball or the recipe is tested before it
+# ships. Bake builds ns-3 from scratch with its default configuration (all
+# modules, examples and tests), so this is weekly and on changes to the
+# packaging, not a check on every PR.
+on:
+  schedule:
+    - cron: '41 5 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths: ['packaging/bake/**', 'tools/release/module-tarball.sh', '.github/workflows/bake.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bake-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bake:
+    name: bake configure + download + build (ns-3.42)
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      # bake has no tagged releases; pin the commit the recipe was tested with.
+      BAKE_SHA: 0eaa70588c9bdba17d5054b92fcc4b6df3f1e93b
+      NS: ns-3.42
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build the drop-in module tarball and serve it
+        run: |
+          tools/release/module-tarball.sh 0.0.0-bake "$RUNNER_TEMP/dist"
+          (cd "$RUNNER_TEMP/dist" && nohup python3 -m http.server 8765 >/dev/null 2>&1 &)
+      - name: Fetch bake
+        run: |
+          git clone -q https://gitlab.com/nsnam/bake.git "$RUNNER_TEMP/bake"
+          git -C "$RUNNER_TEMP/bake" checkout -q "$BAKE_SHA"
+      - name: Install the recipe
+        run: |
+          mkdir -p "$RUNNER_TEMP/bake/contrib"
+          sed -e 's|@URL@|http://127.0.0.1:8765/anthocnet-ns3-modules-0.0.0-bake.tar.gz|' \
+              -e 's|@VERSION@|0.0.0-bake|' packaging/bake/anthocnet.xml.in \
+              > "$RUNNER_TEMP/bake/contrib/anthocnet-0.0.0-bake.xml"
+      - name: bake configure
+        working-directory: ${{ runner.temp }}/bake
+        run: ./bake.py configure -e "$NS" -e anthocnet
+      - name: bake download
+        working-directory: ${{ runner.temp }}/bake
+        run: |
+          ./bake.py download
+          test -f "source/$NS/contrib/anthocnet/CMakeLists.txt"
+      - name: bake build
+        working-directory: ${{ runner.temp }}/bake
+        run: ./bake.py build -j "$(nproc)"
+      - name: The module's test suite, in the bake-built tree
+        working-directory: ${{ runner.temp }}/bake/source/${{ env.NS }}
+        run: ./test.py --no-build -s anthocnet
