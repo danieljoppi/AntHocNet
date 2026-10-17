@@ -207,6 +207,8 @@ void setConfig(World& w, const std::string& key, double v) {
         c.enableQuietMode = v != 0;  // #571
     else if (key == "enableAdaptiveEvaporation")
         c.enableAdaptiveEvaporation = v != 0;  // #572
+    else if (key == "hopTimeSec")
+        c.hopTimeSec = v;  // #205: the long-haul timing upgrade (#579)
 }
 
 double getConfig(World& w, const std::string& key) {
@@ -224,6 +226,7 @@ double getConfig(World& w, const std::string& key) {
     if (key == "linkLifetimeRange") return c.linkLifetimeRange;
     if (key == "enableQuietMode") return c.enableQuietMode;
     if (key == "enableAdaptiveEvaporation") return c.enableAdaptiveEvaporation;
+    if (key == "hopTimeSec") return c.hopTimeSec;
     return 0;
 }
 

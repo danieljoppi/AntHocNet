@@ -503,6 +503,35 @@ for (const scheme of ['light', 'dark']) {
   await p.close();
 }
 
+// 5b. Upgrades (#579): the screen lists every upgrade, earned ones open; a
+//     briefing offers an earned upgrade as a toggle that is remembered.
+{
+  const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  const cleared = Object.fromEntries(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '2.1', '2.2'].map((id) => [id, 3]));
+  await p.addInitScript((c) => { try { localStorage.setItem('ahn-campaign-v1', JSON.stringify(c)); } catch { /* none */ } }, cleared);
+  await p.addInitScript({ content: axeSource });
+  await p.goto(base + '#campaign');
+  await p.locator('#campaign button', { hasText: 'Upgrades' }).click();
+  await p.locator('#campaign .upgrades li').first().waitFor({ timeout: 15000 });
+  const cards = await p.locator('#campaign .upgrades li').count();
+  const earned = await p.locator('#campaign .upgrades li', { hasText: 'earned' }).count();
+  const v = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+    .filter((x) => x.impact === 'serious' || x.impact === 'critical').map((x) => x.id));
+  if (v.length) fail(`upgrades screen: axe ${v.join(' | ')}`);
+  await p.locator('#campaign button', { hasText: '← Map' }).click();
+  await p.locator('#campaign .chip-btn[aria-label^="Level 2.3,"]').click();
+  const box = p.locator('#up-quiet');
+  await box.check();
+  const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('ahn-upgrades-v1') || '{}')['2.3'] || []);
+  if (cards !== 4 || earned !== 1) fail(`upgrades screen: ${cards} cards, ${earned} earned (want 4, 1)`);
+  else if (!saved.includes('quiet')) fail(`upgrades: the briefing toggle was not saved (${JSON.stringify(saved)})`);
+  else if (errors.length) fail(`upgrades: page errors: ${errors.join(' | ')}`);
+  else if (!v.length) console.log('ok: upgrades — 4 cards, quiet mode earned by 2.2, toggled on in the 2.3 briefing, axe clean');
+  await p.close();
+}
+
 // 4. The default ad hoc world mixes walking and standing phones (#542 follow-up).
 {
   const { p, errors } = await page('#manet?seed=1');

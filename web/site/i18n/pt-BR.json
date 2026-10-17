@@ -1043,7 +1043,16 @@
     "nrl": "formigas por pacote entregue: {x}",
     "hintsUsed": "dicas usadas: {n}",
     "whatYouSaw": "O que você viu: {mechanism}",
-    "nextLevel": "Próxima: {id} {title}"
+    "nextLevel": "Próxima: {id} {title}",
+    "upgrades": "Melhorias",
+    "upgradesIntro": "Cada melhoria é um mecanismo real do núcleo do protocolo, desligado por padrão. Você a ganha ao concluir uma fase; depois pode ligá-la, fase a fase, no briefing. Os padrões do site nunca mudam: a melhoria é uma escolha sua, rotulada, e a campanha mediu o que ela faz.",
+    "upgradeOpen": "conquistada",
+    "upgradeLocked": "conclua {id} para ganhar",
+    "upgradeMeasured": "Medido:",
+    "upgradeHelps": "rende no capítulo {chapters}",
+    "upgradesNote": "Ligada só nesta fase. As estrelas contam do mesmo jeito, com ou sem.",
+    "upgradesOn": "Melhorias ligadas: {list}.",
+    "upgradeEarned": "Melhoria conquistada: {name}."
   },
   "reader": {
     "title": "Guia de campo",
@@ -1271,5 +1280,27 @@
     "copied": "Copiado. Salve o kit para ter os arquivos: o comando os lê.",
     "none": "Rode o mundo por alguns segundos antes: o kit grava para onde os nós vão.",
     "saved": "{file} salvo: descompacte e rode o run.sh."
+  },
+  "upgrade": {
+    "quiet": {
+      "name": "Modo silencioso",
+      "what": "As formigas proativas recuam enquanto uma rota não muda, e voltam quando ela muda.",
+      "measured": "A campanha da v2.3.0 mede a melhoria em cada família de rede; o resultado aparece aqui quando a campanha terminar."
+    },
+    "lookahead": {
+      "name": "Antecipação",
+      "what": "Os hellos levam posição e velocidade; um próximo salto cujo enlace está para cair vale menos.",
+      "measured": "A campanha da v2.3.0 mede a melhoria em cada família de rede; o resultado aparece aqui quando a campanha terminar."
+    },
+    "battery": {
+      "name": "Poupa-bateria",
+      "what": "Saltos por nós com pouca bateria custam mais, então as rotas desviam dos drones cansados.",
+      "measured": "A campanha da v2.3.0 mede a melhoria em cada família de rede; o resultado aparece aqui quando a campanha terminar."
+    },
+    "longhaul": {
+      "name": "Tempo de longa distância",
+      "what": "O tempo de salto é o atraso real de propagação entre satélites, não os 3 ms de um salto Wi-Fi.",
+      "measured": "A campanha da v2.3.0 mede a melhoria em cada família de rede; o resultado aparece aqui quando a campanha terminar."
+    }
   }
 }
