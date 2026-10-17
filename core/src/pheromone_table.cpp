@@ -75,29 +75,38 @@ void PheromoneTable::setPheromoneVirtual(NodeAddress dest, NodeAddress neighbor,
     pheromoneVirtual_[{neighbor, dest}] = value;
 }
 
-double PheromoneTable::sumProbability(const PheromoneMap& table, NodeAddress dest, double beta,
-                                      NodeAddress exclude) const {
-    double sum = 0.0;
-    for (NodeAddress neighbor : neighborTable_) {
-        if (neighbor == exclude) continue;
-        auto it = table.find({neighbor, dest});
-        if (it == table.end()) continue;
-        sum += std::pow(it->second, beta);
-    }
-    return sum;
-}
-
-double PheromoneTable::sumMaxProbability(NodeAddress dest, double beta, NodeAddress exclude) const {
-    double sum = 0.0;
+// #655: both functions below used to look every neighbour's pheromone up and
+// raise it to beta twice -- once in the normaliser (the former sumProbability /
+// sumMaxProbability) and again in the sampling loop. They now do it once, into
+// a small buffer, and sum and sample from it. The floating-point operations
+// and their order are exactly the old ones: the normaliser adds the same
+// pow() values in neighbour order (skipping, for data, the neighbours with no
+// regular entry, as sumProbability did), and the sampler subtracts the same
+// pow(w)/phSum. Selection is therefore bit-identical, which the WASM parity
+// and determinism gates check.
+void PheromoneTable::selectionTerms(NodeAddress dest, bool isProactiveAnt, double beta,
+                                    NodeAddress exclude, std::vector<Term>& terms,
+                                    double& phSum) const {
+    terms.clear();
+    phSum = 0.0;
     for (NodeAddress neighbor : neighborTable_) {
         if (neighbor == exclude) continue;
         auto itR = pheromoneRegular_.find({neighbor, dest});
-        auto itV = pheromoneVirtual_.find({neighbor, dest});
-        double phR = itR != pheromoneRegular_.end() ? itR->second : 0.0;
-        double phV = itV != pheromoneVirtual_.end() ? itV->second : 0.0;
-        sum += std::pow(phR > phV ? phR : phV, beta);
+        const bool useR = itR != pheromoneRegular_.end();
+        double phV = 0.0;
+        bool hasV = false;
+        if (isProactiveAnt) {
+            auto itV = pheromoneVirtual_.find({neighbor, dest});
+            hasV = itV != pheromoneVirtual_.end();
+            if (hasV) phV = itV->second;
+        }
+        const double phR = useR ? itR->second : 0.0;
+        const double p = std::pow(phR > phV ? phR : phV, beta);
+        // sumMaxProbability counted every neighbour; sumProbability only those
+        // with a regular entry.
+        if (isProactiveAnt || useR) phSum += p;
+        terms.push_back({neighbor, p});
     }
-    return sum;
 }
 
 NodeAddress PheromoneTable::nextNeighborNode(NodeAddress dest, bool isProactiveAnt, double beta,
@@ -111,8 +120,8 @@ NodeAddress PheromoneTable::nextNeighborNode(NodeAddress dest, bool isProactiveA
         return kInvalidAddress;
     }
 
-    const double phSum = isProactiveAnt ? sumMaxProbability(dest, beta, exclude)
-                                        : sumProbability(pheromoneRegular_, dest, beta, exclude);
+    double phSum;
+    selectionTerms(dest, isProactiveAnt, beta, exclude, terms_, phSum);
     if (phSum == 0.0) {
         // Excluding the previous hop left no route: rather than black-hole, fall
         // back to considering it (A1 "only option" rule).
@@ -124,18 +133,9 @@ NodeAddress PheromoneTable::nextNeighborNode(NodeAddress dest, bool isProactiveA
 
     double r = rng.uniform();
     NodeAddress chosen = kInvalidAddress;
-    for (NodeAddress neighbor : neighborTable_) {
-        if (neighbor == exclude) continue;
-        auto itR = pheromoneRegular_.find({neighbor, dest});
-        auto itV = pheromoneVirtual_.find({neighbor, dest});
-        bool useR = itR != pheromoneRegular_.end();
-        bool useV = (itV != pheromoneVirtual_.end()) && isProactiveAnt;
-        double phR = useR ? itR->second : 0.0;
-        double phV = useV ? itV->second : 0.0;
-
-        chosen = neighbor;
-        double weight = phR > phV ? phR : phV;
-        r -= std::pow(weight, beta) / phSum;
+    for (const Term& t : terms_) {
+        chosen = t.neighbor;
+        r -= t.pow / phSum;
         if (r <= 0.0) break;
     }
     return chosen;
@@ -150,25 +150,18 @@ std::vector<std::pair<NodeAddress, double>> PheromoneTable::nextHopDistribution(
     const bool known = destRegular_.find(dest) != destRegular_.end() ||
                        (isProactiveAnt && destVirtual_.find(dest) != destVirtual_.end());
     if (!known) return out;
-    const double phSum = isProactiveAnt ? sumMaxProbability(dest, beta, exclude)
-                                        : sumProbability(pheromoneRegular_, dest, beta, exclude);
+    double phSum;
+    std::vector<Term> terms;
+    selectionTerms(dest, isProactiveAnt, beta, exclude, terms, phSum);
     if (phSum == 0.0) {
         if (exclude != kInvalidAddress) {
             return nextHopDistribution(dest, isProactiveAnt, beta, kInvalidAddress);
         }
         return out;
     }
-    for (NodeAddress neighbor : neighborTable_) {
-        if (neighbor == exclude) continue;
-        auto itR = pheromoneRegular_.find({neighbor, dest});
-        auto itV = pheromoneVirtual_.find({neighbor, dest});
-        const bool useR = itR != pheromoneRegular_.end();
-        const bool useV = (itV != pheromoneVirtual_.end()) && isProactiveAnt;
-        const double phR = useR ? itR->second : 0.0;
-        const double phV = useV ? itV->second : 0.0;
-        const double weight = phR > phV ? phR : phV;
-        const double p = std::pow(weight, beta) / phSum;
-        if (p > 0.0) out.emplace_back(neighbor, p);
+    for (const Term& t : terms) {
+        const double p = t.pow / phSum;
+        if (p > 0.0) out.emplace_back(t.neighbor, p);
     }
     return out;
 }

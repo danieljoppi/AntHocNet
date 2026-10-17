@@ -100,9 +100,18 @@ public:
     NodeAddress randomDestination(IRng& rng) const;
 
 private:
-    double sumProbability(const PheromoneMap& table, NodeAddress dest, double beta,
-                          NodeAddress exclude) const;
-    double sumMaxProbability(NodeAddress dest, double beta, NodeAddress exclude) const;
+    /// One candidate's selection weight, pow(pheromone, beta) (#655).
+    struct Term {
+        NodeAddress neighbor;
+        double pow;
+    };
+    /// Every candidate's weight, once, in neighbour order, and the normaliser
+    /// the old sumProbability / sumMaxProbability computed (#655).
+    void selectionTerms(NodeAddress dest, bool isProactiveAnt, double beta, NodeAddress exclude,
+                        std::vector<Term>& terms, double& phSum) const;
+    /// Scratch buffer for nextNeighborNode, kept to avoid an allocation per
+    /// decision. Not part of the table's state.
+    mutable std::vector<Term> terms_;
 
     PheromoneMap pheromoneRegular_;
     PheromoneMap pheromoneVirtual_;

@@ -16,32 +16,47 @@ namespace {
 // struct memcpy) so the format is portable across compilers/endianness and
 // stable between the two adapters.
 
-void putU8(std::vector<std::uint8_t>& b, std::uint8_t v) { b.push_back(v); }
+// The encoder sizes the buffer once and writes through a cursor (#655): one
+// capacity check per frame instead of one push_back per byte, which made
+// encoding ~34x slower than decoding. Same little-endian layout, so the bytes
+// on the wire are unchanged.
+struct Writer {
+    std::uint8_t* p;
 
-void putU16(std::vector<std::uint8_t>& b, std::uint16_t v) {
-    b.push_back(static_cast<std::uint8_t>(v & 0xFF));
-    b.push_back(static_cast<std::uint8_t>((v >> 8) & 0xFF));
-}
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    // On a little-endian host the wire layout is the in-memory layout, so a
+    // field is one memcpy. Elsewhere the shifts below produce the same bytes.
+    template <typename T>
+    void raw(T v) {
+        std::memcpy(p, &v, sizeof(T));
+        p += sizeof(T);
+    }
+    void u8(std::uint8_t v) { *p++ = v; }
+    void u16(std::uint16_t v) { raw(v); }
+    void u32(std::uint32_t v) { raw(v); }
+    void i32(std::int32_t v) { raw(v); }
+    void dbl(double v) { raw(v); }
+#else
 
-void putU32(std::vector<std::uint8_t>& b, std::uint32_t v) {
-    for (int i = 0; i < 4; ++i) b.push_back(static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF));
-}
-
-void putI32(std::vector<std::uint8_t>& b, std::int32_t v) {
-    putU32(b, static_cast<std::uint32_t>(v));
-}
-
-void putDouble(std::vector<std::uint8_t>& b, double v) {
-    std::uint64_t bits;
-    std::memcpy(&bits, &v, sizeof(bits));
-    for (int i = 0; i < 8; ++i) b.push_back(static_cast<std::uint8_t>((bits >> (8 * i)) & 0xFF));
-}
-
-void putF32(std::vector<std::uint8_t>& b, float v) {
-    std::uint32_t bits;
-    std::memcpy(&bits, &v, sizeof(bits));
-    putU32(b, bits);
-}
+    void u8(std::uint8_t v) { *p++ = v; }
+    void u16(std::uint16_t v) {
+        p[0] = static_cast<std::uint8_t>(v & 0xFF);
+        p[1] = static_cast<std::uint8_t>((v >> 8) & 0xFF);
+        p += 2;
+    }
+    void u32(std::uint32_t v) {
+        for (int i = 0; i < 4; ++i) p[i] = static_cast<std::uint8_t>((v >> (8 * i)) & 0xFF);
+        p += 4;
+    }
+    void i32(std::int32_t v) { u32(static_cast<std::uint32_t>(v)); }
+    void dbl(double v) {
+        std::uint64_t bits;
+        std::memcpy(&bits, &v, sizeof(bits));
+        for (int i = 0; i < 8; ++i) p[i] = static_cast<std::uint8_t>((bits >> (8 * i)) & 0xFF);
+        p += 8;
+    }
+#endif
+};
 
 struct Reader {
     const std::uint8_t* p;
@@ -126,38 +141,43 @@ std::size_t serializedSize(const AntMessage& msg) {
 }
 
 void serialize(const AntMessage& msg, std::vector<std::uint8_t>& out) {
-    out.clear();
-    out.reserve(serializedSize(msg));
+    out.resize(serializedSize(msg));
+    Writer w{out.data()};
 
-    putU8(out, kWireVersion);
-    putU8(out, static_cast<std::uint8_t>(msg.type));
-    putU8(out, static_cast<std::uint8_t>(msg.direction));
-    putI32(out, msg.src);
-    putI32(out, msg.dst);
-    putU32(out, msg.seqNum);
-    putDouble(out, msg.timeStart);
-    putDouble(out, msg.lifeAnt);
-    putI32(out, msg.broadcastBudget);
+    w.u8(kWireVersion);
+    w.u8(static_cast<std::uint8_t>(msg.type));
+    w.u8(static_cast<std::uint8_t>(msg.direction));
+    w.i32(msg.src);
+    w.i32(msg.dst);
+    w.u32(msg.seqNum);
+    w.dbl(msg.timeStart);
+    w.dbl(msg.lifeAnt);
+    w.i32(msg.broadcastBudget);
 
-    putU16(out, static_cast<std::uint16_t>(msg.visited.size()));
+    w.u16(static_cast<std::uint16_t>(msg.visited.size()));
     for (const AntHop& h : msg.visited) {
-        putI32(out, h.node);
-        putDouble(out, h.time);
+        w.i32(h.node);
+        w.dbl(h.time);
     }
-    putU16(out, static_cast<std::uint16_t>(msg.history.size()));
+    w.u16(static_cast<std::uint16_t>(msg.history.size()));
     for (const AntHop& h : msg.history) {
-        putI32(out, h.node);
-        putDouble(out, h.time);
+        w.i32(h.node);
+        w.dbl(h.time);
     }
-    putU16(out, static_cast<std::uint16_t>(msg.helloDests.size()));
+    w.u16(static_cast<std::uint16_t>(msg.helloDests.size()));
     for (const HelloDest& d : msg.helloDests) {
-        putI32(out, d.node);
-        putDouble(out, d.pheromone);
+        w.i32(d.node);
+        w.dbl(d.pheromone);
     }
     if (msg.hasKinematics) {
         const Kinematics& k = msg.kinematics;
-        putU8(out, kKinematicsTag);
-        for (double v : {k.x, k.y, k.z, k.vx, k.vy, k.vz}) putF32(out, static_cast<float>(v));
+        w.u8(kKinematicsTag);
+        for (double v : {k.x, k.y, k.z, k.vx, k.vy, k.vz}) {
+            const float f = static_cast<float>(v);
+            std::uint32_t bits;
+            std::memcpy(&bits, &f, sizeof(bits));
+            w.u32(bits);
+        }
     }
 }
 
