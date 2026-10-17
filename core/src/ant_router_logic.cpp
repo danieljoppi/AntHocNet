@@ -51,6 +51,15 @@ void AntRouterLogic::learnNeighbor(NodeAddress neighbor) {
     if (isNew && observer_) observer_->onRouteChanged(neighbor, neighbor, true);
 }
 
+bool AntRouterLogic::neighborKinematics(NodeAddress neighbor, Kinematics& out) const {
+    auto it = neighborKinematics_.find(neighbor);
+    if (it == neighborKinematics_.end()) return false;
+    const Kinematics& k = it->second.first;
+    const double dt = clock_.now() - it->second.second;
+    out = Kinematics{k.x + k.vx * dt, k.y + k.vy * dt, k.z + k.vz * dt, k.vx, k.vy, k.vz};
+    return true;
+}
+
 void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
     const bool had = lastSeen_.find(neighbor) != lastSeen_.end();
     engine_.cleanNeighbor(table_, neighbor);
@@ -62,6 +71,7 @@ void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
             ++it;
     }
     txFailures_.erase(neighbor);
+    neighborKinematics_.erase(neighbor);  // ADR-0025
     if (had && observer_) observer_->onRouteChanged(neighbor, neighbor, false);
 }
 
@@ -465,6 +475,22 @@ AntMessage AntRouterLogic::createHelloAnt(std::size_t maxAdverts) {
     antsSent_[AntType::Hello] += 1;
     if (observer_) observer_->onAntSent(AntType::Hello, AntDirection::Up, true);
 
+    // ADR-0025: say where we are, when we know. A value float32 cannot carry
+    // is not sent, since receivers reject a non-finite section with the
+    // whole hello, and liveness matters more than position.
+    if (config_.shareKinematics && kinematics_) {
+        Kinematics k;
+        if (kinematics_->self(k)) {
+            bool ok = true;
+            for (double v : {k.x, k.y, k.z, k.vx, k.vy, k.vz})
+                ok = ok && std::isfinite(v) && std::fabs(v) < 3.0e38;
+            if (ok) {
+                m.hasKinematics = true;
+                m.kinematics = k;
+            }
+        }
+    }
+
     // Diffusion adverts are gated (ADR-0007); a hello with no adverts still
     // serves neighbour discovery / liveness.
     if (!config_.enableProactive || !config_.enableDiffusion) return m;
@@ -676,6 +702,12 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
 
     if (incoming.type == AntType::Hello) {
         learnNeighbor(incoming.src);
+        if (config_.shareKinematics) {  // ADR-0025
+            if (incoming.hasKinematics)
+                neighborKinematics_[incoming.src] = {incoming.kinematics, clock_.now()};
+            else
+                neighborKinematics_.erase(incoming.src);
+        }
         engine_.updateVirtual(table_, incoming, linkCost(incoming.src));
         return {};  // hello is consumed locally
     }

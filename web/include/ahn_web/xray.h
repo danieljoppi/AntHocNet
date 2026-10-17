@@ -59,6 +59,14 @@ inline std::string antJson(const std::vector<std::uint8_t>& bytes) {
     pairs("history", m.history, [](const anthocnet::core::AntHop& h) { return h.time; });
     pairs("helloDests", m.helloDests,
           [](const anthocnet::core::HelloDest& d) { return d.pheromone; });
+    // ADR-0025: only when present, so default traces are unchanged.
+    if (m.hasKinematics) {
+        const anthocnet::core::Kinematics& k = m.kinematics;
+        std::snprintf(buf, sizeof buf, ",\"kinematics\":[%.9g,%.9g,%.9g", k.x, k.y, k.z);
+        s += buf;
+        std::snprintf(buf, sizeof buf, ",%.9g,%.9g,%.9g]", k.vx, k.vy, k.vz);
+        s += buf;
+    }
     return s + "}";
 }
 

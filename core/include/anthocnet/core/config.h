@@ -174,6 +174,14 @@ struct Config {
     /// for discovery latency and possibly for delivery.
     bool enableDirectedReactive = false;
 
+    /// ADR-0025 (#573): put this node's position and velocity, read from the
+    /// IKinematics port, on its hellos, and keep what neighbours' hellos say.
+    /// Off by default: no hello grows, no table fills, and routing is
+    /// byte-identical. It is the substrate for link-lifetime prediction
+    /// (#574), which turns it on; on its own it changes no decision, only
+    /// what the hellos carry (25 bytes more when the position is known).
+    bool shareKinematics = false;
+
     /// Per-hop probability that an in-transit proactive forward ant is broadcast
     /// to explore for new paths rather than unicast along pheromone ([1] §3.3).
     double proactiveBroadcastProb = 0.1;

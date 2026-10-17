@@ -30,7 +30,15 @@ namespace codec {
 /// 0x02: + AntMessage::broadcastBudget field, AntType::LinkFail (item 05).
 /// 0x03: backward-ant slim — prevHop/hops/pathTime/pheromone off the wire,
 ///       reconstructed locally from `history` (item 02, ADR-0009).
-constexpr std::uint8_t kWireVersion = 0x03;
+/// 0x04: + optional trailing kinematics section on hellos (#573, ADR-0025):
+///       tag kKinematicsTag, then x y z vx vy vz as float32. Absent unless
+///       Config::shareKinematics is on, so default frames keep their length.
+constexpr std::uint8_t kWireVersion = 0x04;
+
+/// First byte of a hello's kinematics section ('K').
+constexpr std::uint8_t kKinematicsTag = 0x4B;
+/// Tag + six float32 values.
+constexpr std::size_t kKinematicsSize = 1 + 6 * 4;
 
 /// Protocol bounds enforced on *decode* of untrusted input, mirroring the
 /// Config defaults so the codec stays standalone (golden rule #5). A frame
