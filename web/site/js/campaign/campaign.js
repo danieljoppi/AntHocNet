@@ -16,7 +16,6 @@ const $ = (id) => document.getElementById(id);
 
 /** Chapters the design promises next (learn-campaign.md §3), shown locked. */
 const LATER = [
-  { n: 3, ships: 'v2.3.0' }, { n: 4, ships: 'v2.3.0' }, { n: 5, ships: 'v2.3.0' },
   { n: 6, ships: 'v2.4.0' }, { n: 7, ships: 'v2.4.0' }, { n: 8, ships: 'v2.4.0' },
 ].map((c) => localized(c, `chapter.${c.n}`, ['title', 'family']));
 
@@ -111,6 +110,7 @@ export function initCampaign(pg) {
   // --- playing a level ----------------------------------------------------------------
   function spritesFor() {
     const out = l2sprites(level.world.devices.map((d) => d.class));
+    for (let k = 0; k < (run.sats?.length || 0); k++) out.push(null);  // the shell (#578)
     for (const p of run.placed) out.push(DEVICES[p.class].sprite);
     return out;
   }
@@ -168,6 +168,16 @@ export function initCampaign(pg) {
   }
 
   function pick(cls) {
+    // #578: a slot with a fixed site (a ground station's city, a satellite's
+    // plane) is placed at once: there is nowhere on the globe to click.
+    const fixed = cls && level.palette.find((p) => p.class === cls)?.spec;
+    if (fixed && (DEVICES[cls].ground || DEVICES[cls].orbit)) {
+      picked = cls;
+      place(fixed.lon ?? fixed.raan ?? 0, fixed.lat ?? fixed.phase ?? 0);
+      picked = null;
+      buildDock();
+      return;
+    }
     picked = cls;
     pg.ghostRange = cls ? DEVICES[cls].range : 0;
     pg.onPlace = cls ? place : null;

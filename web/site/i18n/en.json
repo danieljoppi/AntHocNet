@@ -582,6 +582,42 @@
     "gateway": {
       "label": "Home gateway",
       "note": "static, indoors"
+    },
+    "car": {
+      "label": "Car",
+      "note": "drives the street grid"
+    },
+    "bus": {
+      "label": "Bus",
+      "note": "a fixed line, the same loop every time"
+    },
+    "rsu": {
+      "label": "Roadside unit",
+      "note": "static, at a street corner"
+    },
+    "drone": {
+      "label": "Relay drone",
+      "note": "120 m up, on a battery"
+    },
+    "ranger": {
+      "label": "Ranger radio",
+      "note": "on the forest floor"
+    },
+    "sensor": {
+      "label": "Sensor post",
+      "note": "static, short range"
+    },
+    "station": {
+      "label": "Ground station",
+      "note": "sees satellites 25° above its horizon"
+    },
+    "dish": {
+      "label": "Small dish",
+      "note": "sees only satellites nearly overhead"
+    },
+    "satellite": {
+      "label": "Satellite",
+      "note": "on its orbital plane"
     }
   },
   "chapter": {
@@ -603,15 +639,27 @@
     },
     "3": {
       "title": "City streets",
-      "family": "VANET"
+      "family": "VANET",
+      "blurb": "Cars on a street grid with tall buildings. A link lives only while both ends can see down the same street.",
+      "results": {
+        "label": "VANET results"
+      }
     },
     "4": {
       "title": "Forest",
-      "family": "FANET"
+      "family": "FANET",
+      "blurb": "Rangers under a forest canopy and relay drones above it. Leaves cut range; batteries run out.",
+      "results": {
+        "label": "FANET results"
+      }
     },
     "5": {
       "title": "Orbit",
-      "family": "satellites"
+      "family": "satellites",
+      "blurb": "Ground stations and a moving shell of satellites. Links come and go on a schedule set by the orbits.",
+      "results": {
+        "label": "Satellite results"
+      }
     },
     "6": {
       "title": "Disaster zone",
@@ -742,6 +790,200 @@
         "The two middle houses are close enough for a repeater each."
       ],
       "debrief": "A mesh is cheapest when each device has just enough neighbours: every extra router adds hellos and ant traffic for every route through it. The measured static-mesh results show AntHocNet delivering almost everything there, and paying for it in control traffic."
+    },
+    "3_1": {
+      "title": "Around the corner",
+      "mechanism": "buildings and link lifetime",
+      "story": "Four cars, one call between the two at the ends of a street. Watch what happens to the link when a car turns.",
+      "hints": [
+        "Follow car 1 and watch its links as it reaches a corner.",
+        "The radio is the same everywhere. What changes at a corner is what stands between the cars."
+      ],
+      "debrief": "In a city the distance between two cars is rarely what ends their link: a building does, the moment one of them turns. The measured VANET cell loses about a third of its traffic to exactly this, and a route that was fine a second ago is gone. Link-lifetime prediction (#574) is v2.3.0's attempt to see the break coming.",
+      "quiz1": {
+        "question": "The call breaks a moment after a car turns into a side street. Why?",
+        "options": [
+          "The buildings on the corner now block the line of sight between the two cars",
+          "The car drove out of radio range",
+          "The car's radio switched off at the corner"
+        ]
+      }
+    },
+    "3_2": {
+      "title": "Roadside units",
+      "mechanism": "static relays in a mobile network",
+      "story": "Two calls cross the city between cars at its corners. They keep losing each other between blocks. Put roadside units where streets meet.",
+      "hints": [
+        "A unit at a crossing sees down both of its streets.",
+        "The inner crossings are the ones most cars pass."
+      ],
+      "debrief": "A roadside unit never moves, so the links it forms with passing cars last as long as each car stays on one of its two streets. That gives the ants anchors in a network where every other link is short-lived."
+    },
+    "3_3": {
+      "title": "Bus line",
+      "mechanism": "predictable mobility vs. a fixed relay",
+      "story": "Two roadside units at opposite edges of town want to talk. A bus loops the inner ring every couple of minutes. One more unit is all the budget allows.",
+      "hints": [
+        "Does the bus ever see both edge units at once?",
+        "The street between the two units crosses the middle of town."
+      ],
+      "debrief": "The bus is perfectly predictable, but it never stands where it could bridge both units at once, so it never carries the call. A fixed unit in the middle does. Knowing where a link will be is the idea behind the Look-ahead upgrade: link-lifetime prediction, which discounts a next hop whose link is about to break."
+    },
+    "3_4": {
+      "title": "Traffic jam",
+      "mechanism": "reconvergence (the #537 finding)",
+      "story": "Rush hour: sixteen cars, two calls. At 60 s ten of them park and switch off, and the streets empty. Keep both calls going through both phases.",
+      "hints": [
+        "Dense traffic carries itself; plan for the empty streets.",
+        "Corners first, then the centre."
+      ],
+      "debrief": "When the streets empty, every route the ants built through the parked cars is gone at once, and the network must find new ones. That is reconvergence, the largest single loss measured on the VANET page. Fixed units give the new routes something to stand on."
+    },
+    "4_1": {
+      "title": "Under the canopy",
+      "mechanism": "link quality vs. distance",
+      "story": "Two rangers at either edge of a wood. The trees halve any radio under them. One more ranger radio is all you have.",
+      "hints": [
+        "A radio in the trees reaches half as far.",
+        "Look for the clearing."
+      ],
+      "debrief": "Under the canopy a 300 m radio reaches 150 m. The same distance that works in a clearing fails in the trees. Where a relay stands matters as much as how far apart the ends are."
+    },
+    "4_2": {
+      "title": "Eyes in the sky",
+      "mechanism": "3-D links and batteries",
+      "story": "A valley full of trees: no ground radio crosses it. A relay drone can hover above the canopy, where the leaves do not reach. Its battery is small.",
+      "hints": [
+        "Above 30 m the canopy does not matter.",
+        "Watch the drone's battery: what happens after about a minute and a half?"
+      ],
+      "debrief": "Above the trees the drone links both rangers at full range. But a drone is a battery with propellers: when it is empty the link is gone, and the ants must find another way. Swapping drones in time, or routing around tired ones (the Battery saver upgrade, the energy-aware metric), is how FANETs live.",
+      "quiz1": {
+        "question": "The drone hovers and the call is perfect. What ends it?",
+        "options": [
+          "The drone's battery runs out and it switches off",
+          "The canopy grows",
+          "Nothing: a hovering drone links forever"
+        ]
+      }
+    },
+    "4_3": {
+      "title": "Faster than the tables",
+      "mechanism": "why reactive repair beats stale tables at speed",
+      "story": "Two drones fly fast patrols between two rangers at opposite corners. The call keeps dropping: the drones move faster than routes settle. You can add hovering relays.",
+      "hints": [
+        "A link to a moving drone lives seconds.",
+        "A chain of hovering drones does not move."
+      ],
+      "debrief": "At UAV speeds a link can end before any table refresh notices. AntHocNet repairs locally and reactively, which helps, but the measured FANET page shows the real lever: more, better-placed relays.",
+      "quiz1": {
+        "question": "Why does the call keep dropping while the drones fly fast patrols?",
+        "options": [
+          "Each link lives only seconds, shorter than the time to refresh routes",
+          "The drones' batteries are empty",
+          "The rangers are too far from each other to ever talk"
+        ]
+      }
+    },
+    "4_4": {
+      "title": "Lost hiker",
+      "mechanism": "partitions in a 3-D swarm",
+      "story": "A hiker walks a loop on the far side of the wood. Their radio must reach the ranger station at the other edge, across the canopy. Three hovering drones.",
+      "hints": [
+        "The hiker never stops walking: cover the whole loop.",
+        "Space the drones so each sees the next."
+      ],
+      "debrief": "A chain of drones is only as strong as its longest hop, and the hiker moves along one end of it. A swarm that keeps a moving person connected must cover where they may be, not just where they are."
+    },
+    "5_1": {
+      "title": "First contact",
+      "mechanism": "handover: scheduled link changes",
+      "story": "Paris and Luanda, two ground stations, one call over the shell. Watch the stations' links as the satellites pass.",
+      "hints": [
+        "Select a ground station and watch which satellite it talks to.",
+        "Every satellite passes overhead in a minute or two."
+      ],
+      "debrief": "A ground station sees each satellite for only part of its pass, then hands over to the next. On a real shell that happens every 15 s or so, on a schedule the orbits fix in advance. Every handover is a link break the ants must route around.",
+      "quiz1": {
+        "question": "The call keeps working, but the station's link keeps moving to a different satellite. Why?",
+        "options": [
+          "Each satellite sinks below 25° and the station hands over to the next one rising",
+          "The satellites are failing one after another",
+          "The ground station moves"
+        ]
+      }
+    },
+    "5_2": {
+      "title": "Across the ocean",
+      "mechanism": "multi-hop over ISLs; propagation delay",
+      "story": "New York to Lisbon: no satellite sees both. The call crosses the ocean hop by hop over inter-satellite links.",
+      "hints": [
+        "Count the hops on the route.",
+        "Light takes about 3.3 ms per 1000 km."
+      ],
+      "debrief": "Every inter-satellite hop adds its propagation delay, thousands of kilometres at the speed of light. AntHocNet's default hop time is a Wi-Fi hop's 3 ms; the Long-haul timing upgrade (#205) sets it from the link's real propagation delay.",
+      "quiz1": {
+        "question": "What dominates the delay of a packet crossing the ocean over the shell?",
+        "options": [
+          "Propagation: thousands of kilometres per hop at the speed of light",
+          "Waiting in queues on the satellites",
+          "The ground stations' radios"
+        ]
+      }
+    },
+    "5_3": {
+      "title": "The failed link",
+      "mechanism": "reconvergence on a deterministic topology",
+      "story": "Paris to Luanda over the shell. At 40 s three inter-satellite links fail at once. Predict, then watch.",
+      "hints": [
+        "The +grid has more than one way across.",
+        "LinkFail notifications spread the news; the ants find the rest."
+      ],
+      "debrief": "A +grid shell has many equal paths, so losing a few links costs a reconvergence, not the call. The measured ISL-grid page times exactly this: the detection, then the new route.",
+      "quiz1": {
+        "question": "Three links on the route fail at 40 s. What happens to the call?",
+        "options": [
+          "It pauses briefly, then the ants find another way across the grid",
+          "It stops for good: those links were the only way",
+          "Nothing at all: packets never notice"
+        ]
+      }
+    },
+    "5_4": {
+      "title": "Solar storm",
+      "mechanism": "mass-failure repair (the S1 storm cell)",
+      "story": "Two calls cross the shell. At 60 s a solar storm knocks out one satellite in ten. Nothing to build: predict, then watch.",
+      "hints": [
+        "Which routes used a satellite that died?",
+        "Repair ants work locally, all at once."
+      ],
+      "debrief": "A storm breaks many routes at the same moment, and every node near a dead satellite repairs at once. The measured Starlink storm cell shows the dip and the recovery; this level shows the same shape at teaching scale.",
+      "quiz1": {
+        "question": "One satellite in ten fails at once. What does the delivery curve do?",
+        "options": [
+          "Dips while routes through the dead satellites are repaired, then recovers",
+          "Falls to zero and stays there",
+          "Does not change: one in ten is too few to matter"
+        ]
+      }
+    },
+    "5_5": {
+      "title": "Launch window",
+      "mechanism": "why orbits differ: planes and coverage",
+      "story": "One orbital plane of the shell is empty: its satellites never launched. Paris and Luanda still talk, but less well. One launch is booked: which plane should it fill?",
+      "hints": [
+        "Look at the gap in the rings of orbits.",
+        "Satellites in one plane share one ring."
+      ],
+      "debrief": "Every plane covers a band of the Earth as it turns. An empty plane is a gap that moves across the map, and the calls that cross it lose their shortest paths. Filling the gap's own plane restores the grid: same-plane and cross-plane links both come back.",
+      "quiz1": {
+        "question": "One plane of the shell is empty. Where should the new satellite go?",
+        "options": [
+          "Into the empty plane, so the gap in coverage closes",
+          "Into the busiest plane, beside the most satellites",
+          "Anywhere: one satellite cannot change coverage"
+        ]
+      }
     }
   },
   "campaign": {

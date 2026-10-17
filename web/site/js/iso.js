@@ -635,15 +635,49 @@ export class IsoRenderer {
       return;
     }
 
-    // Trees on a deterministic sprinkle of tiles (decoration only).
+    // #575: attenuation zones (canopy) as dark ground with dense trees.
+    const zones = this.zonePolys();
+    for (const z of zones) {
+      ctx.beginPath();
+      z.forEach(([x, y], k) => { const [px, py] = this.project(x, y, 0); if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py); });
+      ctx.closePath();
+      ctx.fillStyle = c.night ? 'rgba(0,40,10,0.45)' : 'rgba(20,90,30,0.35)';
+      ctx.fill();
+    }
+    const inZone = (x, y) => zones.some((z) => {
+      let inside = false;
+      for (let a = 0, b = z.length - 1; a < z.length; b = a++) {
+        const [xa, ya] = z[a], [xb, yb] = z[b];
+        if ((ya > y) !== (yb > y) && x < (xb - xa) * (y - ya) / (yb - ya) + xa) inside = !inside;
+      }
+      return inside;
+    });
+
+    // Trees on a deterministic sprinkle of tiles (decoration only); dense
+    // inside a canopy zone.
     const trees = [];
     for (let i = 0; i < nT; i++) {
       for (let j = 0; j < nT; j++) {
-        if (hash2(i + 7, j + 13) < 0.09) trees.push([(i + 0.3 + 0.4 * hash2(i, j)) * tx, (j + 0.3 + 0.4 * hash2(j, i)) * ty]);
+        const x = (i + 0.3 + 0.4 * hash2(i, j)) * tx, y = (j + 0.3 + 0.4 * hash2(j, i)) * ty;
+        if (hash2(i + 7, j + 13) < (inZone(x, y) ? 0.8 : 0.09)) trees.push([x, y]);
       }
     }
     trees.sort((a, b) => this.depth(a[0], a[1]) - this.depth(b[0], b[1]));
     for (const [x, y] of trees) this.tree(x, y);
+  }
+
+  /** #575: the world's attenuation zones as [[x, y], ...] polygons. */
+  zonePolys() {
+    const f = this.meta.zones || [];
+    const out = [];
+    for (let k = 0; k < f.length;) {
+      const n = f[k + 1];
+      const poly = [];
+      for (let j = 0; j < n; j++) poly.push([f[k + 2 + 2 * j], f[k + 3 + 2 * j]]);
+      out.push(poly);
+      k += 2 + 2 * n;
+    }
+    return out;
   }
 
   /** The Earth: a lit ocean sphere, an atmosphere rim and a graticule
@@ -826,10 +860,16 @@ export class IsoRenderer {
       } else this.groundDiamond(bx, by, 16 * zs, c.accent, 0.45);
     }
 
-    if (k === 'sky') this.drone(bx, by, ax, ay, up, zs, i);
+    // #575: a device class may override the world's default body -- a
+    // roadside unit in the city, a ranger radio under the drones, a ground
+    // station under the shell. Worlds without sprites draw as before.
+    const own = this.meta.sprites?.[i];
+    if (own === 'tower' && k !== 'space') this.router(bx, by, ay, up, zs);
+    else if (own === 'tower' && k === 'space') this.station(ax, ay, up, zs);
+    else if (k === 'sky' && own !== 'phone') this.drone(bx, by, ax, ay, up, zs, i);
     else if (k === 'space') this.satellite(ax, ay, up, zs);
     else if (k === 'city') this.car(pos, i, up, zs);
-    else if ((this.meta.sprites?.[i] || this.meta.sprite) === 'phone') {
+    else if ((own || this.meta.sprite) === 'phone') {
       // Mobile phone, standing upright: a slab with real thickness (the
       // right-hand edge), a lit screen, an earpiece and a home bar.
       this.shadowAt(bx, by, 7 * zs, 0.22);
@@ -898,6 +938,18 @@ export class IsoRenderer {
       ctx.fillText(text, tx, ty);
     }
     ctx.restore();
+  }
+
+  /** #575: a ground station on the globe: a dish on a small mast. */
+  station(ax, ay, up, zs) {
+    const { ctx, colors: c } = this;
+    ctx.fillStyle = up ? c.tower : c['node-off'];
+    ctx.fillRect(ax - 1 * zs, ay, 2 * zs, 7 * zs);
+    ctx.beginPath();
+    ctx.arc(ax, ay, 5 * zs, Math.PI * 1.1, Math.PI * 1.9);
+    ctx.lineWidth = 2 * zs;
+    ctx.strokeStyle = up ? c.accent : c['node-off'];
+    ctx.stroke();
   }
 
   /** A screen-space isometric cube: ground centre (cx, cy), half-width a,

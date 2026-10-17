@@ -174,10 +174,115 @@ void town(World& w) {
     w.addFlow(5, 16, 2, 6, 1e9);
 }
 
+void city(World& w) {
+    // City streets (#576, chapter 3; #575 features): the vanet street grid
+    // with three kinds of device. Cars drive the Manhattan grid; a bus runs a
+    // fixed line round the outer ring of blocks; roadside units stand at four
+    // inner intersections and reach further than a car.
+    SplitMix64 r = placement(w);
+    w.setArea(800, 800, 0);
+    w.setUrbanChannel(300, 4, 4, 20);
+    Mobility car;
+    car.kind = MobilityKind::Manhattan;
+    car.speedMin = 10;
+    car.speedMax = 20;
+    for (int i = 0; i < 20; ++i) {
+        const double x = r.uniform() * 800, y = r.uniform() * 800;
+        w.setMobility(w.addNode(x, y, 0), car);
+    }
+    Mobility bus;
+    bus.kind = MobilityKind::Route;
+    bus.speedMin = 8;
+    bus.route = {Vec3{200, 200, 0}, Vec3{600, 200, 0}, Vec3{600, 600, 0}, Vec3{200, 600, 0}};
+    w.setMobility(w.addNode(200, 200, 0), bus);
+    // Roadside units at four inner intersections (the 4 x 4 grid's are 200 m
+    // apart).
+    const double rsuAt[4][2] = {{200, 400}, {400, 200}, {600, 400}, {400, 600}};
+    for (const auto& at : rsuAt) w.setNodeRange(w.addNode(at[0], at[1], 0), 400);
+    w.addFlow(0, 19, 2, 5, 1e9);
+    w.addFlow(20, 7, 2, 6, 1e9);
+}
+
+void forest(World& w) {
+    // Forest (#577, chapter 4; #575 features): a 3-D field over two canopy
+    // patches that halve any radio inside them. Ranger radios and sensor
+    // posts stand on the ground; relay drones fly overhead on batteries
+    // small enough that the first runs out after about a minute and the
+    // last after about six.
+    SplitMix64 r = placement(w);
+    w.setArea(800, 800, 200);
+    w.setDiskChannel(300);
+    w.addAttenuationZone({80, 80, 360, 80, 360, 720, 80, 720}, 0.5);
+    w.addAttenuationZone({480, 240, 760, 240, 760, 560, 480, 560}, 0.5);
+    for (int i = 0; i < 10; ++i) {  // ranger radios and sensor posts
+        const double x = r.uniform() * 800, y = r.uniform() * 800;
+        w.setNodeRange(w.addNode(x, y, 0), i % 2 ? 250 : 350);
+    }
+    Mobility drone;
+    drone.kind = MobilityKind::GaussMarkov;
+    drone.gmMeanSpeed = 15;
+    drone.gmAlpha = 0.85;
+    drone.threeD = true;
+    for (int i = 0; i < 10; ++i) {
+        const double x = r.uniform() * 800, y = r.uniform() * 800, z = 80 + r.uniform() * 100;
+        const int d = w.addNode(x, y, z);
+        w.setMobility(d, drone);
+        w.setBattery(d, 50.0 + 25.0 * i);  // ~60-340 s at the idle draw
+    }
+    w.addFlow(0, 9, 2, 5, 1e9);
+    w.addFlow(3, 6, 2, 6, 1e9);
+}
+
+void orbit(World& w) {
+    // Orbit (#578, chapter 5; #575 features): the satellite world's shell
+    // with four ground stations on the Earth's surface. A station links to
+    // the satellites at least 25 deg above its horizon, so its links come
+    // and go as the shell turns: handovers. Two flows cross the shell from
+    // station to station.
+    constexpr int kPlanes = 8, kSlots = 8;
+    constexpr double kPi = 3.141592653589793;
+    constexpr double kEarth = 6.371e6, kAlt = 1.2e6;
+    w.setArea(2.2e7, 2.2e7, 0);
+    w.setIslChannel();
+    Mobility m;
+    m.kind = MobilityKind::Orbit;
+    m.orbitRadius = kEarth + kAlt;
+    m.orbitInc = 53 * kPi / 180;
+    m.orbitRate = 2 * kPi / 120;
+    for (int p = 0; p < kPlanes; ++p) {
+        for (int s = 0; s < kSlots; ++s) {
+            m.orbitRaan = p * 2 * kPi / kPlanes;
+            m.orbitPhase = s * 2 * kPi / kSlots + p * 2 * kPi / (kPlanes * kSlots);
+            w.setMobility(w.addNode(0, 0, 0), m);
+        }
+    }
+    for (int p = 0; p < kPlanes; ++p) {
+        for (int s = 0; s < kSlots; ++s) {
+            const int id = p * kSlots + s;
+            w.addIslLink(id, p * kSlots + (s + 1) % kSlots);
+            w.addIslLink(id, ((p + 1) % kPlanes) * kSlots + s);
+        }
+    }
+    // Ground stations at (latitude, longitude) in degrees, on the sphere.
+    const double sites[4][2] = {{48.9, 2.4}, {-8.8, 13.2}, {40.7, -74.0}, {-23.5, -46.6}};
+    const double cx = 1.1e7, cy = 1.1e7;
+    int gs[4];
+    for (int i = 0; i < 4; ++i) {
+        const double lat = sites[i][0] * kPi / 180, lon = sites[i][1] * kPi / 180;
+        const double cl = detCos(lat);
+        gs[i] = w.addNode(cx + kEarth * cl * detCos(lon), cy + kEarth * cl * detSin(lon),
+                          kEarth * detSin(lat));
+        w.setGroundStation(gs[i], 25);
+    }
+    w.addFlow(gs[0], gs[1], 4, 3, 1e9);
+    w.addFlow(gs[2], gs[3], 4, 4, 1e9);
+}
+
 }  // namespace
 
 std::vector<std::string> scenarioNames() {
-    return {"line", "manet", "town", "mesh", "fanet", "vanet", "satellite"};
+    return {"line",  "manet",     "town", "mesh",   "fanet",
+            "vanet", "satellite", "city", "forest", "orbit"};
 }
 
 bool buildScenario(World& w, const std::string& name) {
@@ -195,6 +300,12 @@ bool buildScenario(World& w, const std::string& name) {
         vanet(w);
     else if (name == "satellite")
         satellite(w);
+    else if (name == "city")
+        city(w);
+    else if (name == "forest")
+        forest(w);
+    else if (name == "orbit")
+        orbit(w);
     else
         return false;
     return true;

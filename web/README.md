@@ -67,6 +67,40 @@ radio. On the disk and urban channels two nodes link iff they are within
 built-in worlds other than `town` are unchanged. `town` (phones 120 m,
 laptops 180 m, PCs 250 m) is the mixed-range world the parity gate covers.
 
+Scenario features for chapters 3–5 (#575). None of them is routing logic.
+Each is inert until a scenario uses it, so every world built before them
+traces byte-identically:
+
+```js
+w.setRoute(20, [200,200,0, 600,200,0, 600,600,0, 200,600,0], 8); // a bus line, 8 m/s, looping
+w.addAttenuationZone([80,80, 360,80, 360,720, 80,720], 0.5, 30); // canopy: range x0.5 inside, below 30 m
+w.setBattery(12, 120); w.batteryLeft(12);  // J; idle 0.82 W, +0.32 W while sending; off when empty
+w.setGroundStation(64, 25);                // Isl channel: link to satellites >= 25 deg up
+w.setOrbit(7, 7.571e6, 53, 45, 0, 120);    // radius m, inclination/RAAN/phase deg, period s
+```
+
+- **Fixed route** (`MobilityKind::Route`): straight legs between waypoints at
+  a constant speed, looping. A node with no mobility stays put, so a roadside
+  unit inside a mobile world is just a static node with a longer range.
+- **Attenuation zones:** polygons (even-odd point test) that scale the range
+  of a link end inside them and below the zone's top (30 m by default: a drone
+  above the canopy is not in it). Overlapping zones take the smallest factor.
+- **Battery:** drains at the idle draw all the time and at the transmit
+  draw while a frame is on the air. These are the Halperin et al. (HotPower'10)
+  powers `anthocnet-compare` models. The node switches off (event 10) when
+  the battery is empty. The node's `IEnergy` port reports the residual
+  fraction, which only the energy metric reads (#145).
+- **Ground stations** (on the Isl channel): link to a satellite iff its
+  elevation, compared as a sine (no inverse trig), is at least the station's
+  minimum. A station never links to another station.
+- **Orbit binding:** `setOrbit` exposes the satellites' `MobilityKind::Orbit`
+  with its plane in degrees, for the launch-window level.
+
+The parity gate covers each feature through three built-in worlds:
+- `city`: cars, a bus line and roadside units on the street grid;
+- `forest`: canopy zones, ground radios and battery-powered drones;
+- `orbit`: the shell with four ground stations.
+
 Event kinds (`Ev` in `sim.h`, append-only): 1 TxAnt, 2 RxAnt, 3 TxData,
 4 Deliver, 5 Drop, 6 RouteAdd, 7 RouteDel, 8 Queue, 9 TxFail, 10 NodeDown,
 11 NodeUp.

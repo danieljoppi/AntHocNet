@@ -150,6 +150,16 @@ thrown away:
 | 5.4 | Solar storm | 10 % of satellites fail | nothing to build: watch, then predict | mass-failure repair (the S1 storm cell) |
 | 5.5 | Launch window (boss) | a coverage gap | choosing the orbital plane for one extra satellite | why orbits differ; same-plane vs cross-plane links |
 
+*As shipped in v2.3.0, Chapter 5 is watch-and-predict throughout:* every
+level is a quiz on what the shell does, plus a delivery goal on a scripted
+run. The ground stations are fixed, 5.3's link cut and 5.4's storm are
+scheduled, and 5.5 asks which plane to fill. Placement was tried and did not
+teach. A ground station placed by hand rarely changed the route, and one
+extra satellite in a 64-satellite shell did not move the delivery figure. A
+level whose build has no visible effect fails `web/test/levels.mjs` (idle
+must not clear), so building in orbit waits for a shell small enough for
+one satellite to matter.
+
 **Chapter 6: Disaster zone (v2.4.0)**
 
 | # | level | the broken network | the player fixes it by | mechanism taught |
