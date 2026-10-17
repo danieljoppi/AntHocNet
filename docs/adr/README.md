@@ -32,6 +32,7 @@ detail.
 | [0022](0022-satellite-substrate-is-stock-ns3-leo.md) | The satellite substrate is stock ns-3.48's LEO mobility model (ns3-leo, upstreamed) with harness-driven ISL/GSL links; 3.48-only, no substrate image. Decides #193; refines ADR-0015. |
 | [0023](0023-one-core-one-simulator-adapter.md) | One core, one simulator adapter (ns-3) after NS-2's removal — the ports seam, codec and "no NS headers in `core/`" rule stay; the browser adapter keeps the core's second consumer. Supersedes ADR-0002. |
 | [0024](0024-per-neighbour-link-quality-port.md) | A per-neighbour link-quality port (`ILinkQuality`) for the thesis's SINR metric: each node puts its own link cost into the hop a backward ant came over (§4.2.2); no wire change; classic byte-identical; ns-3 feeds it from the PHY monitor trace. Decides #181, #144. |
+| [0025](0025-kinematics-port-absent-when-unknown.md) | A kinematics port (`IKinematics`): position and velocity enter the core, **absent, not zero**, when unknown; neighbours' come from an optional hello section (wire 0x04), never from the adapter; gated off by `shareKinematics` and byte-identical when off; consumers (link lifetime, #574) gate separately. Decides #573. |
 
 ## Adding an ADR
 
