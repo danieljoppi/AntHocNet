@@ -673,12 +673,15 @@ def _hello_quiet():
 
 # --- #230 preflight ----------------------------------------------------------
 
-@case("#230 preflight FAILs the shipped 10s window at paper-base")
+@case("#663 preflight WARNs, not FAILs, the shipped 10s window at paper-base")
 def _preflight_fires():
+    # Only path_div_* reads the window, and every published grid and FANET
+    # cell runs the 10 s default: a FAIL refused the whole corpus.
     levels, out = run_preflight()
-    expect("FAIL" in levels, "preflight-fires",
-           f"the 10s default did not FAIL\n{out}")
-    expect("link lifetime" in out, "preflight-fires", out)
+    expect("FAIL" not in levels, "preflight-fires",
+           f"the 10s default FAILed a published cell shape\n{out}")
+    expect("WARN" in levels and "path_div_* from this cell is unquotable" in out,
+           "preflight-fires", f"the 10s default was not flagged\n{out}")
 
 
 @case("#230 preflight downgrades a mid window to WARN, not clean")

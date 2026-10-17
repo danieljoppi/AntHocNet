@@ -1253,12 +1253,19 @@ def cmd_preflight(a):
                                "pre-tuning")
         print(f"  path-diversity window {a.pathWindowS}s vs ~{churn:.1f}s "
               f"link lifetime at {a.speed} m/s over {eff_range:g} m")
+        # #663: a WARN, not a FAIL. Only the path_div_* diagnostics read the
+        # window; PDR, delay, delay99 and NRL do not. Every published grid
+        # and FANET cell runs the 10 s default past this bound, and their
+        # pages leave path_div_* unquoted (metrics.md, "Caveats (route
+        # quality)"), so a FAIL here refused every cell the corpus publishes.
         if a.pathWindowS > churn:
-            report("FAIL", f"pathWindowS={a.pathWindowS}s exceeds the ~"
+            report("WARN", f"pathWindowS={a.pathWindowS}s exceeds the ~"
                            f"{churn:.1f}s link lifetime — route replacement "
-                           "will be counted as concurrent multipath and "
-                           "path_div_* will not discriminate (#230); lower it "
-                           "before dispatching")
+                           "will be counted as concurrent multipath, so "
+                           "path_div_* from this cell is unquotable (#230). "
+                           "PDR, delay, delay99 and NRL are unaffected; quote "
+                           "diversity only from the dedicated cell "
+                           "(cbrBps=4096, pathWindowS=2)")
         elif a.pathWindowS > churn / 2:
             report("WARN", f"pathWindowS={a.pathWindowS}s is over half the ~"
                            f"{churn:.1f}s link lifetime — path_div_* will be "
