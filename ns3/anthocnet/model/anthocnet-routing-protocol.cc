@@ -73,6 +73,11 @@ RoutingProtocol::RoutingProtocol()
       m_quietTolerance(0.2),
       m_quietBackoffFactor(2.0),
       m_quietMaxBackoff(8),
+      m_enableAdaptiveEvaporation(false),
+      m_adaptiveEvapRefChurn(0.1),
+      m_adaptiveEvapMin(0.25),
+      m_adaptiveEvapMax(4.0),
+      m_adaptiveEvapTau(10.0),
       m_proactiveBroadcastProb(0.1),
       m_proactiveVirtualMargin(0.0),
       m_maxHelloAdverts(10),
@@ -236,6 +241,32 @@ TypeId RoutingProtocol::GetTypeId() {
                 "QuietMaxBackoff", "Longest quiet-mode back-off, in proactive rounds (#571).",
                 UintegerValue(8), MakeUintegerAccessor(&RoutingProtocol::m_quietMaxBackoff),
                 MakeUintegerChecker<uint32_t>(1))
+            .AddAttribute(
+                "EnableAdaptiveEvaporation",
+                "Make each destination's evaporation rate follow its route churn (#572): decay x "
+                "clamp(churn / AdaptiveEvapRefChurn, AdaptiveEvapMin, AdaptiveEvapMax), churn = "
+                "smoothed best-next-hop changes per second. Default off.",
+                BooleanValue(false),
+                MakeBooleanAccessor(&RoutingProtocol::m_enableAdaptiveEvaporation),
+                MakeBooleanChecker())
+            .AddAttribute(
+                "AdaptiveEvapRefChurn",
+                "Churn (best-hop changes/s) at which the fixed evaporation rate applies (#572).",
+                DoubleValue(0.1), MakeDoubleAccessor(&RoutingProtocol::m_adaptiveEvapRefChurn),
+                MakeDoubleChecker<double>(0.0))
+            .AddAttribute("AdaptiveEvapMin",
+                          "Slowest adaptive decay, as a multiple of the fixed rate (#572).",
+                          DoubleValue(0.25),
+                          MakeDoubleAccessor(&RoutingProtocol::m_adaptiveEvapMin),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("AdaptiveEvapMax",
+                          "Fastest adaptive decay, as a multiple of the fixed rate (#572).",
+                          DoubleValue(4.0), MakeDoubleAccessor(&RoutingProtocol::m_adaptiveEvapMax),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("AdaptiveEvapTau", "Time constant (s) of the churn estimate (#572).",
+                          DoubleValue(10.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_adaptiveEvapTau),
+                          MakeDoubleChecker<double>(0.0))
             .AddAttribute("ProactiveBroadcastProb",
                           "Per-hop explore-broadcast probability for proactive ants.",
                           DoubleValue(0.1),
@@ -661,6 +692,11 @@ void RoutingProtocol::DoInitialize() {
     m_config.quietTolerance = m_quietTolerance;
     m_config.quietBackoffFactor = m_quietBackoffFactor;
     m_config.quietMaxBackoff = static_cast<int>(m_quietMaxBackoff);
+    m_config.enableAdaptiveEvaporation = m_enableAdaptiveEvaporation;
+    m_config.adaptiveEvapRefChurn = m_adaptiveEvapRefChurn;
+    m_config.adaptiveEvapMin = m_adaptiveEvapMin;
+    m_config.adaptiveEvapMax = m_adaptiveEvapMax;
+    m_config.adaptiveEvapTau = m_adaptiveEvapTau;
     m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
     m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
     m_config.maxHelloAdverts = m_maxHelloAdverts;
@@ -810,6 +846,11 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.quietTolerance = m_quietTolerance;
         m_config.quietBackoffFactor = m_quietBackoffFactor;
         m_config.quietMaxBackoff = static_cast<int>(m_quietMaxBackoff);
+        m_config.enableAdaptiveEvaporation = m_enableAdaptiveEvaporation;
+        m_config.adaptiveEvapRefChurn = m_adaptiveEvapRefChurn;
+        m_config.adaptiveEvapMin = m_adaptiveEvapMin;
+        m_config.adaptiveEvapMax = m_adaptiveEvapMax;
+        m_config.adaptiveEvapTau = m_adaptiveEvapTau;
         m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
         m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
         m_config.maxHelloAdverts = m_maxHelloAdverts;

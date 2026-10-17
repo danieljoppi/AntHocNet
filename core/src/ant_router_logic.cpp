@@ -85,7 +85,12 @@ std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
     // Single-sourced, time-proportional aging (ADR-0012), gated for the
     // paper-faithful ablation. dt is taken from the clock, never wall time.
     if (config_.enableEvaporation) {
-        engine_.evaporateAll(table_, now - lastEvaporation_);
+        if (config_.enableAdaptiveEvaporation) {  // #572
+            updateChurn(now - lastEvaporation_);
+            engine_.evaporateAll(table_, now - lastEvaporation_, &evapMultiplier_);
+        } else {
+            engine_.evaporateAll(table_, now - lastEvaporation_);
+        }
         lastEvaporation_ = now;
     }
 
@@ -456,6 +461,43 @@ bool AntRouterLogic::quietAllows(NodeAddress dest) {
     }
     ++q.skipped;
     return false;
+void AntRouterLogic::updateChurn(double dt) {
+    if (dt <= 0.0) return;
+    // EWMA of an event rate: each tick contributes changed/dt with weight
+    // 1 - exp(-dt/tau), so the estimate is independent of the tick period.
+    const double w = 1.0 - std::exp(-dt / config_.adaptiveEvapTau);
+    evapMultiplier_.clear();
+    for (NodeAddress dest : table_.regularDestinations()) {
+        NodeAddress best = kInvalidAddress;
+        double bestPh = 0.0;
+        for (NodeAddress n : table_.neighbors()) {
+            const double ph = table_.getPheromoneRegular(dest, n);
+            if (ph > bestPh) {
+                bestPh = ph;
+                best = n;
+            }
+        }
+        auto it = churn_.find(dest);
+        if (it == churn_.end()) {  // first sight: no change to count yet
+            churn_[dest] = ChurnState{best, 0.0};
+            continue;
+        }
+        ChurnState& c = it->second;
+        const double changed = (best != c.best) ? 1.0 : 0.0;
+        c.rate = (1.0 - w) * c.rate + w * changed / dt;
+        c.best = best;
+        double m = c.rate / config_.adaptiveEvapRefChurn;
+        if (m < config_.adaptiveEvapMin) m = config_.adaptiveEvapMin;
+        if (m > config_.adaptiveEvapMax) m = config_.adaptiveEvapMax;
+        evapMultiplier_[dest] = m;
+    }
+    // Forget destinations the table no longer holds.
+    for (auto it = churn_.begin(); it != churn_.end();) {
+        if (table_.regularDestinations().count(it->first))
+            ++it;
+        else
+            it = churn_.erase(it);
+    }
 }
 
 // --- ant construction -------------------------------------------------------

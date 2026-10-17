@@ -105,6 +105,24 @@ struct Config {
     bool enableEvaporation = true;
     double evaporationInterval = 1.0;  ///< reference interval (s) for the decay.
 
+    /// #572 adaptive evaporation: each destination's decay rate follows its
+    /// observed route churn. Every maintenance tick the router checks whether
+    /// the destination's best regular next hop changed, keeps an exponentially
+    /// weighted rate of such changes per second (time constant
+    /// adaptiveEvapTau), and evaporates that destination's pheromone
+    /// clamp(rate / adaptiveEvapRefChurn, adaptiveEvapMin, adaptiveEvapMax)
+    /// times as fast as the fixed rate. Churning routes forget stale links
+    /// sooner; stable ones keep them longer. After Mavrovouniotis and Yang
+    /// (2013/2014) on dynamic optimisation, untested on routing until
+    /// measured here. Default off: byte-identical when off.
+    bool enableAdaptiveEvaporation = false;
+    /// Churn (best-hop changes per second) at which the fixed rate applies.
+    /// `repo choice`: one change per 10 s.
+    double adaptiveEvapRefChurn = 0.1;
+    double adaptiveEvapMin = 0.25;  ///< slowest decay, as a multiple of the fixed rate
+    double adaptiveEvapMax = 4.0;   ///< fastest decay, as a multiple of the fixed rate
+    double adaptiveEvapTau = 10.0;  ///< churn EWMA time constant (s)
+
     /// At most one reactive forward ant per destination per this window, so a
     /// stream of packets to an unreachable destination doesn't flood ants
     /// ([1] §4.2).

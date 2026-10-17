@@ -92,6 +92,12 @@ public:
     /// queue, so only it knows how many packets each discard released. Counted
     /// here so the cause stays simulator-agnostic and both adapters get it.
     std::uint64_t repairDiscards() const { return repairDiscards_; }
+    /// #572: the decay multiplier `dest` got at the last maintenance tick (1
+    /// when the gate is off or the destination is new).
+    double evaporationMultiplier(NodeAddress dest) const {
+        auto it = evapMultiplier_.find(dest);
+        return it == evapMultiplier_.end() ? 1.0 : it->second;
+    }
 
     // --- neighbour learning ----------------------------------------------
     /// Record that `neighbor` is reachable (link-layer detection / hello),
@@ -287,6 +293,17 @@ private:
     /// True when quiet mode lets `dest`'s proactive ant go this round (and
     /// advances its state). Always true with the gate off.
     bool quietAllows(NodeAddress dest);
+    /// #572 adaptive evaporation, per destination: the best regular next hop
+    /// at the last tick and the smoothed rate (1/s) at which it changes.
+    struct ChurnState {
+        NodeAddress best = kInvalidAddress;
+        double rate = 0.0;
+    };
+    std::map<NodeAddress, ChurnState> churn_;
+    std::map<NodeAddress, double> evapMultiplier_;  ///< dest -> decay multiplier
+    /// Update churn_ for a tick `dt` seconds after the last, and refill
+    /// evapMultiplier_ (only when Config::enableAdaptiveEvaporation).
+    void updateChurn(double dt);
 };
 
 }  // namespace core

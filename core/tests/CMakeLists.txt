@@ -31,6 +31,7 @@ set(ANTHOCNET_TESTS
   test_kinematics
   test_link_lifetime
   test_quiet_mode
+  test_adaptive_evaporation
 )
 
 foreach(test ${ANTHOCNET_TESTS})
