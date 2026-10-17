@@ -65,6 +65,19 @@ RoutingProtocol::RoutingProtocol()
       m_enableLinkFail(true),
       m_enableDirectedReactive(false),
       m_shareKinematics(false),
+      m_enableLinkLifetime(false),
+      m_linkLifetimeRange(250.0),
+      m_linkLifetimeHorizon(3.0),
+      m_linkLifetimeFloor(0.05),
+      m_enableQuietMode(false),
+      m_quietTolerance(0.2),
+      m_quietBackoffFactor(2.0),
+      m_quietMaxBackoff(8),
+      m_enableAdaptiveEvaporation(false),
+      m_adaptiveEvapRefChurn(0.1),
+      m_adaptiveEvapMin(0.25),
+      m_adaptiveEvapMax(4.0),
+      m_adaptiveEvapTau(10.0),
       m_proactiveBroadcastProb(0.1),
       m_proactiveVirtualMargin(0.0),
       m_maxHelloAdverts(10),
@@ -164,6 +177,15 @@ TypeId RoutingProtocol::GetTypeId() {
                           BooleanValue(true),
                           MakeBooleanAccessor(&RoutingProtocol::m_enableLinkFail),
                           MakeBooleanChecker())
+            .AddAttribute("P2pHelloEvery",
+                          "On point-to-point interfaces (ISLs), send a hello only every "
+                          "this many hello ticks (#204). In between, an interface that "
+                          "is up refreshes its known peers' liveness, as a hello would. "
+                          "1 = every tick (default, the old behaviour). Use it only "
+                          "where an ISL failure takes the interface down (Ipv4::SetDown): "
+                          "a link that silently drops while up would stay alive.",
+                          UintegerValue(1), MakeUintegerAccessor(&RoutingProtocol::m_p2pHelloEvery),
+                          MakeUintegerChecker<uint32_t>(1))
             .AddAttribute("EnableDirectedReactive",
                           "Steer a reactive forward ant along the diffused virtual "
                           "gradient (ADR-0007) instead of broadcasting, when the "
@@ -181,6 +203,79 @@ TypeId RoutingProtocol::GetTypeId() {
                           BooleanValue(false),
                           MakeBooleanAccessor(&RoutingProtocol::m_shareKinematics),
                           MakeBooleanChecker())
+            .AddAttribute("EnableLinkLifetime",
+                          "Discount next hops whose link is predicted to break soon "
+                          "(#574): pheromone x min(1, LET / LinkLifetimeHorizon), "
+                          "floored at LinkLifetimeFloor, for next-hop choice only. "
+                          "LET from both nodes' kinematics (implies ShareKinematics). "
+                          "Default off.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableLinkLifetime),
+                          MakeBooleanChecker())
+            .AddAttribute("LinkLifetimeRange",
+                          "Radio range (m) the link-lifetime prediction assumes (#574). "
+                          "Set it to the scenario's range.",
+                          DoubleValue(250.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_linkLifetimeRange),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("LinkLifetimeHorizon",
+                          "Predicted link lifetime (s) at or above which a next hop is "
+                          "not discounted (#574).",
+                          DoubleValue(3.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_linkLifetimeHorizon),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute(
+                "LinkLifetimeFloor", "Smallest weight a link predicted to break keeps (#574).",
+                DoubleValue(0.05), MakeDoubleAccessor(&RoutingProtocol::m_linkLifetimeFloor),
+                MakeDoubleChecker<double>(0.0, 1.0))
+            .AddAttribute("EnableQuietMode",
+                          "Back proactive ants off on a stable route (#571): a "
+                          "destination whose best next hop and pheromone do not change "
+                          "is probed every QuietBackoffFactor^k rounds, up to "
+                          "QuietMaxBackoff; any route change or neighbour event resets "
+                          "it. Default off.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RoutingProtocol::m_enableQuietMode),
+                          MakeBooleanChecker())
+            .AddAttribute("QuietTolerance",
+                          "Relative pheromone change that still counts as a stable "
+                          "route (#571).",
+                          DoubleValue(0.2), MakeDoubleAccessor(&RoutingProtocol::m_quietTolerance),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("QuietBackoffFactor",
+                          "Geometric growth of the quiet-mode back-off (#571).", DoubleValue(2.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_quietBackoffFactor),
+                          MakeDoubleChecker<double>(1.0))
+            .AddAttribute(
+                "QuietMaxBackoff", "Longest quiet-mode back-off, in proactive rounds (#571).",
+                UintegerValue(8), MakeUintegerAccessor(&RoutingProtocol::m_quietMaxBackoff),
+                MakeUintegerChecker<uint32_t>(1))
+            .AddAttribute(
+                "EnableAdaptiveEvaporation",
+                "Make each destination's evaporation rate follow its route churn (#572): decay x "
+                "clamp(churn / AdaptiveEvapRefChurn, AdaptiveEvapMin, AdaptiveEvapMax), churn = "
+                "smoothed best-next-hop changes per second. Default off.",
+                BooleanValue(false),
+                MakeBooleanAccessor(&RoutingProtocol::m_enableAdaptiveEvaporation),
+                MakeBooleanChecker())
+            .AddAttribute(
+                "AdaptiveEvapRefChurn",
+                "Churn (best-hop changes/s) at which the fixed evaporation rate applies (#572).",
+                DoubleValue(0.1), MakeDoubleAccessor(&RoutingProtocol::m_adaptiveEvapRefChurn),
+                MakeDoubleChecker<double>(0.0))
+            .AddAttribute("AdaptiveEvapMin",
+                          "Slowest adaptive decay, as a multiple of the fixed rate (#572).",
+                          DoubleValue(0.25),
+                          MakeDoubleAccessor(&RoutingProtocol::m_adaptiveEvapMin),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("AdaptiveEvapMax",
+                          "Fastest adaptive decay, as a multiple of the fixed rate (#572).",
+                          DoubleValue(4.0), MakeDoubleAccessor(&RoutingProtocol::m_adaptiveEvapMax),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("AdaptiveEvapTau", "Time constant (s) of the churn estimate (#572).",
+                          DoubleValue(10.0),
+                          MakeDoubleAccessor(&RoutingProtocol::m_adaptiveEvapTau),
+                          MakeDoubleChecker<double>(0.0))
             .AddAttribute("ProactiveBroadcastProb",
                           "Per-hop explore-broadcast probability for proactive ants.",
                           DoubleValue(0.1),
@@ -598,6 +693,19 @@ void RoutingProtocol::DoInitialize() {
     m_config.enableLinkFail = m_enableLinkFail;
     m_config.enableDirectedReactive = m_enableDirectedReactive;
     m_config.shareKinematics = m_shareKinematics;
+    m_config.enableLinkLifetime = m_enableLinkLifetime;
+    m_config.linkLifetimeRange = m_linkLifetimeRange;
+    m_config.linkLifetimeHorizon = m_linkLifetimeHorizon;
+    m_config.linkLifetimeFloor = m_linkLifetimeFloor;
+    m_config.enableQuietMode = m_enableQuietMode;
+    m_config.quietTolerance = m_quietTolerance;
+    m_config.quietBackoffFactor = m_quietBackoffFactor;
+    m_config.quietMaxBackoff = static_cast<int>(m_quietMaxBackoff);
+    m_config.enableAdaptiveEvaporation = m_enableAdaptiveEvaporation;
+    m_config.adaptiveEvapRefChurn = m_adaptiveEvapRefChurn;
+    m_config.adaptiveEvapMin = m_adaptiveEvapMin;
+    m_config.adaptiveEvapMax = m_adaptiveEvapMax;
+    m_config.adaptiveEvapTau = m_adaptiveEvapTau;
     m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
     m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
     m_config.maxHelloAdverts = m_maxHelloAdverts;
@@ -707,6 +815,10 @@ double RoutingProtocol::sinrDbFrom(NodeAddress neighbor) const {
     return it == m_neighborSinrDb.end() ? std::numeric_limits<double>::quiet_NaN() : it->second;
 }
 
+double RoutingProtocol::residualEnergyFraction() const {
+    return m_energyProbe.IsNull() ? std::numeric_limits<double>::quiet_NaN() : m_energyProbe();
+}
+
 // --- #573: own position and velocity (core::IKinematics, ADR-0025) ----------
 
 bool RoutingProtocol::self(::anthocnet::core::Kinematics& out) const {
@@ -739,6 +851,19 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.enableLinkFail = m_enableLinkFail;
         m_config.enableDirectedReactive = m_enableDirectedReactive;
         m_config.shareKinematics = m_shareKinematics;
+        m_config.enableLinkLifetime = m_enableLinkLifetime;
+        m_config.linkLifetimeRange = m_linkLifetimeRange;
+        m_config.linkLifetimeHorizon = m_linkLifetimeHorizon;
+        m_config.linkLifetimeFloor = m_linkLifetimeFloor;
+        m_config.enableQuietMode = m_enableQuietMode;
+        m_config.quietTolerance = m_quietTolerance;
+        m_config.quietBackoffFactor = m_quietBackoffFactor;
+        m_config.quietMaxBackoff = static_cast<int>(m_quietMaxBackoff);
+        m_config.enableAdaptiveEvaporation = m_enableAdaptiveEvaporation;
+        m_config.adaptiveEvapRefChurn = m_adaptiveEvapRefChurn;
+        m_config.adaptiveEvapMin = m_adaptiveEvapMin;
+        m_config.adaptiveEvapMax = m_adaptiveEvapMax;
+        m_config.adaptiveEvapTau = m_adaptiveEvapTau;
         m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
         m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
         m_config.maxHelloAdverts = m_maxHelloAdverts;
@@ -770,6 +895,7 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
             /*linkQuality*/ this));
         m_logic->setObserver(this);    // fan core events to the trace sources
         m_logic->setKinematics(this);  // ADR-0025; read only with ShareKinematics
+        m_logic->setEnergy(this);      // #145; read only by the energy metric
     }
 
     // One UDP socket per interface for ant control traffic.
@@ -1265,7 +1391,29 @@ void RoutingProtocol::HelloTimerExpire() {
         // LinkFail broadcasts and repair-timeout DiscardPending actions (D6).
         ExecuteDecisions(m_logic->onMaintenanceTick(), kInvalidAddress);
         AntMessage hello = m_logic->createHelloAnt();
-        SendAnt(hello, Ipv4Address("255.255.255.255"));
+        const bool p2pTick = m_helloTicks++ % m_p2pHelloEvery == 0;
+        if (p2pTick) {
+            SendAnt(hello, Ipv4Address("255.255.255.255"));
+        } else {
+            // #204: this tick skips the point-to-point interfaces. Shared media
+            // still get their hello; an ISL that is up vouches for the peers
+            // heard on it (#260's per-interface names), exactly as receiving
+            // their hello would have (learnNeighbor on both names).
+            Ptr<Packet> packet = Create<Packet>();
+            packet->AddHeader(AntHeader(hello));
+            for (auto& kv : m_socketAddresses) {
+                const int32_t i = m_ipv4->GetInterfaceForAddress(kv.second.GetLocal());
+                if (i >= 0 && m_ipv4->GetNetDevice(i)->IsPointToPoint()) {
+                    if (!m_ipv4->IsUp(i)) continue;
+                    auto nit = m_ifaceNeighbors.find(static_cast<uint32_t>(i));
+                    if (nit == m_ifaceNeighbors.end()) continue;
+                    for (NodeAddress n : nit->second) m_logic->learnNeighbor(n);
+                    continue;
+                }
+                kv.first->SendTo(packet->Copy(), 0,
+                                 InetSocketAddress(kv.second.GetBroadcast(), ANT_PORT));
+            }
+        }
     }
     m_helloTimer.Schedule(TimerDelay(m_helloInterval, false));
 }

@@ -10,6 +10,8 @@
 #ifndef ANTHOCNET_CORE_PHEROMONE_ENGINE_H
 #define ANTHOCNET_CORE_PHEROMONE_ENGINE_H
 
+#include <map>
+
 #include "anthocnet/core/ant_message.h"
 #include "anthocnet/core/config.h"
 #include "anthocnet/core/pheromone_table.h"
@@ -36,7 +38,12 @@ public:
     /// alpha^(dt/interval), pruning links below minPheromone. Driven by the
     /// maintenance tick. One clock for both tables (#262) keeps them
     /// commensurable for virtual-vs-regular comparisons.
-    void evaporateAll(PheromoneTable& table, double dtSeconds) const;
+    /// `rateMultiplier` (#572), when given, scales the decay per destination:
+    /// a destination in the map ages as if `m` times the elapsed time had
+    /// passed, in both tables (they must stay commensurable, #262). nullptr,
+    /// or a destination absent from the map, ages exactly as before.
+    void evaporateAll(PheromoneTable& table, double dtSeconds,
+                      const std::map<NodeAddress, double>* rateMultiplier = nullptr) const;
 
     /// Reinforce the virtual links advertised by a hello. Aging is handled by
     /// evaporateAll, same as the regular table (#262).

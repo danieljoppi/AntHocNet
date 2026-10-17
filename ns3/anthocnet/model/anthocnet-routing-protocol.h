@@ -67,6 +67,7 @@ class RoutingProtocol : public Ipv4RoutingProtocol,
                         public ::anthocnet::core::IRouterObserver,
                         public ::anthocnet::core::ILinkState,
                         public ::anthocnet::core::ILinkQuality,
+                        public ::anthocnet::core::IEnergy,
                         public ::anthocnet::core::IKinematics {
 public:
     static TypeId GetTypeId();
@@ -119,6 +120,14 @@ public:
     double sinrDbFrom(::anthocnet::core::NodeAddress neighbor) const override;
     /// Called by the PHY monitor hook for every received MPDU (#181).
     void NotifyPhyRxSinr(Ptr<const Packet> packet, double sinrDb);
+
+    // core::IEnergy (#145): this node's residual energy fraction (0..1), from
+    // a probe the scenario sets, because energy accounting is the scenario's
+    // (anthocnet-compare integrates the PHY state trace, #256). NaN when no
+    // probe is set: the energy metric then degrades to hop count.
+    double residualEnergyFraction() const override;
+    /// Set the probe residualEnergyFraction() reads (#145).
+    void SetEnergyProbe(Callback<double> probe) { m_energyProbe = probe; }
 
     // core::IKinematics (#573, ADR-0025): this node's position and velocity
     // from its aggregated MobilityModel; false when it has none. Only read
@@ -346,16 +355,35 @@ private:
     double m_hopCountAlpha;  ///< #185: thesis alpha, eq. 4.2 (default 0 = off)
     bool m_enableProactive;
     bool m_enableDiffusion;
-    bool m_enableReactive;          ///< reactive forward-ant gate (ablation)
-    bool m_enableRepair;            ///< local-repair ant gate (ablation)
-    bool m_enableLinkFail;          ///< link-failure notification gate (ablation)
-    bool m_enableDirectedReactive;  ///< steer reactive ants by the virtual table
-    bool m_shareKinematics;         ///< hellos carry position/velocity (ADR-0025)
+    bool m_enableReactive;             ///< reactive forward-ant gate (ablation)
+    bool m_enableRepair;               ///< local-repair ant gate (ablation)
+    bool m_enableLinkFail;             ///< link-failure notification gate (ablation)
+    bool m_enableDirectedReactive;     ///< steer reactive ants by the virtual table
+    bool m_shareKinematics;            ///< hellos carry position/velocity (ADR-0025)
+    bool m_enableLinkLifetime;         ///< discount soon-to-break next hops (#574)
+    double m_linkLifetimeRange;        ///< range (m) the LET prediction assumes
+    double m_linkLifetimeHorizon;      ///< LET (s) at or above which no discount applies
+    double m_linkLifetimeFloor;        ///< smallest weight a predicted-short link keeps
+    bool m_enableQuietMode;            ///< back proactive ants off on stable routes (#571)
+    double m_quietTolerance;           ///< relative pheromone change still "stable"
+    double m_quietBackoffFactor;       ///< geometric back-off growth, in rounds
+    uint32_t m_quietMaxBackoff;        ///< back-off cap, in proactive rounds
+    bool m_enableAdaptiveEvaporation;  ///< #572
+    double m_adaptiveEvapRefChurn;     ///< #572
+    double m_adaptiveEvapMin;          ///< #572
+    double m_adaptiveEvapMax;          ///< #572
+    double m_adaptiveEvapTau;          ///< #572
+    Callback<double> m_energyProbe;    ///< residual energy fraction source (#145)
     double m_proactiveBroadcastProb;
     double m_proactiveVirtualMargin;
     uint32_t m_maxHelloAdverts;  ///< #186: diffusion advert cap k (thesis: 10)
     double m_sessionTtl;
     uint32_t m_txFailureThreshold;
+    /// #204: on point-to-point interfaces, send a hello only every this many
+    /// hello ticks (1 = every tick, the default and the old behaviour); on
+    /// the ticks in between, an up interface vouches for its peers.
+    uint32_t m_p2pHelloEvery = 1;
+    uint64_t m_helloTicks = 0;  ///< hello ticks so far (#204)
     bool m_enableMacFailureDetector;
     uint32_t m_maxReinjectPerPacket;  ///< #386 remedy: path-global re-injection cap (0 = unlimited)
     double m_repairWaitFactor;

@@ -33,21 +33,30 @@ void PheromoneEngine::updateRegular(PheromoneTable& table, NodeAddress dest, Nod
     table.setPheromoneRegular(dest, neighbor, reinforce(phValue, phUpdate));
 }
 
-void PheromoneEngine::evaporateAll(PheromoneTable& table, double dtSeconds) const {
+void PheromoneEngine::evaporateAll(PheromoneTable& table, double dtSeconds,
+                                   const std::map<NodeAddress, double>* rateMultiplier) const {
     if (dtSeconds <= 0.0 || config_.evaporationInterval <= 0.0) return;
     // Time-proportional retention: alpha per evaporationInterval, scaled by the
     // actual elapsed time so the same tick that expires neighbours can age.
     const double factor = std::pow(config_.alpha, dtSeconds / config_.evaporationInterval);
+    // #572: this destination's factor, or the common one when it has none.
+    auto factorFor = [&](NodeAddress dest) {
+        if (!rateMultiplier) return factor;
+        auto it = rateMultiplier->find(dest);
+        if (it == rateMultiplier->end()) return factor;
+        return std::pow(config_.alpha, dtSeconds / config_.evaporationInterval * it->second);
+    };
 
     const std::vector<NodeAddress> dests(table.regularDestinations().begin(),
                                          table.regularDestinations().end());
     for (NodeAddress dest : dests) {
+        const double f = factorFor(dest);
         const std::vector<NodeAddress> neighbors(table.neighbors().begin(),
                                                  table.neighbors().end());
         for (NodeAddress n : neighbors) {
             const double ph = table.getPheromoneRegular(dest, n);
             if (ph <= 0.0) continue;
-            const double aged = ph * factor;
+            const double aged = ph * f;
             if (aged < config_.minPheromone) {
                 table.removePheromoneRegular(dest, n);
             } else {
@@ -66,12 +75,13 @@ void PheromoneEngine::evaporateAll(PheromoneTable& table, double dtSeconds) cons
     const std::vector<NodeAddress> vdests(table.virtualDestinations().begin(),
                                           table.virtualDestinations().end());
     for (NodeAddress dest : vdests) {
+        const double f = factorFor(dest);
         const std::vector<NodeAddress> neighbors(table.neighbors().begin(),
                                                  table.neighbors().end());
         for (NodeAddress n : neighbors) {
             const double ph = table.getPheromoneVirtual(dest, n);
             if (ph <= 0.0) continue;
-            const double aged = ph * factor;
+            const double aged = ph * f;
             if (aged < config_.minPheromone) {
                 table.removePheromoneVirtual(dest, n);
             } else {

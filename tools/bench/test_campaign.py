@@ -56,7 +56,8 @@ PLAN = {
         "grid": {"workflow": "paper-benchmark.yml",
                  "inputs": {"scenario": "paper", "runs": 20}},
         "sat": {"workflow": "satellite-benchmark.yml",
-                "inputs": {"harness": "isl-grid", "extraArgs": "--breakAt=450"}},
+                "inputs": {"harness": "isl-grid", "extraArgs": "--breakAt=450"},
+                "armArgs": {"quiet": "--Range=5000"}},
         "vanet": {"workflow": "paper-benchmark.yml",
                   "inputs": {"scenario": "vanet", "runs": 4}, "blocks": [1, 5]},
     },
@@ -112,8 +113,10 @@ def _jobs():
            "jobs-override", js["control/grid"])
     expect("extraArgs" not in js["control/grid"][1], "jobs-no-empty-extra",
            js["control/grid"])
-    expect(js["quiet/sat"][1]["extraArgs"] == "--breakAt=450 --Quiet=true",
+    expect(js["quiet/sat"][1]["extraArgs"] == "--breakAt=450 --Quiet=true --Range=5000",
            "jobs-arm-appended", js["quiet/sat"])
+    expect("--Range" not in js["control/sat"][1]["extraArgs"], "jobs-armargs-scoped",
+           js["control/sat"])
     expect(js["quiet/vanet-s5"][1]["extraArgs"] == "--firstRun=5 --Quiet=true",
            "jobs-block", js["quiet/vanet-s5"])
     expect(js["quiet/sat"][0] == "satellite-benchmark.yml", "jobs-workflow",

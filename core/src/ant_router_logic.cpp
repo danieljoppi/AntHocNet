@@ -3,6 +3,7 @@
 
 #include "anthocnet/core/ant_router_logic.h"
 #include "anthocnet/core/ant_message_codec.h"  // kMaxHelloOnWire (#186)
+#include "anthocnet/core/link_lifetime.h"
 
 #include <algorithm>
 #include <cmath>
@@ -48,6 +49,7 @@ void AntRouterLogic::learnNeighbor(NodeAddress neighbor) {
     engine_.updateRegular(table_, neighbor, neighbor, metric_->pheromone(obs));
     lastSeen_[neighbor] = clock_.now();  // liveness: any reception refreshes it
     txFailures_.erase(neighbor);         // a reception clears the tx-failure streak (#19)
+    if (isNew) quiet_.clear();           // #571: a new neighbour may offer a new route
     if (isNew && observer_) observer_->onRouteChanged(neighbor, neighbor, true);
 }
 
@@ -72,6 +74,7 @@ void AntRouterLogic::loseNeighbor(NodeAddress neighbor) {
     }
     txFailures_.erase(neighbor);
     neighborKinematics_.erase(neighbor);  // ADR-0025
+    if (had) quiet_.clear();              // #571: a lost link wakes every route
     if (had && observer_) observer_->onRouteChanged(neighbor, neighbor, false);
 }
 
@@ -82,7 +85,12 @@ std::vector<RouteDecision> AntRouterLogic::onMaintenanceTick() {
     // Single-sourced, time-proportional aging (ADR-0012), gated for the
     // paper-faithful ablation. dt is taken from the clock, never wall time.
     if (config_.enableEvaporation) {
-        engine_.evaporateAll(table_, now - lastEvaporation_);
+        if (config_.enableAdaptiveEvaporation) {  // #572
+            updateChurn(now - lastEvaporation_);
+            engine_.evaporateAll(table_, now - lastEvaporation_, &evapMultiplier_);
+        } else {
+            engine_.evaporateAll(table_, now - lastEvaporation_);
+        }
         lastEvaporation_ = now;
     }
 
@@ -408,10 +416,11 @@ std::vector<AntMessage> AntRouterLogic::createProactiveAnts() {
     const double now = clock_.now();
     for (auto it = activeSessions_.begin(); it != activeSessions_.end();) {
         if (now - it->second > config_.sessionTtl) {
+            quiet_.erase(it->first);         // #571
             it = activeSessions_.erase(it);  // expired session
             continue;
         }
-        if (!shouldSendProactive(it->first)) {
+        if (!shouldSendProactive(it->first) || !quietAllows(it->first)) {
             ++it;  // session stays active; we just skip this tick's ant
             continue;
         }
@@ -423,6 +432,74 @@ std::vector<AntMessage> AntRouterLogic::createProactiveAnts() {
         ++it;
     }
     return ants;
+}
+
+bool AntRouterLogic::quietAllows(NodeAddress dest) {
+    if (!config_.enableQuietMode) return true;
+    // The best regular next hop now (ties go to the lowest address, the
+    // table's iteration order, so the choice is deterministic).
+    NodeAddress best = kInvalidAddress;
+    double bestPh = 0.0;
+    for (NodeAddress n : table_.neighbors()) {
+        const double ph = table_.getPheromoneRegular(dest, n);
+        if (ph > bestPh) {
+            bestPh = ph;
+            best = n;
+        }
+    }
+    QuietState& q = quiet_[dest];
+    const bool same = best != kInvalidAddress && best == q.best &&
+                      std::fabs(bestPh - q.pheromone) <= config_.quietTolerance * q.pheromone;
+    q.stable = same ? q.stable + 1 : 0;
+    q.best = best;
+    q.pheromone = bestPh;
+    double backoff = std::pow(config_.quietBackoffFactor, q.stable);
+    if (backoff > config_.quietMaxBackoff) backoff = config_.quietMaxBackoff;
+    if (q.skipped + 1 >= backoff) {
+        q.skipped = 0;
+        return true;
+    }
+    ++q.skipped;
+    return false;
+}
+
+void AntRouterLogic::updateChurn(double dt) {
+    if (dt <= 0.0) return;
+    // EWMA of an event rate: each tick contributes changed/dt with weight
+    // 1 - exp(-dt/tau), so the estimate is independent of the tick period.
+    const double w = 1.0 - std::exp(-dt / config_.adaptiveEvapTau);
+    evapMultiplier_.clear();
+    for (NodeAddress dest : table_.regularDestinations()) {
+        NodeAddress best = kInvalidAddress;
+        double bestPh = 0.0;
+        for (NodeAddress n : table_.neighbors()) {
+            const double ph = table_.getPheromoneRegular(dest, n);
+            if (ph > bestPh) {
+                bestPh = ph;
+                best = n;
+            }
+        }
+        auto it = churn_.find(dest);
+        if (it == churn_.end()) {  // first sight: no change to count yet
+            churn_[dest] = ChurnState{best, 0.0};
+            continue;
+        }
+        ChurnState& c = it->second;
+        const double changed = (best != c.best) ? 1.0 : 0.0;
+        c.rate = (1.0 - w) * c.rate + w * changed / dt;
+        c.best = best;
+        double m = c.rate / config_.adaptiveEvapRefChurn;
+        if (m < config_.adaptiveEvapMin) m = config_.adaptiveEvapMin;
+        if (m > config_.adaptiveEvapMax) m = config_.adaptiveEvapMax;
+        evapMultiplier_[dest] = m;
+    }
+    // Forget destinations the table no longer holds.
+    for (auto it = churn_.begin(); it != churn_.end();) {
+        if (table_.regularDestinations().count(it->first))
+            ++it;
+        else
+            it = churn_.erase(it);
+    }
 }
 
 // --- ant construction -------------------------------------------------------
@@ -478,7 +555,7 @@ AntMessage AntRouterLogic::createHelloAnt(std::size_t maxAdverts) {
     // ADR-0025: say where we are, when we know. A value float32 cannot carry
     // is not sent, since receivers reject a non-finite section with the
     // whole hello, and liveness matters more than position.
-    if (config_.shareKinematics && kinematics_) {
+    if (sharingKinematics() && kinematics_) {
         Kinematics k;
         if (kinematics_->self(k)) {
             bool ok = true;
@@ -538,11 +615,30 @@ AntMessage AntRouterLogic::createBackAnt(const AntMessage& forward) {
 // --- routing primitives -----------------------------------------------------
 
 NodeAddress AntRouterLogic::selectNextHop(NodeAddress dest, bool proactive) {
+    if (config_.enableLinkLifetime) refreshLinkWeights();  // #574
     return table_.nextNeighborNode(dest, proactive, config_.betaAnts, rng_);
 }
 
 NodeAddress AntRouterLogic::nextHopForData(NodeAddress dest, NodeAddress prevHop) {
+    if (config_.enableLinkLifetime) refreshLinkWeights();  // #574
     return table_.lookup(dest, config_.betaData, rng_, prevHop);
+}
+
+double AntRouterLogic::linkLifetimeWeight(NodeAddress neighbor) const {
+    if (!config_.enableLinkLifetime || !kinematics_) return 1.0;
+    Kinematics self, nb;
+    if (!kinematics_->self(self) || !neighborKinematics(neighbor, nb)) return 1.0;
+    const double let = linkExpiryTime(self, nb, config_.linkLifetimeRange);
+    return core::linkLifetimeWeight(let, config_.linkLifetimeHorizon, config_.linkLifetimeFloor);
+}
+
+void AntRouterLogic::refreshLinkWeights() {
+    linkWeights_.clear();
+    for (NodeAddress n : table_.neighbors()) {
+        const double w = linkLifetimeWeight(n);
+        if (w < 1.0) linkWeights_[n] = w;
+    }
+    table_.setLinkWeights(&linkWeights_);
 }
 
 NodeAddress AntRouterLogic::randomDestination() { return table_.randomDestination(rng_); }
@@ -586,9 +682,13 @@ double AntRouterLogic::localHopCost(const AntMessage& ant, NodeAddress nextHop) 
 
 double AntRouterLogic::linkCost(NodeAddress neighbor) const {
     if (!metric_->usesLinkQuality()) return config_.hopTimeSec;
-    const double sinr = linkQuality_ ? linkQuality_->sinrDbFrom(neighbor)
-                                     : std::numeric_limits<double>::quiet_NaN();
-    return sinrLinkCost(sinr, config_.sinrCriticalDb, config_.sinrPenaltyCost);
+    HopSignals s;
+    if (linkQuality_) s.sinrDb = linkQuality_->sinrDbFrom(neighbor);
+    if (energy_) s.residualEnergy = energy_->residualEnergyFraction();
+    s.sinrCriticalDb = config_.sinrCriticalDb;
+    s.sinrPenaltyCost = config_.sinrPenaltyCost;
+    s.energyFloor = config_.energyCostFloor;
+    return metric_->hopCost(s);
 }
 
 NodeAddress AntRouterLogic::advanceBackAnt(AntMessage& ant) const {
@@ -702,7 +802,7 @@ std::vector<RouteDecision> AntRouterLogic::onReceiveAnt(const AntMessage& incomi
 
     if (incoming.type == AntType::Hello) {
         learnNeighbor(incoming.src);
-        if (config_.shareKinematics) {  // ADR-0025
+        if (sharingKinematics()) {  // ADR-0025
             if (incoming.hasKinematics)
                 neighborKinematics_[incoming.src] = {incoming.kinematics, clock_.now()};
             else

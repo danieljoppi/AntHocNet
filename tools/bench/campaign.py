@@ -52,12 +52,14 @@ Plan format:
         workflow: paper-benchmark.yml
         inputs: {scenario: vanet, runs: 4, ...}
         blocks: [1, 5, 9, 13, 17]  # one job per firstRun, one file
+        armArgs: {ll: "--ns3::...::LinkLifetimeRange=300"}  # this cell only
     jobs:
       - {arms: [control], cells: "*", inputs: {protocols: "anthocnet,aodv"}}
       - {arms: [quiet], cells: [grid-rwp-tworay, vanet-main]}
 
 A job entry's `inputs` override the cell's. An arm's attributes are appended to
-the cell's `extraArgs`.
+the cell's `extraArgs`, then the cell's `armArgs` for that arm, if any (an arm
+whose value depends on the cell, such as a radio range).
 """
 
 import argparse
@@ -102,7 +104,9 @@ def jobs(plan):
                 spec = plan["cells"][cell]
                 inp = dict(spec.get("inputs", {}), **entry.get("inputs", {}))
                 extra = " ".join(x for x in (str(inp.get("extraArgs", "")),
-                                             plan["arms"][arm] or "") if x)
+                                             plan["arms"][arm] or "",
+                                             spec.get("armArgs", {}).get(arm, ""))
+                                 if x)
                 for first in spec.get("blocks", [None]):
                     args = f"--firstRun={first} {extra}".strip() if first else extra
                     label = f"{arm}/{cell}" + (f"-s{first}" if first else "")

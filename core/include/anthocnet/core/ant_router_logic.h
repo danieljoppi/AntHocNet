@@ -56,6 +56,12 @@ public:
     /// Attach the port that says where this node is (ADR-0025; nullptr =
     /// unknown). Read only when Config::shareKinematics is on.
     void setKinematics(const IKinematics* kinematics) { kinematics_ = kinematics; }
+    /// #574: the next-hop weight link-lifetime prediction gives `neighbor`
+    /// now: 1 when the gate is off or either side's kinematics are unknown.
+    double linkLifetimeWeight(NodeAddress neighbor) const;
+    /// Attach the residual-energy port (#145; nullptr = unknown). Read only
+    /// by a metric that prices hops by energy.
+    void setEnergy(const IEnergy* energy) { energy_ = energy; }
     /// What `neighbor`'s last hello said about its position and velocity,
     /// extrapolated to now (p + v*(now - t_rx)). False when it is unknown: no
     /// hello from it carried a section, the last one did not, or the
@@ -89,6 +95,12 @@ public:
     /// queue, so only it knows how many packets each discard released. Counted
     /// here so the cause stays simulator-agnostic and both adapters get it.
     std::uint64_t repairDiscards() const { return repairDiscards_; }
+    /// #572: the decay multiplier `dest` got at the last maintenance tick (1
+    /// when the gate is off or the destination is new).
+    double evaporationMultiplier(NodeAddress dest) const {
+        auto it = evapMultiplier_.find(dest);
+        return it == evapMultiplier_.end() ? 1.0 : it->second;
+    }
 
     // --- neighbour learning ----------------------------------------------
     /// Record that `neighbor` is reachable (link-layer detection / hello),
@@ -237,10 +249,18 @@ private:
     std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
     std::map<NodeAddress, double> lastSeen_;        ///< neighbor -> last reception time
     const IKinematics* kinematics_ = nullptr;       ///< own position (ADR-0025), optional
+    const IEnergy* energy_ = nullptr;               ///< own battery (#145), optional
     /// ADR-0025: neighbour -> (kinematics its last hello carried, receive
     /// time). Only filled when Config::shareKinematics is on; erased with the
     /// neighbour (loseNeighbor) and by a hello that carries no section.
     std::map<NodeAddress, std::pair<Kinematics, double>> neighborKinematics_;
+    /// #574: per-neighbour next-hop weights, refreshed before each choice
+    /// and handed to the pheromone table (only when enableLinkLifetime).
+    std::map<NodeAddress, double> linkWeights_;
+    /// shareKinematics, or implied by a consumer that needs it (#574).
+    bool sharingKinematics() const { return config_.shareKinematics || config_.enableLinkLifetime; }
+    /// Recompute linkWeights_ for the current neighbours (#574).
+    void refreshLinkWeights();
     /// #185: smoothed hop count ĥ per (destination, next hop), the thesis's
     /// eq. 4.2 state. Only populated when Config::hopCountAlpha > 0; entries for
     /// a neighbour are erased with it (loseNeighbor), so it is bounded by the
@@ -264,6 +284,30 @@ private:
         0;  ///< expired local repairs that discarded pending data (#215)
     std::uint64_t directedSteers_ = 0;  ///< reactive ants unicast along the diffusion gradient
     std::map<NodeAddress, double> lastLinkfailNotify_;  ///< dest -> last originated LinkFail time
+
+    /// #571 quiet mode, per active destination: the route last seen and how
+    /// long it has been stable. Only used when Config::enableQuietMode.
+    struct QuietState {
+        NodeAddress best = kInvalidAddress;  ///< best regular next hop last round
+        double pheromone = 0.0;              ///< its pheromone last round
+        int stable = 0;                      ///< consecutive stable rounds
+        int skipped = 0;                     ///< rounds since this dest's last ant
+    };
+    std::map<NodeAddress, QuietState> quiet_;
+    /// True when quiet mode lets `dest`'s proactive ant go this round (and
+    /// advances its state). Always true with the gate off.
+    bool quietAllows(NodeAddress dest);
+    /// #572 adaptive evaporation, per destination: the best regular next hop
+    /// at the last tick and the smoothed rate (1/s) at which it changes.
+    struct ChurnState {
+        NodeAddress best = kInvalidAddress;
+        double rate = 0.0;
+    };
+    std::map<NodeAddress, ChurnState> churn_;
+    std::map<NodeAddress, double> evapMultiplier_;  ///< dest -> decay multiplier
+    /// Update churn_ for a tick `dt` seconds after the last, and refill
+    /// evapMultiplier_ (only when Config::enableAdaptiveEvaporation).
+    void updateChurn(double dt);
 };
 
 }  // namespace core

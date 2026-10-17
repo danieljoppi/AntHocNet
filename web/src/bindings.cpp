@@ -167,6 +167,14 @@ void setConfig(World& w, const std::string& key, double v) {
         c.enableRepair = v != 0;
     else if (key == "shareKinematics")
         c.shareKinematics = v != 0;  // ADR-0025
+    else if (key == "enableLinkLifetime")
+        c.enableLinkLifetime = v != 0;  // #574
+    else if (key == "linkLifetimeRange")
+        c.linkLifetimeRange = v;
+    else if (key == "enableQuietMode")
+        c.enableQuietMode = v != 0;  // #571
+    else if (key == "enableAdaptiveEvaporation")
+        c.enableAdaptiveEvaporation = v != 0;  // #572
 }
 
 double getConfig(World& w, const std::string& key) {
@@ -180,6 +188,10 @@ double getConfig(World& w, const std::string& key) {
     if (key == "enableMultipath") return c.enableMultipath;
     if (key == "enableRepair") return c.enableRepair;
     if (key == "shareKinematics") return c.shareKinematics;
+    if (key == "enableLinkLifetime") return c.enableLinkLifetime;
+    if (key == "linkLifetimeRange") return c.linkLifetimeRange;
+    if (key == "enableQuietMode") return c.enableQuietMode;
+    if (key == "enableAdaptiveEvaporation") return c.enableAdaptiveEvaporation;
     return 0;
 }
 

@@ -35,6 +35,8 @@
 #include "ns3/double.h"
 #include "ns3/data-rate.h"
 #include "ns3/ipv4.h"
+#include "ns3/ipv4-l3-protocol.h"
+#include "ns3/uinteger.h"
 
 #include "ns3/anthocnet-packet.h"
 #include "anthocnet/core/ant_message_codec.h"
@@ -265,6 +267,81 @@ private:
         while ((p = s->Recv())) m_rxBytes += p->GetSize();
     }
     uint32_t m_rxBytes;
+};
+
+// #204 — hellos on point-to-point links every N ticks, liveness from the up
+// interface in between.
+//
+// The #203 relay with both links in point-to-point mode. Run once sending a
+// hello every tick (P2pHelloEvery=1) and once every 5th tick: delivery must
+// hold in both (the peer map #203 needs is learned from the hellos still sent,
+// and no neighbour expires between them), and the relay must transmit fewer
+// packets with the throttle.
+class P2pHelloThrottleTestCase : public TestCase {
+public:
+    P2pHelloThrottleTestCase()
+        : TestCase("Point-to-point hello throttle keeps delivery, sends less (#204)") {}
+
+    void DoRun() override {
+        uint32_t rx1 = 0, rx5 = 0, tx1 = 0, tx5 = 0;
+        RunOnce(1, rx1, tx1);
+        RunOnce(5, rx5, tx5);
+        NS_TEST_ASSERT_MSG_GT(rx1, 0u, "no delivery with a hello every tick");
+        NS_TEST_ASSERT_MSG_GT(rx5, 0u, "no delivery with a hello every 5th tick");
+        NS_TEST_ASSERT_MSG_EQ(rx5, rx1, "the throttle lost data on a stable line");
+        NS_TEST_ASSERT_MSG_LT(tx5, tx1, "the throttle did not reduce the relay's transmissions");
+    }
+
+private:
+    void RunOnce(uint32_t every, uint32_t& rxBytes, uint32_t& relayTx) {
+        RngSeedManager::SetSeed(1);
+        RngSeedManager::SetRun(1);
+        m_rx = 0;
+        m_tx = 0;
+        NodeContainer nodes;
+        nodes.Create(3);
+        SimpleNetDeviceHelper devHelper;
+        devHelper.SetNetDevicePointToPointMode(true);
+        NetDeviceContainer leftDevs = devHelper.Install(NodeContainer(nodes.Get(0), nodes.Get(1)),
+                                                        CreateObject<SimpleChannel>());
+        NetDeviceContainer rightDevs = devHelper.Install(NodeContainer(nodes.Get(1), nodes.Get(2)),
+                                                         CreateObject<SimpleChannel>());
+        AntHocNetHelper anthocnet;
+        anthocnet.Set("P2pHelloEvery", UintegerValue(every));
+        InternetStackHelper internet;
+        internet.SetRoutingHelper(anthocnet);
+        internet.Install(nodes);
+        Ipv4AddressHelper address;
+        address.SetBase("10.1.1.0", "255.255.255.0");
+        address.Assign(leftDevs);
+        address.SetBase("10.1.2.0", "255.255.255.0");
+        Ipv4InterfaceContainer rightIfs = address.Assign(rightDevs);
+        nodes.Get(1)->GetObject<Ipv4L3Protocol>()->TraceConnectWithoutContext(
+            "Tx", MakeCallback(&P2pHelloThrottleTestCase::CountTx, this));
+
+        const uint16_t port = 9;
+        Ptr<Socket> rx = Socket::CreateSocket(nodes.Get(2), UdpSocketFactory::GetTypeId());
+        rx->Bind(InetSocketAddress(Ipv4Address::GetAny(), port));
+        rx->SetRecvCallback(MakeCallback(&P2pHelloThrottleTestCase::Receive, this));
+        Ptr<Socket> tx = Socket::CreateSocket(nodes.Get(0), UdpSocketFactory::GetTypeId());
+        tx->Connect(InetSocketAddress(rightIfs.GetAddress(1), port));
+        for (double t = 10.0; t < 28.0; t += 0.5) {
+            Simulator::Schedule(Seconds(t), &P2pHelloThrottleTestCase::Send, tx);
+        }
+        Simulator::Stop(Seconds(30.0));
+        Simulator::Run();
+        Simulator::Destroy();
+        rxBytes = m_rx;
+        relayTx = m_tx;
+    }
+    static void Send(Ptr<Socket> s) { s->Send(Create<Packet>(64)); }
+    void Receive(Ptr<Socket> s) {
+        Ptr<Packet> p;
+        while ((p = s->Recv())) m_rx += p->GetSize();
+    }
+    void CountTx(Ptr<const Packet>, Ptr<Ipv4>, uint32_t) { ++m_tx; }
+    uint32_t m_rx = 0;
+    uint32_t m_tx = 0;
 };
 
 // #206 — the per-next-hop congestion signal on non-wifi devices.
@@ -528,6 +605,7 @@ public:
         AddTestCase(new AddressMappingTestCase(), AHN_TEST_QUICK);
         AddTestCase(new AntHocNetDeliveryTestCase(), AHN_TEST_QUICK);
         AddTestCase(new MultiInterfaceDeliveryTestCase(), AHN_TEST_QUICK);
+        AddTestCase(new P2pHelloThrottleTestCase(), AHN_TEST_QUICK);
         AddTestCase(new PerHopCongestionSignalTestCase(), AHN_TEST_QUICK);
         AddTestCase(new RepairAntOnLinkBreakTestCase(), AHN_TEST_QUICK);
     }

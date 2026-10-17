@@ -94,6 +94,10 @@ struct Config {
     /// c_const to 3." -- Ducatelle, PhD thesis, USI Lugano, 2007, §4.2.6.
     double sinrCriticalDb = 17.0;  ///< SINR_c (dB)
     double sinrPenaltyCost = 3.0;  ///< c_const (> 1)
+    /// #145 energy metric: a node with less than this residual fraction
+    /// prices its hop as if it had exactly this much (cost <= 1 / floor).
+    /// `repo choice`.
+    double energyCostFloor = 0.01;
 
     /// Links whose pheromone drops below this are pruned.
     double minPheromone = 0.00001;  ///< MIN_PHEROMONE
@@ -104,6 +108,24 @@ struct Config {
     /// item 08 can run the paper-faithful "running-average only" ablation.
     bool enableEvaporation = true;
     double evaporationInterval = 1.0;  ///< reference interval (s) for the decay.
+
+    /// #572 adaptive evaporation: each destination's decay rate follows its
+    /// observed route churn. Every maintenance tick the router checks whether
+    /// the destination's best regular next hop changed, keeps an exponentially
+    /// weighted rate of such changes per second (time constant
+    /// adaptiveEvapTau), and evaporates that destination's pheromone
+    /// clamp(rate / adaptiveEvapRefChurn, adaptiveEvapMin, adaptiveEvapMax)
+    /// times as fast as the fixed rate. Churning routes forget stale links
+    /// sooner; stable ones keep them longer. After Mavrovouniotis and Yang
+    /// (2013/2014) on dynamic optimisation, untested on routing until
+    /// measured here. Default off: byte-identical when off.
+    bool enableAdaptiveEvaporation = false;
+    /// Churn (best-hop changes per second) at which the fixed rate applies.
+    /// `repo choice`: one change per 10 s.
+    double adaptiveEvapRefChurn = 0.1;
+    double adaptiveEvapMin = 0.25;  ///< slowest decay, as a multiple of the fixed rate
+    double adaptiveEvapMax = 4.0;   ///< fastest decay, as a multiple of the fixed rate
+    double adaptiveEvapTau = 10.0;  ///< churn EWMA time constant (s)
 
     /// At most one reactive forward ant per destination per this window, so a
     /// stream of packets to an unreachable destination doesn't flood ants
@@ -181,6 +203,45 @@ struct Config {
     /// (#574), which turns it on; on its own it changes no decision, only
     /// what the hellos carry (25 bytes more when the position is known).
     bool shareKinematics = false;
+
+    /// #574: discount next hops whose link is predicted to break soon. Each
+    /// neighbour's pheromone is multiplied, for next-hop choice only (ants and
+    /// data), by min(1, LET / linkLifetimeHorizon), floored at
+    /// linkLifetimeFloor. LET is the link expiration time (Su, Lee and Gerla
+    /// 2001) from this node's and the neighbour's kinematics (ADR-0025) and
+    /// linkLifetimeRange. A neighbour whose kinematics are unknown is not
+    /// discounted. Turning this on implies shareKinematics. Default off:
+    /// byte-identical when off (ADR-0020's check). The deposits themselves are
+    /// untouched, so a discount never outlives the prediction behind it.
+    bool enableLinkLifetime = false;
+    /// Radio range (m) the prediction assumes. `repo choice`: the paper
+    /// cell's disk range is 300 m and the two-ray decode radius ~250 m, so
+    /// 250 m; set it to the scenario's range when measuring.
+    double linkLifetimeRange = 250.0;
+    /// A link predicted to live at least this long (s) is not discounted.
+    /// `repo choice`: 3 hello periods, the threshold scenario_check.py's #481
+    /// rule uses for "links that live too short for neighbour detection".
+    double linkLifetimeHorizon = 3.0;
+    /// The smallest weight a predicted-short link keeps (discouraged, never
+    /// removed: a node whose links are all short must still forward).
+    double linkLifetimeFloor = 0.05;
+    /// #571 quiet mode: back proactive ants off on a stable route. Each
+    /// proactive round, an active destination whose best next hop is the same
+    /// as last round, with its pheromone within quietTolerance (relative),
+    /// counts one more stable round; its ant is then sent only every
+    /// min(quietMaxBackoff, quietBackoffFactor^stable) rounds. A changed best
+    /// hop, a pheromone outside the tolerance, a lost neighbour or a new one
+    /// resets the destination (or, for neighbour events, every destination)
+    /// to one ant per round. Default off: byte-identical when off.
+    bool enableQuietMode = false;
+    /// Relative pheromone change that still counts as "the same route".
+    /// `repo choice`.
+    double quietTolerance = 0.2;
+    /// Geometric growth of the back-off, in proactive rounds. `repo choice`.
+    double quietBackoffFactor = 2.0;
+    /// Longest back-off, in proactive rounds (8 x the 10 s default interval
+    /// = 80 s between probes of a stable route). `repo choice`.
+    int quietMaxBackoff = 8;
 
     /// Per-hop probability that an in-transit proactive forward ant is broadcast
     /// to explore for new paths rather than unicast along pheromone ([1] §3.3).

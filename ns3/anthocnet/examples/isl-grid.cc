@@ -932,6 +932,7 @@ int main(int argc, char* argv[]) {
     std::string corridorLoad;
     double corridorLoadAt = 15.0;
     std::string removeLinks;
+    std::string timingProfile = "terrestrial";
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("rows", "Orbital planes (grid rows)", rows);
@@ -954,6 +955,11 @@ int main(int argc, char* argv[]) {
                  "than one ISL: ns-3's DSDV is single-interface-only (#420).",
                  protocols);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
+    cmd.AddValue("timingProfile",
+                 "AntHocNet timing (#205): terrestrial (the defaults, T_hop = 3 ms) | "
+                 "propagation (T_hop = --islDelayMs, the unloaded per-hop time of a "
+                 "propagation-dominated link)",
+                 timingProfile);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies)", g_diag);
     cmd.AddValue("breakLink",
                  "Scripted ISL break (#260): endpoints as r1,c1,r2,c2 "
@@ -985,6 +991,17 @@ int main(int argc, char* argv[]) {
 
     // Same 1 ms delay bin as anthocnet-compare, so delay99 is comparable.
     Config::SetDefault("ns3::FlowMonitor::DelayBinWidth", DoubleValue(0.001));
+
+    // #205: every ISL here has the same propagation delay, so the
+    // propagation profile's T_hop is that delay exactly.
+    if (timingProfile == "propagation") {
+        Config::SetDefault("ns3::anthocnet::RoutingProtocol::HopTime",
+                           DoubleValue(islDelayMs / 1000.0));
+        std::cout << "# anchor timing profile=propagation hopTimeMs=" << islDelayMs << "\n";
+    } else if (timingProfile != "terrestrial") {
+        NS_ABORT_MSG("unknown --timingProfile '" << timingProfile
+                                                 << "' (terrestrial, propagation)");
+    }
 
     Params P;
     P.rows = rows;

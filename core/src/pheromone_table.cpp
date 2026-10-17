@@ -101,7 +101,7 @@ void PheromoneTable::selectionTerms(NodeAddress dest, bool isProactiveAnt, doubl
             if (hasV) phV = itV->second;
         }
         const double phR = useR ? itR->second : 0.0;
-        const double p = std::pow(phR > phV ? phR : phV, beta);
+        const double p = std::pow(weighted(neighbor, phR > phV ? phR : phV), beta);
         // sumMaxProbability counted every neighbour; sumProbability only those
         // with a regular entry.
         if (isProactiveAnt || useR) phSum += p;
