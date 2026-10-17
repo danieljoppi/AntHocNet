@@ -141,11 +141,12 @@ def _dispatch_cap():
         # Two runs finish: the next call sends two more, none twice.
         fake.active = 0
         dispatch(log, fake)
-        labels = [ln.split("\t")[0] for ln in open(log)]
+        with open(log) as f:
+            text = f.read()
+        labels = [ln.split("\t")[0] for ln in text.splitlines()]
         expect(labels == ["control/grid", "control/sat", "control/vanet-s1",
                           "control/vanet-s5"], "dispatch-resume", labels)
-        expect(len(set(open(log).read().split())) == 8, "dispatch-run-ids",
-               open(log).read())
+        expect(len(set(text.split())) == 8, "dispatch-run-ids", text)
 
 
 @case("dispatch: the plan's ref and the job's inputs reach the API")
@@ -186,7 +187,8 @@ def _collect():
         files = sorted(os.listdir(out))
         expect(files == ["sat-vtest-quiet.txt", "vanet-vtest-quiet.txt"],
                "collect-names", files)
-        text = open(os.path.join(out, "vanet-vtest-quiet.txt")).read()
+        with open(os.path.join(out, "vanet-vtest-quiet.txt")) as f:
+            text = f.read()
         expect(text.startswith("# vtest campaign vanet-vtest-quiet: 2 run(s): "
                                "11 (quiet/vanet-s1) / 12 (quiet/vanet-s5)"),
                "collect-header", text)

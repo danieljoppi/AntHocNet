@@ -128,7 +128,7 @@ def read_log(path):
 
 def gh(*args, stdin=None, binary=False):
     p = subprocess.run(["gh", "api", *args], input=stdin, capture_output=True,
-                       text=not binary)
+                       text=not binary, check=False)
     if p.returncode != 0:
         err = p.stderr if not binary else p.stderr.decode(errors="replace")
         raise RuntimeError(f"gh api {args[0]}: {err.strip()}")
@@ -291,7 +291,7 @@ def cmd_verdicts(plan, a):
             continue
         out = subprocess.run([sys.executable, parser, "--ab", "--proto",
                               "anthocnet", base, test],
-                             capture_output=True, text=True).stdout
+                             capture_output=True, text=True, check=False).stdout
         line = next((ln.strip() for ln in out.splitlines()
                      if ln.strip().startswith("paired 95% CI")), None)
         print(f"{arm}\t{cell}\t{line or '(no paired result; see bench_parse.py)'}")

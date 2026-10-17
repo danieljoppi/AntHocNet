@@ -405,7 +405,10 @@ def main():
     if args.control:
         if len(args.files) != 2:
             sys.exit("--control takes exactly two files: BEFORE AFTER")
-        texts = [open(f).read() for f in args.files]
+        texts = []
+        for path in args.files:
+            with open(path) as fh:
+                texts.append(fh.read())
         lines, failed = control(texts[0], texts[1], args.proto)
         print(f"control (baselines vs {args.proto}): "
               f"{label_of(args.files[0], texts[0])} -> "
