@@ -28,8 +28,11 @@
 #                     release.yml is never exercised by PR CI.
 #   - matplotlib      charts.yml commits the PNGs it renders; a release that
 #                     moves a pixel would recommit every chart on main.
+#   - pyyaml          campaign.py reads the campaign plans (#662); the lint
+#                     job installs it to run test_campaign.py.
 ruff==0.16.10
 gcovr==8.6
 mkdocs-material==9.7.7
 commitizen==4.19.1
 matplotlib==3.11.2
+pyyaml==6.0.3

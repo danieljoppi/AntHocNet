@@ -157,7 +157,8 @@ These were latent in the original NS-2 module and are fixed in `core/`:
 - **Agent tooling is script-first** (ADR-0014): shipped scripts in `tools/bench/`
   do benchmark parsing/A/B noise calls (`bench_parse.py`), campaign-CSV
   summaries (`sweep_summary.py`), scenario pre-flight + result-plausibility
-  validation (`scenario_check.py`, #134); the `.claude/skills/` hold the
+  validation (`scenario_check.py`, #134), throttled campaigns from a plan
+  file (`campaign.py`, #662); the `.claude/skills/` hold the
   procedures and the diff invariant checks — raw tables and logs stay out of
   LLM context; only script verdicts are read. Release packages carry no agent
   files (`tools/release/check-bundle.sh`, #604).
