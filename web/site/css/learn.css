@@ -363,6 +363,16 @@ a.hub-card:hover { border-color: var(--accent); }
 .ws-nest .titlebar, .ws-quest .titlebar { display: flex; gap: 8px; }
 .ws-map svg { display: block; width: 100%; height: auto; }
 .ws-foot { padding: 0 14px 10px; margin: 0; }
+/* ns-3 replay (#641) */
+.rp { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 12px; padding: 0 12px 16px; }
+.rp > .window { margin: 0; }
+.rp-stage .titlebar { display: flex; gap: 8px; align-items: center; }
+.rp-pick { margin-left: auto; }
+.rp-map canvas { display: block; width: 100%; height: min(62vh, 560px); }
+.rp-controls { display: flex; gap: 8px; align-items: center; padding: 8px 12px 0; }
+.rp-controls input[type=range] { flex: 1; min-width: 0; }
+.rp-stats { padding: 6px 12px 10px; margin: 0; font-size: 0.8rem; color: var(--text-secondary); }
+@media (max-width: 760px) { .rp { grid-template-columns: 1fr; } }
 #nest .sky { fill: var(--sky); }
 #nest .soil { fill: #7a5a3a; }
 #nest .tunnel { fill: none; stroke: #3d2b1c; stroke-width: 20; stroke-linecap: round; }

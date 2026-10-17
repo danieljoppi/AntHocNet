@@ -4,6 +4,8 @@ try:
   - world: satellite
     seed: 1
     title: "Orbit with the constellation"
+  - replay: leo
+    title: "Seed 1 of walker16, as ns-3 ran it"
 ---
 
 # Satellite suite: the moving constellation (leo-walker)

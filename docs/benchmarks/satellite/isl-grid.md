@@ -4,6 +4,8 @@ try:
   - world: satellite
     seed: 1
     title: "Satellite links: stable, delay changes"
+  - replay: isl
+    title: "Seed 1 of the base torus, as ns-3 ran it"
 ---
 
 # Satellite suite: the ISL grid

@@ -52,7 +52,7 @@ install: require-ns3dir
 	mkdir -p "$(DEST)/model" "$(DEST)/helper" "$(DEST)/examples" "$(DEST)/test"
 	cp $(ANT)/model/*.h   $(ANT)/model/*.cc   "$(DEST)/model/"
 	cp $(ANT)/helper/*.h  $(ANT)/helper/*.cc  "$(DEST)/helper/"
-	cp $(ANT)/examples/*.cc "$(DEST)/examples/"
+	cp $(ANT)/examples/*.cc $(ANT)/examples/*.h "$(DEST)/examples/"
 	cp $(ANT)/examples/CMakeLists.txt "$(DEST)/examples/"
 	cp $(ANT)/examples/wscript "$(DEST)/examples/" 2>/dev/null || true
 	cp $(ANT)/test/*.cc   "$(DEST)/test/"

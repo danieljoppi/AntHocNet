@@ -344,6 +344,66 @@ private:
     uint32_t m_tx = 0;
 };
 
+// #641 — StrongestNextHop, the read-only query --vizTrace draws routes with.
+//
+// On a three-node point-to-point line the only route from node 0 to node 2 is
+// through node 1, so once data has flowed the strongest next hop node 0 holds
+// toward node 2 must be node 1's address on their shared link. Before the
+// protocol starts, the query answers 0.0.0.0 rather than guessing.
+class StrongestNextHopTestCase : public TestCase {
+public:
+    StrongestNextHopTestCase()
+        : TestCase("StrongestNextHop names the route the pheromone holds (#641)") {}
+
+    void DoRun() override {
+        using ns3::anthocnet::RoutingProtocol;
+        RngSeedManager::SetSeed(1);
+        RngSeedManager::SetRun(1);
+        NodeContainer nodes;
+        nodes.Create(3);
+        SimpleNetDeviceHelper devHelper;
+        devHelper.SetNetDevicePointToPointMode(true);
+        NetDeviceContainer leftDevs = devHelper.Install(NodeContainer(nodes.Get(0), nodes.Get(1)),
+                                                        CreateObject<SimpleChannel>());
+        NetDeviceContainer rightDevs = devHelper.Install(NodeContainer(nodes.Get(1), nodes.Get(2)),
+                                                         CreateObject<SimpleChannel>());
+        AntHocNetHelper anthocnet;
+        InternetStackHelper internet;
+        internet.SetRoutingHelper(anthocnet);
+        internet.Install(nodes);
+        Ipv4AddressHelper address;
+        address.SetBase("10.1.1.0", "255.255.255.0");
+        Ipv4InterfaceContainer leftIfs = address.Assign(leftDevs);
+        address.SetBase("10.1.2.0", "255.255.255.0");
+        Ipv4InterfaceContainer rightIfs = address.Assign(rightDevs);
+        Ptr<RoutingProtocol> rp0 =
+            DynamicCast<RoutingProtocol>(nodes.Get(0)->GetObject<Ipv4>()->GetRoutingProtocol());
+        NS_TEST_ASSERT_MSG_NE(rp0, nullptr, "node 0 runs AntHocNet");
+        const Ipv4Address dest = rightIfs.GetAddress(1);
+        const Ipv4Address relay = leftIfs.GetAddress(1);  // read before Destroy
+        NS_TEST_ASSERT_MSG_EQ(rp0->StrongestNextHop(dest), Ipv4Address(),
+                              "a query before the protocol starts answers 0.0.0.0");
+
+        const uint16_t port = 9;
+        Ptr<Socket> rx = Socket::CreateSocket(nodes.Get(2), UdpSocketFactory::GetTypeId());
+        rx->Bind(InetSocketAddress(Ipv4Address::GetAny(), port));
+        Ptr<Socket> tx = Socket::CreateSocket(nodes.Get(0), UdpSocketFactory::GetTypeId());
+        tx->Connect(InetSocketAddress(dest, port));
+        for (double t = 5.0; t < 15.0; t += 0.5) {
+            Simulator::Schedule(Seconds(t), &StrongestNextHopTestCase::Send, tx);
+        }
+        Ipv4Address seen;
+        Simulator::Schedule(Seconds(15.0), [&]() { seen = rp0->StrongestNextHop(dest); });
+        Simulator::Stop(Seconds(16.0));
+        Simulator::Run();
+        Simulator::Destroy();
+        NS_TEST_ASSERT_MSG_EQ(seen, relay, "node 0's strongest next hop toward node 2 is node 1");
+    }
+
+private:
+    static void Send(Ptr<Socket> s) { s->Send(Create<Packet>(64)); }
+};
+
 // #206 — the per-next-hop congestion signal on non-wifi devices.
 //
 // The same multi-interface relay shape as the #203 test (one SimpleNetDevice
@@ -606,6 +666,7 @@ public:
         AddTestCase(new AntHocNetDeliveryTestCase(), AHN_TEST_QUICK);
         AddTestCase(new MultiInterfaceDeliveryTestCase(), AHN_TEST_QUICK);
         AddTestCase(new P2pHelloThrottleTestCase(), AHN_TEST_QUICK);
+        AddTestCase(new StrongestNextHopTestCase(), AHN_TEST_QUICK);
         AddTestCase(new PerHopCongestionSignalTestCase(), AHN_TEST_QUICK);
         AddTestCase(new RepairAntOnLinkBreakTestCase(), AHN_TEST_QUICK);
     }

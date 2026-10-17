@@ -467,6 +467,27 @@ if (fs.existsSync(path.join(root, 'docs', 'index.html'))) {
 //     phase with the device dock, a run, and the debrief -- level 1.2 played to
 //     the end through the UI, with axe (serious/critical) on every screen, day
 //     and night.
+// 5a. ns-3 replay (#641): the page plays a recorded trace, or says the run is
+//     not recorded yet; either way no page error and axe finds nothing serious.
+{
+  const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.addInitScript({ content: axeSource });
+  await p.goto(base + 'replay.html#manet');
+  await p.waitForFunction(() => /^t |not been recorded/.test(document.getElementById('rpStats').textContent
+    + document.getElementById('rpAbout').textContent), null, { timeout: 15000 }).catch(() => {});
+  const stats = (await p.locator('#rpStats').textContent()).trim();
+  const about = (await p.locator('#rpAbout').textContent()).trim();
+  const v = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+    .filter((x) => x.impact === 'serious' || x.impact === 'critical').map((x) => x.id));
+  if (v.length) fail(`replay: axe ${v.join(' | ')}`);
+  if (errors.length) fail(`replay: page errors: ${errors.join(' | ')}`);
+  else if (!stats.startsWith('t ') && !about.includes('not been recorded')) fail(`replay: neither playing nor "not recorded" (${about.slice(0, 80)})`);
+  else if (!v.length) console.log(`ok: replay — ${stats.startsWith('t ') ? 'playing the recorded manet run' : 'no trace yet, says so'}; axe clean`);
+  await p.close();
+}
+
 for (const scheme of ['light', 'dark']) {
   const p = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: scheme });
   const errors = [];

@@ -4,6 +4,8 @@ try:
   - world: vanet
     seed: 1
     title: "Watch a route break at a street corner"
+  - replay: vanet
+    title: "Seed 1 of the main cell, as ns-3 ran it"
 ---
 
 # Scenario: vanet

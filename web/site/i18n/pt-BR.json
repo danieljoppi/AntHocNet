@@ -1303,5 +1303,41 @@
       "what": "O tempo de salto é o atraso real de propagação entre satélites, não os 3 ms de um salto Wi-Fi.",
       "measured": "A campanha da v2.3.0 mede a melhoria em cada família de rede; o resultado aparece aqui quando a campanha terminar."
     }
+  },
+  "replay": {
+    "title": "AntHocNet — assista à execução no ns-3",
+    "description": "Uma execução real do AntHocNet no ns-3, reproduzida com o renderizador do jogo: os nós como o ns-3 os moveu, as rotas mais fortes como as tabelas de feromônio as tinham, a entrega como ele mediu.",
+    "heading": "Assista à execução no ns-3",
+    "cell": "Rede",
+    "mapLabel": "A rede reproduzida: nós, enlaces e a rota mais forte de cada fluxo",
+    "pause": "❚❚ Pausar",
+    "play": "▶ Reproduzir",
+    "timeline": "Tempo simulado",
+    "speed": "Velocidade",
+    "aboutTitle": "O que você está vendo",
+    "loading": "Carregando o registro…",
+    "missing": "A execução desta rede ainda não foi registrada. O harness a escreve com --vizTrace; veja o #641.",
+    "stats": "t {t} / {T} s · entregue {pdr} % ({rx} / {tx}) · formigas nestes {step} s: {ants} · perdidos sem rota {route}, em filas {queue}",
+    "facts": "Registrado por {harness}, semente {seed}: {nodes} nós, amostrados a cada {step} s. Entre as amostras os nós se movem em linha reta.",
+    "books": "Os números da própria execução: {pdr} % entregue ({rx} de {tx} pacotes). O contador acima termina nos mesmos números.",
+    "noEnd": "O registro não tem o fim: a execução não terminou.",
+    "honest": "Isto é o ns-3, não o navegador: PHY e MAC Wi-Fi completos (ou enlaces ponto a ponto entre satélites), com os parâmetros da célula publicada. As rotas desenhadas são o próximo salto mais forte de cada nó, como sua tabela de feromônio o tinha na amostra; os dados ainda escolhem o próximo salto ao acaso, ponderado pelo feromônio.",
+    "page": "A página de resultados desta rede →",
+    "names": {
+      "manet": "MANET ad hoc (random waypoint, dois raios)",
+      "mesh": "Malha estática",
+      "fanet": "FANET (drones)",
+      "vanet": "VANET (ruas da cidade)",
+      "isl": "Grade de enlaces entre satélites",
+      "leo": "Camada LEO (walker16)"
+    },
+    "cells": {
+      "manet": "A célula random waypoint e dois raios da grade MANET: 50 nós no campo de 1500 × 300 m do artigo, a até 20 m/s, pausa de 30 s, 20 fluxos CBR.",
+      "mesh": "Cinquenta roteadores que nunca se movem: o mesmo campo, pausa de 900 s. Cada rota é achada uma vez, depois só amostrada.",
+      "fanet": "Drones em voo Gauss-Markov 3-D a 30 m/s: os enlaces duram segundos.",
+      "vanet": "Cem veículos numa malha de ruas Manhattan; os prédios bloqueiam o rádio em cada esquina.",
+      "isl": "Um toro +grid estático de satélites ligados ponto a ponto.",
+      "leo": "Uma camada Walker em movimento, de 256 satélites e estações terrenas; os enlaces seguem as órbitas."
+    }
   }
 }

@@ -4,6 +4,8 @@ try:
   - world: manet
     seed: 1
     title: "Watch walkers and standers share one field"
+  - replay: manet
+    title: "Seed 1 of the random-waypoint, two-ray cell, as ns-3 ran it"
 ---
 
 # Grid: mobility × channel

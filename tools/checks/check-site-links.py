@@ -101,6 +101,17 @@ def front_matter_try(md: str) -> list[str]:
     return re.findall(r"^\s*- world: (\w+)", m.group(1), re.MULTILINE)
 
 
+def front_matter_replays(md: str) -> list[str]:
+    m = re.match(r"---\n(.*?)\n---\n", md, re.DOTALL)
+    return re.findall(r"^\s*- replay: (\w+)", m.group(1), re.MULTILINE) if m else []
+
+
+def replay_cells(js: str) -> list[str]:
+    """The recorded ns-3 runs the replay page offers (CELLS in replay.js, #641)."""
+    block = js[js.index("const CELLS = [") : js.index("];", js.index("const CELLS = ["))]
+    return re.findall(r"id: '(\w+)'", block)
+
+
 def nest_classes(js: str) -> list[str]:
     return [c for block in re.findall(r"classes: \[([^\]]*)\]", js) for c in re.findall(r"'(\w+)'", block)]
 
@@ -113,7 +124,8 @@ INSTALL_DOCS = ("docs/places/workshop.md", "ns3/README.md")
 
 
 def check(worlds_js: str, missions_js: str, pages: dict[str, str], exists=os.path.exists,
-          nest_js: str | None = None, steps_js: str | None = None, install_text: str | None = None) -> list[str]:
+          nest_js: str | None = None, steps_js: str | None = None, install_text: str | None = None,
+          replay_js: str | None = None) -> list[str]:
     errs = []
     w = worlds(worlds_js)
     if not w:
@@ -156,6 +168,14 @@ def check(worlds_js: str, missions_js: str, pages: dict[str, str], exists=os.pat
         for t in tries:
             if t not in w:
                 errs.append(f"{rel}: try: world '{t}' is not a world id ({', '.join(sorted(w))})")
+        if replay_js is not None:
+            cells = replay_cells(replay_js)
+            reps = front_matter_replays(md)
+            if rel in FAMILY_PAGES and not reps:
+                errs.append(f"{rel}: no `- replay:` try entry (each family page links its ns-3 run, #641)")
+            for r in reps:
+                if r not in cells:
+                    errs.append(f"{rel}: replay '{r}' is not a recorded run ({', '.join(cells)})")
     return errs
 
 
@@ -171,7 +191,8 @@ def repo_inputs():
 
 def extra_inputs() -> dict:
     return {"nest_js": read("web/site/js/nest-data.js"), "steps_js": read("web/site/js/install-steps.js"),
-            "install_text": "\n".join(read(p) for p in INSTALL_DOCS)}
+            "install_text": "\n".join(read(p) for p in INSTALL_DOCS),
+            "replay_js": read("web/site/js/replay.js")}
 
 
 def self_test() -> int:
@@ -183,6 +204,9 @@ def self_test() -> int:
         "links: [['AntRouterLogic::onMaintenanceTick', ARL]]", 1)
     no_try = dict(pages)
     no_try["docs/benchmarks/static-mesh.md"] = re.sub(r"^---\n.*?\n---\n", "", no_try["docs/benchmarks/static-mesh.md"], flags=re.DOTALL)
+    no_replay = dict(pages)
+    no_replay["docs/benchmarks/static-mesh.md"] = re.sub(r"  - replay: \w+\n    title: .*\n", "",
+                                                         no_replay["docs/benchmarks/static-mesh.md"])
     bad_world = dict(pages)
     bad_world["docs/ant-types.md"] = bad_world["docs/ant-types.md"].replace("- world: line", "- world: atlantis", 1)
     cases = [
@@ -192,6 +216,9 @@ def self_test() -> int:
         ("an Academy mission without a docs link", (wjs, no_docs, pages), {}, True),
         ("a family page without try:", (wjs, mjs, no_try), {}, True),
         ("a try: world that does not exist", (wjs, mjs, bad_world), {}, True),
+        ("a family page without its ns-3 replay", (wjs, mjs, no_replay), {}, True),
+        ("a replay id the page does not offer", (wjs, mjs, pages),
+         {"replay_js": ex["replay_js"].replace("{ id: 'mesh'", "{ id: 'meshy'", 1)}, True),
         ("an API link to a class that does not exist",
          (wjs, mjs.replace("PheromoneEngine.html", "PheromoneEngin.html", 1), pages), {}, True),
         ("a core class missing from the Nest", (wjs, mjs, pages), {"nest_js": ex["nest_js"].replace("'Config'", "", 1)}, True),

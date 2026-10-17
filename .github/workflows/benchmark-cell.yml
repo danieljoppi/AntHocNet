@@ -44,8 +44,14 @@ on:
       title:
         description: "One line for the cell's header, e.g. 'static mesh (paper field, pause=900, disk) 20 seeds'"
         default: ''
+      replay:
+        description: 'ns-3 replay id (#641: manet, mesh, fanet, vanet, isl, leo): also record the first anthocnet run with --vizTrace; the PR adds results/replay/<id>.jsonl'
+        default: ''
+      published:
+        description: 'With replay: the published cell the trace must match (results/cells/<name>.txt, checked by check-viz-trace.py)'
+        default: ''
       open_pr:
-        description: 'Open a PR adding the cell (with provenance and the scenario_check verdict)'
+        description: 'Open a PR adding the cell and/or the replay trace (with provenance and the checks)'
         type: boolean
         default: false
 
@@ -68,10 +74,16 @@ jobs:
       - name: Check the inputs
         env:
           CELL: ${{ inputs.cell }}
+          REPLAY: ${{ inputs.replay }}
           OPEN_PR: ${{ inputs.open_pr }}
         run: |
-          if [ "$OPEN_PR" = "true" ] && ! printf '%s' "$CELL" | grep -qE '^[a-z0-9][a-z0-9.-]*$'; then
-            echo "open_pr needs a cell name of [a-z0-9.-] (got '$CELL')"; exit 1
+          for v in "$CELL" "$REPLAY"; do
+            if [ -n "$v" ] && ! printf '%s' "$v" | grep -qE '^[a-z0-9][a-z0-9.-]*$'; then
+              echo "names must be [a-z0-9.-] (got '$v')"; exit 1
+            fi
+          done
+          if [ "$OPEN_PR" = "true" ] && [ -z "$CELL$REPLAY" ]; then
+            echo "open_pr needs a cell and/or a replay name"; exit 1
           fi
       - name: Install AntHocNet module
         run: make install-ns3 NS3DIR=/opt/ns-3
@@ -102,9 +114,11 @@ jobs:
         env:
           HARNESS: ${{ inputs.harness }}
           ARGS: ${{ inputs.args }}
+          REPLAY: ${{ inputs.replay }}
         run: |
           cd /opt/ns-3
           set -o pipefail
+          [ -n "$REPLAY" ] && ARGS="$ARGS --vizTrace=$GITHUB_WORKSPACE/replay.jsonl"
           timewrap=""
           [ -x /usr/bin/time ] && timewrap="/usr/bin/time -v -o $GITHUB_WORKSPACE/time-v.log"
           # As paper-benchmark (#256): cap the address space below the
@@ -134,6 +148,17 @@ jobs:
           [ -f "$GITHUB_WORKSPACE/results.txt" ] || exit 0
           python3 tools/bench/scenario_check.py results "$GITHUB_WORKSPACE/results.txt" \
             | tee "$GITHUB_WORKSPACE/verdict.txt"
+      - name: Check the replay trace against the published cell (#641)
+        if: ${{ inputs.replay != '' }}
+        shell: bash
+        env:
+          PUBLISHED: ${{ inputs.published }}
+        run: |
+          cell=""
+          [ -n "$PUBLISHED" ] && cell="--cell results/cells/${PUBLISHED}.txt"
+          # $cell unquoted on purpose: empty must expand to nothing.
+          python3 tools/bench/check-viz-trace.py "$GITHUB_WORKSPACE/replay.jsonl" $cell \
+            | tee "$GITHUB_WORKSPACE/replay-check.txt"
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -142,6 +167,8 @@ jobs:
           path: |
             results.txt
             verdict.txt
+            replay.jsonl
+            replay-check.txt
             ns3-stderr.log
             time-v.log
           retention-days: 30
@@ -176,32 +203,44 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           CELL: ${{ inputs.cell }}
+          REPLAY: ${{ inputs.replay }}
           TITLE: ${{ inputs.title }}
           HARNESS: ${{ inputs.harness }}
           ARGS: ${{ inputs.args }}
           VERSION: ${{ inputs.version }}
         run: |
           dir="$RUNNER_TEMP/cell"
-          dest="results/cells/${CELL}.txt"
-          branch="bench/${CELL}-${GITHUB_RUN_ID}"
-          # The cell format the pages cite: a one-line header, then the
-          # harness output (its ##CONFIG##/##RUN## rows), then ##ARGS##/##PROV##.
-          { echo "# ${TITLE:-$CELL} @${GITHUB_SHA:0:8} run ${GITHUB_RUN_ID} (benchmark-cell.yml, #612)"
-            cat "$dir/results.txt"; } > "$dest"
+          name="${CELL:-replay-${REPLAY}}"
+          branch="bench/${name}-${GITHUB_RUN_ID}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add "$dest"
-          git commit -q -m "docs(bench): add the ${CELL} cell (run ${GITHUB_RUN_ID})"
+          added=""
+          if [ -n "$CELL" ]; then
+            # The cell format the pages cite: a one-line header, then the
+            # harness output (its ##CONFIG##/##RUN## rows), then ##ARGS##/##PROV##.
+            dest="results/cells/${CELL}.txt"
+            { echo "# ${TITLE:-$CELL} @${GITHUB_SHA:0:8} run ${GITHUB_RUN_ID} (benchmark-cell.yml, #612)"
+              cat "$dir/results.txt"; } > "$dest"
+            git add "$dest"; added="\`${dest}\`"
+          fi
+          if [ -n "$REPLAY" ]; then
+            mkdir -p results/replay
+            cp "$dir/replay.jsonl" "results/replay/${REPLAY}.jsonl"
+            git add "results/replay/${REPLAY}.jsonl"; added="${added:+$added and }\`results/replay/${REPLAY}.jsonl\`"
+          fi
+          git commit -q -m "docs(bench): add ${name} (run ${GITHUB_RUN_ID})"
           git push -q origin "$branch"
           verdict=$(cat "$dir/verdict.txt" 2>/dev/null || echo "no verdict (scenario_check did not run)")
+          check=$(cat "$dir/replay-check.txt" 2>/dev/null || echo "no replay recorded")
           body=$(printf '%s\n' \
-            "Adds \`${dest}\` from [run ${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})." \
+            "Adds ${added} from [run ${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})." \
             "" "**Dispatch:** \`${HARNESS} ${ARGS}\` on \`ns3:${VERSION}\` at ${GITHUB_SHA}." \
             "" "**scenario_check results:**" '```' "$verdict" '```' \
+            "" "**check-viz-trace (#641):**" '```' "$check" '```' \
             "" "Opened by benchmark-cell.yml (#612). CI does not run on a workflow-opened PR; close and reopen it to run checks.")
           if ! gh pr create --base "${GITHUB_REF_NAME}" --head "$branch" \
-                 --title "docs(bench): add the ${CELL} cell (run ${GITHUB_RUN_ID})" --body "$body"; then
+                 --title "docs(bench): add ${name} (run ${GITHUB_RUN_ID})" --body "$body"; then
             url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${GITHUB_REF_NAME}...${branch}?expand=1"
             echo "::warning::could not open the PR (is 'Allow GitHub Actions to create pull requests' off?). The branch is pushed: $url"
             echo "Branch pushed; open the PR here: $url" >> "$GITHUB_STEP_SUMMARY"

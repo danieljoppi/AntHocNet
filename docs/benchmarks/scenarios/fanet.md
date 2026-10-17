@@ -4,6 +4,8 @@ try:
   - world: fanet
     seed: 1
     title: "A drone swarm: links that last seconds"
+  - replay: fanet
+    title: "Seed 1 of the main cell, as ns-3 ran it"
 ---
 
 # Scenario: fanet

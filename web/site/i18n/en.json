@@ -1303,5 +1303,41 @@
       "what": "The hop time is the real propagation delay between satellites, not a Wi-Fi hop's 3 ms.",
       "measured": "The v2.3.0 campaign measures it in every network family; the result appears here when the campaign lands."
     }
+  },
+  "replay": {
+    "title": "AntHocNet — watch the ns-3 run",
+    "description": "A real ns-3 run of AntHocNet, replayed with the game's renderer: the nodes as ns-3 moved them, the strongest routes as its pheromone tables held them, the delivery as it measured it.",
+    "heading": "Watch the ns-3 run",
+    "cell": "Network",
+    "mapLabel": "The replayed network: nodes, links and the strongest route of each flow",
+    "pause": "❚❚ Pause",
+    "play": "▶ Play",
+    "timeline": "Simulated time",
+    "speed": "Playback speed",
+    "aboutTitle": "What you are watching",
+    "loading": "Loading the trace…",
+    "missing": "This network's run has not been recorded yet. The harness writes it with --vizTrace; see #641.",
+    "stats": "t {t} / {T} s · delivered {pdr} % ({rx} / {tx}) · ants this {step} s: {ants} · lost for want of a route {route}, in queues {queue}",
+    "facts": "Recorded by {harness}, seed {seed}: {nodes} nodes, sampled every {step} s. Between samples the nodes move in straight lines.",
+    "books": "The run's own books: {pdr} % delivered ({rx} of {tx} packets). The counter above ends on the same numbers.",
+    "noEnd": "The trace has no end record: the run did not finish.",
+    "honest": "This is ns-3, not the browser: full Wi-Fi PHY and MAC (or point-to-point satellite links), the published cell's settings. The routes drawn are the strongest next hop at each node, as its pheromone table held it at the sample; data still picks next hops at random, weighted by pheromone.",
+    "page": "The results page for this network →",
+    "names": {
+      "manet": "Ad hoc MANET (random waypoint, two-ray)",
+      "mesh": "Static mesh",
+      "fanet": "FANET (drones)",
+      "vanet": "VANET (city streets)",
+      "isl": "Satellite ISL grid",
+      "leo": "LEO shell (walker16)"
+    },
+    "cells": {
+      "manet": "The MANET grid's random-waypoint, two-ray cell: 50 nodes on the paper's 1500 × 300 m field at up to 20 m/s, pause 30 s, 20 CBR flows.",
+      "mesh": "Fifty routers that never move: the same field, pause 900 s. Every route is found once, then only sampled.",
+      "fanet": "Drones in 3-D Gauss-Markov flight at 30 m/s: links last seconds.",
+      "vanet": "A hundred vehicles on a Manhattan street grid; buildings block the radio at every corner.",
+      "isl": "A static +grid torus of satellites linked point to point.",
+      "leo": "A moving Walker shell of 256 satellites and ground stations; links follow the orbits."
+    }
   }
 }

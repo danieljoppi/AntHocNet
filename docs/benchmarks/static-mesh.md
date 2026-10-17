@@ -4,6 +4,8 @@ try:
   - world: mesh
     seed: 1
     title: "Routers on poles: the routes are found once"
+  - replay: mesh
+    title: "Seed 1 of this cell, as ns-3 ran it"
 ---
 
 # Static Wi-Fi mesh: the family where nothing moves
