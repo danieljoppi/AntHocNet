@@ -77,6 +77,7 @@
 #include "ns3/oracle-module.h"
 #include "ns3/anthocnet-helper.h"
 #include "ns3/anthocnet-routing-protocol.h"
+#include "viz-trace.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -397,7 +398,12 @@ struct Params {
     // #432 item 3: ISLs absent from t=0, as normalized (min,max) node-index
     // pairs in --removeLinks order. Empty = the full +Grid.
     std::vector<std::pair<uint32_t, uint32_t>> removed;
+    std::string vizTrace;  // #641: the first anthocnet run as a replay trace
+    double vizStep = 1.0;
 };
+
+// #641: the one recorded run of --vizTrace (see viz-trace.h).
+static vizt::VizTrace g_viz;
 
 struct Result {
     std::string proto;
@@ -838,6 +844,18 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
     FlowMonitorHelper fmHelper;
     Ptr<FlowMonitor> monitor = fmHelper.InstallAll();
+    // #641: no mobility here; the header names the torus so the player lays
+    // out node r*cols+c on a grid.
+    const bool vizThisRun = !P.vizTrace.empty() && proto == "anthocnet" && !g_viz.Done();
+    if (vizThisRun) {
+        std::ostringstream h;
+        h << "\"harness\":\"isl-grid\",\"seed\":" << seed
+          << ",\"layout\":\"grid\",\"rows\":" << P.rows << ",\"cols\":" << P.cols
+          << ",\"torus\":" << (P.torus ? "true" : "false");
+        g_viz.Start(P.vizTrace, h.str(), nodes, monitor,
+                    DynamicCast<Ipv4FlowClassifier>(fmHelper.GetClassifier()), kDataPort, P.vizStep,
+                    P.simTime, 1.0);
+    }
 
     Simulator::Stop(Seconds(P.simTime));
     Simulator::Run();
@@ -877,6 +895,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // and AODV defer rather than refuse.
     if (proto == "olsr") r.txPackets += g_refusedOrigin;
     r.pdr = r.txPackets ? 100.0 * r.rxPackets / r.txPackets : 0.0;
+    if (vizThisRun) g_viz.Finish(r.txPackets, r.rxPackets, r.pdr);
     r.meanDelayMs = rxForDelay ? 1000.0 * totalDelay / rxForDelay : 0.0;
     r.throughputKbps = (totalRxBytes * 8.0 / 1000.0) / P.simTime;
     r.nrl = r.rxPackets ? static_cast<double>(g_controlPkts) / r.rxPackets : 0.0;
@@ -931,12 +950,16 @@ int main(int argc, char* argv[]) {
     double breakAt = 0.0;
     std::string corridorLoad;
     double corridorLoadAt = 15.0;
+    std::string vizTrace;
+    double vizStep = 1.0;
     std::string removeLinks;
     std::string timingProfile = "terrestrial";
 
     CommandLine cmd(__FILE__);
     cmd.AddValue("rows", "Orbital planes (grid rows)", rows);
     cmd.AddValue("cols", "Satellites per plane (grid columns)", cols);
+    cmd.AddValue("vizTrace", "#641: write the first anthocnet run as a replay trace", vizTrace);
+    cmd.AddValue("vizStep", "#641: --vizTrace sampling interval (s)", vizStep);
     cmd.AddValue("torus", "Wrap the grid edges (+Grid torus); false = open grid", torus);
     cmd.AddValue("islDelayMs",
                  "One-way ISL propagation delay (ms). LEO ISLs are "
@@ -1016,6 +1039,8 @@ int main(int argc, char* argv[]) {
     P.breakA = P.breakB = 0;
     P.corridorLoad = corridorLoad;
     P.corridorLoadAt = corridorLoadAt;
+    P.vizTrace = vizTrace;
+    P.vizStep = vizStep;
 
     // #216 cell 1: validate the corridor construction before any run.
     if (!corridorLoad.empty()) {

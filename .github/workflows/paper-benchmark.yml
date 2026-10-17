@@ -1,5 +1,9 @@
 name: Paper benchmark (manual)
 
+# Superseded by benchmark-cell.yml (#612), which runs any harness with its
+# own flags and can open a PR with the cell. Kept through v2.3.0 for overlap
+# (campaign.py still dispatches here); removed in v2.4.0.
+
 # Heavy, manually-dispatched benchmark in AntHocNet's *intended* regime (the
 # paper's large/sparse/mobile scenario, 300 m range), with --diag so we can see
 # whether routes actually form. Not part of per-merge CI: the paper scenario is

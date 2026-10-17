@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="replay.title">AntHocNet — watch the ns-3 run</title>
+  <meta name="description" data-i18n-attr="content:replay.description" content="A real ns-3 run of AntHocNet, replayed with the game's renderer: the nodes as ns-3 moved them, the strongest routes as its pheromone tables held them, the delivery as it measured it.">
+  <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="stylesheet" href="css/learn.css">
+  <script type="module" src="js/replay.js"></script>
+  <script type="module" src="js/offline.js"></script>
+</head>
+<body class="replay">
+  <!--AHN-TOPBAR lab-->
+  <main class="rp">
+    <section class="window rp-stage" aria-labelledby="rpTitle">
+      <div class="titlebar"><span id="rpTitle" data-i18n="replay.heading">Watch the ns-3 run</span>
+        <select id="rpCell" class="rp-pick" data-i18n-attr="aria-label:replay.cell" aria-label="Network"></select></div>
+      <div class="rp-map"><canvas id="rpView" role="img" data-i18n-attr="aria-label:replay.mapLabel" aria-label="The replayed network: nodes, links and the strongest route of each flow"></canvas></div>
+      <div class="rp-controls">
+        <button type="button" class="bevel" id="rpPlay" data-i18n="replay.pause">❚❚ Pause</button>
+        <input type="range" id="rpTime" min="0" max="1" step="0.1" value="0" data-i18n-attr="aria-label:replay.timeline" aria-label="Simulated time">
+        <select id="rpSpeed" data-i18n-attr="aria-label:replay.speed" aria-label="Playback speed">
+          <option value="1">1×</option><option value="5">5×</option><option value="20" selected>20×</option><option value="60">60×</option>
+        </select>
+      </div>
+      <p class="rp-stats mono" id="rpStats" aria-live="off"></p>
+    </section>
+    <section class="window rp-about" aria-labelledby="rpAboutTitle">
+      <div class="titlebar" id="rpAboutTitle" data-i18n="replay.aboutTitle">What you are watching</div>
+      <div class="body" id="rpAbout"><p data-i18n="replay.loading">Loading the trace…</p></div>
+    </section>
+  </main>
+</body>
+</html>

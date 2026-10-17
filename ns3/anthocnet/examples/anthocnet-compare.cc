@@ -87,6 +87,7 @@
 #include "ns3/oracle-module.h"
 #include "ns3/anthocnet-helper.h"
 #include "ns3/anthocnet-routing-protocol.h"
+#include "viz-trace.h"
 
 #include <algorithm>
 #include <cmath>
@@ -97,6 +98,7 @@
 #include <map>
 #include <numeric>
 #include <set>
+#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -1333,7 +1335,12 @@ struct Params {
     };
     std::vector<FlowSpec> flowList;
     std::string dumpTrace, dumpFlows;
+    std::string vizTrace;  // #641: --vizTrace, the first anthocnet run as a replay
+    double vizStep = 1.0;
 };
+
+// #641: the one recorded run of --vizTrace (see viz-trace.h).
+static vizt::VizTrace g_viz;
 
 // --- #639: recording a run's movement as an ns-2 trace ---------------------------
 // Each node's track is piecewise linear between course changes (RWP legs and
@@ -2372,6 +2379,21 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
     FlowMonitorHelper fmHelper;
     Ptr<FlowMonitor> monitor = fmHelper.InstallAll();
+    // #641: the first anthocnet run of the process, sampled for the replay.
+    const bool vizThisRun = !P.vizTrace.empty() && proto == "anthocnet" && !g_viz.Done();
+    if (vizThisRun) {
+        std::ostringstream h;
+        h << "\"harness\":\"anthocnet-compare\",\"seed\":" << seed << ",\"area\":[" << P.areaX
+          << ',' << P.areaY << ',' << P.areaZ << "],\"range\":" << P.range << ",\"mobility\":\""
+          << P.mobility << "\",\"propagation\":\"" << P.propagation << '"';
+        if (P.mobility == "manhattan") {
+            h << ",\"blocks\":[" << P.blocksX << ',' << P.blocksY
+              << "],\"street\":" << P.streetWidth;
+        }
+        g_viz.Start(P.vizTrace, h.str(), nodes, monitor,
+                    DynamicCast<Ipv4FlowClassifier>(fmHelper.GetClassifier()), kDataPort, P.vizStep,
+                    P.simTime, 1.0);
+    }
 
     Simulator::Stop(Seconds(P.simTime));
     Simulator::Run();
@@ -2491,6 +2513,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         dropRoute += g_refusedOrigin;
     }
     r.pdr = r.txPackets ? 100.0 * r.rxPackets / r.txPackets : 0.0;
+    if (vizThisRun) g_viz.Finish(r.txPackets, r.rxPackets, r.pdr);
     r.meanDelayMs = rxForDelay ? 1000.0 * totalDelay / rxForDelay : 0.0;
     r.throughputKbps = (totalRxBytes * 8.0 / 1000.0) / P.simTime;
     r.nrl = r.rxPackets ? static_cast<double>(g_controlPkts) / r.rxPackets : 0.0;
@@ -3383,7 +3406,8 @@ int main(int argc, char* argv[]) {
                  "change meaning and the reorder columns go absent; read "
                  "##GOODPUT##.",
                  transport);
-    std::string traceFile, flowsFile, dumpTrace, dumpFlows;
+    std::string traceFile, flowsFile, dumpTrace, dumpFlows, vizTrace;
+    double vizStep = 1.0;
     cmd.AddValue("traceFile",
                  "#639: with --mobility=trace, the ns-2 movement trace to "
                  "replay ($node_(i) set X_/Y_/Z_, $ns_ at t \"$node_(i) "
@@ -3398,6 +3422,12 @@ int main(int argc, char* argv[]) {
                  "#639: write the first run's node movement to this file "
                  "as an ns-2 trace (2-D fields only)",
                  dumpTrace);
+    cmd.AddValue("vizTrace",
+                 "#641: write the first anthocnet run as a replay trace (JSON "
+                 "lines: positions, data books, strongest routes per step) for "
+                 "the learn site's ns-3 replay",
+                 vizTrace);
+    cmd.AddValue("vizStep", "#641: --vizTrace sampling interval (s)", vizStep);
     cmd.AddValue("dumpFlows",
                  "#639: write the first run's generated flows to this "
                  "file in --flowsFile format",
@@ -3727,6 +3757,8 @@ int main(int argc, char* argv[]) {
     // bad file fails here with its line number, never mid-run.
     P.traceFile = traceFile;
     P.dumpTrace = dumpTrace;
+    P.vizTrace = vizTrace;
+    P.vizStep = vizStep;
     P.dumpFlows = dumpFlows;
     if (P.mobility == "trace") {
         NS_ABORT_MSG_IF(traceFile.empty(),

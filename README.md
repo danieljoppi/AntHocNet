@@ -140,6 +140,14 @@ Without a checkout: download `anthocnet-ns3-modules-<version>.tar.gz` from the
 `tar -xzf anthocnet-ns3-modules-<version>.tar.gz -C /path/to/ns-3/contrib` and
 build as above. The same files are on the generated `ns3-module` branch.
 
+With ns-3's installer, [bake](https://www.nsnam.org/docs/bake/tutorial/html/):
+each release from v2.3.0 on attaches `anthocnet-<version>.bakeconf.xml`. Copy
+it into your bake checkout's `contrib/` directory, then run
+`./bake.py configure -e ns-3.42 -e anthocnet && ./bake.py download && ./bake.py build`.
+Any ns-3 from 3.36 works. This builds AntHocNet alone, without the
+comparison modules. The recipe is built end to end weekly
+([bake.yml](.github/workflows/bake.yml)).
+
 Uninstall: `make uninstall-ns3 NS3DIR=...`. Supported: ns-3.36 to ns-3.48.
 Details in [ns3/README.md](ns3/README.md).
 

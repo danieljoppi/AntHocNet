@@ -71,6 +71,7 @@
 #include "ns3/olsr-module.h"
 #include "ns3/oracle-module.h"
 #include "ns3/anthocnet-helper.h"
+#include "viz-trace.h"
 
 #include "ns3/geocentric-constant-position-mobility-model.h"
 #include "ns3/leo-circular-orbit-mobility-model.h"
@@ -142,7 +143,12 @@ struct Params {
     /// ISL propagation delay at t = 0, the unloaded per-hop time of a link
     /// whose delay is propagation, not contention.
     std::string timingProfile = "terrestrial";
+    std::string vizTrace;  ///< #641: the first anthocnet run as a replay trace
+    double vizStep = 1.0;
 };
+
+// #641: the one recorded run of --vizTrace (see viz-trace.h).
+static vizt::VizTrace g_viz;
 
 struct Result {
     std::string proto;
@@ -1032,6 +1038,17 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
 
     FlowMonitorHelper fmHelper;
     Ptr<FlowMonitor> monitor = fmHelper.InstallAll();
+    // #641: positions are Earth-centred metres; written in km (scale 1000).
+    const bool vizThisRun = !P.vizTrace.empty() && proto == "anthocnet" && !g_viz.Done();
+    if (vizThisRun) {
+        std::ostringstream h;
+        h << "\"harness\":\"leo-walker\",\"seed\":" << seed
+          << ",\"coords\":\"ecef\",\"planes\":" << P.planes << ",\"sats\":" << P.sats
+          << ",\"altKm\":" << P.altKm << ",\"ground\":" << w.ground.GetN();
+        g_viz.Start(P.vizTrace, h.str(), all, monitor,
+                    DynamicCast<Ipv4FlowClassifier>(fmHelper.GetClassifier()), kDataPort, P.vizStep,
+                    P.simTime, 1000.0);
+    }
     Simulator::Stop(Seconds(P.simTime));
     Simulator::Run();
 
@@ -1064,6 +1081,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
     for (const auto& a : g_attempts) offered += a.size();
     if (offered > r.txPackets) r.txPackets = offered;
     r.pdr = r.txPackets ? 100.0 * r.rxPackets / r.txPackets : 0;
+    if (vizThisRun) g_viz.Finish(r.txPackets, r.rxPackets, r.pdr);
     r.meanDelayMs = r.rxPackets ? 1000.0 * totalDelay / r.rxPackets : 0;
     r.throughputKbps = totalRxBytes * 8.0 / 1000.0 / P.simTime;
     r.nrl = r.rxPackets ? static_cast<double>(g_controlPkts) / r.rxPackets : 0;
@@ -1282,6 +1300,8 @@ int main(int argc, char* argv[]) {
                  "AntHocNet timing (#205): terrestrial (the defaults, T_hop = 3 ms) | "
                  "propagation (T_hop = this shell's mean ISL propagation delay)",
                  P.timingProfile);
+    cmd.AddValue("vizTrace", "#641: write the first anthocnet run as a replay trace", P.vizTrace);
+    cmd.AddValue("vizStep", "#641: --vizTrace sampling interval (s)", P.vizStep);
     cmd.AddValue("csv", "machine-readable rows", P.csv);
     cmd.Parse(argc, argv);
     if (P.shell == "starlink1") {

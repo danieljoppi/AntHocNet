@@ -14,13 +14,15 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "bump = cz computes next version from commits; baseline = release the current VERSION as-is (use once, for v0.1.0)"
+        description: "bump = cz computes next version from commits; baseline = release the current VERSION as-is (use once, for v0.1.0); dryrun = bump, build, attest and verify on the runner, then stop: nothing is pushed or published (#614)"
         type: choice
-        options: [bump, baseline]
+        options: [bump, baseline, dryrun]
         default: bump
 
 permissions:
-  contents: write   # push the bump commit/tag and create the release
+  contents: write      # push the bump commit/tag and create the release
+  id-token: write      # keyless Sigstore signing of the attestations (#614)
+  attestations: write  # store build provenance + SBOM attestations (#614)
 
 jobs:
   release:
@@ -79,11 +81,6 @@ jobs:
       - name: Sanity build + test (core)
         run: make test
 
-      - name: Push commit + tag
-        run: |
-          git push origin HEAD:main
-          git push origin "${TAG}"
-
       - name: Check the package contents
         # The same gate CI runs on PRs (#604): no agent files, no caches, the
         # shipped tools' dependencies present, git archive clean.
@@ -120,7 +117,69 @@ jobs:
           cat "dist/anthocnet-ns3-modules-${VER}.tar.gz.sha256"
           echo "MOD_SHA256=$(cut -d' ' -f1 < "dist/anthocnet-ns3-modules-${VER}.tar.gz.sha256")" >> "$GITHUB_ENV"
 
+      - name: Bake recipe for this release (#613)
+        # ns-3's own installer: the module tarball above as an ns-contrib
+        # module. bake.yml tests the same template against a served tarball.
+        run: |
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/anthocnet-ns3-modules-${VER}.tar.gz"
+          sed -e "s|@URL@|${url}|" -e "s|@VERSION@|${VER}|" packaging/bake/anthocnet.xml.in \
+            > "dist/anthocnet-${VER}.bakeconf.xml"
+
+      - name: SBOM of the install bundle (#614)
+        # SPDX JSON of what ships: the unpacked bundle directory that the zip
+        # is made from, so the SBOM describes exactly the released files.
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: dist/anthocnet-${{ env.VER }}
+          format: spdx-json
+          output-file: dist/anthocnet-${{ env.VER }}.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Attest build provenance (#614)
+        # SLSA provenance for both downloads, signed keylessly with this
+        # workflow's OIDC identity and stored in GitHub's attestation store.
+        # The Sigstore bundle is also attached to the release, so it can be
+        # checked offline and Scorecard's Signed-Releases check finds it.
+        # actions/attest itself, not the attest-build-provenance wrapper
+        # (CONTRIBUTING.md, "Provenance": the wrapper's own README points here).
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            dist/anthocnet-${{ env.VER }}.zip
+            dist/anthocnet-ns3-modules-${{ env.VER }}.tar.gz
+
+      - name: Attest the SBOM (#614)
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/anthocnet-${{ env.VER }}.zip
+          sbom-path: dist/anthocnet-${{ env.VER }}.spdx.json
+
+      - name: Verify what was just attested (#614)
+        # The same commands SECURITY.md gives users, run before publishing: a
+        # release whose attestations do not verify never goes out.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp "${{ steps.provenance.outputs.bundle-path }}" "dist/anthocnet-${VER}.provenance.sigstore.json"
+          for f in "dist/anthocnet-${VER}.zip" "dist/anthocnet-ns3-modules-${VER}.tar.gz"; do
+            gh attestation verify "$f" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+          done
+          spdx=$(jq -r '.spdxVersion | sub("^SPDX-"; "")' "dist/anthocnet-${VER}.spdx.json")   # e.g. 2.3
+          gh attestation verify "dist/anthocnet-${VER}.zip" --repo "$GITHUB_REPOSITORY" --predicate-type "https://spdx.dev/Document/v${spdx}"
+
+      - name: Push commit + tag
+        if: ${{ inputs.mode != 'dryrun' }}
+        # After the bundle is built, attested and verified (#614): if any of
+        # that fails, nothing has been pushed, so there is no tagged-but-
+        # unreleased version to clean up by hand.
+        run: |
+          git push origin HEAD:main
+          git push origin "${TAG}"
+
       - name: Update the generated ns3-module branch (#606)
+        if: ${{ inputs.mode != 'dryrun' }}
         # The tarball's contents as an orphan commit on `ns3-module`, replaced
         # on every release, for users who prefer git over a download:
         #   git clone -b ns3-module --depth 1 <repo> m && cp -r m/* ns-3/contrib/
@@ -137,6 +196,7 @@ jobs:
           git push --force origin "${commit}:refs/heads/ns3-module"
 
       - name: Publish release
+        if: ${{ inputs.mode != 'dryrun' }}
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ env.TAG }}
@@ -145,6 +205,9 @@ jobs:
             dist/anthocnet-${{ env.VER }}.zip.sha256
             dist/anthocnet-ns3-modules-${{ env.VER }}.tar.gz
             dist/anthocnet-ns3-modules-${{ env.VER }}.tar.gz.sha256
+            dist/anthocnet-${{ env.VER }}.spdx.json
+            dist/anthocnet-${{ env.VER }}.bakeconf.xml
+            dist/anthocnet-${{ env.VER }}.provenance.sigstore.json
           generate_release_notes: true
           body: |
             AntHocNet ${{ env.TAG }}. Release notes: https://danieljoppi.github.io/AntHocNet/docs/releases/${{ env.TAG }}/
@@ -159,6 +222,10 @@ jobs:
             no checkout needed, `tar -xzf anthocnet-ns3-modules-${{ env.VER }}.tar.gz -C /path/to/ns-3/contrib`,
             then configure and build ns-3. The same files are on the generated
             `ns3-module` branch. SHA-256: `${{ env.MOD_SHA256 }}`.
+            **With bake** (ns-3's installer): copy `anthocnet-${{ env.VER }}.bakeconf.xml`
+            into your bake checkout's `contrib/`, then
+            `./bake.py configure -e ns-3.42 -e anthocnet && ./bake.py download && ./bake.py build`.
+
             Pre-built simulator images are on GHCR (see `docker/README.md`),
             including release-pinned tags `anthocnet-ns3:<sim-version>-${{ env.TAG }}`.
 
@@ -173,15 +240,29 @@ jobs:
             sha256sum -c anthocnet-${{ env.VER }}.zip.sha256   # both files in the same directory
             ```
 
+            **Verify where it came from.** Both downloads carry signed SLSA
+            build provenance, and the bundle an SPDX SBOM
+            (`anthocnet-${{ env.VER }}.spdx.json`). With the GitHub CLI:
+
+            ```
+            gh attestation verify anthocnet-${{ env.VER }}.zip --repo ${{ github.repository }}
+            ```
+
+            The images are signed with cosign (keyless). See
+            [SECURITY.md](https://github.com/${{ github.repository }}/blob/${{ env.TAG }}/SECURITY.md#verifying-a-release).
+
   # Publish immutable, release-pinned container images (e.g.
   # anthocnet-ns3:3.42-v0.3.0) once the tag exists. Reuses the Images workflow
   # via workflow_call — a direct job dependency, so the tag the release job just
   # pushed with GITHUB_TOKEN is picked up without a PAT.
   images:
     needs: release
+    if: ${{ inputs.mode != 'dryrun' }}
     uses: ./.github/workflows/images.yml
     permissions:
       contents: read
       packages: write
+      id-token: write      # cosign keyless signing + provenance (#614)
+      attestations: write
     with:
       release: ${{ needs.release.outputs.tag }}

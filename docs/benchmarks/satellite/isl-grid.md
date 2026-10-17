@@ -4,6 +4,8 @@ try:
   - world: satellite
     seed: 1
     title: "Satellite links: stable, delay changes"
+  - replay: isl
+    title: "Seed 1 of the base torus, as ns-3 ran it"
 ---
 
 # Satellite suite: the ISL grid
@@ -63,6 +65,8 @@ On this suite the campaign's `sinr` arm is the hop-count metric under another na
 > Wilcoxon signed-rank.
 >
 > ![ISL grid corridor and failcell, every seed as a dot: in the corridor AntHocNet and OLSR split between the clean route near 15 ms and the loaded one near 97 ms while AODV takes the loaded route every time; in the failcell AntHocNet reconverges next to the oracle, AODV about twice as slow and OLSR about four seconds later](../charts/satellite.png)
+>
+> _Reproduce: `make reproduce FIG=satellite` re-renders it from the committed data and diffs the PNG; `MODE=rerun NS3DIR=…` re-measures a cell first ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
 >
 > _One dot per seed (20 per arm), with a short bar at the mean: a mean alone would hide the corridor's bimodal split. Vertical line: the oracle (the congestion-blind bound in the corridor, the exact floor in the failcell). Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `sat-{corridor,failcell}-app517.txt`._
 >

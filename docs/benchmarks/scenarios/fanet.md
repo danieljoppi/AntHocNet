@@ -4,6 +4,8 @@ try:
   - world: fanet
     seed: 1
     title: "A drone swarm: links that last seconds"
+  - replay: fanet
+    title: "Seed 1 of the main cell, as ns-3 ran it"
 ---
 
 # Scenario: fanet
@@ -181,6 +183,8 @@ independent evidence.
 > mapping is OK (30 checks) on both. OLSR's PDR is offered-based (#510).
 >
 > ![FANET main and sparse cells on CBR sources: AntHocNet delivers the most of the real arms in both, with the shortest tail of the reactive arms; its NRL is slightly below AODV's in the main cell and above it in the sparse cell](../charts/family-fanet.png)
+>
+> _Reproduce: `make reproduce FIG=family-fanet` re-renders it from the committed data and diffs the PNG; `MODE=rerun NS3DIR=…` re-measures a cell first ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
 >
 > _Bars: mean of 20 seeds, AntHocNet highlighted; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99); vertical line: the oracle control. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `fanet-{main,sparse}-cbr521.txt`._
 >

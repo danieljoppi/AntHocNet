@@ -181,6 +181,26 @@ public:
         return m_logic ? m_logic->table().numEntriesVirtual() : 0;
     }
 
+    /// #641 observability: the neighbour holding the most regular pheromone
+    /// toward `dest` -- the learn site's strongest-route rule -- or 0.0.0.0
+    /// when there is none. Read by the harnesses' --vizTrace; no routing
+    /// decision uses it (data still samples next hops from pheromone^beta).
+    Ipv4Address StrongestNextHop(Ipv4Address dest) const {
+        if (!m_logic) return Ipv4Address();
+        const auto& t = m_logic->table();
+        const ::anthocnet::core::NodeAddress d = ToCore(dest);
+        double best = 0.0;
+        ::anthocnet::core::NodeAddress next = 0;
+        for (::anthocnet::core::NodeAddress nb : t.neighbors()) {
+            const double tau = t.getPheromoneRegular(d, nb);
+            if (tau > best) {
+                best = tau;
+                next = nb;
+            }
+        }
+        return next ? ToIpv4(next) : Ipv4Address();
+    }
+
     /// Issue #21 hold-time attribution: per-reason (setup / reconvergence /
     /// repair) pending-queue hold-time stats accumulated over the run, read by
     /// the comparison harness under --diag to locate the delay tail's dominant

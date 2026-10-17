@@ -8,6 +8,8 @@ AntHocNet slower. These numbers can.
 
 ![Cost per operation of each core benchmark case, on each merge to main](charts/core-speed.png)
 
+_Reproduce: `make reproduce FIG=core-speed` re-renders it from the committed data and diffs the PNG ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
+
 ## The cases
 
 | case | what one operation is |

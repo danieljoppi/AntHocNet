@@ -640,6 +640,23 @@ behind the code. [#635](https://github.com/danieljoppi/AntHocNet/issues/635).
   marks where the strongest routes diverge. That divergence is the
   simplified radio, made visible.
 
+  *As shipped in v2.3.0:* the harnesses (`anthocnet-compare`, `isl-grid`,
+  `leo-walker`) take `--vizTrace` and write one JSON line per sampled second:
+  - positions;
+  - the run's FlowMonitor books;
+  - ant transmissions;
+  - drop causes;
+  - each flow's strongest route, read from the pheromone tables with
+    `RoutingProtocol::StrongestNextHop`.
+
+  The site's `replay.html` plays a trace with the game's renderer. Each
+  family results page links its trace with a "Watch the ns-3 run" card.
+  `tools/bench/check-viz-trace.py` checks that a trace ends on the run's own
+  books, and that it matches the published cell's PDR for that seed. The
+  side-by-side browser run and the divergence markers follow in v2.4.0. They
+  need the browser to replay ns-3's node movement, which the adapter cannot
+  do yet.
+
 ![Bench mockup: the browser run and the ns-3 replay of the same street grid side by side on one timeline, an export card with the ns-3 kit and its command, and the install quest with doctor checks ticked](images/workshop-bench.png)
 
 **Considered, not planned:** ns-3 itself compiled to WebAssembly. Its size,

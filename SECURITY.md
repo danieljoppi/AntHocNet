@@ -41,3 +41,53 @@ open an issue describing the malformed input and the observed behaviour.
 Where enabled, GitHub's private vulnerability reporting (**Security → Report a
 vulnerability** on the repo) is the preferred channel; the open-issue route
 remains available.
+
+## Verifying a release
+
+Every release from v2.3.0 on can be checked three ways (#614). The release
+workflow runs each check itself before it publishes, so a release whose
+signatures do not verify never goes out.
+
+**1. Integrity: the checksum.** It is published twice, in the release body
+and as the `.sha256` asset.
+
+```bash
+sha256sum -c anthocnet-X.Y.Z.zip.sha256
+```
+
+**2. Origin: signed build provenance.** The install bundle and the drop-in
+ns-3 module tarball carry SLSA build provenance. It is signed keylessly
+(Sigstore) with the identity of `release.yml` in this repository, and it is
+stored in GitHub's attestation store. With the [GitHub CLI](https://cli.github.com/):
+
+```bash
+gh attestation verify anthocnet-X.Y.Z.zip --repo danieljoppi/AntHocNet
+gh attestation verify anthocnet-ns3-modules-X.Y.Z.tar.gz --repo danieljoppi/AntHocNet
+```
+
+The same Sigstore bundle is attached to the release as
+`anthocnet-X.Y.Z.provenance.sigstore.json`, for offline checking or for
+tools other than `gh`, such as `cosign verify-blob-attestation`.
+
+**3. Contents: the SBOM.** `anthocnet-X.Y.Z.spdx.json` is an SPDX software
+bill of materials of the unpacked bundle. It is attested against the zip, so
+you can check that the SBOM belongs to the file you downloaded:
+
+```bash
+gh attestation verify anthocnet-X.Y.Z.zip --repo danieljoppi/AntHocNet \
+  --predicate-type https://spdx.dev/Document/v2.3
+```
+
+**Container images.** `ghcr.io/danieljoppi/anthocnet-ns3` and
+`ghcr.io/danieljoppi/ns3` are signed with cosign (keyless) by digest, so
+every tag of an image is covered. The AntHocNet image also carries build
+provenance in the registry.
+
+```bash
+cosign verify ghcr.io/danieljoppi/anthocnet-ns3:3.48 \
+  --certificate-identity-regexp '^https://github.com/danieljoppi/AntHocNet/\.github/workflows/(images|release)\.yml@' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+gh attestation verify oci://ghcr.io/danieljoppi/anthocnet-ns3:3.48 --repo danieljoppi/AntHocNet
+```
+
+Releases before v2.3.0 have only the checksum.

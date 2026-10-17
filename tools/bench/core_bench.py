@@ -73,7 +73,7 @@ def record(args):
                         "min_ns": r["min_ns"], "max_ns": r["max_ns"]})
 
 
-def chart(_args):
+def chart(args):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -104,8 +104,8 @@ def chart(_args):
     ax.set_title("AntHocNet core: cost per operation on each merge (GitHub-hosted runner)")
     ax.legend(fontsize=8, ncol=2, frameon=False)
     fig.tight_layout()
-    os.makedirs(os.path.dirname(CHART), exist_ok=True)
-    fig.savefig(CHART)
+    os.makedirs(os.path.dirname(args.out), exist_ok=True)
+    fig.savefig(args.out)
 
 
 def main():
@@ -120,7 +120,8 @@ def main():
     r.add_argument("--commit", required=True)
     r.add_argument("--date", required=True)
     r.add_argument("--cpu", required=True)
-    sub.add_parser("chart")
+    ch = sub.add_parser("chart")
+    ch.add_argument("--out", default=CHART, help="where to write the PNG (make reproduce, #621)")
     args = ap.parse_args()
     {"compare": compare, "record": record, "chart": chart}[args.cmd](args)
 

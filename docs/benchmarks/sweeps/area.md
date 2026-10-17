@@ -150,6 +150,8 @@ _Sweep `area` — mean of 20 run(s) per point, every baseline on identical reali
 >
 > ![sweep: area on CBR sources (#521)](../sweep-area.png)
 >
+> _Reproduce: `make reproduce FIG=sweep-area` re-renders it from the committed data and diffs the PNG ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
+>
 > | area long edge (m) | protocol | PDR % ±95 | mean delay (ms) ±95 | 99th delay (ms) ±95 | throughput (kbps) | NRL ±95 | jitter (ms) | dOff90 (ms) |
 > |---:|----------|----------:|--------------------:|--------------------:|------------------:|--------:|------------:|------------:|
 > | 1500 | anthocnet | 97.2 ± 0.2 | 18.4 ± 0.7 | 247.0 ± 10.0 | 12.80 | 9.660 ± 0.26 | 27.64 | 47.2 |

@@ -9,6 +9,43 @@ validation anchors that gate publishing them. Part of the
 
 ## Reproducing a run
 
+### Reproduce a published figure ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))
+
+Every chart under `docs/benchmarks/` has an entry in
+[`results/figures.yml`](https://github.com/danieljoppi/AntHocNet/blob/main/results/figures.yml).
+The entry gives the committed data the chart is drawn from, the script that
+draws it, and how to re-measure each cell. One command per figure:
+
+```bash
+make reproduce-list                     # every figure, and what each can do
+make reproduce FIG=grid                 # seconds: re-render from committed data, diff the PNG
+make reproduce FIG=satellite MODE=rerun NS3DIR=/opt/ns-3 \
+  REPRODUCE_ARGS="--cell sat-failcell"  # hours: re-run the cell, scenario_check, render
+```
+
+**From data.** The renderers are deterministic, so the re-render is
+compared byte for byte with the committed PNG. Anything but `identical` is a
+finding. CI checks that every PNG has an entry (`tools/reproduce.py check`
+in lint.yml).
+
+**Re-run.** The harness runs in an ns-3 tree that carries the module, such
+as the image's `/opt/ns-3` or a tree after `make install-ns3`.
+- **Flags.** An `anthocnet-compare` cell is re-run from its own `##CONFIG##`
+  lines: the scenario flags plus every AntHocNet attribute at its recorded
+  value. The isl-grid and leo-walker harnesses print no such line, so the
+  manifest spells out their dispatch inputs.
+- **Validation.** The new cell goes through `scenario_check.py results`.
+- **Rendering.** The figure is drawn with the new cell in place of the
+  committed one, in a scratch directory. Nothing in the repository changes.
+- **Short runs.** `REPRODUCE_ARGS="--runs 2 --time 60"` makes a smoke run.
+  Its figure has fewer seeds than the published one, and its caption does
+  not say so.
+
+Two kinds of figure cannot be re-rendered:
+- `discrete-summary.png` is drawn from a per-merge workflow artifact, so its
+  entry is re-run only (`benchmarks.yml`);
+- the `*-v1.3.0` sweep charts are frozen snapshots kept for the record.
+
 The [scenario pages](scenarios/) cover a small, fast scenario set used for a
 quick regression signal.
 To reproduce the **paper's base scenario** (50 nodes, 1500×300 m, random-waypoint
@@ -1265,6 +1302,21 @@ is always attributable to a profile after the fact.
   sanctioned A/B speed measurement is its own ticket.
 
 ## The campaign loop, end to end
+
+**One cell, one workflow ([#612](https://github.com/danieljoppi/AntHocNet/issues/612)).**
+`benchmark-cell.yml` runs any harness (`anthocnet-compare`, `isl-grid` or
+`leo-walker`) with its own command line in `args`. It stamps `##ARGS##`
+and `##PROV##` into the results file, runs `scenario_check.py results`,
+and, with `open_pr`, opens a PR that adds `results/cells/<cell>.txt` with
+the verdict in its body. The flags are the harness's own, so every older
+dispatch shape fits:
+- a `paper-benchmark.yml` run is `harness=anthocnet-compare`;
+- a `satellite-benchmark.yml` run is `isl-grid` or `leo-walker` with the
+  flags its inputs expanded to;
+- a `scenario-matrix.yml` sweep is one dispatch per point.
+
+The three older workflows stay through v2.3.0, because `campaign.py`
+dispatches to them. They are removed in v2.4.0.
 
 Dispatching a run is the easy part; the loop exists so that a number cannot
 reach a document without passing the gates. Scripts do the arithmetic and the

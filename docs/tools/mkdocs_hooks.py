@@ -120,9 +120,13 @@ def on_page_content(html: str, page, config, files) -> str:
         root = _to_site_root(page)
         cards = []
         for t in tries:
-            target = t.get("mission") and f"#mission={t['mission']}" or f"#{t['world']}?seed={t.get('seed', 1)}"
+            if t.get("replay"):  # #641: the recorded ns-3 run, not the browser's
+                target, verb = f"replay.html#{t['replay']}", "Watch the ns-3 run"
+            else:
+                target = t.get("mission") and f"#mission={t['mission']}" or f"#{t['world']}?seed={t.get('seed', 1)}"
+                verb = "Try it"
             cards.append(f'<a href="{root}{target}"><span class="ahn-go" aria-hidden="true">▶</span>'
-                         f'<b>Try it</b><span>{_html.escape(t["title"])}</span></a>')
+                         f'<b>{verb}</b><span>{_html.escape(t["title"])}</span></a>')
         rail = '<nav class="ahn-try" aria-label="Try it in the game">' + "".join(cards) + "</nav>"
     return bar + rail + html
 

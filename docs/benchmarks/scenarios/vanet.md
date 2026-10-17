@@ -4,6 +4,8 @@ try:
   - world: vanet
     seed: 1
     title: "Watch a route break at a street corner"
+  - replay: vanet
+    title: "Seed 1 of the main cell, as ns-3 ran it"
 ---
 
 # Scenario: vanet
@@ -216,6 +218,8 @@ and is now scoped, with its evidence:
 > keeps the FAIL as its control.
 
 ![VANET main and sparse cells: AntHocNet and AODV tie on delivery, AntHocNet's delay99 is about half of AODV's (main) and far lower (sparse), and its NRL is the highest of the arms that deliver comparably; the oracle line sits far above every arm on delivery](../charts/family-vanet.png)
+
+_Reproduce: `make reproduce FIG=family-vanet` re-renders it from the committed data and diffs the PNG; `MODE=rerun NS3DIR=…` re-measures a cell first ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
 
 _Bars: mean of 20 seeds per arm, AntHocNet highlighted; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99). The vertical line is the oracle control (not drawn for NRL, where it is 0 by construction). Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `vanet-{main,sparse}.txt`; the tables below carry every value._
 

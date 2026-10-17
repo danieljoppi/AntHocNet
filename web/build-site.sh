@@ -12,6 +12,9 @@ rm -rf "$OUT"
 mkdir -p "$OUT"
 cp -r web/site/. "$OUT/"
 cp web/build-wasm/anthocnet.js web/build-wasm/anthocnet.wasm "$OUT/"
+# ns-3 replay traces (#641), fetched on demand: not part of the offline shell.
+mkdir -p "$OUT/replay"
+cp results/replay/*.jsonl "$OUT/replay/" 2>/dev/null || true
 # The tuning bench's field data (#638), from config.h and configuration.md.
 python3 web/tools/config_fields.py json "$OUT/config-fields.json"
 # The site's one top bar (#627), shared with the docs and the API reference.

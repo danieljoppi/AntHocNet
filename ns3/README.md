@@ -128,6 +128,23 @@ These come from the protocol's item-15 trace sources (`Tx`, `Rx`,
 `Config::Connect` to. The heavy paper-regime run is wired up as the
 manually-dispatched **Paper benchmark** GitHub Actions workflow.
 
+### A replay of the run (`--vizTrace`, #641)
+
+`--vizTrace=<file>` writes the first AntHocNet run of the invocation as JSON
+lines, one per `--vizStep` seconds (default 1):
+- node positions;
+- the run's FlowMonitor delivery books;
+- ant transmissions;
+- drop causes;
+- each flow's strongest route, from `RoutingProtocol::StrongestNextHop`.
+
+The learn site's `replay.html` plays it with the game's renderer.
+`isl-grid` and `leo-walker` take the same flag. Sampling only reads state,
+so a run's results are byte-identical with the flag on. The traces the site
+plays (`results/replay/`) are recorded by `benchmark-cell.yml` with
+`replay=<id>`, and `tools/bench/check-viz-trace.py` checks each one against
+its published cell.
+
 ## Satellite / ISL topology (`isl-grid`)
 
 An inter-satellite-link mesh is conventionally abstracted as a **+Grid torus**:

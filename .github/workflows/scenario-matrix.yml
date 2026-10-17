@@ -1,5 +1,9 @@
 name: Scenario matrix + charts (manual)
 
+# Superseded by benchmark-cell.yml (#612), which runs any harness with its
+# own flags and can open a PR with the cell. Kept through v2.3.0 for overlap
+# (campaign.py still dispatches here); removed in v2.4.0.
+
 # Manually-dispatched: runs the scenario taxonomy + the paper's parameter sweeps
 # (area/pause/scale) across all baselines, writes a classified CSV, and renders
 # paper-style figures (line charts for sweeps, grouped bars for the named
