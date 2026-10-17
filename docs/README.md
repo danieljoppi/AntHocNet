@@ -29,6 +29,7 @@ learned and secure protocols, and the game campaign ([learn-campaign.md](learn-c
 | [learn-campaign.md](learn-campaign.md) | The learn site's plan: from v2.1.0 the whole site is the game (docs and API as places in it, §10); then the campaign mode: one chapter per network type (ad hoc first, then mesh, VANET, FANET, satellite, disaster, tactical, SAGIN), the game UI (with mockups), and what the browser adapter must add. |
 | [software-layers.md](software-layers.md) | Three diagrams: the software stack, the ant mechanisms + the switches that gate them, and what is live/inert/planned per network regime. |
 | [network-regimes.md](network-regimes.md) | Why MANET and satellite/ISL are different routing problems — read before transferring an intuition between them. §6 tables which AntHocNet mechanism is live/inert in each regime. |
+| [teaching/](teaching/README.md) | The classroom pack: five lab sheets (predict, run, explain, compare with ns-3) built on the learn site, with answer keys measured by `web/test/labs.mjs`. |
 
 ## Build, port, extend
 

@@ -400,7 +400,7 @@ export const LEVELS = [
     id: '5.3', chapter: 5,
     world: { ...SKY, devices: [station(48.9, 2.4), station(-8.8, 13.2)], flows: [{ src: 0, dst: 1, rate: 2, start: 3 }] },
     budget: 0, palette: [], duration: 120,
-    hazards: [{ at: 40, do: 'cut', a: 0, b: 1 }, { at: 40, do: 'cut', a: 0, b: 8 }, { at: 40, do: 'cut', a: 1, b: 2 }],
+    hazards: [{ at: 40, do: 'cut', a: 32, b: 40 }, { at: 40, do: 'cut', a: 32, b: 33 }, { at: 40, do: 'cut', a: 33, b: 34 }],  // the links the call uses at 30-40 s (web/test/labs.mjs)
     objectives: [{ kind: 'quiz', answer: 0 }, { kind: 'deliver', flows: [0], ratio: 0.5, from: 50, to: 120 }],
     stars: { budgetLeft: 0, maxNrl: 1e9 },
     debrief: { links: [['doc.satellite', RES + 'satellite/isl-grid/'], ['AntRouterLogic::loseNeighbor', ARL]] },

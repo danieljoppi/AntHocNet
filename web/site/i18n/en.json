@@ -72,7 +72,7 @@
       "play": "Play",
       "title": "Help the ants find the way",
       "intro": "Every device on this field runs the real AntHocNet routing core, compiled to WebAssembly. Fix a broken network, and the ants do the routing.",
-      "listCampaign": "<b>Campaign</b> one chapter per kind of network: ad hoc town and the neighbourhood mesh now, cars, drones and satellites next",
+      "listCampaign": "<b>Campaign</b> one chapter per kind of network: ad hoc town, the neighbourhood mesh, city streets, the forest and orbit",
       "listFree": "<b>Free play</b> phones, mesh, cars, drones, satellites",
       "listDrills": "<b>Drills</b> the eight Academy missions, one per thing the ants do",
       "campaign": "▶ Campaign",
@@ -90,7 +90,8 @@
       "shopP": "The core's API as a live ant nest, and the ns-3 install as a quest you check with <code>make doctor</code>.",
       "archK": "Archive",
       "archH": "Decisions and what's next",
-      "archP": "The roadmap, every decision record, fidelity to the paper, and the research behind the plan."
+      "archP": "The roadmap, every decision record, fidelity to the paper, and the research behind the plan.",
+      "listTeach": "<b>Teach</b> five <a href=\"docs/teaching/\">lab sheets</a> with answer keys, built on the game"
     },
     "view": "View",
     "overlays": "Overlays",

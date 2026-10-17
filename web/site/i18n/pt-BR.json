@@ -72,7 +72,7 @@
       "play": "Jogar",
       "title": "Ajude as formigas a achar o caminho",
       "intro": "Cada dispositivo neste campo roda o núcleo de roteamento real do AntHocNet, compilado para WebAssembly. Conserte uma rede quebrada, e as formigas fazem o roteamento.",
-      "listCampaign": "<b>Campanha</b> um capítulo por tipo de rede: a cidade ad hoc e a malha do bairro agora; carros, drones e satélites em seguida",
+      "listCampaign": "<b>Campanha</b> um capítulo por tipo de rede: a cidade ad hoc, a malha do bairro, as ruas da cidade, a floresta e a órbita",
       "listFree": "<b>Jogo livre</b> celulares, malha, carros, drones, satélites",
       "listDrills": "<b>Treinos</b> as oito missões da Academia, uma para cada coisa que as formigas fazem",
       "campaign": "▶ Campanha",
@@ -90,7 +90,8 @@
       "shopP": "A API do núcleo como um formigueiro vivo, e a instalação no ns-3 como uma missão que você confere com <code>make doctor</code>.",
       "archK": "Arquivo",
       "archH": "Decisões e próximos passos",
-      "archP": "O roteiro, cada registro de decisão, a fidelidade ao artigo e a pesquisa por trás do plano."
+      "archP": "O roteiro, cada registro de decisão, a fidelidade ao artigo e a pesquisa por trás do plano.",
+      "listTeach": "<b>Ensinar</b> cinco <a href=\"docs/teaching/\">roteiros de laboratório</a> com gabarito, feitos sobre o jogo"
     },
     "view": "Vista",
     "overlays": "Camadas",

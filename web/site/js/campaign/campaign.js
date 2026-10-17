@@ -34,6 +34,11 @@ function el(tag, attrs = {}, ...kids) {
 const starsText = (n) => '★'.repeat(n) + '☆'.repeat(3 - n);
 const starsEl = (n) => el('span', { class: 'stars', 'aria-label': t('missions.stars', { n }) }, starsText(n));
 
+// The classroom link (#623): #campaign?open=all opens every level for this
+// visit, so a lab can start at 3.4 or 5.3. Progress is not written by it.
+const classroom = () => /^#campaign\?(?:.*&)?open=all\b/.test(location.hash);
+const isOpen = (l, levels, p) => classroom() || isUnlocked(l, levels, p);
+
 export function initCampaign(pg) {
   const sheet = $('campaign');
   const hud = $('hud');
@@ -64,7 +69,7 @@ export function initCampaign(pg) {
       const ls = LEVELS.filter((l) => l.chapter === c.n);
       const got = ls.reduce((a, l) => a + (progress[l.id] || 0), 0);
       const chips = el('ol', { class: 'chips' }, ...ls.map((l) => {
-        const open = isUnlocked(l, LEVELS, progress);
+        const open = isOpen(l, LEVELS, progress);
         const n = progress[l.id] || 0;
         return el('li', {}, el('button', {
           type: 'button', class: `chip-btn bevel${n ? ' done' : ''}`, disabled: !open,
@@ -323,7 +328,7 @@ export function initCampaign(pg) {
     if (s.cleared) recordStars(progress, level.id, s.stars);
     const lv = level;
     const next = LEVELS[LEVELS.indexOf(lv) + 1];
-    const nextOpen = next && isUnlocked(next, LEVELS, loadProgress());
+    const nextOpen = next && isOpen(next, LEVELS, loadProgress());
     const rows = s.objectives.map((x) => el('li', { class: x.done ? 'done' : 'missed' },
       el('span', { 'aria-hidden': 'true' }, x.done ? '✓ ' : '✕ '), x.text,
       x.o.kind === 'deliver' ? ` — ${Math.round((x.value || 0) * 100)} %` : ''));
@@ -395,7 +400,7 @@ export function initCampaign(pg) {
   }, true);
 
   sheet.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !run) hideSheet(); });
-  addEventListener('hashchange', () => { if (location.hash === '#campaign') openMap(); });
+  addEventListener('hashchange', () => { if (location.hash.startsWith('#campaign')) openMap(); });
 
   function hasProgress() { return Object.keys(loadProgress()).length > 0; }
   function continueLevel() {
