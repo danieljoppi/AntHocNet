@@ -28,6 +28,7 @@ set(ANTHOCNET_TESTS
   test_shortest_path
   test_next_hop_distribution
   test_sinr_metric
+  test_kinematics
 )
 
 foreach(test ${ANTHOCNET_TESTS})

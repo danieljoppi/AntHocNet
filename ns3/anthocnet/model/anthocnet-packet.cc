@@ -26,6 +26,19 @@ double BitsToDouble(uint64_t bits) {
     return v;
 }
 
+uint32_t FloatToBits(double v) {
+    const float f = static_cast<float>(v);
+    uint32_t bits;
+    std::memcpy(&bits, &f, sizeof(bits));
+    return bits;
+}
+
+double BitsToFloat(uint32_t bits) {
+    float f;
+    std::memcpy(&f, &bits, sizeof(f));
+    return static_cast<double>(f);
+}
+
 constexpr uint32_t kHopSize = 4 + 8;    // int32 node + double time
 constexpr uint32_t kHelloSize = 4 + 8;  // int32 node + double pheromone
 // prevHop/hops/pathTime/pheromone are reconstructed locally (ADR-0009), not sent.
@@ -50,7 +63,10 @@ uint32_t AntHeader::GetSerializedSize() const {
     return 1 /*version*/ + kFixedSize + kCounts +
            static_cast<uint32_t>(m_message.visited.size()) * kHopSize +
            static_cast<uint32_t>(m_message.history.size()) * kHopSize +
-           static_cast<uint32_t>(m_message.helloDests.size()) * kHelloSize;
+           static_cast<uint32_t>(m_message.helloDests.size()) * kHelloSize +
+           (m_message.hasKinematics
+                ? static_cast<uint32_t>(::anthocnet::core::codec::kKinematicsSize)
+                : 0);
 }
 
 void AntHeader::Serialize(Buffer::Iterator i) const {
@@ -79,6 +95,13 @@ void AntHeader::Serialize(Buffer::Iterator i) const {
     for (const auto& d : m.helloDests) {
         i.WriteU32(static_cast<uint32_t>(d.node));
         i.WriteU64(DoubleToBits(d.pheromone));
+    }
+    // ADR-0025: the optional trailing kinematics section, same layout as the
+    // core codec (tag + six float32).
+    if (m.hasKinematics) {
+        const auto& k = m.kinematics;
+        i.WriteU8(::anthocnet::core::codec::kKinematicsTag);
+        for (double v : {k.x, k.y, k.z, k.vx, k.vy, k.vz}) i.WriteU32(FloatToBits(v));
     }
 }
 
@@ -112,6 +135,17 @@ uint32_t AntHeader::Deserialize(Buffer::Iterator start) {
     for (auto& d : m.helloDests) {
         d.node = static_cast<int32_t>(i.ReadU32());
         d.pheromone = BitsToDouble(i.ReadU64());
+    }
+    // ADR-0025: an ant packet carries only this header, so bytes left after
+    // the adverts can only be a hello's kinematics section.
+    m.hasKinematics = false;
+    m.kinematics = ::anthocnet::core::Kinematics{};
+    if (i.GetRemainingSize() >= ::anthocnet::core::codec::kKinematicsSize &&
+        i.ReadU8() == ::anthocnet::core::codec::kKinematicsTag) {
+        double v[6];
+        for (double& x : v) x = BitsToFloat(i.ReadU32());
+        m.kinematics = ::anthocnet::core::Kinematics{v[0], v[1], v[2], v[3], v[4], v[5]};
+        m.hasKinematics = true;
     }
 
     return i.GetDistanceFrom(start);

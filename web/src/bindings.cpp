@@ -165,6 +165,8 @@ void setConfig(World& w, const std::string& key, double v) {
         c.enableMultipath = v != 0;
     else if (key == "enableRepair")
         c.enableRepair = v != 0;
+    else if (key == "shareKinematics")
+        c.shareKinematics = v != 0;  // ADR-0025
 }
 
 double getConfig(World& w, const std::string& key) {
@@ -177,6 +179,7 @@ double getConfig(World& w, const std::string& key) {
     if (key == "enableProactive") return c.enableProactive;
     if (key == "enableMultipath") return c.enableMultipath;
     if (key == "enableRepair") return c.enableRepair;
+    if (key == "shareKinematics") return c.shareKinematics;
     return 0;
 }
 

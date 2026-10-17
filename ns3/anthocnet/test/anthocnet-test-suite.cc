@@ -37,6 +37,7 @@
 #include "ns3/ipv4.h"
 
 #include "ns3/anthocnet-packet.h"
+#include "anthocnet/core/ant_message_codec.h"
 #include "ns3/anthocnet-helper.h"
 #include "ns3/anthocnet-routing-protocol.h"
 
@@ -87,6 +88,46 @@ public:
         NS_TEST_ASSERT_MSG_EQ(r.helloDests.size(), 2u, "hello size");
         NS_TEST_ASSERT_MSG_EQ(r.helloDests[1].node, 9, "hello node");
         NS_TEST_ASSERT_MSG_EQ_TOL(r.helloDests[1].pheromone, 0.5, 1e-9, "hello ph");
+    }
+};
+
+// ADR-0025 (#573): the hello's optional kinematics section survives the ns-3
+// header, a hello without it decodes as absent, and the header length moves
+// by exactly the section's 25 bytes.
+class AntHeaderKinematicsTestCase : public TestCase {
+public:
+    AntHeaderKinematicsTestCase()
+        : TestCase("AntHeader carries the optional hello kinematics section") {}
+
+    void DoRun() override {
+        AntMessage m;
+        m.type = AntType::Hello;
+        m.direction = ::anthocnet::core::AntDirection::Up;
+        m.src = 4;
+        m.helloDests = {{8, 1.0}};
+        const uint32_t plain = ns3::anthocnet::AntHeader(m).GetSerializedSize();
+
+        m.hasKinematics = true;
+        m.kinematics = ::anthocnet::core::Kinematics{1250.5, -300.25, 0.0, 20.0, -7.5, 0.0};
+        ns3::anthocnet::AntHeader out(m);
+        NS_TEST_ASSERT_MSG_EQ(out.GetSerializedSize(),
+                              plain + ::anthocnet::core::codec::kKinematicsSize, "section size");
+        Ptr<Packet> packet = Create<Packet>();
+        packet->AddHeader(out);
+        ns3::anthocnet::AntHeader in;
+        packet->RemoveHeader(in);
+        const AntMessage& r = in.Message();
+        NS_TEST_ASSERT_MSG_EQ(r.hasKinematics, true, "section present");
+        NS_TEST_ASSERT_MSG_EQ_TOL(r.kinematics.x, 1250.5, 1e-3, "x");
+        NS_TEST_ASSERT_MSG_EQ_TOL(r.kinematics.vy, -7.5, 1e-6, "vy");
+        NS_TEST_ASSERT_MSG_EQ(r.helloDests.size(), 1u, "adverts intact");
+
+        m.hasKinematics = false;
+        Ptr<Packet> bare = Create<Packet>();
+        bare->AddHeader(ns3::anthocnet::AntHeader(m));
+        ns3::anthocnet::AntHeader in2;
+        bare->RemoveHeader(in2);
+        NS_TEST_ASSERT_MSG_EQ(in2.Message().hasKinematics, false, "absent, not the origin");
     }
 };
 
@@ -483,6 +524,7 @@ class AntHocNetTestSuite : public TestSuite {
 public:
     AntHocNetTestSuite() : TestSuite("anthocnet", AHN_TEST_TYPE_UNIT) {
         AddTestCase(new AntHeaderRoundTripTestCase(), AHN_TEST_QUICK);
+        AddTestCase(new AntHeaderKinematicsTestCase(), AHN_TEST_QUICK);
         AddTestCase(new AddressMappingTestCase(), AHN_TEST_QUICK);
         AddTestCase(new AntHocNetDeliveryTestCase(), AHN_TEST_QUICK);
         AddTestCase(new MultiInterfaceDeliveryTestCase(), AHN_TEST_QUICK);

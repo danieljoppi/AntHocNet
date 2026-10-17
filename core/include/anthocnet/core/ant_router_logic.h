@@ -53,6 +53,14 @@ public:
     /// Attach an optional observer for ant/route events (nullptr to detach).
     /// Zero-overhead when unset; the observer only reports, never decides.
     void setObserver(IRouterObserver* observer) { observer_ = observer; }
+    /// Attach the port that says where this node is (ADR-0025; nullptr =
+    /// unknown). Read only when Config::shareKinematics is on.
+    void setKinematics(const IKinematics* kinematics) { kinematics_ = kinematics; }
+    /// What `neighbor`'s last hello said about its position and velocity,
+    /// extrapolated to now (p + v*(now - t_rx)). False when it is unknown: no
+    /// hello from it carried a section, the last one did not, or the
+    /// neighbour was lost since (ADR-0025: absent, not zero).
+    bool neighborKinematics(NodeAddress neighbor, Kinematics& out) const;
     /// Ants of `type` this node has put on the medium (origination + forward).
     std::uint64_t antsSent(AntType type) const;
     /// Non-duplicate ants of `type` this node has received and processed.
@@ -228,6 +236,11 @@ private:
     std::uint32_t seqNum_ = 0;
     std::map<NodeAddress, double> activeSessions_;  ///< dest -> last data-send time
     std::map<NodeAddress, double> lastSeen_;        ///< neighbor -> last reception time
+    const IKinematics* kinematics_ = nullptr;       ///< own position (ADR-0025), optional
+    /// ADR-0025: neighbour -> (kinematics its last hello carried, receive
+    /// time). Only filled when Config::shareKinematics is on; erased with the
+    /// neighbour (loseNeighbor) and by a hello that carries no section.
+    std::map<NodeAddress, std::pair<Kinematics, double>> neighborKinematics_;
     /// #185: smoothed hop count ĥ per (destination, next hop), the thesis's
     /// eq. 4.2 state. Only populated when Config::hopCountAlpha > 0; entries for
     /// a neighbour are erased with it (loseNeighbor), so it is bounded by the

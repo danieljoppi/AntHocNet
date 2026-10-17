@@ -113,6 +113,7 @@ int World::addNode(double x, double y, double z) {
     if (started_) {
         n.logic_.reset(new core::AntRouterLogic(id, config_, n, n));
         n.logic_->setObserver(&n);
+        n.logic_->setKinematics(&n);
         armTimers(n);
     }
     return id;
@@ -156,6 +157,7 @@ void World::start() {
         Node& n = *np;
         n.logic_.reset(new core::AntRouterLogic(n.id_, config_, n, n));
         n.logic_->setObserver(&n);
+        n.logic_->setKinematics(&n);
         armTimers(n);
     }
     for (std::size_t f = 0; f < flows_.size(); ++f) {
@@ -335,6 +337,28 @@ Vec3 World::positionAt(int node, double t) const {
     const double f = (t - l.t0) / (l.t1 - l.t0);
     return Vec3{l.p0.x + (l.p1.x - l.p0.x) * f, l.p0.y + (l.p1.y - l.p0.y) * f,
                 l.p0.z + (l.p1.z - l.p0.z) * f};
+}
+
+Vec3 World::velocityAt(int node, double t) const {
+    Node& n = *nodes_[node];
+    extendLegs(n, t);
+    auto it = std::upper_bound(n.legs_.begin(), n.legs_.end(), t,
+                               [](double tt, const Leg& l) { return tt < l.t1; });
+    if (it == n.legs_.end()) it = n.legs_.end() - 1;
+    const Leg& l = *it;
+    if (l.t1 >= kForever || l.t1 <= l.t0) return Vec3{};
+    const double dt = l.t1 - l.t0;
+    return Vec3{(l.p1.x - l.p0.x) / dt, (l.p1.y - l.p0.y) / dt, (l.p1.z - l.p0.z) / dt};
+}
+
+bool Node::self(core::Kinematics& out) const {
+    // The trajectory is what the teaching radio uses, so the core is told the
+    // same: the leg's straight-line velocity (orbits move along 0.25 s
+    // chords). Every node in the browser always knows where it is.
+    const Vec3 p = w_.positionAt(id_, w_.now());
+    const Vec3 v = w_.velocityAt(id_, w_.now());
+    out = core::Kinematics{p.x, p.y, p.z, v.x, v.y, v.z};
+    return true;
 }
 
 void World::moveNode(int node, double x, double y, double z) {

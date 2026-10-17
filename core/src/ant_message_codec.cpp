@@ -3,6 +3,7 @@
 
 #include "anthocnet/core/ant_message_codec.h"
 
+#include <cmath>
 #include <cstring>
 
 namespace anthocnet {
@@ -34,6 +35,12 @@ void putDouble(std::vector<std::uint8_t>& b, double v) {
     std::uint64_t bits;
     std::memcpy(&bits, &v, sizeof(bits));
     for (int i = 0; i < 8; ++i) b.push_back(static_cast<std::uint8_t>((bits >> (8 * i)) & 0xFF));
+}
+
+void putF32(std::vector<std::uint8_t>& b, float v) {
+    std::uint32_t bits;
+    std::memcpy(&bits, &v, sizeof(bits));
+    putU32(b, bits);
 }
 
 struct Reader {
@@ -81,6 +88,12 @@ struct Reader {
         std::memcpy(&v, &bits, sizeof(v));
         return v;
     }
+    float f32() {
+        const std::uint32_t bits = u32();
+        float v;
+        std::memcpy(&v, &bits, sizeof(v));
+        return v;
+    }
 };
 
 constexpr std::size_t kVersionSize = 1;    // offset-0 wire-version byte
@@ -108,7 +121,8 @@ bool validDirection(std::uint8_t v) {
 
 std::size_t serializedSize(const AntMessage& msg) {
     return kVersionSize + kFixedSize + kCountFields + msg.visited.size() * kHopSize +
-           msg.history.size() * kHopSize + msg.helloDests.size() * kHelloSize;
+           msg.history.size() * kHopSize + msg.helloDests.size() * kHelloSize +
+           (msg.hasKinematics ? kKinematicsSize : 0);
 }
 
 void serialize(const AntMessage& msg, std::vector<std::uint8_t>& out) {
@@ -139,6 +153,11 @@ void serialize(const AntMessage& msg, std::vector<std::uint8_t>& out) {
     for (const HelloDest& d : msg.helloDests) {
         putI32(out, d.node);
         putDouble(out, d.pheromone);
+    }
+    if (msg.hasKinematics) {
+        const Kinematics& k = msg.kinematics;
+        putU8(out, kKinematicsTag);
+        for (double v : {k.x, k.y, k.z, k.vx, k.vy, k.vz}) putF32(out, static_cast<float>(v));
     }
 }
 
@@ -196,6 +215,24 @@ bool deserialize(const std::uint8_t* bytes, std::size_t len, AntMessage& msg) {
     for (auto& d : msg.helloDests) {
         d.node = r.i32();
         d.pheromone = r.dbl();
+    }
+
+    // ADR-0025: anything after the adverts must be one well-formed kinematics
+    // section on a hello. A wrong tag, a short section, a non-finite value,
+    // trailing bytes, or a section on any other ant type rejects the frame.
+    msg.hasKinematics = false;
+    msg.kinematics = Kinematics{};
+    if (r.ok && r.remaining > 0) {
+        if (msg.type != AntType::Hello || r.remaining != kKinematicsSize ||
+            r.u8() != kKinematicsTag)
+            return false;
+        double v[6];
+        for (double& x : v) {
+            x = static_cast<double>(r.f32());
+            if (!std::isfinite(x)) return false;
+        }
+        msg.kinematics = Kinematics{v[0], v[1], v[2], v[3], v[4], v[5]};
+        msg.hasKinematics = true;
     }
 
     return r.ok;

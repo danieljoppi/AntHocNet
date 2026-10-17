@@ -166,7 +166,8 @@ class World;
 /// One AntHocNet node: the core logic plus the adapter state around it.
 class Node : public anthocnet::core::IClock,
              public anthocnet::core::IRng,
-             public anthocnet::core::IRouterObserver {
+             public anthocnet::core::IRouterObserver,
+             public anthocnet::core::IKinematics {
 public:
     /// Created by World::addNode(); `seed` derives the node's streams.
     Node(World& w, int id, std::uint64_t seed);
@@ -177,6 +178,10 @@ public:
     double uniform() override { return rng_.uniform(); }
     /// IRng: uniform integer in [0, n).
     int uniformInt(int n) override { return rng_.uniformInt(n); }
+
+    /// IKinematics (ADR-0025): position and the current leg's velocity. Read
+    /// by the core only when Config::shareKinematics is on.
+    bool self(anthocnet::core::Kinematics& out) const override;
 
     /// IRouterObserver: report-only -- route changes feed the event log.
     void onRouteChanged(NodeAddress dest, NodeAddress nb, bool added) override;
@@ -339,6 +344,8 @@ private:
     void extendLegs(Node& n, double until) const;
     void armTimers(Node& n);
     Vec3 positionAt(int node, double t) const;
+    /// Velocity (m/s) of the leg covering t: zero when paused or pinned.
+    Vec3 velocityAt(int node, double t) const;
     bool linkUpAt(int a, int b, double t) const;
     bool lineOfSight(const Vec3& a, const Vec3& b) const;
 

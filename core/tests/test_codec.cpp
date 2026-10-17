@@ -54,13 +54,93 @@ int main() {
 
     // Item 02 wire slim (ADR-0009): the four transient fields left the fixed
     // prefix (-24 bytes). An empty-array ant is version(1) + fixed(34) +
-    // counts(6) = 41 bytes, and the version byte is 0x03.
+    // counts(6) = 41 bytes. The version byte is 0x04 since ADR-0025, which
+    // added the optional hello kinematics section and no other byte: a frame
+    // without the section keeps its 0x03 length.
     {
         AntMessage empty;
         empty.type = AntType::Reactive;
         empty.direction = AntDirection::Up;
         CHECK_EQ(codec::serializedSize(empty), static_cast<std::size_t>(41));
-        CHECK_EQ(codec::kWireVersion, static_cast<std::uint8_t>(0x03));
+        CHECK_EQ(codec::kWireVersion, static_cast<std::uint8_t>(0x04));
+    }
+
+    // ADR-0025 (#573): a hello's kinematics section round-trips at float32
+    // precision and adds exactly kKinematicsSize bytes.
+    AntMessage hello;
+    hello.type = AntType::Hello;
+    hello.direction = AntDirection::Up;
+    hello.src = 5;
+    hello.helloDests = {{8, 1.0}};
+    const std::size_t plain = codec::serializedSize(hello);
+    hello.hasKinematics = true;
+    hello.kinematics = Kinematics{1250.5, -300.25, 550000.0, 20.0, -7.5, 0.0};
+    std::vector<std::uint8_t> kbytes = codec::serialize(hello);
+    CHECK_EQ(kbytes.size(), plain + codec::kKinematicsSize);
+    CHECK_EQ(kbytes.size(), codec::serializedSize(hello));
+    {
+        AntMessage out2;
+        CHECK(codec::deserialize(kbytes, out2));
+        CHECK(out2.hasKinematics);
+        CHECK_NEAR(out2.kinematics.x, 1250.5, 1e-3);
+        CHECK_NEAR(out2.kinematics.y, -300.25, 1e-3);
+        CHECK_NEAR(out2.kinematics.z, 550000.0, 0.05);  // float32 at 550 km
+        CHECK_NEAR(out2.kinematics.vx, 20.0, 1e-6);
+        CHECK_NEAR(out2.kinematics.vy, -7.5, 1e-6);
+        CHECK_NEAR(out2.kinematics.vz, 0.0, 1e-6);
+        CHECK_EQ(out2.helloDests.size(), static_cast<std::size_t>(1));
+    }
+    // A hello without the section decodes as absent, never as the origin.
+    {
+        AntMessage plainHello = hello;
+        plainHello.hasKinematics = false;
+        AntMessage out2;
+        out2.hasKinematics = true;  // stale state must be cleared
+        CHECK(codec::deserialize(codec::serialize(plainHello), out2));
+        CHECK(!out2.hasKinematics);
+    }
+    // The section is validated, not trusted.
+    {
+        std::vector<std::uint8_t> v = kbytes;
+        v[plain] = 0x00;  // wrong tag
+        AntMessage out2;
+        CHECK(!codec::deserialize(v, out2));
+    }
+    {
+        AntMessage out2;  // truncated section
+        CHECK(!codec::deserialize(kbytes.data(), kbytes.size() - 1, out2));
+        CHECK(!codec::deserialize(kbytes.data(), plain + 1, out2));
+    }
+    {
+        std::vector<std::uint8_t> v = kbytes;
+        v.push_back(0x00);  // trailing byte after the section
+        AntMessage out2;
+        CHECK(!codec::deserialize(v, out2));
+    }
+    {
+        std::vector<std::uint8_t> v = kbytes;
+        // x := +inf (float32 0x7F800000, little-endian)
+        v[plain + 1] = 0x00;
+        v[plain + 2] = 0x00;
+        v[plain + 3] = 0x80;
+        v[plain + 4] = 0x7F;
+        AntMessage out2;
+        CHECK(!codec::deserialize(v, out2));
+    }
+    {
+        // A section on anything but a hello is rejected.
+        AntMessage fwd = hello;
+        fwd.type = AntType::Reactive;
+        AntMessage out2;
+        CHECK(!codec::deserialize(codec::serialize(fwd), out2));
+    }
+    {
+        // Bytes after the adverts that are not a section: rejected (0x03
+        // decoders ignored them; 0x04 defines what may follow).
+        std::vector<std::uint8_t> v = codec::serialize(m);
+        v.push_back(codec::kKinematicsTag);
+        AntMessage out2;
+        CHECK(!codec::deserialize(v, out2));
     }
 
     // Truncated buffers must be rejected, not read out of bounds.

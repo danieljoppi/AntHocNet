@@ -66,7 +66,8 @@ namespace anthocnet {
 class RoutingProtocol : public Ipv4RoutingProtocol,
                         public ::anthocnet::core::IRouterObserver,
                         public ::anthocnet::core::ILinkState,
-                        public ::anthocnet::core::ILinkQuality {
+                        public ::anthocnet::core::ILinkQuality,
+                        public ::anthocnet::core::IKinematics {
 public:
     static TypeId GetTypeId();
     static const uint16_t ANT_PORT;  ///< UDP port for ant control traffic.
@@ -118,6 +119,11 @@ public:
     double sinrDbFrom(::anthocnet::core::NodeAddress neighbor) const override;
     /// Called by the PHY monitor hook for every received MPDU (#181).
     void NotifyPhyRxSinr(Ptr<const Packet> packet, double sinrDb);
+
+    // core::IKinematics (#573, ADR-0025): this node's position and velocity
+    // from its aggregated MobilityModel; false when it has none. Only read
+    // when ShareKinematics is on.
+    bool self(::anthocnet::core::Kinematics& out) const override;
 
     // Ipv4RoutingProtocol
     Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p, const Ipv4Header& header, Ptr<NetDevice> oif,
@@ -344,6 +350,7 @@ private:
     bool m_enableRepair;            ///< local-repair ant gate (ablation)
     bool m_enableLinkFail;          ///< link-failure notification gate (ablation)
     bool m_enableDirectedReactive;  ///< steer reactive ants by the virtual table
+    bool m_shareKinematics;         ///< hellos carry position/velocity (ADR-0025)
     double m_proactiveBroadcastProb;
     double m_proactiveVirtualMargin;
     uint32_t m_maxHelloAdverts;  ///< #186: diffusion advert cap k (thesis: 10)

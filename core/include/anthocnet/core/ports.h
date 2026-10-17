@@ -97,6 +97,19 @@ public:
     virtual double sinrDbFrom(NodeAddress neighbor) const = 0;
 };
 
+/// This node's own position and velocity (#573, ADR-0025). Absent, not zero:
+/// an adapter that does not know where the node is returns false, because a
+/// node reported at the origin would sit on top of every other such node and
+/// read as an immortal link. Neighbours' kinematics never come through this
+/// port; they come from their hellos, as a deployed protocol's would.
+class IKinematics {
+public:
+    virtual ~IKinematics() = default;
+    /// Fill `out` and return true, or return false (leaving `out` untouched)
+    /// when the position is unknown.
+    virtual bool self(Kinematics& out) const = 0;
+};
+
 /// Optional observer the core notifies of routing events (item 15). It only
 /// *reports* — it never makes routing decisions or does I/O, so the core stays
 /// pure. Adapters implement it to fan events out to their native trace

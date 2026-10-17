@@ -7,6 +7,7 @@
 
 #include "ns3/log.h"
 #include "ns3/node.h"
+#include "ns3/mobility-model.h"
 #include "ns3/boolean.h"
 #include "ns3/double.h"
 #include "ns3/string.h"
@@ -63,6 +64,7 @@ RoutingProtocol::RoutingProtocol()
       m_enableRepair(true),
       m_enableLinkFail(true),
       m_enableDirectedReactive(false),
+      m_shareKinematics(false),
       m_proactiveBroadcastProb(0.1),
       m_proactiveVirtualMargin(0.0),
       m_maxHelloAdverts(10),
@@ -169,6 +171,15 @@ TypeId RoutingProtocol::GetTypeId() {
                           "A/B arm against stock [1] §3.1 flooding.",
                           BooleanValue(false),
                           MakeBooleanAccessor(&RoutingProtocol::m_enableDirectedReactive),
+                          MakeBooleanChecker())
+            .AddAttribute("ShareKinematics",
+                          "Put this node's position and velocity (from its "
+                          "MobilityModel) on its hellos, and keep what neighbours' "
+                          "hellos say (ADR-0025, #573). Adds 25 bytes to each "
+                          "hello. Default off; on its own it changes no routing "
+                          "decision. Link-lifetime prediction (#574) reads it.",
+                          BooleanValue(false),
+                          MakeBooleanAccessor(&RoutingProtocol::m_shareKinematics),
                           MakeBooleanChecker())
             .AddAttribute("ProactiveBroadcastProb",
                           "Per-hop explore-broadcast probability for proactive ants.",
@@ -586,6 +597,7 @@ void RoutingProtocol::DoInitialize() {
     m_config.enableRepair = m_enableRepair;
     m_config.enableLinkFail = m_enableLinkFail;
     m_config.enableDirectedReactive = m_enableDirectedReactive;
+    m_config.shareKinematics = m_shareKinematics;
     m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
     m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
     m_config.maxHelloAdverts = m_maxHelloAdverts;
@@ -695,6 +707,18 @@ double RoutingProtocol::sinrDbFrom(NodeAddress neighbor) const {
     return it == m_neighborSinrDb.end() ? std::numeric_limits<double>::quiet_NaN() : it->second;
 }
 
+// --- #573: own position and velocity (core::IKinematics, ADR-0025) ----------
+
+bool RoutingProtocol::self(::anthocnet::core::Kinematics& out) const {
+    Ptr<Node> node = GetObject<Node>();
+    Ptr<MobilityModel> mobility = node ? node->GetObject<MobilityModel>() : nullptr;
+    if (!mobility) return false;  // absent, not the origin
+    const Vector p = mobility->GetPosition();
+    const Vector v = mobility->GetVelocity();
+    out = ::anthocnet::core::Kinematics{p.x, p.y, p.z, v.x, v.y, v.z};
+    return true;
+}
+
 void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
     Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol>();
     if (l3->GetNAddresses(interface) == 0) return;
@@ -714,6 +738,7 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_config.enableRepair = m_enableRepair;
         m_config.enableLinkFail = m_enableLinkFail;
         m_config.enableDirectedReactive = m_enableDirectedReactive;
+        m_config.shareKinematics = m_shareKinematics;
         m_config.proactiveBroadcastProb = m_proactiveBroadcastProb;
         m_config.proactiveVirtualMargin = m_proactiveVirtualMargin;
         m_config.maxHelloAdverts = m_maxHelloAdverts;
@@ -743,7 +768,8 @@ void RoutingProtocol::NotifyInterfaceUp(uint32_t interface) {
         m_logic.reset(new ::anthocnet::core::AntRouterLogic(
             ToCore(iface.GetLocal()), m_config, m_clock, m_rng, metric, /*linkState*/ this,
             /*linkQuality*/ this));
-        m_logic->setObserver(this);  // fan core events to the trace sources
+        m_logic->setObserver(this);    // fan core events to the trace sources
+        m_logic->setKinematics(this);  // ADR-0025; read only with ShareKinematics
     }
 
     // One UDP socket per interface for ant control traffic.

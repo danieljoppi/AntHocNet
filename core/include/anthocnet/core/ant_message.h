@@ -69,6 +69,12 @@ struct AntMessage {
 
     std::vector<HelloDest> helloDests;  ///< Hello-ant adverts.
 
+    /// Hello only (ADR-0025): the sender's position and velocity, sent as an
+    /// optional trailing section when Config::shareKinematics is on and the
+    /// sender knows them. false == absent, never "at the origin".
+    bool hasKinematics = false;
+    Kinematics kinematics;
+
     // Transient deposit state, recomputed at each node from `history` while a
     // backward ant retraces (ADR-0009). These are NOT serialized — a freshly
     // decoded ant leaves them at defaults and the core fills them.

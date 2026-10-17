@@ -26,6 +26,18 @@ using Time = double;
 /// "No such node / no route" sentinel, mirroring the legacy use of -1.
 constexpr NodeAddress kInvalidAddress = -1;
 
+/// A node's position (m) and velocity (m/s) in the adapter's Cartesian frame
+/// (ADR-0025). Only ever compared between nodes of one simulation, so the
+/// frame needs no geodesy.
+struct Kinematics {
+    double x = 0.0;
+    double y = 0.0;
+    double z = 0.0;
+    double vx = 0.0;
+    double vy = 0.0;
+    double vz = 0.0;
+};
+
 }  // namespace core
 }  // namespace anthocnet
 
