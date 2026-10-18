@@ -90,27 +90,28 @@ plt.rcParams.update({
     "axes.spines.right": False,
 })
 
-# Cells per family page: (row label, cell file). Current = the CBR (#521)
-# restatements and the v1.9.0 VANET campaign.
+# Cells per family page: (row label, cell file). Current = the v2.3.0
+# generation: the campaign's control with AntHocNet from its quiet arm
+# (tools/bench/compose_cell.py; docs/benchmarks/v2.3.0-campaign.md).
 CELLS = {
     "static-mesh": ("Static Wi-Fi mesh (50 nodes, pause = 900 s)",
-                    [("static mesh", "static-mesh-cbr521.txt")]),
+                    [("static mesh", "static-mesh-v230-published.txt")]),
     "fanet": ("FANET (3-D Gauss-Markov, 30 m/s)",
-              [("main (range 350 m)", "fanet-main-cbr521.txt"),
-               ("sparse (range 250 m)", "fanet-sparse-cbr521.txt")]),
+              [("main (range 350 m)", "fanet-main-v230-published.txt"),
+               ("sparse (range 250 m)", "fanet-sparse-v230-published.txt")]),
     "vanet": ("VANET (Manhattan grid, building shadowing)",
-              [("main (100 vehicles)", "vanet-main.txt"),
-               ("sparse (40 vehicles)", "vanet-sparse.txt")]),
+              [("main (100 vehicles)", "vanet-main-v230-published.txt"),
+               ("sparse (40 vehicles)", "vanet-sparse-v230-published.txt")]),
 }
-GRID_CELLS = [(f"{m} · {c}", f"grid-{m}-{c}-cbr521.txt")
+GRID_CELLS = [(f"{m} · {c}", f"grid-{m}-{c}-v230-published.txt")
               for m in ("rwp", "ssrwp", "gaussmarkov")
               for c in ("tworay", "nakagami")]
 FAMILY_ROWS = ([("MANET", lab, f) for lab, f in GRID_CELLS]
-               + [("static mesh", "static mesh", "static-mesh-cbr521.txt"),
-                  ("FANET", "main", "fanet-main-cbr521.txt"),
-                  ("FANET", "sparse", "fanet-sparse-cbr521.txt"),
-                  ("VANET", "main", "vanet-main.txt"),
-                  ("VANET", "sparse", "vanet-sparse.txt")])
+               + [("static mesh", "static mesh", "static-mesh-v230-published.txt"),
+                  ("FANET", "main", "fanet-main-v230-published.txt"),
+                  ("FANET", "sparse", "fanet-sparse-v230-published.txt"),
+                  ("VANET", "main", "vanet-main-v230-published.txt"),
+                  ("VANET", "sparse", "vanet-sparse-v230-published.txt")])
 SAT_CORRIDOR = "sat-corridor-app517.txt"
 # The moving-constellation campaign (#297): one cell file per arm,
 # leo-<cell>-<arm>.txt. LEO_ARMS order is the bar order; the oracles are
@@ -119,6 +120,17 @@ LEO_CELLS = [("walker16", "16 × 16 Walker\n1150 km"),
              ("starlink1", "Starlink S1\n72 × 22, 550 km"),
              ("starlink1-storm", "Starlink S1\n+ 10 % mass failure")]
 LEO_ARMS = ["anthocnet", "aodv", "olsr", "geo-greedy"]
+
+
+def leo_file(cell, arm):
+    """The v2.3.0 generation's file for one LEO arm: AntHocNet from the quiet
+    arm; walker16's OLSR is v2.2.0's cell (its v2.3.0 re-run exceeded the
+    6 h job limit; OLSR is unchanged by the release)."""
+    if arm == "anthocnet":
+        return f"leo-{cell}-anthocnet-v230-quiet.txt"
+    if cell == "walker16" and arm == "olsr":
+        return "leo-walker16-olsr-v220.txt"
+    return f"leo-{cell}-{arm}-v230.txt"
 LEO_CALIB = "leo-hypatia-calib-oracle-delay.txt"
 # Hypatia (Kassing et al., IMC 2020, Fig. 13): Starlink S1, Paris-Luanda RTT
 # "varies between 117 ms and 85 ms" over its 200 s simulation.
@@ -371,9 +383,9 @@ def plot_constellation(cells_dir, outdir):
     for cell, title in LEO_CELLS:
         texts = {}
         for arm in LEO_ARMS + ["oracle-delay"]:
-            path = os.path.join(cells_dir, f"leo-{cell}-{arm}.txt")
+            path = os.path.join(cells_dir, leo_file(cell, arm))
             if os.path.exists(path):
-                texts[arm] = read(cells_dir, f"leo-{cell}-{arm}.txt")
+                texts[arm] = read(cells_dir, leo_file(cell, arm))
         if any(a in texts for a in LEO_ARMS):
             rows.append((title, texts))
     if not rows:

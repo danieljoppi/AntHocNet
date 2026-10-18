@@ -39,6 +39,82 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 
 On this suite the campaign's `sinr` arm is the hop-count metric under another name. A point-to-point ISL has no PHY SINR ([ADR-0024](../../adr/0024-per-neighbour-link-quality-port.md)), so the metric falls back, and PDR and delay are identical to the control. The two hold caps (`repair200`, `reconv1s`) never bind: their cells are byte-identical. The faster hello (`hello500`) costs NRL +1 to +18 and buys nothing on a fixed topology.
 
+## Restated at v2.3.0 defaults (quiet mode on)
+
+> **Current numbers: v2.3.0 defaults.** v2.3.0 turns quiet mode on by
+> default ([#571](https://github.com/danieljoppi/AntHocNet/issues/571), the
+> [v2.3.0 campaign](../v2.3.0-campaign.md#results)). AntHocNet's rows below are the
+> campaign's `quiet` arm. Every baseline row is the campaign's `control`, and the
+> attribution control found those identical to the v2.2.0 corpus. 20 seeds,
+> paired per seed; a bold difference is one whose 95 % t-interval excludes zero.
+>
+> **Quiet mode's effect here**, paired against v2.2.0's AntHocNet: NRL −0.04 to −0.11 in all four cells, with PDR and delay byte-identical: the torus's routes hold, so the back-off engages.
+>
+> **Provenance.** The campaign's runs at `main`, `54cdfae7..cc230126`. Cells:
+> `results/cells/<cell>-v230-published.txt`, composed by [`tools/bench/compose_cell.py`](https://github.com/danieljoppi/AntHocNet/blob/main/tools/bench/compose_cell.py) from the campaign's `<cell>-v230.txt` (control) and `<cell>-v230-quiet.txt`. Tables recomputed from the cells' `##RUN##` rows (t-intervals; delay99 by
+> bootstrap). Stock AODV's rows are the v2.3.0 control's. On these multi-interface nodes they differ from v2.2.0's in iteration order only ([#362](https://github.com/danieljoppi/AntHocNet/issues/362), [#675](https://github.com/danieljoppi/AntHocNet/issues/675)), and the paired difference is within noise.
+>
+> **base torus**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **100.00 ± 0.00** | 11.0 [11.0, 11.0] | 1.12 ± 0.00 |
+> | aodv | 99.98 ± 0.00 | 11.0 [11.0, 11.0] | 1.01 ± 0.00 |
+> | olsr | 99.69 ± 0.04 | 11.0 [11.0, 11.0] | 0.96 ± 0.01 |
+> | oracle | 100.00 ± 0.00 | 11.0 [11.0, 11.0] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+0.02 [+0.02, +0.02]** | +0.0 [+0.0, +0.0] | **+0.10 [+0.10, +0.10]** |
+> | olsr | **+0.31 [+0.26, +0.35]** | +0.0 [+0.0, +0.0] | **+0.15 [+0.14, +0.16]** |
+>
+> **failcell**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **100.00 ± 0.00** | 11.0 [11.0, 11.0] | 1.10 ± 0.00 |
+> | aodv | 99.98 ± 0.00 | 11.0 [11.0, 11.0] | 1.00 ± 0.00 |
+> | olsr | 99.62 ± 0.05 | 11.0 [11.0, 11.0] | 0.95 ± 0.01 |
+> | oracle | 100.00 ± 0.00 | 11.0 [11.0, 11.0] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+0.02 [+0.02, +0.03]** | +0.0 [+0.0, +0.0] | **+0.10 [+0.09, +0.10]** |
+> | olsr | **+0.38 [+0.33, +0.43]** | +0.0 [+0.0, +0.0] | **+0.15 [+0.14, +0.16]** |
+>
+> **corridor**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **100.00 ± 0.00** | 61.6 [45.0, 78.2] | 18.36 ± 0.03 |
+> | aodv | 99.96 ± 0.01 | 99.0 [99.0, 99.0] | 18.18 ± 0.03 |
+> | olsr | 99.61 ± 0.17 | 70.0 [53.4, 86.5] | 19.72 ± 0.03 |
+> | oracle | 100.00 ± 0.00 | 99.0 [99.0, 99.0] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+0.04 [+0.03, +0.04]** | **-37.4 [-57.2, -17.5]** | **+0.18 [+0.16, +0.19]** |
+> | olsr | **+0.39 [+0.22, +0.55]** | -8.3 [-33.2, +16.6] | **-1.36 [-1.40, -1.32]** |
+>
+> **seam**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **100.00 ± 0.00** | 31.0 [31.0, 31.0] | 2.32 ± 0.00 |
+> | aodv | 99.95 ± 0.01 | 31.0 [31.0, 31.0] | 2.13 ± 0.00 |
+> | olsr | 99.51 ± 0.06 | 31.0 [31.0, 31.0] | 2.34 ± 0.00 |
+> | oracle | 100.00 ± 0.00 | 31.0 [31.0, 31.0] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+0.05 [+0.04, +0.05]** | +0.0 [+0.0, +0.0] | **+0.19 [+0.18, +0.20]** |
+> | olsr | **+0.49 [+0.43, +0.55]** | +0.0 [+0.0, +0.0] | **-0.02 [-0.02, -0.01]** |
+>
+> The blocks below are the dated v2.2.0 record (quiet mode off). Their baseline
+> rows are unchanged; where AntHocNet's numbers disagree with this block, this
+> block is current. Diagnostic tables below (drop causes, paths, handovers,
+> churn) describe the v2.2.0 runs.
+
 ## Re-measured with arm-independent flow schedules (#517)
 
 > **Every cell was re-measured after the #517 fix.** Before it, the harness
