@@ -229,6 +229,13 @@ jobs:
             cp "$dir/replay.jsonl" "results/replay/${REPLAY}.jsonl"
             git add "results/replay/${REPLAY}.jsonl"; added="${added:+$added and }\`results/replay/${REPLAY}.jsonl\`"
           fi
+          # A re-recorded result can equal what main already holds (v2.3.0's
+          # VANET replay: quiet mode never engages on that seed, so the run is
+          # byte-identical). Nothing to propose then; say so and stop green.
+          if git diff --cached --quiet; then
+            echo "::notice::${added} unchanged: main already holds this run byte for byte; no PR opened"
+            exit 0
+          fi
           git commit -q -m "docs(bench): add ${name} (run ${GITHUB_RUN_ID})"
           git push -q origin "$branch"
           verdict=$(cat "$dir/verdict.txt" 2>/dev/null || echo "no verdict (scenario_check did not run)")
