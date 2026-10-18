@@ -273,6 +273,42 @@ Read the table by the regime's link-break signature:
 These are the same three signatures section 4 derives from the topology. The
 campaign's contribution is the measured size of each effect.
 
+## 8. Measured: the v2.3.0 mechanisms per regime
+
+The [v2.3.0 campaign](benchmarks/v2.3.0-campaign.md#results) measured the six
+regime-gated mechanisms the same way: 18 cells, 20 seeds, paired per seed
+against the shipped defaults at the campaign commit. Each entry shows
+AntHocNet's paired change in PDR, delay99 and NRL where the 95 % interval
+excludes zero; "noise" means none does, and "≡" marks byte-identical runs.
+
+| mechanism (attribute) | MANET grid | static mesh | FANET | VANET | satellite ISL grid | LEO shells |
+|---|---|---|---|---|---|---|
+| link lifetime `EnableLinkLifetime` ([#574](https://github.com/danieljoppi/AntHocNet/issues/574)) | **two-ray: PDR +0.3 to +0.7 pp, d99 −28 to −37 ms; Nakagami: PDR +2.1 to +3.9 pp, d99 −159 to −215 ms, NRL −1.1 to −1.8 (recommended)** | d99 +0.7 ms | main: PDR +0.5 pp, d99 −11 ms; sparse: noise | main: NRL +1.7, PDR noise; sparse: noise | ≡ (nothing moves, so no link is predicted to end) | walker16, storm: noise; Starlink S1: PDR −0.5 pp, NRL +37 |
+| quiet mode `EnableQuietMode` ([#571](https://github.com/danieljoppi/AntHocNet/issues/571)) | noise; ≡ on the three Nakagami cells | **NRL −0.40 (−8.6 %), d99 −0.7 ms, PDR noise (default on from v2.3.0)** | noise | noise | **NRL −0.04 to −0.11, PDR and delay ≡** | noise |
+| adaptive evaporation `EnableAdaptiveEvaporation` ([#572](https://github.com/danieljoppi/AntHocNet/issues/572)) | two-ray: noise; Nakagami: d99 +51 to +59 ms, NRL +1.3 to +2.0, PDR −1.1 pp on Gauss-Markov | NRL −0.14 | main: PDR +0.4 pp; sparse: d99 +13 ms | main: d99 +180 ms, NRL +1.5; sparse: d99 +108 ms | noise (seam: NRL −0.01) | **walker16: PDR −0.5 pp; Starlink: PDR −5.4 to −5.5 pp, NRL +164 to +236 (avoid)** |
+| energy metric `LinkMetric=energy` ([#145](https://github.com/danieljoppi/AntHocNet/issues/145)) | two-ray: d99 +8 to +28 ms, NRL +0.2; Nakagami: d99 +126 to +139 ms, NRL +1.4 to +2.3 | noise | main: PDR +0.5 pp, d99 +20 ms; sparse: d99 +564 ms | **main: PDR −1.5 pp, d99 +1.0 s, NRL +13 (avoid)**; sparse: PDR +0.5 pp, d99 +1.6 s | noise (no energy probe: hop count) | walker16: NRL +2.0; Starlink S1: PDR +0.7 pp, NRL +49 |
+| propagation timing `--timingProfile=propagation` ([#205](https://github.com/danieljoppi/AntHocNet/issues/205)) | — | — | — | — | noise | noise |
+| p2p hello throttle `P2pHelloEvery=5` ([#204](https://github.com/danieljoppi/AntHocNet/issues/204)) | — | — | — | — | base, failcell, corridor: **NRL −0.5 to −10.5, PDR ≡**; seam: PDR −0.12 pp, d99 +9 ms | — |
+
+Five of the six cannot move a default: each loses delivery somewhere, or
+(timing) shows no effect at all. Quiet mode is the one mechanism with no
+regression in any cell, so the pre-registered rule moves its default: it
+ships on from v2.3.0. Three readings carry over from
+section 7:
+
+- **Lookahead pays where breaks are fades, not where they are corners.**
+  Link lifetime's largest gain is on the Nakagami grid, where it steers off
+  links that are about to fade. Its target, the VANET corner break, is a
+  topology change that kinematics alone does not predict.
+- **The fixed-topology regimes reward doing less.** Quiet mode and the hello
+  throttle cut overhead only where the routes cannot change: the static mesh
+  and the ISL torus. The seam, where links do fail, is where throttled
+  hellos lose packets.
+- **A non-hop-count metric at full batteries behaves like `sinr` did.**
+  The energy metric prices every hop at about 1.0 to 1.2. Its losses match
+  v2.2.0's `LinkMetric=sinr` row cell for cell in sign and size: what costs
+  is leaving hop-count goodness, not the energy signal.
+
 ## Provenance of the numbers
 
 Measurements are from this repository's own CI, not from the literature:
