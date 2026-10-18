@@ -60,6 +60,42 @@ around ([network-regimes.md](../network-regimes.md)):
 
 Whatever AntHocNet loses here, it loses to its own machinery.
 
+## Restated at v2.3.0 defaults (quiet mode on)
+
+> **Current numbers: v2.3.0 defaults.** v2.3.0 turns quiet mode on by
+> default ([#571](https://github.com/danieljoppi/AntHocNet/issues/571), the
+> [v2.3.0 campaign](v2.3.0-campaign.md#results)). AntHocNet's rows below are the
+> campaign's `quiet` arm. Every baseline row is the campaign's `control`, and the
+> attribution control found those identical to the v2.2.0 corpus. 20 seeds,
+> paired per seed; a bold difference is one whose 95 % t-interval excludes zero.
+>
+> **Quiet mode's effect here**, paired against v2.2.0's AntHocNet: NRL 4.51 → 4.11 (−8.6 %, paired 95 % CI [−0.47, −0.32]) and delay99 10.3 → 9.6 ms, with PDR unchanged. OLSR still leads on NRL (1.78): the hellos and the capped probing remain.
+>
+> **Provenance.** The campaign's runs at `main`, `54cdfae7..cc230126`. Cells:
+> `results/cells/<cell>-v230-published.txt`, composed by [`tools/bench/compose_cell.py`](https://github.com/danieljoppi/AntHocNet/blob/main/tools/bench/compose_cell.py) from the campaign's `<cell>-v230.txt` (control) and `<cell>-v230-quiet.txt`. Tables recomputed from the cells' `##RUN##` rows (t-intervals; delay99 by
+> bootstrap).
+>
+> **static mesh**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **99.33 ± 0.23** | 9.6 [8.6, 10.8] | 4.11 ± 0.13 |
+> | aodv | 97.28 ± 0.40 | 215.7 [189.2, 246.1] | 17.53 ± 1.20 |
+> | olsr | 99.82 ± 0.16 | 7.3 [6.4, 8.3] | 1.78 ± 0.03 |
+> | dsdv | 99.66 ± 0.12 | 122.8 [108.5, 136.3] | 8.55 ± 0.18 |
+> | oracle | 99.94 ± 0.09 | 6.0 [5.0, 7.0] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+2.05 [+1.66, +2.43]** | **-206.1 [-237.4, -174.8]** | **-13.42 [-14.60, -12.24]** |
+> | olsr | **-0.49 [-0.71, -0.27]** | **+2.3 [+1.8, +2.8]** | **+2.34 [+2.20, +2.48]** |
+> | dsdv | **-0.32 [-0.50, -0.15]** | **-113.2 [-127.7, -98.8]** | **-4.43 [-4.67, -4.19]** |
+>
+> The blocks below are the dated v2.2.0 record (quiet mode off). Their baseline
+> rows are unchanged; where AntHocNet's numbers disagree with this block, this
+> block is current. Diagnostic tables below (drop causes, paths, handovers,
+> churn) describe the v2.2.0 runs.
+
 ## Restated on CBR sources (#521)
 
 > **Re-measured on constant-bit-rate sources.** Until
@@ -77,7 +113,7 @@ Whatever AntHocNet loses here, it loses to its own machinery.
 >
 > _Reproduce: `make reproduce FIG=family-static-mesh` re-renders it from the committed data and diffs the PNG; `MODE=rerun NS3DIR=…` re-measures a cell first ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
 >
-> _Bars: mean of 20 seeds, AntHocNet highlighted; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99); vertical line: the oracle control. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `static-mesh-cbr521.txt`; the table below carries every value._
+> _Bars: mean of 20 seeds, AntHocNet highlighted; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99); vertical line: the oracle control. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cell `static-mesh-v230-published.txt`: since v2.3.0 it shows the v2.3.0 generation (the block above), and the table below is the dated v2.2.0 record._
 >
 > | protocol | PDR % | mean delay (ms) | delay99 (ms, bootstrap) | NRL | energy (mJ/bit) |
 > |---|---:|---:|---:|---:|---:|

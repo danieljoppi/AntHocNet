@@ -72,6 +72,122 @@ try:
 
 **Re-measured for v2.2.0 (2026-10-16).** The [v2.2.0 campaign](v2.2.0-campaign.md#results) re-ran every cell on this page as its control generation, at `a8a16991`, with the shipped defaults and the same 20 seeds. Every `##RUN##` row is byte-identical to the cells this page cites. No default moved, so the numbers here stand as v2.2.0's. The control cells are `results/cells/grid-*-v220.txt`. What the campaign's four knobs do on this family is in [network-regimes.md §7](../network-regimes.md#7-measured-the-v220-knobs-per-regime).
 
+## Restated at v2.3.0 defaults (quiet mode on)
+
+> **Current numbers: v2.3.0 defaults.** v2.3.0 turns quiet mode on by
+> default ([#571](https://github.com/danieljoppi/AntHocNet/issues/571), the
+> [v2.3.0 campaign](v2.3.0-campaign.md#results)). AntHocNet's rows below are the
+> campaign's `quiet` arm. Every baseline row is the campaign's `control`, and the
+> attribution control found those identical to the v2.2.0 corpus. 20 seeds,
+> paired per seed; a bold difference is one whose 95 % t-interval excludes zero.
+>
+> **Quiet mode's effect here**, paired against v2.2.0's AntHocNet: noise on PDR, delay99 and NRL in all six cells, and byte-identical runs on the three Nakagami cells: routes change before the back-off grows.
+>
+> **Provenance.** The campaign's runs at `main`, `54cdfae7..cc230126`. Cells:
+> `results/cells/<cell>-v230-published.txt`, composed by [`tools/bench/compose_cell.py`](https://github.com/danieljoppi/AntHocNet/blob/main/tools/bench/compose_cell.py) from the campaign's `<cell>-v230.txt` (control) and `<cell>-v230-quiet.txt`. Tables recomputed from the cells' `##RUN##` rows (t-intervals; delay99 by
+> bootstrap).
+>
+> **RWP · two-ray**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **98.47 ± 0.14** | 176.1 [172.4, 179.8] | 7.06 ± 0.15 |
+> | aodv | 87.71 ± 0.56 | 523.0 [510.1, 536.8] | 32.99 ± 0.54 |
+> | olsr | 88.31 ± 0.59 | 20.8 [20.2, 21.3] | 2.01 ± 0.02 |
+> | dsdv | 84.73 ± 0.79 | 381.7 [350.8, 414.4] | 11.56 ± 0.11 |
+> | oracle | 97.93 ± 0.21 | 17.8 [17.4, 18.1] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+10.76 [+10.25, +11.27]** | **-346.9 [-361.2, -332.7]** | **-25.94 [-26.46, -25.41]** |
+> | olsr | **+10.16 [+9.60, +10.73]** | **+155.3 [+151.6, +159.1]** | **+5.04 [+4.90, +5.18]** |
+> | dsdv | **+13.74 [+12.99, +14.49]** | **-205.6 [-239.9, -171.3]** | **-4.51 [-4.63, -4.39]** |
+>
+> **RWP · Nakagami**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **91.90 ± 1.06** | 429.1 [389.1, 475.4] | 14.32 ± 0.53 |
+> | aodv | 74.31 ± 0.77 | 710.1 [688.8, 735.3] | 39.98 ± 0.97 |
+> | olsr | 85.72 ± 0.49 | 2039.8 [2035.3, 2044.5] | 2.17 ± 0.02 |
+> | dsdv | 72.35 ± 1.15 | 1848.2 [1691.5, 1974.7] | 13.82 ± 0.27 |
+> | oracle | 96.09 ± 0.47 | 2025.6 [2021.3, 2030.7] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+17.59 [+16.54, +18.64]** | **-281.1 [-327.5, -234.6]** | **-25.66 [-26.40, -24.92]** |
+> | olsr | **+6.18 [+5.27, +7.10]** | **-1610.7 [-1658.1, -1563.3]** | **+12.15 [+11.63, +12.67]** |
+> | dsdv | **+19.55 [+18.64, +20.45]** | **-1419.2 [-1558.6, -1279.7]** | **+0.50 [+0.06, +0.95]** |
+>
+> **steady-state RWP · two-ray**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **98.47 ± 0.23** | 170.8 [167.5, 174.2] | 6.78 ± 0.17 |
+> | aodv | 87.61 ± 0.65 | 544.0 [525.0, 563.9] | 32.85 ± 0.46 |
+> | olsr | 89.16 ± 0.71 | 20.9 [20.1, 21.9] | 1.99 ± 0.02 |
+> | dsdv | 86.06 ± 0.77 | 409.9 [365.1, 482.1] | 11.35 ± 0.11 |
+> | oracle | 98.02 ± 0.23 | 17.2 [16.9, 17.5] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+10.87 [+10.30, +11.44]** | **-373.3 [-395.6, -351.0]** | **-26.07 [-26.56, -25.58]** |
+> | olsr | **+9.31 [+8.70, +9.92]** | **+149.8 [+146.5, +153.2]** | **+4.80 [+4.64, +4.95]** |
+> | dsdv | **+12.41 [+11.73, +13.09]** | **-239.2 [-306.0, -172.4]** | **-4.56 [-4.68, -4.45]** |
+>
+> **steady-state RWP · Nakagami**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **90.66 ± 1.18** | 438.1 [388.3, 488.4] | 14.56 ± 0.66 |
+> | aodv | 73.20 ± 1.06 | 713.0 [691.6, 733.8] | 40.35 ± 0.98 |
+> | olsr | 84.90 ± 0.56 | 2041.8 [2036.9, 2046.5] | 2.18 ± 0.02 |
+> | dsdv | 71.94 ± 1.35 | 1887.5 [1743.6, 2009.9] | 13.87 ± 0.33 |
+> | oracle | 95.55 ± 0.48 | 2026.0 [2022.5, 2030.3] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+17.46 [+16.23, +18.69]** | **-275.0 [-326.7, -223.3]** | **-25.79 [-26.57, -25.00]** |
+> | olsr | **+5.76 [+4.73, +6.78]** | **-1603.7 [-1657.1, -1550.3]** | **+12.38 [+11.74, +13.03]** |
+> | dsdv | **+18.72 [+17.56, +19.88]** | **-1449.4 [-1579.5, -1319.3]** | **+0.69 [+0.18, +1.21]** |
+>
+> **Gauss-Markov · two-ray**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **97.11 ± 0.29** | 218.3 [211.4, 225.8] | 8.88 ± 0.27 |
+> | aodv | 85.84 ± 0.78 | 501.2 [488.9, 514.0] | 32.73 ± 0.60 |
+> | olsr | 82.31 ± 1.04 | 22.1 [21.2, 22.9] | 2.17 ± 0.03 |
+> | dsdv | 78.79 ± 1.12 | 389.6 [334.8, 469.2] | 12.52 ± 0.18 |
+> | oracle | 96.54 ± 0.38 | 19.4 [19.1, 19.9] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+11.28 [+10.64, +11.92]** | **-282.9 [-296.1, -269.7]** | **-23.86 [-24.36, -23.35]** |
+> | olsr | **+14.80 [+13.89, +15.72]** | **+196.2 [+188.5, +204.0]** | **+6.70 [+6.45, +6.95]** |
+> | dsdv | **+18.32 [+17.27, +19.38]** | **-171.3 [-248.9, -93.8]** | **-3.64 [-3.79, -3.49]** |
+>
+> **Gauss-Markov · Nakagami**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **86.86 ± 1.33** | 750.0 [669.5, 833.4] | 19.44 ± 1.31 |
+> | aodv | 65.83 ± 1.29 | 914.4 [878.0, 950.3] | 47.44 ± 1.46 |
+> | olsr | 78.28 ± 0.78 | 2057.0 [2050.3, 2064.4] | 2.39 ± 0.03 |
+> | dsdv | 63.48 ± 1.35 | 2039.5 [2032.0, 2047.5] | 15.98 ± 0.40 |
+> | oracle | 94.82 ± 0.42 | 2282.9 [2155.1, 2428.2] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+21.04 [+20.07, +22.00]** | **-164.3 [-232.2, -96.5]** | **-28.00 [-28.82, -27.19]** |
+> | olsr | **+8.57 [+7.58, +9.57]** | **-1307.0 [-1395.3, -1218.6]** | **+17.05 [+15.75, +18.35]** |
+> | dsdv | **+23.38 [+22.32, +24.45]** | **-1289.5 [-1376.0, -1203.0]** | **+3.46 [+2.33, +4.59]** |
+>
+> The blocks below are the dated v2.2.0 record (quiet mode off). Their baseline
+> rows are unchanged; where AntHocNet's numbers disagree with this block, this
+> block is current. Diagnostic tables below (drop causes, paths, handovers,
+> churn) describe the v2.2.0 runs.
+
 ## Restated on CBR sources (#521)
 
 > **All six cells were re-measured on constant-bit-rate sources.** Until
@@ -95,7 +211,7 @@ try:
 >
 > _Reproduce: `make reproduce FIG=grid` re-renders it from the committed data and diffs the PNG; `MODE=rerun NS3DIR=…` re-measures a cell first ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
 >
-> _Dots: mean of 20 seeds; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99); black tick: the oracle control, `approx=1` on these channels ([#431](https://github.com/danieljoppi/AntHocNet/issues/431): its delay99 is not a bound on Nakagami). DSDV is in the cells and tables, not plotted, to keep three series apart. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `grid-*-cbr521.txt`._
+> _Dots: mean of 20 seeds; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99); black tick: the oracle control, `approx=1` on these channels ([#431](https://github.com/danieljoppi/AntHocNet/issues/431): its delay99 is not a bound on Nakagami). DSDV is in the cells and tables, not plotted, to keep three series apart. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `grid-*-v230-published.txt`: the v2.3.0 generation, whose tables are in the block above._
 >
 > Cells: `results/cells/grid-<mobility>-<channel>-cbr521.txt`. Each marker carries
 > 20 rows per arm. Rows split by the workflow's interleaved `##RSS##` line

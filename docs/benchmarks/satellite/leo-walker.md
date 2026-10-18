@@ -78,6 +78,73 @@ OLSR runs on walker16 only. On S1's 1584 nodes its topology flooding is the
 practical limit of the harness, not of the substrate (ADR-0022, criterion 5):
 even the 256-node walker16 cell took 5 h 54 min of CI for 20 seeds.
 
+## Restated at v2.3.0 defaults (quiet mode on)
+
+> **Current numbers: v2.3.0 defaults.** v2.3.0 turns quiet mode on by
+> default ([#571](https://github.com/danieljoppi/AntHocNet/issues/571), the
+> [v2.3.0 campaign](../v2.3.0-campaign.md#results)). AntHocNet's rows below are the
+> campaign's `quiet` arm. Every baseline row is the campaign's `control`, and the
+> attribution control found those identical to the v2.2.0 corpus. 20 seeds,
+> paired per seed; a bold difference is one whose 95 % t-interval excludes zero.
+>
+> **Quiet mode's effect here**, paired against v2.2.0's AntHocNet: noise on PDR, delay99 and NRL on all three shells.
+>
+> **Provenance.** The campaign's runs at `main`, `54cdfae7..cc230126`. Cells:
+> the per-arm cells `results/cells/leo-<shell>-<arm>-v230.txt`, with AntHocNet from `leo-<shell>-anthocnet-v230-quiet.txt`. Tables recomputed from the cells' `##RUN##` rows (t-intervals; delay99 by
+> bootstrap). Stock AODV's rows are the v2.3.0 control's. On these multi-interface nodes they differ from v2.2.0's in iteration order only ([#362](https://github.com/danieljoppi/AntHocNet/issues/362), [#675](https://github.com/danieljoppi/AntHocNet/issues/675)), and the paired difference is within noise. The walker16 OLSR row is v2.2.0's cell (`leo-walker16-olsr-v220.txt`). Its v2.3.0 re-run exceeded the 6 h job limit twice at 20 seeds. OLSR is untouched by this release, and every other OLSR row the campaign re-ran is byte-identical to the corpus.
+>
+> **walker16**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **92.74 ± 0.39** | 141.6 [132.8, 150.9] | 97.66 ± 1.79 |
+> | aodv | 78.40 ± 2.14 | 125.0 [121.2, 128.9] | 91.57 ± 2.54 |
+> | olsr | 83.88 ± 0.53 | 124.7 [123.5, 125.8] | 306.59 ± 1.87 |
+> | geo-greedy | 41.35 ± 0.19 | 417.3 [396.9, 432.2] | 0.00 ± 0.00 |
+> | oracle | 98.35 ± 0.12 | 123.2 [123.0, 123.5] | 0.00 ± 0.00 |
+> | oracle-delay | 99.79 ± 0.03 | 103.2 [103.0, 103.6] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+14.34 [+12.11, +16.57]** | **+16.6 [+5.5, +27.6]** | **+6.10 [+2.99, +9.20]** |
+> | olsr | **+8.86 [+8.33, +9.38]** | **+16.9 [+6.9, +26.9]** | **-208.93 [-210.95, -206.91]** |
+> | geo-greedy | **+51.39 [+51.00, +51.78]** | **-275.8 [-298.3, -253.2]** | **+97.66 [+95.87, +99.45]** |
+>
+> **Starlink S1**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **79.34 ± 0.53** | 214.1 [207.7, 220.4] | 973.56 ± 30.75 |
+> | aodv | 52.77 ± 1.29 | 1653.0 [1428.8, 1855.0] | 877.62 ± 21.56 |
+> | geo-greedy | 3.81 ± 0.01 | 27.9 [27.0, 28.9] | 0.00 ± 0.00 |
+> | oracle | 95.27 ± 0.34 | 132.1 [132.0, 132.2] | 0.00 ± 0.00 |
+> | oracle-delay | 94.92 ± 0.22 | 117.5 [116.7, 118.5] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+26.57 [+25.09, +28.05]** | **-1438.9 [-1673.0, -1204.8]** | **+95.93 [+56.79, +135.08]** |
+> | geo-greedy | **+75.53 [+75.00, +76.06]** | **+186.2 [+178.7, +193.7]** | **+973.56 [+942.80, +1004.31]** |
+>
+> **Starlink S1 + 10 % mass failure**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **79.17 ± 0.97** | 209.5 [205.3, 214.2] | 934.18 ± 29.10 |
+> | aodv | 47.03 ± 1.94 | 1846.5 [1626.8, 2045.3] | 1002.21 ± 48.29 |
+> | geo-greedy | 3.60 ± 0.48 | 27.4 [26.6, 28.4] | 0.00 ± 0.00 |
+> | oracle | 95.08 ± 0.29 | 134.2 [133.2, 135.7] | 0.00 ± 0.00 |
+> | oracle-delay | 94.95 ± 0.26 | 126.8 [125.3, 128.4] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+32.14 [+30.21, +34.07]** | **-1637.0 [-1865.7, -1408.4]** | **-68.03 [-125.88, -10.18]** |
+> | geo-greedy | **+75.57 [+74.45, +76.69]** | **+182.1 [+176.9, +187.2]** | **+934.18 [+905.08, +963.28]** |
+>
+> The blocks below are the dated v2.2.0 record (quiet mode off). Their baseline
+> rows are unchanged; where AntHocNet's numbers disagree with this block, this
+> block is current. Diagnostic tables below (drop causes, paths, handovers,
+> churn) describe the v2.2.0 runs.
+
 ## Headline
 
 ![Moving LEO constellation: PDR, packets lost per scheduled handover and delay99 per arm, with the delay oracle as a reference line](../charts/constellation.png)

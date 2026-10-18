@@ -181,6 +181,66 @@ corner turns: on the `vanet-building` field with 10 vehicles it delivered
 measuring instrument, not a protocol under test, so this is not the
 per-family protocol default ADR-0019 forbids.
 
+## Restated at v2.3.0 defaults (quiet mode on)
+
+> **Current numbers: v2.3.0 defaults.** v2.3.0 turns quiet mode on by
+> default ([#571](https://github.com/danieljoppi/AntHocNet/issues/571), the
+> [v2.3.0 campaign](../v2.3.0-campaign.md#results)). AntHocNet's rows below are the
+> campaign's `quiet` arm. Every baseline row is the campaign's `control`, and the
+> attribution control found those identical to the v2.2.0 corpus. 20 seeds,
+> paired per seed; a bold difference is one whose 95 % t-interval excludes zero.
+>
+> **Quiet mode's effect here**, paired against v2.2.0's AntHocNet: noise on PDR, delay99 and NRL in both cells: corner breaks reset the back-off.
+>
+> **Provenance.** The campaign's runs at `main`, `54cdfae7..cc230126`. Cells:
+> `results/cells/<cell>-v230-published.txt`, composed by [`tools/bench/compose_cell.py`](https://github.com/danieljoppi/AntHocNet/blob/main/tools/bench/compose_cell.py) from the campaign's `<cell>-v230.txt` (control) and `<cell>-v230-quiet.txt`. Tables recomputed from the cells' `##RUN##` rows (t-intervals; delay99 by
+> bootstrap).
+>
+> **main (100 vehicles)**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **42.10 ± 0.66** | 1849.3 [1811.4, 1892.2] | 73.61 ± 1.94 |
+> | aodv | 42.26 ± 0.60 | 3748.5 [3706.7, 3793.4] | 60.45 ± 1.27 |
+> | aomdv | 18.87 ± 0.48 | 9028.1 [8982.8, 9073.8] | 73.60 ± 2.07 |
+> | olsr | 9.19 ± 0.38 | 183.8 [72.4, 314.6] | 11.23 ± 0.52 |
+> | dsdv | 11.81 ± 0.38 | 833.6 [796.5, 876.9] | 66.64 ± 2.48 |
+> | gpsr | 25.95 ± 0.50 | 764.0 [727.0, 803.3] | 5.39 ± 0.13 |
+> | oracle | 81.70 ± 0.45 | 609.0 [541.5, 669.6] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | -0.16 [-0.59, +0.26] | **-1899.2 [-1951.8, -1846.5]** | **+13.16 [+11.40, +14.91]** |
+> | aomdv | **+23.22 [+22.77, +23.67]** | **-7178.8 [-7250.0, -7107.5]** | +0.01 [-2.31, +2.33] |
+> | olsr | **+32.90 [+32.47, +33.33]** | **+1665.6 [+1539.5, +1791.7]** | **+62.37 [+60.62, +64.13]** |
+> | dsdv | **+30.28 [+29.83, +30.73]** | **+1015.8 [+940.6, +1090.9]** | **+6.97 [+4.59, +9.34]** |
+> | gpsr | **+16.14 [+15.77, +16.51]** | **+1085.3 [+1023.2, +1147.5]** | **+68.21 [+66.33, +70.10]** |
+>
+> **sparse (40 vehicles)**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **23.93 ± 0.59** | 649.5 [608.6, 690.1] | 27.19 ± 0.91 |
+> | aodv | 23.79 ± 0.65 | 8583.1 [8490.3, 8674.6] | 7.06 ± 0.19 |
+> | aomdv | 18.09 ± 0.52 | 9301.6 [9257.5, 9346.6] | 10.39 ± 0.30 |
+> | olsr | 8.68 ± 0.39 | 15.6 [14.6, 16.6] | 4.19 ± 0.19 |
+> | dsdv | 10.90 ± 0.45 | 69.4 [41.8, 119.2] | 8.71 ± 0.36 |
+> | gpsr | 16.29 ± 0.46 | 1712.2 [1586.1, 1846.3] | 3.44 ± 0.10 |
+> | oracle | 30.79 ± 0.52 | 26.3 [25.7, 26.9] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | +0.15 [-0.18, +0.47] | **-7933.6 [-8050.3, -7816.9]** | **+20.13 [+19.35, +20.90]** |
+> | aomdv | **+5.85 [+5.46, +6.23]** | **-8652.0 [-8717.7, -8586.4]** | **+16.80 [+16.11, +17.49]** |
+> | olsr | **+15.25 [+14.86, +15.64]** | **+634.0 [+589.4, +678.6]** | **+23.00 [+22.23, +23.78]** |
+> | dsdv | **+13.04 [+12.73, +13.35]** | **+580.1 [+521.3, +639.0]** | **+18.49 [+17.82, +19.15]** |
+> | gpsr | **+7.64 [+7.36, +7.92]** | **-1062.7 [-1194.3, -931.1]** | **+23.75 [+22.92, +24.58]** |
+>
+> The blocks below are the dated v2.2.0 record (quiet mode off). Their baseline
+> rows are unchanged; where AntHocNet's numbers disagree with this block, this
+> block is current. Diagnostic tables below (drop causes, paths, handovers,
+> churn) describe the v2.2.0 runs.
+
 ## Results
 
 **Provenance.** `paper-benchmark.yml` at `main` @ `1a923576` (the #536
@@ -221,7 +281,7 @@ and is now scoped, with its evidence:
 
 _Reproduce: `make reproduce FIG=family-vanet` re-renders it from the committed data and diffs the PNG; `MODE=rerun NS3DIR=…` re-measures a cell first ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
 
-_Bars: mean of 20 seeds per arm, AntHocNet highlighted; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99). The vertical line is the oracle control (not drawn for NRL, where it is 0 by construction). Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `vanet-{main,sparse}.txt`; the tables below carry every value._
+_Bars: mean of 20 seeds per arm, AntHocNet highlighted; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99). The vertical line is the oracle control (not drawn for NRL, where it is 0 by construction). Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `vanet-{main,sparse}-v230-published.txt`: the v2.3.0 generation, whose tables are in the block above. The tables below are the dated v2.2.0 record._
 
 Means ± 95 % t-CI half-width over 20 seeds; paired deltas are per seed
 (t-CI, Wilcoxon p). Energy is per delivered bit.
@@ -371,7 +431,10 @@ below is on CBR sources (#521) with OLSR's PDR offered-based (#510):
 [MANET grid](../grid.md#restated-on-cbr-sources-521) (six cells),
 [static mesh](../static-mesh.md#restated-on-cbr-sources-521),
 [FANET](fanet.md#restated-on-cbr-sources-521) (main cell) and this page's
-VANET main cell.
+VANET main cell. Since v2.3.0 the chart draws the v2.3.0 generation (quiet
+mode on, each page's "Restated at v2.3.0 defaults" block). AntHocNet − AODV
+moved materially only on the static mesh's NRL (−13.03 → −13.42), and no
+sign or ranking below changes.
 
 ![AntHocNet minus AODV, paired per seed, across eleven cells in four families: delivery gains on every MANET, static-mesh and FANET cell and a tie on both VANET cells; delay99 lower in every cell; NRL lower on MANET and static mesh, near zero on FANET main, higher on FANET sparse and both VANET cells](../charts/families-vs-aodv.png)
 

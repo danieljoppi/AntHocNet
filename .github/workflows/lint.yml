@@ -70,6 +70,11 @@ jobs:
         # throttle, the resume and the collected file names are tested with
         # no network, in ~1 s.
         run: python3 tools/bench/test_campaign.py
+      - name: Cell-composer self-test (v2.3.0)
+        # compose_cell.py builds the published cells when a campaign moves one
+        # protocol's default: the control's baselines plus the arm's rows for
+        # that protocol. The family pages' numbers come from its output.
+        run: python3 tools/bench/test_compose_cell.py
       - name: Every published figure has a reproduce entry (#621)
         # results/figures.yml must cover every PNG under docs/benchmarks/, and
         # each entry's data and re-run cells must exist. The byte-identical

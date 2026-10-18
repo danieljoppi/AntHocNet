@@ -118,6 +118,62 @@ with only the field shrunk, and route only stock AODV and the oracle control.
 | `fanet-single-hop-3d` | 10 nodes, 100 m cube, 350 m | the 173 m diagonal keeps every pair in range, so every flow is one hop: **PDR ≈ 100 %** and oracle **hopsMean = 1.00** exactly | AODV 100.0 %, oracle 100.0 %, hopsMean 1.00 | 3-D placement, mobility and channel deliver at all |
 | `fanet-vertical-3d` | 10 nodes, 10 × 10 × 1000 m column, 350 m | planar distances are all < 15 m, so a field flattened to 2-D reads hopsMean = 1.00; with altitude honoured, pairs > 350 m apart need relays: **hopsMean > 1.2** | AODV 98.9 %, oracle 98.9 % (98.6 % at the pre-#506 1 s recompute), hopsMean 1.90 | the third dimension is real end to end |
 
+## Restated at v2.3.0 defaults (quiet mode on)
+
+> **Current numbers: v2.3.0 defaults.** v2.3.0 turns quiet mode on by
+> default ([#571](https://github.com/danieljoppi/AntHocNet/issues/571), the
+> [v2.3.0 campaign](../v2.3.0-campaign.md#results)). AntHocNet's rows below are the
+> campaign's `quiet` arm. Every baseline row is the campaign's `control`, and the
+> attribution control found those identical to the v2.2.0 corpus. 20 seeds,
+> paired per seed; a bold difference is one whose 95 % t-interval excludes zero.
+>
+> **Quiet mode's effect here**, paired against v2.2.0's AntHocNet: noise on PDR, delay99 and NRL in both cells: the swarm's routes change before the back-off grows.
+>
+> **Provenance.** The campaign's runs at `main`, `54cdfae7..cc230126`. Cells:
+> `results/cells/<cell>-v230-published.txt`, composed by [`tools/bench/compose_cell.py`](https://github.com/danieljoppi/AntHocNet/blob/main/tools/bench/compose_cell.py) from the campaign's `<cell>-v230.txt` (control) and `<cell>-v230-quiet.txt`. Tables recomputed from the cells' `##RUN##` rows (t-intervals; delay99 by
+> bootstrap).
+>
+> **main (range 350 m)**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **94.47 ± 0.42** | 208.8 [203.7, 214.3] | 3.69 ± 0.10 |
+> | aodv | 86.11 ± 1.01 | 500.8 [354.6, 669.5] | 4.07 ± 0.09 |
+> | aomdv | 46.23 ± 0.97 | 7981.4 [7878.5, 8081.5] | 6.63 ± 0.23 |
+> | olsr | 47.86 ± 1.05 | 31.1 [28.8, 33.9] | 1.35 ± 0.03 |
+> | dsdv | 42.40 ± 0.95 | 45.0 [41.4, 48.7] | 3.63 ± 0.10 |
+> | oracle | 96.88 ± 0.42 | 16.0 [15.4, 16.6] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+8.35 [+7.47, +9.24]** | **-292.0 [-463.7, -120.3]** | **-0.37 [-0.44, -0.31]** |
+> | aomdv | **+48.24 [+47.23, +49.24]** | **-7772.6 [-7884.7, -7660.6]** | **-2.94 [-3.15, -2.73]** |
+> | olsr | **+46.60 [+45.69, +47.51]** | **+177.6 [+171.3, +183.9]** | **+2.34 [+2.26, +2.42]** |
+> | dsdv | **+52.06 [+51.14, +52.98]** | **+163.8 [+156.3, +171.3]** | +0.06 [-0.05, +0.17] |
+>
+> **sparse (range 250 m)**
+>
+> | protocol | PDR % | delay99 (ms, bootstrap) | NRL |
+> |---|---:|---:|---:|
+> | **anthocnet** | **52.57 ± 1.69** | 292.3 [285.4, 299.9] | 10.76 ± 0.48 |
+> | aodv | 50.05 ± 1.80 | 4962.5 [4616.9, 5377.5] | 4.60 ± 0.11 |
+> | aomdv | 25.57 ± 0.82 | 8666.4 [8574.1, 8758.2] | 9.00 ± 0.29 |
+> | olsr | 16.57 ± 0.77 | 19.6 [17.6, 22.2] | 3.59 ± 0.16 |
+> | dsdv | 17.79 ± 0.79 | 39.0 [35.2, 43.5] | 6.33 ± 0.27 |
+> | oracle | 60.27 ± 1.85 | 21.3 [20.7, 21.9] | 0.00 ± 0.00 |
+>
+> | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
+> |---|---:|---:|---:|
+> | aodv | **+2.52 [+1.80, +3.23]** | **-4670.2 [-5089.3, -4251.1]** | **+6.16 [+5.74, +6.57]** |
+> | aomdv | **+26.99 [+25.81, +28.18]** | **-8374.1 [-8472.0, -8276.2]** | **+1.76 [+1.28, +2.24]** |
+> | olsr | **+36.01 [+34.76, +37.25]** | **+272.6 [+264.6, +280.7]** | **+7.17 [+6.79, +7.55]** |
+> | dsdv | **+34.79 [+33.45, +36.12]** | **+253.2 [+243.4, +263.1]** | **+4.44 [+4.03, +4.85]** |
+>
+> The blocks below are the dated v2.2.0 record (quiet mode off). Their baseline
+> rows are unchanged; where AntHocNet's numbers disagree with this block, this
+> block is current. Diagnostic tables below (drop causes, paths, handovers,
+> churn) describe the v2.2.0 runs.
+
 ## Results
 
 20 seeds per cell, 900 s, image `3.42-opt`. **Six arms** run on identical
@@ -186,7 +242,7 @@ independent evidence.
 >
 > _Reproduce: `make reproduce FIG=family-fanet` re-renders it from the committed data and diffs the PNG; `MODE=rerun NS3DIR=…` re-measures a cell first ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
 >
-> _Bars: mean of 20 seeds, AntHocNet highlighted; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99); vertical line: the oracle control. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `fanet-{main,sparse}-cbr521.txt`._
+> _Bars: mean of 20 seeds, AntHocNet highlighted; whiskers: 95 % CI (t for PDR and NRL, bootstrap for delay99); vertical line: the oracle control. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells `fanet-{main,sparse}-v230-published.txt`: the v2.3.0 generation, whose tables are in the block above._
 >
 > **Main cell:**
 >
