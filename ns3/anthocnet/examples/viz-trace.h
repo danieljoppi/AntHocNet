@@ -90,6 +90,11 @@ public:
     /// The run's own books, after the harness computed its PDR.
     void Finish(uint64_t tx, uint64_t rx, double pdr) {
         if (!Active()) return;
+        // The sample due at the stop time never fires (Simulator::Stop runs
+        // first), so the last scheduled step is one interval short and misses
+        // that interval's deliveries. Write the closing step from the final
+        // counters, so the last step and the end books agree.
+        if (m_lastT < m_stop - 1e-9) WriteStep(m_stop);
         m_out << "{\"kind\":\"end\",\"tx\":" << tx << ",\"rx\":" << rx << ",\"pdr\":" << pdr
               << "}\n";
         m_out.close();
@@ -108,6 +113,13 @@ private:
 
     void Sample() {
         const double now = Simulator::Now().GetSeconds();
+        WriteStep(now);
+        if (now + m_step <= m_stop + 1e-9)
+            Simulator::Schedule(Seconds(m_step), &VizTrace::Sample, this);
+    }
+
+    void WriteStep(double now) {
+        m_lastT = now;
         m_out << "{\"t\":" << now;
         // Positions, if the nodes move at all.
         bool any = false;
@@ -169,8 +181,6 @@ private:
             m_out << "]}";
         }
         m_out << "]}\n";
-        if (now + m_step <= m_stop + 1e-9)
-            Simulator::Schedule(Seconds(m_step), &VizTrace::Sample, this);
     }
 
     std::ofstream m_out;
@@ -182,6 +192,7 @@ private:
     std::map<uint32_t, uint32_t> m_index;
     std::vector<Ptr<anthocnet::RoutingProtocol>> m_rp;
     uint64_t m_ants = 0;
+    double m_lastT = 0.0;
     bool m_done = false;
 };
 
