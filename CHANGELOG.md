@@ -8,6 +8,26 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v2.3.0 (2026-10-18)
+
+### Feat
+
+- **core**: quiet mode on by default, as the v2.3.0 campaign decided (#697)
+- v2.3.0 packaging, reproducibility and the ns-3 replay (#687)
+- **web**: upgrades screen and the classroom pack (#686)
+- **web**: campaign chapters 3-5 — city streets, forest, orbit (#685)
+- **protocol**: v2.3.0's six regime-gated mechanisms, default off, and their pre-registered campaign (#684)
+- **core**: kinematics port, shared on hellos behind a default-off gate (#682)
+- **bench**: campaign tool, attribution control and a preflight that passes the corpus (#680)
+
+### Fix
+
+- **replay**: close the trace with a step at the stop time (#692)
+
+### Perf
+
+- **core**: encode an ant in one pass and weigh each next hop once (#683)
+
 ## v2.2.0 (2026-10-16)
 
 ### Feat
