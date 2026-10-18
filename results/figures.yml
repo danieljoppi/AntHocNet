@@ -91,7 +91,7 @@ figures:
     image: docs/benchmarks/charts/constellation.png
     page: docs/benchmarks/satellite/leo-walker.md
     render: family-charts
-    data: ["results/cells/leo-walker16-*-v230*.txt", "results/cells/leo-starlink1-*-v230*.txt", results/cells/leo-walker16-olsr-v220.txt]
+    data: ["results/cells/leo-walker16-*-v230*.txt", "results/cells/leo-starlink1-*-v230*.txt"]
     rerun:
       # ns-3.48 only (leo-walker needs it), one arm per dispatch (#362).
       # Shown for walker16's AntHocNet arm; the other arms swap --protocols,

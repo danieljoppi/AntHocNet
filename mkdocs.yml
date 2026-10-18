@@ -175,6 +175,7 @@ nav:
           - adr/0023-one-core-one-simulator-adapter.md
           - adr/0024-per-neighbour-link-quality-port.md
           - adr/0025-kinematics-port-absent-when-unknown.md
+          - adr/0026-baselines-are-family-native.md
       - Handoffs:
           - handoffs/2026-06-28-detector-d-link-failure.md
           - handoffs/2026-08-15-ns3-dsdv-null-route-upstream.md

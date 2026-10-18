@@ -119,17 +119,14 @@ SAT_CORRIDOR = "sat-corridor-app517.txt"
 LEO_CELLS = [("walker16", "16 × 16 Walker\n1150 km"),
              ("starlink1", "Starlink S1\n72 × 22, 550 km"),
              ("starlink1-storm", "Starlink S1\n+ 10 % mass failure")]
-LEO_ARMS = ["anthocnet", "aodv", "olsr", "geo-greedy"]
+LEO_ARMS = ["anthocnet", "aodv", "geo-greedy"]
 
 
 def leo_file(cell, arm):
     """The v2.3.0 generation's file for one LEO arm: AntHocNet from the quiet
-    arm; walker16's OLSR is v2.2.0's cell (its v2.3.0 re-run exceeded the
-    6 h job limit; OLSR is unchanged by the release)."""
+    arm. OLSR is retired as a LEO arm from v2.3.0 (#707 takes its slot)."""
     if arm == "anthocnet":
         return f"leo-{cell}-anthocnet-v230-quiet.txt"
-    if cell == "walker16" and arm == "olsr":
-        return "leo-walker16-olsr-v220.txt"
     return f"leo-{cell}-{arm}-v230.txt"
 LEO_CALIB = "leo-hypatia-calib-oracle-delay.txt"
 # Hypatia (Kassing et al., IMC 2020, Fig. 13): Starlink S1, Paris-Luanda RTT
