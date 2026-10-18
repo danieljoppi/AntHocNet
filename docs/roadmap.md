@@ -255,7 +255,7 @@ published page:
 |---|---|---|---|
 | VANET reconvergence | 36 % of traffic lost; the oracle delivers 81.7 % vs AntHocNet's 42.1 % | [vanet.md](benchmarks/scenarios/vanet.md) | v2.2.0 (#537: measured; the knobs recover up to +5.3 pp but none is safe as a default), v2.3.0 (link lifetime) |
 | path length on LEO shells | 15.5 pp under the delay oracle on S1, 7.0 pp on walker16 | [leo-walker.md](benchmarks/satellite/leo-walker.md) | v2.3.0 (#205, #204) |
-| static mesh overhead | OLSR 99.82 % PDR at NRL 1.78 vs AntHocNet 99.34 % at 4.51 | [static-mesh.md](benchmarks/static-mesh.md) | v2.3.0 (quiet mode) |
+| static mesh overhead | OLSR 99.82 % PDR at NRL 1.78 vs AntHocNet 99.34 % at 4.51 | [static-mesh.md](benchmarks/static-mesh.md) | v2.3.0: quiet mode on by default, NRL 4.51 → 4.11 (−8.6 %) at the same PDR ([campaign](benchmarks/v2.3.0-campaign.md#results)); the rest of the gap is hellos and capped probing |
 | re-injection waste | ~65–67 % of re-injections are duplicates | [reinjection.md](benchmarks/reinjection.md) | unscheduled ([#430](https://github.com/danieljoppi/AntHocNet/issues/430)) |
 | fidelity: link metric | thesis headline results use SINR; this repo does not | [fidelity.md](fidelity.md) | v2.2.0 (#181: SINR implemented and measured; −1.6 pp on urban VANET, so `classic` stays the default) |
 

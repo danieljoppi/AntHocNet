@@ -50,7 +50,7 @@ for (const level of LEVELS) {
 // its metric found (applyUpgrades throws otherwise). Whether it changes the
 // level that earns it is reported, not required: on a one-path level a
 // mechanism that ranks next hops has nothing to rank.
-const KEYS = { quiet: ['enableQuietMode'], lookahead: ['shareKinematics', 'enableLinkLifetime'], longhaul: ['hopTimeSec'], battery: [] };
+const KEYS = { lookahead: ['shareKinematics', 'enableLinkLifetime'], longhaul: ['hopTimeSec'], battery: [] };
 for (const u of UPGRADES) {
   const level = LEVELS.find((l) => l.id === u.unlock);
   const play = (ups) => {

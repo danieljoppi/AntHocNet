@@ -232,8 +232,10 @@ struct Config {
     /// min(quietMaxBackoff, quietBackoffFactor^stable) rounds. A changed best
     /// hop, a pheromone outside the tolerance, a lost neighbour or a new one
     /// resets the destination (or, for neighbour events, every destination)
-    /// to one ant per round. Default off: byte-identical when off.
-    bool enableQuietMode = false;
+    /// to one ant per round. Default on since v2.3.0: the campaign found no
+    /// regression in any cell and NRL -8.6 % on the static mesh
+    /// (docs/benchmarks/v2.3.0-campaign.md). Off reproduces v2.2.0.
+    bool enableQuietMode = true;
     /// Relative pheromone change that still counts as "the same route".
     /// `repo choice`.
     double quietTolerance = 0.2;

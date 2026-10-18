@@ -4,7 +4,7 @@
 // #571 quiet mode: a destination whose best next hop and pheromone do not
 // change backs its proactive ants off geometrically, up to a cap; a route
 // change, a lost neighbour or a new one wakes it; with the gate off every
-// round sends, exactly as before.
+// round sends, exactly as before. Since v2.3.0 the gate is on by default.
 #include <vector>
 
 #include "anthocnet/core/ant_router_logic.h"
@@ -37,6 +37,9 @@ std::vector<int> pattern(AntRouterLogic& r, int rounds) {
 int main() {
     FakeClock clock;
     ScriptedRng rng({0.5});
+
+    // 0. The shipped default is on (v2.3.0 campaign, #571).
+    CHECK(Config{}.enableQuietMode);
 
     // 1. Gate off: one ant every round.
     {

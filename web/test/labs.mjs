@@ -81,12 +81,13 @@ function claim(lab, text, ok, detail) {
   claim(1, 'proactive ants cost transmissions', on.ants > off.ants, `${on.ants} vs ${off.ants}`);
 }
 
-// Lab 2: overhead on a static mesh (mesh, seed 8, 120 s) -- quiet mode via the bench.
+// Lab 2: overhead on a static mesh (mesh, seed 8, 120 s) -- quiet mode is the
+// default since v2.3.0 (#571); the bench switches it off to see what it saves.
 {
-  const base = run('mesh', 8, 120), quiet = run('mesh', 8, 120, { enableQuietMode: 1 });
-  claim(2, 'quiet mode spends fewer ants per delivered packet', quiet.antsPerPkt < base.antsPerPkt,
-    `ants/packet ${base.antsPerPkt.toFixed(2)} -> ${quiet.antsPerPkt.toFixed(2)}; PDR ${pct(base.pdr)} -> ${pct(quiet.pdr)}`);
-  claim(2, 'quiet mode keeps delivery within 2 points', quiet.pdr >= base.pdr - 0.02, `${pct(base.pdr)} -> ${pct(quiet.pdr)}`);
+  const base = run('mesh', 8, 120), loud = run('mesh', 8, 120, { enableQuietMode: 0 });
+  claim(2, 'quiet mode (the default) spends fewer ants per delivered packet than with it off', base.antsPerPkt < loud.antsPerPkt,
+    `ants/packet off ${loud.antsPerPkt.toFixed(2)} -> default ${base.antsPerPkt.toFixed(2)}; PDR ${pct(loud.pdr)} -> ${pct(base.pdr)}`);
+  claim(2, 'quiet mode keeps delivery within 2 points', base.pdr >= loud.pdr - 0.02, `${pct(loud.pdr)} -> ${pct(base.pdr)}`);
 }
 
 // Lab 3: VANET reconvergence (campaign 3.4: sixteen cars, ten park at 60 s).
