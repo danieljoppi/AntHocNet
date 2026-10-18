@@ -60,8 +60,18 @@ Arms:
 
 - **anthocnet** — this repository, defaults.
 - **aodv** — stock ns-3 AODV, the reactive baseline every other suite uses.
-- **olsr** — stock ns-3 OLSR, the proactive link-state baseline. walker16
-  only (see below).
+  A MANET protocol here, so it leaves the LEO cells from the next campaign
+  ([ADR-0026](../../adr/0026-baselines-are-family-native.md)); its v2.3.0 rows
+  stay as measured.
+- **olsr** — *retired from v2.3.0 on.* Stock ns-3 OLSR, the proactive
+  link-state baseline, ran on walker16 only; its v2.2.0 measurement is kept
+  in the dated tables below. It was a terrestrial sanity row, which AODV and
+  the two oracles already provide
+  ([satellite-routing-prior-art.md §2.2](../../satellite-routing-prior-art.md)),
+  and at 20 seeds its walker16 run no longer fits the 6 h job limit. The
+  proactive link-state slot goes to the comparator the field actually
+  proposes: predictability-aware link state (OPSPF,
+  [#707](https://github.com/danieljoppi/AntHocNet/issues/707)).
 - **geo-greedy** — an *idealised* greedy geographic comparator: each hop goes
   to the neighbour nearest the destination's serving satellite, with perfect
   global position knowledge and no control traffic. It stands for the
@@ -74,9 +84,10 @@ Arms:
   follows `--delayUpdate`) and every 1 s on S1 to keep CI time bounded. This
   is the latency bound, and the Hypatia-style control.
 
-OLSR runs on walker16 only. On S1's 1584 nodes its topology flooding is the
-practical limit of the harness, not of the substrate (ADR-0022, criterion 5):
-even the 256-node walker16 cell took 5 h 54 min of CI for 20 seeds.
+OLSR ran on walker16 only, through v2.2.0. On S1's 1584 nodes its topology
+flooding is the practical limit of the harness, not of the substrate
+(ADR-0022, criterion 5): even the 256-node walker16 cell took 5 h 54 min of
+CI for 20 seeds, and its v2.3.0 re-run exceeded the 6 h limit twice.
 
 ## Restated at v2.3.0 defaults (quiet mode on)
 
@@ -91,7 +102,7 @@ even the 256-node walker16 cell took 5 h 54 min of CI for 20 seeds.
 >
 > **Provenance.** The campaign's runs at `main`, `54cdfae7..cc230126`. Cells:
 > the per-arm cells `results/cells/leo-<shell>-<arm>-v230.txt`, with AntHocNet from `leo-<shell>-anthocnet-v230-quiet.txt`. Tables recomputed from the cells' `##RUN##` rows (t-intervals; delay99 by
-> bootstrap). Stock AODV's rows are the v2.3.0 control's. On these multi-interface nodes they differ from v2.2.0's in iteration order only ([#362](https://github.com/danieljoppi/AntHocNet/issues/362), [#675](https://github.com/danieljoppi/AntHocNet/issues/675)), and the paired difference is within noise. The walker16 OLSR row is v2.2.0's cell (`leo-walker16-olsr-v220.txt`). Its v2.3.0 re-run exceeded the 6 h job limit twice at 20 seeds. OLSR is untouched by this release, and every other OLSR row the campaign re-ran is byte-identical to the corpus.
+> bootstrap). Stock AODV's rows are the v2.3.0 control's. On these multi-interface nodes they differ from v2.2.0's in iteration order only ([#362](https://github.com/danieljoppi/AntHocNet/issues/362), [#675](https://github.com/danieljoppi/AntHocNet/issues/675)), and the paired difference is within noise. OLSR is no longer a LEO arm (decision 2026-10-18, see the arm list); its last measurement, v2.2.0's walker16 cell, stays in the dated tables below.
 >
 > **walker16**
 >
@@ -99,7 +110,6 @@ even the 256-node walker16 cell took 5 h 54 min of CI for 20 seeds.
 > |---|---:|---:|---:|
 > | **anthocnet** | **92.74 ± 0.39** | 141.6 [132.8, 150.9] | 97.66 ± 1.79 |
 > | aodv | 78.40 ± 2.14 | 125.0 [121.2, 128.9] | 91.57 ± 2.54 |
-> | olsr | 83.88 ± 0.53 | 124.7 [123.5, 125.8] | 306.59 ± 1.87 |
 > | geo-greedy | 41.35 ± 0.19 | 417.3 [396.9, 432.2] | 0.00 ± 0.00 |
 > | oracle | 98.35 ± 0.12 | 123.2 [123.0, 123.5] | 0.00 ± 0.00 |
 > | oracle-delay | 99.79 ± 0.03 | 103.2 [103.0, 103.6] | 0.00 ± 0.00 |
@@ -107,7 +117,6 @@ even the 256-node walker16 cell took 5 h 54 min of CI for 20 seeds.
 > | AntHocNet minus | ΔPDR (pp) | Δdelay99 (ms) | ΔNRL |
 > |---|---:|---:|---:|
 > | aodv | **+14.34 [+12.11, +16.57]** | **+16.6 [+5.5, +27.6]** | **+6.10 [+2.99, +9.20]** |
-> | olsr | **+8.86 [+8.33, +9.38]** | **+16.9 [+6.9, +26.9]** | **-208.93 [-210.95, -206.91]** |
 > | geo-greedy | **+51.39 [+51.00, +51.78]** | **-275.8 [-298.3, -253.2]** | **+97.66 [+95.87, +99.45]** |
 >
 > **Starlink S1**
@@ -435,9 +444,11 @@ on this page.
 - **10 Mbps links, 2 kbit/s flows.** The load is light on purpose — this is a
   reachability-under-motion test, not a capacity one. Congestion on ISLs is
   [#206](https://github.com/danieljoppi/AntHocNet/issues/206)'s question.
-- **No OLSR on S1.** Proactive link-state flooding on 1584 nodes exceeds the
-  CI budget; it is measured on walker16 only, where 20 seeds already took
-  5 h 54 min.
+- **No OLSR from v2.3.0, and never on S1.** Proactive link-state flooding on
+  1584 nodes exceeds the CI budget; walker16 alone took 5 h 54 min for 20
+  seeds in v2.2.0 and exceeded 6 h in v2.3.0. The arm is retired; OPSPF
+  ([#707](https://github.com/danieljoppi/AntHocNet/issues/707)) is the
+  link-state comparator to add.
 
 ## Reproduce
 

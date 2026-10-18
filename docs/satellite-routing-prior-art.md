@@ -103,7 +103,11 @@ Two things follow, and both change #216:
    a constellation. Comparing AntHocNet only against them on an ISL grid would
    be a strawman, and a reviewer would say so. They stay useful as a *sanity*
    row — "here is what a naive terrestrial protocol does here" — never as the
-   claim.
+   claim. Since [ADR-0026](adr/0026-baselines-are-family-native.md) they leave
+   the satellite cells from the next campaign: geo-greedy and the oracles
+   cover the naive and the ideal case, and OPSPF
+   ([#707](https://github.com/danieljoppi/AntHocNet/issues/707)) takes the
+   link-state slot.
 2. **The realistic incumbent is predictability-aware link state, not just
    "precomputed shortest path".** OPSPF is the sharper control: it is what the
    field proposes *because* plain OSPF reconverges badly, so beating a
