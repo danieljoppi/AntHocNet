@@ -1286,22 +1286,22 @@
     "quiet": {
       "name": "Modo silencioso",
       "what": "As formigas proativas recuam enquanto uma rota não muda, e voltam quando ela muda.",
-      "measured": "A campanha da v2.3.0 mede a melhoria em cada família de rede; o resultado aparece aqui quando a campanha terminar."
+      "measured": "Malha estática: 0,40 pacote de controle a menos por pacote entregue (NRL), com a mesma entrega; grade de ISL de satélite: 0,04 a 0,11 a menos. Em redes que se movem as rotas nunca ficam paradas o bastante para ele agir: nenhum efeito mensurável."
     },
     "lookahead": {
       "name": "Antecipação",
       "what": "Os hellos levam posição e velocidade; um próximo salto cujo enlace está para cair vale menos.",
-      "measured": "A campanha da v2.3.0 mede a melhoria em cada família de rede; o resultado aparece aqui quando a campanha terminar."
+      "measured": "Grade Wi-Fi móvel com desvanecimento (Nakagami): +2,1 a +3,9 pp de entrega e atraso no percentil 99 de 160 a 215 ms menor. Ruas da cidade (VANET), seu alvo: nenhum ganho e um pouco mais de overhead. Constelação Starlink: 0,5 pp a menos de entrega."
     },
     "battery": {
       "name": "Poupa-bateria",
       "what": "Saltos por nós com pouca bateria custam mais, então as rotas desviam dos drones cansados.",
-      "measured": "A campanha da v2.3.0 mede a melhoria em cada família de rede; o resultado aparece aqui quando a campanha terminar."
+      "measured": "Com baterias cheias todo salto custa quase o mesmo, e a métrica custa atraso: até +1 s no percentil 99 na VANET, com 1,5 pp a menos de entrega ali. Redes limitadas por bateria, onde ela deveria compensar, ainda não foram medidas."
     },
     "longhaul": {
       "name": "Tempo de longa distância",
       "what": "O tempo de salto é o atraso real de propagação entre satélites, não os 3 ms de um salto Wi-Fi.",
-      "measured": "A campanha da v2.3.0 mede a melhoria em cada família de rede; o resultado aparece aqui quando a campanha terminar."
+      "measured": "Nenhuma diferença mensurável nas células de satélite: entrega, atraso e overhead todos dentro do ruído."
     }
   },
   "replay": {

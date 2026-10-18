@@ -1,0 +1,669 @@
+# v230 campaign sat-corridor-v230-evap: 1 run(s): 39102410244 (evap/sat-corridor); ref main
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+# pher anthocnet seed=1 t=15.5000 eastR=4.2545 eastV=9.0892 westR=9.0293 westV=18.1013
+# pher anthocnet seed=1 t=45.5000 eastR=0.1805 eastV=1.0569 westR=21.7800 westV=26.8565
+# pher anthocnet seed=1 t=75.5000 eastR=0.0126 eastV=0.0779 westR=24.1546 westV=26.9596
+# pher anthocnet seed=1 t=105.5000 eastR=0.0009 eastV=0.0051 westR=24.3608 westV=27.7334
+# pher anthocnet seed=1 t=135.5000 eastR=0.0001 eastV=0.0004 westR=22.3030 westV=27.1426
+# pher anthocnet seed=1 t=165.5000 eastR=0.0000 eastV=0.0000 westR=22.5259 westV=26.9781
+# pher anthocnet seed=1 t=195.5000 eastR=0.0000 eastV=0.0000 westR=20.7262 westV=24.2114
+# pher anthocnet seed=1 t=225.5000 eastR=0.0000 eastV=0.0000 westR=22.2460 westV=25.7555
+# pher anthocnet seed=1 t=255.5000 eastR=0.0000 eastV=0.0000 westR=22.1630 westV=24.9281
+# pher anthocnet seed=1 t=285.5000 eastR=0.0000 eastV=0.0000 westR=22.3523 westV=25.2805
+# pher anthocnet seed=1 t=315.5000 eastR=0.0000 eastV=0.0000 westR=22.2623 westV=26.4319
+# pher anthocnet seed=1 t=345.5000 eastR=0.0000 eastV=0.0000 westR=24.2337 westV=27.1097
+# pher anthocnet seed=1 t=375.5000 eastR=0.0000 eastV=0.0000 westR=24.3202 westV=27.0797
+# pher anthocnet seed=1 t=405.5000 eastR=0.0000 eastV=0.0000 westR=24.2327 westV=27.0672
+# pher anthocnet seed=1 t=435.5000 eastR=0.0000 eastV=0.0000 westR=24.3075 westV=27.5281
+# pher anthocnet seed=1 t=465.5000 eastR=0.0000 eastV=0.0000 westR=24.3168 westV=27.2849
+# pher anthocnet seed=1 t=495.5000 eastR=0.0000 eastV=0.0000 westR=24.1987 westV=27.7612
+# pher anthocnet seed=1 t=525.5000 eastR=0.0000 eastV=0.0000 westR=24.5090 westV=27.2868
+# pher anthocnet seed=1 t=555.5000 eastR=0.0000 eastV=0.0000 westR=24.6188 westV=27.8783
+# pher anthocnet seed=1 t=585.5000 eastR=0.0000 eastV=0.0000 westR=24.3499 westV=27.9543
+# pher anthocnet seed=1 t=615.5000 eastR=0.0000 eastV=0.0000 westR=24.4224 westV=25.6152
+# pher anthocnet seed=1 t=645.5000 eastR=0.0000 eastV=0.0000 westR=22.7717 westV=25.4140
+# pher anthocnet seed=1 t=675.5000 eastR=0.0000 eastV=0.0000 westR=22.7664 westV=25.6355
+# pher anthocnet seed=1 t=705.5000 eastR=0.0000 eastV=0.0000 westR=24.4301 westV=27.2930
+# pher anthocnet seed=1 t=735.5000 eastR=0.0000 eastV=0.0000 westR=22.1291 westV=26.9215
+# pher anthocnet seed=1 t=765.5000 eastR=0.0000 eastV=0.0000 westR=20.3945 westV=24.3401
+# pher anthocnet seed=1 t=795.5000 eastR=0.0000 eastV=0.0000 westR=20.3874 westV=24.0650
+# pher anthocnet seed=1 t=825.5000 eastR=0.0000 eastV=0.0000 westR=20.6043 westV=23.6763
+# pher anthocnet seed=1 t=855.5000 eastR=0.0000 eastV=0.0000 westR=22.2030 westV=26.3297
+# pher anthocnet seed=1 t=885.5000 eastR=0.0000 eastV=0.0000 westR=20.2886 westV=23.4146
+##RUN## 1 anthocnet 100.00 15.23 16.00 5.82 18.49 30.73 0.00
+# diag anthocnet seed=1 ctrlTx=131666 antTx[1=32400,2=89,4=1458,] antRx[1=129592,2=94,4=1564,]
+# corridor anthocnet seed=1 loadStart=15.00 viaLoaded=0 viaClean=7072 viaOther=0 probePdr=100.00 probeDelayMs=15.23
+# pher anthocnet seed=2 t=15.5000 eastR=11.3305 eastV=14.0861 westR=11.3305 westV=14.2103
+# pher anthocnet seed=2 t=45.5000 eastR=4.1338 eastV=4.2278 westR=0.7293 westV=1.0942
+# pher anthocnet seed=2 t=75.5000 eastR=3.9141 eastV=3.6798 westR=0.0508 westV=0.0767
+# pher anthocnet seed=2 t=105.5000 eastR=3.7958 eastV=3.6168 westR=0.0035 westV=0.0049
+# pher anthocnet seed=2 t=135.5000 eastR=5.6211 eastV=0.8486 westR=0.0002 westV=0.0004
+# pher anthocnet seed=2 t=165.5000 eastR=3.7236 eastV=3.5961 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=195.5000 eastR=3.4934 eastV=3.6463 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=225.5000 eastR=3.5252 eastV=3.3763 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=255.5000 eastR=3.4651 eastV=3.3664 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=285.5000 eastR=3.5664 eastV=3.4361 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=315.5000 eastR=3.8595 eastV=3.6527 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=345.5000 eastR=3.8677 eastV=3.6098 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=375.5000 eastR=4.1586 eastV=4.2274 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=405.5000 eastR=4.2365 eastV=3.9719 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=435.5000 eastR=4.2627 eastV=3.9794 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=465.5000 eastR=4.2346 eastV=4.1516 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=495.5000 eastR=4.3514 eastV=4.3035 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=525.5000 eastR=4.6098 eastV=4.2585 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=555.5000 eastR=4.2478 eastV=4.0056 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=585.5000 eastR=4.2080 eastV=3.9299 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=615.5000 eastR=3.8659 eastV=3.9030 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=645.5000 eastR=4.2196 eastV=3.9058 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=675.5000 eastR=4.1926 eastV=3.8746 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=705.5000 eastR=4.2462 eastV=4.3042 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=735.5000 eastR=4.5184 eastV=4.2943 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=765.5000 eastR=4.9360 eastV=4.6577 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=795.5000 eastR=4.6508 eastV=4.5314 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=825.5000 eastR=4.9711 eastV=2.3976 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=855.5000 eastR=4.3760 eastV=4.3405 westR=0.0000 westV=0.0000
+# pher anthocnet seed=2 t=885.5000 eastR=4.2148 eastV=4.2737 westR=0.0000 westV=0.0000
+##RUN## 2 anthocnet 100.00 95.64 99.00 5.82 18.50 30.78 0.51
+# diag anthocnet seed=2 ctrlTx=131696 antTx[1=32394,2=89,4=1455,] antRx[1=129576,2=94,4=1586,]
+# corridor anthocnet seed=2 loadStart=15.00 viaLoaded=7060 viaClean=12 viaOther=0 probePdr=100.00 probeDelayMs=95.64
+# pher anthocnet seed=3 t=15.5000 eastR=31.8465 eastV=23.0995 westR=5.9018 westV=7.9421
+# pher anthocnet seed=3 t=45.5000 eastR=7.9900 eastV=5.3457 westR=0.4175 westV=0.5749
+# pher anthocnet seed=3 t=75.5000 eastR=7.2285 eastV=3.0924 westR=0.0266 westV=0.0371
+# pher anthocnet seed=3 t=105.5000 eastR=7.9307 eastV=3.4266 westR=0.0020 westV=0.0028
+# pher anthocnet seed=3 t=135.5000 eastR=3.2462 eastV=3.4306 westR=0.0001 westV=0.0002
+# pher anthocnet seed=3 t=165.5000 eastR=8.0209 eastV=3.4604 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=195.5000 eastR=7.2684 eastV=4.1761 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=225.5000 eastR=7.0560 eastV=4.0935 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=255.5000 eastR=7.1843 eastV=4.0645 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=285.5000 eastR=7.2490 eastV=4.0926 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=315.5000 eastR=7.2498 eastV=4.1042 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=345.5000 eastR=7.2031 eastV=4.0538 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=375.5000 eastR=7.2364 eastV=3.1679 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=405.5000 eastR=6.7600 eastV=4.1477 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=435.5000 eastR=6.7062 eastV=4.0631 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=465.5000 eastR=7.1575 eastV=4.2521 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=495.5000 eastR=7.7354 eastV=3.1357 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=525.5000 eastR=7.9216 eastV=4.6972 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=555.5000 eastR=3.2461 eastV=3.3466 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=585.5000 eastR=7.2694 eastV=4.5275 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=615.5000 eastR=3.1512 eastV=3.3361 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=645.5000 eastR=3.2039 eastV=3.0988 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=675.5000 eastR=3.4533 eastV=3.3604 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=705.5000 eastR=3.7794 eastV=3.6009 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=735.5000 eastR=3.6333 eastV=3.6565 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=765.5000 eastR=3.6466 eastV=3.6602 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=795.5000 eastR=8.3006 eastV=3.4108 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=825.5000 eastR=4.0009 eastV=3.4180 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=855.5000 eastR=3.9135 eastV=3.9690 westR=0.0000 westV=0.0000
+# pher anthocnet seed=3 t=885.5000 eastR=4.2509 eastV=2.2286 westR=0.0000 westV=0.0000
+##RUN## 3 anthocnet 100.00 95.10 99.00 5.87 18.31 30.45 0.50
+# diag anthocnet seed=3 ctrlTx=131420 antTx[1=32400,2=89,4=1347,] antRx[1=129596,2=94,4=1403,]
+# corridor anthocnet seed=3 loadStart=15.00 viaLoaded=7072 viaClean=0 viaOther=0 probePdr=100.00 probeDelayMs=95.10
+# pher anthocnet seed=4 t=15.5000 eastR=11.9521 eastV=12.8563 westR=11.9521 westV=13.0273
+# pher anthocnet seed=4 t=45.5000 eastR=5.2501 eastV=4.9310 westR=0.8873 westV=1.3507
+# pher anthocnet seed=4 t=75.5000 eastR=4.5547 eastV=4.1591 westR=0.0570 westV=0.0874
+# pher anthocnet seed=4 t=105.5000 eastR=4.6617 eastV=4.2087 westR=0.0039 westV=0.0061
+# pher anthocnet seed=4 t=135.5000 eastR=4.6189 eastV=4.1732 westR=0.0003 westV=0.0004
+# pher anthocnet seed=4 t=165.5000 eastR=4.6353 eastV=4.4195 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=195.5000 eastR=4.2235 eastV=4.0873 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=225.5000 eastR=9.1648 eastV=3.3698 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=255.5000 eastR=5.3316 eastV=0.5699 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=285.5000 eastR=4.1542 eastV=3.7640 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=315.5000 eastR=4.6314 eastV=4.4727 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=345.5000 eastR=4.9003 eastV=4.3824 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=375.5000 eastR=4.6666 eastV=4.2545 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=405.5000 eastR=4.6366 eastV=4.1787 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=435.5000 eastR=4.6350 eastV=4.4876 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=465.5000 eastR=4.5737 eastV=4.5332 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=495.5000 eastR=4.9494 eastV=4.5811 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=525.5000 eastR=5.0833 eastV=4.6087 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=555.5000 eastR=4.7723 eastV=4.4449 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=585.5000 eastR=4.6439 eastV=4.3914 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=615.5000 eastR=4.5394 eastV=4.1484 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=645.5000 eastR=4.2612 eastV=4.1664 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=675.5000 eastR=4.2001 eastV=4.0323 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=705.5000 eastR=4.1476 eastV=3.9507 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=735.5000 eastR=4.5575 eastV=4.1146 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=765.5000 eastR=4.5933 eastV=4.1862 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=795.5000 eastR=4.3017 eastV=4.3085 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=825.5000 eastR=4.1399 eastV=3.7762 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=855.5000 eastR=3.9424 eastV=3.8539 westR=0.0000 westV=0.0000
+# pher anthocnet seed=4 t=885.5000 eastR=3.8438 eastV=3.6379 westR=0.0000 westV=0.0000
+##RUN## 4 anthocnet 100.00 95.68 99.00 5.81 18.56 30.85 0.51
+# diag anthocnet seed=4 ctrlTx=131883 antTx[1=32393,2=89,4=1580,] antRx[1=129572,2=94,4=1737,]
+# corridor anthocnet seed=4 loadStart=15.00 viaLoaded=7050 viaClean=22 viaOther=0 probePdr=100.00 probeDelayMs=95.68
+# pher anthocnet seed=5 t=15.5000 eastR=13.9348 eastV=17.3694 westR=5.3942 westV=7.0373
+# pher anthocnet seed=5 t=45.5000 eastR=8.0984 eastV=4.8212 westR=0.3738 westV=0.4998
+# pher anthocnet seed=5 t=75.5000 eastR=7.2780 eastV=4.4855 westR=0.0257 westV=0.0346
+# pher anthocnet seed=5 t=105.5000 eastR=7.7740 eastV=4.4951 westR=0.0018 westV=0.0024
+# pher anthocnet seed=5 t=135.5000 eastR=7.8624 eastV=4.4588 westR=0.0001 westV=0.0002
+# pher anthocnet seed=5 t=165.5000 eastR=7.2512 eastV=4.4583 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=195.5000 eastR=6.9653 eastV=2.0279 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=225.5000 eastR=3.5651 eastV=3.1587 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=255.5000 eastR=3.5639 eastV=3.6623 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=285.5000 eastR=3.5194 eastV=3.3426 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=315.5000 eastR=3.5077 eastV=3.6628 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=345.5000 eastR=3.8210 eastV=3.8837 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=375.5000 eastR=3.8183 eastV=3.6568 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=405.5000 eastR=4.2843 eastV=4.2361 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=435.5000 eastR=4.2229 eastV=4.2778 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=465.5000 eastR=4.2101 eastV=4.0681 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=495.5000 eastR=3.8234 eastV=3.7797 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=525.5000 eastR=3.8803 eastV=3.7216 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=555.5000 eastR=3.8818 eastV=3.8379 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=585.5000 eastR=4.1083 eastV=3.9081 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=615.5000 eastR=4.2481 eastV=4.3064 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=645.5000 eastR=3.9240 eastV=3.8859 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=675.5000 eastR=4.2428 eastV=4.1068 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=705.5000 eastR=4.8981 eastV=4.2897 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=735.5000 eastR=5.0622 eastV=4.4525 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=765.5000 eastR=5.1048 eastV=4.6141 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=795.5000 eastR=5.4958 eastV=4.9711 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=825.5000 eastR=5.5026 eastV=5.0379 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=855.5000 eastR=5.5564 eastV=5.0196 westR=0.0000 westV=0.0000
+# pher anthocnet seed=5 t=885.5000 eastR=5.5518 eastV=5.0459 westR=0.0000 westV=0.0000
+##RUN## 5 anthocnet 100.00 95.86 99.00 5.87 18.29 30.43 0.48
+# diag anthocnet seed=5 ctrlTx=131317 antTx[1=32384,2=89,4=1278,] antRx[1=129536,2=94,4=1345,]
+# corridor anthocnet seed=5 loadStart=15.00 viaLoaded=7072 viaClean=0 viaOther=0 probePdr=100.00 probeDelayMs=95.86
+# pher anthocnet seed=6 t=15.5000 eastR=26.8496 eastV=30.5810 westR=13.4387 westV=16.8749
+# pher anthocnet seed=6 t=45.5000 eastR=5.6049 eastV=5.2631 westR=0.8633 westV=1.1838
+# pher anthocnet seed=6 t=75.5000 eastR=5.5242 eastV=4.8635 westR=0.0649 westV=0.0890
+# pher anthocnet seed=6 t=105.5000 eastR=5.4821 eastV=4.8214 westR=0.0044 westV=0.0062
+# pher anthocnet seed=6 t=135.5000 eastR=5.0507 eastV=4.7056 westR=0.0003 westV=0.0004
+# pher anthocnet seed=6 t=165.5000 eastR=5.0564 eastV=4.5780 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=195.5000 eastR=5.0609 eastV=4.5180 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=225.5000 eastR=5.4784 eastV=4.8701 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=255.5000 eastR=5.5192 eastV=4.5315 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=285.5000 eastR=5.2030 eastV=4.6654 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=315.5000 eastR=5.0282 eastV=4.5734 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=345.5000 eastR=4.7113 eastV=4.3664 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=375.5000 eastR=4.6330 eastV=4.4456 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=405.5000 eastR=4.6075 eastV=4.3874 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=435.5000 eastR=5.9032 eastV=1.0099 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=465.5000 eastR=4.0329 eastV=3.8414 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=495.5000 eastR=4.1917 eastV=4.0075 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=525.5000 eastR=4.5938 eastV=4.1767 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=555.5000 eastR=5.0085 eastV=4.3795 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=585.5000 eastR=5.0298 eastV=4.7458 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=615.5000 eastR=5.3508 eastV=4.5763 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=645.5000 eastR=5.5540 eastV=4.6005 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=675.5000 eastR=5.5905 eastV=4.7360 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=705.5000 eastR=5.1874 eastV=4.4872 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=735.5000 eastR=5.0585 eastV=4.8074 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=765.5000 eastR=5.2088 eastV=4.8747 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=795.5000 eastR=5.4639 eastV=4.9837 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=825.5000 eastR=5.2379 eastV=4.6355 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=855.5000 eastR=5.0632 eastV=4.5286 westR=0.0000 westV=0.0000
+# pher anthocnet seed=6 t=885.5000 eastR=5.4081 eastV=4.5483 westR=0.0000 westV=0.0000
+##RUN## 6 anthocnet 100.00 96.27 99.00 5.85 18.45 30.67 0.49
+# diag anthocnet seed=6 ctrlTx=131954 antTx[1=32394,2=178,4=1417,] antRx[1=129576,2=188,4=1539,]
+# corridor anthocnet seed=6 loadStart=15.00 viaLoaded=7072 viaClean=0 viaOther=0 probePdr=100.00 probeDelayMs=96.27
+# pher anthocnet seed=7 t=15.5000 eastR=2.4949 eastV=8.5885 westR=5.3193 westV=17.5170
+# pher anthocnet seed=7 t=45.5000 eastR=0.1395 eastV=0.8353 westR=15.3174 westV=20.6853
+# pher anthocnet seed=7 t=75.5000 eastR=0.0096 eastV=0.0578 westR=15.5981 westV=20.7588
+# pher anthocnet seed=7 t=105.5000 eastR=0.0007 eastV=0.0039 westR=15.4911 westV=20.2266
+# pher anthocnet seed=7 t=135.5000 eastR=0.0000 eastV=0.0003 westR=15.5784 westV=20.8309
+# pher anthocnet seed=7 t=165.5000 eastR=0.0000 eastV=0.0000 westR=16.8741 westV=21.3711
+# pher anthocnet seed=7 t=195.5000 eastR=0.0000 eastV=0.0000 westR=16.9423 westV=21.0436
+# pher anthocnet seed=7 t=225.5000 eastR=0.0000 eastV=0.0000 westR=17.2242 westV=22.0500
+# pher anthocnet seed=7 t=255.5000 eastR=0.0000 eastV=0.0000 westR=17.2170 westV=22.8247
+# pher anthocnet seed=7 t=285.5000 eastR=0.0000 eastV=0.0000 westR=15.9436 westV=19.7074
+# pher anthocnet seed=7 t=315.5000 eastR=0.0000 eastV=0.0000 westR=18.5217 westV=22.8812
+# pher anthocnet seed=7 t=345.5000 eastR=0.0000 eastV=0.0000 westR=15.6918 westV=20.7630
+# pher anthocnet seed=7 t=375.5000 eastR=0.0000 eastV=0.0000 westR=16.9942 westV=21.4340
+# pher anthocnet seed=7 t=405.5000 eastR=0.0000 eastV=0.0000 westR=18.6059 westV=22.6945
+# pher anthocnet seed=7 t=435.5000 eastR=0.0000 eastV=0.0000 westR=18.7067 westV=23.1942
+# pher anthocnet seed=7 t=465.5000 eastR=0.0000 eastV=0.0000 westR=17.2100 westV=20.8392
+# pher anthocnet seed=7 t=495.5000 eastR=0.0000 eastV=0.0000 westR=16.9469 westV=22.2627
+# pher anthocnet seed=7 t=525.5000 eastR=0.0000 eastV=0.0000 westR=16.2742 westV=21.2967
+# pher anthocnet seed=7 t=555.5000 eastR=0.0000 eastV=0.0000 westR=16.9410 westV=20.9919
+# pher anthocnet seed=7 t=585.5000 eastR=0.0000 eastV=0.0000 westR=16.3848 westV=20.9012
+# pher anthocnet seed=7 t=615.5000 eastR=0.0000 eastV=0.0000 westR=16.9025 westV=22.4079
+# pher anthocnet seed=7 t=645.5000 eastR=0.0000 eastV=0.0000 westR=17.1376 westV=22.3033
+# pher anthocnet seed=7 t=675.5000 eastR=0.0000 eastV=0.0000 westR=16.8811 westV=20.8093
+# pher anthocnet seed=7 t=705.5000 eastR=0.0000 eastV=0.0000 westR=15.8192 westV=20.6083
+# pher anthocnet seed=7 t=735.5000 eastR=0.0000 eastV=0.0000 westR=14.6008 westV=19.1698
+# pher anthocnet seed=7 t=765.5000 eastR=0.0000 eastV=0.0000 westR=15.3827 westV=18.9058
+# pher anthocnet seed=7 t=795.5000 eastR=0.0000 eastV=0.0000 westR=14.5777 westV=19.5013
+# pher anthocnet seed=7 t=825.5000 eastR=0.0000 eastV=0.0000 westR=34.7229 westV=18.3058
+# pher anthocnet seed=7 t=855.5000 eastR=0.0000 eastV=0.0000 westR=32.0947 westV=17.8775
+# pher anthocnet seed=7 t=885.5000 eastR=0.0000 eastV=0.0000 westR=31.8108 westV=24.9404
+##RUN## 7 anthocnet 100.00 15.23 16.00 5.83 18.59 30.81 0.00
+# diag anthocnet seed=7 ctrlTx=132612 antTx[1=32408,2=89,4=2030,] antRx[1=129632,2=94,4=2276,]
+# corridor anthocnet seed=7 loadStart=15.00 viaLoaded=0 viaClean=7072 viaOther=0 probePdr=100.00 probeDelayMs=15.23
+# pher anthocnet seed=8 t=15.5000 eastR=6.9070 eastV=10.9902 westR=17.8580 westV=21.2078
+# pher anthocnet seed=8 t=45.5000 eastR=0.1795 eastV=1.1251 westR=28.3376 westV=27.5295
+# pher anthocnet seed=8 t=75.5000 eastR=0.0114 eastV=0.0701 westR=26.5961 westV=26.9347
+# pher anthocnet seed=8 t=105.5000 eastR=0.0008 eastV=0.0047 westR=26.6073 westV=24.1056
+# pher anthocnet seed=8 t=135.5000 eastR=0.0001 eastV=0.0003 westR=25.1010 westV=26.4722
+# pher anthocnet seed=8 t=165.5000 eastR=0.0000 eastV=0.0000 westR=24.2893 westV=26.2613
+# pher anthocnet seed=8 t=195.5000 eastR=0.0000 eastV=0.0000 westR=24.2996 westV=25.7015
+# pher anthocnet seed=8 t=225.5000 eastR=0.0000 eastV=0.0000 westR=24.3375 westV=25.6804
+# pher anthocnet seed=8 t=255.5000 eastR=0.0000 eastV=0.0000 westR=22.4491 westV=25.3052
+# pher anthocnet seed=8 t=285.5000 eastR=0.0000 eastV=0.0000 westR=25.9837 westV=27.9428
+# pher anthocnet seed=8 t=315.5000 eastR=0.0000 eastV=0.0000 westR=26.4176 westV=27.9535
+# pher anthocnet seed=8 t=345.5000 eastR=0.0000 eastV=0.0000 westR=26.4779 westV=28.1070
+# pher anthocnet seed=8 t=375.5000 eastR=0.0000 eastV=0.0000 westR=26.6277 westV=28.4291
+# pher anthocnet seed=8 t=405.5000 eastR=0.0000 eastV=0.0000 westR=28.9846 westV=28.3558
+# pher anthocnet seed=8 t=435.5000 eastR=0.0000 eastV=0.0000 westR=26.9884 westV=28.3930
+# pher anthocnet seed=8 t=465.5000 eastR=0.0000 eastV=0.0000 westR=26.4294 westV=25.8761
+# pher anthocnet seed=8 t=495.5000 eastR=0.0000 eastV=0.0000 westR=26.3032 westV=25.7314
+# pher anthocnet seed=8 t=525.5000 eastR=0.0000 eastV=0.0000 westR=28.8674 westV=25.0365
+# pher anthocnet seed=8 t=555.5000 eastR=0.0000 eastV=0.0000 westR=31.6412 westV=28.1698
+# pher anthocnet seed=8 t=585.5000 eastR=0.0000 eastV=0.0000 westR=31.6600 westV=27.5922
+# pher anthocnet seed=8 t=615.5000 eastR=0.0000 eastV=0.0000 westR=29.0968 westV=26.8747
+# pher anthocnet seed=8 t=645.5000 eastR=0.0000 eastV=0.0000 westR=31.2972 westV=22.8821
+# pher anthocnet seed=8 t=675.5000 eastR=0.0000 eastV=0.0000 westR=29.2980 westV=27.7694
+# pher anthocnet seed=8 t=705.5000 eastR=0.0000 eastV=0.0000 westR=26.7763 westV=28.3533
+# pher anthocnet seed=8 t=735.5000 eastR=0.0000 eastV=0.0000 westR=26.6301 westV=27.6173
+# pher anthocnet seed=8 t=765.5000 eastR=0.0000 eastV=0.0000 westR=26.9693 westV=28.3174
+# pher anthocnet seed=8 t=795.5000 eastR=0.0000 eastV=0.0000 westR=26.6631 westV=27.7160
+# pher anthocnet seed=8 t=825.5000 eastR=0.0000 eastV=0.0000 westR=28.6595 westV=28.4965
+# pher anthocnet seed=8 t=855.5000 eastR=0.0000 eastV=0.0000 westR=28.9807 westV=29.2418
+# pher anthocnet seed=8 t=885.5000 eastR=0.0000 eastV=0.0000 westR=28.7818 westV=26.3293
+##RUN## 8 anthocnet 100.00 15.23 16.00 5.82 18.49 30.73 0.00
+# diag anthocnet seed=8 ctrlTx=131660 antTx[1=32406,2=89,4=1401,] antRx[1=129624,2=94,4=1523,]
+# corridor anthocnet seed=8 loadStart=15.00 viaLoaded=0 viaClean=7072 viaOther=0 probePdr=100.00 probeDelayMs=15.23
+# pher anthocnet seed=9 t=15.5000 eastR=14.4813 eastV=18.0889 westR=18.6553 westV=24.5423
+# pher anthocnet seed=9 t=45.5000 eastR=0.9887 eastV=1.3461 westR=16.8804 westV=21.3936
+# pher anthocnet seed=9 t=75.5000 eastR=0.0690 eastV=0.0985 westR=16.1865 westV=21.2411
+# pher anthocnet seed=9 t=105.5000 eastR=0.0047 eastV=0.0069 westR=15.4804 westV=19.4204
+# pher anthocnet seed=9 t=135.5000 eastR=0.0003 eastV=0.0005 westR=15.4135 westV=19.2441
+# pher anthocnet seed=9 t=165.5000 eastR=0.0000 eastV=0.0000 westR=15.5824 westV=19.2692
+# pher anthocnet seed=9 t=195.5000 eastR=0.0000 eastV=0.0000 westR=34.8730 westV=19.5192
+# pher anthocnet seed=9 t=225.5000 eastR=0.0000 eastV=0.0000 westR=15.0834 westV=19.1302
+# pher anthocnet seed=9 t=255.5000 eastR=0.0000 eastV=0.0000 westR=15.4772 westV=19.5348
+# pher anthocnet seed=9 t=285.5000 eastR=0.0000 eastV=0.0000 westR=14.2405 westV=19.2269
+# pher anthocnet seed=9 t=315.5000 eastR=0.0000 eastV=0.0000 westR=15.3479 westV=19.3511
+# pher anthocnet seed=9 t=345.5000 eastR=0.0000 eastV=0.0000 westR=14.3745 westV=19.4858
+# pher anthocnet seed=9 t=375.5000 eastR=0.0000 eastV=0.0000 westR=14.1890 westV=19.2711
+# pher anthocnet seed=9 t=405.5000 eastR=0.0000 eastV=0.0000 westR=14.1528 westV=18.2012
+# pher anthocnet seed=9 t=435.5000 eastR=0.0000 eastV=0.0000 westR=32.0984 westV=24.1058
+# pher anthocnet seed=9 t=465.5000 eastR=0.0000 eastV=0.0000 westR=32.6986 westV=25.0278
+# pher anthocnet seed=9 t=495.5000 eastR=0.0000 eastV=0.0000 westR=33.9091 westV=24.7117
+# pher anthocnet seed=9 t=525.5000 eastR=0.0000 eastV=0.0000 westR=34.6502 westV=18.0951
+# pher anthocnet seed=9 t=555.5000 eastR=0.0000 eastV=0.0000 westR=29.3934 westV=26.1760
+# pher anthocnet seed=9 t=585.5000 eastR=0.0000 eastV=0.0000 westR=32.2209 westV=28.1860
+# pher anthocnet seed=9 t=615.5000 eastR=0.0000 eastV=0.0000 westR=29.2088 westV=25.3516
+# pher anthocnet seed=9 t=645.5000 eastR=0.0000 eastV=0.0000 westR=29.2388 westV=26.0016
+# pher anthocnet seed=9 t=675.5000 eastR=0.0000 eastV=0.0000 westR=31.5584 westV=24.3586
+# pher anthocnet seed=9 t=705.5000 eastR=0.0000 eastV=0.0000 westR=33.9541 westV=24.4508
+# pher anthocnet seed=9 t=735.5000 eastR=0.0000 eastV=0.0000 westR=14.0501 westV=19.1852
+# pher anthocnet seed=9 t=765.5000 eastR=0.0000 eastV=0.0000 westR=14.1244 westV=19.0988
+# pher anthocnet seed=9 t=795.5000 eastR=0.0000 eastV=0.0000 westR=15.4761 westV=19.0171
+# pher anthocnet seed=9 t=825.5000 eastR=0.0000 eastV=0.0000 westR=14.6403 westV=19.6138
+# pher anthocnet seed=9 t=855.5000 eastR=0.0000 eastV=0.0000 westR=15.4937 westV=19.3616
+# pher anthocnet seed=9 t=885.5000 eastR=0.0000 eastV=0.0000 westR=15.7126 westV=19.4104
+##RUN## 9 anthocnet 100.00 15.23 16.00 5.84 18.47 30.67 0.00
+# diag anthocnet seed=9 ctrlTx=131993 antTx[1=32397,2=142,4=1627,] antRx[1=129588,2=150,4=1730,]
+# corridor anthocnet seed=9 loadStart=15.00 viaLoaded=0 viaClean=7072 viaOther=0 probePdr=100.00 probeDelayMs=15.23
+# pher anthocnet seed=10 t=15.5000 eastR=6.3686 eastV=8.6359 westR=14.4438 westV=16.3114
+# pher anthocnet seed=10 t=45.5000 eastR=0.2004 eastV=1.1482 westR=28.3891 westV=25.1783
+# pher anthocnet seed=10 t=75.5000 eastR=0.0135 eastV=0.0797 westR=26.4420 westV=24.4011
+# pher anthocnet seed=10 t=105.5000 eastR=0.0010 eastV=0.0056 westR=29.0100 westV=27.5379
+# pher anthocnet seed=10 t=135.5000 eastR=0.0001 eastV=0.0004 westR=26.5592 westV=26.1845
+# pher anthocnet seed=10 t=165.5000 eastR=0.0000 eastV=0.0000 westR=29.0966 westV=26.6533
+# pher anthocnet seed=10 t=195.5000 eastR=0.0000 eastV=0.0000 westR=26.6989 westV=26.7374
+# pher anthocnet seed=10 t=225.5000 eastR=0.0000 eastV=0.0000 westR=28.9896 westV=25.7440
+# pher anthocnet seed=10 t=255.5000 eastR=0.0000 eastV=0.0000 westR=26.8370 westV=28.6409
+# pher anthocnet seed=10 t=285.5000 eastR=0.0000 eastV=0.0000 westR=26.1510 westV=24.2896
+# pher anthocnet seed=10 t=315.5000 eastR=0.0000 eastV=0.0000 westR=26.1573 westV=25.7923
+# pher anthocnet seed=10 t=345.5000 eastR=0.0000 eastV=0.0000 westR=24.4902 westV=25.8449
+# pher anthocnet seed=10 t=375.5000 eastR=0.0000 eastV=0.0000 westR=24.3333 westV=25.6486
+# pher anthocnet seed=10 t=405.5000 eastR=0.0000 eastV=0.0000 westR=24.2581 westV=25.7635
+# pher anthocnet seed=10 t=435.5000 eastR=0.0000 eastV=0.0000 westR=24.2079 westV=25.5865
+# pher anthocnet seed=10 t=465.5000 eastR=0.0000 eastV=0.0000 westR=24.4709 westV=25.7377
+# pher anthocnet seed=10 t=495.5000 eastR=0.0000 eastV=0.0000 westR=22.9090 westV=25.6790
+# pher anthocnet seed=10 t=525.5000 eastR=0.0000 eastV=0.0000 westR=22.3368 westV=25.0628
+# pher anthocnet seed=10 t=555.5000 eastR=0.0000 eastV=0.0000 westR=22.2306 westV=25.6354
+# pher anthocnet seed=10 t=585.5000 eastR=0.0000 eastV=0.0000 westR=22.2438 westV=27.0057
+# pher anthocnet seed=10 t=615.5000 eastR=0.0000 eastV=0.0000 westR=22.0195 westV=24.6535
+# pher anthocnet seed=10 t=645.5000 eastR=0.0000 eastV=0.0000 westR=24.2544 westV=24.9865
+# pher anthocnet seed=10 t=675.5000 eastR=0.0000 eastV=0.0000 westR=24.1966 westV=27.2854
+# pher anthocnet seed=10 t=705.5000 eastR=0.0000 eastV=0.0000 westR=22.6731 westV=26.1906
+# pher anthocnet seed=10 t=735.5000 eastR=0.0000 eastV=0.0000 westR=24.2012 westV=27.4491
+# pher anthocnet seed=10 t=765.5000 eastR=0.0000 eastV=0.0000 westR=26.0385 westV=27.1293
+# pher anthocnet seed=10 t=795.5000 eastR=0.0000 eastV=0.0000 westR=24.3743 westV=28.0569
+# pher anthocnet seed=10 t=825.5000 eastR=0.0000 eastV=0.0000 westR=24.4177 westV=26.1473
+# pher anthocnet seed=10 t=855.5000 eastR=0.0000 eastV=0.0000 westR=24.3310 westV=26.4191
+# pher anthocnet seed=10 t=885.5000 eastR=0.0000 eastV=0.0000 westR=24.1646 westV=25.6766
+##RUN## 10 anthocnet 100.00 15.23 16.00 5.81 18.59 30.85 0.00
+# diag anthocnet seed=10 ctrlTx=132171 antTx[1=32407,2=89,4=1791,] antRx[1=129628,2=94,4=1959,]
+# corridor anthocnet seed=10 loadStart=15.00 viaLoaded=0 viaClean=7072 viaOther=0 probePdr=100.00 probeDelayMs=15.23
+# pher anthocnet seed=11 t=15.5000 eastR=11.0459 eastV=13.7160 westR=32.4969 westV=21.3370
+# pher anthocnet seed=11 t=45.5000 eastR=0.1670 eastV=1.1268 westR=30.2519 westV=16.6641
+# pher anthocnet seed=11 t=75.5000 eastR=0.0117 eastV=0.0791 westR=31.4593 westV=22.8863
+# pher anthocnet seed=11 t=105.5000 eastR=0.0009 eastV=0.0055 westR=31.7323 westV=23.8829
+# pher anthocnet seed=11 t=135.5000 eastR=0.0001 eastV=0.0004 westR=34.4524 westV=24.7038
+# pher anthocnet seed=11 t=165.5000 eastR=0.0000 eastV=0.0000 westR=14.1216 westV=18.4054
+# pher anthocnet seed=11 t=195.5000 eastR=0.0000 eastV=0.0000 westR=15.5740 westV=20.6455
+# pher anthocnet seed=11 t=225.5000 eastR=0.0000 eastV=0.0000 westR=15.9041 westV=19.8883
+# pher anthocnet seed=11 t=255.5000 eastR=0.0000 eastV=0.0000 westR=15.3266 westV=19.4708
+# pher anthocnet seed=11 t=285.5000 eastR=0.0000 eastV=0.0000 westR=14.4985 westV=19.7704
+# pher anthocnet seed=11 t=315.5000 eastR=0.0000 eastV=0.0000 westR=31.8419 westV=25.1646
+# pher anthocnet seed=11 t=345.5000 eastR=0.0000 eastV=0.0000 westR=29.8065 westV=22.8979
+# pher anthocnet seed=11 t=375.5000 eastR=0.0000 eastV=0.0000 westR=29.1452 westV=26.4715
+# pher anthocnet seed=11 t=405.5000 eastR=0.0000 eastV=0.0000 westR=31.2622 westV=22.8665
+# pher anthocnet seed=11 t=435.5000 eastR=0.0000 eastV=0.0000 westR=29.1299 westV=21.9589
+# pher anthocnet seed=11 t=465.5000 eastR=0.0000 eastV=0.0000 westR=29.0432 westV=25.1768
+# pher anthocnet seed=11 t=495.5000 eastR=0.0000 eastV=0.0000 westR=31.6362 westV=22.7721
+# pher anthocnet seed=11 t=525.5000 eastR=0.0000 eastV=0.0000 westR=31.4899 westV=22.8020
+# pher anthocnet seed=11 t=555.5000 eastR=0.0000 eastV=0.0000 westR=34.0430 westV=17.0401
+# pher anthocnet seed=11 t=585.5000 eastR=0.0000 eastV=0.0000 westR=34.7207 westV=25.1540
+# pher anthocnet seed=11 t=615.5000 eastR=0.0000 eastV=0.0000 westR=31.9127 westV=22.9537
+# pher anthocnet seed=11 t=645.5000 eastR=0.0000 eastV=0.0000 westR=31.6543 westV=24.3893
+# pher anthocnet seed=11 t=675.5000 eastR=0.0000 eastV=0.0000 westR=32.4991 westV=28.6737
+# pher anthocnet seed=11 t=705.5000 eastR=0.0000 eastV=0.0000 westR=31.7181 westV=27.6284
+# pher anthocnet seed=11 t=735.5000 eastR=0.0000 eastV=0.0000 westR=31.8537 westV=27.6054
+# pher anthocnet seed=11 t=765.5000 eastR=0.0000 eastV=0.0000 westR=33.8883 westV=17.4290
+# pher anthocnet seed=11 t=795.5000 eastR=0.0000 eastV=0.0000 westR=14.1985 westV=18.6787
+# pher anthocnet seed=11 t=825.5000 eastR=0.0000 eastV=0.0000 westR=15.5978 westV=20.5040
+# pher anthocnet seed=11 t=855.5000 eastR=0.0000 eastV=0.0000 westR=15.5032 westV=19.3831
+# pher anthocnet seed=11 t=885.5000 eastR=0.0000 eastV=0.0000 westR=15.7204 westV=20.2487
+##RUN## 11 anthocnet 100.00 15.23 16.00 5.82 18.60 30.84 0.00
+# diag anthocnet seed=11 ctrlTx=132377 antTx[1=32401,2=89,4=2015,] antRx[1=129604,2=94,4=2185,]
+# corridor anthocnet seed=11 loadStart=15.00 viaLoaded=0 viaClean=7072 viaOther=0 probePdr=100.00 probeDelayMs=15.23
+# pher anthocnet seed=12 t=15.5000 eastR=16.5333 eastV=20.7991 westR=6.3665 westV=8.9358
+# pher anthocnet seed=12 t=45.5000 eastR=4.1723 eastV=4.3895 westR=0.4361 westV=0.6264
+# pher anthocnet seed=12 t=75.5000 eastR=4.2343 eastV=4.3455 westR=0.0323 westV=0.0476
+# pher anthocnet seed=12 t=105.5000 eastR=4.5582 eastV=4.4398 westR=0.0022 westV=0.0033
+# pher anthocnet seed=12 t=135.5000 eastR=4.2122 eastV=3.9977 westR=0.0002 westV=0.0002
+# pher anthocnet seed=12 t=165.5000 eastR=4.1762 eastV=3.9826 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=195.5000 eastR=3.9762 eastV=4.1631 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=225.5000 eastR=3.8005 eastV=3.6443 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=255.5000 eastR=3.8979 eastV=3.9796 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=285.5000 eastR=3.8500 eastV=3.8640 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=315.5000 eastR=3.8515 eastV=3.6555 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=345.5000 eastR=5.1881 eastV=0.7013 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=375.5000 eastR=3.9155 eastV=3.8615 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=405.5000 eastR=4.2048 eastV=3.9547 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=435.5000 eastR=3.9353 eastV=3.9631 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=465.5000 eastR=3.8441 eastV=3.6331 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=495.5000 eastR=3.6349 eastV=3.6888 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=525.5000 eastR=3.5246 eastV=3.5911 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=555.5000 eastR=3.5620 eastV=3.5218 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=585.5000 eastR=3.2771 eastV=3.4128 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=615.5000 eastR=7.8124 eastV=3.2326 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=645.5000 eastR=7.8768 eastV=3.4082 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=675.5000 eastR=7.2702 eastV=4.4619 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=705.5000 eastR=6.7798 eastV=4.0742 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=735.5000 eastR=7.1686 eastV=4.4081 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=765.5000 eastR=7.1934 eastV=4.1070 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=795.5000 eastR=7.1886 eastV=4.0814 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=825.5000 eastR=7.2471 eastV=4.4730 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=855.5000 eastR=6.8135 eastV=4.7532 westR=0.0000 westV=0.0000
+# pher anthocnet seed=12 t=885.5000 eastR=6.0278 eastV=4.4116 westR=0.0000 westV=0.0000
+##RUN## 12 anthocnet 100.00 96.10 99.00 5.85 18.36 30.55 0.49
+# diag anthocnet seed=12 ctrlTx=131414 antTx[1=32405,2=89,4=1192,] antRx[1=129620,2=94,4=1292,]
+# corridor anthocnet seed=12 loadStart=15.00 viaLoaded=7072 viaClean=0 viaOther=0 probePdr=100.00 probeDelayMs=96.10
+# pher anthocnet seed=13 t=15.5000 eastR=11.2178 eastV=13.0442 westR=11.2178 westV=13.7466
+# pher anthocnet seed=13 t=45.5000 eastR=0.1699 eastV=0.9547 westR=17.1077 westV=23.1096
+# pher anthocnet seed=13 t=75.5000 eastR=0.0118 eastV=0.0669 westR=18.6687 westV=22.4298
+# pher anthocnet seed=13 t=105.5000 eastR=0.0008 eastV=0.0047 westR=18.7213 westV=23.2994
+# pher anthocnet seed=13 t=135.5000 eastR=0.0001 eastV=0.0003 westR=18.4805 westV=23.0335
+# pher anthocnet seed=13 t=165.5000 eastR=0.0000 eastV=0.0000 westR=18.5570 westV=23.5007
+# pher anthocnet seed=13 t=195.5000 eastR=0.0000 eastV=0.0000 westR=18.5387 westV=24.2905
+# pher anthocnet seed=13 t=225.5000 eastR=0.0000 eastV=0.0000 westR=17.7850 westV=22.3534
+# pher anthocnet seed=13 t=255.5000 eastR=0.0000 eastV=0.0000 westR=19.9890 westV=23.3119
+# pher anthocnet seed=13 t=285.5000 eastR=0.0000 eastV=0.0000 westR=18.7022 westV=22.1280
+# pher anthocnet seed=13 t=315.5000 eastR=0.0000 eastV=0.0000 westR=18.7677 westV=24.1248
+# pher anthocnet seed=13 t=345.5000 eastR=0.0000 eastV=0.0000 westR=18.7514 westV=24.0554
+# pher anthocnet seed=13 t=375.5000 eastR=0.0000 eastV=0.0000 westR=18.2589 westV=21.7851
+# pher anthocnet seed=13 t=405.5000 eastR=0.0000 eastV=0.0000 westR=18.8885 westV=22.3098
+# pher anthocnet seed=13 t=435.5000 eastR=0.0000 eastV=0.0000 westR=18.6505 westV=22.2443
+# pher anthocnet seed=13 t=465.5000 eastR=0.0000 eastV=0.0000 westR=18.4086 westV=22.0267
+# pher anthocnet seed=13 t=495.5000 eastR=0.0000 eastV=0.0000 westR=17.3014 westV=22.1145
+# pher anthocnet seed=13 t=525.5000 eastR=0.0000 eastV=0.0000 westR=18.8072 westV=23.8623
+# pher anthocnet seed=13 t=555.5000 eastR=0.0000 eastV=0.0000 westR=20.2326 westV=24.2668
+# pher anthocnet seed=13 t=585.5000 eastR=0.0000 eastV=0.0000 westR=18.7666 westV=24.1393
+# pher anthocnet seed=13 t=615.5000 eastR=0.0000 eastV=0.0000 westR=20.1917 westV=24.2466
+# pher anthocnet seed=13 t=645.5000 eastR=0.0000 eastV=0.0000 westR=20.2447 westV=24.3399
+# pher anthocnet seed=13 t=675.5000 eastR=0.0000 eastV=0.0000 westR=18.5325 westV=23.7734
+# pher anthocnet seed=13 t=705.5000 eastR=0.0000 eastV=0.0000 westR=18.4130 westV=24.2861
+# pher anthocnet seed=13 t=735.5000 eastR=0.0000 eastV=0.0000 westR=18.4346 westV=22.1852
+# pher anthocnet seed=13 t=765.5000 eastR=0.0000 eastV=0.0000 westR=18.6064 westV=22.0778
+# pher anthocnet seed=13 t=795.5000 eastR=0.0000 eastV=0.0000 westR=18.3853 westV=21.9673
+# pher anthocnet seed=13 t=825.5000 eastR=0.0000 eastV=0.0000 westR=20.0333 westV=25.0042
+# pher anthocnet seed=13 t=855.5000 eastR=0.0000 eastV=0.0000 westR=21.5881 westV=25.2569
+# pher anthocnet seed=13 t=885.5000 eastR=0.0000 eastV=0.0000 westR=20.2985 westV=23.2644
+##RUN## 13 anthocnet 100.00 15.38 16.00 5.82 18.51 30.74 0.02
+# diag anthocnet seed=13 ctrlTx=131780 antTx[1=32400,2=89,4=1557,] antRx[1=129600,2=94,4=1673,]
+# corridor anthocnet seed=13 loadStart=15.00 viaLoaded=14 viaClean=7058 viaOther=0 probePdr=100.00 probeDelayMs=15.38
+# pher anthocnet seed=14 t=15.5000 eastR=29.1712 eastV=26.4359 westR=5.4174 westV=7.2214
+# pher anthocnet seed=14 t=45.5000 eastR=7.1916 eastV=4.9440 westR=0.3800 westV=0.5300
+# pher anthocnet seed=14 t=75.5000 eastR=7.2572 eastV=3.0690 westR=0.0264 westV=0.0367
+# pher anthocnet seed=14 t=105.5000 eastR=6.6956 eastV=4.7596 westR=0.0018 westV=0.0025
+# pher anthocnet seed=14 t=135.5000 eastR=7.0512 eastV=2.8916 westR=0.0001 westV=0.0002
+# pher anthocnet seed=14 t=165.5000 eastR=7.9106 eastV=3.1824 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=195.5000 eastR=7.2748 eastV=4.1378 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=225.5000 eastR=7.8346 eastV=4.3427 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=255.5000 eastR=7.8877 eastV=3.3767 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=285.5000 eastR=3.2234 eastV=3.1670 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=315.5000 eastR=3.2359 eastV=3.3669 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=345.5000 eastR=3.5400 eastV=3.5939 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=375.5000 eastR=3.2552 eastV=3.2394 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=405.5000 eastR=3.5255 eastV=3.4567 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=435.5000 eastR=3.8499 eastV=3.7161 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=465.5000 eastR=3.8655 eastV=3.6888 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=495.5000 eastR=3.5988 eastV=3.6691 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=525.5000 eastR=3.5314 eastV=3.4032 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=555.5000 eastR=3.6197 eastV=3.7288 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=585.5000 eastR=3.8151 eastV=3.8185 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=615.5000 eastR=3.8104 eastV=3.6264 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=645.5000 eastR=3.5926 eastV=3.6995 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=675.5000 eastR=3.5899 eastV=3.4756 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=705.5000 eastR=8.4204 eastV=3.1190 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=735.5000 eastR=4.2159 eastV=3.4529 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=765.5000 eastR=4.2995 eastV=3.9163 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=795.5000 eastR=4.0188 eastV=3.9814 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=825.5000 eastR=3.9714 eastV=3.9709 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=855.5000 eastR=3.8921 eastV=3.6935 westR=0.0000 westV=0.0000
+# pher anthocnet seed=14 t=885.5000 eastR=4.1550 eastV=4.1118 westR=0.0000 westV=0.0000
+##RUN## 14 anthocnet 100.00 95.92 99.00 5.87 18.36 30.52 0.48
+# diag anthocnet seed=14 ctrlTx=131747 antTx[1=32403,2=89,4=1488,] antRx[1=129608,2=94,4=1616,]
+# corridor anthocnet seed=14 loadStart=15.00 viaLoaded=7072 viaClean=0 viaOther=0 probePdr=100.00 probeDelayMs=95.92
+# pher anthocnet seed=15 t=15.5000 eastR=6.0813 eastV=7.6384 westR=26.1923 westV=24.2064
+# pher anthocnet seed=15 t=45.5000 eastR=0.4112 eastV=0.5397 westR=26.4488 westV=25.4657
+# pher anthocnet seed=15 t=75.5000 eastR=0.0283 eastV=0.0374 westR=26.4285 westV=26.3747
+# pher anthocnet seed=15 t=105.5000 eastR=0.0021 eastV=0.0028 westR=28.8443 westV=27.3221
+# pher anthocnet seed=15 t=135.5000 eastR=0.0001 eastV=0.0002 westR=28.8457 westV=25.1076
+# pher anthocnet seed=15 t=165.5000 eastR=0.0000 eastV=0.0000 westR=31.6942 westV=22.7930
+# pher anthocnet seed=15 t=195.5000 eastR=0.0000 eastV=0.0000 westR=31.3627 westV=27.8886
+# pher anthocnet seed=15 t=225.5000 eastR=0.0000 eastV=0.0000 westR=31.7035 westV=23.8810
+# pher anthocnet seed=15 t=255.5000 eastR=0.0000 eastV=0.0000 westR=34.6192 westV=17.6739
+# pher anthocnet seed=15 t=285.5000 eastR=0.0000 eastV=0.0000 westR=32.7112 westV=17.7733
+# pher anthocnet seed=15 t=315.5000 eastR=0.0000 eastV=0.0000 westR=34.5405 westV=17.5311
+# pher anthocnet seed=15 t=345.5000 eastR=0.0000 eastV=0.0000 westR=14.9992 westV=18.6610
+# pher anthocnet seed=15 t=375.5000 eastR=0.0000 eastV=0.0000 westR=14.9391 westV=18.9976
+# pher anthocnet seed=15 t=405.5000 eastR=0.0000 eastV=0.0000 westR=14.4168 westV=19.1652
+# pher anthocnet seed=15 t=435.5000 eastR=0.0000 eastV=0.0000 westR=14.5442 westV=19.0601
+# pher anthocnet seed=15 t=465.5000 eastR=0.0000 eastV=0.0000 westR=14.0936 westV=19.0971
+# pher anthocnet seed=15 t=495.5000 eastR=0.0000 eastV=0.0000 westR=14.2887 westV=19.1621
+# pher anthocnet seed=15 t=525.5000 eastR=0.0000 eastV=0.0000 westR=14.1905 westV=17.8033
+# pher anthocnet seed=15 t=555.5000 eastR=0.0000 eastV=0.0000 westR=14.3558 westV=17.9235
+# pher anthocnet seed=15 t=585.5000 eastR=0.0000 eastV=0.0000 westR=14.2257 westV=19.0421
+# pher anthocnet seed=15 t=615.5000 eastR=0.0000 eastV=0.0000 westR=15.2365 westV=19.5019
+# pher anthocnet seed=15 t=645.5000 eastR=0.0000 eastV=0.0000 westR=16.7539 westV=22.4417
+# pher anthocnet seed=15 t=675.5000 eastR=0.0000 eastV=0.0000 westR=16.9328 westV=20.6972
+# pher anthocnet seed=15 t=705.5000 eastR=0.0000 eastV=0.0000 westR=17.2033 westV=22.4735
+# pher anthocnet seed=15 t=735.5000 eastR=0.0000 eastV=0.0000 westR=17.0817 westV=21.5286
+# pher anthocnet seed=15 t=765.5000 eastR=0.0000 eastV=0.0000 westR=18.5099 westV=21.9773
+# pher anthocnet seed=15 t=795.5000 eastR=0.0000 eastV=0.0000 westR=18.6650 westV=22.1089
+# pher anthocnet seed=15 t=825.5000 eastR=0.0000 eastV=0.0000 westR=18.2865 westV=22.1721
+# pher anthocnet seed=15 t=855.5000 eastR=0.0000 eastV=0.0000 westR=18.6051 westV=22.4035
+# pher anthocnet seed=15 t=885.5000 eastR=0.0000 eastV=0.0000 westR=18.6860 westV=23.0195
+##RUN## 15 anthocnet 100.00 15.23 16.00 5.86 18.41 30.56 0.00
+# diag anthocnet seed=15 ctrlTx=131979 antTx[1=32380,2=89,4=1707,] antRx[1=129520,2=94,4=1869,]
+# corridor anthocnet seed=15 loadStart=15.00 viaLoaded=0 viaClean=7072 viaOther=0 probePdr=100.00 probeDelayMs=15.23
+# pher anthocnet seed=16 t=15.5000 eastR=34.0325 eastV=20.9053 westR=13.3364 westV=13.8761
+# pher anthocnet seed=16 t=45.5000 eastR=8.5006 eastV=4.6221 westR=0.9118 westV=1.2613
+# pher anthocnet seed=16 t=75.5000 eastR=7.9282 eastV=3.3606 westR=0.0607 westV=0.0881
+# pher anthocnet seed=16 t=105.5000 eastR=3.2836 eastV=3.3949 westR=0.0043 westV=0.0061
+# pher anthocnet seed=16 t=135.5000 eastR=3.7719 eastV=3.6069 westR=0.0003 westV=0.0004
+# pher anthocnet seed=16 t=165.5000 eastR=3.6338 eastV=3.7247 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=195.5000 eastR=3.2575 eastV=3.2003 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=225.5000 eastR=3.4871 eastV=3.3524 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=255.5000 eastR=3.5238 eastV=3.5968 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=285.5000 eastR=3.8327 eastV=3.7881 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=315.5000 eastR=3.5514 eastV=3.3755 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=345.5000 eastR=3.5072 eastV=3.3856 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=375.5000 eastR=3.8334 eastV=3.6911 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=405.5000 eastR=3.5782 eastV=3.6528 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=435.5000 eastR=3.6387 eastV=3.7681 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=465.5000 eastR=3.3057 eastV=3.3853 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=495.5000 eastR=3.2537 eastV=3.4019 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=525.5000 eastR=3.5027 eastV=3.3568 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=555.5000 eastR=3.2677 eastV=3.3504 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=585.5000 eastR=3.2760 eastV=3.2360 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=615.5000 eastR=3.5394 eastV=3.5321 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=645.5000 eastR=8.1615 eastV=3.6339 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=675.5000 eastR=7.9136 eastV=4.5480 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=705.5000 eastR=17.0972 eastV=3.1710 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=735.5000 eastR=8.8667 eastV=3.7708 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=765.5000 eastR=7.9108 eastV=4.3626 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=795.5000 eastR=7.9226 eastV=3.3420 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=825.5000 eastR=7.3120 eastV=4.5639 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=855.5000 eastR=7.2973 eastV=4.4176 westR=0.0000 westV=0.0000
+# pher anthocnet seed=16 t=885.5000 eastR=7.2071 eastV=4.4595 westR=0.0000 westV=0.0000
+##RUN## 16 anthocnet 100.00 95.15 99.00 5.81 18.51 30.80 0.48
+# diag anthocnet seed=16 ctrlTx=131469 antTx[1=32404,2=89,4=1221,] antRx[1=129616,2=94,4=1331,]
+# corridor anthocnet seed=16 loadStart=15.00 viaLoaded=7072 viaClean=0 viaOther=0 probePdr=100.00 probeDelayMs=95.15
+# pher anthocnet seed=17 t=15.5000 eastR=22.3691 eastV=23.0996 westR=7.1919 westV=9.0572
+# pher anthocnet seed=17 t=45.5000 eastR=6.4369 eastV=5.8565 westR=0.5323 westV=0.7102
+# pher anthocnet seed=17 t=75.5000 eastR=6.0676 eastV=5.1121 westR=0.0363 westV=0.0492
+# pher anthocnet seed=17 t=105.5000 eastR=5.6180 eastV=5.0127 westR=0.0025 westV=0.0034
+# pher anthocnet seed=17 t=135.5000 eastR=6.0398 eastV=5.1040 westR=0.0002 westV=0.0002
+# pher anthocnet seed=17 t=165.5000 eastR=6.0501 eastV=5.1067 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=195.5000 eastR=6.0458 eastV=5.1687 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=225.5000 eastR=6.0588 eastV=5.0956 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=255.5000 eastR=6.5605 eastV=4.7134 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=285.5000 eastR=6.5482 eastV=4.5106 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=315.5000 eastR=6.6070 eastV=4.9565 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=345.5000 eastR=6.2046 eastV=5.2604 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=375.5000 eastR=6.0297 eastV=4.6994 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=405.5000 eastR=6.0694 eastV=5.0581 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=435.5000 eastR=6.0500 eastV=4.5287 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=465.5000 eastR=6.0843 eastV=4.5638 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=495.5000 eastR=6.5995 eastV=4.9265 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=525.5000 eastR=7.0232 eastV=4.9307 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=555.5000 eastR=6.7250 eastV=4.9523 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=585.5000 eastR=7.7571 eastV=2.5217 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=615.5000 eastR=7.7369 eastV=2.9487 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=645.5000 eastR=3.1806 eastV=3.1118 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=675.5000 eastR=3.2233 eastV=3.0873 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=705.5000 eastR=3.0079 eastV=3.1366 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=735.5000 eastR=3.0228 eastV=3.1423 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=765.5000 eastR=7.9096 eastV=4.4895 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=795.5000 eastR=7.1706 eastV=3.0729 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=825.5000 eastR=7.8353 eastV=4.6054 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=855.5000 eastR=3.2413 eastV=3.2879 westR=0.0000 westV=0.0000
+# pher anthocnet seed=17 t=885.5000 eastR=3.4873 eastV=3.4306 westR=0.0000 westV=0.0000
+##RUN## 17 anthocnet 100.00 96.19 99.00 5.85 18.37 30.56 0.48
+# diag anthocnet seed=17 ctrlTx=131441 antTx[1=32395,2=89,4=1322,] antRx[1=129580,2=94,4=1400,]
+# corridor anthocnet seed=17 loadStart=15.00 viaLoaded=7072 viaClean=0 viaOther=0 probePdr=100.00 probeDelayMs=96.19
+# pher anthocnet seed=18 t=15.5000 eastR=12.4031 eastV=13.7833 westR=12.4031 westV=13.4050
+# pher anthocnet seed=18 t=45.5000 eastR=4.0690 eastV=4.2284 westR=0.8533 westV=1.1501
+# pher anthocnet seed=18 t=75.5000 eastR=3.6169 eastV=3.7634 westR=0.0574 westV=0.0781
+# pher anthocnet seed=18 t=105.5000 eastR=3.8275 eastV=3.9104 westR=0.0039 westV=0.0055
+# pher anthocnet seed=18 t=135.5000 eastR=4.1463 eastV=3.9774 westR=0.0003 westV=0.0004
+# pher anthocnet seed=18 t=165.5000 eastR=4.1965 eastV=3.9821 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=195.5000 eastR=3.9466 eastV=3.6509 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=225.5000 eastR=3.8922 eastV=4.0150 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=255.5000 eastR=3.8267 eastV=3.6871 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=285.5000 eastR=3.9029 eastV=3.9216 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=315.5000 eastR=3.5895 eastV=3.4991 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=345.5000 eastR=7.9765 eastV=3.3792 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=375.5000 eastR=3.4888 eastV=3.4228 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=405.5000 eastR=3.5552 eastV=3.6839 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=435.5000 eastR=3.8062 eastV=3.6981 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=465.5000 eastR=3.8382 eastV=3.9839 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=495.5000 eastR=4.1336 eastV=3.9458 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=525.5000 eastR=4.2125 eastV=4.1221 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=555.5000 eastR=4.5226 eastV=4.1613 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=585.5000 eastR=4.4911 eastV=4.1022 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=615.5000 eastR=4.5363 eastV=4.1237 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=645.5000 eastR=4.6239 eastV=4.3341 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=675.5000 eastR=4.5847 eastV=4.3471 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=705.5000 eastR=4.6390 eastV=4.5399 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=735.5000 eastR=5.0260 eastV=2.2370 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=765.5000 eastR=4.2355 eastV=3.9840 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=795.5000 eastR=3.8965 eastV=3.7209 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=825.5000 eastR=5.1453 eastV=0.6084 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=855.5000 eastR=3.8764 eastV=3.5896 westR=0.0000 westV=0.0000
+# pher anthocnet seed=18 t=885.5000 eastR=3.8291 eastV=3.6110 westR=0.0000 westV=0.0000
+##RUN## 18 anthocnet 100.00 95.73 99.00 5.82 18.51 30.79 0.50
+# diag anthocnet seed=18 ctrlTx=131711 antTx[1=32395,2=89,4=1484,] antRx[1=129580,2=94,4=1606,]
+# corridor anthocnet seed=18 loadStart=15.00 viaLoaded=7065 viaClean=7 viaOther=0 probePdr=100.00 probeDelayMs=95.73
+# pher anthocnet seed=19 t=15.5000 eastR=5.9293 eastV=11.1471 westR=14.3169 westV=22.5526
+# pher anthocnet seed=19 t=45.5000 eastR=0.1823 eastV=1.1818 westR=27.7017 westV=28.2825
+# pher anthocnet seed=19 t=75.5000 eastR=0.0127 eastV=0.0840 westR=29.1115 westV=28.2402
+# pher anthocnet seed=19 t=105.5000 eastR=0.0009 eastV=0.0057 westR=31.0764 westV=27.7322
+# pher anthocnet seed=19 t=135.5000 eastR=0.0001 eastV=0.0004 westR=31.6429 westV=24.4263
+# pher anthocnet seed=19 t=165.5000 eastR=0.0000 eastV=0.0000 westR=31.6471 westV=27.7082
+# pher anthocnet seed=19 t=195.5000 eastR=0.0000 eastV=0.0000 westR=29.7913 westV=27.4937
+# pher anthocnet seed=19 t=225.5000 eastR=0.0000 eastV=0.0000 westR=29.1095 westV=28.4542
+# pher anthocnet seed=19 t=255.5000 eastR=0.0000 eastV=0.0000 westR=27.3268 westV=25.2229
+# pher anthocnet seed=19 t=285.5000 eastR=0.0000 eastV=0.0000 westR=26.5640 westV=25.1837
+# pher anthocnet seed=19 t=315.5000 eastR=0.0000 eastV=0.0000 westR=26.6763 westV=28.4819
+# pher anthocnet seed=19 t=345.5000 eastR=0.0000 eastV=0.0000 westR=26.4900 westV=26.6510
+# pher anthocnet seed=19 t=375.5000 eastR=0.0000 eastV=0.0000 westR=26.4968 westV=26.4026
+# pher anthocnet seed=19 t=405.5000 eastR=0.0000 eastV=0.0000 westR=26.6719 westV=25.8096
+# pher anthocnet seed=19 t=435.5000 eastR=0.0000 eastV=0.0000 westR=26.6157 westV=26.7433
+# pher anthocnet seed=19 t=465.5000 eastR=0.0000 eastV=0.0000 westR=26.6484 westV=28.3567
+# pher anthocnet seed=19 t=495.5000 eastR=0.0000 eastV=0.0000 westR=26.5574 westV=24.4178
+# pher anthocnet seed=19 t=525.5000 eastR=0.0000 eastV=0.0000 westR=29.1835 westV=25.1304
+# pher anthocnet seed=19 t=555.5000 eastR=0.0000 eastV=0.0000 westR=29.1031 westV=25.5680
+# pher anthocnet seed=19 t=585.5000 eastR=0.0000 eastV=0.0000 westR=29.2829 westV=29.4852
+# pher anthocnet seed=19 t=615.5000 eastR=0.0000 eastV=0.0000 westR=29.1188 westV=26.1293
+# pher anthocnet seed=19 t=645.5000 eastR=0.0000 eastV=0.0000 westR=26.8691 westV=26.2769
+# pher anthocnet seed=19 t=675.5000 eastR=0.0000 eastV=0.0000 westR=26.4023 westV=25.8807
+# pher anthocnet seed=19 t=705.5000 eastR=0.0000 eastV=0.0000 westR=25.2407 westV=28.1806
+# pher anthocnet seed=19 t=735.5000 eastR=0.0000 eastV=0.0000 westR=24.1402 westV=27.8328
+# pher anthocnet seed=19 t=765.5000 eastR=0.0000 eastV=0.0000 westR=24.4906 westV=28.0817
+# pher anthocnet seed=19 t=795.5000 eastR=0.0000 eastV=0.0000 westR=24.2579 westV=27.5687
+# pher anthocnet seed=19 t=825.5000 eastR=0.0000 eastV=0.0000 westR=24.2969 westV=27.8415
+# pher anthocnet seed=19 t=855.5000 eastR=0.0000 eastV=0.0000 westR=24.3220 westV=27.1047
+# pher anthocnet seed=19 t=885.5000 eastR=0.0000 eastV=0.0000 westR=24.2829 westV=27.8526
+##RUN## 19 anthocnet 100.00 15.23 16.00 5.82 18.59 30.83 0.00
+# diag anthocnet seed=19 ctrlTx=132302 antTx[1=32407,2=89,4=1844,] antRx[1=129628,2=94,4=2044,]
+# corridor anthocnet seed=19 loadStart=15.00 viaLoaded=0 viaClean=7072 viaOther=0 probePdr=100.00 probeDelayMs=15.23
+# pher anthocnet seed=20 t=15.5000 eastR=10.7739 eastV=13.3116 westR=20.4070 westV=25.2270
+# pher anthocnet seed=20 t=45.5000 eastR=0.2800 eastV=1.6824 westR=28.3572 westV=27.6288
+# pher anthocnet seed=20 t=75.5000 eastR=0.0196 eastV=0.1163 westR=29.1400 westV=28.6322
+# pher anthocnet seed=20 t=105.5000 eastR=0.0013 eastV=0.0079 westR=28.9913 westV=27.7803
+# pher anthocnet seed=20 t=135.5000 eastR=0.0001 eastV=0.0005 westR=28.9088 westV=26.8061
+# pher anthocnet seed=20 t=165.5000 eastR=0.0000 eastV=0.0000 westR=28.2651 westV=26.4406
+# pher anthocnet seed=20 t=195.5000 eastR=0.0000 eastV=0.0000 westR=28.8718 westV=24.7325
+# pher anthocnet seed=20 t=225.5000 eastR=0.0000 eastV=0.0000 westR=27.2925 westV=25.2882
+# pher anthocnet seed=20 t=255.5000 eastR=0.0000 eastV=0.0000 westR=28.5512 westV=25.4327
+# pher anthocnet seed=20 t=285.5000 eastR=0.0000 eastV=0.0000 westR=26.5191 westV=25.1527
+# pher anthocnet seed=20 t=315.5000 eastR=0.0000 eastV=0.0000 westR=29.2338 westV=26.5714
+# pher anthocnet seed=20 t=345.5000 eastR=0.0000 eastV=0.0000 westR=26.8873 westV=27.7196
+# pher anthocnet seed=20 t=375.5000 eastR=0.0000 eastV=0.0000 westR=26.4646 westV=24.3921
+# pher anthocnet seed=20 t=405.5000 eastR=0.0000 eastV=0.0000 westR=26.6243 westV=25.9082
+# pher anthocnet seed=20 t=435.5000 eastR=0.0000 eastV=0.0000 westR=29.1380 westV=28.3087
+# pher anthocnet seed=20 t=465.5000 eastR=0.0000 eastV=0.0000 westR=29.1280 westV=25.1451
+# pher anthocnet seed=20 t=495.5000 eastR=0.0000 eastV=0.0000 westR=31.5086 westV=22.1289
+# pher anthocnet seed=20 t=525.5000 eastR=0.0000 eastV=0.0000 westR=29.8268 westV=28.2757
+# pher anthocnet seed=20 t=555.5000 eastR=0.0000 eastV=0.0000 westR=29.2247 westV=27.6234
+# pher anthocnet seed=20 t=585.5000 eastR=0.0000 eastV=0.0000 westR=26.4635 westV=25.9178
+# pher anthocnet seed=20 t=615.5000 eastR=0.0000 eastV=0.0000 westR=26.6365 westV=24.3219
+# pher anthocnet seed=20 t=645.5000 eastR=0.0000 eastV=0.0000 westR=29.0555 westV=28.5183
+# pher anthocnet seed=20 t=675.5000 eastR=0.0000 eastV=0.0000 westR=24.7858 westV=25.7237
+# pher anthocnet seed=20 t=705.5000 eastR=0.0000 eastV=0.0000 westR=25.9644 westV=25.7312
+# pher anthocnet seed=20 t=735.5000 eastR=0.0000 eastV=0.0000 westR=24.6989 westV=25.9321
+# pher anthocnet seed=20 t=765.5000 eastR=0.0000 eastV=0.0000 westR=26.4689 westV=27.9669
+# pher anthocnet seed=20 t=795.5000 eastR=0.0000 eastV=0.0000 westR=26.3729 westV=27.1551
+# pher anthocnet seed=20 t=825.5000 eastR=0.0000 eastV=0.0000 westR=28.8370 westV=25.0365
+# pher anthocnet seed=20 t=855.5000 eastR=0.0000 eastV=0.0000 westR=31.6680 westV=22.7388
+# pher anthocnet seed=20 t=885.5000 eastR=0.0000 eastV=0.0000 westR=29.8774 westV=27.7614
+##RUN## 20 anthocnet 100.00 15.23 16.00 5.83 18.51 30.75 0.00
+# diag anthocnet seed=20 ctrlTx=131984 antTx[1=32396,2=178,4=1415,] antRx[1=129584,2=188,4=1540,]
+# corridor anthocnet seed=20 loadStart=15.00 viaLoaded=0 viaClean=7072 viaOther=0 probePdr=100.00 probeDelayMs=15.23
++Grid torus 6x6 = 36 satellites, 72 ISLs (mean degree 4.00) @ 5.00 ms 10Mbps, 0 flows, 900.00 s, mean of 20 run(s)
+
+protocol          PDR%  delay(ms)  delay99(ms)  thrput(kbps)     NRL   NRLbytes  jitter(ms)
+-------------------------------------------------------------------------------------------
+anthocnet        100.0       55.5         57.5          5.84   18.47      30.70        0.25
+##PROV## commit=dba9432d38162ecf570a1ab40521034d6c32e421 ref=main run_id=39102410244 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=isl-grid

@@ -1,0 +1,311 @@
+# v230 campaign leo-starlink1-anthocnet-v230-timing: 1 run(s): 39111112210 (timing/leo-starlink1-anthocnet); ref main
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=20 firstRun=1 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=-1 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=anthocnet
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork=30 London=38 SaoPaulo=19 Johannesburg=20 Tokyo=25 Sydney=23
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor timing profile=propagation meanIslKm=1303.427 hopTimeMs=4.348
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover anthocnet seed=1 scheduled=30 forced=0 islFailures=4776 ticks=20
+# account anthocnet seed=1 flow=0 offered=1183 refused=0 delivered=920 received=920 dup=0 outageLost=254 scatteredLost=9
+# account anthocnet seed=1 flow=1 offered=1181 refused=0 delivered=893 received=893 dup=0 outageLost=268 scatteredLost=20
+# account anthocnet seed=1 flow=2 offered=1190 refused=0 delivered=966 received=966 dup=0 outageLost=188 scatteredLost=36
+# account anthocnet seed=1 flow=3 offered=1192 refused=0 delivered=996 received=996 dup=0 outageLost=180 scatteredLost=16
+# outage anthocnet seed=1 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=1 class=scheduled n=27 lost=275 p50=2.500 p90=3.500 max=5.500
+# outage anthocnet seed=1 class=unplanned n=80 lost=573 p50=1.750 p90=3.000 max=4.250
+# outage anthocnet seed=1 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=1 class=other n=7 lost=42 p50=1.000 p90=3.750 max=3.750
+# churn anthocnet seed=1 flow=0 NewYork-London hopChangesPerMin=8.333 meanHops=23.151 delivered=920
+# churn anthocnet seed=1 flow=1 London-Tokyo hopChangesPerMin=15.264 meanHops=33.666 delivered=893
+# churn anthocnet seed=1 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=14.556 meanHops=27.172 delivered=966
+# churn anthocnet seed=1 flow=3 Tokyo-Sydney hopChangesPerMin=4.838 meanHops=18.646 delivered=996
+##RUN## 1 anthocnet 79.54 83.67 201.00 9.26 925.57 2660.77 4.60
+# handover anthocnet seed=2 scheduled=30 forced=0 islFailures=4760 ticks=20
+# account anthocnet seed=2 flow=0 offered=1179 refused=0 delivered=914 received=914 dup=0 outageLost=256 scatteredLost=9
+# account anthocnet seed=2 flow=1 offered=1187 refused=0 delivered=903 received=903 dup=0 outageLost=266 scatteredLost=18
+# account anthocnet seed=2 flow=2 offered=1184 refused=0 delivered=905 received=905 dup=0 outageLost=271 scatteredLost=8
+# account anthocnet seed=2 flow=3 offered=1181 refused=0 delivered=964 received=964 dup=0 outageLost=211 scatteredLost=6
+# outage anthocnet seed=2 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=2 class=scheduled n=29 lost=333 p50=2.500 p90=3.500 max=19.250
+# outage anthocnet seed=2 class=unplanned n=85 lost=659 p50=1.750 p90=3.000 max=5.000
+# outage anthocnet seed=2 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=2 class=other n=3 lost=12 p50=1.000 p90=1.250 max=1.250
+# churn anthocnet seed=2 flow=0 NewYork-London hopChangesPerMin=5.333 meanHops=25.811 delivered=914
+# churn anthocnet seed=2 flow=1 London-Tokyo hopChangesPerMin=11.745 meanHops=34.307 delivered=903
+# churn anthocnet seed=2 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=6.700 meanHops=25.497 delivered=905
+# churn anthocnet seed=2 flow=3 Tokyo-Sydney hopChangesPerMin=3.459 meanHops=18.461 delivered=964
+##RUN## 2 anthocnet 77.91 85.96 206.00 9.04 990.04 2976.39 4.89
+# handover anthocnet seed=3 scheduled=30 forced=0 islFailures=4712 ticks=20
+# account anthocnet seed=3 flow=0 offered=1191 refused=0 delivered=937 received=937 dup=0 outageLost=233 scatteredLost=21
+# account anthocnet seed=3 flow=1 offered=1177 refused=0 delivered=869 received=869 dup=0 outageLost=288 scatteredLost=20
+# account anthocnet seed=3 flow=2 offered=1182 refused=0 delivered=993 received=993 dup=0 outageLost=176 scatteredLost=13
+# account anthocnet seed=3 flow=3 offered=1182 refused=0 delivered=983 received=983 dup=0 outageLost=179 scatteredLost=20
+# outage anthocnet seed=3 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=3 class=scheduled n=31 lost=298 p50=2.250 p90=2.750 max=10.250
+# outage anthocnet seed=3 class=unplanned n=79 lost=571 p50=1.750 p90=2.750 max=4.000
+# outage anthocnet seed=3 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=3 class=other n=2 lost=7 p50=1.000 p90=1.000 max=1.000
+# churn anthocnet seed=3 flow=0 NewYork-London hopChangesPerMin=7.872 meanHops=23.646 delivered=937
+# churn anthocnet seed=3 flow=1 London-Tokyo hopChangesPerMin=9.426 meanHops=32.892 delivered=869
+# churn anthocnet seed=3 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=7.117 meanHops=25.281 delivered=993
+# churn anthocnet seed=3 flow=3 Tokyo-Sydney hopChangesPerMin=3.456 meanHops=18.538 delivered=983
+##RUN## 3 anthocnet 79.92 81.92 213.00 9.28 958.96 2827.40 4.78
+# handover anthocnet seed=4 scheduled=30 forced=0 islFailures=4692 ticks=20
+# account anthocnet seed=4 flow=0 offered=1186 refused=0 delivered=962 received=962 dup=0 outageLost=201 scatteredLost=23
+# account anthocnet seed=4 flow=1 offered=1192 refused=0 delivered=838 received=838 dup=0 outageLost=334 scatteredLost=20
+# account anthocnet seed=4 flow=2 offered=1180 refused=0 delivered=947 received=947 dup=0 outageLost=218 scatteredLost=15
+# account anthocnet seed=4 flow=3 offered=1188 refused=0 delivered=1011 received=1011 dup=0 outageLost=172 scatteredLost=5
+# outage anthocnet seed=4 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=4 class=scheduled n=31 lost=290 p50=2.250 p90=2.750 max=4.500
+# outage anthocnet seed=4 class=unplanned n=81 lost=606 p50=1.750 p90=2.750 max=4.000
+# outage anthocnet seed=4 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=4 class=other n=8 lost=29 p50=0.750 p90=1.250 max=1.250
+# churn anthocnet seed=4 flow=0 NewYork-London hopChangesPerMin=7.905 meanHops=22.754 delivered=962
+# churn anthocnet seed=4 flow=1 London-Tokyo hopChangesPerMin=16.535 meanHops=33.505 delivered=838
+# churn anthocnet seed=4 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=5.296 meanHops=24.200 delivered=947
+# churn anthocnet seed=4 flow=3 Tokyo-Sydney hopChangesPerMin=5.663 meanHops=20.112 delivered=1011
+##RUN## 4 anthocnet 79.18 83.04 208.00 9.22 943.69 2751.92 5.04
+# handover anthocnet seed=5 scheduled=30 forced=0 islFailures=4724 ticks=20
+# account anthocnet seed=5 flow=0 offered=1191 refused=0 delivered=932 received=932 dup=0 outageLost=250 scatteredLost=9
+# account anthocnet seed=5 flow=1 offered=1186 refused=0 delivered=927 received=927 dup=0 outageLost=247 scatteredLost=12
+# account anthocnet seed=5 flow=2 offered=1186 refused=0 delivered=953 received=953 dup=0 outageLost=228 scatteredLost=5
+# account anthocnet seed=5 flow=3 offered=1184 refused=0 delivered=961 received=961 dup=0 outageLost=216 scatteredLost=7
+# outage anthocnet seed=5 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=5 class=scheduled n=32 lost=279 p50=2.000 p90=3.000 max=3.750
+# outage anthocnet seed=5 class=unplanned n=86 lost=659 p50=1.750 p90=3.000 max=6.000
+# outage anthocnet seed=5 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=5 class=other n=1 lost=3 p50=0.750 p90=0.750 max=0.750
+# churn anthocnet seed=5 flow=0 NewYork-London hopChangesPerMin=5.245 meanHops=23.495 delivered=932
+# churn anthocnet seed=5 flow=1 London-Tokyo hopChangesPerMin=10.133 meanHops=34.779 delivered=927
+# churn anthocnet seed=5 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=4.274 meanHops=26.274 delivered=953
+# churn anthocnet seed=5 flow=3 Tokyo-Sydney hopChangesPerMin=5.099 meanHops=19.490 delivered=961
+##RUN## 5 anthocnet 79.48 87.44 213.00 9.26 936.30 2691.92 4.85
+# handover anthocnet seed=6 scheduled=30 forced=0 islFailures=4834 ticks=20
+# account anthocnet seed=6 flow=0 offered=1188 refused=0 delivered=963 received=963 dup=0 outageLost=214 scatteredLost=11
+# account anthocnet seed=6 flow=1 offered=1189 refused=0 delivered=858 received=858 dup=0 outageLost=303 scatteredLost=28
+# account anthocnet seed=6 flow=2 offered=1183 refused=0 delivered=936 received=936 dup=0 outageLost=239 scatteredLost=8
+# account anthocnet seed=6 flow=3 offered=1189 refused=0 delivered=987 received=987 dup=0 outageLost=188 scatteredLost=14
+# outage anthocnet seed=6 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=6 class=scheduled n=27 lost=241 p50=2.250 p90=2.750 max=3.250
+# outage anthocnet seed=6 class=unplanned n=89 lost=680 p50=1.750 p90=3.250 max=4.000
+# outage anthocnet seed=6 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=6 class=other n=3 lost=23 p50=1.750 p90=2.750 max=2.750
+# churn anthocnet seed=6 flow=0 NewYork-London hopChangesPerMin=5.666 meanHops=24.841 delivered=963
+# churn anthocnet seed=6 flow=1 London-Tokyo hopChangesPerMin=7.682 meanHops=32.742 delivered=858
+# churn anthocnet seed=6 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=6.908 meanHops=24.438 delivered=936
+# churn anthocnet seed=6 flow=3 Tokyo-Sydney hopChangesPerMin=3.840 meanHops=20.174 delivered=987
+##RUN## 6 anthocnet 78.84 84.94 209.00 9.19 933.61 2675.83 5.18
+# handover anthocnet seed=7 scheduled=30 forced=0 islFailures=4720 ticks=20
+# account anthocnet seed=7 flow=0 offered=1177 refused=0 delivered=945 received=945 dup=0 outageLost=213 scatteredLost=19
+# account anthocnet seed=7 flow=1 offered=1179 refused=0 delivered=884 received=884 dup=0 outageLost=273 scatteredLost=22
+# account anthocnet seed=7 flow=2 offered=1191 refused=0 delivered=963 received=963 dup=0 outageLost=217 scatteredLost=11
+# account anthocnet seed=7 flow=3 offered=1177 refused=0 delivered=994 received=994 dup=0 outageLost=175 scatteredLost=8
+# outage anthocnet seed=7 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=7 class=scheduled n=32 lost=337 p50=2.250 p90=2.500 max=16.750
+# outage anthocnet seed=7 class=unplanned n=65 lost=525 p50=2.000 p90=2.750 max=4.500
+# outage anthocnet seed=7 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=7 class=other n=4 lost=16 p50=1.000 p90=1.500 max=1.500
+# churn anthocnet seed=7 flow=0 NewYork-London hopChangesPerMin=8.586 meanHops=22.404 delivered=945
+# churn anthocnet seed=7 flow=1 London-Tokyo hopChangesPerMin=11.417 meanHops=33.198 delivered=884
+# churn anthocnet seed=7 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=5.449 meanHops=26.324 delivered=963
+# churn anthocnet seed=7 flow=3 Tokyo-Sydney hopChangesPerMin=3.470 meanHops=18.988 delivered=994
+##RUN## 7 anthocnet 80.14 82.98 216.00 9.29 938.03 2722.80 4.71
+# handover anthocnet seed=8 scheduled=30 forced=0 islFailures=4734 ticks=20
+# account anthocnet seed=8 flow=0 offered=1181 refused=0 delivered=906 received=906 dup=0 outageLost=265 scatteredLost=10
+# account anthocnet seed=8 flow=1 offered=1183 refused=0 delivered=847 received=847 dup=0 outageLost=299 scatteredLost=37
+# account anthocnet seed=8 flow=2 offered=1190 refused=0 delivered=992 received=992 dup=0 outageLost=188 scatteredLost=10
+# account anthocnet seed=8 flow=3 offered=1190 refused=0 delivered=1005 received=1005 dup=0 outageLost=176 scatteredLost=9
+# outage anthocnet seed=8 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=8 class=scheduled n=29 lost=283 p50=2.250 p90=3.000 max=7.250
+# outage anthocnet seed=8 class=unplanned n=81 lost=611 p50=1.750 p90=2.750 max=4.250
+# outage anthocnet seed=8 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=8 class=other n=7 lost=34 p50=1.000 p90=2.000 max=2.000
+# churn anthocnet seed=8 flow=0 NewYork-London hopChangesPerMin=8.957 meanHops=22.658 delivered=906
+# churn anthocnet seed=8 flow=1 London-Tokyo hopChangesPerMin=18.083 meanHops=35.135 delivered=847
+# churn anthocnet seed=8 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=9.291 meanHops=25.138 delivered=992
+# churn anthocnet seed=8 flow=3 Tokyo-Sydney hopChangesPerMin=3.433 meanHops=18.695 delivered=1005
+##RUN## 8 anthocnet 79.05 84.68 216.00 9.20 1018.08 3072.98 5.30
+# handover anthocnet seed=9 scheduled=30 forced=0 islFailures=4704 ticks=20
+# account anthocnet seed=9 flow=0 offered=1184 refused=0 delivered=957 received=957 dup=0 outageLost=220 scatteredLost=7
+# account anthocnet seed=9 flow=1 offered=1182 refused=0 delivered=886 received=886 dup=0 outageLost=286 scatteredLost=10
+# account anthocnet seed=9 flow=2 offered=1184 refused=0 delivered=991 received=991 dup=0 outageLost=178 scatteredLost=15
+# account anthocnet seed=9 flow=3 offered=1181 refused=0 delivered=996 received=996 dup=0 outageLost=172 scatteredLost=13
+# outage anthocnet seed=9 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=9 class=scheduled n=32 lost=301 p50=2.000 p90=2.750 max=7.000
+# outage anthocnet seed=9 class=unplanned n=76 lost=538 p50=1.750 p90=2.750 max=9.000
+# outage anthocnet seed=9 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=9 class=other n=4 lost=17 p50=1.000 p90=1.750 max=1.750
+# churn anthocnet seed=9 flow=0 NewYork-London hopChangesPerMin=6.498 meanHops=23.149 delivered=957
+# churn anthocnet seed=9 flow=1 London-Tokyo hopChangesPerMin=9.964 meanHops=34.323 delivered=886
+# churn anthocnet seed=9 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=12.790 meanHops=25.607 delivered=991
+# churn anthocnet seed=9 flow=3 Tokyo-Sydney hopChangesPerMin=9.562 meanHops=20.349 delivered=996
+##RUN## 9 anthocnet 80.96 85.42 196.00 9.40 956.74 2831.24 4.21
+# handover anthocnet seed=10 scheduled=30 forced=0 islFailures=4744 ticks=20
+# account anthocnet seed=10 flow=0 offered=1192 refused=0 delivered=1000 received=1000 dup=0 outageLost=185 scatteredLost=7
+# account anthocnet seed=10 flow=1 offered=1177 refused=0 delivered=889 received=889 dup=0 outageLost=272 scatteredLost=16
+# account anthocnet seed=10 flow=2 offered=1182 refused=0 delivered=992 received=992 dup=0 outageLost=177 scatteredLost=13
+# account anthocnet seed=10 flow=3 offered=1190 refused=0 delivered=935 received=935 dup=0 outageLost=252 scatteredLost=3
+# outage anthocnet seed=10 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=10 class=scheduled n=33 lost=377 p50=2.250 p90=2.750 max=17.250
+# outage anthocnet seed=10 class=unplanned n=68 lost=491 p50=1.750 p90=2.750 max=6.500
+# outage anthocnet seed=10 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=10 class=other n=5 lost=18 p50=1.000 p90=1.000 max=1.000
+# churn anthocnet seed=10 flow=0 NewYork-London hopChangesPerMin=5.648 meanHops=22.551 delivered=1000
+# churn anthocnet seed=10 flow=1 London-Tokyo hopChangesPerMin=9.598 meanHops=33.435 delivered=889
+# churn anthocnet seed=10 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=8.154 meanHops=26.559 delivered=992
+# churn anthocnet seed=10 flow=3 Tokyo-Sydney hopChangesPerMin=4.846 meanHops=18.921 delivered=935
+##RUN## 10 anthocnet 80.49 85.11 203.00 9.36 944.19 2755.97 3.87
+# handover anthocnet seed=11 scheduled=30 forced=0 islFailures=4751 ticks=20
+# account anthocnet seed=11 flow=0 offered=1183 refused=0 delivered=904 received=904 dup=0 outageLost=265 scatteredLost=14
+# account anthocnet seed=11 flow=1 offered=1192 refused=0 delivered=860 received=860 dup=0 outageLost=302 scatteredLost=30
+# account anthocnet seed=11 flow=2 offered=1184 refused=0 delivered=1038 received=1038 dup=0 outageLost=137 scatteredLost=9
+# account anthocnet seed=11 flow=3 offered=1179 refused=0 delivered=958 received=958 dup=0 outageLost=207 scatteredLost=14
+# outage anthocnet seed=11 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=11 class=scheduled n=31 lost=282 p50=2.250 p90=3.000 max=5.250
+# outage anthocnet seed=11 class=unplanned n=74 lost=551 p50=1.750 p90=2.750 max=5.000
+# outage anthocnet seed=11 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=11 class=other n=8 lost=78 p50=1.500 p90=11.750 max=11.750
+# churn anthocnet seed=11 flow=0 NewYork-London hopChangesPerMin=10.576 meanHops=22.867 delivered=904
+# churn anthocnet seed=11 flow=1 London-Tokyo hopChangesPerMin=7.864 meanHops=32.317 delivered=860
+# churn anthocnet seed=11 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=6.903 meanHops=26.085 delivered=1038
+# churn anthocnet seed=11 flow=3 Tokyo-Sydney hopChangesPerMin=6.929 meanHops=19.372 delivered=958
+##RUN## 11 anthocnet 79.36 85.08 211.00 9.22 936.38 2686.84 4.53
+# handover anthocnet seed=12 scheduled=30 forced=0 islFailures=4857 ticks=20
+# account anthocnet seed=12 flow=0 offered=1187 refused=0 delivered=967 received=967 dup=0 outageLost=201 scatteredLost=19
+# account anthocnet seed=12 flow=1 offered=1178 refused=0 delivered=890 received=890 dup=0 outageLost=260 scatteredLost=28
+# account anthocnet seed=12 flow=2 offered=1184 refused=0 delivered=962 received=962 dup=0 outageLost=207 scatteredLost=15
+# account anthocnet seed=12 flow=3 offered=1182 refused=0 delivered=930 received=930 dup=0 outageLost=240 scatteredLost=12
+# outage anthocnet seed=12 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=12 class=scheduled n=29 lost=305 p50=2.250 p90=5.000 max=6.500
+# outage anthocnet seed=12 class=unplanned n=79 lost=582 p50=1.750 p90=2.750 max=5.000
+# outage anthocnet seed=12 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=12 class=other n=5 lost=21 p50=1.250 p90=1.250 max=1.250
+# churn anthocnet seed=12 flow=0 NewYork-London hopChangesPerMin=6.076 meanHops=25.517 delivered=967
+# churn anthocnet seed=12 flow=1 London-Tokyo hopChangesPerMin=13.489 meanHops=33.790 delivered=890
+# churn anthocnet seed=12 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=9.339 meanHops=25.687 delivered=962
+# churn anthocnet seed=12 flow=3 Tokyo-Sydney hopChangesPerMin=5.493 meanHops=19.049 delivered=930
+##RUN## 12 anthocnet 79.24 87.73 244.00 9.20 1012.04 3163.84 5.50
+# handover anthocnet seed=13 scheduled=30 forced=0 islFailures=4788 ticks=20
+# account anthocnet seed=13 flow=0 offered=1183 refused=0 delivered=937 received=937 dup=0 outageLost=216 scatteredLost=30
+# account anthocnet seed=13 flow=1 offered=1178 refused=0 delivered=863 received=863 dup=0 outageLost=307 scatteredLost=8
+# account anthocnet seed=13 flow=2 offered=1190 refused=0 delivered=878 received=878 dup=0 outageLost=308 scatteredLost=4
+# account anthocnet seed=13 flow=3 offered=1180 refused=0 delivered=950 received=950 dup=0 outageLost=228 scatteredLost=2
+# outage anthocnet seed=13 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=13 class=scheduled n=28 lost=348 p50=2.250 p90=2.750 max=31.750
+# outage anthocnet seed=13 class=unplanned n=86 lost=678 p50=1.750 p90=2.750 max=11.250
+# outage anthocnet seed=13 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=13 class=other n=7 lost=33 p50=1.000 p90=2.250 max=2.250
+# churn anthocnet seed=13 flow=0 NewYork-London hopChangesPerMin=11.177 meanHops=22.818 delivered=937
+# churn anthocnet seed=13 flow=1 London-Tokyo hopChangesPerMin=17.139 meanHops=31.752 delivered=863
+# churn anthocnet seed=13 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=7.069 meanHops=25.634 delivered=878
+# churn anthocnet seed=13 flow=3 Tokyo-Sydney hopChangesPerMin=8.553 meanHops=18.727 delivered=950
+##RUN## 13 anthocnet 76.69 82.56 231.00 8.90 1012.55 2972.57 5.88
+# handover anthocnet seed=14 scheduled=30 forced=0 islFailures=4639 ticks=20
+# account anthocnet seed=14 flow=0 offered=1183 refused=0 delivered=918 received=918 dup=0 outageLost=257 scatteredLost=8
+# account anthocnet seed=14 flow=1 offered=1184 refused=0 delivered=946 received=946 dup=0 outageLost=221 scatteredLost=17
+# account anthocnet seed=14 flow=2 offered=1189 refused=0 delivered=933 received=933 dup=0 outageLost=242 scatteredLost=14
+# account anthocnet seed=14 flow=3 offered=1185 refused=0 delivered=1001 received=1001 dup=0 outageLost=183 scatteredLost=1
+# outage anthocnet seed=14 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=14 class=scheduled n=31 lost=315 p50=2.250 p90=2.750 max=11.250
+# outage anthocnet seed=14 class=unplanned n=80 lost=580 p50=1.750 p90=2.750 max=5.000
+# outage anthocnet seed=14 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=14 class=other n=2 lost=8 p50=1.250 p90=1.250 max=1.250
+# churn anthocnet seed=14 flow=0 NewYork-London hopChangesPerMin=8.941 meanHops=24.618 delivered=918
+# churn anthocnet seed=14 flow=1 London-Tokyo hopChangesPerMin=13.616 meanHops=34.064 delivered=946
+# churn anthocnet seed=14 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=7.087 meanHops=25.547 delivered=933
+# churn anthocnet seed=14 flow=3 Tokyo-Sydney hopChangesPerMin=5.272 meanHops=18.147 delivered=1001
+##RUN## 14 anthocnet 80.11 85.32 224.00 9.32 878.78 2434.17 4.99
+# handover anthocnet seed=15 scheduled=30 forced=0 islFailures=4752 ticks=20
+# account anthocnet seed=15 flow=0 offered=1189 refused=0 delivered=924 received=924 dup=0 outageLost=253 scatteredLost=12
+# account anthocnet seed=15 flow=1 offered=1180 refused=0 delivered=909 received=909 dup=0 outageLost=246 scatteredLost=25
+# account anthocnet seed=15 flow=2 offered=1187 refused=0 delivered=978 received=978 dup=0 outageLost=190 scatteredLost=19
+# account anthocnet seed=15 flow=3 offered=1178 refused=0 delivered=930 received=930 dup=0 outageLost=239 scatteredLost=9
+# outage anthocnet seed=15 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=15 class=scheduled n=29 lost=265 p50=2.250 p90=3.000 max=3.000
+# outage anthocnet seed=15 class=unplanned n=73 lost=629 p50=2.000 p90=3.500 max=12.250
+# outage anthocnet seed=15 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=15 class=other n=4 lost=34 p50=1.750 p90=4.000 max=4.000
+# churn anthocnet seed=15 flow=0 NewYork-London hopChangesPerMin=8.716 meanHops=26.399 delivered=924
+# churn anthocnet seed=15 flow=1 London-Tokyo hopChangesPerMin=7.537 meanHops=32.937 delivered=909
+# churn anthocnet seed=15 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=5.670 meanHops=25.293 delivered=978
+# churn anthocnet seed=15 flow=3 Tokyo-Sydney hopChangesPerMin=4.487 meanHops=19.025 delivered=930
+##RUN## 15 anthocnet 79.02 86.94 210.00 9.18 940.34 2753.89 4.75
+# handover anthocnet seed=16 scheduled=30 forced=0 islFailures=4800 ticks=20
+# account anthocnet seed=16 flow=0 offered=1177 refused=0 delivered=974 received=974 dup=0 outageLost=172 scatteredLost=31
+# account anthocnet seed=16 flow=1 offered=1183 refused=0 delivered=902 received=902 dup=0 outageLost=266 scatteredLost=15
+# account anthocnet seed=16 flow=2 offered=1184 refused=0 delivered=953 received=953 dup=0 outageLost=222 scatteredLost=9
+# account anthocnet seed=16 flow=3 offered=1190 refused=0 delivered=988 received=988 dup=0 outageLost=192 scatteredLost=10
+# outage anthocnet seed=16 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=16 class=scheduled n=31 lost=255 p50=2.000 p90=2.750 max=3.250
+# outage anthocnet seed=16 class=unplanned n=75 lost=578 p50=1.750 p90=2.750 max=11.500
+# outage anthocnet seed=16 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=16 class=other n=3 lost=19 p50=1.250 p90=2.250 max=2.250
+# churn anthocnet seed=16 flow=0 NewYork-London hopChangesPerMin=10.222 meanHops=22.922 delivered=974
+# churn anthocnet seed=16 flow=1 London-Tokyo hopChangesPerMin=6.502 meanHops=33.725 delivered=902
+# churn anthocnet seed=16 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=7.309 meanHops=25.276 delivered=953
+# churn anthocnet seed=16 flow=3 Tokyo-Sydney hopChangesPerMin=4.652 meanHops=19.120 delivered=988
+##RUN## 16 anthocnet 80.63 82.41 207.00 9.36 949.34 2864.90 4.89
+# handover anthocnet seed=17 scheduled=30 forced=0 islFailures=4781 ticks=20
+# account anthocnet seed=17 flow=0 offered=1190 refused=0 delivered=944 received=944 dup=0 outageLost=219 scatteredLost=27
+# account anthocnet seed=17 flow=1 offered=1190 refused=0 delivered=810 received=810 dup=0 outageLost=347 scatteredLost=33
+# account anthocnet seed=17 flow=2 offered=1177 refused=0 delivered=982 received=982 dup=0 outageLost=187 scatteredLost=8
+# account anthocnet seed=17 flow=3 offered=1179 refused=0 delivered=984 received=984 dup=0 outageLost=183 scatteredLost=12
+# outage anthocnet seed=17 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=17 class=scheduled n=29 lost=400 p50=2.250 p90=4.000 max=36.750
+# outage anthocnet seed=17 class=unplanned n=67 lost=522 p50=1.750 p90=2.750 max=8.750
+# outage anthocnet seed=17 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=17 class=other n=3 lost=14 p50=1.250 p90=1.250 max=1.250
+# churn anthocnet seed=17 flow=0 NewYork-London hopChangesPerMin=12.929 meanHops=23.577 delivered=944
+# churn anthocnet seed=17 flow=1 London-Tokyo hopChangesPerMin=14.947 meanHops=34.019 delivered=810
+# churn anthocnet seed=17 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=4.901 meanHops=25.673 delivered=982
+# churn anthocnet seed=17 flow=3 Tokyo-Sydney hopChangesPerMin=9.578 meanHops=19.218 delivered=984
+##RUN## 17 anthocnet 78.55 84.17 204.00 9.13 1008.99 3052.86 5.26
+# handover anthocnet seed=18 scheduled=30 forced=0 islFailures=4785 ticks=20
+# account anthocnet seed=18 flow=0 offered=1184 refused=0 delivered=941 received=941 dup=0 outageLost=241 scatteredLost=2
+# account anthocnet seed=18 flow=1 offered=1177 refused=0 delivered=791 received=791 dup=0 outageLost=364 scatteredLost=22
+# account anthocnet seed=18 flow=2 offered=1181 refused=0 delivered=927 received=927 dup=0 outageLost=245 scatteredLost=9
+# account anthocnet seed=18 flow=3 offered=1184 refused=0 delivered=1037 received=1037 dup=0 outageLost=136 scatteredLost=11
+# outage anthocnet seed=18 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=18 class=scheduled n=31 lost=388 p50=2.250 p90=3.000 max=18.500
+# outage anthocnet seed=18 class=unplanned n=78 lost=562 p50=1.750 p90=2.750 max=4.250
+# outage anthocnet seed=18 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=18 class=other n=7 lost=36 p50=1.250 p90=2.250 max=2.250
+# churn anthocnet seed=18 flow=0 NewYork-London hopChangesPerMin=8.325 meanHops=24.959 delivered=941
+# churn anthocnet seed=18 flow=1 London-Tokyo hopChangesPerMin=10.415 meanHops=33.962 delivered=791
+# churn anthocnet seed=18 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=7.142 meanHops=25.110 delivered=927
+# churn anthocnet seed=18 flow=3 Tokyo-Sydney hopChangesPerMin=5.277 meanHops=17.905 delivered=1037
+##RUN## 18 anthocnet 78.21 81.22 229.00 9.07 957.41 2780.52 4.85
+# handover anthocnet seed=19 scheduled=30 forced=0 islFailures=4694 ticks=20
+# account anthocnet seed=19 flow=0 offered=1181 refused=0 delivered=926 received=926 dup=0 outageLost=246 scatteredLost=9
+# account anthocnet seed=19 flow=1 offered=1178 refused=0 delivered=830 received=830 dup=0 outageLost=325 scatteredLost=23
+# account anthocnet seed=19 flow=2 offered=1180 refused=0 delivered=950 received=950 dup=0 outageLost=207 scatteredLost=23
+# account anthocnet seed=19 flow=3 offered=1185 refused=0 delivered=1021 received=1021 dup=0 outageLost=159 scatteredLost=5
+# outage anthocnet seed=19 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=19 class=scheduled n=31 lost=361 p50=2.250 p90=3.000 max=16.250
+# outage anthocnet seed=19 class=unplanned n=78 lost=554 p50=1.750 p90=2.500 max=3.500
+# outage anthocnet seed=19 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=19 class=other n=6 lost=22 p50=0.750 p90=1.500 max=1.500
+# churn anthocnet seed=19 flow=0 NewYork-London hopChangesPerMin=6.310 meanHops=24.135 delivered=926
+# churn anthocnet seed=19 flow=1 London-Tokyo hopChangesPerMin=15.302 meanHops=32.219 delivered=830
+# churn anthocnet seed=19 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=8.352 meanHops=25.211 delivered=950
+# churn anthocnet seed=19 flow=3 Tokyo-Sydney hopChangesPerMin=3.244 meanHops=19.274 delivered=1021
+##RUN## 19 anthocnet 78.90 82.87 195.00 9.14 1102.38 3410.68 4.39
+# handover anthocnet seed=20 scheduled=30 forced=0 islFailures=4733 ticks=20
+# account anthocnet seed=20 flow=0 offered=1184 refused=0 delivered=938 received=938 dup=0 outageLost=230 scatteredLost=16
+# account anthocnet seed=20 flow=1 offered=1192 refused=0 delivered=837 received=837 dup=0 outageLost=326 scatteredLost=29
+# account anthocnet seed=20 flow=2 offered=1181 refused=0 delivered=955 received=955 dup=0 outageLost=207 scatteredLost=19
+# account anthocnet seed=20 flow=3 offered=1181 refused=0 delivered=1014 received=1014 dup=0 outageLost=166 scatteredLost=1
+# outage anthocnet seed=20 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=20 class=scheduled n=31 lost=280 p50=2.250 p90=2.750 max=4.250
+# outage anthocnet seed=20 class=unplanned n=86 lost=613 p50=1.750 p90=2.750 max=5.000
+# outage anthocnet seed=20 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=20 class=other n=6 lost=36 p50=1.500 p90=2.750 max=2.750
+# churn anthocnet seed=20 flow=0 NewYork-London hopChangesPerMin=7.716 meanHops=23.567 delivered=938
+# churn anthocnet seed=20 flow=1 London-Tokyo hopChangesPerMin=10.751 meanHops=33.108 delivered=837
+# churn anthocnet seed=20 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=7.938 meanHops=24.496 delivered=955
+# churn anthocnet seed=20 flow=3 Tokyo-Sydney hopChangesPerMin=4.079 meanHops=19.335 delivered=1014
+##RUN## 20 anthocnet 79.02 82.96 210.00 9.19 882.52 2435.47 5.16
+anthocnet      79.26      84.32       212.30          9.21   961.30    2826.15        4.88
+##PROV## commit=cc2301266bf51f4a9ee31ab681d87b1d92fac92a ref=main run_id=39111112210 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker

@@ -1286,22 +1286,22 @@
     "quiet": {
       "name": "Quiet mode",
       "what": "Proactive ants back off while a route stays the same, and come back when it changes.",
-      "measured": "The v2.3.0 campaign measures it in every network family; the result appears here when the campaign lands."
+      "measured": "Static mesh: 0.40 fewer control packets per delivered packet (NRL), same delivery; satellite ISL grid: 0.04 to 0.11 fewer. In moving networks routes never stay still long enough for it to engage: no measurable effect."
     },
     "lookahead": {
       "name": "Look-ahead",
       "what": "Hellos carry position and velocity; a next hop whose link is about to break counts for less.",
-      "measured": "The v2.3.0 campaign measures it in every network family; the result appears here when the campaign lands."
+      "measured": "Moving Wi-Fi grid with fading (Nakagami): +2.1 to +3.9 pp delivery and a 99th-percentile delay 160 to 215 ms shorter. VANET city streets, its target: no gain and slightly more overhead. Starlink shell: 0.5 pp less delivery."
     },
     "battery": {
       "name": "Battery saver",
       "what": "Hops through nodes with little battery left cost more, so routes go around tired drones.",
-      "measured": "The v2.3.0 campaign measures it in every network family; the result appears here when the campaign lands."
+      "measured": "With full batteries every hop costs about the same, and the metric costs delay: up to +1 s at the 99th percentile on VANET, with 1.5 pp less delivery there. Battery-limited networks, where it should pay, are not measured yet."
     },
     "longhaul": {
       "name": "Long-haul timing",
       "what": "The hop time is the real propagation delay between satellites, not a Wi-Fi hop's 3 ms.",
-      "measured": "The v2.3.0 campaign measures it in every network family; the result appears here when the campaign lands."
+      "measured": "No measurable difference on the satellite cells: delivery, delay and overhead all within noise."
     }
   },
   "replay": {
