@@ -30,7 +30,9 @@ header naming the runs. The seed blocks of a split cell are concatenated, and
 bench_parse.py pairs them by seed. Each artifact already ends with its run's
 ##PROV## line (#674). Without --from it downloads each run's artifact with
 `gh api`. Where that cannot follow the blob redirect, fetch the artifacts
-another way and pass --from DIR, holding DIR/<label>/<results file>.
+another way and pass --from DIR, holding DIR/<label>/<results file>: the
+rescue-artifacts workflow's bundle_run_ids input gathers every run's artifact
+into one `rescue-bundle` (<run id>/...), one download for the whole campaign.
 
 `verdicts` runs bench_parse.py --ab --proto anthocnet on every arm's file
 against the control file of the same cell, and prints one line per cell.

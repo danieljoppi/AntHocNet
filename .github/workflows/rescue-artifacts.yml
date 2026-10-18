@@ -16,6 +16,12 @@ name: Rescue run artifacts into docs (manual)
 # columns that the job log swallows (run-scenarios.py keeps only CSV rows), so
 # the only drop-cause data the per-merge run produces dies with the artifact
 # unless rescued. Lands as results/campaign/<runid>-merge.csv.
+#
+# bundle_run_ids gathers every artifact of each given run into ONE artifact,
+# `rescue-bundle` (<run id>/<artifact files>), and commits nothing. A campaign
+# (tools/bench/campaign.py) is 100+ runs; where artifacts can only be fetched
+# one signed URL at a time, one bundle replaces 100+ fetches. Unpack it into
+# DIR/<label>/ by the campaign's label -> run id log and pass `collect --from DIR`.
 on:
   workflow_dispatch:
     inputs:
@@ -27,6 +33,9 @@ on:
         default: ''
       merge_run_ids:
         description: 'Comma-separated workflow run IDs whose benchmark-results artifact (per-merge benchmarks workflow, #229) to rescue; clear the other inputs when rescuing only these'
+        default: ''
+      bundle_run_ids:
+        description: 'Comma-separated workflow run IDs whose artifacts to gather into one rescue-bundle artifact (campaign collect); commits nothing'
         default: ''
 
 permissions:
@@ -132,6 +141,27 @@ jobs:
             cp "$dir/scenarios.csv" "results/campaign/${id}-${label}.csv"
           done
           rm -rf rescue-tmp
+      - name: Gather run artifacts into one bundle (campaign collect)
+        if: github.event.inputs.bundle_run_ids != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUNDLE_RUN_IDS: ${{ github.event.inputs.bundle_run_ids }}
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra IDS <<< "$BUNDLE_RUN_IDS"
+          for id in "${IDS[@]}"; do
+            id="$(echo "$id" | tr -d ' ')"
+            [[ "$id" =~ ^[0-9]+$ ]] || { echo "FAIL: not a run id: $id"; exit 1; }
+            gh run download "$id" -R "$GITHUB_REPOSITORY" -D "rescue-bundle/$id"
+            echo "run $id: $(find "rescue-bundle/$id" -type f | wc -l) file(s)"
+          done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: github.event.inputs.bundle_run_ids != ''
+        with:
+          name: rescue-bundle
+          path: rescue-bundle/
+          retention-days: 7
       - name: Commit rescued results
         run: |
           git config user.name "github-actions[bot]"
