@@ -54,11 +54,16 @@ def check(cond, msg):
 def compose(base, arm):
     with tempfile.TemporaryDirectory() as d:
         b, a, o = (os.path.join(d, n) for n in ("base.txt", "arm.txt", "out.txt"))
-        open(b, "w").write(base)
-        open(a, "w").write(arm)
+        for path, text in ((b, base), (a, arm)):
+            with open(path, "w") as f:
+                f.write(text)
         r = subprocess.run([sys.executable, TOOL, b, a, "--proto", "anthocnet", "-o", o],
-                           capture_output=True, text=True)
-        return r.returncode, (open(o).read() if os.path.exists(o) else ""), r.stderr
+                           capture_output=True, text=True, check=False)
+        out = ""
+        if os.path.exists(o):
+            with open(o) as f:
+                out = f.read()
+        return r.returncode, out, r.stderr
 
 
 rc, out, err = compose(BASE, ARM)

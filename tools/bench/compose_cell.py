@@ -53,9 +53,14 @@ def main():
     ap.add_argument("--proto", required=True)
     ap.add_argument("-o", "--out", required=True)
     a = ap.parse_args()
-    base = open(a.base).read().splitlines()
-    arm = open(a.arm).read().splitlines()
-    mine = lambda ln: proto_of(ln) == a.proto or is_table_row(ln, a.proto)  # noqa: E731
+    with open(a.base) as f:
+        base = f.read().splitlines()
+    with open(a.arm) as f:
+        arm = f.read().splitlines()
+
+    def mine(ln):
+        return proto_of(ln) == a.proto or is_table_row(ln, a.proto)
+
     sb, sa = seeds(base, a.proto), seeds(arm, a.proto)
     if not sa:
         sys.exit(f"{a.arm}: no ##RUN## rows for {a.proto}")
@@ -69,8 +74,8 @@ def main():
             if ln.startswith("# "):
                 kind = "# " + ln.split()[1]
             take.setdefault(kind, []).append(ln)
-    out = [f"# composed: {os.path.basename(a.base)} with {a.proto} from {os.path.basename(a.arm)} "
-           f"(compose_cell.py); {a.proto}'s ##COMMON##/##MATCH## rows dropped"]
+    out = [(f"# composed: {os.path.basename(a.base)} with {a.proto} from {os.path.basename(a.arm)} "
+            f"(compose_cell.py); {a.proto}'s ##COMMON##/##MATCH## rows dropped")]
     placed = set()
     for ln in base:
         if not mine(ln):
