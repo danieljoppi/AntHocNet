@@ -1,0 +1,37 @@
+# AntHocNet ns-3 module (waf build, for ns-3 < 3.36).
+#
+# The shared algorithm core/ is copied alongside this module by
+# `make install-ns3` and compiled in; core/include is added to the include
+# path so "anthocnet/core/*.h" resolves.
+
+def build(bld):
+    module = bld.create_ns3_module('anthocnet', ['core', 'network', 'internet'])
+    module.source = [
+        'model/anthocnet-routing-protocol.cc',
+        'model/anthocnet-packet.cc',
+        'model/anthocnet-rqueue.cc',
+        'model/anthocnet-adapters.cc',
+        'helper/anthocnet-helper.cc',
+        'core/src/pheromone_table.cpp',
+        'core/src/pheromone_engine.cpp',
+        'core/src/ant_history.cpp',
+        'core/src/ant_message_codec.cpp',
+        'core/src/ant_router_logic.cpp',
+    ]
+    module.includes = ['core/include']
+
+    headers = bld(features='ns3header')
+    headers.module = 'anthocnet'
+    headers.source = [
+        'model/anthocnet-routing-protocol.h',
+        'model/anthocnet-packet.h',
+        'model/anthocnet-rqueue.h',
+        'model/anthocnet-adapters.h',
+        'helper/anthocnet-helper.h',
+    ]
+
+    if bld.env['ENABLE_EXAMPLES']:
+        bld.recurse('examples')
+
+    module_test = bld.create_ns3_module_test_library('anthocnet')
+    module_test.source = ['test/anthocnet-test-suite.cc']
