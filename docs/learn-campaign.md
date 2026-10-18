@@ -195,14 +195,20 @@ game does not offer it.
 
 | upgrade | the gated mechanism | where it pays off |
 |---|---|---|
-| Quiet mode | proactive back-off on stable topologies | Ch 2 Mesh (unlocked in 2.2) |
 | Look-ahead | link-lifetime prediction | Ch 3 City streets (3.3), Ch 7 convoy |
 | Battery saver | energy-aware link metric (#145) | Ch 4 Forest drones (4.2), Ch 6 |
 | Long-haul timing | propagation-dominated timing (#205) | Ch 5 Orbit (5.2), Ch 8 |
 | Shield (v3.0.0) | the security profile (#302) | Ch 7 Contested (7.4) |
 
-Each upgrade card shows what the measured A/B found ("on the static mesh,
-quiet mode cut ants per packet by …"). This makes the gated-mechanism work
+Each upgrade card shows what the measured A/B found ("on the Nakagami grid,
+look-ahead adds 2 to 4 points of delivery …").
+
+Quiet mode (proactive back-off on stable topologies, #571) was the chapter 2
+upgrade, unlocked in 2.2. The v2.3.0 campaign moved it on by default: no cell
+regressed, and the static mesh's NRL fell 8.6 %. A default is not an upgrade,
+so the card left the list. The worlds run it like every other default, level
+2.2's debrief explains it, and Lab 2 of the classroom pack switches it off to
+show what it saves. This makes the gated-mechanism work
 of v2.3.0 visible, and it keeps the [ADR-0019](adr/0019-network-families-change-the-evaluation-not-the-protocol.md)
 rule: the defaults stay the paper's, and the upgrade is an explicit, labelled
 choice.

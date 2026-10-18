@@ -2,15 +2,15 @@
 // in core/, switched on as a labelled, mission-scoped knob -- never a world
 // default (ADR-0019). An upgrade exists here only if its Config key or metric
 // exists in the core; the text (what it does, what the v2.3.0 campaign
-// measured) is i18n keys upgrade.<id>.{name,what,measured}.
+// measured) is i18n keys upgrade.<id>.{name,what,measured}. Quiet mode (#571)
+// was the chapter 2 upgrade until v2.3.0's campaign moved it on by default:
+// it is now the world default, not an upgrade.
 
 import { t } from '../i18n.js';
 
 const LIGHT = 299792458;  // m/s
 
 export const UPGRADES = [
-  // #571: proactive ants back off while a destination's best route holds.
-  { id: 'quiet', issue: 571, unlock: '2.2', helps: [2], apply: (w) => w.setConfig('enableQuietMode', 1) },
   // #574 + ADR-0025: hellos carry kinematics; a next hop is discounted by its
   // predicted remaining link lifetime, at the level's radio range.
   { id: 'lookahead', issue: 574, unlock: '3.3', helps: [3, 4],

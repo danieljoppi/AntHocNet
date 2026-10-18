@@ -482,9 +482,9 @@
       "title": "Mesh: does it ever go quiet?",
       "intro": "In a static mesh nothing moves and no link ever breaks.",
       "goal": "Once every route is found, does AntHocNet stop sending ants?",
-      "debrief": "No: proactive ants and hellos keep sampling links that will never change. On the measured static mesh that is why OLSR and DSDV edge out AntHocNet, with lower overhead.",
+      "debrief": "No: hellos keep flying every second, and proactive ants keep sampling links that will never change. Since v2.3.0, quiet mode (#571) backs the ants off on a route that holds, down to one every 80 s, but never to zero: a route nobody probes cannot notice a better one. On the measured static mesh that floor is why OLSR and DSDV still edge out AntHocNet on overhead.",
       "hints": [
-        "Proactive ants run on a timer while data flows."
+        "Proactive ants run on a timer while data flows; the timer slows on a route that holds, but it never stops."
       ],
       "run": {
         "q": "Will the ants stop once the routes are found?",
@@ -760,13 +760,13 @@
       "story": "The village mesh is wired and every route is found. Nothing moves. Watch the ant counter.",
       "hints": [
         "Count the ants in the last ten seconds against the first ten.",
-        "AntHocNet samples on a timer, not on change."
+        "AntHocNet samples on a timer; since v2.3.0 the timer slows on a route that holds."
       ],
-      "debrief": "AntHocNet sends hellos every second and proactive ants every ten seconds of a session, however stable the network is. On a static mesh that is pure overhead; a quiet mode that backs off on stable links is planned for v2.3.0 (#571) and will appear here as an upgrade.",
+      "debrief": "AntHocNet sends hellos every second and proactive ants on a timer during a session. Since v2.3.0, quiet mode (#571) is on by default: a destination whose best route holds gets its proactive ant every 2, 4, then 8 rounds, one every 80 s at most. The ants slow down but never stop, and the hellos keep their pace: on a static mesh that is the overhead floor.",
       "quiz1": {
         "question": "Every route is found and nothing moves. Do the ants stop?",
         "options": [
-          "No: hellos and proactive ants keep flying at the same rate, whether or not anything changes",
+          "No: the hellos keep their pace, and the proactive ants slow down on a stable route but never stop",
           "Yes: once every route is found, the network goes quiet",
           "Only the hellos stop"
         ]
@@ -1046,7 +1046,7 @@
     "whatYouSaw": "What you saw: {mechanism}",
     "nextLevel": "Next: {id} {title}",
     "upgrades": "Upgrades",
-    "upgradesIntro": "Each upgrade is a real mechanism from the protocol's core, off by default. Clearing a level earns it; then you can switch it on, level by level, in the briefing. The site's defaults never change: an upgrade is your labelled choice, and the campaign measured what it does.",
+    "upgradesIntro": "Each upgrade is a real mechanism from the protocol's core, off by default. Clearing a level earns it; then you can switch it on, level by level, in the briefing. The worlds always run the protocol's shipped defaults: an upgrade is your labelled choice on top of them, and the campaign measured what it does. A mechanism that earns its place in every network becomes a default and leaves this list, as quiet mode did in v2.3.0.",
     "upgradeOpen": "earned",
     "upgradeLocked": "clear {id} to earn",
     "upgradeMeasured": "Measured:",
@@ -1283,11 +1283,6 @@
     "saved": "Saved {file}: unzip it and run run.sh."
   },
   "upgrade": {
-    "quiet": {
-      "name": "Quiet mode",
-      "what": "Proactive ants back off while a route stays the same, and come back when it changes.",
-      "measured": "Static mesh: 0.40 fewer control packets per delivered packet (NRL), same delivery; satellite ISL grid: 0.04 to 0.11 fewer. In moving networks routes never stay still long enough for it to engage: no measurable effect."
-    },
     "lookahead": {
       "name": "Look-ahead",
       "what": "Hellos carry position and velocity; a next hop whose link is about to break counts for less.",

@@ -37,10 +37,10 @@ pauses a second early or late sees the last digit move, not the answer.
 
 | run | delivered | ants per delivered packet |
 |---|---|---|
-| defaults | 99.6 % | 5.21 |
-| `enableQuietMode` on | 99.6 % | 5.09 |
+| defaults (quiet mode on) | 99.6 % | 5.09 |
+| `enableQuietMode` off | 99.6 % | 5.21 |
 
-- **Prediction 1:** about 5, close to the ns-3 static mesh's 4.51.
+- **Prediction 1:** about 5. The ns-3 static mesh reads 4.11 with quiet mode, 4.51 without.
 - **Explain 1:** about 2 % fewer ants per packet in 120 s, with delivery
   unchanged. The saving is small because hellos and the initial route
   discovery dominate a short run. Quiet mode only thins the proactive
@@ -49,8 +49,11 @@ pauses a second early or late sees the last digit move, not the answer.
 - **Explain 3:** a fully silent node would only notice a better route, or a
   failure the hellos miss, when data is lost. The back-off is capped (8
   rounds) so sampling never stops.
-- **Compare:** fill this in from the campaign's static-mesh row once it is
-  published. Until then, "pending" is the correct answer.
+- **Compare:** on the ns-3 static mesh, quiet mode cut NRL from 4.51 to 4.11
+  (−8.6 %) with delivery unchanged, and the default moved on in v2.3.0. It
+  did not close the gap to OLSR's 1.78: the hellos (one per node per second)
+  and the capped probing remain. That residue is the price of a protocol
+  that would notice a change.
 
 ## Lab 3
 

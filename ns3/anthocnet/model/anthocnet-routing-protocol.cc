@@ -69,7 +69,7 @@ RoutingProtocol::RoutingProtocol()
       m_linkLifetimeRange(250.0),
       m_linkLifetimeHorizon(3.0),
       m_linkLifetimeFloor(0.05),
-      m_enableQuietMode(false),
+      m_enableQuietMode(true),
       m_quietTolerance(0.2),
       m_quietBackoffFactor(2.0),
       m_quietMaxBackoff(8),
@@ -233,8 +233,8 @@ TypeId RoutingProtocol::GetTypeId() {
                           "destination whose best next hop and pheromone do not change "
                           "is probed every QuietBackoffFactor^k rounds, up to "
                           "QuietMaxBackoff; any route change or neighbour event resets "
-                          "it. Default off.",
-                          BooleanValue(false),
+                          "it. Default on since v2.3.0 (the v2.3.0 campaign).",
+                          BooleanValue(true),
                           MakeBooleanAccessor(&RoutingProtocol::m_enableQuietMode),
                           MakeBooleanChecker())
             .AddAttribute("QuietTolerance",

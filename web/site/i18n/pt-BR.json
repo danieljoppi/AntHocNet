@@ -482,9 +482,9 @@
       "title": "Malha: ela fica em silêncio algum dia?",
       "intro": "Numa malha estática nada se move e nenhum enlace quebra.",
       "goal": "Depois que todas as rotas são encontradas, o AntHocNet para de enviar formigas?",
-      "debrief": "Não: formigas proativas e hellos continuam amostrando enlaces que nunca vão mudar. Na malha estática medida, é por isso que OLSR e DSDV superam o AntHocNet por pouco, com menos sobrecarga.",
+      "debrief": "Não: os hellos continuam a cada segundo, e as formigas proativas continuam amostrando enlaces que nunca vão mudar. Desde a v2.3.0, o modo silencioso (#571) faz as formigas recuarem numa rota que se mantém, até uma a cada 80 s, mas nunca a zero: uma rota que ninguém sonda não percebe uma melhor. Na malha estática medida, esse piso é por que OLSR e DSDV ainda superam o AntHocNet em sobrecarga.",
       "hints": [
-        "As formigas proativas rodam num temporizador enquanto há dados fluindo."
+        "As formigas proativas rodam num temporizador enquanto há dados fluindo; o temporizador desacelera numa rota que se mantém, mas nunca para."
       ],
       "run": {
         "q": "As formigas param depois que as rotas são encontradas?",
@@ -760,13 +760,13 @@
       "story": "A malha da vila está montada e todas as rotas foram encontradas. Nada se move. Observe o contador de formigas.",
       "hints": [
         "Compare as formigas dos últimos dez segundos com as dos dez primeiros.",
-        "O AntHocNet amostra por temporizador, não por mudança."
+        "O AntHocNet amostra por temporizador; desde a v2.3.0 o temporizador desacelera numa rota que se mantém."
       ],
-      "debrief": "O AntHocNet manda hellos a cada segundo e formigas proativas a cada dez segundos de sessão, por mais estável que a rede esteja. Numa malha estática isso é pura sobrecarga; um modo silencioso que recua em enlaces estáveis está planejado para a v2.3.0 (#571) e vai aparecer aqui como uma melhoria.",
+      "debrief": "O AntHocNet manda hellos a cada segundo e formigas proativas por temporizador durante a sessão. Desde a v2.3.0 o modo silencioso (#571) vem ligado por padrão: um destino cuja melhor rota se mantém recebe sua formiga proativa a cada 2, 4 e depois 8 rodadas, no máximo uma a cada 80 s. As formigas desaceleram mas nunca param, e os hellos mantêm o ritmo: numa malha estática esse é o piso da sobrecarga.",
       "quiz1": {
         "question": "Todas as rotas foram encontradas e nada se move. As formigas param?",
         "options": [
-          "Não: hellos e formigas proativas continuam voando no mesmo ritmo, mude algo ou não",
+          "Não: os hellos mantêm o ritmo, e as formigas proativas desaceleram numa rota estável mas nunca param",
           "Sim: depois que todas as rotas são encontradas, a rede fica em silêncio",
           "Só os hellos param"
         ]
@@ -1046,7 +1046,7 @@
     "whatYouSaw": "O que você viu: {mechanism}",
     "nextLevel": "Próxima: {id} {title}",
     "upgrades": "Melhorias",
-    "upgradesIntro": "Cada melhoria é um mecanismo real do núcleo do protocolo, desligado por padrão. Você a ganha ao concluir uma fase; depois pode ligá-la, fase a fase, no briefing. Os padrões do site nunca mudam: a melhoria é uma escolha sua, rotulada, e a campanha mediu o que ela faz.",
+    "upgradesIntro": "Cada melhoria é um mecanismo real do núcleo do protocolo, desligado por padrão. Você a ganha ao concluir uma fase; depois pode ligá-la, fase a fase, no briefing. Os mundos sempre rodam os padrões publicados do protocolo: a melhoria é uma escolha sua, rotulada, por cima deles, e a campanha mediu o que ela faz. Um mecanismo que se prova em todas as redes vira padrão e sai desta lista, como o modo silencioso na v2.3.0.",
     "upgradeOpen": "conquistada",
     "upgradeLocked": "conclua {id} para ganhar",
     "upgradeMeasured": "Medido:",
@@ -1283,11 +1283,6 @@
     "saved": "{file} salvo: descompacte e rode o run.sh."
   },
   "upgrade": {
-    "quiet": {
-      "name": "Modo silencioso",
-      "what": "As formigas proativas recuam enquanto uma rota não muda, e voltam quando ela muda.",
-      "measured": "Malha estática: 0,40 pacote de controle a menos por pacote entregue (NRL), com a mesma entrega; grade de ISL de satélite: 0,04 a 0,11 a menos. Em redes que se movem as rotas nunca ficam paradas o bastante para ele agir: nenhum efeito mensurável."
-    },
     "lookahead": {
       "name": "Antecipação",
       "what": "Os hellos levam posição e velocidade; um próximo salto cujo enlace está para cair vale menos.",
