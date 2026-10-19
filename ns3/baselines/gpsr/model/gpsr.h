@@ -29,6 +29,14 @@
  * positions; what it changes is the next-hop choice (restricted greedy along
  * streets, coordinators preferred) and the repair (right-hand rule taken only
  * at junctions). Fidelity sheet: ns3/baselines/gpsr/README.md.
+ *
+ * AntHocNet addition (#710): a ThreeD mode, the FANET family's 3-D
+ * geographic arm. Positions carry z (an extra 8 bytes on the hello, a
+ * Position3dHeader after the PositionHeader), greedy forwarding uses 3-D
+ * distance, and recovery is CFace(3) (Kao, Fevens & Opatrny 2005, as
+ * compared in Bujari, Palazzi & Ronzani, IEEE TMC 2018): the right-hand rule
+ * on the Gabriel graph of the neighbours projected onto xy, then xz, then
+ * yz, FaceTtl hops per plane. Off by default; 2-D GPSR is unchanged.
  */
 #ifndef GPSR_H
 #define GPSR_H
@@ -236,6 +244,10 @@ private:
   Ipv4Address GpcrRepairNextHop (Vector previousHop, Vector myPos);
   //\}
 
+  /// ThreeD mode (#710): the right-hand rule over the Gabriel graph of the
+  /// neighbours projected onto plane 0 (xy), 1 (xz) or 2 (yz).
+  Ipv4Address Face3dNextHop (uint8_t plane, Vector previousHop, Vector myPos);
+
   uint32_t MaxQueueLen;                  ///< The maximum number of packets that we allow a routing protocol to buffer.
   Time MaxQueueTime;                     ///< The maximum period of time that a routing protocol is allowed to buffer a packet for.
   RequestQueue m_queue;
@@ -249,6 +261,9 @@ private:
   double m_gpcrConeDeg;       ///< GPCR street cone half-angle, degrees
   /// GPCR: each neighbour's coordinator role, as its last hello advertised.
   std::map<Ipv4Address, bool> m_neighborIsCoordinator;
+  bool m_threeD;              ///< ThreeD mode (#710), off = planar GPSR
+  uint32_t m_faceTtl;         ///< CFace(3) hops per projection plane
+  bool m_recovery;            ///< false: drop at a local minimum (greedy only)
   std::list<Ipv4Address> m_queuedAddresses;
 
   /// #352 (port addition): one pinnable RNG for the hello jitter instead of

@@ -117,6 +117,47 @@ with only the field shrunk, and route only stock AODV and the oracle control.
 |---|---|---|---|---|
 | `fanet-single-hop-3d` | 10 nodes, 100 m cube, 350 m | the 173 m diagonal keeps every pair in range, so every flow is one hop: **PDR ≈ 100 %** and oracle **hopsMean = 1.00** exactly | AODV 100.0 %, oracle 100.0 %, hopsMean 1.00 | 3-D placement, mobility and channel deliver at all |
 | `fanet-vertical-3d` | 10 nodes, 10 × 10 × 1000 m column, 350 m | planar distances are all < 15 m, so a field flattened to 2-D reads hopsMean = 1.00; with altitude honoured, pairs > 350 m apart need relays: **hopsMean > 1.2** | AODV 98.9 %, oracle 98.9 % (98.6 % at the pre-#506 1 s recompute), hopsMean 1.90 | the third dimension is real end to end |
+| `fanet-gpsr3d-recovery` ([#710](https://github.com/danieljoppi/AntHocNet/issues/710)) | 50 nodes, static 600 m cube, 200 m, 2 flows at 512 bit/s, 4 runs | the 3-D geographic arm's own paper trend (Bujari et al., IEEE TMC 2018, §5.2): face recovery delivers more than greedy alone. gpsr3d with CFace(3) must beat gpsr3d with `Recovery=false` by **≥ 5 pp** on the same seeds | ns-3.42: 74.9 % vs 62.5 % (+12.4 pp), oracle 74.9 % | the gpsr3d arm reproduces the trend its source reports |
+
+## The 3-D geographic comparator: gpsr3d (#710)
+
+Under [ADR-0026](../../adr/0026-baselines-are-family-native.md) this family
+is compared against its own baselines:
+- AODV and OLSR, the FANET literature's standard baselines;
+- a 3-D geographic arm, added here.
+
+DSDV and AOMDV are MANET migrants. Their rows below stay as the dated record,
+and they leave the plan from the v2.4.0 control campaign. The vendored 2-D
+GPSR is refused on a 3-D field (#480).
+
+`--protocols=gpsr3d` is the GPSR module's `ThreeD` mode (maintainer decision
+on #710: 3-D GPSR with projection-based recovery, not P-OLSR). It works as
+follows:
+- greedy forwarding uses 3-D distance;
+- at a local minimum, it falls back to CFace(3) recovery: the right-hand rule
+  on the Gabriel graph of the neighbours projected onto xy, then xz, then yz;
+- it switches back to greedy once the packet is closer to the destination than
+  where recovery began.
+
+CFace(3) was chosen among the survey's face methods because its planes are
+fixed, so the recovery is deterministic, as per-seed pairing requires. The
+survey's own GFG uses ALSP Face. The fidelity sheet, including the per-plane
+hop budget derived from the IP TTL and the missing Face2 face change, is in
+[`ns3/baselines/gpsr/README.md`](../../../ns3/baselines/gpsr/README.md#threed-mode-710-fidelity-sheet).
+
+Short runs measured while building the arm (ns-3.48, 2 seeds, 120 s, not the
+published cell):
+
+| cell | gpsr3d | AODV | oracle |
+|---|---|---|---|
+| fanet-main (350 m) | 89.2 % | 77.0 % | 97.6 % |
+| fanet-sparse (250 m) | 43.8 % | 51.1 % | 66.0 % |
+| `fanet-vertical-3d` column | 87.5 % | 92.0 % | 98.9 % |
+
+On the column, gpsr3d's mean path is 3.11 hops against the oracle's 1.90.
+That is the path dilation the survey reports for face recovery. Sparse voids
+are geographic routing's known weakness, and the sparse cell shows it. The
+20-seed cells are published with the v2.4.0 control campaign.
 
 ## Restated at v2.3.0 defaults (quiet mode on)
 
@@ -389,7 +430,8 @@ sends at the source. That refusal is the share the pre-#510 PDR left out.
   repair latency. That metric family (#294 item 4) does not exist in the
   harness yet, so no route-stability column is published. The drop book's
   AntHocNet `reconv`/`repair` split is the closest available signal.
-- **A geographic arm** (see above).
+- **A geographic arm**, until the v2.4.0 control campaign publishes gpsr3d's
+  20-seed cells ([above](#the-3-d-geographic-comparator-gpsr3d-710)).
 - **Hop or latency bounds** (see the oracle section below).
 
 ### The oracle at FANET speeds

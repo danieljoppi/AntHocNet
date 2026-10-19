@@ -137,3 +137,31 @@ a city grid, at the cost of more hops ("This improvement in performance comes
 at the expense of a higher average number of hops and a slight increase in
 latency", §V). The `vanet-gpcr-vs-gpsr` anchor checks that direction on the
 street grid.
+
+## ThreeD mode (#710) — fidelity sheet
+
+`--protocols=gpsr3d` runs this module with `ThreeD=true`: the FANET family's
+3-D geographic comparator under
+[ADR-0026](../../../docs/adr/0026-baselines-are-family-native.md) (maintainer
+decision 2026-10-19 on #710: 3-D GPSR with projection-based recovery, not
+P-OLSR). Its reference is the stateless 3-D position-based routing survey
+the FANET literature uses: Bujari, Palazzi & Ronzani, "A Comparison of
+Stateless Position-based Packet Routing Algorithms for FANETs", IEEE TMC
+17(11):2468–2482, 2018, whose CFace(3) is from Kao, Fevens & Opatrny (2005).
+With `ThreeD=false` (the default) nothing below runs.
+
+| element | the source | this implementation |
+|---|---|---|
+| greedy | "nc forwards the packet to one of its" neighbours closest to the destination (TMC §4.2.1) | GPSR's greedy choice on 3-D positions: hellos carry z (8 bytes after the hello header), data packets a `Position3dHeader` (destination, recovery-point and previous-hop z, the plane and hop count) after the `PositionHeader`; GOD positions are 3-D |
+| greedy + face | GFG: "upon receiving a face-mode packet, the current node ... returns in greedy-mode if the distance from nc to nd is less than the distance from nx to nd" (§4.2.10) | the module's existing switch back, on 3-D distances |
+| face recovery | CFace(3): "all the nodes are projected on the first xy plane ... If the packet does not arrive at the destination (TTLF has expired) ... on the xz plane ... on the yz plane" (§4.2.8). In 3-D the survey's GFG uses ALSP Face (§4.2.10) | CFace(3), chosen because its planes are fixed: the recovery is deterministic, as per-seed pairing requires (ALSP Face fits a least-squares plane, Projective Face draws a random point) |
+| face routing | Face2 on the Gabriel graph: the right-hand rule, with a face change where an edge crosses the source–destination segment (§4.2.7) | the right-hand rule on the Gabriel graph of the projected neighbours. **Deviation**, as in this module's 2-D perimeter mode: no face change at the crossing |
+| TTLF | 2N hops per plane in §5.2, with TTL = 6N and no IP TTL | **21**, attribute `FaceTtl`: three planes × 21 fit the IP TTL of 64. Derived from the stack, not a free choice |
+| beyond the last plane | "If the packet does not arrive even through this last plane, the algorithm fails" | dropped through the error callback, so the drop book sees it |
+
+`Recovery=false` turns recovery off (a packet at a local minimum is dropped):
+pure 3-D greedy, the reference the `fanet-gpsr3d-recovery` anchor compares
+against. The survey's §5.2 trend is that "The deterministic progress-based
+forwarding algorithms have the lowest delivery rate" while face-based
+recovery achieves "better results ... but the worst results in term of path
+dilation".

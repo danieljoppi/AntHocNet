@@ -120,6 +120,18 @@ vanet_gpcr_pdr_min: 75.0
 # +4.8 (3.48); 2.0 still fails a GPCR that has collapsed into plain GPSR.
 vanet_gpcr_minus_gpsr_pp_min: 2.0
 
+# --- FANET gpsr3d anchor (#710, consumed by check-anchors.sh) ---------------
+# The 3-D geographic arm's own paper trend (Bujari et al., IEEE TMC 2018,
+# section 5.2): face recovery delivers more than greedy alone. 50 nodes, a
+# 600 m cube, 200 m range, static, 2 flows at 512 bit/s, 120 s, 4 runs.
+# Measured: ns-3.42 74.9 % with CFace(3) recovery vs 62.5 % greedy only,
+# oracle 74.9 %; ns-3.48 74.7 / 62.2 / 74.9. The floor applies to gpsr3d and
+# the oracle; the gap is the anchor's point.
+fanet_gpsr3d_pdr_min: 65.0
+# gpsr3d with recovery minus gpsr3d with Recovery=false, percentage points,
+# same seeds. Measured +12.4 (3.42) and +12.5 (3.48).
+fanet_gpsr3d_recovery_pp_min: 5.0
+
 # --- static-mesh HWMP anchor (#708, consumed by check-anchors.sh) -----------
 # Analytic: on a static connected disk field at one fixed rate, 802.11s
 # HWMP's airtime metric is equal on every link, so it converges to a

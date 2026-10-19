@@ -69,7 +69,9 @@ ANCHOR_KEY = {"single-hop": "single_hop_pdr_min",
               # #708 static-mesh HWMP anchor: analytic, see anchors.yml.
               "mesh-hwmp-shortest": "mesh_hwmp_pdr_min",
               # #709 VANET GPCR anchor: GPCR's own paper trend, see anchors.yml.
-              "vanet-gpcr-vs-gpsr": "vanet_gpcr_pdr_min"}
+              "vanet-gpcr-vs-gpsr": "vanet_gpcr_pdr_min",
+              # #710 FANET gpsr3d anchor: the arm's paper trend, see anchors.yml.
+              "fanet-gpsr3d-recovery": "fanet_gpsr3d_pdr_min"}
 
 # #217: core Config::maxPathLength — the cap on the visited path an ant carries
 # and therefore on any path the protocol can lay. A delivered data packet
@@ -1215,7 +1217,8 @@ def cmd_preflight(a):
                 report("FAIL", f"--protocols includes {geo} with --areaZ="
                                f"{area_z:g}: the vendored GPSR (and its GPCR "
                                "mode, #709) is planar (2-D headers and "
-                               "planarization) and the harness refuses it (#480)")
+                               "planarization) and the harness refuses it; "
+                               "the 3-D geographic arm is gpsr3d (#480, #710)")
         report("WARN", f"3-D field (--areaZ={area_z:g}): a FANET cell, not "
                        "comparable to the published planar corpus (#300). "
                        "Validate with --anchor fanet-single-hop-3d / "

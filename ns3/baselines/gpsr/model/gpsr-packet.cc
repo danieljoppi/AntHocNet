@@ -295,6 +295,75 @@ PositionHeader::operator== (PositionHeader const & o) const
 }
 
 
+
+//-----------------------------------------------------------------------------
+// Position 3-D (AntHocNet addition, #710)
+//-----------------------------------------------------------------------------
+Position3dHeader::Position3dHeader (uint64_t dstPosz, uint64_t recPosz, uint64_t lastPosz,
+                                    uint8_t plane, uint8_t planeHops)
+  : m_dstPosz (dstPosz),
+    m_recPosz (recPosz),
+    m_lastPosz (lastPosz),
+    m_plane (plane),
+    m_planeHops (planeHops)
+{
+}
+
+NS_OBJECT_ENSURE_REGISTERED (Position3dHeader);
+
+TypeId
+Position3dHeader::GetTypeId ()
+{
+  static TypeId tid = TypeId ("ns3::gpsr::Position3dHeader")
+    .SetParent<Header> ()
+    .AddConstructor<Position3dHeader> ()
+  ;
+  return tid;
+}
+
+TypeId
+Position3dHeader::GetInstanceTypeId () const
+{
+  return GetTypeId ();
+}
+
+uint32_t
+Position3dHeader::GetSerializedSize () const
+{
+  return 26;
+}
+
+void
+Position3dHeader::Serialize (Buffer::Iterator i) const
+{
+  i.WriteU64 (m_dstPosz);
+  i.WriteU64 (m_recPosz);
+  i.WriteU64 (m_lastPosz);
+  i.WriteU8 (m_plane);
+  i.WriteU8 (m_planeHops);
+}
+
+uint32_t
+Position3dHeader::Deserialize (Buffer::Iterator start)
+{
+  Buffer::Iterator i = start;
+  m_dstPosz = i.ReadU64 ();
+  m_recPosz = i.ReadU64 ();
+  m_lastPosz = i.ReadU64 ();
+  m_plane = i.ReadU8 ();
+  m_planeHops = i.ReadU8 ();
+  uint32_t dist = i.GetDistanceFrom (start);
+  NS_ASSERT (dist == GetSerializedSize ());
+  return dist;
+}
+
+void
+Position3dHeader::Print (std::ostream &os) const
+{
+  os << " PositionZ: " << m_dstPosz << " RecPositionZ: " << m_recPosz
+     << " LastPositionZ: " << m_lastPosz << " plane: " << (uint32_t) m_plane
+     << " planeHops: " << (uint32_t) m_planeHops;
+}
 }
 }
 

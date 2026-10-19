@@ -215,6 +215,31 @@ private:
 
 std::ostream & operator<< (std::ostream & os, PositionHeader const &);
 
+/**
+ * AntHocNet addition (#710): the third coordinate of every position the
+ * PositionHeader carries, plus the CFace(3) recovery state. Sent right after
+ * the PositionHeader, in ThreeD mode only, so a 2-D GPSR packet is
+ * byte-identical to the source's.
+ */
+class Position3dHeader : public Header
+{
+public:
+  Position3dHeader (uint64_t dstPosz = 0, uint64_t recPosz = 0, uint64_t lastPosz = 0,
+                    uint8_t plane = 0, uint8_t planeHops = 0);
+  static TypeId GetTypeId ();
+  TypeId GetInstanceTypeId () const;
+  uint32_t GetSerializedSize () const;
+  void Serialize (Buffer::Iterator start) const;
+  uint32_t Deserialize (Buffer::Iterator start);
+  void Print (std::ostream &os) const;
+
+  uint64_t m_dstPosz;   ///< destination z
+  uint64_t m_recPosz;   ///< z of the position that entered recovery
+  uint64_t m_lastPosz;  ///< z of the previous hop
+  uint8_t m_plane;      ///< CFace(3) projection plane: 0 xy, 1 xz, 2 yz
+  uint8_t m_planeHops;  ///< recovery hops taken on the current plane
+};
+
 }
 }
 #endif /* GPSRPACKET_H */
