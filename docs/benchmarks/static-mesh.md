@@ -231,13 +231,48 @@ every metric.
    costs 209 ms of mobile tail, so the 200 ms default stands (see
    [above](#the-cap-re-measured-on-the-fixed-timer-494)).
 
+## The native comparator: 802.11s HWMP (#708)
+
+Under [ADR-0026](../adr/0026-baselines-are-family-native.md) this family is
+compared against its own protocols: OLSR (community meshes) and IEEE 802.11s
+HWMP, the standard's path selection. AODV and DSDV are MANET protocols
+migrated in; their rows above stay as the dated record of their campaigns and
+leave the plan from the v2.4.0 control campaign.
+
+`--protocols=hwmp` runs stock ns-3 802.11s (`MeshHelper`, `Dot11sStack`), one
+mesh point per node, on the same field, channel and seeds. Two things differ
+from the cells above, and both are deliberate:
+
+- **The radio is 802.11a at a fixed 6 Mbit/s** (`--standard=80211a
+  --rateManager=constant6`). ns-3 tunes every mesh interface to 5 GHz channel
+  100, so 802.11s does not run on 802.11b at all. The maintainer's decision
+  (2026-10-19) moves the whole static-mesh cell, every arm, to that radio from
+  the v2.4.0 campaign on; real 802.11s deployments are 5 GHz too. The disk
+  channel ignores frequency, so the topology is the one measured above. The
+  802.11b rows on this page stay the dated record and are not paired with the
+  802.11a ones.
+- **HWMP routes below IP.** How each harness book maps onto layer-2 path
+  selection (NRL from the PREQ/PREP/PERR/RANN frames, hops from the mesh's own
+  relays, peering and beacons reported apart) is in
+  [metrics.md](metrics.md#the-hwmp-arm-layer-2-path-selection-on-ip-books-708).
+
+The arm passes the per-PR delivery smoke ([#439](https://github.com/danieljoppi/AntHocNet/issues/439))
+and its own anchor, `mesh-hwmp-shortest`: on a static disk field it must
+converge to the oracle's shortest path (mean hops in [1.00, 1.10] × the
+oracle's). The 20-seed AntHocNet, OLSR, HWMP and oracle cell on 802.11a is
+measured in the v2.4.0 control campaign and published here with it.
+
 ## Threats to validity
 
 - **Missing baselines.** The protocols a real community mesh runs are
   Babel (RFC 8966) and BATMAN-adv. Neither has a maintained ns-3 port; see
   the dated [modern-baseline survey](modern-baseline-survey.md) for the
   evidence and the decision. OLSR is the closest ns-3-available stand-in, and
-  it is already at the oracle here.
+  it is already at the oracle here. 802.11s HWMP, the standard's own path
+  selection, is stock ns-3 and joins from v2.4.0 ([above](#the-native-comparator-80211s-hwmp-708)).
+- **HWMP is ns-3's model of it.** The arm runs ns-3's `dot11s` at its
+  shipped defaults (on-demand mode, no root portal, the airtime metric). It
+  is one implementation of the standard, not a deployed mesh stack.
 - **Channel.** The disk channel at 300 m is idealised: a link either exists
   perfectly or not at all. Real meshes are shaped by interference and fading.
   The [grid](grid.md) shows the tail ordering inverting under Nakagami fading,

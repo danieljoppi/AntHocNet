@@ -65,7 +65,9 @@ ANCHOR_KEY = {"single-hop": "single_hop_pdr_min",
               "fanet-vertical-3d": "fanet_vertical_3d_pdr_min",
               # #488 VANET anchors: analytic (geometry), see anchors.yml.
               "vanet-single-hop": "vanet_single_hop_pdr_min",
-              "vanet-building": "vanet_building_pdr_min"}
+              "vanet-building": "vanet_building_pdr_min",
+              # #708 static-mesh HWMP anchor: analytic, see anchors.yml.
+              "mesh-hwmp-shortest": "mesh_hwmp_pdr_min"}
 
 # #217: core Config::maxPathLength — the cap on the visited path an ant carries
 # and therefore on any path the protocol can lay. A delivered data packet
@@ -1124,6 +1126,43 @@ def cmd_preflight(a):
                        "channels and the #293 runs floor should be treated as "
                        "a minimum, not a target — check the interval widths "
                        "before quoting a tail metric (#60)")
+    # #708: the radio. anthocnet-compare refuses each FAIL below at startup;
+    # caught here, before a runner is spent on it. getattr keeps callers that
+    # predate the knob on the 802.11b path.
+    standard = getattr(a, "standard", "80211b") or "80211b"
+    rate_mgr = getattr(a, "rateManager", "constant2") or "constant2"
+    arms = [x for x in a.protocols.split(",") if x]
+    if "hwmp" in arms and standard != "80211a":
+        report("FAIL", "--protocols includes hwmp on 802.11b: stock ns-3 "
+                       "802.11s tunes its mesh interfaces to 5 GHz channel "
+                       "100, so the harness refuses it. Run the cell with "
+                       "--standard 80211a --rateManager constant6 (#708)")
+    if standard == "80211a":
+        if a.propagation != "range":
+            report("FAIL", f"--standard 80211a with --propagation="
+                           f"{a.propagation}: the two-ray family is set at "
+                           "2.4 GHz; only the disk is frequency-free, and the "
+                           "harness refuses the pair (#708)")
+        if rate_mgr not in ("constant6", "arf", "ideal"):
+            report("FAIL", f"--standard 80211a with --rateManager {rate_mgr}: "
+                           "a DSSS (802.11b) rate; use constant6, arf or ideal "
+                           "(#708)")
+        if rate_mgr == "constant6" and a.rateMbps != 6:
+            report("WARN", f"--rateManager constant6 is a 6 Mbit/s channel, "
+                           f"but --rateMbps {a.rateMbps:g} sets the offered-"
+                           "load rule's rate; pass --rateMbps 6 (#708)")
+        report("WARN", "--standard 80211a: the static-mesh cell's radio "
+                       "(#708), not comparable to the 802.11b corpus; every "
+                       "arm in it must run on the same radio")
+    elif rate_mgr == "constant6":
+        report("FAIL", "--rateManager constant6 is an OFDM rate: it needs "
+                       "--standard 80211a (#708)")
+    if "hwmp" in arms:
+        report("WARN", "hwmp routes at layer 2 (#708): its NRL counts the "
+                       "802.11s path-selection frames, peering and beacons "
+                       "are reported apart under --diag, and losses inside "
+                       "the mesh that no trace sees land in drop_chan "
+                       "(docs/benchmarks/metrics.md)")
     # #296 item 1 / #216: the oracle control's coherence, checked before the
     # dispatch rather than after it. Two ways to spend runtime on a meaningless
     # oracle cell, and one way to abort mid-run.
@@ -2819,6 +2858,10 @@ def main():
     # knob, #483), else 1 pkt/s (the paper base scenario).
     p.add_argument("--pktPerSec", type=float, default=None)
     p.add_argument("--rateMbps", type=float, default=2)
+    # #708: anthocnet-compare's --standard and --rateManager (the static-mesh
+    # cell's 802.11a radio, which the hwmp arm requires).
+    p.add_argument("--standard", choices=("80211b", "80211a"), default="80211b")
+    p.add_argument("--rateManager", default="constant2")
     # kDefaultPathWindowS in ns3/anthocnet/examples/anthocnet-compare.cc (#217).
     p.add_argument("--pathWindowS", type=float, default=10)
     p.add_argument("--mobility",

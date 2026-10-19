@@ -83,6 +83,14 @@ if ! printf '%s\n' "$markers" | grep -qx 'RUN'; then
     exit 1
 fi
 
+# Stock ns-3 modules the compare harness links beyond the vendored ones and
+# their dependencies: mesh, for the hwmp arm (#708). ns-3 skips an example
+# whose module is not enabled, so a list without it loses the whole harness.
+# Required in every module-build list (it is stock, so the Dockerfile's
+# stock-base list may carry it too).
+required="$modules
+mesh"
+
 echo "[allowlists] modules: $(printf '%s\n' "$modules" | tr '\n' ' ')"
 echo "[allowlists] arms:    $(printf '%s\n' "$arms" | tr '\n' ' ')"
 echo "[allowlists] markers: $(printf '%s\n' "$markers" | tr '\n' ' ')"
@@ -105,7 +113,7 @@ check_module_list() {
     while IFS= read -r line; do
         i=$((i + 1))
         list=$(printf '%s\n' "$line" | sed "s/.*'\([^']*\)'.*/\1/")
-        for m in $modules; do
+        for m in $required; do
             case ";$list;" in
                 *";$m;"*) ;;
                 *)
@@ -162,7 +170,7 @@ if need_file "$df"; then
         else
             optlist=$(printf '%s\n' "$optline" | sed "s/.*'\([^']*\)'.*/\1/")
             stocklist=$(printf '%s\n' "$stockline" | sed "s/.*'\([^']*\)'.*/\1/")
-            for m in $modules; do
+            for m in $required; do
                 case ";$optlist;" in
                     *";$m;"*) ;;
                     *)
@@ -172,6 +180,7 @@ if need_file "$df"; then
                         ;;
                 esac
                 case ";$stocklist;" in
+                    *";mesh;"*) ;;
                     *";$m;"*)
                         echo "FAIL [allowlists]: vendored module '$m' found in Dockerfile.ns3's STOCK base"
                         echo "  --enable-modules — that build is the #24 manet-baselines control and must"

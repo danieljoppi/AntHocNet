@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Daniel Henrique Joppi
 
 /*
- * AntHocNet vs. AODV / OLSR / DSDV / GPSR / oracle comparison.
+ * AntHocNet vs. AODV / OLSR / DSDV / GPSR / HWMP / oracle comparison.
  *
  * Runs the SAME mobile-ad-hoc scenario (identical node layout, mobility and
  * CBR traffic, driven from the same RNG run) under each routing protocol and
@@ -45,8 +45,13 @@
  * --protocols; it is an upper bound, not a competitor. See ns3/baselines/oracle/README.md
  * for what "ground truth" means per propagation model.
  *
+ * The `hwmp` arm (#708) is IEEE 802.11s path selection, the static mesh's
+ * native comparator (ADR-0026). It routes at layer 2: each node is one mesh
+ * point (stock ns-3 `mesh` module, Dot11sStack) on the same PHY, channel and
+ * rate manager as every other arm, and IP sees the whole mesh as one link.
+ *
  * Requires the aodv, olsr, dsdv, gpsr (the #296 vendored baseline module),
- * oracle (the #296 control module) and
+ * oracle (the #296 control module), mesh (#708) and
  * flow-monitor modules. Build with those enabled, then e.g.:
  *   ./ns3 run "anthocnet-compare --scenario=paper --runs=5"
  */
@@ -85,6 +90,8 @@
 // #296 item 1: the oracle shortest-path control (contrib/oracle). Global
 // knowledge, no packets — see the note at the top and ns3/baselines/oracle/README.md.
 #include "ns3/oracle-module.h"
+// #708: IEEE 802.11s (MeshHelper, Dot11sStack, the HWMP path selection).
+#include "ns3/mesh-module.h"
 #include "ns3/anthocnet-helper.h"
 #include "ns3/anthocnet-routing-protocol.h"
 #include "viz-trace.h"
@@ -272,6 +279,17 @@ constexpr int64_t kStreamStride = 1000000;
 // split-structure invariance are unaffected (the block is still per-seed).
 constexpr int64_t kAppStreamOffset = kStreamStride - 10000;
 
+// #708: the hwmp arm's mesh sub-block. MeshHelper::AssignStreams takes a
+// different number of streams than the ad-hoc devices every other arm
+// installs (four QoS Txops per interface, plus HWMP and peering jitter), and
+// mobility is pinned from the running counter right after the devices. Taken
+// from the running counter, the mesh would therefore move every node to a
+// different position than in the other arms (measured: a 5-hop HWMP path on a
+// field whose oracle shortest path is 6). So the mesh draws from this fixed
+// block, and the running counter advances by exactly what the ad-hoc devices
+// take, keeping mobility and everything after it arm-invariant.
+constexpr int64_t kMeshStreamOffset = kStreamStride / 2;
+
 // Advance `next` by the number of streams a helper's AssignStreams() reported,
 // and abort if this run has overrun its per-seed block — which for the running
 // counter now ends where the fixed application sub-block begins.
@@ -398,6 +416,53 @@ void CountControlTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t) {
         ++g_controlPkts;
         g_controlBytes += p->GetSize();
     }
+}
+
+// #708: HWMP routes at layer 2, so its control never crosses the IP "Tx"
+// trace above. Its routing transmissions are the 802.11s path-selection
+// action frames (category Mesh: PREQ, PREP, PERR and RANN information
+// elements), counted here once per frame handed to a mesh interface's MAC
+// queue, the L2 point that matches the IP hook: one count per frame sent to
+// one next hop (or one broadcast), MAC retries not counted. Bytes are the
+// frame body (action header plus IEs), the L2 analogue of the IP packet size
+// counted above. The mesh's own link maintenance is reported apart, under
+// --diag (`# hwmp` line): peering frames (category Self-protected: peer link
+// open, confirm, close) and beacons. They are the analogue of a protocol's
+// hellos, but they are the 802.11s MAC rather than its path selection, and
+// metrics.md says which side of the line each one is on.
+bool g_meshArm = false;          // #708: this run is the hwmp arm
+uint64_t g_meshPeeringPkts = 0;  // #708: self-protected action frames queued
+uint64_t g_meshBeacons = 0;      // #708: beacons queued
+
+void CountMeshMgtTx(Ptr<const AHN_WIFI_MPDU> mpdu) {
+    if (!mpdu) return;
+    const WifiMacHeader& hdr = mpdu->GetHeader();
+    if (hdr.IsBeacon()) {
+        ++g_meshBeacons;
+        return;
+    }
+    if (!hdr.IsAction()) return;
+    Ptr<Packet> c = mpdu->GetPacket()->Copy();
+    WifiActionHeader action;
+    if (c->GetSize() < 2) return;
+    c->RemoveHeader(action);
+    if (action.GetCategory() == WifiActionHeader::MESH) {
+        ++g_controlPkts;
+        g_controlBytes += mpdu->GetPacket()->GetSize();
+    } else if (action.GetCategory() == WifiActionHeader::SELF_PROTECTED) {
+        ++g_meshPeeringPkts;
+    }
+}
+
+// #708: an 802.11s data frame carries the mesh control header (mesh TTL,
+// sequence number, address extension) between the 802.11 header and the
+// LLC/SNAP header the MAC hooks below parse. Strip it on the hwmp arm so
+// those hooks read the same IP packet they read on every other arm; a
+// no-op elsewhere.
+void StripMeshHeader(Ptr<Packet> pkt, const WifiMacHeader& hdr) {
+    if (!g_meshArm || !hdr.IsData()) return;
+    dot11s::MeshHeader mesh;
+    pkt->RemoveHeader(mesh);
 }
 
 // --- packet reordering (#212) ----------------------------------------------
@@ -743,7 +808,10 @@ void CountReinjL3Drop(const Ipv4Header& ip, Ptr<const Packet> p, Ipv4L3Protocol:
 void CountDataHopTx(Ptr<const Packet> p, Ptr<Ipv4> ipv4, uint32_t iface) {
     if (iface != 0 && IsDataIp(p)) {
         ++g_dataHopTx;
-        if (g_routeOn) {  // #294 item 4: this node is on the packet's path
+        // #294 item 4: this node is on the packet's path. On the hwmp arm IP
+        // transmits only at the source; the path is built from the mesh's
+        // own hops in CountMeshDataHop instead (#708).
+        if (g_routeOn && !g_meshArm) {
             Address flow;
             uint32_t seq = 0;
             if (ReinjKeyFromIp(p, flow, seq)) {
@@ -785,6 +853,7 @@ void CountDataHopRx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
 void CountMacDataDrop(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu) {
     if (reason != WIFI_MAC_DROP_REACHED_RETRY_LIMIT || !mpdu) return;
     Ptr<Packet> pkt = mpdu->GetPacket()->Copy();
+    StripMeshHeader(pkt, mpdu->GetHeader());  // #708
     LlcSnapHeader llc;
     if (pkt->GetSize() < llc.GetSerializedSize()) return;
     pkt->RemoveHeader(llc);
@@ -1159,6 +1228,7 @@ void FlushDiversityWindow() {
 void CountAckedDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
     if (!mpdu) return;
     Ptr<Packet> pkt = mpdu->GetPacket()->Copy();
+    StripMeshHeader(pkt, mpdu->GetHeader());  // #708
     LlcSnapHeader llc;
     if (pkt->GetSize() < llc.GetSerializedSize()) return;
     pkt->RemoveHeader(llc);
@@ -1196,6 +1266,26 @@ void CountAckedDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
     g_divCur[std::make_pair(node, ip.GetDestination().Get())][nextHop] += 1;
 }
 
+// #708: the hwmp arm's path. IP never sees the mesh's relays, so the path is
+// the mesh points that queued the packet's data frame, in order: the BE queue
+// of each interface (UDP data is TID 0), one enqueue per hop however many
+// retries follow, and always before the frame is sent, so the path is complete
+// when the destination delivers (the last hop's ack arrives after that).
+void CountMeshDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
+    if (!g_routeOn || !mpdu || !mpdu->GetHeader().IsData()) return;
+    Ptr<Packet> pkt = mpdu->GetPacket()->Copy();
+    StripMeshHeader(pkt, mpdu->GetHeader());
+    LlcSnapHeader llc;
+    if (pkt->GetSize() < llc.GetSerializedSize()) return;
+    pkt->RemoveHeader(llc);
+    if (llc.GetType() != 0x0800) return;
+    Ipv4Header ip;
+    if (pkt->RemoveHeader(ip) == 0) return;
+    Address flow;
+    uint32_t seq = 0;
+    if (ReinjKeyFromUdp(ip, pkt, flow, seq)) g_routePending[flow][seq].push_back(node);
+}
+
 // Ipv4L3Protocol "LocalDeliver": one call per packet handed to the local
 // transport, i.e. exactly the delivered packets PDR counts. The header arrives
 // with the TTL the packet carried on the wire. Unlike the per-fragment "Tx"/
@@ -1215,8 +1305,26 @@ void CountDeliveredHops(const Ipv4Header& ip, Ptr<const Packet> p, uint32_t) {
         if (udp.GetDestinationPort() != kDataPort) return;
     }
     const uint8_t ttl = ip.GetTtl();
-    const uint32_t hops =
-        ttl < kIpDefaultTtl ? static_cast<uint32_t>(kIpDefaultTtl - ttl) + 1u : 1u;
+    uint32_t hops = ttl < kIpDefaultTtl ? static_cast<uint32_t>(kIpDefaultTtl - ttl) + 1u : 1u;
+    // #708: the IP TTL of an 802.11s mesh reads one hop whatever the path, so
+    // the hwmp arm counts the mesh hops CountMeshDataHop recorded for this
+    // packet (UDP only, like the path itself).
+    if (g_meshArm && !isTcp) {
+        Ptr<Packet> b = p->Copy();
+        UdpHeader u;
+        b->RemoveHeader(u);
+        SeqTsSizeHeader st;
+        if (b->PeekHeader(st) != 0) {
+            const auto f =
+                g_routePending.find(InetSocketAddress(ip.GetSource(), u.GetSourcePort()));
+            if (f != g_routePending.end()) {
+                const auto it = f->second.find(st.GetSeq());
+                if (it != f->second.end() && !it->second.empty()) {
+                    hops = static_cast<uint32_t>(it->second.size());
+                }
+            }
+        }
+    }
     g_hopSum += hops;
     ++g_hopCount;
     if (hops > g_hopMax) g_hopMax = hops;
@@ -1301,6 +1409,7 @@ struct Params {
     double startWindow;
     std::string propagation;  // "range" (disk, default) | "tworay" (two-ray ground, #24)
     std::string rateManager;  // "constant2" (paper's 2 Mbit/s radio, default) | ... (#51)
+    std::string standard;     // "80211b" (default) | "80211a" (#708: the static mesh's radio)
     int32_t sink;             // >=0: all flows converge on this node (gateway
                               // hotspot, #71); <0: default i->(n-1-i) pairing.
     // #209 energy model (see the provenance block above main()).
@@ -1575,6 +1684,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     int64_t stream = streamBase;
     g_controlPkts = 0;
     g_controlBytes = 0;
+    g_meshPeeringPkts = g_meshBeacons = 0;  // #708
+    g_meshArm = proto == "hwmp";            // #708
     g_refusedOrigin = 0;
     g_antTx.clear();
     g_antRx.clear();
@@ -1617,22 +1728,36 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     NodeContainer nodes;
     nodes.Create(P.nNodes);
 
+    // #708: --standard=80211a is the 5 GHz OFDM radio of the static-mesh
+    // cell, where stock ns-3 802.11s can run (MeshHelper tunes its interfaces
+    // to channel 100). main() holds it to the disk channel, which ignores
+    // frequency, so the topology is the same as on 802.11b.
+    const WifiStandard standard =
+        P.standard == "80211a" ? WIFI_STANDARD_80211a : WIFI_STANDARD_80211b;
     WifiHelper wifi;
-    wifi.SetStandard(WIFI_STANDARD_80211b);
+    wifi.SetStandard(standard);
     // #51: the ns-3 default (IdealWifiManager) oscillates 1<->11 Mbps and loses
     // every second unicast to retry exhaustion (DSSS 11 Mbps never delivers in
     // this setup), halving PDR for every protocol. Default is the paper's fixed
     // 2 Mbit/s radio; --rateManager reaches the alternatives for A/B.
-    if (P.rateManager == "arf") {
-        wifi.SetRemoteStationManager("ns3::ArfWifiManager");
-    } else if (P.rateManager.rfind("constant", 0) == 0) {
-        std::string rate = P.rateManager == "constant1"   ? "DsssRate1Mbps"
-                           : P.rateManager == "constant2" ? "DsssRate2Mbps"
-                           : P.rateManager == "constant5" ? "DsssRate5_5Mbps"
-                                                          : "DsssRate11Mbps";
-        wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager", "DataMode", StringValue(rate),
-                                     "ControlMode", StringValue("DsssRate1Mbps"));
-    }  // "ideal": keep the WifiHelper default
+    // #708: generic so the hwmp arm's MeshHelper gets the identical radio.
+    auto setRate = [&P](auto& helper) {
+        if (P.rateManager == "arf") {
+            helper.SetRemoteStationManager("ns3::ArfWifiManager");
+        } else if (P.rateManager.rfind("constant", 0) == 0) {
+            std::string rate = P.rateManager == "constant1"   ? "DsssRate1Mbps"
+                               : P.rateManager == "constant2" ? "DsssRate2Mbps"
+                               : P.rateManager == "constant5" ? "DsssRate5_5Mbps"
+                               : P.rateManager == "constant6" ? "OfdmRate6Mbps"  // #708, 11a
+                                                              : "DsssRate11Mbps";
+            // 802.11a's lowest (basic) rate carries control, as DSSS 1 Mbit/s
+            // does on 802.11b.
+            helper.SetRemoteStationManager(
+                "ns3::ConstantRateWifiManager", "DataMode", StringValue(rate), "ControlMode",
+                StringValue(P.standard == "80211a" ? "OfdmRate6Mbps" : "DsssRate1Mbps"));
+        }  // "ideal": keep the WifiHelper default
+    };
+    setRate(wifi);
     YansWifiPhyHelper phy;
     YansWifiChannelHelper channel;
     if (P.propagation == "tworay") {
@@ -1701,14 +1826,61 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     phy.SetChannel(wifiChannel);
     WifiMacHelper mac;
     mac.SetType("ns3::AdhocWifiMac");
-    NetDeviceContainer devices = wifi.Install(phy, mac, nodes);
+    // #708: the hwmp arm puts one 802.11s mesh point on each node instead of
+    // an ad-hoc station: same standard, PHY, channel and rate manager, one
+    // interface on one channel. `devices` then holds the mesh point devices
+    // (what IP is bound to) and `radios` their wifi interfaces (what the
+    // energy and MAC hooks below read); on every other arm the two are the
+    // same container, so nothing changes there.
+    MeshHelper meshHelper;
+    NetDeviceContainer devices, radios;
+    if (proto == "hwmp") {
+        meshHelper.SetStandard(standard);
+        meshHelper.SetStackInstaller("ns3::Dot11sStack");
+        meshHelper.SetMacType();
+        meshHelper.SetSpreadInterfaceChannels(MeshHelper::ZERO_CHANNEL);
+        meshHelper.SetNumberOfInterfaces(1);
+        // MeshHelper's own default manager is ARF, so "ideal" is named here
+        // to match the WifiHelper default every other arm runs.
+        meshHelper.SetRemoteStationManager("ns3::IdealWifiManager");
+        setRate(meshHelper);
+        devices = meshHelper.Install(phy, nodes);
+        for (uint32_t i = 0; i < devices.GetN(); ++i) {
+            radios.Add(DynamicCast<MeshPointDevice>(devices.Get(i))->GetInterfaces().at(0));
+        }
+    } else {
+        devices = wifi.Install(phy, mac, nodes);
+        radios = devices;
+    }
     // #352: the propagation models configured above are all deterministic, so
     // the channel normally reports 0 streams — pinned anyway so swapping in a
     // fading model (Nakagami, ...) cannot reintroduce the position dependence.
     // WifiHelper::AssignStreams covers the PHY's reception-error variable, the
     // MAC/Txop backoff and the rate manager in one call.
     TakeStreams(stream, streamBase, channel.AssignStreams(wifiChannel, stream), "wifi channel");
-    TakeStreams(stream, streamBase, wifi.AssignStreams(devices, stream), "wifi");
+    if (proto == "hwmp") {
+        // #708: MeshHelper::AssignStreams covers the same PHY, MAC and Txop
+        // variables through each mesh point's interfaces, plus HWMP's and the
+        // peering protocol's own jitter, from the mesh sub-block (see
+        // kMeshStreamOffset). The running counter then advances by what the
+        // ad-hoc arms take: one scratch ad-hoc device, off this run's channel,
+        // measures the per-device count on this ns-3 release.
+        NS_ABORT_MSG_IF(stream - streamBase >= kMeshStreamOffset,
+                        "running stream counter reached the mesh sub-block (#708)");
+        const int64_t meshUsed = meshHelper.AssignStreams(devices, streamBase + kMeshStreamOffset);
+        NS_ABORT_MSG_IF(kMeshStreamOffset + meshUsed >= kAppStreamOffset,
+                        "mesh streams overlap the application sub-block (#708)");
+        NodeContainer scratch;
+        scratch.Create(1);
+        YansWifiPhyHelper scratchPhy = phy;
+        scratchPhy.SetChannel(CreateObject<YansWifiChannel>());
+        const int64_t perDevice = wifi.AssignStreams(wifi.Install(scratchPhy, mac, scratch),
+                                                     streamBase + kMeshStreamOffset + meshUsed);
+        TakeStreams(stream, streamBase, perDevice * static_cast<int64_t>(nodes.GetN()),
+                    "wifi (hwmp: the ad-hoc arms' count, held for pairing)");
+    } else {
+        TakeStreams(stream, streamBase, wifi.AssignStreams(devices, stream), "wifi");
+    }
 
     // --- energy accounting (#209, leak-free per #256) ------------------------
     // Hooked here — right after the devices exist, before the routing stack,
@@ -1733,8 +1905,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_energyRxA = P.rxCurrentA;
     g_energyIdleA = P.idleCurrentA;
     if (energyOn) {
-        for (uint32_t i = 0; i < devices.GetN(); ++i) {
-            Ptr<WifiNetDevice> w = devices.Get(i)->GetObject<WifiNetDevice>();
+        for (uint32_t i = 0; i < radios.GetN(); ++i) {
+            Ptr<WifiNetDevice> w = radios.Get(i)->GetObject<WifiNetDevice>();
             if (w && w->GetPhy()) {
                 w->GetPhy()->GetState()->TraceConnectWithoutContext(
                     "State", MakeBoundCallback(&OnPhyState, i));
@@ -1971,6 +2143,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // helper owns this run's ground-truth graph, so a fresh one per run is what
     // stops run N inheriting run N-1's nodes.
     OracleHelper oracleHelper;
+    Ipv4StaticRoutingHelper hwmpL3Helper;  // #708
     // #296/#431: the oracle derives its adjacency from the installed objects
     // on every channel this harness configures — the disk channel's own
     // MaxRange (exact), the two-ray decode radius at the PHY's decode
@@ -2000,6 +2173,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(gpsrHelper);
     } else if (proto == "oracle") {
         internet.SetRoutingHelper(oracleHelper);
+    } else if (proto == "hwmp") {
+        // #708: path selection is the mesh's, below IP. IP only needs the
+        // on-link route to the one /16 the mesh point carries, which static
+        // routing installs for the interface; ARP resolves over the mesh.
+        internet.SetRoutingHelper(hwmpL3Helper);
     } else {
         // #448: an unknown arm must abort here, not run on the bare IP stack
         // and emit a plausible-looking 0 % row.
@@ -2054,6 +2232,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // makes that a measured zero rather than a gap in the #352 coverage.
         TakeStreams(stream, streamBase, oracleHelper.AssignStreams(nodes, stream),
                     "oracle routing");
+    } else if (proto == "hwmp") {
+        // #708: static IP routing draws nothing, and HWMP's streams were taken
+        // with the mesh devices above. A measured zero, as for the oracle.
+        TakeStreams(stream, streamBase, 0, "hwmp routing (pinned with the mesh devices)");
     } else {
         // #448: unreachable once the install chain above aborts, but the two
         // dispatch chains stay structurally parallel by convention — guard both.
@@ -2114,8 +2296,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             }
         }
     }
-    for (uint32_t i = 0; i < devices.GetN(); ++i) {
-        Ptr<WifiNetDevice> w = devices.Get(i)->GetObject<WifiNetDevice>();
+    for (uint32_t i = 0; i < radios.GetN(); ++i) {
+        Ptr<WifiNetDevice> w = radios.Get(i)->GetObject<WifiNetDevice>();
         Ptr<WifiMac> wmac = w ? w->GetMac() : nullptr;  // `mac` above is the helper
         // TraceConnect returns false if the source is absent on this ns-3
         // release; tolerated, exactly as the adapter's detector D does — the
@@ -2130,11 +2312,46 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             wmac->TraceConnectWithoutContext("DroppedMpdu", MakeCallback(&CountMacDataDrop));
             wmac->TraceConnectWithoutContext("AckedMpdu", MakeBoundCallback(&CountAckedDataHop, i));
         }
+        // #708: HWMP's control, counted where its frames are queued: path
+        // selection and peering go to the VO (unicast) and BK (broadcast)
+        // queues, beacons to the non-QoS Txop.
+        if (wmac && proto == "hwmp") {
+            for (AcIndex ac : {AC_VO, AC_BK}) {
+                wmac->GetQosTxop(ac)->GetWifiMacQueue()->TraceConnectWithoutContext(
+                    "Enqueue", MakeCallback(&CountMeshMgtTx));
+            }
+            wmac->GetTxop()->GetWifiMacQueue()->TraceConnectWithoutContext(
+                "Enqueue", MakeCallback(&CountMeshMgtTx));
+            wmac->GetQosTxop(AC_BE)->GetWifiMacQueue()->TraceConnectWithoutContext(
+                "Enqueue", MakeBoundCallback(&CountMeshDataHop, i));
+        }
     }
 
     Ipv4AddressHelper address;
     address.SetBase("10.1.0.0", "255.255.0.0");
     Ipv4InterfaceContainer ifs = address.Assign(devices);
+    // #708: on the hwmp arm IP sees the whole mesh as one link, so every
+    // destination is ARP-resolved across the mesh. That resolution is IP's,
+    // not path selection's: a request sent while the peer links are still
+    // forming fails its three tries and ns-3's ArpCache then holds the
+    // destination dead for DeadTimeout (100 s), during which HWMP is never
+    // even asked for a path (measured: one flow at 0 % PDR with zero PREQs).
+    // The caches are filled up front instead, every mesh point's address as
+    // a permanent entry, so the arm measures HWMP and not ARP. The other arms
+    // resolve one radio hop at a time and keep the stock ARP.
+    if (proto == "hwmp") {
+        for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+            Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
+            Ptr<ArpCache> arp =
+                l3->GetInterface(l3->GetInterfaceForDevice(devices.Get(i)))->GetArpCache();
+            for (uint32_t j = 0; j < nodes.GetN(); ++j) {
+                if (j == i) continue;
+                ArpCache::Entry* e = arp->Add(ifs.GetAddress(j));
+                e->SetMacAddress(devices.Get(j)->GetAddress());
+                e->MarkPermanent();
+            }
+        }
+    }
 
     // nFlows CBR flows from node i to node (nNodes-1-i), each starting at a
     // random time within the start window (paper staggers sources over 0-180 s).
@@ -2520,6 +2737,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // #132: same IP-layer counting point as nrl, but in bytes; delivered data
     // bytes are the FlowMonitor rxBytes already summed for throughput.
     r.nrlBytes = totalRxBytes > 0.0 ? static_cast<double>(g_controlBytes) / totalRxBytes : 0.0;
+    // #708: the mesh's link maintenance, which NRL does not count (see
+    // CountMeshMgtTx), so a reader can see its size beside the path selection.
+    if (g_diag && proto == "hwmp") {
+        std::cout << "# hwmp " << proto << " seed=" << seed << " pathSelFrames=" << g_controlPkts
+                  << " pathSelBytes=" << g_controlBytes << " peeringFrames=" << g_meshPeeringPkts
+                  << " beacons=" << g_meshBeacons << '\n';
+    }
 
     r.jitterMs = jitterSamples ? 1000.0 * totalJitter / jitterSamples : 0.0;
 
@@ -3386,7 +3610,7 @@ int main(int argc, char* argv[]) {
                  firstRun);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols",
-                 "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,aomdv,oracle). "
+                 "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,aomdv,hwmp,oracle). "
                  "`oracle` is the #296 global-knowledge shortest-path CONTROL "
                  "(upper bound, zero control traffic), off unless named.",
                  protocols);
@@ -3466,9 +3690,17 @@ int main(int argc, char* argv[]) {
     std::string rateManager = "constant2";
     cmd.AddValue("rateManager",
                  "Rate control: constant1|constant2|constant5|constant11 (fixed "
-                 "DSSS rate; default constant2, the paper's radio) | arf | ideal "
+                 "DSSS rate; default constant2, the paper's radio) | constant6 "
+                 "(fixed OFDM 6 Mbit/s, --standard=80211a only, #708) | arf | ideal "
                  "(ns-3 default; loses ~50% single-hop, #51)",
                  rateManager);
+    std::string standard = "80211b";
+    cmd.AddValue("standard",
+                 "Radio: 80211b (default, 2.4 GHz DSSS) | 80211a (5 GHz OFDM; "
+                 "needs --propagation=range and --rateManager=constant6|arf|ideal). "
+                 "80211a is the static-mesh cell's radio, the band stock ns-3 "
+                 "802.11s runs on, and the hwmp arm requires it (#708)",
+                 standard);
     // #209 energy model. Defaults and their provenance: see the kDefault*
     // block above. Overridable because they are modelling choices, not
     // measurements of this scenario's radio.
@@ -3743,6 +3975,27 @@ int main(int argc, char* argv[]) {
                                 "narrower than a block ("
                              << P.areaX / blocksX << " x " << P.areaY / blocksY << " m) (#488)");
     }
+    // #708: the radio, checked against the channel and rate it is paired with.
+    NS_ABORT_MSG_UNLESS(standard == "80211b" || standard == "80211a",
+                        "--standard must be 80211b or 80211a, got '" << standard << "'");
+    if (standard == "80211a") {
+        // The two-ray family is parameterised at 2.4 GHz (Frequency=2.4e9 in
+        // RunOne); only the disk is frequency-free.
+        NS_ABORT_MSG_UNLESS(propagation == "range" && P.range > 0.0,
+                            "--standard=80211a needs --propagation=range with --range > 0: "
+                            "the other channels are set at 2.4 GHz or depend on frequency (#708)");
+        NS_ABORT_MSG_UNLESS(
+            rateManager == "constant6" || rateManager == "arf" || rateManager == "ideal",
+            "--standard=80211a needs --rateManager=constant6|arf|ideal; '"
+                << rateManager << "' is a DSSS (802.11b) rate (#708)");
+    } else {
+        NS_ABORT_MSG_IF(rateManager == "constant6",
+                        "--rateManager=constant6 is an OFDM rate: it needs --standard=80211a");
+    }
+    NS_ABORT_MSG_IF(protocols.find("hwmp") != std::string::npos && standard != "80211a",
+                    "--protocols includes hwmp: stock ns-3 802.11s tunes its mesh interfaces "
+                    "to 5 GHz channel 100, so it needs --standard=80211a (#708)");
+    P.standard = standard;
     P.rateManager = rateManager;
     P.sink = sink;
     P.energyJ = energyJ;
@@ -3942,8 +4195,10 @@ int main(int argc, char* argv[]) {
               << P.cbrBps
               // #521: always named, so a post-fix row is distinguishable
               // from the pre-#521 corpus, whose rows lack the key.
-              << " offTime=" << P.offTime << " rateManager=" << P.rateManager
-              << " protocols=" << protocols << '\n';
+              << " offTime=" << P.offTime << " rateManager=" << P.rateManager;
+    // #708: named only off the default, so 802.11b rows stay byte-identical.
+    if (P.standard != "80211b") std::cout << " standard=" << P.standard;
+    std::cout << " protocols=" << protocols << '\n';
     // Every AntHocNet attribute at its *effective* value. ns-3 routes
     // `--ns3::anthocnet::RoutingProtocol::X=Y` through Config::SetDefault,
     // which rewrites the TypeId's stored initial value -- so reading it back

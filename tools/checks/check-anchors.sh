@@ -6,12 +6,13 @@
 # regression (like the #51 IdealWifiManager ~50% single-hop loss) fails CI
 # loudly instead of silently corrupting every published number.
 #
-# Usage: check-anchors.sh <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building>
+# Usage: check-anchors.sh <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building|mesh-hwmp-shortest>
 #
 # The two fanet-* anchors (#482) and the two vanet-* anchors (#488) run on
 # anthocnet-compare instead, because manet-baselines has neither a 3-D field
 # nor a street grid; they still route only stock AODV and the oracle control,
-# so no AntHocNet code is under test.
+# so no AntHocNet code is under test. mesh-hwmp-shortest (#708) runs there too,
+# with stock 802.11s HWMP and the oracle.
 #
 # The ns-3 tree must already be configured + built with the anthocnet module's
 # examples enabled (manet-baselines builds as part of the module's examples).
@@ -20,7 +21,7 @@ set -euo pipefail
 NS3DIR=${1:-}
 ANCHOR=${2:-}
 if [ -z "$NS3DIR" ] || [ -z "$ANCHOR" ]; then
-    echo "usage: $0 <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building>" >&2
+    echo "usage: $0 <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building|mesh-hwmp-shortest>" >&2
     exit 2
 fi
 
@@ -36,6 +37,8 @@ floor_for() {
 harness=manet-baselines
 hops_min=""
 hops_max=""
+stretch_arm=""
+stretch_max=""
 case "$ANCHOR" in
     single-hop)
         # 2 nodes, 50x50 m, 300 m disk range, static (pause=900 speed=1):
@@ -108,8 +111,27 @@ case "$ANCHOR" in
         floor=$(floor_for vanet_building_pdr_min)
         hops_min=$(floor_for vanet_building_oracle_hops_min)
         ;;
+    mesh-hwmp-shortest)
+        # #708, the static mesh's HWMP anchor, analytic like the FANET/VANET
+        # ones. On a static, connected disk field at one fixed rate, HWMP's
+        # airtime metric is the same for every link, so the path it converges
+        # to is a minimum-hop path: its mean hop count must sit at the
+        # oracle's shortest path and can never be below it. Below it means the
+        # arm saw a different topology (the #708 stream-pairing defect read
+        # 5 hops against the oracle's 6); far above it means path selection is
+        # not converging. 16 nodes, 500 m field, 175 m range (the delivery
+        # smoke's field), on the 802.11a radio stock 802.11s runs on.
+        # Measured at this exact invocation on ns-3.42: HWMP 98.2 % at
+        # hopsMean 4.73, oracle 100.0 % at 4.50 (stretch 1.05; 1.04 on 3.48).
+        harness=anthocnet-compare
+        args="--nNodes=16 --areaX=500 --areaY=500 --range=175 --pause=900 --speed=1 --flows=2 --time=120 --runs=2 --standard=80211a --rateManager=constant6 --diag"
+        protocols="hwmp,oracle"
+        floor=$(floor_for mesh_hwmp_pdr_min)
+        stretch_arm=hwmp
+        stretch_max=$(floor_for mesh_hwmp_stretch_max)
+        ;;
     *)
-        echo "unknown anchor '$ANCHOR' (want: single-hop | broch-low-mobility | fanet-single-hop-3d | fanet-vertical-3d | vanet-single-hop | vanet-building)" >&2
+        echo "unknown anchor '$ANCHOR' (want: single-hop | broch-low-mobility | fanet-single-hop-3d | fanet-vertical-3d | vanet-single-hop | vanet-building | mesh-hwmp-shortest)" >&2
         exit 2
         ;;
 esac
@@ -161,6 +183,30 @@ if [ -n "$hops_min$hops_max" ]; then
         status=1
     else
         echo "PASS [$ANCHOR] oracle hopsMean=$hops within [${hops_min:-0}, ${hops_max:-inf}]"
+    fi
+fi
+if [ -n "$stretch_arm" ]; then
+    # An arm's mean hop count over the oracle's, on the same seeds and the same
+    # field: 1.00 is a shortest path for every delivered packet.
+    mean_hops() {
+        printf '%s\n' "$out" |
+            awk -v p="$1" '$1 == "#" && $2 == "paths" && $3 == p {
+                     for (i = 4; i <= NF; i++) if ($i ~ /^hopsMean=/) { sub(/^hopsMean=/, "", $i); v = $i } }
+                 END { print v }'
+    }
+    ah=$(mean_hops "$stretch_arm")
+    oh=$(mean_hops oracle)
+    if [ -z "$ah" ] || [ -z "$oh" ]; then
+        echo "FAIL [$ANCHOR]: no '# paths' hopsMean line for $stretch_arm or the oracle"
+        status=1
+    elif ! awk -v a="$ah" -v o="$oh" -v m="$stretch_max" \
+            'BEGIN { exit (o + 0 > 0 && a + 0 >= o + 0 && a / o <= m + 0) ? 0 : 1 }'; then
+        echo "FAIL [$ANCHOR] $stretch_arm hopsMean=$ah vs oracle $oh: outside [1.00, $stretch_max] x the shortest path"
+        echo "  Below 1.00 the arm ran on a different topology than the oracle (stream pairing);"
+        echo "  above $stretch_max its path selection is not converging to a shortest path."
+        status=1
+    else
+        echo "PASS [$ANCHOR] $stretch_arm hopsMean=$ah within [1.00, $stretch_max] x oracle $oh"
     fi
 fi
 exit $status
