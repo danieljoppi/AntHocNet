@@ -45,7 +45,7 @@ jobs:
         run: ruff check ns3/tools docs/tools tools/ web/shell
       - name: Release-package gate (#604)
         # Assembles the install bundle exactly as release.yml does and fails on
-        # agent-only files (.claude/, AGENTS.md, CLAUDE.md, docs/handoffs/),
+        # agent-only files (.claude/, AGENTS.md, CLAUDE.md),
         # caches, a shipped script that depends on .claude/, or a missing
         # tools/bench dependency; also checks git archive's export-ignore.
         # The v2.0.0 bundle shipped tools that imported .claude/ scripts it

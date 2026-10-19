@@ -10,6 +10,12 @@ guidelines below are general behavioural defaults layered on top.
 scripts that anything shipped depends on live in `tools/` (ADR-0014), and
 nothing under `.claude/` reaches a release package (#604).
 
+**Handoffs are always a ticket.** When a session ends with work in flight, or a
+handoff is asked for, open a GitHub issue from the *Handoff* template (label
+`handoff`). Never write a handoff file in the repo. Start a new session from
+the newest open `handoff` issue, and close it when the work it hands off is
+done ([ADR-0013](docs/adr/0013-track-bugs-and-findings-as-issues.md) item 5).
+
 <!-- Vendored from https://github.com/forrestchang/andrej-karpathy-skills (CLAUDE.md).
      Kept as a reviewed, version-pinned copy rather than fetched at runtime. -->
 

@@ -61,13 +61,13 @@ fi
 # Rule 10 — nothing shipped depends on .claude/ (ADR-0014 amendment, #604).
 # Code and workflow files only: a doc may describe a maintainer-only agent
 # tool without shipping a dependency on it.
-dep=$(printf '%s\n' "$changed" | grep -vE '^(\.claude/|tools/release/|AGENTS\.md|CLAUDE\.md|docs/handoffs/)' \
+dep=$(printf '%s\n' "$changed" | grep -vE '^(\.claude/|tools/release/|AGENTS\.md|CLAUDE\.md)' \
       | grep -E '\.(py|sh|mjs|js|ya?ml|cc|cpp|h|txt)$|Makefile$' \
       | while read -r f; do [ -f "$f" ] && grep -lE '\.claude/skills/[^ ]+\.(py|sh)|"\.claude", *"skills"' "$f"; done)
 if [ -n "$dep" ]; then say FAIL "shipped file depends on a .claude/skills script (move it to tools/):"; echo "$dep" | sed 's/^/        /'; fail=1; fi
 
 # New docs page must be in the mkdocs nav (else it is unreachable on the site).
-for f in $(printf '%s\n' "$changed" | grep -E '^docs/.*\.md$' | grep -vE '^docs/handoffs/'); do
+for f in $(printf '%s\n' "$changed" | grep -E '^docs/.*\.md$'); do
   [ -f "$f" ] || continue
   git cat-file -e "$MB:$f" 2>/dev/null && continue
   grep -qF "${f#docs/}" mkdocs.yml || { say WARN "new page $f is not in the mkdocs.yml nav"; warn=1; }
