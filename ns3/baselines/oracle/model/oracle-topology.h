@@ -79,6 +79,19 @@
  * The tradeoff is stated in the README: an interval of T bounds the oracle's
  * staleness by T, so at the paper scenario's 20 m/s a 1 s interval can be
  * wrong about a link for up to 20 m of node travel.
+ *
+ * Predicted knowledge (#707, the OPSPF arm)
+ * -----------------------------------------
+ * `Knowledge=predicted` turns the control into a protocol model: OPSPF-style
+ * link state on the predicted orbit schedule. The edge set is built as above
+ * from what the harness gates at IP, which for this arm is only the predicted
+ * changes (the GSL handovers). Unpredicted failures stay invisible until the
+ * harness's LSA flood reaches a node, which it reports with LearnLinkState;
+ * each node then routes on its OWN view (the shared edge set minus the links
+ * it has learned are down), so nodes the flood has not reached yet still
+ * route through the failure. Rows are solved lazily, on a node's first
+ * lookup after its view changed. With no unpredicted failure every view is
+ * the shared edge set and the arm routes exactly as the oracle does.
  */
 #ifndef ORACLE_TOPOLOGY_H
 #define ORACLE_TOPOLOGY_H
@@ -91,8 +104,15 @@
 #include "ns3/propagation-loss-model.h"
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
+
+namespace anthocnet {
+namespace core {
+class ShortestPathGraph;
+}  // namespace core
+}  // namespace anthocnet
 
 namespace ns3 {
 
@@ -127,6 +147,17 @@ class Topology : public Object
 
     /// Next hop from `node` towards `dst`, or an invalid NextHop.
     NextHop Lookup(Ptr<Node> node, Ipv4Address dst);
+
+    /// Knowledge=predicted (#707): `node` has learned (from a flooded LSA)
+    /// that the link on `channel` is down, or back up. Only this node's view
+    /// changes; its row is re-solved at its next lookup.
+    void LearnLinkState(Ptr<Node> node, Ptr<Channel> channel, bool down);
+
+    /// LearnLinkState calls that changed a node's view.
+    uint64_t GetLsaApplied() const
+    {
+        return m_lsaApplied;
+    }
 
     // --- diagnostics the harnesses print, and the a-priori assertions read ---
     /// true when some link rule in this topology is an approximation.
@@ -224,6 +255,7 @@ class Topology : public Object
         uint32_t iface;       //!< local Ipv4 interface index
         Ipv4Address gateway;  //!< peer address on that link
         double weight = 1.0;  //!< edge cost: 1 (hops) or the channel delay in s (Metric=delay)
+        const Channel* channel = nullptr;  //!< the link's channel (Knowledge=predicted)
     };
 
     /// The adjacency rule derived for one shared-medium channel, built once.
@@ -243,6 +275,10 @@ class Topology : public Object
     };
 
     void Recompute();
+    /// Dijkstra from `u` over m_links, minus `skip`'s channels; fills row u.
+    void SolveRow(int u, const std::set<const Channel*>* skip);
+    /// Row u of m_nextHop from a graph already solved from u.
+    void FillRow(int u, anthocnet::core::ShortestPathGraph& graph);
     /// Re-derive the adjacency from the simulator's own objects into `out`.
     void BuildLinks(std::vector<std::vector<Link>>& out);
     void AddWiredLinks(int u,
@@ -266,6 +302,10 @@ class Topology : public Object
     Time m_interval;
     double m_linkRangeM = 0.0;
     std::string m_metric = "hops";  //!< "hops" (default) or "delay" (wired topologies only)
+    std::string m_knowledge = "current";  //!< "current" (the oracle) or "predicted" (#707)
+    std::vector<std::set<const Channel*>> m_knownDown;  //!< per node, Knowledge=predicted
+    std::vector<bool> m_rowDirty;                       //!< per node, Knowledge=predicted
+    uint64_t m_lsaApplied = 0;
     bool m_started = false;
     bool m_approx = false;
     std::string m_mode = "unset";

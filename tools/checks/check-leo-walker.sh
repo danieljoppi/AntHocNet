@@ -48,6 +48,12 @@
 #    on the GSL segments broke exactly this before it was pinned. AntHocNet
 #    only: stock AODV keys its socket maps on heap addresses (#362), the same
 #    exemption check-seed-independence.py makes.
+# 9. The opspf anchor (#707): with no unpredicted failure, OPSPF-style link
+#    state on the predicted schedule IS the hop oracle -- it differs only in
+#    what it can know -- so its per-seed ##RUN## rows must equal the oracle's
+#    field for field. With the failure overlay on, it must have flooded LSAs
+#    (its only control traffic): an arm that learned failures some other way
+#    would read floods=0.
 #
 # Runs on ns-3.48 only: the stock LEO model first ships there, and the
 # example is not built on older trees (ADR-0022).
@@ -61,7 +67,7 @@ cd "$NS3DIR"
 fail=0
 say() { printf '%s\n' "$*"; }
 
-ARMS=oracle-delay,anthocnet,aodv,geo-greedy
+ARMS=oracle-delay,anthocnet,aodv,geo-greedy,opspf
 SHELL_ARGS="--planes=16 --sats=16 --altitude=1150 --inclination=53 --minElevation=25
             --time=60 --islDown=0.02 --massFailAt=30 --massFailFrac=0.05"
 
@@ -181,6 +187,22 @@ if [ -z "$alone" ] || [ "$in_list" != "$alone" ]; then
 else
     say "ok: anthocnet's row is the same alone and after another arm"
 fi
+
+# --- 9. the opspf anchor (#707) -----------------------------------------------------
+QUIET_ARGS="--planes=16 --sats=16 --altitude=1150 --inclination=53 --minElevation=25 --time=60 --runs=2"
+q=$(./ns3 run "$(echo leo-walker --csv --protocols=oracle,opspf $QUIET_ARGS)" 2>/dev/null)
+orc=$(printf '%s\n' "$q" | awk '$1=="##RUN##" && $3=="oracle" {$3=""; print}')
+ops=$(printf '%s\n' "$q" | awk '$1=="##RUN##" && $3=="opspf" {$3=""; print}')
+if [ -z "$orc" ] || [ "$orc" != "$ops" ]; then
+    say "FAIL: with no unpredicted failure, opspf must route exactly as the hop oracle:"
+    say "  oracle: $orc"
+    say "  opspf:  $ops"
+    fail=1
+else
+    say "ok: failure-free opspf rows equal the hop oracle's (2 seeds)"
+fi
+floods=$(printf '%s\n' "$out" | sed -n 's/^# opspf opspf seed=1 floods=\([0-9]*\).*/\1/p')
+[ "${floods:-0}" -gt 0 ] || { say "FAIL: opspf flooded no LSA under the failure overlay"; fail=1; }
 
 if [ "$fail" -ne 0 ]; then
     say "leo-walker smoke: FAIL"

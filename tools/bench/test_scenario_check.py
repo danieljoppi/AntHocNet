@@ -673,6 +673,27 @@ def _pre_gpcr():
     expect("FAIL" in levels and "includes gpcr" in out, "pre-gpcr", out)
 
 
+@case("#707 results: opspf floods exactly when the cell has unpredicted failures")
+def _res_opspf():
+    cfg = ("##CONFIG## harness=leo-walker time=60 clock=15 clockOffset=12 "
+           "islDown={d} islMeanDown=2 massFailAt=0 massFailFrac=0.1\n")
+    for d, floods, bad in (("0.01", 0, True), ("0.01", 12, False),
+                           ("0", 3, True), ("0", 0, False)):
+        sc.issues = []
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as fh:
+            fh.write(cfg.format(d=d))
+            fh.write(f"# opspf opspf seed=1 floods={floods} lsaTx={floods * 700} "
+                     "lsaApplied=1 recomputes=60 noRoute=0\n")
+            path = fh.name
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                sc.check_opspf(path)
+        finally:
+            os.unlink(path)
+        expect(("FAIL" in sc.issues) == bad, "res-opspf",
+               f"islDown={d} floods={floods}: issues {sc.issues}")
+
+
 @case("#481 preflight FAILs links shorter-lived than the hello interval")
 def _hello_fail():
     # 250 m at 150 m/s: ~0.83 s link lifetime against a 1 s hello.

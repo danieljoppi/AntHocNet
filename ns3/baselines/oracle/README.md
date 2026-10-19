@@ -254,6 +254,42 @@ at least as much as the oracle and still shows a shorter mean path.** That is
 still falsifiable — it catches a wrong solve, a stale table or a next-hop
 mismatch — without firing on the physics of the metric.
 
+## Predicted knowledge: the opspf arm (#707)
+
+`Knowledge=predicted` turns this control into a **protocol model**: OPSPF-style
+link state on the predicted orbit schedule (Pan et al., "OPSPF: Orbit
+Prediction Shortest Path First Routing for Resilient LEO Satellite Networks",
+IEEE ICC 2019). It is leo-walker's `opspf` arm. What differs from the oracle
+is only what each node can know:
+
+- **Predicted changes reach every node when they happen.** These are the GSL
+  handovers, which the harness gates at IP for this arm as it does for the
+  oracle. The ISL plan never changes by design.
+- **Unpredicted failures reach each node only through an LSA flood.** These
+  are the `--islDown` overlay and the mass failure. The harness does not gate
+  them at IP for this arm. It floods a router-LSA from each surviving
+  endpoint and calls `LearnLinkState(node, channel, down)` at each node when
+  the flood arrives there. Each node routes on its own view: the shared edge
+  set minus the links it has learned are down. A node the flood has not
+  reached yet still routes into the failure, which is the reconvergence
+  window real link state has.
+- **Rows are solved lazily.** A node's row is re-solved at its next lookup
+  after its view changed. Only nodes on data paths ever solve, which keeps
+  Starlink S1 (1584 satellites, thousands of LSAs a minute) affordable. In
+  the oracle's own mode (`Knowledge=current`) the all-pairs solve is the
+  same code path and its output is byte-identical to before #707.
+
+With no unpredicted failure every view is the shared edge set, and the arm
+routes exactly as the hop oracle does. That is the arm's correctness check,
+asserted in `tools/checks/check-leo-walker.sh` (failure-free `##RUN##` rows
+equal field for field) and unit-tested by `PredictedKnowledgeTest`.
+
+The flood model, its control-traffic accounting and its simplifications are
+in leo-walker.md's opspf section. On failure cells opspf can deliver more
+than this oracle at its 1 s cadence, by 2–5 pp measured: the oracle is
+stale by up to its `RecomputeInterval` after an unpredicted failure
+([#720](https://github.com/danieljoppi/AntHocNet/issues/720)).
+
 ## Using it
 
 ```bash

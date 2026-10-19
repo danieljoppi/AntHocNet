@@ -322,6 +322,78 @@ class DelayMetricTest : public TestCase
     }
 };
 
+/**
+ * Knowledge=predicted (#707, the opspf arm): a learned failure changes only
+ * the learning node's view. Triangle A-B-D with a direct A-D link; A learns
+ * at t=1 s that A-D is down (D does not), then at t=2 s that it is back.
+ * A must route to D via B in between and directly before and after, while
+ * D keeps routing to A directly throughout -- it never learned anything.
+ */
+class PredictedKnowledgeTest : public TestCase
+{
+  public:
+    PredictedKnowledgeTest()
+        : TestCase("Knowledge=predicted: a learned failure changes only that node's view")
+    {
+    }
+
+  private:
+    void DoRun() override
+    {
+        NodeContainer n;
+        n.Create(3); // A, B, D
+        OracleHelper oracle;
+        oracle.Set("Knowledge", StringValue("predicted"));
+        InternetStackHelper internet;
+        internet.SetRoutingHelper(oracle);
+        internet.Install(n);
+        Ipv4AddressHelper addr("10.2.0.0", "255.255.255.252");
+        auto wire = [&addr](Ptr<Node> x, Ptr<Node> y, Ipv4InterfaceContainer& ifc) {
+            Ptr<SimpleChannel> ch = CreateObject<SimpleChannel>();
+            NetDeviceContainer d;
+            for (Ptr<Node> node : {x, y})
+            {
+                Ptr<SimpleNetDevice> dev = CreateObject<SimpleNetDevice>();
+                dev->SetAddress(Mac48Address::Allocate());
+                dev->SetChannel(ch);
+                node->AddDevice(dev);
+                d.Add(dev);
+            }
+            ifc = addr.Assign(d);
+            addr.NewNetwork();
+            return ch;
+        };
+        Ipv4InterfaceContainer ad, ab, bd;
+        Ptr<SimpleChannel> direct = wire(n.Get(0), n.Get(2), ad);
+        wire(n.Get(0), n.Get(1), ab);
+        wire(n.Get(1), n.Get(2), bd);
+        const Ipv4Address dOnAD = ad.GetAddress(1), aOnAD = ad.GetAddress(0);
+        const Ipv4Address bOnAB = ab.GetAddress(1);
+        const Ipv4Address dAddr = bd.GetAddress(1), aAddr = ab.GetAddress(0);
+
+        Ptr<oracle::Topology> topo = oracle.GetTopology();
+        Ptr<Node> a = n.Get(0), d = n.Get(2);
+        Ipv4Address before, during, after, dDuring;
+        Simulator::Schedule(Seconds(0.5), [&] { before = topo->Lookup(a, dAddr).gateway; });
+        Simulator::Schedule(Seconds(1.0), [&] { topo->LearnLinkState(a, direct, true); });
+        Simulator::Schedule(Seconds(1.5), [&] {
+            during = topo->Lookup(a, dAddr).gateway;
+            dDuring = topo->Lookup(d, aAddr).gateway;
+        });
+        Simulator::Schedule(Seconds(2.0), [&] { topo->LearnLinkState(a, direct, false); });
+        Simulator::Schedule(Seconds(2.5), [&] { after = topo->Lookup(a, dAddr).gateway; });
+        Simulator::Stop(Seconds(3));
+        Simulator::Run();
+        Simulator::Destroy();
+
+        NS_TEST_ASSERT_MSG_EQ(before, dOnAD, "A->D direct before anything is learned");
+        NS_TEST_ASSERT_MSG_EQ(during, bOnAB, "A->D via B once A has learned A-D is down");
+        NS_TEST_ASSERT_MSG_EQ(dDuring, aOnAD, "D never learned: D->A still direct");
+        NS_TEST_ASSERT_MSG_EQ(after, dOnAD, "A->D direct again once A learns A-D is up");
+        NS_TEST_ASSERT_MSG_EQ(topo->GetLsaApplied(), 2, "two learned changes");
+    }
+};
+
 class OracleTestSuite : public TestSuite
 {
   public:
@@ -333,6 +405,7 @@ class OracleTestSuite : public TestSuite
         AddTestCase(new GammaQTest, ORACLE_TEST_QUICK);
         AddTestCase(new NakagamiMedianTest, ORACLE_TEST_QUICK);
         AddTestCase(new DelayMetricTest, ORACLE_TEST_QUICK);
+        AddTestCase(new PredictedKnowledgeTest, ORACLE_TEST_QUICK);
     }
 };
 

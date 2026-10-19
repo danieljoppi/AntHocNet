@@ -71,7 +71,8 @@ Arms:
   and at 20 seeds its walker16 run no longer fits the 6 h job limit. The
   proactive link-state slot goes to the comparator the field actually
   proposes: predictability-aware link state (OPSPF,
-  [#707](https://github.com/danieljoppi/AntHocNet/issues/707)).
+  [#707](https://github.com/danieljoppi/AntHocNet/issues/707); the `opspf`
+  arm [below](#opspf-the-link-state-incumbent-707)).
 - **geo-greedy** — an *idealised* greedy geographic comparator: each hop goes
   to the neighbour nearest the destination's serving satellite, with perfect
   global position knowledge and no control traffic. It stands for the
@@ -375,6 +376,79 @@ in `results/cells/lens-bruhl-20261006.txt`:
   at phase 12 (21.2 ms against 20.6–20.9). leo-walker's handover clock fires
   at phase 12 (`clock=15 clockOffset=12`). The scheduled-handover class in
   the tables above is placed where the real network puts it.
+
+## opspf: the link-state incumbent (#707)
+
+`--protocols=opspf` is OPSPF-style link state on the predicted orbit schedule
+(Pan et al., "OPSPF: Orbit Prediction Shortest Path First Routing for
+Resilient LEO Satellite Networks", IEEE ICC 2019). It is the comparator the
+satellite literature actually proposes
+([satellite-routing-prior-art.md §2.2](../../satellite-routing-prior-art.md)).
+It runs on the oracle module's machinery in `Knowledge=predicted` mode
+([oracle README](../../../ns3/baselines/oracle/README.md#predicted-knowledge-the-opspf-arm-707)).
+
+**What it knows, and when.**
+- *Predicted changes:* the GSL handovers, scheduled or forced. Every node knows
+  them the moment they happen, as the oracle does. The ISL plan never changes.
+- *Unpredicted changes:* `--islDown` failures and repairs, and the mass
+  failure's lost links. These reach a node only when an LSA flood arrives
+  there. Each surviving endpoint of a changed ISL detects it at once (loss of
+  carrier; there is no hello, so no dead interval) and floods one router-LSA.
+  A storm victim's neighbours each flood one LSA listing every link they lost.
+- *Flood timing:* the flood travels over the links that are physically up, so
+  a node learns at origin + its fastest path's propagation delay.
+- *Routing view:* each node routes on its own view, so nodes the flood has not
+  reached keep routing into the failure.
+
+**Its control traffic is the flood.** Each node forwards an LSA once on every
+up link but the one it first heard it on; the originator sends on all of them.
+Every one of those transmissions counts in NRL. Each is 120 bytes in NRL bytes:
+one OSPF Link State Update with one router-LSA for 4 ISLs (RFC 2328 §A.3.5,
+A.4.1, A.4.2).
+
+**What is simplified, and which way it leans:**
+- The LSAs are **accounted, not sent**. They take no ISL capacity. Measured
+  load on S1: 17.9 M LSA transmissions × 120 B over 60 s across 6336 directed
+  ISLs, ~45 kbit/s per 10 Mbit/s link, or 0.45 %.
+- Detection is instant.
+- There is no MinLSInterval rate limit (RFC 2328: 5 s). A flapping link
+  floods on every change.
+
+The first two favour the arm. The third inflates its NRL and also makes it
+learn fastest.
+
+**Correctness check (the issue's acceptance).** With no unpredicted failure,
+OPSPF *is* the hop oracle: it differs only in what it can know.
+`tools/checks/check-leo-walker.sh` asserts that the failure-free per-seed
+`##RUN##` rows of `oracle` and `opspf` are identical field for field.
+`scenario_check.py results` FAILs an opspf run that flooded in a
+failure-free cell, or one that never flooded in a failure cell.
+
+**Measured while building it** (ns-3.48, short runs, not the published cells):
+
+| cell | opspf | oracle (1 s) | AntHocNet | opspf NRL |
+|---|---|---|---|---|
+| walker16, `islDown=0.01`, 120 s, 2 seeds | 99.84 / 100.00 % | 97.59 / 97.84 % | 93.03 / 91.79 % | 517 / 522 |
+| Starlink S1, `islDown=0.01`, 60 s, 1 seed | 100.00 % | 94.59 % | — | 19 815 |
+| S1 storm, 300 s, 1 seed | 98.46 % | 95.17 % | — | 15 749 |
+
+Two readings follow, and both change how this page reads.
+
+1. **The hop oracle is not a delivery bound on failure cells.** At its 1 s
+   cadence it routes into a dead ISL for up to a second. The flood reaches
+   every node in milliseconds, so opspf out-delivers it by 2–5 pp. Tracked in
+   [#720](https://github.com/danieljoppi/AntHocNet/issues/720). Until that is
+   decided, read the oracle's delivery on failure cells as "within its 1 s
+   staleness".
+2. **OPSPF pays for that delivery in flooding.** Every ISL change floods the
+   whole shell. That is the reconvergence cost the OPSPF paper exists to
+   reduce for *predicted* changes, and it cannot avoid it for unpredicted ones.
+   The overhead comparison against AntHocNet is therefore as much a part of
+   the headline as delivery.
+
+The 20-seed opspf cells on walker16, Starlink S1 and the storm are measured in
+the v2.4.0 control campaign. AntHocNet − OPSPF, paired, becomes this page's
+headline comparison then.
 
 ## The geo-greedy verdict
 
