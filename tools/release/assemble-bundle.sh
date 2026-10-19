@@ -9,7 +9,7 @@
 #
 # What ships: the code (core/, ns3/, tools/), the docs, and the top-level files a
 # user or contributor reads. What does not: agent-only material (.claude/ skills,
-# AGENTS.md, CLAUDE.md, docs/handoffs/ session notes), CI config, build output.
+# AGENTS.md, CLAUDE.md), CI config, build output.
 set -euo pipefail
 VER=${1:?usage: assemble-bundle.sh VERSION OUTDIR}
 OUT=${2:?usage: assemble-bundle.sh VERSION OUTDIR}
@@ -23,6 +23,5 @@ for f in Makefile README.md LICENSE CHANGELOG.md CITATION.cff VERSION \
 done
 # Tracked files only: never ship build output, caches or local scratch.
 git ls-files -z core ns3 tools docs results \
-  | grep -zv -e '^docs/handoffs/' \
   | xargs -0 -I{} cp --parents {} "$dest/"
 echo "$dest"

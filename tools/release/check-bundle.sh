@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Release-package gate (#604). Assembles the bundle exactly as release.yml does
 # and fails if it ships something it must not, or misses something it must:
-#   - agent-only material: .claude/, AGENTS.md, CLAUDE.md, docs/handoffs/
+#   - agent-only material: .claude/, AGENTS.md, CLAUDE.md
 #   - caches and build output: __pycache__, *.pyc, build/ dirs
 #   - a shipped script that reaches into .claude/ (it would break in the package)
 #   - the tools the shipped harness imports (tools/bench/*.py)
@@ -15,7 +15,7 @@ bundle=$(tools/release/assemble-bundle.sh 0.0.0-check "$tmp") || { echo "FAIL: a
 fail=0
 bad() { echo "FAIL: $*"; fail=1; }
 cd "$bundle"
-for p in .claude AGENTS.md CLAUDE.md docs/handoffs .github; do
+for p in .claude AGENTS.md CLAUDE.md .github; do
   [ -e "$p" ] && bad "bundle ships $p"
 done
 junk=$(find . \( -name __pycache__ -o -name '*.pyc' -o -type d -name build \) -print | head -5)
@@ -34,7 +34,7 @@ cd - >/dev/null
 # The index tree with the working tree's .gitattributes: in CI that is HEAD;
 # locally it includes staged changes.
 arch=$(git archive --worktree-attributes --format=tar "$(git write-tree)" | tar -t)
-for p in .claude/ AGENTS.md CLAUDE.md docs/handoffs/ .github/; do
+for p in .claude/ AGENTS.md CLAUDE.md .github/; do
   printf '%s\n' "$arch" | grep -q "^$p" && bad "git archive ships $p (add export-ignore)"
 done
 if [ "$fail" = 0 ]; then

@@ -46,9 +46,17 @@ the session ends** — as a new issue, or as a comment on the relevant existing 
    Conventional Commit (see [`CONTRIBUTING.md`](../../CONTRIBUTING.md)). A merged PR
    is not the end of the record — post the post-merge outcome (e.g. benchmark
    result) back to the issue.
-5. **Cross-session handoff** that spans several issues/PRs is captured under
-   [`docs/handoffs/`](../handoffs/) so a fresh AI chat (or human) can bootstrap
-   from one document with all the links, then drop into the issues for detail.
+5. **A cross-session handoff is always an issue**, labelled `handoff` and opened
+   from the *Handoff* issue template. It is never a file in the repository.
+   Open one whenever a session ends with work in flight, or when a handoff is
+   asked for. It carries the state (what is merged, open and running), the
+   next steps in order, the procedures and commands the work needs, the
+   pitfalls already hit, and links to every issue and PR involved. A fresh AI
+   chat (or a human) starts from the newest open `handoff` issue, then drops
+   into the linked issues for detail. The session that completes the work
+   closes the handoff issue with a pointer to the result. (Until 2026-10-19,
+   handoffs were files under `docs/handoffs/`; the two that existed were
+   archived into their issues, #19 and #434.)
 
 This formalises, rather than replaces, the existing "pick up open work from
 issues" guidance in `AGENTS.md`.
@@ -98,7 +106,7 @@ do not auto-apply labels):
 ## Consequences
 
 - Findings and their evidence survive session boundaries and are discoverable.
-- A new AI chat can be primed from an issue (+ a handoff doc) instead of
+- A new AI chat can be primed from an issue (a `handoff` issue for multi-issue work) instead of
   re-deriving context.
 - Slightly more issue/comment bookkeeping per session — the cost the #19
   regression showed is worth paying.

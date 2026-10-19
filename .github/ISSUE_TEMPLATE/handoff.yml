@@ -1,0 +1,45 @@
+name: Handoff
+description: Hand work in flight to a fresh session (ADR-0013). A handoff is always an issue, never a file in the repo.
+title: "[handoff] "
+labels: ["handoff"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A new session starts from the newest open `handoff` issue. Write it so a reader with no chat history can continue.
+        Close it from the session that finishes the work, with a pointer to the result.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What the next session must deliver, and what "done" means (exit criteria, the release, the issue it closes).
+    validations:
+      required: true
+  - type: textarea
+    id: state
+    attributes:
+      label: State
+      description: What is merged (PRs), what is open, what is running (workflow runs, campaigns), and on which branch.
+    validations:
+      required: true
+  - type: textarea
+    id: next
+    attributes:
+      label: Next steps, in order
+      description: A numbered list. Name each step's issue, its dependencies, and how to verify it.
+    validations:
+      required: true
+  - type: textarea
+    id: procedures
+    attributes:
+      label: Procedures and commands
+      description: The exact commands, tools and workflows the work needs (dispatch, collect, verify, release).
+  - type: textarea
+    id: pitfalls
+    attributes:
+      label: Pitfalls already hit
+      description: What went wrong before and how it was handled, so the next session does not repeat it.
+  - type: textarea
+    id: decisions
+    attributes:
+      label: Decisions pending, and who makes them
