@@ -1197,6 +1197,50 @@ depended on the breakdown and are unaffected either way.
   (bad checksum, interface down, fragment timeout — structurally zero in this
   harness). If it is ever non-zero it is the reason the identity misses.
 
+## The hwmp arm: layer-2 path selection on IP books (#708)
+
+The `hwmp` arm is IEEE 802.11s, the static mesh's native comparator
+([ADR-0026](../adr/0026-baselines-are-family-native.md)): stock ns-3 `mesh`,
+one `Dot11sStack` mesh point per node. It routes **below IP**, so IP sees the
+whole mesh as one link and every IP-layer hook above reads a single hop. Each
+book is therefore mapped onto the mesh explicitly, and the table says where.
+
+| metric | other arms | hwmp arm |
+|---|---|---|
+| PDR, delay, delay99, throughput, jitter, goodput | FlowMonitor + PacketSinks, end to end | the same books, unchanged: they never depended on hops |
+| NRL (`nrl`) numerator | non-data UDP packets at `Ipv4L3Protocol` `Tx`, each hop | 802.11s **path-selection action frames** (category Mesh: PREQ, PREP, PERR, RANN), counted once per frame handed to an interface's MAC queue: one count per next hop or per broadcast, MAC retries not counted, the same rule as the IP hook |
+| `nrl_bytes` numerator | IP packet size at the same hook | the frame body (action header plus elements), the L2 analogue of the IP packet |
+| mesh link maintenance | (a protocol's hellos are in its NRL) | **not in NRL.** Peering frames (category Self-protected: peer link open, confirm, close) and beacons are the 802.11s MAC rather than its path selection. `--diag` prints them per run on a `# hwmp` line, beside the path-selection count, so their size is on the record |
+| hop count (`path_hops_mean`, `##ROUTE##`, `##COMMON##` hops) | IP TTL at delivery | the mesh points that queued the packet's data frame (one enqueue per hop, before the frame is sent), keyed by the packet's (flow, seq); UDP only, like the route-stability path |
+| next-hop diversity, `drop_mac_pct` | `AckedMpdu` / `DroppedMpdu` on the wifi device | the same traces on each mesh point's wifi interface, with the 802.11s mesh control header stripped before the LLC/IP parse |
+| `drop_chan_pct` | IP `Tx` minus IP `Rx` per hop, minus MAC and queue drops | IP sees only source and destination, so this is end-to-end loss minus MAC drops. It also holds what HWMP discards with no trace in ns-3: frames dropped for want of a path, mesh-TTL expiry, its own queue overflow. On this arm read it as "lost inside the mesh", not as on-air loss |
+
+Two harness changes keep the arm paired with the others, both measured:
+
+- **RNG streams.** `MeshHelper::AssignStreams` takes a different count than
+  the ad-hoc devices, and mobility is pinned right after the devices. Left on
+  the running counter, the mesh moved every node: HWMP read a 5-hop path on a
+  field whose oracle shortest path is 6. The mesh now draws from a fixed
+  sub-block, and the running counter advances by the ad-hoc count, so the
+  topology is the one every other arm sees. The `mesh-hwmp-shortest` anchor
+  ([methodology](methodology.md)) fails if HWMP's mean hop count ever drops
+  below the oracle's.
+- **ARP.** Over a mesh, every IP destination is ARP-resolved across the
+  mesh. A request sent while the peer links are still forming fails its three
+  tries, and ns-3 then holds the destination dead for 100 s, during which
+  HWMP is never asked for a path (measured: one flow at 0 % with zero PREQs).
+  The hwmp arm fills its ARP caches up front, so the arm measures HWMP and
+  not ARP.
+
+The radio is part of the mapping. ns-3's `MeshHelper` tunes every mesh
+interface to 5 GHz channel 100, so 802.11s runs only on 802.11a. The arm
+therefore requires `--standard=80211a`; the static-mesh cell runs every arm
+on that radio at a fixed 6 Mbit/s (`--rateManager=constant6`, maintainer
+decision 2026-10-19), and `--standard=80211a` is held to the disk channel,
+which ignores frequency. The mesh MAC is a QoS station (EDCA) while the
+ad-hoc arms run plain DCF: a real difference between the stacks, kept, not
+corrected.
+
 ## Route quality: path length, path diversity, fairness (#217, NS-3 only)
 
 AntHocNet's defining property is that it lays and maintains **multiple paths**,

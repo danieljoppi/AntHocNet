@@ -643,6 +643,26 @@ def _pre3d_refusals():
     expect("includes gpsr" not in out, "pre3d-refusals", out)
 
 
+@case("#708 preflight mirrors the harness's radio refusals")
+def _pre_radio_refusals():
+    mesh = {"protocols": "anthocnet,olsr,hwmp,oracle", "pause": 900.0,
+            "standard": "80211a", "rateManager": "constant6", "rateMbps": 6.0}
+    levels, out = run_preflight(**mesh)
+    expect("FAIL" not in levels, "pre-radio", f"the static-mesh cell failed\n{out}")
+    for knob, msg in (({"standard": "80211b", "rateManager": "constant2",
+                        "rateMbps": 2.0}, "hwmp on 802.11b"),
+                      ({"propagation": "tworay"}, "--propagation=tworay"),
+                      ({"rateManager": "constant2"}, "DSSS (802.11b) rate"),
+                      ({"standard": "80211b", "protocols": "anthocnet"},
+                       "needs --standard 80211a")):
+        levels, out = run_preflight(**dict(mesh, **knob))
+        expect("FAIL" in levels and msg in out, "pre-radio",
+               f"{knob} was not refused with '{msg}'\n{out}")
+    # A caller that predates the knob stays on 802.11b, silent.
+    _, out = run_preflight()
+    expect("#708" not in out, "pre-radio", out)
+
+
 @case("#481 preflight FAILs links shorter-lived than the hello interval")
 def _hello_fail():
     # 250 m at 150 m/s: ~0.83 s link lifetime against a 1 s hello.

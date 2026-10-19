@@ -82,7 +82,7 @@ jobs:
           # (their cross-module deps drift by release). The filter flag scopes
           # that to our module; it was added after ns-3.36, so older trees just
           # build + smoke.
-          mods='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          mods='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
           if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
             ./ns3 configure --enable-tests --enable-examples \
               --filter-module-examples-and-tests='anthocnet;oracle' \
@@ -228,6 +228,15 @@ jobs:
         run: |
           bash tools/checks/check-anchors.sh /opt/ns-3 vanet-single-hop
           bash tools/checks/check-anchors.sh /opt/ns-3 vanet-building
+      - name: Static-mesh HWMP anchor (#708, --protocols=hwmp)
+        # The static mesh's 802.11s comparator, gated before any HWMP number is
+        # published. On a static connected disk field at one fixed rate,
+        # HWMP's airtime metric is equal on every link, so its mean hop count
+        # must sit in [1.00, 1.10] x the oracle's shortest path on the same
+        # seeds (below 1.00 the arm ran on a different topology), with PDR
+        # >= 95. Thresholds: ns3/tools/anchors.yml.
+        if: matrix.version == '3.42'
+        run: bash tools/checks/check-anchors.sh /opt/ns-3 mesh-hwmp-shortest
       - name: Determinism gate (same seed twice must be byte-identical, #129)
         # Golden rule 3 (AGENTS.md): all randomness via IRng, all time via
         # IClock, so identical seeds must reproduce identical runs — the
@@ -370,7 +379,7 @@ jobs:
           # static-initializer allocations (see the file header for how to
           # extend it). $GITHUB_WORKSPACE is the in-container checkout path.
           echo "LSAN_OPTIONS=suppressions=$GITHUB_WORKSPACE/tools/checks/lsan.supp" >> "$GITHUB_ENV"
-          mods='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+          mods='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
           # ns-3's CMake build has first-class sanitizer support (NS3_SANITIZE),
           # exposed by the ./ns3 wrapper as --enable-sanitizers
           # (address + leak + undefined). Prefer it when the wrapper advertises

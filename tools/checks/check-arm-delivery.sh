@@ -79,6 +79,17 @@ KNOWN_BROKEN=""
 # required for the oracle's exact adjacency, see header.
 ARGS="--nNodes=16 --area=500 --range=175 --pause=120 --flows=3 --time=60 --runs=1"
 
+# Per-arm radio arguments, arm=args. The hwmp arm (#708) is stock ns-3
+# 802.11s, whose mesh interfaces are tuned to 5 GHz channel 100, so it runs
+# on 802.11a at a fixed 6 Mbit/s. The disk channel ignores frequency, so the
+# field (and the oracle anchor that proves it multi-hop) is the same one.
+arm_args() {
+    case "$1" in
+        hwmp) echo "--standard=80211a --rateManager=constant6" ;;
+        *) echo "" ;;
+    esac
+}
+
 # PDR floors (percent). Working arms deliver far above 5 on a static connected
 # field (the per-merge taxonomy's worst static row is ~87, docs/benchmarks/
 # scenarios/sparse-static.md); the defect class this gate exists for reads
@@ -145,7 +156,7 @@ broken_issue() {
 fail=0
 for proto in $arms; do
     issue=$(broken_issue "$proto")
-    cmd="anthocnet-compare $ARGS --protocols=$proto"
+    cmd="anthocnet-compare $ARGS $(arm_args "$proto") --protocols=$proto"
     echo "[arm-delivery] ./ns3 run \"$cmd\""
     if ! out=$(./ns3 run "$cmd" 2>&1); then
         if [ -n "$issue" ]; then

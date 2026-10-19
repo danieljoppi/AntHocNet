@@ -67,6 +67,10 @@ build_lib_example(
     ${libaomdv}
     ${libolsr}
     ${libdsdv}
+    # #708: stock 802.11s (MeshHelper, Dot11sStack) for the hwmp arm. Same
+    # rule: not enabled, example skipped, so every --enable-modules list that
+    # builds this harness names mesh.
+    ${libmesh}
     # #296: the vendored GPSR baseline module (contrib/gpsr, installed by the
     # same `make install-ns3`). Like the stock baselines above, listing it here
     # means the example is skipped when the module is not enabled.

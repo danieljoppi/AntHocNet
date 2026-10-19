@@ -111,7 +111,7 @@ jobs:
           cd /opt/ns-3
           # $NS3_PROFILE_FLAG unquoted on purpose: empty must expand to nothing.
           ./ns3 configure $NS3_PROFILE_FLAG --enable-examples \
-            --enable-modules='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point'
+            --enable-modules='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
           ./ns3 build
           # Recorded in the log so every campaign run is attributable to a
           # profile after the fact (a run's cost is meaningless without it).

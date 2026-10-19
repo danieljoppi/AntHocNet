@@ -107,3 +107,17 @@ vanet_single_hop_oracle_hops_max: 1.05
 # path, so it sits ~10 pp under AODV.
 vanet_building_pdr_min: 70.0
 vanet_building_oracle_hops_min: 1.2
+
+# --- static-mesh HWMP anchor (#708, consumed by check-anchors.sh) -----------
+# Analytic: on a static connected disk field at one fixed rate, 802.11s
+# HWMP's airtime metric is equal on every link, so it converges to a
+# minimum-hop path. 16 nodes, 500 m field, 175 m range, 802.11a at 6 Mbit/s,
+# 2 runs. Measured at this exact invocation on ns-3.42 (the CI leg): HWMP
+# 98.2 % PDR, hopsMean 4.73 against the oracle's 4.50 (stretch 1.05); on
+# ns-3.48 98.3 % and 4.67 (1.04). The PDR floor only catches an arm that
+# stopped routing, so it sits ~3 pp under the measurement.
+mesh_hwmp_pdr_min: 95.0
+# Upper bound on hwmp hopsMean / oracle hopsMean (the lower bound, 1.00, is
+# exact and lives in the script). Measured 1.04-1.05; 1.10 leaves room for
+# the odd detour during path discovery.
+mesh_hwmp_stretch_max: 1.10

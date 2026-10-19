@@ -56,7 +56,7 @@ use the `paper` preset — it is heavy, so it is a manual run, not part of CI:
 make install-ns3 NS3DIR=/path/to/ns-3-dev
 cd /path/to/ns-3-dev
 ./ns3 configure --enable-examples \
-  --enable-modules='anthocnet;gpsr;oracle;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point'
+  --enable-modules='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
 ./ns3 build
 ./ns3 run "anthocnet-compare --scenario=paper --runs=5"               # base scenario
 ./ns3 run "anthocnet-compare --scenario=paper --areaX=2500 --runs=5"  # area sweep
@@ -1436,6 +1436,7 @@ rather than mistaken for a protocol property (see [#24](https://github.com/danie
 | **Broch/Perkins field, low mobility** | 50 nodes, 1500×300 m, RWP, **pause = 900 s** (≈ static) | **AODV ≈ 90–100% PDR** (Broch et al., *MobiCom* 1998; Perkins, AODV) | the channel/PHY calibration target |
 | Broch pause-sweep | as above, pause 0 → 900 s | AODV PDR **rises** with pause; DSDV worst under high mobility | the trend/shape, not one point |
 | ns-3 `manet-routing-compare` | upstream example | community-calibrated AODV/OLSR/DSDV numbers | an in-simulator witness independent of this repo |
+| static-mesh HWMP (`mesh-hwmp-shortest`, [#708](https://github.com/danieljoppi/AntHocNet/issues/708)) | 16 nodes, 500 × 500 m, 175 m disk, static, 802.11a at 6 Mbit/s, `hwmp,oracle`, 2 runs | analytic: at one fixed rate HWMP's airtime metric is equal on every link, so its mean hop count is in **[1.00, 1.10] × the oracle's** shortest path, PDR ≥ 95 (measured on ns-3.42: 98.2 %, 4.73 vs 4.50 hops) | the 802.11s arm converges to a shortest path on the same topology the oracle sees (below 1.00 is the #708 stream-pairing defect, which read 4.39) |
 
 **Why this matters here.** The `paper-base` preset *is* the Broch/Perkins
 1500×300 m / 50-node field, where AODV is known to deliver ~90–100% at low
