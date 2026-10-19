@@ -290,7 +290,7 @@ jobs:
           # gpsr (#412) and aomdv (#414) were each added with green CI and
           # each vanished from ##BENCH## until this was noticed. Same rule as
           # the ##MARKER## note below: any new ARM has to be added here too.
-          awk '$1 ~ /^(anthocnet|aodv|olsr|dsdv|oracle|gpsr|aomdv|hwmp|gpcr)$/ && $2 ~ /^[0-9.]+$/ \
+          awk '$1 ~ /^(anthocnet|aodv|olsr|dsdv|oracle|gpsr|aomdv|hwmp|gpcr|gpsr3d)$/ && $2 ~ /^[0-9.]+$/ \
                {print "##BENCH##", $1, $2, $3, $4, $5, $6, $7, $8, $9, $10}' \
             "$GITHUB_WORKSPACE/paper-results.txt" > "$GITHUB_WORKSPACE/bench-rows.txt"
           if ! [ -s "$GITHUB_WORKSPACE/bench-rows.txt" ]; then

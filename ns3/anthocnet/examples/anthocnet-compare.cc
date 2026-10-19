@@ -2176,6 +2176,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // mode of the vendored GPSR module (same beacons, same headers).
         gpsrHelper.Set("Gpcr", BooleanValue(true));
         internet.SetRoutingHelper(gpsrHelper);
+    } else if (proto == "gpsr3d") {
+        // #710: the FANET family's 3-D geographic arm, the vendored GPSR's
+        // ThreeD mode (3-D greedy, CFace(3) recovery).
+        gpsrHelper.Set("ThreeD", BooleanValue(true));
+        internet.SetRoutingHelper(gpsrHelper);
     } else if (proto == "oracle") {
         internet.SetRoutingHelper(oracleHelper);
     } else if (proto == "hwmp") {
@@ -2203,7 +2208,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // re-pointing the UDP down target — the helper wires that after the stack
     // exists, exactly as the dwosion examples do (scoped to this run's nodes,
     // not the global container, so repeated RunOne calls can't cross-wire).
-    if (proto == "gpsr" || proto == "gpcr") {
+    if (proto == "gpsr" || proto == "gpcr" || proto == "gpsr3d") {
         gpsrHelper.Install(nodes);
     }
     // The IPv4 stack is NOT stream-free, contrary to the first cut of this fix:
@@ -2229,9 +2234,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream), "olsr routing");
     } else if (proto == "dsdv") {
         TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream), "dsdv routing");
-    } else if (proto == "gpsr" || proto == "gpcr") {
+    } else if (proto == "gpsr" || proto == "gpcr" || proto == "gpsr3d") {
         TakeStreams(stream, streamBase, gpsrHelper.AssignStreams(nodes, stream),
-                    "gpsr/gpcr routing");
+                    "gpsr/gpcr/gpsr3d routing");
     } else if (proto == "oracle") {
         // Pinned through the same path as every other arm even though the
         // oracle draws nothing: the count it returns is 0, and taking it here
@@ -3615,11 +3620,12 @@ int main(int argc, char* argv[]) {
                  "seeds can split across dispatches (#126)",
                  firstRun);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
-    cmd.AddValue("protocols",
-                 "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,gpcr,aomdv,hwmp,oracle). "
-                 "`oracle` is the #296 global-knowledge shortest-path CONTROL "
-                 "(upper bound, zero control traffic), off unless named.",
-                 protocols);
+    cmd.AddValue(
+        "protocols",
+        "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,gpcr,gpsr3d,aomdv,hwmp,oracle). "
+        "`oracle` is the #296 global-knowledge shortest-path CONTROL "
+        "(upper bound, zero control traffic), off unless named.",
+        protocols);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies, first delivery)", g_diag);
     cmd.AddValue("qdiag",
                  "Emit per-run '# qdiag' lines: per-node MAC queue depth "
@@ -4102,7 +4108,8 @@ int main(int argc, char* argv[]) {
     // #480: the vendored GPSR carries only x/y in its hello and position
     // headers, and its perimeter mode planarizes a 2-D graph. Under --areaZ > 0
     // it would route on projected positions -- a silent degradation that would
-    // read as a protocol result. Refused; a 3-D geographic arm is out of scope.
+    // read as a protocol result. Refused; the 3-D geographic arm is gpsr3d
+    // (#710), the same module's ThreeD mode.
     if (P.areaZ > 0.0) {
         for (const std::string& proto : list) {
             NS_ABORT_MSG_UNLESS(proto != "gpsr" && proto != "gpcr",
@@ -4110,8 +4117,8 @@ int main(int argc, char* argv[]) {
                                     << proto << " with --areaZ=" << P.areaZ
                                     << ": the vendored GPSR is planar "
                                        "(2-D headers, 2-D planarization) and would "
-                                       "route on projected positions. Drop it from "
-                                       "--protocols for a 3-D field (#480).");
+                                       "route on projected positions. Use gpsr3d "
+                                       "for a 3-D field (#480, #710).");
         }
     }
 

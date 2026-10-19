@@ -108,7 +108,7 @@ cd "$NS3DIR"
 # parenthesised comma list in "Comma-separated list (a,b,c)".
 help=$(./ns3 run "anthocnet-compare --PrintHelp" 2>&1 || true)
 arms=$(printf '%s\n' "$help" \
-    | sed -n 's/.*Comma-separated list (\([a-z,]*\)).*/\1/p' \
+    | sed -n 's/.*Comma-separated list (\([a-z0-9,]*\)).*/\1/p' \
     | head -n 1 | tr ',' ' ')
 if [ -z "$arms" ]; then
     echo "FAIL [arm-delivery]: could not read the arm list from anthocnet-compare --PrintHelp."

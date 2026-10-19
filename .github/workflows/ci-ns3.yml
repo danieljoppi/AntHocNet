@@ -234,6 +234,13 @@ jobs:
         # +4.9 on this leg). Thresholds: ns3/tools/anchors.yml.
         if: matrix.version == '3.42'
         run: bash tools/checks/check-anchors.sh /opt/ns-3 vanet-gpcr-vs-gpsr
+      - name: FANET gpsr3d anchor (#710, --protocols=gpsr3d)
+        # The 3-D geographic arm's own paper trend (Bujari et al., IEEE TMC
+        # 2018): on a static 3-D field, CFace(3) recovery must deliver >= 5 pp
+        # more than greedy alone on the same seeds (measured +12.4 on this
+        # leg). Thresholds: ns3/tools/anchors.yml.
+        if: matrix.version == '3.42'
+        run: bash tools/checks/check-anchors.sh /opt/ns-3 fanet-gpsr3d-recovery
       - name: Static-mesh HWMP anchor (#708, --protocols=hwmp)
         # The static mesh's 802.11s comparator, gated before any HWMP number is
         # published. On a static connected disk field at one fixed rate,

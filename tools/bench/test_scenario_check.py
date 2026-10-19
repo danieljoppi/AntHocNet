@@ -671,6 +671,9 @@ def _pre_gpcr():
     expect("gpcr off a street grid" not in out, "pre-gpcr", out)
     levels, out = run_preflight(**dict(FANET_3D, protocols="anthocnet,gpcr"))
     expect("FAIL" in levels and "includes gpcr" in out, "pre-gpcr", out)
+    # #710: gpsr3d is the 3-D geographic arm, never refused on a 3-D field.
+    _, out = run_preflight(**dict(FANET_3D, protocols="anthocnet,gpsr3d"))
+    expect("includes gpsr3d" not in out, "pre-gpcr", out)
 
 
 @case("#481 preflight FAILs links shorter-lived than the hello interval")

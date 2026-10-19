@@ -6,7 +6,7 @@
 # regression (like the #51 IdealWifiManager ~50% single-hop loss) fails CI
 # loudly instead of silently corrupting every published number.
 #
-# Usage: check-anchors.sh <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building|vanet-gpcr-vs-gpsr|mesh-hwmp-shortest>
+# Usage: check-anchors.sh <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building|vanet-gpcr-vs-gpsr|fanet-gpsr3d-recovery|mesh-hwmp-shortest>
 #
 # The two fanet-* anchors (#482) and the two vanet-* anchors (#488) run on
 # anthocnet-compare instead, because manet-baselines has neither a 3-D field
@@ -21,7 +21,7 @@ set -euo pipefail
 NS3DIR=${1:-}
 ANCHOR=${2:-}
 if [ -z "$NS3DIR" ] || [ -z "$ANCHOR" ]; then
-    echo "usage: $0 <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building|vanet-gpcr-vs-gpsr|mesh-hwmp-shortest>" >&2
+    echo "usage: $0 <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building|vanet-gpcr-vs-gpsr|fanet-gpsr3d-recovery|mesh-hwmp-shortest>" >&2
     exit 2
 fi
 
@@ -42,6 +42,7 @@ stretch_max=""
 gap_arm=""
 gap_base=""
 gap_min=""
+gap_base_args=""
 case "$ANCHOR" in
     single-hop)
         # 2 nodes, 50x50 m, 300 m disk range, static (pause=900 speed=1):
@@ -131,6 +132,24 @@ case "$ANCHOR" in
         gap_base=gpsr
         gap_min=$(floor_for vanet_gpcr_minus_gpsr_pp_min)
         ;;
+    fanet-gpsr3d-recovery)
+        # #710, the 3-D geographic arm's own paper trend (Bujari, Palazzi &
+        # Ronzani, IEEE TMC 2018, section 5.2): on a static, lightly loaded
+        # 3-D field, greedy forwarding alone delivers least, because packets
+        # stall in local minima, and adding face recovery delivers more. The
+        # same arm runs twice on the same seeds: with CFace(3) recovery (as
+        # shipped) and with Recovery=false (pure 3-D greedy). Measured at this
+        # exact invocation: ns-3.42 74.9 % vs 62.5 % (+12.4 pp) with the
+        # oracle at 74.9 % (the field's partition bound); ns-3.48 74.7 vs 62.2.
+        harness=anthocnet-compare
+        args="--nNodes=50 --areaX=600 --areaY=600 --areaZ=600 --range=200 --pause=900 --speed=1 --flows=2 --cbrBps=512 --time=120 --runs=4"
+        protocols="gpsr3d,oracle"
+        floor=$(floor_for fanet_gpsr3d_pdr_min)
+        gap_arm=gpsr3d
+        gap_base=gpsr3d
+        gap_base_args="--ns3::gpsr::RoutingProtocol::Recovery=false"
+        gap_min=$(floor_for fanet_gpsr3d_recovery_pp_min)
+        ;;
     mesh-hwmp-shortest)
         # #708, the static mesh's HWMP anchor, analytic like the FANET/VANET
         # ones. On a static, connected disk field at one fixed rate, HWMP's
@@ -151,7 +170,7 @@ case "$ANCHOR" in
         stretch_max=$(floor_for mesh_hwmp_stretch_max)
         ;;
     *)
-        echo "unknown anchor '$ANCHOR' (want: single-hop | broch-low-mobility | fanet-single-hop-3d | fanet-vertical-3d | vanet-single-hop | vanet-building | vanet-gpcr-vs-gpsr | mesh-hwmp-shortest)" >&2
+        echo "unknown anchor '$ANCHOR' (want: single-hop | broch-low-mobility | fanet-single-hop-3d | fanet-vertical-3d | vanet-single-hop | vanet-building | vanet-gpcr-vs-gpsr | fanet-gpsr3d-recovery | mesh-hwmp-shortest)" >&2
         exit 2
         ;;
 esac
@@ -213,6 +232,19 @@ if [ -n "$gap_arm" ]; then
     }
     ga=$(table_pdr "$gap_arm")
     gb=$(table_pdr "$gap_base")
+    if [ -n "$gap_base_args" ]; then
+        # The reference is the same arm under other attributes: its own run.
+        bcmd="$harness $args $gap_base_args --protocols=$gap_base"
+        echo "[$ANCHOR] reference: ./ns3 run \"$bcmd\""
+        if ! bout=$(./ns3 run "$bcmd" 2>&1); then
+            printf '%s\n' "$bout" | tail -n 40
+            echo "FAIL [$ANCHOR]: reference run did not complete"
+            exit 1
+        fi
+        gb=$(printf '%s\n' "$bout" |
+             awk -v p="$gap_base" '$1 == p && $2 ~ /^[0-9.]+$/ { v = $2 } END { print v }')
+        gap_base="$gap_base ($gap_base_args)"
+    fi
     if [ -z "$ga" ] || [ -z "$gb" ]; then
         echo "FAIL [$ANCHOR]: no result row for $gap_arm or $gap_base"
         status=1

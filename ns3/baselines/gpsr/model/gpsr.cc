@@ -104,7 +104,10 @@ RoutingProtocol::RoutingProtocol ()
     PerimeterMode (false),
     m_gpcr (false),
     m_gpcrThreshold (0.9),
-    m_gpcrConeDeg (30.0)
+    m_gpcrConeDeg (30.0),
+    m_threeD (false),
+    m_faceTtl (21),
+    m_recovery (true)
 {
   m_neighbors = PositionTable ();
   // #352 (port change): one member RNG, pinnable via AssignStreams, replaces
@@ -150,6 +153,23 @@ RoutingProtocol::GetTypeId (void)
                    DoubleValue (30.0),
                    MakeDoubleAccessor (&RoutingProtocol::m_gpcrConeDeg),
                    MakeDoubleChecker<double> (0.0, 180.0))
+    // AntHocNet addition (#710): the 3-D mode. Off by default.
+    .AddAttribute ("ThreeD", "3-D positions, 3-D greedy distance and CFace(3) recovery "
+                   "(projection onto xy, xz, yz) for a 3-D field (#710)",
+                   BooleanValue (false),
+                   MakeBooleanAccessor (&RoutingProtocol::m_threeD),
+                   MakeBooleanChecker ())
+    .AddAttribute ("FaceTtl", "ThreeD recovery: hops on one projection plane before the "
+                   "next plane is tried (CFace(3)'s TTLF). Bujari et al. use 2N with "
+                   "no IP TTL; 21 lets all three planes fit in the IP TTL of 64 (#710)",
+                   UintegerValue (21),
+                   MakeUintegerAccessor (&RoutingProtocol::m_faceTtl),
+                   MakeUintegerChecker<uint32_t> (1))
+    .AddAttribute ("Recovery", "false: a packet at a local minimum is dropped instead of "
+                   "recovered (pure greedy forwarding; the #710 anchor's reference)",
+                   BooleanValue (true),
+                   MakeBooleanAccessor (&RoutingProtocol::m_recovery),
+                   MakeBooleanChecker ())
   ;
   return tid;
 }
@@ -279,6 +299,11 @@ NS_LOG_FUNCTION (this << p->GetUid () << header.GetDestination () << idev->GetAd
             {
               PositionHeader phdr;
               packet->RemoveHeader (phdr);
+              if (m_threeD)
+                {
+                  Position3dHeader zHdr;  // #710
+                  packet->RemoveHeader (zHdr);
+                }
             }
           RestoreTransport (packet, udpHeader, hasUdp);
         }
@@ -384,6 +409,7 @@ RoutingProtocol::SendPacketFromQueue (Ipv4Address dst)
   Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
   myPos.x = MM->GetPosition ().x;
   myPos.y = MM->GetPosition ().y;
+  myPos.z = m_threeD ? MM->GetPosition ().z : 0;  // #710
   Ipv4Address nextHop;
 
   if(m_neighbors.isNeighbour (dst))
@@ -435,8 +461,18 @@ RoutingProtocol::SendPacketFromQueue (Ipv4Address dst)
                 Position.x = hdr.GetDstPosx ();
                 Position.y = hdr.GetDstPosy ();
                 updated = hdr.GetUpdated ();
+                if (m_threeD)
+                  {
+                    Position3dHeader zHdr;
+                    p->RemoveHeader (zHdr);
+                    Position.z = zHdr.m_dstPosz;
+                  }
               }
 
+            if (m_threeD)
+              {
+                p->AddHeader (Position3dHeader (Position.z, myPos.z, Position.z, 0, 0));
+              }
             PositionHeader posHeader (Position.x, Position.y,  updated, myPos.x, myPos.y, (uint8_t) 1, Position.x, Position.y);
             p->AddHeader (posHeader); //enters in recovery with last edge from Dst
             p->AddHeader (tHeader);
@@ -499,6 +535,7 @@ RoutingProtocol::RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCall
   positionY = MM->GetPosition ().y;
   myPos.x = positionX;
   myPos.y = positionY;
+  myPos.z = m_threeD ? MM->GetPosition ().z : 0;  // #710
 
   // Fault-3 rework: the GPSR headers sit beneath the UDP header. RecoveryMode
   // is only ever entered with a GPSR-headered (UDP) packet — Forwarding and
@@ -531,6 +568,40 @@ RoutingProtocol::RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCall
       previousHop.y = hdr.GetLastPosy ();
    }
 
+  // #710: Recovery=false is pure greedy forwarding, the anchor's reference.
+  if (!m_recovery)
+    {
+      RestoreTransport (p, udpHeader, hasUdp);
+      ecb (p, header, Socket::ERROR_NOROUTETOHOST);
+      return;
+    }
+  Position3dHeader zHdr;
+  if (m_threeD)
+    {
+      // CFace(3): FaceTtl hops on a plane, then the next plane, each started
+      // afresh from this node with its first edge toward the destination;
+      // after yz, the packet is dropped.
+      p->RemoveHeader (zHdr);
+      Position.z = zHdr.m_dstPosz;
+      recPos.z = zHdr.m_recPosz;
+      previousHop.z = zHdr.m_lastPosz;
+      if (++zHdr.m_planeHops > m_faceTtl)
+        {
+          ++zHdr.m_plane;
+          zHdr.m_planeHops = 1;
+          previousHop = Position;
+        }
+      if (zHdr.m_plane > 2)
+        {
+          NS_LOG_DEBUG ("CFace(3): no plane left for packet " << p->GetUid () << ". Drop");
+          RestoreTransport (p, udpHeader, hasUdp);
+          ecb (p, header, Socket::ERROR_NOROUTETOHOST);
+          return;
+        }
+      zHdr.m_lastPosz = myPos.z;
+      p->AddHeader (zHdr);
+    }
+
   PositionHeader posHeader (Position.x, Position.y,  updated, recPos.x, recPos.y, (uint8_t) 1, myPos.x, myPos.y);
   p->AddHeader (posHeader);
   p->AddHeader (tHeader);
@@ -538,8 +609,9 @@ RoutingProtocol::RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCall
 
 
 
-  Ipv4Address nextHop = m_gpcr ? GpcrRepairNextHop (previousHop, myPos)
-                               : m_neighbors.BestAngle (previousHop, myPos);
+  Ipv4Address nextHop = m_threeD ? Face3dNextHop (zHdr.m_plane, previousHop, myPos)
+                        : m_gpcr ? GpcrRepairNextHop (previousHop, myPos)
+                                 : m_neighbors.BestAngle (previousHop, myPos);
   if (nextHop == Ipv4Address::GetZero ())
     {
       // #521: no neighbour at all to walk the perimeter to. The packet is
@@ -698,11 +770,24 @@ RoutingProtocol::RecvGPSR (Ptr<Socket> socket)
   Ipv4Address sender = inetSourceAddr.GetIpv4 ();
   Ipv4Address receiver = m_socketAddresses[socket].GetLocal ();
 
-  if (m_gpcr && packet->GetSize () >= 1)
+  uint8_t payload[9] = {0};
+  const uint32_t len = (m_gpcr ? 1 : 0) + (m_threeD ? 8 : 0);
+  if (len && packet->GetSize () >= len)
     {
-      uint8_t role = 0;
-      packet->CopyData (&role, 1);
-      m_neighborIsCoordinator[sender] = role != 0;
+      packet->CopyData (payload, len);
+      if (m_gpcr)
+        {
+          m_neighborIsCoordinator[sender] = payload[0] != 0;
+        }
+      if (m_threeD)
+        {
+          uint64_t z = 0;
+          for (uint32_t b = m_gpcr ? 1 : 0; b < len; ++b)
+            {
+              z = (z << 8) | payload[b];
+            }
+          Position.z = (double) z;
+        }
     }
   UpdateRouteToNeighbor (sender, receiver, Position);
 
@@ -902,8 +987,22 @@ RoutingProtocol::SendHello ()
       // GPCR (#709): "A coordinator broadcasts its role along with its
       // position information" (§III.A): one byte after the hello header,
       // GPCR mode only, so a GPSR hello is byte-identical to the source's.
-      uint8_t role = (m_gpcr && IsCoordinator ()) ? 1 : 0;
-      Ptr<Packet> packet = m_gpcr ? Create<Packet> (&role, 1) : Create<Packet> ();
+      // ThreeD (#710): the hello's z rides after it, 8 bytes big-endian.
+      uint8_t payload[9];
+      uint32_t len = 0;
+      if (m_gpcr)
+        {
+          payload[len++] = IsCoordinator () ? 1 : 0;
+        }
+      if (m_threeD)
+        {
+          const uint64_t z = (uint64_t) MM->GetPosition ().z;
+          for (int b = 7; b >= 0; --b)
+            {
+              payload[len++] = (uint8_t) (z >> (8 * b));
+            }
+        }
+      Ptr<Packet> packet = len ? Create<Packet> (payload, len) : Create<Packet> ();
       packet->AddHeader (helloHeader);
       TypeHeader tHeader (GPSRTYPE_HELLO);
       packet->AddHeader (tHeader);
@@ -1007,6 +1106,7 @@ RoutingProtocol::AddHeaders (Ptr<Packet> p, Ipv4Address source, Ipv4Address dest
   Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
   myPos.x = MM->GetPosition ().x;
   myPos.y = MM->GetPosition ().y;
+  myPos.z = m_threeD ? MM->GetPosition ().z : 0;  // #710
 
   Ipv4Address nextHop;
 
@@ -1021,12 +1121,14 @@ RoutingProtocol::AddHeaders (Ptr<Packet> p, Ipv4Address source, Ipv4Address dest
 
   uint16_t positionX = 0;
   uint16_t positionY = 0;
+  uint64_t positionZ = 0;  // #710
   uint32_t hdrTime = 0;
 
   if(destination != m_ipv4->GetAddress (1, 0).GetBroadcast ())
     {
       positionX = GetGodPosition (destination).x;
       positionY = GetGodPosition (destination).y;
+      positionZ = GetGodPosition (destination).z;
       hdrTime = (uint32_t) Simulator::Now ().GetSeconds ();
     }
 
@@ -1046,6 +1148,10 @@ RoutingProtocol::AddHeaders (Ptr<Packet> p, Ipv4Address source, Ipv4Address dest
   const bool hasUdp = StripTransport (p, protocol, udpHeader);
   if (hasUdp)
     {
+      if (m_threeD)
+        {
+          p->AddHeader (Position3dHeader (positionZ, 0, myPos.z));
+        }
       PositionHeader posHeader (positionX, positionY,  hdrTime, (uint64_t) 0,(uint64_t) 0, (uint8_t) 0, myPos.x, myPos.y);
       p->AddHeader (posHeader);
       TypeHeader tHeader (GPSRTYPE_POS);
@@ -1084,6 +1190,7 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
 
   TypeHeader tHeader (GPSRTYPE_POS);
   PositionHeader hdr;
+  Position3dHeader zHdr;  // #710, ThreeD mode only
   if (hasUdp && p->GetSize () >= 1)
     {
       p->RemoveHeader (tHeader);
@@ -1104,6 +1211,13 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
           inRec = hdr.GetInRec ();
           previousHop.x = hdr.GetLastPosx ();
           previousHop.y = hdr.GetLastPosy ();
+          if (m_threeD)
+            {
+              p->RemoveHeader (zHdr);
+              Position.z = zHdr.m_dstPosz;
+              RecPosition.z = zHdr.m_recPosz;
+              previousHop.z = zHdr.m_lastPosz;
+            }
           hasGpsrHeader = true;
         }
     }
@@ -1112,6 +1226,7 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
   Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
   myPos.x = MM->GetPosition ().x;
   myPos.y = MM->GetPosition ().y;
+  myPos.z = m_threeD ? MM->GetPosition ().z : 0;  // #710
 
   if(inRec == 1 && CalculateDistance (myPos, Position) < CalculateDistance (RecPosition, Position)){
     inRec = 0;
@@ -1120,6 +1235,10 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
   }
 
   if(inRec){
+    if (m_threeD)
+      {
+        p->AddHeader (zHdr);
+      }
     p->AddHeader (hdr);
     p->AddHeader (tHeader); //put headers back so that the RecoveryMode is compatible with Forwarding and SendFromQueue
     RestoreTransport (p, udpHeader, hasUdp);
@@ -1135,6 +1254,7 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
   // making its "is mine newer" check always true).
   Position.x = GetGodPosition (dst).x;
   Position.y = GetGodPosition (dst).y;
+  Position.z = m_threeD ? GetGodPosition (dst).z : 0;  // #710
   updated = (uint32_t) Simulator::Now ().GetSeconds ();
 
 
@@ -1156,6 +1276,10 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
         {
           if (hasGpsrHeader)
             {
+              if (m_threeD)
+                {
+                  p->AddHeader (Position3dHeader (Position.z, 0, myPos.z));
+                }
               PositionHeader posHeader (Position.x, Position.y,  updated, (uint64_t) 0, (uint64_t) 0, (uint8_t) 0, myPos.x, myPos.y);
               p->AddHeader (posHeader);
               p->AddHeader (tHeader);
@@ -1193,6 +1317,12 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
   hdr.SetRecPosy (myPos.y);
   hdr.SetLastPosx (Position.x); //when entering Recovery, the first edge is the Dst
   hdr.SetLastPosy (Position.y);
+  if (m_threeD)
+    {
+      // #710: recovery starts on plane 0 (xy), from this node, first edge
+      // toward the destination.
+      p->AddHeader (Position3dHeader (Position.z, myPos.z, Position.z, 0, 0));
+    }
 
 
   p->AddHeader (hdr);
@@ -1339,6 +1469,78 @@ RoutingProtocol::GpcrRepairNextHop (Vector previousHop, Vector myPos)
   return m_neighbors.BestAngle (previousHop, myPos);
 }
 
+// --- ThreeD mode (#710) -------------------------------------------------------
+// CFace(3) (Kao, Fevens & Opatrny 2005, section 4.2.8 of Bujari, Palazzi &
+// Ronzani, IEEE TMC 2018): "all the nodes are projected on the first xy plane
+// (node.z = 0) and then the face routing is started on the projected graph.
+// If the packet does not arrive at the destination (TTLF has expired), the
+// original coordinates of all nodes are projected on the xz plane ... then
+// on the yz plane". Face routing here is the right-hand rule on the Gabriel
+// graph of the projected neighbours (Face runs on "a planar subgraph ...
+// called Gabriel Graph", section 4.2.7). Deviation, as in this module's 2-D
+// perimeter mode: no face change where an edge crosses the reference
+// segment (Face2's rule); the right-hand rule walks the face it starts on.
+
+Ipv4Address
+RoutingProtocol::Face3dNextHop (uint8_t plane, Vector previousHop, Vector myPos)
+{
+  auto project = [plane] (const Vector &v) {
+    return plane == 0 ? Vector (v.x, v.y, 0) : plane == 1 ? Vector (v.x, v.z, 0)
+                                                          : Vector (v.y, v.z, 0);
+  };
+  const Vector me = project (myPos);
+  m_neighbors.Purge ();
+  std::vector<std::pair<Ipv4Address, Vector> > nbrs;
+  for (const Ipv4Address &id : m_neighbors.GetKnownNeighbors ())
+    {
+      nbrs.emplace_back (id, project (m_neighbors.GetPosition (id)));
+    }
+  // Gabriel graph: keep the edge (me, v) iff no other neighbour lies strictly
+  // inside the circle whose diameter is that edge.
+  std::vector<std::pair<Ipv4Address, Vector> > gg;
+  for (const auto &v : nbrs)
+    {
+      const Vector mid ((me.x + v.second.x) / 2, (me.y + v.second.y) / 2, 0);
+      const double r = CalculateDistance (me, v.second) / 2;
+      if (r < 1e-9)
+        {
+          continue;  // projects onto this node: no direction on this plane
+        }
+      bool keep = true;
+      for (const auto &w : nbrs)
+        {
+          if (w.first != v.first && CalculateDistance (mid, w.second) < r)
+            {
+              keep = false;
+              break;
+            }
+        }
+      if (keep)
+        {
+          gg.push_back (v);
+        }
+    }
+  // Right-hand rule: the first edge counter-clockwise from the one the
+  // packet arrived on, as PositionTable::BestAngle does in 2-D.
+  const Vector prev = project (previousHop);
+  Ipv4Address best = Ipv4Address::GetZero ();
+  double bestAngle = 360;
+  for (const auto &v : gg)
+    {
+      const double a = m_neighbors.GetAngle (me, prev, v.second);
+      if (a < bestAngle && a != 0)
+        {
+          best = v.first;
+          bestAngle = a;
+        }
+    }
+  if (best == Ipv4Address::GetZero () && !gg.empty ())
+    {
+      best = gg.front ().first;  // only the edge back: take it
+    }
+  return best;
+}
+
 void
 RoutingProtocol::SetDownTarget (IpL4Protocol::DownTargetCallback callback)
 {
@@ -1417,6 +1619,7 @@ RoutingProtocol::RouteOutput (Ptr<Packet> p, const Ipv4Header &header,
   Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
   myPos.x = MM->GetPosition ().x;
   myPos.y = MM->GetPosition ().y;
+  myPos.z = m_threeD ? MM->GetPosition ().z : 0;  // #710
 
 
   Ipv4Address nextHop;

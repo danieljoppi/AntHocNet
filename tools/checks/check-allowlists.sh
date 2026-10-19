@@ -200,7 +200,7 @@ fi
 check_arm_alternation() {
     local file=$1 label=$2 alts n alt a
     need_file "$file" || return 0
-    alts=$(grep -oE '\^\([a-z|]+\)\$' "$file" || true)
+    alts=$(grep -oE '\^\([a-z0-9|]+\)\$' "$file" || true)
     n=$(count_lines "$alts")
     if [ "$n" -ne 1 ]; then
         echo "FAIL [allowlists]: $label — expected exactly 1 '^(a|b|c)\$' arm alternation in $file, found $n."
