@@ -82,6 +82,11 @@ Mechanical/compile changes, each marked `Port change`/`Port fix` in place:
 - The `LocationServiceName` enum attribute is gone with the location-service
   module (GOD was the only implemented value; RLS printed "not yet
   implemented"). Sidesteps the `MakeEnumAccessor` template drift entirely.
+- The first hello is scheduled in `Start ()`, not `SetIpv4 ()`
+  ([#717](https://github.com/danieljoppi/AntHocNet/issues/717)): `SetIpv4`
+  runs inside `InternetStackHelper::Install`, before the harness pins the
+  stream, so its draw came from ns-3's process-global auto-stream counter and
+  every GPSR run depended on the runs before it in the same process.
 - `CheckQueueTimer` is constructed `Timer::CANCEL_ON_DESTROY` (the vendored
   default-constructed Timer asserts if still scheduled at teardown).
 - `TypeHeader`'s default argument moved to the declaration;
@@ -104,3 +109,31 @@ Mechanical/compile changes, each marked `Port change`/`Port fix` in place:
 - Hellos every 1 s ± 0.5 s jitter, TTL 1, UDP port 666; neighbour lifetime
   2 s; greedy next-hop, right-hand-rule recovery (`PerimeterMode` attribute
   present but, as in the source, the recovery path runs regardless).
+
+## GPCR mode (#709) — fidelity sheet
+
+`--protocols=gpcr` runs this module with `Gpcr=true`: Greedy Perimeter
+Coordinator Routing, the street-grid answer to GPSR's failure at corners
+(Lochert, Mauve, Füßler & Hartenstein, "Geographic routing in city scenarios",
+ACM SIGMOBILE MC2R 9(1):69–72, 2005; the 2004 MobiCom poster of the same
+title). It is the VANET family's junction-aware geographic comparator under
+[ADR-0026](../../../docs/adr/0026-baselines-are-family-native.md). With
+`Gpcr=false` (the default) nothing below runs and the gpsr arm is unchanged.
+
+| element | the paper | this implementation |
+|---|---|---|
+| beacons, positions | position beacons; positions from a location service | the module's own: hellos every 1 s ± 0.5 s, GOD positions (as GPSR here) |
+| coordinator role | "A coordinator broadcasts its role along with its position information" (§III.A) | one byte after the hello header, GPCR mode only |
+| junction detection | §IV: two tests, neighbour tables (NT) and the correlation coefficient (CC); "GPCR simply uses the correlation coefficient" | CC: \|ρxy\| of the neighbours' positions; a coordinator iff \|ρxy\| < ε. Fewer than three neighbours, or a neighbour set on one axis-parallel line (σ = 0), reads as a street |
+| ε | "a very large value ε = 0.?" | **0.9, attribute `GpcrCorrelationThreshold`.** The digit is illegible in both available copies (a Type3 math glyph with no usable mapping); 0.9 is the smallest one-digit reading of "very large" (maintainer decision 2026-10-19) |
+| on a street | neighbours "whose positions approximate an extension of the line between the forwarding node's predecessor and the forwarding node itself" qualify; a qualified coordinator at random, else the farthest qualified neighbour (§III.A) | as written; "approximate" is a **±30° cone** around the predecessor→forwarder bearing, attribute `GpcrStreetConeDeg` (the paper gives no tolerance; repo choice, maintainer decision 2026-10-19). The random pick draws from the module's pinned RNG |
+| at a coordinator | "the neighboring node with the largest progress towards the destination is chosen" (§III.A) | GPSR's greedy choice; a packet just originated (no predecessor) takes it too |
+| local optimum | switch to the repair strategy | as GPSR here: the recovery state travels in the position header |
+| repair | right-hand rule over streets at junctions: "the street that is the next one counter-clockwise from the street the packet has arrived on"; greedy-to-the-next-junction between them; back to greedy once closer to the destination than where repair began (§III.B) | the right-hand rule over a coordinator's neighbours (each stands on one of the streets meeting there); the street rule between junctions, the right-hand rule at a dead end; the module's existing "closer than the recovery point" switch back |
+| not implemented | the NT test, NT AND/OR CC (§V: AND "outperforms the other approaches slightly but it does not come for free"), the future-work probing of street connectivity | — |
+
+**Anchor.** The paper's headline trend is that GPCR delivers more than GPSR on
+a city grid, at the cost of more hops ("This improvement in performance comes
+at the expense of a higher average number of hops and a slight increase in
+latency", §V). The `vanet-gpcr-vs-gpsr` anchor checks that direction on the
+street grid.

@@ -228,6 +228,12 @@ jobs:
         run: |
           bash tools/checks/check-anchors.sh /opt/ns-3 vanet-single-hop
           bash tools/checks/check-anchors.sh /opt/ns-3 vanet-building
+      - name: VANET GPCR anchor (#709, --protocols=gpcr)
+        # GPCR's own paper trend (Lochert et al. 2005): around a blocked
+        # corner it must beat GPSR on the same seeds by >= 2 pp (measured
+        # +4.9 on this leg). Thresholds: ns3/tools/anchors.yml.
+        if: matrix.version == '3.42'
+        run: bash tools/checks/check-anchors.sh /opt/ns-3 vanet-gpcr-vs-gpsr
       - name: Static-mesh HWMP anchor (#708, --protocols=hwmp)
         # The static mesh's 802.11s comparator, gated before any HWMP number is
         # published. On a static connected disk field at one fixed rate,

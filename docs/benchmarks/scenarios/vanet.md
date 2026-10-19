@@ -157,12 +157,61 @@ AODV and the oracle control.
 |---|---|---|---|---|
 | `vanet-single-hop` | one block, street width 279 m (a 1 m building) | the 396 m block diagonal is inside the 423.3 m two-ray decode radius and no line of sight is cut, so every flow is one hop: **PDR ≈ 100 %**, oracle **hopsMean ≈ 1.00** | AODV 99.5 %, oracle 99.9 %, hopsMean 1.00 | the street grid, mobility and channel deliver at all |
 | `vanet-building` | one block, street width 100 m (a 180 × 180 m building) | vehicles on opposite streets lose line of sight and must relay around a corner: oracle **hopsMean > 1.2**; a channel that ignored the building reads the single-hop 1.00 | AODV 80.4 %, oracle 99.6 %, hopsMean 1.36 | the buildings are honoured end to end |
+| `vanet-gpcr-vs-gpsr` ([#709](https://github.com/danieljoppi/AntHocNet/issues/709)) | the `vanet-building` block, `gpsr,gpcr,oracle` | GPCR's own paper trend (Lochert et al. 2005, §V): around a blocked corner the junction-aware arm **beats GPSR by ≥ 2 pp** on the same seeds; every arm ≥ 75 % | ns-3.42: GPCR 89.3 %, GPSR 84.4 % (+4.9 pp), oracle 99.6 % | the GPCR arm reproduces the trend its paper reports |
 
 The harness's own CI smoke (`tools/checks/check-manhattan.sh`) adds the
 invariants the anchors do not: every vehicle is on a street at t = 0 and
 mid-run, every arm delivers on the urban field, the oracle keeps 66 edges
 against 236 under plain two-ray on the same field, and a same-seed rerun is
 byte-identical.
+
+## The junction-aware comparator: GPCR (#709)
+
+Under [ADR-0026](../../adr/0026-baselines-are-family-native.md) this family
+is compared against VANET-native routing:
+- GPSR, position-based;
+- AODV, the VANET literature's standard reactive baseline;
+- GPCR, added here as the street grid's own answer to GPSR's failure at
+  corners.
+
+OLSR, DSDV and AOMDV are MANET migrants. Their rows below stay as the dated
+record of their campaigns, and they leave the plan from the v2.4.0 control
+campaign.
+
+`--protocols=gpcr` is Greedy Perimeter Coordinator Routing (Lochert, Mauve,
+Füßler & Hartenstein, ACM MC2R 2005). It runs as a mode of the vendored GPSR
+module, with the same beacons, headers and GOD positions. Its rules:
+
+- nodes on a junction ("coordinators") are recognised from the correlation of
+  their neighbours' positions;
+- along a street, packets are forwarded toward the next junction and never
+  across it;
+- at a junction, the next street is chosen greedily;
+- when greedy forwarding fails, the right-hand rule is applied at junctions
+  only.
+
+Two constants are not given by the paper. Both are attributes, recorded as
+maintainer decisions:
+
+- the junction threshold ε = 0.9 (the paper's digit is illegible);
+- a ±30° street cone.
+
+The fidelity sheet is in
+[`ns3/baselines/gpsr/README.md`](../../../ns3/baselines/gpsr/README.md#gpcr-mode-709-fidelity-sheet).
+
+**ε sensitivity, measured on the `vanet-building` block** (ns-3.48, 2 seeds,
+before the #717 fix): GPCR delivers 90.1 / 90.0 / 90.0 % at ε = 0.8 / 0.9 / 0.95.
+On the full 100-vehicle grid (1 seed, 120 s) it delivers 24.2 / 23.7 % at
+ε = 0.8 / 0.95. The threshold moves delivery by under 1 pp on these fields.
+
+**GPSR rows measured before #717.** The vendored GPSR drew its first hello
+before the harness pinned its random stream
+([#717](https://github.com/danieljoppi/AntHocNet/issues/717)), so each GPSR
+row depended on the runs before it in the same process. For example, seed 2
+on the delivery-smoke field read 27.9 % alone and 18.1 % after seed 1. The
+GPSR rows on this page are one realisation of that order-dependent run. The
+v2.4.0 control campaign re-measures them, and GPCR's 20-seed cell is
+published with it.
 
 ## The oracle on the street grid
 
@@ -422,6 +471,11 @@ mechanism ([#574](https://github.com/danieljoppi/AntHocNet/issues/574)) keeps it
   every seed in both cells.
 - **No Veins confirmation.** The Veins/SUMO arm (#485) is deferred with the
   OMNeT++ adapter; these numbers are ns-3 only.
+- **GPCR is a reimplementation.** No reference code was used. Its paper
+  leaves two constants open (ε, the street cone); they are set here and
+  disclosed [above](#the-junction-aware-comparator-gpcr-709). The
+  neighbour-table junction test and the paper's proposed street-connectivity
+  probing are not implemented.
 
 ## Ranking stability across four families
 
