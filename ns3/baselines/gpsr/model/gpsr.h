@@ -21,6 +21,14 @@
  *  - the down-target position-header hack now keeps the UDP header on top of
  *    the IP payload (IP|UDP|GPSR instead of IP|GPSR|UDP) so FlowMonitor's
  *    Ipv4FlowClassifier reads real ports — see AddHeaders in gpsr.cc.
+ *
+ * AntHocNet addition (#709): a GPCR mode (Greedy Perimeter Coordinator
+ * Routing, Lochert, Mauve, Füßler & Hartenstein, ACM MC2R 9(1), 2005),
+ * selected by the Gpcr attribute and off by default, so the gpsr arm is
+ * unchanged. It reuses this module's beaconing, position header and GOD
+ * positions; what it changes is the next-hop choice (restricted greedy along
+ * streets, coordinators preferred) and the repair (right-hand rule taken only
+ * at junctions). Fidelity sheet: ns3/baselines/gpsr/README.md.
  */
 #ifndef GPSR_H
 #define GPSR_H
@@ -212,6 +220,22 @@ private:
    */
   void NotifyTxError (WifiMacDropReason reason, Ptr<const GPSR_WIFI_MPDU> mpdu);
 
+  /// \name GPCR mode (#709; see the file header and README.md)
+  //\{
+  /// GPCR §IV, correlation test: |rho_xy| of the neighbours' positions below
+  /// the threshold means this node stands on a junction (a coordinator).
+  bool IsCoordinator ();
+  /// GPCR §III.A on a street: the neighbours within the cone around the
+  /// predecessor-to-me bearing qualify; a qualified coordinator is taken at
+  /// random, else the farthest qualified neighbour. Zero if none qualifies.
+  Ipv4Address GpcrStreetNextHop (Vector previousHop, Vector myPos);
+  /// GPCR greedy (restricted greedy): Zero means a local optimum.
+  Ipv4Address GpcrGreedyNextHop (Ipv4Address dst, Vector dstPos, Vector previousHop, Vector myPos);
+  /// GPCR §III.B repair: the right-hand rule at a coordinator, the street
+  /// rule between junctions.
+  Ipv4Address GpcrRepairNextHop (Vector previousHop, Vector myPos);
+  //\}
+
   uint32_t MaxQueueLen;                  ///< The maximum number of packets that we allow a routing protocol to buffer.
   Time MaxQueueTime;                     ///< The maximum period of time that a routing protocol is allowed to buffer a packet for.
   RequestQueue m_queue;
@@ -220,6 +244,11 @@ private:
   Timer CheckQueueTimer;
   PositionTable m_neighbors;
   bool PerimeterMode;
+  bool m_gpcr;                ///< GPCR mode (#709), off = plain GPSR
+  double m_gpcrThreshold;     ///< GPCR epsilon: coordinator iff |rho_xy| < it
+  double m_gpcrConeDeg;       ///< GPCR street cone half-angle, degrees
+  /// GPCR: each neighbour's coordinator role, as its last hello advertised.
+  std::map<Ipv4Address, bool> m_neighborIsCoordinator;
   std::list<Ipv4Address> m_queuedAddresses;
 
   /// #352 (port addition): one pinnable RNG for the hello jitter instead of

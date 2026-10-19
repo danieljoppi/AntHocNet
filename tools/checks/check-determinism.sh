@@ -66,7 +66,7 @@ esac
 # #435: check-allowlists.sh now asserts this alternation names every arm the
 # compare harness dispatches on, so a missed arm fails CI instead.
 filter_rows() {
-    awk '$1 ~ /^(anthocnet|aodv|olsr|dsdv|oracle|gpsr|aomdv|hwmp)$/ && $2 ~ /^[0-9.]+$/'
+    awk '$1 ~ /^(anthocnet|aodv|olsr|dsdv|oracle|gpsr|aomdv|hwmp|gpcr)$/ && $2 ~ /^[0-9.]+$/'
 }
 
 echo "[determinism:$HARNESS] ./ns3 run \"$cmd\"  (twice; gate: identical metric rows)"

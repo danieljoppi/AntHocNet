@@ -663,6 +663,16 @@ def _pre_radio_refusals():
     expect("#708" not in out, "pre-radio", out)
 
 
+@case("#709 preflight warns gpcr off the street grid and refuses it in 3-D")
+def _pre_gpcr():
+    _, out = run_preflight(protocols="anthocnet,gpcr", pathWindowS=2.0)
+    expect("gpcr off a street grid" in out, "pre-gpcr", out)
+    _, out = run_preflight(**dict(VANET, protocols="anthocnet,gpcr"))
+    expect("gpcr off a street grid" not in out, "pre-gpcr", out)
+    levels, out = run_preflight(**dict(FANET_3D, protocols="anthocnet,gpcr"))
+    expect("FAIL" in levels and "includes gpcr" in out, "pre-gpcr", out)
+
+
 @case("#481 preflight FAILs links shorter-lived than the hello interval")
 def _hello_fail():
     # 250 m at 150 m/s: ~0.83 s link lifetime against a 1 s hello.

@@ -2171,6 +2171,11 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(dsdvHelper);
     } else if (proto == "gpsr") {
         internet.SetRoutingHelper(gpsrHelper);
+    } else if (proto == "gpcr") {
+        // #709: GPCR, the VANET family's junction-aware geographic arm, is a
+        // mode of the vendored GPSR module (same beacons, same headers).
+        gpsrHelper.Set("Gpcr", BooleanValue(true));
+        internet.SetRoutingHelper(gpsrHelper);
     } else if (proto == "oracle") {
         internet.SetRoutingHelper(oracleHelper);
     } else if (proto == "hwmp") {
@@ -2198,7 +2203,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // re-pointing the UDP down target — the helper wires that after the stack
     // exists, exactly as the dwosion examples do (scoped to this run's nodes,
     // not the global container, so repeated RunOne calls can't cross-wire).
-    if (proto == "gpsr") {
+    if (proto == "gpsr" || proto == "gpcr") {
         gpsrHelper.Install(nodes);
     }
     // The IPv4 stack is NOT stream-free, contrary to the first cut of this fix:
@@ -2224,8 +2229,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream), "olsr routing");
     } else if (proto == "dsdv") {
         TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream), "dsdv routing");
-    } else if (proto == "gpsr") {
-        TakeStreams(stream, streamBase, gpsrHelper.AssignStreams(nodes, stream), "gpsr routing");
+    } else if (proto == "gpsr" || proto == "gpcr") {
+        TakeStreams(stream, streamBase, gpsrHelper.AssignStreams(nodes, stream),
+                    "gpsr/gpcr routing");
     } else if (proto == "oracle") {
         // Pinned through the same path as every other arm even though the
         // oracle draws nothing: the count it returns is 0, and taking it here
@@ -3610,7 +3616,7 @@ int main(int argc, char* argv[]) {
                  firstRun);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue("protocols",
-                 "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,aomdv,hwmp,oracle). "
+                 "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,gpcr,aomdv,hwmp,oracle). "
                  "`oracle` is the #296 global-knowledge shortest-path CONTROL "
                  "(upper bound, zero control traffic), off unless named.",
                  protocols);
@@ -4099,9 +4105,9 @@ int main(int argc, char* argv[]) {
     // read as a protocol result. Refused; a 3-D geographic arm is out of scope.
     if (P.areaZ > 0.0) {
         for (const std::string& proto : list) {
-            NS_ABORT_MSG_UNLESS(proto != "gpsr",
-                                "--protocols includes gpsr with --areaZ="
-                                    << P.areaZ
+            NS_ABORT_MSG_UNLESS(proto != "gpsr" && proto != "gpcr",
+                                "--protocols includes "
+                                    << proto << " with --areaZ=" << P.areaZ
                                     << ": the vendored GPSR is planar "
                                        "(2-D headers, 2-D planarization) and would "
                                        "route on projected positions. Drop it from "

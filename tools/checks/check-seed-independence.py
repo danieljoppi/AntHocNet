@@ -78,7 +78,10 @@ import sys
 # The gate is about identity, not about the numbers, so the cheapest scenario
 # that still exercises mobility, wifi, traffic and routing RNG will do.
 SCENARIO = "--nNodes=8 --area=150 --flows=2"
-PROTOCOLS = ["anthocnet", "aodv"]
+# gpsr and gpcr (#717): the vendored GPSR module drew its first hello before
+# the harness pinned its stream, so its rows depended on the runs before them
+# (seed 2 read 27.9 % alone and 18.1 % after seed 1). Gated since the fix.
+PROTOCOLS = ["anthocnet", "aodv", "gpsr", "gpcr"]
 
 # manet-baselines links no AntHocNet code, so its arms are the stock protocols.
 # dsdv is deliberately in this list: it is the one whose streams are pinned by

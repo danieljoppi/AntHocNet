@@ -67,7 +67,9 @@ ANCHOR_KEY = {"single-hop": "single_hop_pdr_min",
               "vanet-single-hop": "vanet_single_hop_pdr_min",
               "vanet-building": "vanet_building_pdr_min",
               # #708 static-mesh HWMP anchor: analytic, see anchors.yml.
-              "mesh-hwmp-shortest": "mesh_hwmp_pdr_min"}
+              "mesh-hwmp-shortest": "mesh_hwmp_pdr_min",
+              # #709 VANET GPCR anchor: GPCR's own paper trend, see anchors.yml.
+              "vanet-gpcr-vs-gpsr": "vanet_gpcr_pdr_min"}
 
 # #217: core Config::maxPathLength — the cap on the visited path an ant carries
 # and therefore on any path the protocol can lay. A delivered data packet
@@ -1157,6 +1159,12 @@ def cmd_preflight(a):
     elif rate_mgr == "constant6":
         report("FAIL", "--rateManager constant6 is an OFDM rate: it needs "
                        "--standard 80211a (#708)")
+    if "gpcr" in arms and mobility != "manhattan":
+        report("WARN", "gpcr off a street grid (#709): its junction test "
+                       "reads street geometry from the neighbours' positions, "
+                       "so on an open field it marks most nodes coordinators "
+                       "and reduces to greedy GPSR. It is the VANET family's "
+                       "comparator; run it with --mobility manhattan")
     if "hwmp" in arms:
         report("WARN", "hwmp routes at layer 2 (#708): its NRL counts the "
                        "802.11s path-selection frames, peering and beacons "
@@ -1202,10 +1210,12 @@ def cmd_preflight(a):
             report("FAIL", f"--mobility=ssrwp with --areaZ={area_z:g}: ns-3's "
                            "steady-state RWP is planar and the harness refuses "
                            "it. Use rwp or gaussmarkov (#480)")
-        if "gpsr" in a.protocols.split(","):
-            report("FAIL", f"--protocols includes gpsr with --areaZ={area_z:g}: "
-                           "the vendored GPSR is planar (2-D headers and "
-                           "planarization) and the harness refuses it (#480)")
+        for geo in ("gpsr", "gpcr"):
+            if geo in a.protocols.split(","):
+                report("FAIL", f"--protocols includes {geo} with --areaZ="
+                               f"{area_z:g}: the vendored GPSR (and its GPCR "
+                               "mode, #709) is planar (2-D headers and "
+                               "planarization) and the harness refuses it (#480)")
         report("WARN", f"3-D field (--areaZ={area_z:g}): a FANET cell, not "
                        "comparable to the published planar corpus (#300). "
                        "Validate with --anchor fanet-single-hop-3d / "

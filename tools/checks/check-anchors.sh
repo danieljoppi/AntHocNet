@@ -6,7 +6,7 @@
 # regression (like the #51 IdealWifiManager ~50% single-hop loss) fails CI
 # loudly instead of silently corrupting every published number.
 #
-# Usage: check-anchors.sh <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building|mesh-hwmp-shortest>
+# Usage: check-anchors.sh <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building|vanet-gpcr-vs-gpsr|mesh-hwmp-shortest>
 #
 # The two fanet-* anchors (#482) and the two vanet-* anchors (#488) run on
 # anthocnet-compare instead, because manet-baselines has neither a 3-D field
@@ -21,7 +21,7 @@ set -euo pipefail
 NS3DIR=${1:-}
 ANCHOR=${2:-}
 if [ -z "$NS3DIR" ] || [ -z "$ANCHOR" ]; then
-    echo "usage: $0 <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building|mesh-hwmp-shortest>" >&2
+    echo "usage: $0 <ns3-dir> <single-hop|broch-low-mobility|fanet-single-hop-3d|fanet-vertical-3d|vanet-single-hop|vanet-building|vanet-gpcr-vs-gpsr|mesh-hwmp-shortest>" >&2
     exit 2
 fi
 
@@ -39,6 +39,9 @@ hops_min=""
 hops_max=""
 stretch_arm=""
 stretch_max=""
+gap_arm=""
+gap_base=""
+gap_min=""
 case "$ANCHOR" in
     single-hop)
         # 2 nodes, 50x50 m, 300 m disk range, static (pause=900 speed=1):
@@ -111,6 +114,23 @@ case "$ANCHOR" in
         floor=$(floor_for vanet_building_pdr_min)
         hops_min=$(floor_for vanet_building_oracle_hops_min)
         ;;
+    vanet-gpcr-vs-gpsr)
+        # #709, GPCR's own paper trend: on a city grid GPCR delivers more than
+        # GPSR, whose planar perimeter mode breaks where buildings block the
+        # corners (Lochert et al., MC2R 2005, section V, Fig. 4). The
+        # vanet-building block: a 180 x 180 m building, so vehicles on
+        # opposite streets must relay around a corner. GPCR must beat GPSR
+        # by a margin on the same seeds. Measured at this exact invocation
+        # (after the #717 fix): ns-3.42 GPCR 89.3 %, GPSR 84.4 % (+4.9 pp),
+        # oracle 99.6 %; ns-3.48 90.3 / 85.5 (+4.8).
+        harness=anthocnet-compare
+        args="--scenario=vanet --nNodes=20 --area=280 --blocksX=1 --blocksY=1 --streetWidth=100 --flows=4 --time=120 --runs=2"
+        protocols="gpsr,gpcr,oracle"
+        floor=$(floor_for vanet_gpcr_pdr_min)
+        gap_arm=gpcr
+        gap_base=gpsr
+        gap_min=$(floor_for vanet_gpcr_minus_gpsr_pp_min)
+        ;;
     mesh-hwmp-shortest)
         # #708, the static mesh's HWMP anchor, analytic like the FANET/VANET
         # ones. On a static, connected disk field at one fixed rate, HWMP's
@@ -131,7 +151,7 @@ case "$ANCHOR" in
         stretch_max=$(floor_for mesh_hwmp_stretch_max)
         ;;
     *)
-        echo "unknown anchor '$ANCHOR' (want: single-hop | broch-low-mobility | fanet-single-hop-3d | fanet-vertical-3d | vanet-single-hop | vanet-building | mesh-hwmp-shortest)" >&2
+        echo "unknown anchor '$ANCHOR' (want: single-hop | broch-low-mobility | fanet-single-hop-3d | fanet-vertical-3d | vanet-single-hop | vanet-building | vanet-gpcr-vs-gpsr | mesh-hwmp-shortest)" >&2
         exit 2
         ;;
 esac
@@ -183,6 +203,25 @@ if [ -n "$hops_min$hops_max" ]; then
         status=1
     else
         echo "PASS [$ANCHOR] oracle hopsMean=$hops within [${hops_min:-0}, ${hops_max:-inf}]"
+    fi
+fi
+if [ -n "$gap_arm" ]; then
+    # Paired PDR gap on the same seeds, from the summary table.
+    table_pdr() {
+        printf '%s\n' "$out" |
+            awk -v p="$1" '$1 == p && $2 ~ /^[0-9.]+$/ { v = $2 } END { print v }'
+    }
+    ga=$(table_pdr "$gap_arm")
+    gb=$(table_pdr "$gap_base")
+    if [ -z "$ga" ] || [ -z "$gb" ]; then
+        echo "FAIL [$ANCHOR]: no result row for $gap_arm or $gap_base"
+        status=1
+    elif awk -v a="$ga" -v b="$gb" -v m="$gap_min" 'BEGIN { exit (a - b >= m + 0) ? 0 : 1 }'; then
+        echo "PASS [$ANCHOR] $gap_arm PDR=$ga - $gap_base PDR=$gb >= $gap_min pp"
+    else
+        echo "FAIL [$ANCHOR] $gap_arm PDR=$ga - $gap_base PDR=$gb < $gap_min pp: the paper's trend"
+        echo "  (the junction-aware arm beats GPSR around a blocked corner) does not reproduce."
+        status=1
     fi
 fi
 if [ -n "$stretch_arm" ]; then

@@ -108,6 +108,18 @@ vanet_single_hop_oracle_hops_max: 1.05
 vanet_building_pdr_min: 70.0
 vanet_building_oracle_hops_min: 1.2
 
+# --- VANET GPCR anchor (#709, consumed by check-anchors.sh) -----------------
+# GPCR's own paper trend (Lochert et al. 2005, section V): on a city grid it
+# delivers more than GPSR. The vanet-building block (180 m building, 20
+# vehicles, 4 flows, 120 s, 2 runs), arms gpsr,gpcr,oracle. Measured after
+# the #717 fix: ns-3.42 GPCR 89.3 %, GPSR 84.4 %, oracle 99.6 %; ns-3.48
+# 90.3 / 85.5 / 99.3. The floor applies to every arm in the run, so it sits
+# under GPSR; the gap is the anchor's point.
+vanet_gpcr_pdr_min: 75.0
+# GPCR minus GPSR PDR, percentage points, same seeds. Measured +4.9 (3.42) and
+# +4.8 (3.48); 2.0 still fails a GPCR that has collapsed into plain GPSR.
+vanet_gpcr_minus_gpsr_pp_min: 2.0
+
 # --- static-mesh HWMP anchor (#708, consumed by check-anchors.sh) -----------
 # Analytic: on a static connected disk field at one fixed rate, 802.11s
 # HWMP's airtime metric is equal on every link, so it converges to a

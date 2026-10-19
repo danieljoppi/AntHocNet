@@ -24,6 +24,7 @@
 #include "ns3/double.h"
 #include "ns3/uinteger.h"
 #include <algorithm>
+#include <cmath>
 #include <limits>
 
 namespace ns3 {
@@ -100,7 +101,10 @@ RoutingProtocol::RoutingProtocol ()
     m_queue (MaxQueueLen, MaxQueueTime),
     HelloIntervalTimer (Timer::CANCEL_ON_DESTROY),
     CheckQueueTimer (Timer::CANCEL_ON_DESTROY),
-    PerimeterMode (false)
+    PerimeterMode (false),
+    m_gpcr (false),
+    m_gpcrThreshold (0.9),
+    m_gpcrConeDeg (30.0)
 {
   m_neighbors = PositionTable ();
   // #352 (port change): one member RNG, pinnable via AssignStreams, replaces
@@ -124,6 +128,28 @@ RoutingProtocol::GetTypeId (void)
                    BooleanValue (false),
                    MakeBooleanAccessor (&RoutingProtocol::PerimeterMode),
                    MakeBooleanChecker ())
+    // AntHocNet addition (#709): GPCR. Off by default, so plain GPSR is
+    // unchanged; the fidelity sheet for both values below is README.md.
+    .AddAttribute ("Gpcr", "Greedy Perimeter Coordinator Routing (Lochert et al. 2005) "
+                   "instead of GPSR: restricted greedy along streets and the "
+                   "right-hand rule only at junctions (#709)",
+                   BooleanValue (false),
+                   MakeBooleanAccessor (&RoutingProtocol::m_gpcr),
+                   MakeBooleanChecker ())
+    .AddAttribute ("GpcrCorrelationThreshold", "GPCR epsilon: a node is a coordinator "
+                   "iff |rho_xy| of its neighbours' positions is below it. The "
+                   "paper's 'very large value 0.?' is illegible in the available "
+                   "copies; 0.9 is the smallest one-digit reading (#709)",
+                   DoubleValue (0.9),
+                   MakeDoubleAccessor (&RoutingProtocol::m_gpcrThreshold),
+                   MakeDoubleChecker<double> (0.0, 1.0))
+    .AddAttribute ("GpcrStreetConeDeg", "GPCR street rule: a neighbour 'approximately "
+                   "extends the line' from the predecessor through this node when "
+                   "its bearing is within this many degrees of it. The paper gives "
+                   "no tolerance; 30 is a repo choice (#709)",
+                   DoubleValue (30.0),
+                   MakeDoubleAccessor (&RoutingProtocol::m_gpcrConeDeg),
+                   MakeDoubleChecker<double> (0.0, 180.0))
   ;
   return tid;
 }
@@ -512,7 +538,8 @@ RoutingProtocol::RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCall
 
 
 
-  Ipv4Address nextHop = m_neighbors.BestAngle (previousHop, myPos);
+  Ipv4Address nextHop = m_gpcr ? GpcrRepairNextHop (previousHop, myPos)
+                               : m_neighbors.BestAngle (previousHop, myPos);
   if (nextHop == Ipv4Address::GetZero ())
     {
       // #521: no neighbour at all to walk the perimeter to. The packet is
@@ -671,6 +698,12 @@ RoutingProtocol::RecvGPSR (Ptr<Socket> socket)
   Ipv4Address sender = inetSourceAddr.GetIpv4 ();
   Ipv4Address receiver = m_socketAddresses[socket].GetLocal ();
 
+  if (m_gpcr && packet->GetSize () >= 1)
+    {
+      uint8_t role = 0;
+      packet->CopyData (&role, 1);
+      m_neighborIsCoordinator[sender] = role != 0;
+    }
   UpdateRouteToNeighbor (sender, receiver, Position);
 
 }
@@ -825,9 +858,10 @@ RoutingProtocol::SetIpv4 (Ptr<Ipv4> ipv4)
   m_ipv4 = ipv4;
 
   HelloIntervalTimer.SetFunction (&RoutingProtocol::HelloTimerExpire, this);
-  // First hello cannot be in the past: jitter in [0, GPSR_MAXJITTER].
-  // #352 (port change): drawn from the pinned member RNG.
-  HelloIntervalTimer.Schedule (Seconds (m_uniformRandomVariable->GetValue (0.0, GPSR_MAXJITTER)));
+  // The first hello is scheduled in Start (#717), not here: SetIpv4 runs
+  // inside InternetStackHelper::Install, before the harness pins this
+  // protocol's stream, so a draw here came from ns-3's process-global
+  // auto-stream counter and made every run depend on the runs before it.
 
   //Schedule only when it has packets on queue
   CheckQueueTimer.SetFunction (&RoutingProtocol::CheckQueue, this);
@@ -865,7 +899,11 @@ RoutingProtocol::SendHello ()
       Ipv4InterfaceAddress iface = j->second;
       HelloHeader helloHeader (((uint64_t) positionX),((uint64_t) positionY));
 
-      Ptr<Packet> packet = Create<Packet> ();
+      // GPCR (#709): "A coordinator broadcasts its role along with its
+      // position information" (§III.A): one byte after the hello header,
+      // GPCR mode only, so a GPSR hello is byte-identical to the source's.
+      uint8_t role = (m_gpcr && IsCoordinator ()) ? 1 : 0;
+      Ptr<Packet> packet = m_gpcr ? Create<Packet> (&role, 1) : Create<Packet> ();
       packet->AddHeader (helloHeader);
       TypeHeader tHeader (GPSRTYPE_HELLO);
       packet->AddHeader (tHeader);
@@ -908,6 +946,11 @@ RoutingProtocol::Start ()
 {
   NS_LOG_FUNCTION (this);
   m_queuedAddresses.clear ();
+
+  // First hello cannot be in the past: jitter in [0, GPSR_MAXJITTER], from
+  // the pinned member RNG. Start runs at t = 0 of the simulation, after
+  // AssignStreams has pinned it (#352; moved from SetIpv4, #717).
+  HelloIntervalTimer.Schedule (Seconds (m_uniformRandomVariable->GetValue (0.0, GPSR_MAXJITTER)));
 
   // Port change: the location-service switch is gone — GOD (the only
   // implemented service) is inlined as GetGodPosition.
@@ -1029,6 +1072,7 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
   uint32_t updated = 0;
   Vector Position;
   Vector RecPosition;
+  Vector previousHop;
   uint8_t inRec = 0;
 
   // Fault-3 rework: the GPSR headers sit beneath the UDP header; peel the UDP
@@ -1058,6 +1102,8 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
           RecPosition.x = hdr.GetRecPosx ();
           RecPosition.y = hdr.GetRecPosy ();
           inRec = hdr.GetInRec ();
+          previousHop.x = hdr.GetLastPosx ();
+          previousHop.y = hdr.GetLastPosy ();
           hasGpsrHeader = true;
         }
     }
@@ -1101,7 +1147,11 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
   else
     {
 */
-      nextHop = m_neighbors.BestNeighbor (Position, myPos);
+      // GPCR (#709) needs the street direction, which only a GPSR-headered
+      // packet carries; a headerless one is forwarded as GPSR would.
+      nextHop = (m_gpcr && hasGpsrHeader)
+                    ? GpcrGreedyNextHop (dst, Position, previousHop, myPos)
+                    : m_neighbors.BestNeighbor (Position, myPos);
       if (nextHop != Ipv4Address::GetZero ())
         {
           if (hasGpsrHeader)
@@ -1155,6 +1205,139 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
 }
 
 
+
+// --- GPCR mode (#709) --------------------------------------------------------
+// Lochert, Mauve, Füßler & Hartenstein, "Geographic routing in city
+// scenarios", ACM MC2R 9(1):69-72, 2005. Section references are to that
+// paper; what it leaves open is in README.md's fidelity sheet.
+
+bool
+RoutingProtocol::IsCoordinator ()
+{
+  // §IV: rho_xy = |cov(x, y)| / (sigma_x sigma_y) over the neighbours'
+  // positions; close to 1 on a street, close to 0 on a junction. A neighbour
+  // set lying on one axis-parallel line has a zero sigma, and rho is then
+  // the limit of a perfect line, 1. Fewer than three neighbours cannot leave
+  // a line, so they read as a street too.
+  m_neighbors.Purge ();
+  std::vector<Ipv4Address> ids = m_neighbors.GetKnownNeighbors ();
+  if (ids.size () < 3)
+    {
+      return false;
+    }
+  double mx = 0, my = 0;
+  for (const Ipv4Address &id : ids)
+    {
+      Vector v = m_neighbors.GetPosition (id);
+      mx += v.x;
+      my += v.y;
+    }
+  mx /= ids.size ();
+  my /= ids.size ();
+  double sxy = 0, sxx = 0, syy = 0;
+  for (const Ipv4Address &id : ids)
+    {
+      Vector v = m_neighbors.GetPosition (id);
+      sxy += (v.x - mx) * (v.y - my);
+      sxx += (v.x - mx) * (v.x - mx);
+      syy += (v.y - my) * (v.y - my);
+    }
+  if (sxx < 1e-9 || syy < 1e-9)
+    {
+      return false;
+    }
+  const double rho = std::abs (sxy) / std::sqrt (sxx * syy);
+  return rho < m_gpcrThreshold;
+}
+
+Ipv4Address
+RoutingProtocol::GpcrStreetNextHop (Vector previousHop, Vector myPos)
+{
+  // §III.A: "the forwarding node selects those neighbors whose positions
+  // approximate an extension of the line between the forwarding node's
+  // predecessor and the forwarding node itself ... As long as there are no
+  // qualified neighbors which are coordinators the node with the largest
+  // distance to the forwarding node is chosen. If coordinators are qualified
+  // then one coordinator is randomly chosen as the next hop."
+  const double dx = myPos.x - previousHop.x, dy = myPos.y - previousHop.y;
+  const double dn = std::sqrt (dx * dx + dy * dy);
+  if (dn < 1e-9)
+    {
+      return Ipv4Address::GetZero ();     // no direction to extend
+    }
+  const double cosCone = std::cos (m_gpcrConeDeg * M_PI / 180.0);
+  std::vector<Ipv4Address> coordinators;
+  Ipv4Address farthest = Ipv4Address::GetZero ();
+  double farthestD = 0;
+  m_neighbors.Purge ();
+  for (const Ipv4Address &id : m_neighbors.GetKnownNeighbors ())
+    {
+      Vector n = m_neighbors.GetPosition (id);
+      const double vx = n.x - myPos.x, vy = n.y - myPos.y;
+      const double vn = std::sqrt (vx * vx + vy * vy);
+      if (vn < 1e-9 || (vx * dx + vy * dy) / (vn * dn) < cosCone)
+        {
+          continue;
+        }
+      auto c = m_neighborIsCoordinator.find (id);
+      if (c != m_neighborIsCoordinator.end () && c->second)
+        {
+          coordinators.push_back (id);
+        }
+      if (vn > farthestD)
+        {
+          farthestD = vn;
+          farthest = id;
+        }
+    }
+  if (!coordinators.empty ())
+    {
+      return coordinators[m_uniformRandomVariable->GetInteger (0, coordinators.size () - 1)];
+    }
+  return farthest;
+}
+
+Ipv4Address
+RoutingProtocol::GpcrGreedyNextHop (Ipv4Address dst, Vector dstPos, Vector previousHop,
+                                    Vector myPos)
+{
+  if (m_neighbors.isNeighbour (dst))
+    {
+      return dst;
+    }
+  // §III.A: "Once a packet reaches a coordinator ... the neighboring node
+  // with the largest progress towards the destination is chosen." A packet
+  // whose predecessor is this node (just originated) has no street direction
+  // yet and takes the same greedy choice.
+  if (IsCoordinator () || CalculateDistance (previousHop, myPos) < 1e-9)
+    {
+      return m_neighbors.BestNeighbor (dstPos, myPos);
+    }
+  Ipv4Address next = GpcrStreetNextHop (previousHop, myPos);
+  // The street ends with no neighbour along it (a dead end, or a gap the
+  // cone misses): plain greedy, and a local optimum if that fails too.
+  return next != Ipv4Address::GetZero () ? next : m_neighbors.BestNeighbor (dstPos, myPos);
+}
+
+Ipv4Address
+RoutingProtocol::GpcrRepairNextHop (Vector previousHop, Vector myPos)
+{
+  // §III.B: on a junction, "it chooses the street that is the next one
+  // counter-clockwise from the street the packet has arrived on" — the
+  // right-hand rule, taken here over the coordinator's neighbours, each of
+  // which stands on one of the streets that meet there. "In between
+  // junctions greedy routing to the next junction, as described above, can
+  // be used": the street rule, and the right-hand rule again at a dead end.
+  if (!IsCoordinator ())
+    {
+      Ipv4Address next = GpcrStreetNextHop (previousHop, myPos);
+      if (next != Ipv4Address::GetZero ())
+        {
+          return next;
+        }
+    }
+  return m_neighbors.BestAngle (previousHop, myPos);
+}
 
 void
 RoutingProtocol::SetDownTarget (IpL4Protocol::DownTargetCallback callback)
