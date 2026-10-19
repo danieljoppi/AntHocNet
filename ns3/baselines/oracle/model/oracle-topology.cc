@@ -82,6 +82,16 @@ Topology::GetTypeId()
                           "medium the oracle aborts.",
                           StringValue("hops"),
                           MakeStringAccessor(&Topology::m_metric),
+                          MakeStringChecker())
+            .AddAttribute("Knowledge",
+                          "'current' (the default): the oracle, every node routes on the "
+                          "ground-truth edge set. 'predicted' (#707): OPSPF-style link "
+                          "state on the predicted schedule; each node routes on the edge "
+                          "set minus the unpredicted failures it has learned of through "
+                          "LearnLinkState (the harness's LSA flood). A protocol model, "
+                          "not a bound.",
+                          StringValue("current"),
+                          MakeStringAccessor(&Topology::m_knowledge),
                           MakeStringChecker());
     return tid;
 }
@@ -168,33 +178,98 @@ Topology::Recompute()
             }
         }
         m_nextHop.assign(static_cast<std::size_t>(n), std::vector<NextHop>(static_cast<std::size_t>(n)));
-        for (int u = 0; u < n; ++u)
+        if (m_knowledge == "predicted")
         {
-            graph.computeFrom(u);
-            for (int d = 0; d < n; ++d)
+            // #707: each node's view is this edge set minus what it has
+            // learned is down; solve each row when that node next looks up.
+            m_rowDirty.assign(static_cast<std::size_t>(n), true);
+        }
+        else
+        {
+            for (int u = 0; u < n; ++u)
             {
-                const int hop = graph.firstHopTo(d);
-                if (hop == anthocnet::core::ShortestPathGraph::kNoNode)
-                {
-                    continue;
-                }
-                for (const Link& l : m_links[static_cast<std::size_t>(u)])
-                {
-                    if (l.to != hop)
-                    {
-                        continue;
-                    }
-                    NextHop& nh = m_nextHop[static_cast<std::size_t>(u)][static_cast<std::size_t>(d)];
-                    nh.valid = true;
-                    nh.iface = l.iface;
-                    nh.gateway = l.gateway;
-                    break; // parallel links to one peer: lowest interface wins
-                }
+                graph.computeFrom(u);
+                FillRow(u, graph);
             }
         }
     }
 
     m_timer = Simulator::Schedule(m_interval, &Topology::Recompute, this);
+}
+
+void
+Topology::FillRow(int u, anthocnet::core::ShortestPathGraph& graph)
+{
+    const int n = static_cast<int>(m_nodes.size());
+    std::vector<NextHop>& row = m_nextHop[static_cast<std::size_t>(u)];
+    row.assign(static_cast<std::size_t>(n), NextHop());
+    for (int d = 0; d < n; ++d)
+    {
+        const int hop = graph.firstHopTo(d);
+        if (hop == anthocnet::core::ShortestPathGraph::kNoNode)
+        {
+            continue;
+        }
+        for (const Link& l : m_links[static_cast<std::size_t>(u)])
+        {
+            if (l.to != hop)
+            {
+                continue;
+            }
+            NextHop& nh = row[static_cast<std::size_t>(d)];
+            nh.valid = true;
+            nh.iface = l.iface;
+            nh.gateway = l.gateway;
+            break; // parallel links to one peer: lowest interface wins
+        }
+    }
+}
+
+void
+Topology::SolveRow(int u, const std::set<const Channel*>* skip)
+{
+    const int n = static_cast<int>(m_nodes.size());
+    anthocnet::core::ShortestPathGraph graph(n);
+    for (int v = 0; v < n; ++v)
+    {
+        for (const Link& l : m_links[static_cast<std::size_t>(v)])
+        {
+            if (skip && l.channel && skip->count(l.channel))
+            {
+                continue; // this node has learned the link is down
+            }
+            graph.addEdge(v, l.to, l.weight);
+        }
+    }
+    graph.computeFrom(u);
+    FillRow(u, graph);
+}
+
+void
+Topology::LearnLinkState(Ptr<Node> node, Ptr<Channel> channel, bool down)
+{
+    NS_ABORT_MSG_IF(m_knowledge != "predicted",
+                    "oracle: LearnLinkState needs Knowledge=predicted (#707)");
+    auto u = m_index.find(node->GetId());
+    if (u == m_index.end())
+    {
+        return;
+    }
+    const std::size_t i = static_cast<std::size_t>(u->second);
+    if (m_knownDown.size() < m_nodes.size())
+    {
+        m_knownDown.resize(m_nodes.size());
+    }
+    const bool changed = down ? m_knownDown[i].insert(PeekPointer(channel)).second
+                              : m_knownDown[i].erase(PeekPointer(channel)) > 0;
+    if (changed)
+    {
+        ++m_lsaApplied;
+        if (i < m_rowDirty.size())
+        {
+            m_rowDirty[i] = true;
+        }
+    }
 }
 
 void
@@ -379,6 +454,7 @@ Topology::AddWiredLinks(int u,
         Link l;
         l.to = it->second;
         l.iface = iface;
+        l.channel = PeekPointer(ch);  // #707: the link a learned failure names
         l.gateway = pIpv4->GetAddress(static_cast<uint32_t>(pIface), 0).GetLocal();
         if (m_metric == "delay")
         {
@@ -604,6 +680,12 @@ Topology::Lookup(Ptr<Node> node, Ipv4Address dst)
     {
         ++m_noRoute;
         return none;
+    }
+    const std::size_t ui = static_cast<std::size_t>(u->second);
+    if (ui < m_rowDirty.size() && m_rowDirty[ui])
+    {
+        SolveRow(u->second, ui < m_knownDown.size() ? &m_knownDown[ui] : nullptr);
+        m_rowDirty[ui] = false;
     }
     const NextHop& nh = m_nextHop[static_cast<std::size_t>(u->second)][static_cast<std::size_t>(d->second)];
     if (!nh.valid)

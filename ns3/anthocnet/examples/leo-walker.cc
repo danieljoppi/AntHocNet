@@ -289,7 +289,16 @@ struct Link {
 bool g_ipGate = false;
 Ptr<DropAll> g_dropAll;
 
-void SetLink(Link& l, bool up) {
+/// #707: the opspf arm. Its topology is gated at IP for PREDICTED changes
+/// only (the GSL handovers, which the orbit schedule and the station's own
+/// reassignment make known); unpredicted ISL failures reach it through the
+/// LSA flood instead (FloodLsa below).
+bool g_opspf = false;
+Ptr<oracle::Topology> g_opspfTopo;
+
+/// `gateIp` false: an unpredicted change, which the opspf arm must not see
+/// at IP (every other arm is unaffected: they are gated by g_ipGate alone).
+void SetLink(Link& l, bool up, bool gateIp = true) {
     if (l.up == up) return;
     l.up = up;
     if (l.satSideOnly) {
@@ -300,7 +309,7 @@ void SetLink(Link& l, bool up) {
         DynamicCast<PointToPointNetDevice>(l.devA)->SetReceiveErrorModel(up ? nullptr : g_dropAll);
         DynamicCast<PointToPointNetDevice>(l.devB)->SetReceiveErrorModel(up ? nullptr : g_dropAll);
     }
-    if (!g_ipGate) return;
+    if (!g_ipGate || (g_opspf && !gateIp)) return;
     if (up) {
         if (!l.satSideOnly) l.ipA->SetUp(l.ifA);
         l.ipB->SetUp(l.ifB);
@@ -538,11 +547,86 @@ void VisibilityWatch(World* w, const Params* P) {
     Simulator::Schedule(Seconds(0.5), &VisibilityWatch, w, P);
 }
 
+/// #707: one OSPF Link State Update carrying one router-LSA (RFC 2328):
+/// IP 20 + OSPF header 24 + LSA count 4 + LSA header 20 + router-LSA fields
+/// 4 + 12 per link for a satellite's 4 ISLs = 120 bytes.
+constexpr uint32_t kLsaBytes = 120;
+uint64_t g_lsaFloods = 0;
+
+/// #707: the opspf arm learns an unpredicted ISL change from a flood. The
+/// surviving endpoint `origin` detects it at once (link-layer loss of
+/// carrier; no hello, so no dead interval -- the optimistic case for the
+/// arm) and floods a router-LSA. The flood travels over the links that are
+/// physically up, so each node learns at origin + the propagation delay of
+/// its fastest path; each node that receives it forwards it once on every
+/// other up link, and every one of those transmissions is counted as this
+/// arm's routing control (NRL, NRL bytes).
+void FloodLsa(World* w, uint32_t origin, std::vector<Ptr<Channel>> channels, bool down) {
+    const uint32_t nSat = w->sats.GetN();
+    const uint32_t n = nSat + w->ground.GetN();
+    // Up adjacency over satellites and stations, with each link's delay.
+    std::vector<std::vector<std::pair<uint32_t, double>>> adj(n);
+    auto delayOf = [](const Link& l) {
+        TimeValue d;
+        l.channel->GetAttribute("Delay", d);
+        return d.Get().GetSeconds();
+    };
+    for (const Link& l : w->isls) {
+        if (!l.up || !w->satUp[l.a] || !w->satUp[l.b]) continue;
+        const double d = delayOf(l);
+        adj[l.a].emplace_back(l.b, d);
+        adj[l.b].emplace_back(l.a, d);
+    }
+    for (uint32_t g = 0; g < w->ground.GetN(); ++g) {
+        const int k = w->serving[g];
+        if (k < 0) continue;
+        const Link& l = w->gsl[g][k];
+        const double d = delayOf(l);
+        adj[nSat + g].emplace_back(l.b, d);
+        adj[l.b].emplace_back(nSat + g, d);
+    }
+    std::vector<double> at(n, -1.0);
+    std::set<std::pair<double, uint32_t>> q;
+    at[origin] = 0;
+    q.emplace(0.0, origin);
+    while (!q.empty()) {
+        const auto [t, u] = *q.begin();
+        q.erase(q.begin());
+        for (const auto& [v, d] : adj[u]) {
+            if (at[v] < 0 || t + d < at[v]) {
+                if (at[v] >= 0) q.erase({at[v], v});
+                at[v] = t + d;
+                q.emplace(at[v], v);
+            }
+        }
+    }
+    ++g_lsaFloods;
+    for (uint32_t u = 0; u < n; ++u) {
+        if (at[u] < 0) continue;
+        // The originator sends on every up link; every other node forwards
+        // on all but the one it heard the LSA on first.
+        const uint64_t tx = adj[u].size() - (u == origin ? 0 : 1);
+        g_controlPkts += tx;
+        g_controlBytes += tx * kLsaBytes;
+        Ptr<Node> node = u < nSat ? w->sats.Get(u) : w->ground.Get(u - nSat);
+        Simulator::Schedule(Seconds(at[u]), [node, channels, down] {
+            for (const Ptr<Channel>& ch : channels) g_opspfTopo->LearnLinkState(node, ch, down);
+        });
+    }
+}
+
 void IslFail(World* w, uint32_t i, bool down, double meanDown, double meanUp,
              Ptr<ExponentialRandomVariable> downVar, Ptr<ExponentialRandomVariable> upVar) {
     Link& l = w->isls[i];
+    // #707: unpredicted, so the opspf arm learns it from both endpoints'
+    // floods rather than at IP.
+    const bool live = w->satUp[l.a] && w->satUp[l.b];
     if (down) {
-        if (w->satUp[l.a] && w->satUp[l.b]) SetLink(l, false);
+        if (live) SetLink(l, false, false);
+        if (g_opspf && live) {
+            FloodLsa(w, l.a, {l.channel}, true);
+            FloodLsa(w, l.b, {l.channel}, true);
+        }
         g_events.emplace_back(Simulator::Now().GetSeconds(), 3);
         g_eventGs.push_back(-1);
         g_eventLink.push_back(static_cast<int>(i));
@@ -550,7 +634,11 @@ void IslFail(World* w, uint32_t i, bool down, double meanDown, double meanUp,
         Simulator::Schedule(Seconds(downVar->GetValue(meanDown, 0)), &IslFail, w, i, false,
                             meanDown, meanUp, downVar, upVar);
     } else {
-        if (w->satUp[l.a] && w->satUp[l.b]) SetLink(l, true);
+        if (live) SetLink(l, true, false);
+        if (g_opspf && live) {
+            FloodLsa(w, l.a, {l.channel}, false);
+            FloodLsa(w, l.b, {l.channel}, false);
+        }
         Simulator::Schedule(Seconds(upVar->GetValue(meanUp, 0)), &IslFail, w, i, true, meanDown,
                             meanUp, downVar, upVar);
     }
@@ -561,8 +649,20 @@ void MassFail(World* w, std::vector<uint32_t> victims) {
         w->satUp[s] = false;
         g_massVictimIds.insert(w->sats.Get(s)->GetId());
     }
+    // #707: each surviving neighbour of a victim floods one router-LSA
+    // listing every ISL it lost.
+    std::map<uint32_t, std::vector<Ptr<Channel>>> lost;
     for (Link& l : w->isls) {
-        if (!w->satUp[l.a] || !w->satUp[l.b]) SetLink(l, false);
+        if (!w->satUp[l.a] || !w->satUp[l.b]) {
+            if (l.up) {
+                if (w->satUp[l.a]) lost[l.a].push_back(l.channel);
+                if (w->satUp[l.b]) lost[l.b].push_back(l.channel);
+            }
+            SetLink(l, false, false);
+        }
+    }
+    if (g_opspf) {
+        for (const auto& [origin, channels] : lost) FloodLsa(w, origin, channels, true);
     }
     g_events.emplace_back(Simulator::Now().GetSeconds(), 4);
     g_eventGs.push_back(-1);
@@ -736,7 +836,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
         internet.SetRoutingHelper(oracleHelper);
     else if (proto == "geo-greedy")
         internet.SetRoutingHelper(geoHelper);
-    else if (proto == "oracle-delay") {
+    else if (proto == "opspf") {
+        // #707: OPSPF-style link state on the predicted orbit schedule; the
+        // oracle's machinery with predicted knowledge only (see FloodLsa).
+        oracleHelper.Set("Knowledge", StringValue("predicted"));
+        internet.SetRoutingHelper(oracleHelper);
+    } else if (proto == "oracle-delay") {
         // The latency bound: the oracle with propagation-delay edge weights.
         // Links of one hop count differ in length on a moving shell, so the
         // hop-count oracle is a delivery bound, not a delay bound (#297).
@@ -747,7 +852,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
         internet.SetRoutingHelper(oracleHelper);
     } else
         NS_ABORT_MSG("unknown protocol '"
-                     << proto << "' (anthocnet, aodv, olsr, oracle, oracle-delay, geo-greedy)");
+                     << proto
+                     << "' (anthocnet, aodv, olsr, oracle, oracle-delay, geo-greedy, opspf)");
     internet.Install(all);
     stream += internet.AssignStreams(all, stream);
     if (proto == "anthocnet")
@@ -757,10 +863,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
     else if (proto == "olsr")
         stream += olsr.AssignStreams(all, stream);
     else if (proto != "geo-greedy")
-        stream += oracleHelper.AssignStreams(all, stream);  // oracle, oracle-delay: 0 streams
+        stream += oracleHelper.AssignStreams(all, stream);  // oracle(-delay), opspf: 0 streams
     NS_ABORT_MSG_IF(stream - streamBase >= kAppStreamOffset, "RNG stream budget exhausted (#352)");
 
-    g_ipGate = proto == "oracle" || proto == "oracle-delay" || proto == "geo-greedy";
+    g_ipGate =
+        proto == "oracle" || proto == "oracle-delay" || proto == "geo-greedy" || proto == "opspf";
+    g_opspf = proto == "opspf";
+    g_opspfTopo = g_opspf ? oracleHelper.GetTopology() : nullptr;
+    g_lsaFloods = 0;
     g_dropAll = CreateObject<DropAll>();
     PointToPointHelper isl;
     isl.SetDeviceAttribute("DataRate", StringValue(P.islRate));
@@ -1244,6 +1354,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
                   << " changes=" << topo->GetTopologyChanges()
                   << " noRoute=" << topo->GetNoRouteCount() << "\n";
     }
+    if (proto == "opspf") {
+        Ptr<oracle::Topology> topo = oracleHelper.GetTopology();
+        std::cout << "# opspf " << proto << " seed=" << seed << " floods=" << g_lsaFloods
+                  << " lsaTx=" << g_controlPkts << " lsaApplied=" << topo->GetLsaApplied()
+                  << " recomputes=" << topo->GetRecomputeCount()
+                  << " noRoute=" << topo->GetNoRouteCount() << "\n";
+    }
     if (proto == "geo-greedy") {
         NS_ABORT_MSG_IF(g_controlPkts != 0, "geo-greedy transmitted control packets");
         std::cout << "# geo " << proto << " seed=" << seed
@@ -1276,7 +1393,8 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("flows", "ground-station flows (city pairs, max 4)", P.nFlows);
     cmd.AddValue("protocols",
                  "comma list: anthocnet, aodv, olsr, oracle (hop bound), oracle-delay (latency "
-                 "bound), geo-greedy (idealised greedy geographic)",
+                 "bound), geo-greedy (idealised greedy geographic), opspf (link state on "
+                 "the predicted orbit schedule, unpredicted failures flooded, #707)",
                  P.protocols);
     cmd.AddValue("islRate", "ISL data rate", P.islRate);
     cmd.AddValue("gslRate", "GSL data rate", P.gslRate);

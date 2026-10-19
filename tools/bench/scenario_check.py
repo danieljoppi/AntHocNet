@@ -2331,6 +2331,42 @@ LEO_OUTAGE = re.compile(
     r"^#\s+outage\s+([a-z][\w-]*)\s+seed=(\d+)\s+class=(\w+)\s+n=(\d+)\s+lost=(\d+)")
 
 
+OPSPF_LINE = re.compile(r"^# opspf opspf seed=(\d+) floods=(\d+) lsaTx=(\d+)")
+
+
+def check_opspf(path):
+    """#707: the opspf arm's only control traffic is its LSA floods, and it
+    floods exactly the unpredicted changes. Both FAIL, a priori:
+
+    - a leo-walker cell with no unpredicted failure (islDown=0, massFailAt=0)
+      whose opspf run flooded anything learned a predicted change the wrong
+      way (and is no longer the oracle-equivalent arm the smoke asserts);
+    - a cell with the failure overlay or a mass failure whose opspf run
+      flooded nothing never learned the failures at all.
+    """
+    with open(path) as fh:
+        text = fh.read()
+    cfg = re.search(r"^##CONFIG## harness=leo-walker\b.*$", text, re.MULTILINE)
+    if not cfg:
+        return
+    kv = dict(re.findall(r"(\w+)=(\S+)", cfg.group(0)))
+    unpredicted = float(kv.get("islDown", 0)) > 0 or float(kv.get("massFailAt", 0)) > 0
+    base = os.path.basename(path)
+    for line in text.splitlines():
+        m = OPSPF_LINE.match(line)
+        if not m:
+            continue
+        seed, floods = m.group(1), int(m.group(2))
+        if unpredicted and floods == 0:
+            report("FAIL", f"{base}/opspf: seed {seed} flooded no LSA, but the cell has "
+                           "unpredicted failures (islDown or massFailAt): the arm never "
+                           "learned them (#707)")
+        elif not unpredicted and floods > 0:
+            report("FAIL", f"{base}/opspf: seed {seed} flooded {floods} LSAs in a cell "
+                           "with no unpredicted failure: predicted changes must not be "
+                           "flooded (#707)")
+
+
 def check_leo_dynamics(path):
     """#297: a leo-walker cell's handover clock and outage books must close.
 
@@ -2446,6 +2482,7 @@ def cmd_results(a):
         check_reinj(path)
         check_route(path)
         check_leo_dynamics(path)
+        check_opspf(path)
         rows = list(parse_results(path))
         check_path_diversity(rows)
         check_oracle(path, rows)

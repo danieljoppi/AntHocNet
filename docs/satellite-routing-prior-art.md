@@ -114,6 +114,16 @@ Two things follow, and both change #216:
    precomputed table is a weaker result than beating OPSPF. A precomputed
    control remains the right first implementation (it is simpler and bounds the
    best case), but the ceiling it represents should be named honestly.
+   **Status (2026-10-19):** the `opspf` arm exists on leo-walker
+   ([#707](https://github.com/danieljoppi/AntHocNet/issues/707); see
+   [leo-walker.md](benchmarks/satellite/leo-walker.md#opspf-the-link-state-incumbent-707)).
+   With no unpredicted failure it routes exactly as the hop oracle does. Under
+   the failure overlay it floods each ISL change network-wide, the
+   reconvergence cost OPSPF is known for, and it exposed that the 1 s-cadence
+   oracle is not a delivery bound on failure cells
+   ([#720](https://github.com/danieljoppi/AntHocNet/issues/720)). The 20-seed
+   AntHocNet − OPSPF comparison is measured in the v2.4.0 control campaign and
+   recorded here then.
 
 ## 3. Prior art: ACO on LEO constellations
 
