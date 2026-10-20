@@ -1,0 +1,76 @@
+# The v2.4.0 control campaign (docs/benchmarks/v2.4.0-campaign.md): every
+# published family re-baselined on its native comparators (ADR-0026), with
+# the migrant arms retired. One arm, control, at the shipped defaults; no
+# default is decided here. Pre-registered: this file is merged with the plan
+# page before the first dispatch, and the jobs run at main.
+#
+#   python3 tools/bench/campaign.py plan tools/bench/campaigns/v2.4.0.yaml
+generation: v240
+ref: main
+cap: 12
+control: control
+
+arms:
+  control: ""
+
+x-grid: &grid {scenario: paper, version: 3.42-opt, nNodes: 50, time: 900, runs: 10, areaX: 1500, areaY: 300, speed: 20, range: 300, transport: udp, harness: compare, protocols: anthocnet}
+x-fanet: &fanet {scenario: fanet, version: 3.42-opt, nNodes: 30, time: 900, runs: 20, areaX: 1000, areaY: 1000, pause: 0, speed: 30, propagation: range, mobility: gaussmarkov, transport: udp, harness: compare, protocols: anthocnet}
+x-vanet: &vanet {scenario: vanet, version: 3.42-opt, time: 900, areaX: 800, areaY: 800, pause: 0, speed: 20, range: 300, propagation: urban, mobility: manhattan, transport: udp, harness: compare, protocols: anthocnet}
+x-isl: &isl {harness: isl-grid, version: 3.42-opt, torus: "true", islDelayMs: 5, islRate: 10Mbps, time: 900, runs: 20, cbrBps: 4096, protocols: anthocnet}
+x-leo: &leo {harness: leo-walker, version: "3.48", time: 300, runs: 20, flows: 4, cbrBps: 2048, islRate: 10Mbps, protocols: anthocnet}
+
+# Seed blocks: the grid cells run in two 10-seed blocks (v2.3.0's
+# Gauss-Markov/Nakagami control took 4 h 43 min for five protocols; AOMDV
+# joins here). The static mesh runs in four 5-seed blocks: one HWMP seed costs
+# about 15 CPU-minutes, four times AntHocNet's (#708).
+#
+# The static mesh moves to 802.11a at 6 Mbit/s for every arm (maintainer
+# decision 2026-10-19, #708) and runs every arm with PeerLink::MaxBeaconLoss=20
+# (maintainer decision 2026-10-20, #708): at ns-3's default of 2 HWMP's peer
+# links churn and the cell collapses to 56.5 %. The attribute only reaches
+# dot11s peer links.
+cells:
+  grid-rwp-tworay: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: tworay, pause: 30}, blocks: [1, 11]}
+  grid-rwp-nakagami: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: nakagami, pause: 30}, blocks: [1, 11]}
+  grid-ssrwp-tworay: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: ssrwp, propagation: tworay, pause: 30}, blocks: [1, 11]}
+  grid-ssrwp-nakagami: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: ssrwp, propagation: nakagami, pause: 30}, blocks: [1, 11]}
+  grid-gaussmarkov-tworay: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: gaussmarkov, propagation: tworay, pause: 0}, blocks: [1, 11]}
+  grid-gaussmarkov-nakagami: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: gaussmarkov, propagation: nakagami, pause: 0}, blocks: [1, 11]}
+  static-mesh: {workflow: paper-benchmark.yml, inputs: {<<: *grid, runs: 5, mobility: rwp, propagation: range, pause: 900, extraArgs: "--standard=80211a --rateManager=constant6 --ns3::dot11s::PeerLink::MaxBeaconLoss=20"}, blocks: [1, 6, 11, 16]}
+  fanet-main: {workflow: paper-benchmark.yml, inputs: {<<: *fanet, range: 350}}
+  fanet-sparse: {workflow: paper-benchmark.yml, inputs: {<<: *fanet, range: 250}}
+  vanet-main: {workflow: paper-benchmark.yml, inputs: {<<: *vanet, nNodes: 100, runs: 4}, blocks: [1, 5, 9, 13, 17]}
+  vanet-sparse: {workflow: paper-benchmark.yml, inputs: {<<: *vanet, nNodes: 40, runs: 10}, blocks: [1, 11]}
+  sat-base: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 4, cols: 4, flows: 8}}
+  sat-failcell: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 4, cols: 4, flows: 8, extraArgs: "--breakLink=0,0,3,0 --breakAt=450"}}
+  sat-corridor: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 6, cols: 6, flows: 0, extraArgs: "--corridorLoad=12Mbps --corridorLoadAt=15"}}
+  sat-seam: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 6, cols: 6, flows: 8, extraArgs: "--removeLinks=5,1,0,1;5,2,0,2;5,3,0,3;5,4,0,4;5,5,0,5"}}
+  leo-walker16-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: anthocnet, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-walker16-opspf: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: opspf, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-walker16-oracle: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-walker16-oracle-delay: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle-delay, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-walker16-geo-greedy: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: geo-greedy, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-starlink1-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: anthocnet, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-starlink1-opspf: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: opspf, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-starlink1-oracle: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-starlink1-oracle-delay: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle-delay, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-starlink1-geo-greedy: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: geo-greedy, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-starlink1-storm-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: anthocnet, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-starlink1-storm-opspf: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: opspf, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-starlink1-storm-oracle: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-starlink1-storm-oracle-delay: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle-delay, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+  leo-starlink1-storm-geo-greedy: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: geo-greedy, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+
+# Control only: each family's native set from ADR-0026's table, plus its
+# oracle. Retired from v2.3.0's control: AODV and DSDV on the static mesh;
+# DSDV and AOMDV on FANET; OLSR, DSDV and AOMDV on VANET; AODV and OLSR on
+# the ISL grid; AODV on the LEO shells. OPSPF on the ISL grid is deferred:
+# the arm exists in leo-walker only (#707), and on three of the four
+# ISL-grid cells it would equal the oracle by construction.
+jobs:
+  - {arms: [control], cells: [grid-rwp-tworay, grid-rwp-nakagami, grid-ssrwp-tworay, grid-ssrwp-nakagami, grid-gaussmarkov-tworay, grid-gaussmarkov-nakagami], inputs: {protocols: "anthocnet,aodv,olsr,dsdv,aomdv,oracle"}}
+  - {arms: [control], cells: [static-mesh], inputs: {protocols: "anthocnet,olsr,hwmp,oracle"}}
+  - {arms: [control], cells: [fanet-main, fanet-sparse], inputs: {protocols: "anthocnet,aodv,olsr,gpsr3d,oracle"}}
+  - {arms: [control], cells: [vanet-main, vanet-sparse], inputs: {protocols: "anthocnet,aodv,gpsr,gpcr,oracle"}}
+  - {arms: [control], cells: [sat-base, sat-failcell, sat-corridor, sat-seam], inputs: {protocols: "anthocnet,oracle"}}
+  - {arms: [control], cells: [leo-walker16-anthocnet, leo-walker16-opspf, leo-walker16-oracle, leo-walker16-oracle-delay, leo-walker16-geo-greedy, leo-starlink1-anthocnet, leo-starlink1-opspf, leo-starlink1-oracle, leo-starlink1-oracle-delay, leo-starlink1-geo-greedy, leo-starlink1-storm-anthocnet, leo-starlink1-storm-opspf, leo-starlink1-storm-oracle, leo-starlink1-storm-oracle-delay, leo-starlink1-storm-geo-greedy]}
