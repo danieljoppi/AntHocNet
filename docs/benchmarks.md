@@ -38,6 +38,7 @@ index: the headline cross-scenario summary, plus a link to every detail page.
 | [high-mobility](benchmarks/scenarios/high-mobility.md) | sparse / high-mobility — constant motion (pause=0). |
 | [heavy-load](benchmarks/scenarios/heavy-load.md) | dense / heavy-load — many flows / higher CBR. |
 | [large-scale](benchmarks/scenarios/large-scale.md) | large / mobile — 100 nodes. |
+| [partition-merge](benchmarks/scenarios/partition-merge.md) | stress — two teams and a bridge that withdraws and returns; the bounded-control CI gate for the #20/#45 storm class (#62). |
 | **Sweeps** | |
 | [area](benchmarks/sweeps/area.md) | Paper Fig. 1 — long edge 1500→2500 m. |
 | [pause](benchmarks/sweeps/pause.md) | Paper Fig. 2 — pause time 0→900 s. |

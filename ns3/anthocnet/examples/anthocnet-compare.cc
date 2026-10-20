@@ -947,6 +947,26 @@ double g_firstDeliveryS = -1.0;
 // converge/--sink mode shares one sink and is skipped).
 std::vector<double> g_flowStart;
 std::vector<double> g_flowFirstRx;  // -1 = flow never delivered
+// #62: per-flow delivered packets (index-aligned with g_flowStart), read by
+// the --seriesEvery sampler below.
+std::vector<uint64_t> g_flowRx;
+
+// --- control and delivery over time (--seriesEvery, #62) --------------------
+// The end-of-run books say how much control a run sent, not when. The
+// partition/merge scenario needs the when: control must plateau while the
+// field is split (a #20/#45-class storm grows instead), and each flow across
+// the split must deliver again soon after the merge. Every S seconds the
+// sampler records the cumulative routing-control count, AntHocNet's ant
+// transmissions by type, and each flow's delivered packets; the run prints
+// them as `# series` lines. Read-only: nothing is scheduled unless the flag
+// is given, so every other run is unchanged.
+struct SeriesSample {
+    double t;
+    uint64_t ctrl;
+    uint64_t ant[5];  // hello, reactive, proactive, repair, linkfail
+    std::vector<uint64_t> rx;
+};
+std::vector<SeriesSample> g_series;
 
 void DiagAntTx(uint8_t type, uint8_t /*dir*/, bool /*broadcast*/) {
     if (g_diag) g_antTx[type] += 1;
@@ -962,6 +982,21 @@ void DiagSinkRxFlow(uint32_t idx, Ptr<const Packet> p, const Address& a) {
     if (idx < g_flowFirstRx.size() && g_flowFirstRx[idx] < 0.0) {
         g_flowFirstRx[idx] = Simulator::Now().GetSeconds();
     }
+    if (idx < g_flowRx.size()) ++g_flowRx[idx];
+}
+
+void SampleSeries(double every, double stop) {
+    SeriesSample s;
+    s.t = Simulator::Now().GetSeconds();
+    s.ctrl = g_controlPkts;
+    const uint8_t types[5] = {0x01, 0x02, 0x04, 0x08, 0x10};
+    for (int k = 0; k < 5; ++k) {
+        auto it = g_antTx.find(types[k]);
+        s.ant[k] = it == g_antTx.end() ? 0 : it->second;
+    }
+    s.rx = g_flowRx;
+    g_series.push_back(std::move(s));
+    if (s.t + every <= stop + 1e-9) Simulator::Schedule(Seconds(every), &SampleSeries, every, stop);
 }
 
 // --- queue diagnostics (--qdiag): does the A2 congestion signal exist? --------
@@ -1446,6 +1481,7 @@ struct Params {
     std::string dumpTrace, dumpFlows;
     std::string vizTrace;  // #641: --vizTrace, the first anthocnet run as a replay
     double vizStep = 1.0;
+    double seriesEvery = 0.0;  // #62: --seriesEvery, 0 = off
 };
 
 // #641: the one recorded run of --vizTrace (see viz-trace.h).
@@ -1692,6 +1728,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_firstDeliveryS = -1.0;
     g_flowStart.clear();
     g_flowFirstRx.clear();
+    g_flowRx.clear();
+    g_series.clear();
     g_qCount = g_qNonzero = g_qMax = 0;
     g_qSum = 0.0;
     g_firstDeathS = -1.0;
@@ -2571,6 +2609,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // than a --diag extra; the hook is read-only.
     const bool perFlowSinks = !converge && sinks.GetN() == g_flowStart.size();
     g_flowFirstRx.assign(g_flowStart.size(), -1.0);
+    g_flowRx.assign(g_flowStart.size(), 0);
     if (perFlowSinks) {
         for (uint32_t i = 0; i < sinks.GetN(); ++i) {
             sinks.Get(i)->TraceConnectWithoutContext("Rx", MakeBoundCallback(&DiagSinkRxFlow, i));
@@ -2621,6 +2660,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         g_viz.Start(P.vizTrace, h.str(), nodes, monitor,
                     DynamicCast<Ipv4FlowClassifier>(fmHelper.GetClassifier()), kDataPort, P.vizStep,
                     P.simTime, 1.0);
+    }
+
+    if (P.seriesEvery > 0.0) {
+        Simulator::Schedule(Seconds(P.seriesEvery), &SampleSeries, P.seriesEvery, P.simTime);
     }
 
     Simulator::Stop(Seconds(P.simTime));
@@ -2754,6 +2797,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         std::cout << "# hwmp " << proto << " seed=" << seed << " pathSelFrames=" << g_controlPkts
                   << " pathSelBytes=" << g_controlBytes << " peeringFrames=" << g_meshPeeringPkts
                   << " beacons=" << g_meshBeacons << '\n';
+    }
+    // #62: the --seriesEvery samples, one line each, cumulative counts.
+    for (const SeriesSample& s : g_series) {
+        std::cout << "# series " << proto << " seed=" << seed << " t=" << s.t << " ctrl=" << s.ctrl
+                  << " ant=" << s.ant[0] << ',' << s.ant[1] << ',' << s.ant[2] << ',' << s.ant[3]
+                  << ',' << s.ant[4] << " rx=";
+        for (std::size_t i = 0; i < s.rx.size(); ++i) std::cout << (i ? "," : "") << s.rx[i];
+        std::cout << '\n';
     }
 
     r.jitterMs = jitterSamples ? 1000.0 * totalJitter / jitterSamples : 0.0;
@@ -3644,6 +3695,7 @@ int main(int argc, char* argv[]) {
                  transport);
     std::string traceFile, flowsFile, dumpTrace, dumpFlows, vizTrace;
     double vizStep = 1.0;
+    double seriesEvery = 0.0;
     cmd.AddValue("traceFile",
                  "#639: with --mobility=trace, the ns-2 movement trace to "
                  "replay ($node_(i) set X_/Y_/Z_, $ns_ at t \"$node_(i) "
@@ -3664,6 +3716,11 @@ int main(int argc, char* argv[]) {
                  "the learn site's ns-3 replay",
                  vizTrace);
     cmd.AddValue("vizStep", "#641: --vizTrace sampling interval (s)", vizStep);
+    cmd.AddValue("seriesEvery",
+                 "#62: with --diag, sample routing control, AntHocNet ant "
+                 "transmissions and per-flow deliveries every S seconds and "
+                 "print them as '# series' lines (0 = off)",
+                 seriesEvery);
     cmd.AddValue("dumpFlows",
                  "#639: write the first run's generated flows to this "
                  "file in --flowsFile format",
@@ -4024,6 +4081,10 @@ int main(int argc, char* argv[]) {
     P.dumpTrace = dumpTrace;
     P.vizTrace = vizTrace;
     P.vizStep = vizStep;
+    NS_ABORT_MSG_UNLESS(seriesEvery >= 0.0, "--seriesEvery must be >= 0 (#62)");
+    NS_ABORT_MSG_IF(seriesEvery > 0.0 && !g_diag,
+                    "--seriesEvery needs --diag: the ant tallies it samples are --diag's (#62)");
+    P.seriesEvery = seriesEvery;
     P.dumpFlows = dumpFlows;
     if (P.mobility == "trace") {
         NS_ABORT_MSG_IF(traceFile.empty(),
