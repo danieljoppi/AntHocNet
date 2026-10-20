@@ -186,6 +186,13 @@ jobs:
         # refused before the run. How a game level reaches ns-3 (#640).
         if: matrix.version == '3.42'
         run: bash tools/checks/check-trace-replay.sh /opt/ns-3 "$GITHUB_WORKSPACE"
+      - name: Partition/merge stress gate (#62, --seriesEvery)
+        # Two teams, a bridge that withdraws and returns: AntHocNet's control
+        # must plateau while the field is split (the #20/#45 storm class
+        # grows) and every crossing flow must deliver within 60 s of each
+        # merge. One 900 s seed.
+        if: matrix.version == '3.42'
+        run: bash tools/checks/check-partition.sh /opt/ns-3 "$GITHUB_WORKSPACE"
       - name: Validation-anchor gate (single-hop PDR floor, #59)
         # Blocking anchor from docs/benchmarks/methodology.md "Validation
         # anchors": on a static, in-range 2-node link the *stock* stack

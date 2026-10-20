@@ -127,6 +127,7 @@ nav:
           - benchmarks/scenarios/large-scale.md
           - benchmarks/scenarios/fanet.md
           - benchmarks/scenarios/vanet.md
+          - benchmarks/scenarios/partition-merge.md
       - Sweeps:
           - benchmarks/sweeps/area.md
           - benchmarks/sweeps/pause.md

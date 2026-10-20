@@ -70,6 +70,11 @@ jobs:
         # throttle, the resume and the collected file names are tested with
         # no network, in ~1 s.
         run: python3 tools/bench/test_campaign.py
+      - name: Partition-scene self-test (#62)
+        # partition_scene.py is the bounded-control gate for the #20/#45 storm
+        # class. Synthetic runs with known answers: a plateau passes, a growing
+        # rate fails, a delivery across the split fails. No simulator, ~1 s.
+        run: python3 tools/bench/test_partition_scene.py
       - name: Cell-composer self-test (v2.3.0)
         # compose_cell.py builds the published cells when a campaign moves one
         # protocol's default: the control's baselines plus the arm's rows for
