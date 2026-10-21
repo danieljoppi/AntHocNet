@@ -557,7 +557,9 @@
     "antTypesProactiveAnts": "Tipos de formiga: formigas proativas",
     "manetGrid": "Resultados da grade MANET",
     "metricsNrl": "Métricas: NRL",
-    "regimes": "Regimes de rede"
+    "regimes": "Regimes de rede",
+    "disaster": "Resultados de desastre",
+    "partition": "Partição e reunião"
   },
   "device": {
     "phone": {
@@ -619,6 +621,18 @@
     "satellite": {
       "label": "Satélite",
       "note": "no seu plano orbital"
+    },
+    "rescuer": {
+      "label": "Rádio de resgate",
+      "note": "levado na ronda de busca, 150 m"
+    },
+    "mast": {
+      "label": "Mastro portátil",
+      "note": "fica onde você o põe, 350 m"
+    },
+    "post": {
+      "label": "Posto de comando",
+      "note": "o comando do incidente, 300 m"
     }
   },
   "chapter": {
@@ -664,7 +678,11 @@
     },
     "6": {
       "title": "Zona de desastre",
-      "family": "resposta a emergências"
+      "family": "resposta a emergências",
+      "blurb": "Equipes de resgate numa cidade depois de um terremoto, e depois uma frente de incêndio. As equipes se separam e se reencontram, réplicas destroem aparelhos, o fogo avança.",
+      "results": {
+        "label": "Resultados de desastre"
+      }
     },
     "7": {
       "title": "Zona contestada",
@@ -985,6 +1003,36 @@
           "Em qualquer lugar: um satélite não muda a cobertura"
         ]
       }
+    },
+    "6_1": {
+      "title": "Equipes separadas",
+      "mechanism": "partição e reunião",
+      "story": "Depois do terremoto duas equipes de resgate vasculham dois quarteirões da cidade. Os rádios delas alcançam 150 m; o posto de comando no meio só ouve uma equipe quando um socorrista passa pela esquina mais próxima.",
+      "hints": [
+        "Um mastro alcança 350 m. Onde um cobriria o quarteirão inteiro?",
+        "Antes de construir, observe o enlace de um socorrista com o posto aparecer e sumir."
+      ],
+      "debrief": "Sem mastros o campo se divide em três pedaços que só se tocam de vez em quando: cada toque os reúne, e as formigas precisam redescobrir a rota toda vez. Um mastro em cada quarteirão mantém todos os socorristas numa só rede. A família de desastre mede essa partição em escala real."
+    },
+    "6_2": {
+      "title": "Réplica",
+      "mechanism": "reparo sob falhas em cascata",
+      "story": "Os mastros estão de pé e as chamadas fluem. Os sismólogos avisam de réplicas: a primeira aos 40 s, a seguinte aos 70 s. Cada uma derruba um mastro.",
+      "hints": [
+        "Você não pode impedir a réplica. Pode fazer com que o mastro que ela derruba não faça falta.",
+        "Ponha os reservas antes de apertar Rodar: depois do tremor não há tempo."
+      ],
+      "debrief": "Quando um mastro cai, os hellos dos vizinhos param, o aviso de falha de enlace se espalha, e as formigas passam para a próxima trilha que já têm. Um mastro reserva posto com antecedência é uma trilha que a colônia já marcou: o reparo é uma troca, não uma busca."
+    },
+    "6_3": {
+      "title": "Frente de incêndio",
+      "mechanism": "tudo sob pressão de tempo",
+      "story": "Um incêndio florestal sobe o vale pelo sul a 3 m/s. A equipe no canto noroeste se comunica por mastros na parte baixa. Nenhum enlace de rádio sobrevive dentro do fogo nem cruzando a frente dele.",
+      "hints": [
+        "Onde estará o fogo no fim da fase?",
+        "Monte o canal de evacuação no terreno que o fogo alcança por último."
+      ],
+      "debrief": "Os mastros baixos levam a chamada até a frente chegar neles, e então a trilha some de uma vez. Um canal no terreno alto já foi amostrado pelas formigas proativas, então a chamada passa para ele em instantes. Uma rede de desastre é planejada para onde o perigo vai estar, não para onde ele está."
     }
   },
   "campaign": {

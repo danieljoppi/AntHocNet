@@ -557,7 +557,9 @@
     "antTypesProactiveAnts": "Ant types: proactive ants",
     "manetGrid": "MANET grid results",
     "metricsNrl": "Metrics: NRL",
-    "regimes": "Network regimes"
+    "regimes": "Network regimes",
+    "disaster": "Disaster results",
+    "partition": "Partition and re-merge"
   },
   "device": {
     "phone": {
@@ -619,6 +621,18 @@
     "satellite": {
       "label": "Satellite",
       "note": "on its orbital plane"
+    },
+    "rescuer": {
+      "label": "Rescue radio",
+      "note": "carried on the search loop, 150 m"
+    },
+    "mast": {
+      "label": "Portable mast",
+      "note": "set down where you put it, 350 m"
+    },
+    "post": {
+      "label": "Command post",
+      "note": "the incident command, 300 m"
     }
   },
   "chapter": {
@@ -664,7 +678,11 @@
     },
     "6": {
       "title": "Disaster zone",
-      "family": "emergency response"
+      "family": "emergency response",
+      "blurb": "Rescue teams in a town after an earthquake, then a wildfire front. Teams split and re-merge, aftershocks destroy devices, the fire advances.",
+      "results": {
+        "label": "Disaster results"
+      }
     },
     "7": {
       "title": "Contested zone",
@@ -985,6 +1003,36 @@
           "Anywhere: one satellite cannot change coverage"
         ]
       }
+    },
+    "6_1": {
+      "title": "Split teams",
+      "mechanism": "partition and re-merge",
+      "story": "After the earthquake two rescue teams search two blocks of the town. Their radios reach 150 m; the command post in the middle hears a team only when a searcher walks past the corner nearest to it.",
+      "hints": [
+        "A mast reaches 350 m. Where would one cover a whole block?",
+        "Watch a searcher's link to the post come and go before you build."
+      ],
+      "debrief": "Without masts the field splits into three pieces that touch only now and then: each touch re-merges them, and the ants have to rediscover the route every time. A mast in each block keeps every searcher in one network. The disaster family measures this partition at full scale."
+    },
+    "6_2": {
+      "title": "Aftershock",
+      "mechanism": "repair under cascading failure",
+      "story": "The masts are up and the calls are flowing. Seismologists warn of aftershocks: the first at 40 s, the next at 70 s. Each will bring down a mast.",
+      "hints": [
+        "You cannot stop the aftershock. You can make the mast it destroys not matter.",
+        "Place the spares before you press Run: after the shock there is no time."
+      ],
+      "debrief": "When a mast falls, the neighbours' hellos stop, the link-failure notice spreads, and the ants switch to the next trail they already hold. A spare mast placed in advance is a trail the colony has already laid: repair is a switch, not a search."
+    },
+    "6_3": {
+      "title": "Fire front",
+      "mechanism": "everything under time pressure",
+      "story": "A wildfire comes up the valley from the south at 3 m/s. The team at the north-west corner reports through masts on the low ground. No radio link survives inside the fire or across its front.",
+      "hints": [
+        "Where will the fire be at the end of the level?",
+        "Build the evacuation channel on the ground the fire reaches last."
+      ],
+      "debrief": "The low masts carry the call until the front reaches them, then the trail is gone at once. A channel on the high ground was already sampled by the proactive ants, so the call moves to it within moments. A disaster network is planned for where the hazard will be, not where it is."
     }
   },
   "campaign": {

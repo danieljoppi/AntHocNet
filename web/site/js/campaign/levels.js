@@ -25,6 +25,8 @@ export const CHAPTERS = [
     results: { href: RES + 'scenarios/fanet/' } },
   { n: 5,
     results: { href: RES + 'satellite/leo-walker/' } },
+  { n: 6,
+    results: { href: RES + 'scenarios/disaster/' } },
 ].map((c) => {
   localized(c, `chapter.${c.n}`, ['title', 'family', 'blurb']);
   localized(c.results, `chapter.${c.n}.results`, ['label']);
@@ -38,6 +40,18 @@ const car = (i, j) => ({ class: 'car', x: STREET[i], y: STREET[j] });
 const FOREST = { area: [800, 800, 200], range: 300 };
 const canopy = (x0, x1) => ({ poly: [x0, 0, x1, 0, x1, 800, x0, 800], factor: 0.5 });
 const SKY = { area: [2.2e7, 2.2e7], channel: 'isl', shell: { planes: 8, slots: 8 } };
+// Chapter 6 (#583) builds on the #582 features. A rescuer walks the loop of
+// its search block, member k starting k corners on; a mast reaches 350 m, a
+// rescuer's radio 150 m, the command post 300 m.
+const SITE = { area: [1000, 600], range: 250 };
+const rescuer = ([x0, y0, x1, y1], k, speed = 1) => {
+  const corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  const route = [0, 1, 2, 3].map((i) => corners[(k + i) % 4]);
+  return { class: 'rescuer', x: route[0][0], y: route[0][1], route, speed };
+};
+const WEST = [150, 150, 350, 300], EAST = [650, 150, 850, 300];
+const teams = () => [0, 1, 2].map((k) => rescuer(WEST, k, 1 + 0.1 * k))
+  .concat([0, 1, 2].map((k) => rescuer(EAST, k, 1 + 0.1 * k)));
 const station = (lat, lon) => ({ class: 'station', lat, lon });
 
 export const LEVELS = [
@@ -426,6 +440,45 @@ export const LEVELS = [
     stars: { budgetLeft: 0, maxNrl: 1e9 },
     debrief: { links: [['doc.satellite', RES + 'satellite/leo-walker/'], ['doc.regimes', DOC + 'network-regimes/']] },
     par: [{ answer: 0 }],
+  },
+  // --- Chapter 6: Disaster zone (#583) ------------------------------------------------
+  // Two teams search their blocks (devices 1-3 west, 4-6 east) and report to
+  // the command post (device 0).
+  {
+    id: '6.1', chapter: 6,
+    world: { ...SITE, devices: [{ class: 'post', x: 500, y: 300 }, ...teams()],
+             flows: [{ src: 1, dst: 0, rate: 2, start: 3 }, { src: 4, dst: 0, rate: 2, start: 4 }, { src: 0, dst: 2, rate: 2, start: 5 }] },
+    budget: 80, palette: [{ class: 'mast', cost: 40, limit: 2 }], duration: 120,
+    objectives: [{ kind: 'deliver', flows: 'all', ratio: 0.8, from: 20, to: 120 }],
+    stars: { budgetLeft: 0, maxNrl: 40 },
+    debrief: { links: [['doc.disaster', RES + 'scenarios/disaster/'], ['doc.partition', RES + 'scenarios/partition-merge/']] },
+    par: [{ class: 'mast', x: 250, y: 225 }, { class: 'mast', x: 750, y: 225 }],
+  },
+  {
+    id: '6.2', chapter: 6,
+    world: { ...SITE, devices: [{ class: 'post', x: 500, y: 300 }, ...teams(),
+                                { class: 'mast', x: 250, y: 225 }, { class: 'mast', x: 750, y: 225 }],
+             flows: [{ src: 1, dst: 0, rate: 2, start: 3 }, { src: 4, dst: 0, rate: 2, start: 4 }] },
+    budget: 80, palette: [{ class: 'mast', cost: 40, limit: 2 }], duration: 120,
+    hazards: [{ at: 40, do: 'down', device: 7 }, { at: 70, do: 'down', device: 8 }],  // the aftershocks
+    objectives: [{ kind: 'deliver', flows: 'all', ratio: 0.75, from: 30, to: 120 }],
+    stars: { budgetLeft: 0, maxNrl: 40 },
+    debrief: { links: [['doc.disaster', RES + 'scenarios/disaster/'], ['doc.antTypesRepair', DOC + 'ant-types/#repair-ants']] },
+    par: [{ class: 'mast', x: 270, y: 250 }, { class: 'mast', x: 730, y: 250 }],
+  },
+  {
+    id: '6.3', chapter: 6,
+    // The fire front comes up from the south at 3 m/s from 10 s: everything
+    // behind it is burning, and no radio link survives in it or across it.
+    world: { ...SITE, jams: [{ poly: [0, -700, 1000, -700, 1000, 0, 0, 0], from: 10, v: [0, 3] }],
+             devices: [{ class: 'post', x: 900, y: 450 }, ...[0, 1, 2].map((k) => rescuer([60, 420, 220, 560], k)),
+                       { class: 'mast', x: 140, y: 490 }, { class: 'mast', x: 380, y: 250 }, { class: 'mast', x: 700, y: 250 }],
+             flows: [{ src: 1, dst: 0, rate: 2, start: 3 }] },
+    budget: 80, palette: [{ class: 'mast', cost: 40, limit: 2 }], duration: 150,
+    objectives: [{ kind: 'deliver', flows: [0], ratio: 0.75, from: 20, to: 150 }],
+    stars: { budgetLeft: 0, maxNrl: 40 },
+    debrief: { links: [['doc.disaster', RES + 'scenarios/disaster/'], ['doc.antTypesProactive', DOC + 'ant-types/']] },
+    par: [{ class: 'mast', x: 400, y: 520 }, { class: 'mast', x: 700, y: 520 }],
   },
 ].map((l) => {
   const key = `level.${l.id.replace('.', '_')}`;

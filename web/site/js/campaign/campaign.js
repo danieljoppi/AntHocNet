@@ -17,7 +17,7 @@ const $ = (id) => document.getElementById(id);
 
 /** Chapters the design promises next (learn-campaign.md §3), shown locked. */
 const LATER = [
-  { n: 6, ships: 'v2.4.0' }, { n: 7, ships: 'v2.4.0' }, { n: 8, ships: 'v2.4.0' },
+  { n: 7, ships: 'v2.4.0' }, { n: 8, ships: 'v2.4.0' },
 ].map((c) => localized(c, `chapter.${c.n}`, ['title', 'family']));
 
 function el(tag, attrs = {}, ...kids) {

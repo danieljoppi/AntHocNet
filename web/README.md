@@ -156,6 +156,7 @@ computes about routes.
 |---|---|
 | `id`, `chapter` | the level's id (`'1.2'`) and chapter; its words -- `title`, `story`, `mechanism`, `hints`, the debrief text and each quiz's question and options -- are in `web/site/i18n/<lang>.json` under `level.<id with _>` (see Translations); `mechanism` is what the debrief names |
 | `world.area` `[x, y]`, `world.range` | the field (m) and the default radio |
+| `world.jams` `[{ poly, from, until, v: [vx, vy] }]` | #582 jamming zones: a jammer, or a fire front moving at `v` m/s; drawn shaded as they move |
 | `world.devices` `[{ class, x, y, moves, draggable }]` | devices already there, addressed by index; `moves: false` keeps a mobile class still; `draggable` lets the player move it while planning |
 | `world.flows` `[{ src, dst, rate, start }]` | the calls, by device index; `rate` in packets/s |
 | `budget`, `palette` `[{ class, cost, limit, moves }]` | what the player may add, at what cost |
@@ -168,7 +169,9 @@ computes about routes.
 
 Device classes (`DEVICES` in the engine): phone 120 m and walks, laptop 180 m
 and moves now and then, desktop PC 250 m, rooftop router 300 m, repeater
-200 m, home gateway 150 m; all static ones stay put. Progress (best stars per
+200 m, home gateway 150 m; all static ones stay put. Chapter 6 adds the
+rescue radio (150 m, walking the search loop its device's `route` gives), the
+portable mast (350 m) and the command post (300 m). Progress (best stars per
 level) lives in `localStorage` under `ahn-campaign-v1`, read and written in
 try/catch. Chapters unlock 1 → 2 → 3, 4, 5 (any order) → 6-8 → 9; levels in
 a chapter open in order.

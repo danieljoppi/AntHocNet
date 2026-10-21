@@ -556,6 +556,44 @@ for (const scheme of ['light', 'dark']) {
   await p.close();
 }
 
+// 5c. Chapter 6 (#583): with chapters 1-5 and 6.1-6.2 cleared, the Fire front
+//     boss is played through the UI -- two masts on the high ground, the fire
+//     front drawn as it advances -- and clears, with no page error.
+{
+  const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  const ids = ['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '2.1', '2.2', '2.3', '2.4', '3.1', '3.2', '3.3', '3.4',
+    '4.1', '4.2', '4.3', '4.4', '5.1', '5.2', '5.3', '5.4', '5.5', '6.1', '6.2'];
+  const cleared = Object.fromEntries(ids.map((id) => [id, 3]));
+  await p.addInitScript((c) => { try { localStorage.setItem('ahn-campaign-v1', JSON.stringify(c)); } catch { /* none */ } }, cleared);
+  await p.goto(base + '#campaign');
+  await p.locator('#campaign .chip-btn[aria-label^="Level 6.3,"]').click({ timeout: 15000 });
+  await p.locator('#campaign button', { hasText: 'Plan' }).click();
+  await p.locator('#hud button', { hasText: 'Run' }).waitFor();
+  for (const [x, y] of [[400, 520], [700, 520]]) {
+    // The dock keeps a device armed after a placement; a second click would disarm it.
+    if (!await p.evaluate(async () => typeof (await import('./js/app.js')).playground.onPlace === 'function')) await p.locator('#dock .dock-btn').first().click();
+    await p.evaluate(async ([px, py]) => { const { playground } = await import('./js/app.js'); playground.onPlace(px, py); }, [x, y]);
+  }
+  await p.locator('#hud button', { hasText: 'Run' }).click();
+  await p.evaluate(async () => { const { playground } = await import('./js/app.js'); playground.setSpeed(20); });
+  // Read the front once the run passes 40 s (an async predicate would not do
+  // for waitForFunction: its Promise is truthy at once).
+  let fire = [];
+  for (let i = 0; i < 300; i++) {
+    const at = await p.evaluate(async () => { const { playground } = await import('./js/app.js'); return [playground.world.now(), Array.from(playground.world.jamZones())]; });
+    if (at[0] > 40) { fire = at[1]; break; }
+    await p.waitForTimeout(100);
+  }
+  await p.locator('#campTitle', { hasText: 'cleared' }).waitFor({ timeout: 60000 }).catch(() => fail('campaign 6.3: Fire front did not clear'));
+  const stars = await p.evaluate(() => JSON.parse(localStorage.getItem('ahn-campaign-v1') || '{}')['6.3'] || 0);
+  if (fire[0] !== 4) fail(`campaign 6.3: expected the fire front as one 4-corner zone, got ${JSON.stringify(fire.slice(0, 3))}`);
+  else if (errors.length) fail(`campaign 6.3: page errors: ${errors.join(' | ')}`);
+  else if (stars) console.log(`ok: campaign 6.3 — Fire front played through the UI, the front drawn at y ${Math.round(fire[6])} m by 40 s; cleared with ${stars} stars`);
+  await p.close();
+}
+
 // 4. The default ad hoc world mixes walking and standing phones (#542 follow-up).
 {
   const { p, errors } = await page('#manet?seed=1');
