@@ -13,9 +13,11 @@ control: control
 arms:
   control: ""
 
-# The workflow runs from /opt/ns-3 with the repository at $GITHUB_WORKSPACE;
+# nNodes must be the scene's 47: the workflow otherwise passes its default 50,
+# which the harness refuses against the trace (#639). The workflow runs from
+# /opt/ns-3 with the repository at $GITHUB_WORKSPACE;
 # extraArgs is expanded by the job's shell, so the fixture paths resolve there.
-x-disaster: &disaster {scenario: disaster, version: 3.42-opt, time: 900, runs: 10, areaX: 1000, areaY: 500, speed: 20, pause: 30, range: 300, propagation: urban, mobility: trace, transport: udp, harness: compare, protocols: anthocnet, extraArgs: "--traceFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/disaster/disaster.ns2 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/disaster/disaster.flows --buildings=120,170,320,330;680,170,880,330"}
+x-disaster: &disaster {scenario: disaster, version: 3.42-opt, nNodes: 47, time: 900, runs: 10, areaX: 1000, areaY: 500, speed: 20, pause: 30, range: 300, propagation: urban, mobility: trace, transport: udp, harness: compare, protocols: anthocnet, extraArgs: "--traceFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/disaster/disaster.ns2 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/disaster/disaster.flows --buildings=120,170,320,330;680,170,880,330"}
 
 cells:
   disaster-main: {workflow: paper-benchmark.yml, inputs: {<<: *disaster}, blocks: [1, 11]}
