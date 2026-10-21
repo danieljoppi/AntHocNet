@@ -516,7 +516,7 @@ mechanism ([#574](https://github.com/danieljoppi/AntHocNet/issues/574)) keeps it
   neighbour-table junction test and the paper's proposed street-connectivity
   probing are not implemented.
 
-## Ranking stability across six families
+## Ranking stability across the families
 
 ADR-0019 keeps AntHocNet's configuration identical across families, so a
 ranking that changes between them is a property of the network. From v2.4.0
@@ -525,9 +525,11 @@ the statement is read in two terms that need no migrated protocol
 [ADR-0026](../../adr/0026-baselines-are-family-native.md)): AntHocNet's gap
 to each cell's oracle, and AntHocNet against each cell's best native baseline
 (highest mean PDR), both paired per seed. The numbers are the
-[v2.4.0 control campaign](../v2.4.0-campaign.md#results), 20 seeds per cell.
+[v2.4.0 control campaign](../v2.4.0-campaign.md#results), 20 seeds per cell,
+and the disaster family's own [v2.4.0 campaign](disaster.md#results-v240),
+also 20 seeds. Seven families in all.
 
-![AntHocNet against each family's own yardsticks: its paired PDR gap to the oracle and to the best native baseline, in every cell of six families](../charts/families-native.png)
+![AntHocNet against each family's own yardsticks: its paired PDR gap to the oracle and to the best native baseline, in every cell of seven families](../charts/families-native.png)
 
 _Each dot is the mean over 20 paired seeds with its 95 % paired t-CI; filled = the CI excludes 0. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed v2.4.0 cells; the numbers come from [`tools/bench/native_view.py`](https://github.com/danieljoppi/AntHocNet/blob/main/tools/bench/native_view.py)._
 
@@ -539,13 +541,14 @@ _Each dot is the mean over 20 paired seeds with its 95 % paired t-CI; filled = t
 | VANET | AODV | tie (−0.16 and +0.15 pp, CIs straddle 0) | **−39.6 pp** (main), −6.85 pp (sparse) |
 | ISL grid (4 cells) | none measured (OPSPF deferred) | — | 0.00 pp, every cell |
 | LEO shells (3) | OPSPF | **−6.17 pp** (walker16), **−17.48 / −16.94 pp** (Starlink S1, storm) | −5.62 pp (walker16), −15.9 pp (S1); the 1 s hop oracle is not a bound there (#720) |
+| disaster | AODV | tie (+0.58 pp, CI straddles 0) | −3.77 pp; the oracle itself loses 18.5 % to partitions |
 
 **What holds across families:**
 - **AntHocNet leads delivery on open mobile fields**: every MANET cell and
   both FANET cells, against each family's strongest native protocol.
 - **Its tail is shorter than the best native baseline's wherever links break
   abruptly**: −1.3 to −1.6 s on the Nakagami grid cells, −1.9 and −7.9 s on
-  VANET, −4.7 s on sparse FANET.
+  VANET, −4.7 s on sparse FANET, −0.79 s on the disaster scene.
 
 **What does not hold:**
 - **On stable topologies, link state wins.** OLSR leads the static mesh and
@@ -555,10 +558,15 @@ _Each dot is the mean over 20 paired seeds with its 95 % paired t-CI; filled = t
   AntHocNet.** It ties AODV, and the geographic comparators (GPSR, GPCR)
   trail both. VANET main's 39.6 pp gap to the oracle is still the largest in
   the corpus.
+- **On the disaster scene it ties AODV too**, 77.70 % against 77.12 %
+  (+0.58 pp, CI [−0.22, +1.38]), with OLSR 11 pp behind both. AntHocNet is
+  3.8 pp from the oracle, which itself loses 18.5 % of the packets to the
+  partition: no path exists when they are sent
+  ([#727](https://github.com/danieljoppi/AntHocNet/issues/727)).
 - **The overhead ordering is family-dependent.** AntHocNet sends less
   control than AODV on the MANET grid (−23.9 NRL on Gauss-Markov/two-ray)
   but more than OLSR in every family OLSR runs in, and more than AODV on
-  VANET (+13.2 / +20.1).
+  VANET (+13.2 / +20.1) and on the disaster scene (+1.84).
 
 ### Dated record: AntHocNet − AODV across four families (v2.3.0)
 

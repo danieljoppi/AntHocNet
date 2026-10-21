@@ -50,6 +50,7 @@ FAMILIES = [
     ("ISL grid", ["sat-base", "sat-failcell", "sat-corridor", "sat-seam"], []),
     ("LEO", ["leo-walker16", "leo-starlink1", "leo-starlink1-storm"],
      ["opspf", "geo-greedy"]),
+    ("disaster", ["disaster-main"], ["aodv", "olsr"]),
 ]
 LEO_PROTOS = ["anthocnet", "opspf", "geo-greedy", "oracle", "oracle-delay"]
 

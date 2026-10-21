@@ -215,6 +215,7 @@ results page measured in ns-3:
 | **FANET**, a 3-D UAV swarm | `--scenario=fanet` | [FANET](docs/benchmarks/scenarios/fanet.md) |
 | **VANET**, vehicles on a Manhattan grid with building shadowing | `--scenario=vanet` | [VANET](docs/benchmarks/scenarios/vanet.md) (with the four-family ranking statement) |
 | **Satellite**: the ISL +Grid snapshot and a moving Walker / Starlink shell | `isl-grid`, `leo-walker` | [ISL grid](docs/benchmarks/satellite/isl-grid.md), [moving constellation](docs/benchmarks/satellite/leo-walker.md) |
+| **Disaster**, first-responder teams in a partly walled incident area | `--scenario=disaster` | [disaster](docs/benchmarks/scenarios/disaster.md) |
 
 ![One protocol, every network type: the learn site's ad hoc phones, static Wi-Fi mesh routers, cars on a street grid, a drone swarm and an orbiting satellite constellation, plus a mockup of the coming campaign map](docs/images/readme-network-types.png)
  What
@@ -223,7 +224,7 @@ there — the family table, the side-by-side harness comparison, and the
 mechanism-by-mechanism live/inert map are all in
 [docs/network-regimes.md](docs/network-regimes.md).
 
-![AntHocNet against each family's own yardsticks, paired per seed with 95 % CIs: its gap to the oracle, and to the best native baseline, in every cell of six families. Ahead of every native baseline on the MANET grid and FANET, tied with AODV on VANET, behind OLSR on the static mesh and behind OPSPF on the LEO shells](docs/benchmarks/charts/families-native.png)
+![AntHocNet against each family's own yardsticks, paired per seed with 95 % CIs: its gap to the oracle, and to the best native baseline, in every cell of seven families. Ahead of every native baseline on the MANET grid and FANET, tied with AODV on VANET and the disaster scene, behind OLSR on the static mesh and behind OPSPF on the LEO shells](docs/benchmarks/charts/families-native.png)
 
 ## Roadmap
 
