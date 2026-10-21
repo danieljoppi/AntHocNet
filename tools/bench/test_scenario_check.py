@@ -2624,6 +2624,30 @@ def _leo_pdr():
            f"a PDR off the books was not flagged\n{out}")
 
 
+@case("v2.4.0 a cell collected from seed blocks checks each block's oracle against its own block")
+def _seed_blocks_grouped():
+    # Two 5-seed blocks of one static-mesh cell, concatenated by campaign.py
+    # collect. Each block's oracle sits at its own arms' hop count; block 1's
+    # oracle (2.61) is above block 2's OLSR (2.23), which is not a finding.
+    # Before the fix every block's rows shared one group, and the first
+    # block's oracle was compared with the second block's arms.
+    def block(first, o_hops, p_hops):
+        return (f"##CONFIG## scenario=paper nNodes=50 time=900 runs=5 firstRun={first} "
+                "protocols=olsr,oracle\n"
+                "olsr  100.0 0.8 1.5 13.14 1.76 0.06 0.5 1.5 3.175 36847.0 2.2945 "
+                f"{p_hops} 0.9959 0.10\n"
+                "oracle 99.9 0.8 1.7 13.12 0.00 0.26 0.5 1.5 0.000 36829.6 2.2961 "
+                f"{o_hops} 0.9957 3.19\n")
+    text = block(1, "2.61", "2.60") + block(6, "2.23", "2.23")
+    levels, out = run_cell(text)
+    expect("FAIL" not in levels, "blocks-grouped",
+           f"an oracle was compared across seed blocks\n{out}")
+    # Inside one block the rule still fires.
+    levels, out = run_cell(block(1, "2.61", "2.23") + block(6, "2.23", "2.23"))
+    expect("FAIL" in levels and "oracle mean hops 2.61 exceeds olsr's 2.23" in out,
+           "blocks-still-checked", out)
+
+
 def main():
     for name, fn in CASES:
         fn()

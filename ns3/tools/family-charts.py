@@ -18,9 +18,10 @@ output is deterministic (the bootstrap is seeded by stats_util).
   * satellite.png      -- the ISL grid's two dynamic cells, per seed:
     corridor probe delay (bimodal -- a mean would hide it) and failcell
     time-to-reconverge on a log axis.
-  * families-vs-aodv.png -- the cross-family ranking-stability statement
-    as a forest plot: AntHocNet - AODV paired per-seed difference with its
-    95 % t-CI, for every family cell.
+  * families-native.png -- the cross-family view (#711, ADR-0026) as a
+    forest plot over every family cell: AntHocNet's paired per-seed PDR gap
+    to the oracle and to the cell's best native baseline, 95 % t-CI
+    (tools/bench/native_view.py computes both).
   * ../sweep-<name>.png -- the area / pause / scale sweep charts, re-rendered
     by make-charts.py from the committed campaign CSVs each sweep page's
     current block cites (SWEEP_SOURCES below).
@@ -32,7 +33,7 @@ to the cells, the campaign CSVs or the chart code and commits the result.
 Error bars are 95 % CIs over seeds (#293): t-intervals for PDR and NRL, a
 percentile bootstrap for delay99 (a t-CI on a p99 is not defensible), and
 paired per-seed t-intervals for the differences. Which cells feed which
-figure is the CELLS / FAMILY_ROWS tables below: when a results page is
+figure is the CELLS table below: when a results page is
 re-measured, point them at the new cell and re-run.
 """
 import argparse
@@ -74,9 +75,10 @@ GRID = "#e4e3df"
 CONTEXT = "#b4b2ab"
 PROTO_COLOR = {"anthocnet": "#2a78d6", "aodv": "#eb6834", "olsr": "#1baf7a"}
 PROTO_MARKER = {"anthocnet": "o", "aodv": "s", "olsr": "D"}
-ARMS = ["anthocnet", "aodv", "olsr", "dsdv", "aomdv", "gpsr"]
+ARMS = ["anthocnet", "aodv", "olsr", "dsdv", "aomdv", "gpsr", "gpcr", "gpsr3d", "hwmp"]
 LABEL = {"anthocnet": "AntHocNet", "aodv": "AODV", "olsr": "OLSR",
-         "dsdv": "DSDV", "aomdv": "AOMDV", "gpsr": "GPSR", "oracle": "oracle",
+         "dsdv": "DSDV", "aomdv": "AOMDV", "gpsr": "GPSR", "gpcr": "GPCR",
+         "gpsr3d": "3-D GPSR", "hwmp": "HWMP", "opspf": "OPSPF", "oracle": "oracle",
          "geo-greedy": "geo-greedy", "oracle-delay": "oracle-delay"}
 
 plt.rcParams.update({
@@ -90,28 +92,23 @@ plt.rcParams.update({
     "axes.spines.right": False,
 })
 
-# Cells per family page: (row label, cell file). Current = the v2.3.0
-# generation: the campaign's control with AntHocNet from its quiet arm
-# (tools/bench/compose_cell.py; docs/benchmarks/v2.3.0-campaign.md).
+# Cells per family page: (row label, cell file). Current = the v2.4.0
+# generation: the control campaign on each family's native comparators
+# (ADR-0026; docs/benchmarks/v2.4.0-campaign.md). No default moved, so the
+# control is the published generation.
 CELLS = {
     "static-mesh": ("Static Wi-Fi mesh (50 nodes, pause = 900 s)",
-                    [("static mesh", "static-mesh-v230-published.txt")]),
+                    [("static mesh", "static-mesh-v240.txt")]),
     "fanet": ("FANET (3-D Gauss-Markov, 30 m/s)",
-              [("main (range 350 m)", "fanet-main-v230-published.txt"),
-               ("sparse (range 250 m)", "fanet-sparse-v230-published.txt")]),
+              [("main (range 350 m)", "fanet-main-v240.txt"),
+               ("sparse (range 250 m)", "fanet-sparse-v240.txt")]),
     "vanet": ("VANET (Manhattan grid, building shadowing)",
-              [("main (100 vehicles)", "vanet-main-v230-published.txt"),
-               ("sparse (40 vehicles)", "vanet-sparse-v230-published.txt")]),
+              [("main (100 vehicles)", "vanet-main-v240.txt"),
+               ("sparse (40 vehicles)", "vanet-sparse-v240.txt")]),
 }
-GRID_CELLS = [(f"{m} · {c}", f"grid-{m}-{c}-v230-published.txt")
+GRID_CELLS = [(f"{m} · {c}", f"grid-{m}-{c}-v240.txt")
               for m in ("rwp", "ssrwp", "gaussmarkov")
               for c in ("tworay", "nakagami")]
-FAMILY_ROWS = ([("MANET", lab, f) for lab, f in GRID_CELLS]
-               + [("static mesh", "static mesh", "static-mesh-v230-published.txt"),
-                  ("FANET", "main", "fanet-main-v230-published.txt"),
-                  ("FANET", "sparse", "fanet-sparse-v230-published.txt"),
-                  ("VANET", "main", "vanet-main-v230-published.txt"),
-                  ("VANET", "sparse", "vanet-sparse-v230-published.txt")])
 SAT_CORRIDOR = "sat-corridor-app517.txt"
 # The moving-constellation campaign (#297): one cell file per arm,
 # leo-<cell>-<arm>.txt. LEO_ARMS order is the bar order; the oracles are
@@ -119,15 +116,13 @@ SAT_CORRIDOR = "sat-corridor-app517.txt"
 LEO_CELLS = [("walker16", "16 × 16 Walker\n1150 km"),
              ("starlink1", "Starlink S1\n72 × 22, 550 km"),
              ("starlink1-storm", "Starlink S1\n+ 10 % mass failure")]
-LEO_ARMS = ["anthocnet", "aodv", "geo-greedy"]
+LEO_ARMS = ["anthocnet", "opspf", "geo-greedy"]
 
 
 def leo_file(cell, arm):
-    """The v2.3.0 generation's file for one LEO arm: AntHocNet from the quiet
-    arm. OLSR is retired as a LEO arm from v2.3.0 (#707 takes its slot)."""
-    if arm == "anthocnet":
-        return f"leo-{cell}-anthocnet-v230-quiet.txt"
-    return f"leo-{cell}-{arm}-v230.txt"
+    """The v2.4.0 generation's file for one LEO arm. AODV and OLSR are
+    retired as LEO arms (ADR-0026); OPSPF (#707) is the link-state arm."""
+    return f"leo-{cell}-{arm}-v240.txt"
 LEO_CALIB = "leo-hypatia-calib-oracle-delay.txt"
 # Hypatia (Kassing et al., IMC 2020, Fig. 13): Starlink S1, Paris-Luanda RTT
 # "varies between 117 ms and 85 ms" over its 200 s simulation.
@@ -175,20 +170,6 @@ def cell_stats(text):
             else:
                 out[proto][metric] = t_ci(xs)
     return out
-
-
-def paired_diff(text, metric, relative=False):
-    """AntHocNet - AODV per seed: (mean, lo, hi); relative = % of AODV."""
-    runs = bp.parse_runs(text)
-    a, b = runs["anthocnet"], runs["aodv"]
-    diffs = []
-    for seed in sorted(set(a) & set(b)):
-        if metric in a[seed] and metric in b[seed]:
-            d = a[seed][metric] - b[seed][metric]
-            if relative:
-                d = 100.0 * d / b[seed][metric]
-            diffs.append(d)
-    return t_ci(diffs)
 
 
 def style_axis(ax):
@@ -488,41 +469,41 @@ def plot_calibration(cells_dir, outdir):
 
 
 def plot_families(cells_dir, outdir):
-    """Forest plot: AntHocNet - AODV, paired per seed, every family cell."""
-    rows = []
-    for fam, label, f in FAMILY_ROWS:
-        text = read(cells_dir, f)
-        rows.append((fam, label, {
-            "pdr": paired_diff(text, "pdr"),
-            "delay99": paired_diff(text, "delay99", relative=True),
-            "nrl": paired_diff(text, "nrl"),
-        }))
-    panels = [("pdr", "PDR (pp)  →  AntHocNet delivers more"),
-              ("delay99", "delay99 (% of AODV's)  ←  AntHocNet's tail shorter"),
-              ("nrl", "NRL  ←  AntHocNet's overhead lower")]
-    fig, axes = plt.subplots(1, 3, figsize=(12, 4.6), sharey=True)
-    fig.suptitle("AntHocNet − AODV across four families: paired per-seed "
-                 "difference, 95 % CI",
+    """Forest plot, every family cell (#711, ADR-0026): AntHocNet's paired
+    per-seed PDR gap to the oracle, and to the cell's best native baseline."""
+    nv = _load("native_view")
+    rows = nv.readings("v240", cells_dir)
+    panels = [("gap", "AntHocNet − oracle, PDR (pp)"),
+              ("d_pdr", "AntHocNet − best native baseline, PDR (pp)")]
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6.4), sharey=True)
+    fig.suptitle("AntHocNet against each family's own yardsticks: paired "
+                 "per-seed difference, 95 % CI (v2.4.0)",
                  x=0.01, ha="left", fontsize=12, fontweight="bold")
     ys = list(range(len(rows)))[::-1]
     color = PROTO_COLOR["anthocnet"]
-    for ax, (metric, mlabel) in zip(axes, panels):
+    for ax, (key, mlabel) in zip(axes, panels):
         style_axis(ax)
         ax.set_title(mlabel, fontsize=9, color=INK2, fontweight="normal")
         ax.axvline(0, color=INK, linewidth=1.0)
         prev = None
-        for y, (fam, _, d) in zip(ys, rows):
-            if prev is not None and fam != prev:
+        for y, r in zip(ys, rows):
+            if prev is not None and r["family"] != prev:
                 ax.axhline(y + 0.5, color=GRID, linewidth=1.0)
-            prev = fam
-            m, lo, hi = d[metric]
+            prev = r["family"]
+            if r.get(key) is None:
+                if key == "d_pdr":
+                    ax.text(0, y, "no native baseline (OPSPF deferred)",
+                            fontsize=7, color=INK2, va="center", ha="center")
+                continue
+            m, lo, hi = r[key], r[key + "_lo"], r[key + "_hi"]
             sig = lo > 0 or hi < 0
             ax.plot([lo, hi], [y, y], color=color, linewidth=1.5)
             ax.plot(m, y, "o", markersize=7, markeredgewidth=1.5,
                     color=color if sig else SURFACE, markeredgecolor=color)
     axes[0].set_yticks(ys)
-    axes[0].set_yticklabels([f"{fam}: {lab}" if lab != fam else fam
-                             for fam, lab, _ in rows])
+    axes[0].set_yticklabels(
+        [f"{r['family']}: {r['cell'].removeprefix('grid-').removeprefix('leo-')}"
+         + (f"  (vs {r['best']})" if r["best"] else "") for r in rows], fontsize=8)
     axes[0].set_ylim(-0.6, len(rows) - 0.4)
     handles = [Line2D([], [], marker="o", color=color, linestyle="",
                       markersize=7, label="CI excludes 0"),
@@ -530,9 +511,9 @@ def plot_families(cells_dir, outdir):
                       markeredgewidth=1.5, linestyle="", markersize=7,
                       label="not significant")]
     fig.legend(handles=handles, loc="upper left", ncol=2, frameon=False,
-               fontsize=9, bbox_to_anchor=(0.005, 0.945))
-    fig.tight_layout(rect=(0, 0, 1, 0.90))
-    out = os.path.join(outdir, "families-vs-aodv.png")
+               fontsize=9, bbox_to_anchor=(0.005, 0.95))
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    out = os.path.join(outdir, "families-native.png")
     fig.savefig(out, dpi=130)
     plt.close(fig)
     return out

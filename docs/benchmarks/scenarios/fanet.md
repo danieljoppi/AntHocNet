@@ -159,9 +159,48 @@ That is the path dilation the survey reports for face recovery. Sparse voids
 are geographic routing's known weakness, and the sparse cell shows it. The
 20-seed cells are published with the v2.4.0 control campaign.
 
+## Restated at v2.4.0: family-native baselines (ADR-0026)
+
+> **Current numbers: v2.4.0.** From v2.4.0 every family is compared against
+> its own protocols plus its oracle
+> ([ADR-0026](https://github.com/danieljoppi/AntHocNet/blob/main/docs/adr/0026-baselines-are-family-native.md)).
+> These cells are the [v2.4.0 control campaign](../v2.4.0-campaign.md#results)
+> at the shipped defaults (no default moved), 20 seeds, mean ± 95 % t-interval.
+> AntHocNet's rows and every kept baseline row are byte-identical to v2.3.0's.
+> The blocks below this one are the dated record of their campaigns; their
+> migrant rows are **retired**, not deleted.
+
+**Native set:** AntHocNet, AODV, OLSR (the FANET literature's standard baselines), 3-D GPSR ([#710](https://github.com/danieljoppi/AntHocNet/issues/710)), the oracle. **Retired:** DSDV, AOMDV.
+
+#### main (range 350 m)
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 94.47 ± 0.42 | 208.8 | 3.69 |
+| AODV | 86.11 ± 1.01 | 500.8 | 4.07 |
+| OLSR | 47.86 ± 1.05 | 31.1 | 1.35 |
+| 3-D GPSR | 88.27 ± 0.77 | 181.8 | 0.95 |
+| oracle | 96.88 ± 0.42 | 16.0 | 0.00 |
+
+AntHocNet − oracle -2.41 [-2.68, -2.15] pp; against the best native baseline (gpsr3d, 88.27 %): dPDR +6.20 [+5.72, +6.67] pp, d delay99 +27.00 [-30.40, +76.05] ms, d NRL +2.74 [+2.65, +2.84] (PAIRED-MIXED).
+
+#### sparse (range 250 m)
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 52.57 ± 1.69 | 292.3 | 10.76 |
+| AODV | 50.05 ± 1.80 | 4962.5 | 4.60 |
+| OLSR | 16.57 ± 0.77 | 19.6 | 3.59 |
+| 3-D GPSR | 42.17 ± 1.62 | 759.6 | 2.00 |
+| oracle | 60.27 ± 1.85 | 21.3 | 0.00 |
+
+AntHocNet − oracle -7.70 [-8.12, -7.28] pp; against the best native baseline (aodv, 50.05 %): dPDR +2.52 [+1.80, +3.23] pp, d delay99 -4670.20 [-5084.65, -4324.05] ms, d NRL +6.16 [+5.74, +6.57] (PAIRED-MIXED).
+
+3-D GPSR is the best native baseline on the main cell, +2.16 pp [+1.15, +3.17] over AODV with 3.1 less NRL. On the sparse cell it trails AODV by 7.9 pp: voids are geographic routing's known weakness. OLSR stays far behind on both (47.9 % and 16.6 %).
+
 ## Restated at v2.3.0 defaults (quiet mode on)
 
-> **Current numbers: v2.3.0 defaults.** v2.3.0 turns quiet mode on by
+> **Dated record: v2.3.0 defaults** (superseded by the v2.4.0 block above). v2.3.0 turns quiet mode on by
 > default ([#571](https://github.com/danieljoppi/AntHocNet/issues/571), the
 > [v2.3.0 campaign](../v2.3.0-campaign.md#results)). AntHocNet's rows below are the
 > campaign's `quiet` arm. Every baseline row is the campaign's `control`, and the

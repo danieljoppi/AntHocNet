@@ -223,7 +223,7 @@ there — the family table, the side-by-side harness comparison, and the
 mechanism-by-mechanism live/inert map are all in
 [docs/network-regimes.md](docs/network-regimes.md).
 
-![AntHocNet minus AODV across the four families, paired per seed with 95 % CIs: delivery gains on MANET, static mesh and FANET and a tie on VANET, a shorter delay tail in every cell, and an overhead advantage that reverses on VANET](docs/benchmarks/charts/families-vs-aodv.png)
+![AntHocNet against each family's own yardsticks, paired per seed with 95 % CIs: its gap to the oracle, and to the best native baseline, in every cell of six families. Ahead of every native baseline on the MANET grid and FANET, tied with AODV on VANET, behind OLSR on the static mesh and behind OPSPF on the LEO shells](docs/benchmarks/charts/families-native.png)
 
 ## Roadmap
 
