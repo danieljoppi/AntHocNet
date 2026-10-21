@@ -560,7 +560,8 @@
     "regimes": "Regimes de rede",
     "disaster": "Resultados de desastre",
     "partition": "Partição e reunião",
-    "tactical": "A célula tática de banda estreita"
+    "tactical": "A célula tática de banda estreita",
+    "sagin": "Resultados SAGIN"
   },
   "device": {
     "phone": {
@@ -642,6 +643,14 @@
     "vehicle": {
       "label": "Veículo de retransmissão",
       "note": "percorre sua rota pela estrada, 300 m"
+    },
+    "haps": {
+      "label": "HAPS",
+      "note": "uma plataforma de grande altitude, a 20 km, 450 km"
+    },
+    "radio": {
+      "label": "Rádio de solo",
+      "note": "na cidade, 50 km"
     }
   },
   "chapter": {
@@ -703,7 +712,15 @@
     },
     "8": {
       "title": "Do céu ao espaço",
-      "family": "espaço-ar-terra"
+      "family": "espaço-ar-terra",
+      "blurb": "Uma aldeia e uma cidade separadas por um oceano, ligadas pelo chão, pelo ar e pelo espaço ao mesmo tempo. Enlaces em três camadas com atrasos muito diferentes.",
+      "results": {
+        "label": "Resultados SAGIN"
+      }
+    },
+    "9": {
+      "title": "Equipe vermelha",
+      "family": "segurança"
     }
   },
   "level": {
@@ -1076,6 +1093,52 @@
         "Mastros ao longo da estrada, a uns 300 m um do outro, mantêm a cauda do comboio ao alcance."
       ],
       "debrief": "Um comboio é uma corrente em movimento: seus enlaces com a rede fixa mudam à medida que ele anda, na ordem que a estrada impõe. Mastros ao longo da estrada passam a cauda de um para o outro, e as formigas seguem cada passagem. Os resultados de VANET medem o mesmo padrão numa grade de ruas."
+    },
+    "8_1": {
+      "title": "Três camadas",
+      "mechanism": "o feromônio escolhendo entre atrasos de enlace muito diferentes",
+      "story": "Uma aldeia e uma cidade a 2400 km uma da outra, separadas por um oceano. Não há caminho por terra. Acima, sete HAPS a 20 km de altura atravessam o oceano; mais alto ainda, uma camada de satélites passa sobre as estações de solo das duas. Observe por onde vão as chamadas.",
+      "hints": [
+        "Um salto de HAPS tem uns 400 km: pouco mais de um milissegundo de luz.",
+        "Subir a um satélite a 1200 km e descer de novo é bem mais longe do que a largura do oceano."
+      ],
+      "debrief": "As formigas se fixam na corrente de HAPS em segundos: as formigas de ida que foram por ali voltaram primeiro, então o feromônio dela cresceu mais rápido. O caminho por satélite existe e funciona, mas cada subida e descida soma milhares de quilômetros. Um feromônio que acompanha o atraso escolhe o caminho baixo pelo céu.",
+      "quiz1": {
+        "question": "Por qual caminho as formigas se fixam para as chamadas?",
+        "options": [
+          "A corrente de HAPS, baixa sobre o oceano",
+          "Subindo pelos satélites e descendo de novo",
+          "Metade por um, metade pelo outro, sempre"
+        ]
+      }
+    },
+    "8_2": {
+      "title": "Travessia do oceano",
+      "mechanism": "trilhas sensíveis ao atraso entre camadas",
+      "story": "As chamadas vão pela corrente de HAPS. Aos 40 s a HAPS do meio do oceano falha; aos 80 s ela volta. Preveja, depois observe.",
+      "hints": [
+        "Os satélites nunca pararam de passar sobre as cidades.",
+        "Quando o caminho mais rápido volta, qual trilha cresce mais rápido?"
+      ],
+      "debrief": "Quando a HAPS do meio falha, a corrente se parte e as formigas recorrem ao caminho por satélite: mais lento e mudando a cada passagem, mas presente. Quando a HAPS volta, as formigas proativas reencontram o caminho curto e as chamadas voltam para ele. Cada camada continua sendo uma trilha que a colônia pode usar.",
+      "quiz1": {
+        "question": "A HAPS do meio falha aos 40 s e volta aos 80 s. O que leva as chamadas?",
+        "options": [
+          "Os satélites enquanto ela está fora, depois a corrente de HAPS de novo",
+          "Nada até ela voltar: a corrente era o único caminho",
+          "Os satélites, para sempre: as formigas nunca voltam"
+        ]
+      }
+    },
+    "8_3": {
+      "title": "Uma só rede",
+      "mechanism": "o protocolo inteiro, todo tipo de rede",
+      "story": "O final. A aldeia não tem estação de solo, e a corrente de HAPS tem um buraco no meio do oceano. Você pode comprar um aparelho: uma HAPS para o buraco, ou uma estação de solo na aldeia. Aos 60 s uma tempestade solar derruba um satélite em cada oito.",
+      "hints": [
+        "Que camada a tempestade atinge?",
+        "Por uma estação as chamadas vão pela camada de satélites: uma passagem a cada poucos segundos."
+      ],
+      "debrief": "Uma HAPS fecha a corrente e as chamadas cruzam o oceano pelo ar, sem que a tempestade as toque. Uma estação na aldeia também conecta, mas pela camada de satélites: passagens a cada poucos segundos, depois a tempestade, e aqui ela entrega cerca de um terço das chamadas. Um só protocolo rodou todas as redes desta campanha; o que mudou foi por onde as trilhas podiam passar."
     }
   },
   "campaign": {

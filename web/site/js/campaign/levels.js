@@ -29,6 +29,8 @@ export const CHAPTERS = [
     results: { href: RES + 'scenarios/disaster/' } },
   { n: 7,
     results: { href: RES + 'scenarios/disaster/#the-tactical-narrowband-cell-deferred' } },
+  { n: 8,
+    results: { href: RES + 'satellite/sagin/' } },
 ].map((c) => {
   localized(c, `chapter.${c.n}`, ['title', 'family', 'blurb']);
   localized(c.results, `chapter.${c.n}.results`, ['label']);
@@ -55,6 +57,16 @@ const WEST = [150, 150, 350, 300], EAST = [650, 150, 850, 300];
 // Chapter 7 (#584): a valley 1200 x 600 m with a road along y = 300 and
 // ridges at y = 100 and 500; narrowband radios at 64 kbit/s.
 const VALLEY = { area: [1200, 600], range: 250, bitrate: 64e3 };
+// Chapter 8 (#585): a village (10 N, 43 E) and a city (10 N, 65 E), 2400 km
+// apart across an ocean, on the mixed channel; the side of the globe the
+// default camera faces. Radios reach 50 km; each town
+// has a ground station under the orbit world's shell; seven HAPS slots,
+// 20 km up and ~400 km apart, span the ocean between them.
+const OCEAN = { area: [2.2e7, 2.2e7], channel: 'mixed', range: 5e4, shell: { planes: 8, slots: 8 } };
+const hapsAt = (k) => ({ class: 'haps', lat: 10, lon: 43 + k * 22 / 6 });
+const towns = () => [{ class: 'radio', lat: 10.03, lon: 43 }, { class: 'radio', lat: 9.97, lon: 43.04 },
+  { class: 'station', lat: 10, lon: 43 }, { class: 'radio', lat: 10.03, lon: 65 }, { class: 'radio', lat: 9.97, lon: 64.96 },
+  { class: 'station', lat: 10, lon: 65 }];  // devices 0-2 the village, 3-5 the city
 const teams = () => [0, 1, 2].map((k) => rescuer(WEST, k, 1 + 0.1 * k))
   .concat([0, 1, 2].map((k) => rescuer(EAST, k, 1 + 0.1 * k)));
 const station = (lat, lon) => ({ class: 'station', lat, lon });
@@ -525,6 +537,45 @@ export const LEVELS = [
     stars: { budgetLeft: 0, maxNrl: 40 },
     debrief: { links: [['doc.vanet', RES + 'scenarios/vanet/'], ['doc.regimes', DOC + 'network-regimes/']] },
     par: [{ class: 'mast', x: 400, y: 260 }, { class: 'mast', x: 700, y: 260 }, { class: 'mast', x: 1000, y: 260 }],
+  },
+  // --- Chapter 8: Sky to space (SAGIN, #585) ---------------------------------------------
+  // Watch-and-predict, as Chapter 5: the links are set by the sky, not by a
+  // click on the globe. 8.3 lets the player buy one device at a fixed site.
+  {
+    id: '8.1', chapter: 8,
+    world: { ...OCEAN, devices: [...towns(), ...[0, 1, 2, 3, 4, 5, 6].map(hapsAt)],
+             flows: [{ src: 0, dst: 3, rate: 2, start: 3 }, { src: 4, dst: 1, rate: 2, start: 4 }] },
+    budget: 0, palette: [], duration: 90,
+    objectives: [{ kind: 'quiz', answer: 0 }, { kind: 'deliver', flows: 'all', ratio: 0.8, from: 15, to: 90 }],
+    stars: { budgetLeft: 0, maxNrl: 1e9 },
+    debrief: { links: [['doc.sagin', RES + 'satellite/sagin/'], ['doc.howItWorks', DOC + 'ant-colony-routing/']] },
+    par: [{ answer: 0 }],
+  },
+  {
+    id: '8.2', chapter: 8,
+    world: { ...OCEAN, devices: [...towns(), ...[0, 1, 2, 3, 4, 5, 6].map(hapsAt)],
+             flows: [{ src: 0, dst: 3, rate: 2, start: 3 }, { src: 4, dst: 1, rate: 2, start: 4 }] },
+    budget: 0, palette: [], duration: 120,
+    hazards: [{ at: 40, do: 'down', device: 9 }, { at: 80, do: 'up', device: 9 }],  // the middle HAPS
+    objectives: [{ kind: 'quiz', answer: 0 }, { kind: 'deliver', flows: 'all', ratio: 0.55, from: 45, to: 120 }],
+    stars: { budgetLeft: 0, maxNrl: 1e9 },
+    debrief: { links: [['doc.sagin', RES + 'satellite/sagin/'], ['doc.antTypesProactive', DOC + 'ant-types/']] },
+    par: [{ answer: 0 }],
+  },
+  {
+    id: '8.3', chapter: 8,
+    // The finale: the village has no station and the HAPS chain has a gap
+    // over mid-ocean. One purchase joins them; a solar storm takes every
+    // 8th satellite out at 60 s.
+    world: { ...OCEAN, devices: [...towns().filter((d, i) => i !== 2), ...[0, 1, 2, 4, 5, 6].map(hapsAt)],
+             flows: [{ src: 0, dst: 2, rate: 2, start: 3 }, { src: 3, dst: 1, rate: 2, start: 4 }] },
+    budget: 60, palette: [{ class: 'haps', cost: 50, limit: 1, spec: { lat: 10, lon: 54 } },
+                          { class: 'station', cost: 60, limit: 1, spec: { lat: 10, lon: 43 } }], duration: 150,
+    hazards: [{ at: 60, do: 'storm', every: 8, offset: 2 }],
+    objectives: [{ kind: 'deliver', flows: 'all', ratio: 0.75, from: 20, to: 150 }],
+    stars: { budgetLeft: 10, maxNrl: 1e9 },
+    debrief: { links: [['doc.sagin', RES + 'satellite/sagin/'], ['doc.results', RES]] },
+    par: [{ class: 'haps', x: 54, y: 10 }],
   },
 ].map((l) => {
   const key = `level.${l.id.replace('.', '_')}`;

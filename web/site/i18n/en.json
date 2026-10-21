@@ -560,7 +560,8 @@
     "regimes": "Network regimes",
     "disaster": "Disaster results",
     "partition": "Partition and re-merge",
-    "tactical": "The tactical narrowband cell"
+    "tactical": "The tactical narrowband cell",
+    "sagin": "SAGIN results"
   },
   "device": {
     "phone": {
@@ -642,6 +643,14 @@
     "vehicle": {
       "label": "Relay vehicle",
       "note": "drives its route along the road, 300 m"
+    },
+    "haps": {
+      "label": "HAPS",
+      "note": "a high-altitude platform, 20 km up, 450 km"
+    },
+    "radio": {
+      "label": "Ground radio",
+      "note": "in the town, 50 km"
     }
   },
   "chapter": {
@@ -703,7 +712,15 @@
     },
     "8": {
       "title": "Sky to space",
-      "family": "space-air-ground"
+      "family": "space-air-ground",
+      "blurb": "A village and a city across an ocean, joined on the ground, in the air and in space at once. Links in three layers with very different delays.",
+      "results": {
+        "label": "SAGIN results"
+      }
+    },
+    "9": {
+      "title": "Red team",
+      "family": "security"
     }
   },
   "level": {
@@ -1076,6 +1093,52 @@
         "Masts along the road, about 300 m apart, keep the convoy's tail in reach."
       ],
       "debrief": "A convoy is a moving chain: its links to the fixed network change as it drives, in the order the road sets. Masts along the road hand the tail from one to the next, and the ants follow each handover. The VANET results measure the same pattern on a street grid."
+    },
+    "8_1": {
+      "title": "Three layers",
+      "mechanism": "pheromone choosing between very different link delays",
+      "story": "A village and a city 2400 km apart across an ocean. There is no ground path. Above, seven HAPS 20 km up span the ocean; higher still, a shell of satellites passes over both towns' ground stations. Watch which way the calls go.",
+      "hints": [
+        "A HAPS hop is about 400 km: just over a millisecond of light.",
+        "Up to a satellite 1200 km high and down again is far longer than the ocean is wide."
+      ],
+      "debrief": "The ants settle on the HAPS chain within seconds: forward ants that went that way came back first, so its pheromone grew fastest. The satellite path is there and working, but every hop up and down adds thousands of kilometres. Pheromone that tracks delay picks the low road through the sky.",
+      "quiz1": {
+        "question": "Which way do the ants settle on for the calls?",
+        "options": [
+          "The HAPS chain, low over the ocean",
+          "Up through the satellites and down again",
+          "Half one way, half the other, always"
+        ]
+      }
+    },
+    "8_2": {
+      "title": "Ocean crossing",
+      "mechanism": "delay-aware trails across layers",
+      "story": "The calls run over the HAPS chain. At 40 s the HAPS over mid-ocean fails; at 80 s it is back. Predict, then watch.",
+      "hints": [
+        "The satellites never stopped passing over the towns.",
+        "When the faster path returns, which trail grows fastest?"
+      ],
+      "debrief": "When the middle HAPS fails, the chain is cut and the ants fall back on the satellite path: slower and changing with every handover, but there. When the HAPS returns, the proactive ants find the short way again and the calls move back to it. Every layer stays a trail the colony can use.",
+      "quiz1": {
+        "question": "The middle HAPS fails at 40 s and returns at 80 s. What carries the calls?",
+        "options": [
+          "The satellites while it is down, then the HAPS chain again",
+          "Nothing until it returns: the chain was the only path",
+          "The satellites, for good: the ants never go back"
+        ]
+      }
+    },
+    "8_3": {
+      "title": "One network",
+      "mechanism": "the whole protocol, every network type",
+      "story": "The finale. The village has no ground station, and the HAPS chain has a gap over mid-ocean. You can buy one device: a HAPS for the gap, or a ground station in the village. At 60 s a solar storm takes out one satellite in eight.",
+      "hints": [
+        "Which layer does the storm touch?",
+        "Through a station the calls ride the shell: a handover every few seconds."
+      ],
+      "debrief": "One HAPS closes the chain and the calls cross the ocean in the air, untouched by the storm. A village station also connects, but over the shell: handovers every few seconds, then the storm, and here it delivers about a third of the calls. One protocol ran every network in this campaign; what changed was where the trails could go."
     }
   },
   "campaign": {
