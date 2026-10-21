@@ -101,6 +101,45 @@ The parity gate covers each feature through three built-in worlds:
 - `forest`: canopy zones, ground radios and battery-powered drones;
 - `orbit`: the shell with four ground stations.
 
+Scenario features for chapters 6–8 (#582), on the same terms: none is
+routing logic, and each is inert until a scenario uses it.
+
+```js
+w.addJammingZone([480,180, 720,180, 720,420, 480,420], 30, 90, 0, 0); // a jammer, 30-90 s
+w.addJammingZone([-60,0, 0,0, 0,400, -60,400], 20, 1e18, 4, 0);       // a fire front, east at 4 m/s
+w.jamZones();                 // Float64Array [n, x0, y0, ...] of the zones active now, where they are
+w.scheduleNodeUp(3, 45, false); // an aftershock destroys node 3 at 45 s (true = restored)
+w.setMixedChannel(5e4);       // ground, air and space in one world; 50 km world range
+w.setSatellite(13);           // Mixed: node 13 links only by its ISLs and to stations that see it
+```
+
+- **Jamming zones:** while `from <= t < until`, a disk or urban link fails if
+  either end is inside the polygon or the link crosses one of its edges. The
+  polygon moves at `(vx, vy)` m/s from `from` on. It covers every altitude.
+  Satellite links are never jammed.
+- **Scripted events:** `scheduleNodeUp` puts a `setNodeUp` on the world's
+  own event queue at time t, so it is in the trace the parity gate diffs.
+  The campaign's `hazards` stay front-end events.
+- **Mixed layers** (`ChannelKind::Mixed`, `channel()` = 3): satellites link
+  by their ISLs and to the ground stations that see them (the #575 elevation
+  rule). Every other pair, ground or air, links by the disk rule in 3-D. So
+  here a ground station also links to its neighbours: a station is a ground
+  node with an uplink. Every link's delay is its length at the speed of
+  light, so a HAPS chain and a satellite path differ the way they do in the
+  sky.
+
+The parity gate covers each feature through three built-in worlds:
+- `disaster`: two rescue teams on search loops, medics, portable masts, an
+  aftershock (one searcher destroyed, the east mast down 50–90 s) and a fire
+  front;
+- `valley`: 64 kbit/s radios, road radios, ridge masts, a convoy and a jammer
+  over the road from 30 s to 90 s;
+- `sagin`: a village and a city 2400 km apart, joined by a chain of seven
+  HAPS and by the orbit world's shell.
+
+`ahn-web-features` (`web/test/features.cpp`) checks each feature's link
+rules on hand-built worlds, natively and in WASM (`parity.sh` runs it).
+
 Event kinds (`Ev` in `sim.h`, append-only): 1 TxAnt, 2 RxAnt, 3 TxData,
 4 Deliver, 5 Drop, 6 RouteAdd, 7 RouteDel, 8 Queue, 9 TxFail, 10 NodeDown,
 11 NodeUp.

@@ -20,6 +20,16 @@ emcmake cmake -S web -B web/build-wasm -DCMAKE_BUILD_TYPE=Release >/dev/null
 cmake --build web/build-wasm -j"$(nproc)" >/dev/null
 
 fail=0
+# #582: the scenario features' link rules, in both builds.
+web/build/ahn-web-features > "$OUT/features-native.txt" || { cat "$OUT/features-native.txt"; fail=1; }
+node web/build-wasm/ahn-web-features.js > "$OUT/features-wasm.txt" || { cat "$OUT/features-wasm.txt"; fail=1; }
+if cmp -s "$OUT/features-native.txt" "$OUT/features-wasm.txt"; then
+    echo "ok: features — $(grep -c '^ok:' "$OUT/features-native.txt") link-rule checks pass in both builds"
+else
+    echo "FAIL: features — native and WASM differ"
+    diff "$OUT/features-native.txt" "$OUT/features-wasm.txt" | head -20
+    fail=1
+fi
 for s in $SEEDS; do
     web/build/ahn-web-trace "$SECONDS_RUN" "$s" > "$OUT/native-$s.txt"
     node web/build-wasm/ahn-web-trace.js "$SECONDS_RUN" "$s" > "$OUT/wasm-$s.txt"

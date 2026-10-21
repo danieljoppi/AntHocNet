@@ -278,11 +278,139 @@ void orbit(World& w) {
     w.addFlow(gs[2], gs[3], 4, 4, 1e9);
 }
 
+void disaster(World& w) {
+    // Disaster zone (#582, chapter 6): two rescue teams search separate
+    // blocks, each walking a fixed search loop; two medics shuttle between
+    // the blocks and the command post. Portable masts bridge the teams to
+    // the post. Scripted events: an aftershock destroys a searcher at 45 s
+    // and knocks the east mast out from 50 s to 90 s. A fire front, a
+    // jamming zone 60 m deep, sweeps east across the west block from 20 s.
+    w.setArea(1000, 600, 0);
+    w.setDiskChannel(250);
+    w.setNodeRange(w.addNode(500, 560, 0), 300);  // 0: command post
+    w.setNodeRange(w.addNode(300, 350, 0), 300);  // 1: west mast
+    w.setNodeRange(w.addNode(700, 350, 0), 300);  // 2: east mast
+    // A team walks the loop of its block; member k starts k corners on.
+    const double blocks[2][2] = {{80, 380}, {620, 920}};
+    for (const auto& b : blocks) {
+        const Vec3 loop[4] = {Vec3{b[0], 80, 0}, Vec3{b[1], 80, 0}, Vec3{b[1], 380, 0},
+                              Vec3{b[0], 380, 0}};
+        for (int k = 0; k < 5; ++k) {
+            Mobility m;
+            m.kind = MobilityKind::Route;
+            m.speedMin = 1 + 0.1 * k;  // searching on foot
+            for (int i = 0; i < 4; ++i) m.route.push_back(loop[(k + i) % 4]);
+            const Vec3 at = m.route[0];
+            w.setMobility(w.addNode(at.x, at.y, 0), m);  // 3-7 west, 8-12 east
+        }
+    }
+    Mobility medic;
+    medic.kind = MobilityKind::Route;
+    medic.speedMin = 2;  // carrying
+    medic.route = {Vec3{230, 230, 0}, Vec3{500, 500, 0}, Vec3{770, 230, 0}, Vec3{500, 500, 0}};
+    w.setMobility(w.addNode(230, 230, 0), medic);  // 13
+    medic.route = {Vec3{770, 230, 0}, Vec3{500, 500, 0}, Vec3{230, 230, 0}, Vec3{500, 500, 0}};
+    w.setMobility(w.addNode(770, 230, 0), medic);                        // 14
+    w.addJammingZone({-60, 0, 0, 0, 0, 400, -60, 400}, 20, 1e18, 4, 0);  // the fire front
+    w.scheduleNodeUp(3, 45, false);                                      // the aftershock
+    w.scheduleNodeUp(2, 50, false);
+    w.scheduleNodeUp(2, 90, true);
+    w.addFlow(4, 0, 2, 5, 1e9);
+    w.addFlow(9, 0, 2, 6, 1e9);
+    w.addFlow(0, 5, 2, 7, 1e9);
+}
+
+void valley(World& w) {
+    // Contested zone (#582, chapter 7): narrowband radios (64 kbit/s) in a
+    // valley. A road runs along it; masts stand on the two ridges; a convoy of
+    // three relay vehicles drives the road. A jammer over the middle of the
+    // valley cuts every link touching it from 30 s to 90 s, so the bases
+    // route round it over the ridges instead of along the road radios.
+    w.setArea(1200, 600, 0);
+    w.setDiskChannel(250);
+    w.setBitrate(64e3);
+    w.setNodeRange(w.addNode(60, 300, 0), 350);    // 0: west base
+    w.setNodeRange(w.addNode(1140, 300, 0), 350);  // 1: east base
+    for (double y : {100.0, 500.0})
+        for (double x : {300.0, 600.0, 900.0}) w.setNodeRange(w.addNode(x, y, 0), 350);  // 2-7
+    for (double x : {350.0, 600.0, 850.0}) w.setNodeRange(w.addNode(x, 300, 0), 300);  // 8-10: road
+    const Vec3 road[3] = {Vec3{100, 300, 0}, Vec3{600, 300, 0}, Vec3{1100, 300, 0}};
+    for (int k = 0; k < 3; ++k) {
+        Mobility m;
+        m.kind = MobilityKind::Route;
+        m.speedMin = 8;
+        // Out and back along the road, each vehicle starting at a different stop.
+        const Vec3 stops[4] = {road[0], road[1], road[2], road[1]};
+        for (int i = 0; i < 4; ++i) m.route.push_back(stops[(k + i) % 4]);
+        const Vec3 at = m.route[0];
+        const int v = w.addNode(at.x, at.y, 0);  // 11-13: the convoy
+        w.setNodeRange(v, 300);
+        w.setMobility(v, m);
+    }
+    w.addJammingZone({480, 180, 720, 180, 720, 420, 480, 420}, 30, 90);  // the jammer
+    w.addFlow(0, 1, 1, 5, 1e9);
+    w.addFlow(1, 0, 1, 6, 1e9);
+}
+
+void sagin(World& w) {
+    // Sky to space (#582, chapter 8): a village and a city 2400 km apart
+    // across an ocean, joined two ways at once. In the air, a chain of seven
+    // HAPS 20 km up, 400 km apart; in space, the orbit world's shell, which
+    // each town's ground station reaches above 25 deg elevation. Ground and
+    // air nodes link by the disk rule, satellites by ISLs: the Mixed channel.
+    constexpr int kPlanes = 8, kSlots = 8;
+    constexpr double kPi = 3.141592653589793;
+    constexpr double kEarth = 6.371e6, kAlt = 1.2e6, kHaps = 2e4;
+    const double cx = 1.1e7, cy = 1.1e7;
+    w.setArea(2.2e7, 2.2e7, 0);
+    w.setMixedChannel(5e4);  // a ground radio reaches 50 km
+    auto at = [&](double latDeg, double lonDeg, double alt) {
+        const double lat = latDeg * kPi / 180, lon = lonDeg * kPi / 180;
+        const double r = kEarth + alt, cl = detCos(lat);
+        const double x = cx + r * cl * detCos(lon), y = cy + r * cl * detSin(lon);
+        const double z = r * detSin(lat);
+        return w.addNode(x, y, z);
+    };
+    const double village = -20, city = 2;  // longitudes on the 10 deg N parallel
+    at(10.03, village, 0);                 // 0, 1: village radios
+    at(9.97, village + 0.04, 0);
+    w.setGroundStation(at(10, village, 0), 25);  // 2: village station
+    at(10.03, city, 0);                          // 3, 4: city radios
+    at(9.97, city - 0.04, 0);
+    w.setGroundStation(at(10, city, 0), 25);  // 5: city station
+    for (int k = 0; k <= 6; ++k)              // 6-12: the HAPS chain
+        w.setNodeRange(at(10, village + k * (city - village) / 6, kHaps), 4.5e5);
+    Mobility m;
+    m.kind = MobilityKind::Orbit;
+    m.orbitRadius = kEarth + kAlt;
+    m.orbitInc = 53 * kPi / 180;
+    m.orbitRate = 2 * kPi / 120;
+    const int first = w.nodeCount();
+    for (int p = 0; p < kPlanes; ++p) {
+        for (int s = 0; s < kSlots; ++s) {
+            m.orbitRaan = p * 2 * kPi / kPlanes;
+            m.orbitPhase = s * 2 * kPi / kSlots + p * 2 * kPi / (kPlanes * kSlots);
+            const int n = w.addNode(0, 0, 0);
+            w.setMobility(n, m);
+            w.setSatellite(n);
+        }
+    }
+    for (int p = 0; p < kPlanes; ++p) {
+        for (int s = 0; s < kSlots; ++s) {
+            const int id = first + p * kSlots + s;
+            w.addIslLink(id, first + p * kSlots + (s + 1) % kSlots);
+            w.addIslLink(id, first + ((p + 1) % kPlanes) * kSlots + s);
+        }
+    }
+    w.addFlow(0, 3, 4, 3, 1e9);
+    w.addFlow(4, 1, 4, 4, 1e9);
+}
+
 }  // namespace
 
 std::vector<std::string> scenarioNames() {
-    return {"line",  "manet",     "town", "mesh",   "fanet",
-            "vanet", "satellite", "city", "forest", "orbit"};
+    return {"line", "manet",  "town",  "mesh",     "fanet",  "vanet", "satellite",
+            "city", "forest", "orbit", "disaster", "valley", "sagin"};
 }
 
 bool buildScenario(World& w, const std::string& name) {
@@ -306,6 +434,12 @@ bool buildScenario(World& w, const std::string& name) {
         forest(w);
     else if (name == "orbit")
         orbit(w);
+    else if (name == "disaster")
+        disaster(w);
+    else if (name == "valley")
+        valley(w);
+    else if (name == "sagin")
+        sagin(w);
     else
         return false;
     return true;

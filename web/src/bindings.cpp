@@ -178,6 +178,12 @@ void addAttenuationZone(World& w, const val& xy, double factor, double top) {
     w.addAttenuationZone(convertJSArrayToNumberVector<double>(xy), factor, top > 0 ? top : 30);
 }
 
+// #582: a jamming zone from a flat [x0, y0, x1, y1, ...] polygon, active over
+// [from, until) and moving at (vx, vy) m/s.
+void addJammingZone(World& w, const val& xy, double from, double until, double vx, double vy) {
+    w.addJammingZone(convertJSArrayToNumberVector<double>(xy), from, until, vx, vy);
+}
+
 void setConfig(World& w, const std::string& key, double v) {
     // Mission-scoped knobs only (ADR-0019: worlds never change these).
     auto& c = w.config();
@@ -274,6 +280,15 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
         .function(
             "zones", optional_override([](const World& w) {
                 const std::vector<double> z = w.zonesFlat();
+                return val::global("Float64Array").new_(typed_memory_view(z.size(), z.data()));
+            }))
+        .function("setMixedChannel", &World::setMixedChannel)
+        .function("setSatellite", &World::setSatellite)
+        .function("addJammingZone", &addJammingZone)
+        .function("scheduleNodeUp", &World::scheduleNodeUp)
+        .function(
+            "jamZones", optional_override([](const World& w) {
+                const std::vector<double> z = w.jamZonesFlat();
                 return val::global("Float64Array").new_(typed_memory_view(z.size(), z.data()));
             }))
         .function("addFlow", &World::addFlow)
