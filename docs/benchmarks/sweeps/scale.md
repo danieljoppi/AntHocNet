@@ -240,3 +240,70 @@ _Sweep `scale` — mean of 20 run(s) per point, every baseline on identical real
 > - **OLSR's and DSDV's `delay99` sit near 1030 ms with a CI of a few ms**
 >   at f = 1.4 (both) and f = 1.8 (OLSR). The pinned table shows the same
 >   plateau, so it predates #521 and is not investigated here.
+
+## Scale to 500 nodes (v2.4.0, pre-registered)
+
+[#62](https://github.com/danieljoppi/AntHocNet/issues/62) asks for the
+overhead-versus-nodes curve beyond 200 nodes, where the ACO-routing claim of
+graceful scaling is tested. This is the plan, merged before its first
+dispatch:
+[`tools/bench/campaigns/v2.4.0-scale.yaml`](https://github.com/danieljoppi/AntHocNet/blob/main/tools/bench/campaigns/v2.4.0-scale.yaml).
+
+**What is held from the sweep above:**
+
+- terrain × f and nodes × f², so density stays constant;
+- random waypoint at 20 m/s with a 30 s pause, the 300 m range/disk PHY,
+  and CBR sources.
+
+**What changes, and why:**
+
+- **300 s, not 900 s.** At 500 nodes one seed of the four protocols already
+  takes 5 h 40 min for 300 s (below). This was the maintainer's decision,
+  2026-10-20.
+- **The protocols are AntHocNet, AODV, OLSR and the oracle.** The oracle
+  bounds every point; DSDV is not run.
+- **One generation.** The points are 50, 100, 200 and 500 nodes, all at
+  v2.4.0. The 900 s points above are a different generation and are not
+  joined to these.
+
+| point | nodes | field (m) | jobs |
+|---|---|---|---|
+| f = 1.0 | 50 | 1500 × 500 | 1 × 20 seeds |
+| f = 1.41 | 100 | 2121 × 707 | 2 × 10 seeds |
+| f = 2.0 | 200 | 3000 × 1000 | 10 × 2 seeds |
+| f = 3.16 | 500 | 4743 × 1581 | AntHocNet + AODV 10 × 2 seeds; OLSR 20 × 1; oracle 20 × 1 |
+
+**Sizing.** Run [`39527509217`](https://github.com/danieljoppi/AntHocNet/actions/runs/39527509217)
+ran 500 nodes, 1 seed, all four protocols, on `ns3:3.42-opt`:
+
+| protocol | PDR % | NRL |
+|---|---|---|
+| AntHocNet | 15.2 | 5426 |
+| AODV | 18.7 | 3355 |
+| OLSR | 30.3 | 207 |
+| oracle | 83.0 | 0 |
+
+AntHocNet and AODV finished within about 80 minutes. OLSR and the oracle took
+the remaining 4.3 hours. The 500-node point is therefore split by protocol so
+that every job stays well under the 6 h runner limit. Each 500-node protocol
+group is its own cell file, and the files are read together by seed.
+
+**The readings**, fixed now:
+
+1. **Per point:** PDR, delay99 and NRL for each protocol, with 95 % CIs over
+   20 seeds.
+2. **The curve:** NRL and control packets per node against node count, for
+   each protocol. This is #62's chart.
+3. **Per point, paired per seed:**
+   - AntHocNet − oracle;
+   - AntHocNet − the best native baseline (AODV or OLSR, by highest mean
+     PDR).
+
+These are the same two terms as the cross-family view
+([ADR-0026](../../adr/0026-baselines-are-family-native.md)).
+
+**Already visible in the sizing seed:** at 500 nodes every routing arm
+delivers far below the oracle (15–30 % against 83 %), and AntHocNet's NRL is
+the highest. That is one seed, not a result. If it holds at 20 seeds, it is
+a finding to file (ADR-0013): where and why the colony's overhead stops
+scaling.
