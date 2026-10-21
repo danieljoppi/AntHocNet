@@ -1,0 +1,401 @@
+# v240 campaign sagin-starlink1-storm-gpsr3d-v240: 10 run(s): 39659994430 (control/sagin-starlink1-storm-gpsr3d-s1) / 39660015745 (control/sagin-starlink1-storm-gpsr3d-s3) / 39668515690 (control/sagin-starlink1-storm-gpsr3d-s5) / 39668539264 (control/sagin-starlink1-storm-gpsr3d-s7) / 39668561127 (control/sagin-starlink1-storm-gpsr3d-s9) / 39668584658 (control/sagin-starlink1-storm-gpsr3d-s11) / 39668607713 (control/sagin-starlink1-storm-gpsr3d-s13) / 39677036360 (control/sagin-starlink1-storm-gpsr3d-s15) / 39677055347 (control/sagin-starlink1-storm-gpsr3d-s17) / 39677075843 (control/sagin-starlink1-storm-gpsr3d-s19); ref main
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=2 firstRun=1 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=150 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=gpsr3d sagin=1 haps=3 hapsAltitude=20 hapsRing=150
+# anchor sagin haps=3 stationHapsKm=151.557 hapsHapsKm=260.599 limbKm=1009.634
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork#0=31 NewYork#1=27 NewYork#2=28 London#0=37 London#1=39 London#2=41 SaoPaulo#0=16 SaoPaulo#1=19 SaoPaulo#2=16 Johannesburg#0=17 Johannesburg#1=20 Johannesburg#2=19 Tokyo#0=25 Tokyo#1=24 Tokyo#2=22 Sydney#0=21 Sydney#1=21 Sydney#2=24
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover gpsr3d seed=1 scheduled=94 forced=0 islFailures=4776 ticks=20
+# account gpsr3d seed=1 flow=0 offered=1182 refused=0 delivered=226 received=226 dup=0 outageLost=956 scatteredLost=0
+# account gpsr3d seed=1 flow=1 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# account gpsr3d seed=1 flow=2 offered=1191 refused=0 delivered=0 received=0 dup=0 outageLost=1191 scatteredLost=0
+# account gpsr3d seed=1 flow=3 offered=1189 refused=0 delivered=0 received=0 dup=0 outageLost=1189 scatteredLost=0
+# outage gpsr3d seed=1 class=startup n=4 lost=3962 p50=297.250 p90=297.750 max=297.750
+# outage gpsr3d seed=1 class=scheduled n=2 lost=552 p50=77.000 p90=77.000 max=77.000
+# outage gpsr3d seed=1 class=unplanned n=1 lost=6 p50=1.500 p90=1.500 max=1.500
+# outage gpsr3d seed=1 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=1 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn gpsr3d seed=1 flow=0 NewYork-London hopChangesPerMin=1.011 meanHops=6.071 delivered=226
+# churn gpsr3d seed=1 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=1 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=1 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+##RUN## 1 gpsr3d 4.76 25.80 30.00 0.55 9136.57 13208.30 0.23
+# handover gpsr3d seed=2 scheduled=91 forced=0 islFailures=4760 ticks=20
+# account gpsr3d seed=2 flow=0 offered=1190 refused=0 delivered=219 received=219 dup=0 outageLost=970 scatteredLost=1
+# account gpsr3d seed=2 flow=1 offered=1181 refused=0 delivered=0 received=0 dup=0 outageLost=1181 scatteredLost=0
+# account gpsr3d seed=2 flow=2 offered=1179 refused=0 delivered=0 received=0 dup=0 outageLost=1179 scatteredLost=0
+# account gpsr3d seed=2 flow=3 offered=1178 refused=0 delivered=1 received=1 dup=0 outageLost=1177 scatteredLost=0
+# outage gpsr3d seed=2 class=startup n=4 lost=3012 p50=294.750 p90=295.250 max=295.250
+# outage gpsr3d seed=2 class=scheduled n=2 lost=557 p50=77.000 p90=77.000 max=77.000
+# outage gpsr3d seed=2 class=unplanned n=1 lost=8 p50=2.000 p90=2.000 max=2.000
+# outage gpsr3d seed=2 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=2 class=other n=1 lost=930 p50=232.500 p90=232.500 max=232.500
+# churn gpsr3d seed=2 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=6.000 delivered=219
+# churn gpsr3d seed=2 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=2 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=2 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=17.000 delivered=1
+##RUN## 2 gpsr3d 4.65 25.85 30.00 0.54 9379.17 13559.01 0.20
+gpsr3d          4.71      25.83        30.00          0.55  9257.87   13383.66        0.21
+##PROV## commit=770c85b799fce75cf6b629c89620025814adec75 ref=main run_id=39659994430 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=2 firstRun=3 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=150 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=gpsr3d sagin=1 haps=3 hapsAltitude=20 hapsRing=150
+# anchor sagin haps=3 stationHapsKm=151.557 hapsHapsKm=260.599 limbKm=1009.634
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork#0=31 NewYork#1=27 NewYork#2=28 London#0=37 London#1=39 London#2=41 SaoPaulo#0=16 SaoPaulo#1=19 SaoPaulo#2=16 Johannesburg#0=17 Johannesburg#1=20 Johannesburg#2=19 Tokyo#0=25 Tokyo#1=24 Tokyo#2=22 Sydney#0=21 Sydney#1=21 Sydney#2=24
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover gpsr3d seed=3 scheduled=90 forced=2 islFailures=4712 ticks=20
+# account gpsr3d seed=3 flow=0 offered=1178 refused=0 delivered=230 received=230 dup=0 outageLost=946 scatteredLost=2
+# account gpsr3d seed=3 flow=1 offered=1189 refused=0 delivered=0 received=0 dup=0 outageLost=1189 scatteredLost=0
+# account gpsr3d seed=3 flow=2 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# account gpsr3d seed=3 flow=3 offered=1179 refused=0 delivered=14 received=14 dup=0 outageLost=1165 scatteredLost=0
+# outage gpsr3d seed=3 class=startup n=4 lost=2941 p50=296.000 p90=297.250 max=297.250
+# outage gpsr3d seed=3 class=scheduled n=2 lost=551 p50=77.000 p90=77.000 max=77.000
+# outage gpsr3d seed=3 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=3 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=3 class=other n=1 lost=992 p50=248.000 p90=248.000 max=248.000
+# churn gpsr3d seed=3 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=6.000 delivered=230
+# churn gpsr3d seed=3 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=3 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=3 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=18.000 delivered=14
+##RUN## 3 gpsr3d 5.16 27.82 63.00 0.60 8457.78 12227.01 0.21
+# handover gpsr3d seed=4 scheduled=92 forced=3 islFailures=4692 ticks=20
+# account gpsr3d seed=4 flow=0 offered=1191 refused=0 delivered=227 received=227 dup=0 outageLost=964 scatteredLost=0
+# account gpsr3d seed=4 flow=1 offered=1178 refused=0 delivered=0 received=0 dup=0 outageLost=1178 scatteredLost=0
+# account gpsr3d seed=4 flow=2 offered=1187 refused=0 delivered=0 received=0 dup=0 outageLost=1187 scatteredLost=0
+# account gpsr3d seed=4 flow=3 offered=1180 refused=0 delivered=40 received=40 dup=0 outageLost=1140 scatteredLost=0
+# outage gpsr3d seed=4 class=startup n=4 lost=2832 p50=294.500 p90=296.750 max=296.750
+# outage gpsr3d seed=4 class=scheduled n=3 lost=571 p50=60.750 p90=77.000 max=77.000
+# outage gpsr3d seed=4 class=unplanned n=1 lost=8 p50=2.000 p90=2.000 max=2.000
+# outage gpsr3d seed=4 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=4 class=other n=1 lost=1058 p50=264.500 p90=264.500 max=264.500
+# churn gpsr3d seed=4 flow=0 NewYork-London hopChangesPerMin=1.006 meanHops=6.044 delivered=227
+# churn gpsr3d seed=4 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=4 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=4 flow=3 Tokyo-Sydney hopChangesPerMin=4.070 meanHops=18.550 delivered=40
+##RUN## 4 gpsr3d 5.64 31.63 68.00 0.66 7731.57 11177.17 0.36
+gpsr3d          5.40      29.72        65.50          0.63  8094.68   11702.09        0.29
+##PROV## commit=770c85b799fce75cf6b629c89620025814adec75 ref=main run_id=39660015745 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=2 firstRun=5 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=150 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=gpsr3d sagin=1 haps=3 hapsAltitude=20 hapsRing=150
+# anchor sagin haps=3 stationHapsKm=151.557 hapsHapsKm=260.599 limbKm=1009.634
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork#0=31 NewYork#1=27 NewYork#2=28 London#0=37 London#1=39 London#2=41 SaoPaulo#0=16 SaoPaulo#1=19 SaoPaulo#2=16 Johannesburg#0=17 Johannesburg#1=20 Johannesburg#2=19 Tokyo#0=25 Tokyo#1=24 Tokyo#2=22 Sydney#0=21 Sydney#1=21 Sydney#2=24
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover gpsr3d seed=5 scheduled=89 forced=3 islFailures=4724 ticks=20
+# account gpsr3d seed=5 flow=0 offered=1180 refused=0 delivered=222 received=222 dup=0 outageLost=957 scatteredLost=1
+# account gpsr3d seed=5 flow=1 offered=1187 refused=0 delivered=0 received=0 dup=0 outageLost=1187 scatteredLost=0
+# account gpsr3d seed=5 flow=2 offered=1185 refused=0 delivered=0 received=0 dup=0 outageLost=1185 scatteredLost=0
+# account gpsr3d seed=5 flow=3 offered=1178 refused=0 delivered=14 received=14 dup=0 outageLost=1164 scatteredLost=0
+# outage gpsr3d seed=5 class=startup n=4 lost=2918 p50=296.250 p90=296.750 max=296.750
+# outage gpsr3d seed=5 class=scheduled n=3 lost=558 p50=61.000 p90=77.250 max=77.250
+# outage gpsr3d seed=5 class=unplanned n=3 lost=21 p50=0.750 p90=3.750 max=3.750
+# outage gpsr3d seed=5 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=5 class=other n=2 lost=996 p50=174.750 p90=174.750 max=174.750
+# churn gpsr3d seed=5 flow=0 NewYork-London hopChangesPerMin=1.006 meanHops=6.072 delivered=222
+# churn gpsr3d seed=5 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=5 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=5 flow=3 Tokyo-Sydney hopChangesPerMin=0.739 meanHops=17.429 delivered=14
+##RUN## 5 gpsr3d 4.99 28.00 61.00 0.58 8745.53 12642.99 0.39
+# handover gpsr3d seed=6 scheduled=92 forced=1 islFailures=4834 ticks=20
+# account gpsr3d seed=6 flow=0 offered=1182 refused=0 delivered=223 received=223 dup=0 outageLost=956 scatteredLost=3
+# account gpsr3d seed=6 flow=1 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# account gpsr3d seed=6 flow=2 offered=1192 refused=0 delivered=0 received=0 dup=0 outageLost=1192 scatteredLost=0
+# account gpsr3d seed=6 flow=3 offered=1184 refused=0 delivered=60 received=60 dup=0 outageLost=1124 scatteredLost=0
+# outage gpsr3d seed=6 class=startup n=4 lost=3045 p50=296.000 p90=298.000 max=298.000
+# outage gpsr3d seed=6 class=scheduled n=2 lost=551 p50=77.000 p90=77.000 max=77.000
+# outage gpsr3d seed=6 class=unplanned n=2 lost=9 p50=1.500 p90=1.500 max=1.500
+# outage gpsr3d seed=6 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=6 class=other n=1 lost=851 p50=212.750 p90=212.750 max=212.750
+# churn gpsr3d seed=6 flow=0 NewYork-London hopChangesPerMin=1.013 meanHops=6.036 delivered=223
+# churn gpsr3d seed=6 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=6 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=6 flow=3 Tokyo-Sydney hopChangesPerMin=0.263 meanHops=17.033 delivered=60
+##RUN## 6 gpsr3d 5.97 33.34 62.00 0.69 7295.72 10547.07 0.32
+gpsr3d          5.48      30.67        61.50          0.64  8020.62   11595.03        0.36
+##PROV## commit=ec2b79aeb8b46768b37d0fa7f0718917ae0c89ab ref=main run_id=39668515690 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=2 firstRun=7 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=150 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=gpsr3d sagin=1 haps=3 hapsAltitude=20 hapsRing=150
+# anchor sagin haps=3 stationHapsKm=151.557 hapsHapsKm=260.599 limbKm=1009.634
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork#0=31 NewYork#1=27 NewYork#2=28 London#0=37 London#1=39 London#2=41 SaoPaulo#0=16 SaoPaulo#1=19 SaoPaulo#2=16 Johannesburg#0=17 Johannesburg#1=20 Johannesburg#2=19 Tokyo#0=25 Tokyo#1=24 Tokyo#2=22 Sydney#0=21 Sydney#1=21 Sydney#2=24
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover gpsr3d seed=7 scheduled=91 forced=3 islFailures=4720 ticks=20
+# account gpsr3d seed=7 flow=0 offered=1182 refused=0 delivered=212 received=212 dup=0 outageLost=969 scatteredLost=1
+# account gpsr3d seed=7 flow=1 offered=1190 refused=0 delivered=0 received=0 dup=0 outageLost=1190 scatteredLost=0
+# account gpsr3d seed=7 flow=2 offered=1177 refused=0 delivered=0 received=0 dup=0 outageLost=1177 scatteredLost=0
+# account gpsr3d seed=7 flow=3 offered=1191 refused=0 delivered=33 received=33 dup=0 outageLost=1157 scatteredLost=1
+# outage gpsr3d seed=7 class=startup n=4 lost=2996 p50=294.250 p90=297.500 max=297.500
+# outage gpsr3d seed=7 class=scheduled n=3 lost=1218 p50=77.000 p90=166.500 max=166.500
+# outage gpsr3d seed=7 class=unplanned n=2 lost=18 p50=3.250 p90=3.250 max=3.250
+# outage gpsr3d seed=7 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=7 class=other n=1 lost=261 p50=65.250 p90=65.250 max=65.250
+# churn gpsr3d seed=7 flow=0 NewYork-London hopChangesPerMin=1.013 meanHops=6.321 delivered=212
+# churn gpsr3d seed=7 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=7 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=7 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=20.000 delivered=33
+##RUN## 7 gpsr3d 5.17 31.86 68.00 0.60 8420.60 12173.25 0.28
+# handover gpsr3d seed=8 scheduled=92 forced=0 islFailures=4734 ticks=20
+# account gpsr3d seed=8 flow=0 offered=1178 refused=0 delivered=225 received=225 dup=0 outageLost=953 scatteredLost=0
+# account gpsr3d seed=8 flow=1 offered=1181 refused=0 delivered=0 received=0 dup=0 outageLost=1181 scatteredLost=0
+# account gpsr3d seed=8 flow=2 offered=1190 refused=0 delivered=0 received=0 dup=0 outageLost=1190 scatteredLost=0
+# account gpsr3d seed=8 flow=3 offered=1178 refused=0 delivered=61 received=61 dup=0 outageLost=1116 scatteredLost=1
+# outage gpsr3d seed=8 class=startup n=4 lost=2971 p50=295.250 p90=297.500 max=297.500
+# outage gpsr3d seed=8 class=scheduled n=4 lost=1462 p50=77.000 p90=227.000 max=227.000
+# outage gpsr3d seed=8 class=unplanned n=1 lost=7 p50=1.750 p90=1.750 max=1.750
+# outage gpsr3d seed=8 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=8 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn gpsr3d seed=8 flow=0 NewYork-London hopChangesPerMin=1.006 meanHops=6.098 delivered=225
+# churn gpsr3d seed=8 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=8 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=8 flow=3 Tokyo-Sydney hopChangesPerMin=0.248 meanHops=22.623 delivered=61
+##RUN## 8 gpsr3d 6.05 37.73 81.00 0.70 7219.36 10436.68 0.44
+gpsr3d          5.61      34.79        74.50          0.65  7819.98   11304.97        0.36
+##PROV## commit=ec2b79aeb8b46768b37d0fa7f0718917ae0c89ab ref=main run_id=39668539264 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=2 firstRun=9 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=150 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=gpsr3d sagin=1 haps=3 hapsAltitude=20 hapsRing=150
+# anchor sagin haps=3 stationHapsKm=151.557 hapsHapsKm=260.599 limbKm=1009.634
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork#0=31 NewYork#1=27 NewYork#2=28 London#0=37 London#1=39 London#2=41 SaoPaulo#0=16 SaoPaulo#1=19 SaoPaulo#2=16 Johannesburg#0=17 Johannesburg#1=20 Johannesburg#2=19 Tokyo#0=25 Tokyo#1=24 Tokyo#2=22 Sydney#0=21 Sydney#1=21 Sydney#2=24
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover gpsr3d seed=9 scheduled=92 forced=1 islFailures=4704 ticks=20
+# account gpsr3d seed=9 flow=0 offered=1185 refused=0 delivered=224 received=224 dup=0 outageLost=960 scatteredLost=1
+# account gpsr3d seed=9 flow=1 offered=1189 refused=0 delivered=0 received=0 dup=0 outageLost=1189 scatteredLost=0
+# account gpsr3d seed=9 flow=2 offered=1190 refused=0 delivered=0 received=0 dup=0 outageLost=1190 scatteredLost=0
+# account gpsr3d seed=9 flow=3 offered=1191 refused=0 delivered=0 received=0 dup=0 outageLost=1191 scatteredLost=0
+# outage gpsr3d seed=9 class=startup n=4 lost=3971 p50=297.500 p90=297.750 max=297.750
+# outage gpsr3d seed=9 class=scheduled n=2 lost=552 p50=77.000 p90=77.000 max=77.000
+# outage gpsr3d seed=9 class=unplanned n=1 lost=7 p50=1.750 p90=1.750 max=1.750
+# outage gpsr3d seed=9 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=9 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn gpsr3d seed=9 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=6.000 delivered=224
+# churn gpsr3d seed=9 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=9 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=9 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+##RUN## 9 gpsr3d 4.71 25.65 28.00 0.55 9213.70 13319.81 0.22
+# handover gpsr3d seed=10 scheduled=91 forced=3 islFailures=4744 ticks=20
+# account gpsr3d seed=10 flow=0 offered=1177 refused=0 delivered=141 received=141 dup=0 outageLost=1035 scatteredLost=1
+# account gpsr3d seed=10 flow=1 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# account gpsr3d seed=10 flow=2 offered=1178 refused=0 delivered=0 received=0 dup=0 outageLost=1178 scatteredLost=0
+# account gpsr3d seed=10 flow=3 offered=1179 refused=0 delivered=66 received=66 dup=0 outageLost=1113 scatteredLost=0
+# outage gpsr3d seed=10 class=startup n=4 lost=2884 p50=294.500 p90=296.000 max=296.000
+# outage gpsr3d seed=10 class=scheduled n=1 lost=243 p50=60.750 p90=60.750 max=60.750
+# outage gpsr3d seed=10 class=unplanned n=2 lost=17 p50=2.250 p90=2.250 max=2.250
+# outage gpsr3d seed=10 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=10 class=other n=3 lost=1366 p50=100.000 p90=220.250 max=220.250
+# churn gpsr3d seed=10 flow=0 NewYork-London hopChangesPerMin=0.625 meanHops=7.191 delivered=141
+# churn gpsr3d seed=10 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=10 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=10 flow=3 Tokyo-Sydney hopChangesPerMin=0.458 meanHops=17.712 delivered=66
+##RUN## 10 gpsr3d 4.39 39.11 64.00 0.51 9966.20 14407.66 0.49
+gpsr3d          4.55      32.38        46.00          0.53  9589.95   13863.73        0.36
+##PROV## commit=ec2b79aeb8b46768b37d0fa7f0718917ae0c89ab ref=main run_id=39668561127 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=2 firstRun=11 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=150 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=gpsr3d sagin=1 haps=3 hapsAltitude=20 hapsRing=150
+# anchor sagin haps=3 stationHapsKm=151.557 hapsHapsKm=260.599 limbKm=1009.634
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork#0=31 NewYork#1=27 NewYork#2=28 London#0=37 London#1=39 London#2=41 SaoPaulo#0=16 SaoPaulo#1=19 SaoPaulo#2=16 Johannesburg#0=17 Johannesburg#1=20 Johannesburg#2=19 Tokyo#0=25 Tokyo#1=24 Tokyo#2=22 Sydney#0=21 Sydney#1=21 Sydney#2=24
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover gpsr3d seed=11 scheduled=91 forced=1 islFailures=4751 ticks=20
+# account gpsr3d seed=11 flow=0 offered=1185 refused=0 delivered=235 received=235 dup=0 outageLost=949 scatteredLost=1
+# account gpsr3d seed=11 flow=1 offered=1187 refused=0 delivered=0 received=0 dup=0 outageLost=1187 scatteredLost=0
+# account gpsr3d seed=11 flow=2 offered=1191 refused=0 delivered=0 received=0 dup=0 outageLost=1191 scatteredLost=0
+# account gpsr3d seed=11 flow=3 offered=1186 refused=0 delivered=8 received=8 dup=0 outageLost=1178 scatteredLost=0
+# outage gpsr3d seed=11 class=startup n=4 lost=3344 p50=296.750 p90=297.750 max=297.750
+# outage gpsr3d seed=11 class=scheduled n=2 lost=551 p50=77.000 p90=77.000 max=77.000
+# outage gpsr3d seed=11 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=11 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=11 class=other n=1 lost=610 p50=152.500 p90=152.500 max=152.500
+# churn gpsr3d seed=11 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=6.000 delivered=235
+# churn gpsr3d seed=11 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=11 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=11 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=18.000 delivered=8
+##RUN## 11 gpsr3d 5.12 26.87 63.00 0.60 8492.30 12276.91 0.18
+# handover gpsr3d seed=12 scheduled=92 forced=3 islFailures=4857 ticks=20
+# account gpsr3d seed=12 flow=0 offered=1188 refused=0 delivered=53 received=53 dup=0 outageLost=1135 scatteredLost=0
+# account gpsr3d seed=12 flow=1 offered=1182 refused=0 delivered=0 received=0 dup=0 outageLost=1182 scatteredLost=0
+# account gpsr3d seed=12 flow=2 offered=1187 refused=0 delivered=0 received=0 dup=0 outageLost=1187 scatteredLost=0
+# account gpsr3d seed=12 flow=3 offered=1182 refused=0 delivered=4 received=4 dup=0 outageLost=1178 scatteredLost=0
+# outage gpsr3d seed=12 class=startup n=4 lost=2855 p50=295.500 p90=296.750 max=296.750
+# outage gpsr3d seed=12 class=scheduled n=1 lost=728 p50=182.000 p90=182.000 max=182.000
+# outage gpsr3d seed=12 class=unplanned n=1 lost=3 p50=0.750 p90=0.750 max=0.750
+# outage gpsr3d seed=12 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=12 class=other n=1 lost=1096 p50=274.000 p90=274.000 max=274.000
+# churn gpsr3d seed=12 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=6.000 delivered=53
+# churn gpsr3d seed=12 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=12 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=12 flow=3 Tokyo-Sydney hopChangesPerMin=81.460 meanHops=19.500 delivered=4
+##RUN## 12 gpsr3d 1.20 28.68 68.00 0.14 36223.84 52367.08 0.35
+gpsr3d          3.16      27.78        65.50          0.37 22358.07   32321.99        0.27
+##PROV## commit=ec2b79aeb8b46768b37d0fa7f0718917ae0c89ab ref=main run_id=39668584658 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=2 firstRun=13 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=150 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=gpsr3d sagin=1 haps=3 hapsAltitude=20 hapsRing=150
+# anchor sagin haps=3 stationHapsKm=151.557 hapsHapsKm=260.599 limbKm=1009.634
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork#0=31 NewYork#1=27 NewYork#2=28 London#0=37 London#1=39 London#2=41 SaoPaulo#0=16 SaoPaulo#1=19 SaoPaulo#2=16 Johannesburg#0=17 Johannesburg#1=20 Johannesburg#2=19 Tokyo#0=25 Tokyo#1=24 Tokyo#2=22 Sydney#0=21 Sydney#1=21 Sydney#2=24
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover gpsr3d seed=13 scheduled=97 forced=0 islFailures=4788 ticks=20
+# account gpsr3d seed=13 flow=0 offered=1192 refused=0 delivered=315 received=315 dup=0 outageLost=877 scatteredLost=0
+# account gpsr3d seed=13 flow=1 offered=1187 refused=0 delivered=0 received=0 dup=0 outageLost=1187 scatteredLost=0
+# account gpsr3d seed=13 flow=2 offered=1185 refused=0 delivered=0 received=0 dup=0 outageLost=1185 scatteredLost=0
+# account gpsr3d seed=13 flow=3 offered=1177 refused=0 delivered=58 received=58 dup=0 outageLost=1117 scatteredLost=2
+# outage gpsr3d seed=13 class=startup n=4 lost=3894 p50=296.250 p90=296.750 max=296.750
+# outage gpsr3d seed=13 class=scheduled n=3 lost=257 p50=2.000 p90=61.000 max=61.000
+# outage gpsr3d seed=13 class=unplanned n=2 lost=215 p50=49.750 p90=49.750 max=49.750
+# outage gpsr3d seed=13 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=13 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn gpsr3d seed=13 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=6.000 delivered=315
+# churn gpsr3d seed=13 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=13 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=13 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=17.000 delivered=58
+##RUN## 13 gpsr3d 7.87 31.18 62.00 0.92 5535.28 8002.09 0.15
+# handover gpsr3d seed=14 scheduled=93 forced=1 islFailures=4639 ticks=20
+# account gpsr3d seed=14 flow=0 offered=1179 refused=0 delivered=231 received=231 dup=0 outageLost=944 scatteredLost=4
+# account gpsr3d seed=14 flow=1 offered=1178 refused=0 delivered=0 received=0 dup=0 outageLost=1178 scatteredLost=0
+# account gpsr3d seed=14 flow=2 offered=1185 refused=0 delivered=0 received=0 dup=0 outageLost=1185 scatteredLost=0
+# account gpsr3d seed=14 flow=3 offered=1187 refused=0 delivered=0 received=0 dup=0 outageLost=1187 scatteredLost=0
+# outage gpsr3d seed=14 class=startup n=4 lost=3943 p50=296.250 p90=296.750 max=296.750
+# outage gpsr3d seed=14 class=scheduled n=2 lost=551 p50=77.000 p90=77.000 max=77.000
+# outage gpsr3d seed=14 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=14 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=14 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn gpsr3d seed=14 flow=0 NewYork-London hopChangesPerMin=1.006 meanHops=6.009 delivered=231
+# churn gpsr3d seed=14 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=14 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=14 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+##RUN## 14 gpsr3d 4.88 25.65 30.00 0.57 8937.22 12920.11 0.23
+gpsr3d          6.38      28.42        46.00          0.74  7236.25   10461.10        0.19
+##PROV## commit=ec2b79aeb8b46768b37d0fa7f0718917ae0c89ab ref=main run_id=39668607713 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=2 firstRun=15 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=150 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=gpsr3d sagin=1 haps=3 hapsAltitude=20 hapsRing=150
+# anchor sagin haps=3 stationHapsKm=151.557 hapsHapsKm=260.599 limbKm=1009.634
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork#0=31 NewYork#1=27 NewYork#2=28 London#0=37 London#1=39 London#2=41 SaoPaulo#0=16 SaoPaulo#1=19 SaoPaulo#2=16 Johannesburg#0=17 Johannesburg#1=20 Johannesburg#2=19 Tokyo#0=25 Tokyo#1=24 Tokyo#2=22 Sydney#0=21 Sydney#1=21 Sydney#2=24
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover gpsr3d seed=15 scheduled=92 forced=5 islFailures=4752 ticks=20
+# account gpsr3d seed=15 flow=0 offered=1182 refused=0 delivered=232 received=232 dup=0 outageLost=949 scatteredLost=1
+# account gpsr3d seed=15 flow=1 offered=1179 refused=0 delivered=86 received=86 dup=0 outageLost=1093 scatteredLost=0
+# account gpsr3d seed=15 flow=2 offered=1179 refused=0 delivered=0 received=0 dup=0 outageLost=1179 scatteredLost=0
+# account gpsr3d seed=15 flow=3 offered=1192 refused=0 delivered=9 received=9 dup=0 outageLost=1183 scatteredLost=0
+# outage gpsr3d seed=15 class=startup n=4 lost=2253 p50=148.500 p90=294.750 max=294.750
+# outage gpsr3d seed=15 class=scheduled n=4 lost=2008 p50=122.000 p90=242.000 max=242.000
+# outage gpsr3d seed=15 class=unplanned n=2 lost=11 p50=1.750 p90=1.750 max=1.750
+# outage gpsr3d seed=15 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=15 class=other n=1 lost=132 p50=33.000 p90=33.000 max=33.000
+# churn gpsr3d seed=15 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=6.000 delivered=232
+# churn gpsr3d seed=15 flow=1 London-Tokyo hopChangesPerMin=10.004 meanHops=25.233 delivered=86
+# churn gpsr3d seed=15 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=15 flow=3 Tokyo-Sydney hopChangesPerMin=1.715 meanHops=18.000 delivered=9
+##RUN## 15 gpsr3d 6.91 45.72 102.00 0.80 6309.67 9121.58 0.24
+# handover gpsr3d seed=16 scheduled=89 forced=5 islFailures=4800 ticks=20
+# account gpsr3d seed=16 flow=0 offered=1184 refused=0 delivered=59 received=59 dup=0 outageLost=1125 scatteredLost=0
+# account gpsr3d seed=16 flow=1 offered=1186 refused=0 delivered=0 received=0 dup=0 outageLost=1186 scatteredLost=0
+# account gpsr3d seed=16 flow=2 offered=1191 refused=0 delivered=0 received=0 dup=0 outageLost=1191 scatteredLost=0
+# account gpsr3d seed=16 flow=3 offered=1189 refused=0 delivered=0 received=0 dup=0 outageLost=1189 scatteredLost=0
+# outage gpsr3d seed=16 class=startup n=4 lost=3963 p50=297.250 p90=297.750 max=297.750
+# outage gpsr3d seed=16 class=scheduled n=1 lost=728 p50=182.000 p90=182.000 max=182.000
+# outage gpsr3d seed=16 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=16 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=16 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn gpsr3d seed=16 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=6.000 delivered=59
+# churn gpsr3d seed=16 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=16 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=16 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+##RUN## 16 gpsr3d 1.24 25.65 26.00 0.14 34975.78 50562.81 0.09
+gpsr3d          4.08      35.68        64.00          0.47 20642.72   29842.20        0.16
+##PROV## commit=ec2b79aeb8b46768b37d0fa7f0718917ae0c89ab ref=main run_id=39677036360 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=2 firstRun=17 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=150 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=gpsr3d sagin=1 haps=3 hapsAltitude=20 hapsRing=150
+# anchor sagin haps=3 stationHapsKm=151.557 hapsHapsKm=260.599 limbKm=1009.634
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork#0=31 NewYork#1=27 NewYork#2=28 London#0=37 London#1=39 London#2=41 SaoPaulo#0=16 SaoPaulo#1=19 SaoPaulo#2=16 Johannesburg#0=17 Johannesburg#1=20 Johannesburg#2=19 Tokyo#0=25 Tokyo#1=24 Tokyo#2=22 Sydney#0=21 Sydney#1=21 Sydney#2=24
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover gpsr3d seed=17 scheduled=92 forced=0 islFailures=4781 ticks=20
+# account gpsr3d seed=17 flow=0 offered=1178 refused=0 delivered=230 received=230 dup=0 outageLost=948 scatteredLost=0
+# account gpsr3d seed=17 flow=1 offered=1187 refused=0 delivered=0 received=0 dup=0 outageLost=1187 scatteredLost=0
+# account gpsr3d seed=17 flow=2 offered=1186 refused=0 delivered=0 received=0 dup=0 outageLost=1186 scatteredLost=0
+# account gpsr3d seed=17 flow=3 offered=1190 refused=0 delivered=30 received=30 dup=0 outageLost=1160 scatteredLost=0
+# outage gpsr3d seed=17 class=startup n=4 lost=2951 p50=296.500 p90=296.750 max=296.750
+# outage gpsr3d seed=17 class=scheduled n=3 lost=555 p50=60.750 p90=77.000 max=77.000
+# outage gpsr3d seed=17 class=unplanned n=2 lost=554 p50=137.750 p90=137.750 max=137.750
+# outage gpsr3d seed=17 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=17 class=other n=3 lost=421 p50=17.250 p90=76.750 max=76.750
+# churn gpsr3d seed=17 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=6.000 delivered=230
+# churn gpsr3d seed=17 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=17 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=17 flow=3 Tokyo-Sydney hopChangesPerMin=0.500 meanHops=34.033 delivered=30
+##RUN## 17 gpsr3d 5.48 33.67 138.00 0.64 7937.85 11475.38 0.63
+# handover gpsr3d seed=18 scheduled=91 forced=1 islFailures=4785 ticks=20
+# account gpsr3d seed=18 flow=0 offered=1182 refused=0 delivered=230 received=230 dup=0 outageLost=952 scatteredLost=0
+# account gpsr3d seed=18 flow=1 offered=1178 refused=0 delivered=0 received=0 dup=0 outageLost=1178 scatteredLost=0
+# account gpsr3d seed=18 flow=2 offered=1186 refused=0 delivered=0 received=0 dup=0 outageLost=1186 scatteredLost=0
+# account gpsr3d seed=18 flow=3 offered=1179 refused=0 delivered=14 received=14 dup=0 outageLost=1165 scatteredLost=0
+# outage gpsr3d seed=18 class=startup n=4 lost=2827 p50=294.500 p90=296.500 max=296.500
+# outage gpsr3d seed=18 class=scheduled n=3 lost=555 p50=61.000 p90=77.000 max=77.000
+# outage gpsr3d seed=18 class=unplanned n=1 lost=153 p50=38.250 p90=38.250 max=38.250
+# outage gpsr3d seed=18 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=18 class=other n=1 lost=946 p50=236.500 p90=236.500 max=236.500
+# churn gpsr3d seed=18 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=6.000 delivered=230
+# churn gpsr3d seed=18 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=18 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=18 flow=3 Tokyo-Sydney hopChangesPerMin=1.446 meanHops=19.571 delivered=14
+##RUN## 18 gpsr3d 5.16 28.08 68.00 0.60 8457.20 12226.16 0.33
+gpsr3d          5.32      30.88       103.00          0.62  8197.53   11850.77        0.48
+##PROV## commit=ec2b79aeb8b46768b37d0fa7f0718917ae0c89ab ref=main run_id=39677055347 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=2 firstRun=19 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=150 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=gpsr3d sagin=1 haps=3 hapsAltitude=20 hapsRing=150
+# anchor sagin haps=3 stationHapsKm=151.557 hapsHapsKm=260.599 limbKm=1009.634
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork#0=31 NewYork#1=27 NewYork#2=28 London#0=37 London#1=39 London#2=41 SaoPaulo#0=16 SaoPaulo#1=19 SaoPaulo#2=16 Johannesburg#0=17 Johannesburg#1=20 Johannesburg#2=19 Tokyo#0=25 Tokyo#1=24 Tokyo#2=22 Sydney#0=21 Sydney#1=21 Sydney#2=24
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover gpsr3d seed=19 scheduled=93 forced=4 islFailures=4694 ticks=20
+# account gpsr3d seed=19 flow=0 offered=1189 refused=0 delivered=237 received=237 dup=0 outageLost=952 scatteredLost=0
+# account gpsr3d seed=19 flow=1 offered=1177 refused=0 delivered=0 received=0 dup=0 outageLost=1177 scatteredLost=0
+# account gpsr3d seed=19 flow=2 offered=1190 refused=0 delivered=0 received=0 dup=0 outageLost=1190 scatteredLost=0
+# account gpsr3d seed=19 flow=3 offered=1178 refused=0 delivered=54 received=54 dup=0 outageLost=1124 scatteredLost=0
+# outage gpsr3d seed=19 class=startup n=4 lost=2839 p50=294.250 p90=297.500 max=297.500
+# outage gpsr3d seed=19 class=scheduled n=2 lost=551 p50=77.000 p90=77.000 max=77.000
+# outage gpsr3d seed=19 class=unplanned n=3 lost=1053 p50=1.750 p90=260.750 max=260.750
+# outage gpsr3d seed=19 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=19 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn gpsr3d seed=19 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=6.000 delivered=237
+# churn gpsr3d seed=19 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=19 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=19 flow=3 Tokyo-Sydney hopChangesPerMin=1.085 meanHops=18.426 delivered=54
+##RUN## 19 gpsr3d 6.15 32.90 77.00 0.71 7082.10 10238.25 1.18
+# handover gpsr3d seed=20 scheduled=91 forced=1 islFailures=4733 ticks=20
+# account gpsr3d seed=20 flow=0 offered=1177 refused=0 delivered=140 received=140 dup=0 outageLost=1036 scatteredLost=1
+# account gpsr3d seed=20 flow=1 offered=1185 refused=0 delivered=0 received=0 dup=0 outageLost=1185 scatteredLost=0
+# account gpsr3d seed=20 flow=2 offered=1180 refused=0 delivered=0 received=0 dup=0 outageLost=1180 scatteredLost=0
+# account gpsr3d seed=20 flow=3 offered=1189 refused=0 delivered=12 received=12 dup=0 outageLost=1177 scatteredLost=0
+# outage gpsr3d seed=20 class=startup n=4 lost=3296 p50=295.000 p90=296.250 max=296.250
+# outage gpsr3d seed=20 class=scheduled n=3 lost=249 p50=15.000 p90=45.750 max=45.750
+# outage gpsr3d seed=20 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=20 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage gpsr3d seed=20 class=other n=2 lost=1033 p50=158.250 p90=158.250 max=158.250
+# churn gpsr3d seed=20 flow=0 NewYork-London hopChangesPerMin=1.253 meanHops=7.207 delivered=140
+# churn gpsr3d seed=20 flow=1 London-Tokyo hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=20 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn gpsr3d seed=20 flow=3 Tokyo-Sydney hopChangesPerMin=0.373 meanHops=19.833 delivered=12
+##RUN## 20 gpsr3d 3.21 31.20 68.00 0.37 13581.35 19633.91 0.27
+gpsr3d          4.68      32.05        72.50          0.54 10331.72   14936.08        0.73
+##PROV## commit=ec2b79aeb8b46768b37d0fa7f0718917ae0c89ab ref=main run_id=39677075843 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker

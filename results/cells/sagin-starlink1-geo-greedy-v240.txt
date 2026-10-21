@@ -1,0 +1,331 @@
+# v240 campaign sagin-starlink1-geo-greedy-v240: 1 run(s): 39590126058 (control/sagin-starlink1-geo-greedy); ref main
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=72 sats=22 phasing=39 altitude=550 inclination=53 time=300 runs=20 firstRun=1 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=-1 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=1 protocols=geo-greedy sagin=1 haps=3 hapsAltitude=20 hapsRing=150
+# anchor sagin haps=3 stationHapsKm=151.557 hapsHapsKm=260.599 limbKm=1009.634
+# anchor shell radiusKm=6921.000 altitudeKm(sphere)=550.000 radiusSpreadM=0.000 chordKm=1969.922 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=95.502
+# visibility minElevation=25.000 NewYork#0=31 NewYork#1=27 NewYork#2=28 London#0=37 London#1=39 London#2=41 SaoPaulo#0=16 SaoPaulo#1=19 SaoPaulo#2=16 Johannesburg#0=17 Johannesburg#1=20 Johannesburg#2=19 Tokyo#0=25 Tokyo#1=24 Tokyo#2=22 Sydney#0=21 Sydney#1=21 Sydney#2=24
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=21 crossMeanKm=636.932 sameSlotMeanKm=1470.667 inPlaneKm=1969.922
+# handover geo-greedy seed=1 scheduled=92 forced=0 islFailures=4776 ticks=20
+# account geo-greedy seed=1 flow=0 offered=1183 refused=0 delivered=0 received=0 dup=0 outageLost=1183 scatteredLost=0
+# account geo-greedy seed=1 flow=1 offered=1181 refused=0 delivered=58 received=58 dup=0 outageLost=1123 scatteredLost=0
+# account geo-greedy seed=1 flow=2 offered=1190 refused=0 delivered=0 received=0 dup=0 outageLost=1190 scatteredLost=0
+# account geo-greedy seed=1 flow=3 offered=1192 refused=0 delivered=0 received=0 dup=0 outageLost=1192 scatteredLost=0
+# outage geo-greedy seed=1 class=startup n=4 lost=4322 p50=297.500 p90=298.000 max=298.000
+# outage geo-greedy seed=1 class=scheduled n=1 lost=249 p50=62.250 p90=62.250 max=62.250
+# outage geo-greedy seed=1 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=1 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=1 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=1 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=1 flow=1 London-Tokyo hopChangesPerMin=1.380 meanHops=27.207 delivered=58
+# churn geo-greedy seed=1 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=1 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=1 noRouteOrigin=0 noRouteForward=4669
+##RUN## 1 geo-greedy 1.22 103.39 110.00 0.14 0.00 0.00 0.49
+# handover geo-greedy seed=2 scheduled=92 forced=0 islFailures=4760 ticks=20
+# account geo-greedy seed=2 flow=0 offered=1179 refused=0 delivered=0 received=0 dup=0 outageLost=1179 scatteredLost=0
+# account geo-greedy seed=2 flow=1 offered=1187 refused=0 delivered=48 received=48 dup=0 outageLost=1139 scatteredLost=0
+# account geo-greedy seed=2 flow=2 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# account geo-greedy seed=2 flow=3 offered=1181 refused=0 delivered=0 received=0 dup=0 outageLost=1181 scatteredLost=0
+# outage geo-greedy seed=2 class=startup n=4 lost=4303 p50=295.250 p90=296.000 max=296.000
+# outage geo-greedy seed=2 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=2 class=unplanned n=2 lost=15 p50=2.000 p90=2.000 max=2.000
+# outage geo-greedy seed=2 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=2 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=2 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=2 flow=1 London-Tokyo hopChangesPerMin=1.342 meanHops=28.083 delivered=48
+# churn geo-greedy seed=2 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=2 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=2 noRouteOrigin=0 noRouteForward=4665
+##RUN## 2 geo-greedy 1.01 106.52 110.00 0.12 0.00 0.00 0.53
+# handover geo-greedy seed=3 scheduled=92 forced=0 islFailures=4712 ticks=20
+# account geo-greedy seed=3 flow=0 offered=1191 refused=0 delivered=0 received=0 dup=0 outageLost=1191 scatteredLost=0
+# account geo-greedy seed=3 flow=1 offered=1177 refused=0 delivered=62 received=62 dup=0 outageLost=1115 scatteredLost=0
+# account geo-greedy seed=3 flow=2 offered=1182 refused=0 delivered=0 received=0 dup=0 outageLost=1182 scatteredLost=0
+# account geo-greedy seed=3 flow=3 offered=1182 refused=0 delivered=0 received=0 dup=0 outageLost=1182 scatteredLost=0
+# outage geo-greedy seed=3 class=startup n=4 lost=4303 p50=295.500 p90=297.750 max=297.750
+# outage geo-greedy seed=3 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=3 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=3 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=3 class=other n=1 lost=119 p50=29.750 p90=29.750 max=29.750
+# churn geo-greedy seed=3 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=3 flow=1 London-Tokyo hopChangesPerMin=1.334 meanHops=27.387 delivered=62
+# churn geo-greedy seed=3 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=3 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=3 noRouteOrigin=0 noRouteForward=4661
+##RUN## 3 geo-greedy 1.31 104.04 110.00 0.15 0.00 0.00 0.44
+# handover geo-greedy seed=4 scheduled=92 forced=0 islFailures=4692 ticks=20
+# account geo-greedy seed=4 flow=0 offered=1186 refused=0 delivered=0 received=0 dup=0 outageLost=1186 scatteredLost=0
+# account geo-greedy seed=4 flow=1 offered=1192 refused=0 delivered=59 received=59 dup=0 outageLost=1133 scatteredLost=0
+# account geo-greedy seed=4 flow=2 offered=1180 refused=0 delivered=0 received=0 dup=0 outageLost=1180 scatteredLost=0
+# account geo-greedy seed=4 flow=3 offered=1188 refused=0 delivered=0 received=0 dup=0 outageLost=1188 scatteredLost=0
+# outage geo-greedy seed=4 class=startup n=4 lost=4318 p50=296.500 p90=297.000 max=297.000
+# outage geo-greedy seed=4 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=4 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=4 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=4 class=other n=1 lost=121 p50=30.250 p90=30.250 max=30.250
+# churn geo-greedy seed=4 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=4 flow=1 London-Tokyo hopChangesPerMin=1.341 meanHops=27.508 delivered=59
+# churn geo-greedy seed=4 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=4 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=4 noRouteOrigin=0 noRouteForward=4644
+##RUN## 4 geo-greedy 1.24 104.29 110.00 0.14 0.00 0.00 0.40
+# handover geo-greedy seed=5 scheduled=92 forced=0 islFailures=4724 ticks=20
+# account geo-greedy seed=5 flow=0 offered=1191 refused=0 delivered=0 received=0 dup=0 outageLost=1191 scatteredLost=0
+# account geo-greedy seed=5 flow=1 offered=1186 refused=0 delivered=47 received=47 dup=0 outageLost=1137 scatteredLost=2
+# account geo-greedy seed=5 flow=2 offered=1186 refused=0 delivered=0 received=0 dup=0 outageLost=1186 scatteredLost=0
+# account geo-greedy seed=5 flow=3 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# outage geo-greedy seed=5 class=startup n=4 lost=4321 p50=296.500 p90=297.750 max=297.750
+# outage geo-greedy seed=5 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=5 class=unplanned n=1 lost=12 p50=3.000 p90=3.000 max=3.000
+# outage geo-greedy seed=5 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=5 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=5 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=5 flow=1 London-Tokyo hopChangesPerMin=4.070 meanHops=27.043 delivered=47
+# churn geo-greedy seed=5 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=5 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=5 noRouteOrigin=0 noRouteForward=4652
+##RUN## 5 geo-greedy 0.99 102.46 110.00 0.12 0.00 0.00 0.66
+# handover geo-greedy seed=6 scheduled=92 forced=0 islFailures=4834 ticks=20
+# account geo-greedy seed=6 flow=0 offered=1188 refused=0 delivered=0 received=0 dup=0 outageLost=1188 scatteredLost=0
+# account geo-greedy seed=6 flow=1 offered=1189 refused=0 delivered=59 received=59 dup=0 outageLost=1130 scatteredLost=0
+# account geo-greedy seed=6 flow=2 offered=1183 refused=0 delivered=0 received=0 dup=0 outageLost=1183 scatteredLost=0
+# account geo-greedy seed=6 flow=3 offered=1189 refused=0 delivered=0 received=0 dup=0 outageLost=1189 scatteredLost=0
+# outage geo-greedy seed=6 class=startup n=4 lost=4325 p50=297.000 p90=297.250 max=297.250
+# outage geo-greedy seed=6 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=6 class=unplanned n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# outage geo-greedy seed=6 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=6 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn geo-greedy seed=6 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=6 flow=1 London-Tokyo hopChangesPerMin=1.372 meanHops=27.237 delivered=59
+# churn geo-greedy seed=6 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=6 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=6 noRouteOrigin=0 noRouteForward=4657
+##RUN## 6 geo-greedy 1.24 103.39 110.00 0.14 0.00 0.00 0.40
+# handover geo-greedy seed=7 scheduled=92 forced=0 islFailures=4720 ticks=20
+# account geo-greedy seed=7 flow=0 offered=1177 refused=0 delivered=0 received=0 dup=0 outageLost=1177 scatteredLost=0
+# account geo-greedy seed=7 flow=1 offered=1179 refused=0 delivered=58 received=58 dup=0 outageLost=1121 scatteredLost=0
+# account geo-greedy seed=7 flow=2 offered=1191 refused=0 delivered=0 received=0 dup=0 outageLost=1191 scatteredLost=0
+# account geo-greedy seed=7 flow=3 offered=1177 refused=0 delivered=0 received=0 dup=0 outageLost=1177 scatteredLost=0
+# outage geo-greedy seed=7 class=startup n=4 lost=4296 p50=294.250 p90=297.750 max=297.750
+# outage geo-greedy seed=7 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=7 class=unplanned n=1 lost=122 p50=30.500 p90=30.500 max=30.500
+# outage geo-greedy seed=7 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=7 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn geo-greedy seed=7 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=7 flow=1 London-Tokyo hopChangesPerMin=1.342 meanHops=27.207 delivered=58
+# churn geo-greedy seed=7 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=7 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=7 noRouteOrigin=0 noRouteForward=4648
+##RUN## 7 geo-greedy 1.23 103.46 110.00 0.14 0.00 0.00 0.50
+# handover geo-greedy seed=8 scheduled=92 forced=0 islFailures=4734 ticks=20
+# account geo-greedy seed=8 flow=0 offered=1181 refused=0 delivered=0 received=0 dup=0 outageLost=1181 scatteredLost=0
+# account geo-greedy seed=8 flow=1 offered=1183 refused=0 delivered=63 received=63 dup=0 outageLost=1120 scatteredLost=0
+# account geo-greedy seed=8 flow=2 offered=1190 refused=0 delivered=0 received=0 dup=0 outageLost=1190 scatteredLost=0
+# account geo-greedy seed=8 flow=3 offered=1190 refused=0 delivered=0 received=0 dup=0 outageLost=1190 scatteredLost=0
+# outage geo-greedy seed=8 class=startup n=4 lost=4315 p50=297.500 p90=297.500 max=297.500
+# outage geo-greedy seed=8 class=scheduled n=1 lost=249 p50=62.250 p90=62.250 max=62.250
+# outage geo-greedy seed=8 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=8 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=8 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=8 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=8 flow=1 London-Tokyo hopChangesPerMin=2.683 meanHops=27.762 delivered=63
+# churn geo-greedy seed=8 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=8 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=8 noRouteOrigin=0 noRouteForward=4666
+##RUN## 8 geo-greedy 1.33 104.65 114.00 0.15 0.00 0.00 0.56
+# handover geo-greedy seed=9 scheduled=92 forced=0 islFailures=4704 ticks=20
+# account geo-greedy seed=9 flow=0 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# account geo-greedy seed=9 flow=1 offered=1182 refused=0 delivered=60 received=60 dup=0 outageLost=1122 scatteredLost=0
+# account geo-greedy seed=9 flow=2 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# account geo-greedy seed=9 flow=3 offered=1181 refused=0 delivered=0 received=0 dup=0 outageLost=1181 scatteredLost=0
+# outage geo-greedy seed=9 class=startup n=4 lost=4302 p50=296.000 p90=296.000 max=296.000
+# outage geo-greedy seed=9 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=9 class=unplanned n=1 lost=252 p50=63.000 p90=63.000 max=63.000
+# outage geo-greedy seed=9 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=9 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=9 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=9 flow=1 London-Tokyo hopChangesPerMin=1.364 meanHops=27.467 delivered=60
+# churn geo-greedy seed=9 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=9 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=9 noRouteOrigin=0 noRouteForward=4632
+##RUN## 9 geo-greedy 1.27 104.25 110.00 0.15 0.00 0.00 0.40
+# handover geo-greedy seed=10 scheduled=92 forced=0 islFailures=4744 ticks=20
+# account geo-greedy seed=10 flow=0 offered=1192 refused=0 delivered=0 received=0 dup=0 outageLost=1192 scatteredLost=0
+# account geo-greedy seed=10 flow=1 offered=1177 refused=0 delivered=38 received=38 dup=0 outageLost=1137 scatteredLost=2
+# account geo-greedy seed=10 flow=2 offered=1182 refused=0 delivered=0 received=0 dup=0 outageLost=1182 scatteredLost=0
+# account geo-greedy seed=10 flow=3 offered=1190 refused=0 delivered=0 received=0 dup=0 outageLost=1190 scatteredLost=0
+# outage geo-greedy seed=10 class=startup n=4 lost=4313 p50=297.500 p90=298.000 max=298.000
+# outage geo-greedy seed=10 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=10 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=10 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=10 class=other n=1 lost=140 p50=35.000 p90=35.000 max=35.000
+# churn geo-greedy seed=10 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=10 flow=1 London-Tokyo hopChangesPerMin=2.683 meanHops=28.895 delivered=38
+# churn geo-greedy seed=10 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=10 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=10 noRouteOrigin=0 noRouteForward=4660
+##RUN## 10 geo-greedy 0.80 109.15 114.00 0.09 0.00 0.00 0.90
+# handover geo-greedy seed=11 scheduled=92 forced=0 islFailures=4751 ticks=20
+# account geo-greedy seed=11 flow=0 offered=1183 refused=0 delivered=0 received=0 dup=0 outageLost=1183 scatteredLost=0
+# account geo-greedy seed=11 flow=1 offered=1192 refused=0 delivered=63 received=63 dup=0 outageLost=1129 scatteredLost=0
+# account geo-greedy seed=11 flow=2 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# account geo-greedy seed=11 flow=3 offered=1179 refused=0 delivered=0 received=0 dup=0 outageLost=1179 scatteredLost=0
+# outage geo-greedy seed=11 class=startup n=4 lost=4310 p50=295.750 p90=296.000 max=296.000
+# outage geo-greedy seed=11 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=11 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=11 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=11 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=11 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=11 flow=1 London-Tokyo hopChangesPerMin=1.342 meanHops=27.349 delivered=63
+# churn geo-greedy seed=11 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=11 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=11 noRouteOrigin=0 noRouteForward=4660
+##RUN## 11 geo-greedy 1.33 103.77 110.00 0.15 0.00 0.00 0.45
+# handover geo-greedy seed=12 scheduled=92 forced=0 islFailures=4857 ticks=20
+# account geo-greedy seed=12 flow=0 offered=1187 refused=0 delivered=0 received=0 dup=0 outageLost=1187 scatteredLost=0
+# account geo-greedy seed=12 flow=1 offered=1178 refused=0 delivered=60 received=60 dup=0 outageLost=1118 scatteredLost=0
+# account geo-greedy seed=12 flow=2 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# account geo-greedy seed=12 flow=3 offered=1182 refused=0 delivered=0 received=0 dup=0 outageLost=1182 scatteredLost=0
+# outage geo-greedy seed=12 class=startup n=4 lost=4302 p50=296.000 p90=296.750 max=296.750
+# outage geo-greedy seed=12 class=scheduled n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=12 class=unplanned n=1 lost=252 p50=63.000 p90=63.000 max=63.000
+# outage geo-greedy seed=12 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=12 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=12 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=12 flow=1 London-Tokyo hopChangesPerMin=1.364 meanHops=27.467 delivered=60
+# churn geo-greedy seed=12 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=12 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=12 noRouteOrigin=0 noRouteForward=4660
+##RUN## 12 geo-greedy 1.27 104.24 110.00 0.15 0.00 0.00 0.40
+# handover geo-greedy seed=13 scheduled=92 forced=0 islFailures=4788 ticks=20
+# account geo-greedy seed=13 flow=0 offered=1183 refused=0 delivered=0 received=0 dup=0 outageLost=1183 scatteredLost=0
+# account geo-greedy seed=13 flow=1 offered=1178 refused=0 delivered=60 received=60 dup=0 outageLost=1118 scatteredLost=0
+# account geo-greedy seed=13 flow=2 offered=1190 refused=0 delivered=0 received=0 dup=0 outageLost=1190 scatteredLost=0
+# account geo-greedy seed=13 flow=3 offered=1180 refused=0 delivered=0 received=0 dup=0 outageLost=1180 scatteredLost=0
+# outage geo-greedy seed=13 class=startup n=4 lost=4302 p50=295.750 p90=297.500 max=297.500
+# outage geo-greedy seed=13 class=scheduled n=1 lost=249 p50=62.250 p90=62.250 max=62.250
+# outage geo-greedy seed=13 class=unplanned n=1 lost=3 p50=0.750 p90=0.750 max=0.750
+# outage geo-greedy seed=13 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=13 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=13 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=13 flow=1 London-Tokyo hopChangesPerMin=2.683 meanHops=27.367 delivered=60
+# churn geo-greedy seed=13 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=13 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=13 noRouteOrigin=0 noRouteForward=4637
+##RUN## 13 geo-greedy 1.27 103.61 114.00 0.15 0.00 0.00 0.52
+# handover geo-greedy seed=14 scheduled=92 forced=0 islFailures=4639 ticks=20
+# account geo-greedy seed=14 flow=0 offered=1183 refused=0 delivered=0 received=0 dup=0 outageLost=1183 scatteredLost=0
+# account geo-greedy seed=14 flow=1 offered=1184 refused=0 delivered=57 received=57 dup=0 outageLost=1127 scatteredLost=0
+# account geo-greedy seed=14 flow=2 offered=1189 refused=0 delivered=0 received=0 dup=0 outageLost=1189 scatteredLost=0
+# account geo-greedy seed=14 flow=3 offered=1185 refused=0 delivered=0 received=0 dup=0 outageLost=1185 scatteredLost=0
+# outage geo-greedy seed=14 class=startup n=4 lost=4312 p50=296.250 p90=297.250 max=297.250
+# outage geo-greedy seed=14 class=scheduled n=1 lost=249 p50=62.250 p90=62.250 max=62.250
+# outage geo-greedy seed=14 class=unplanned n=1 lost=123 p50=30.750 p90=30.750 max=30.750
+# outage geo-greedy seed=14 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=14 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn geo-greedy seed=14 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=14 flow=1 London-Tokyo hopChangesPerMin=1.341 meanHops=27.175 delivered=57
+# churn geo-greedy seed=14 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=14 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=14 noRouteOrigin=0 noRouteForward=4656
+##RUN## 14 geo-greedy 1.20 103.10 110.00 0.14 0.00 0.00 0.34
+# handover geo-greedy seed=15 scheduled=92 forced=0 islFailures=4752 ticks=20
+# account geo-greedy seed=15 flow=0 offered=1189 refused=0 delivered=0 received=0 dup=0 outageLost=1189 scatteredLost=0
+# account geo-greedy seed=15 flow=1 offered=1180 refused=0 delivered=62 received=62 dup=0 outageLost=1117 scatteredLost=1
+# account geo-greedy seed=15 flow=2 offered=1187 refused=0 delivered=0 received=0 dup=0 outageLost=1187 scatteredLost=0
+# account geo-greedy seed=15 flow=3 offered=1178 refused=0 delivered=0 received=0 dup=0 outageLost=1178 scatteredLost=0
+# outage geo-greedy seed=15 class=startup n=4 lost=4306 p50=296.750 p90=297.250 max=297.250
+# outage geo-greedy seed=15 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=15 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=15 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=15 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=15 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=15 flow=1 London-Tokyo hopChangesPerMin=1.341 meanHops=27.323 delivered=62
+# churn geo-greedy seed=15 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=15 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=15 noRouteOrigin=0 noRouteForward=4647
+##RUN## 15 geo-greedy 1.31 103.68 110.00 0.15 0.00 0.00 0.34
+# handover geo-greedy seed=16 scheduled=92 forced=0 islFailures=4800 ticks=20
+# account geo-greedy seed=16 flow=0 offered=1177 refused=0 delivered=0 received=0 dup=0 outageLost=1177 scatteredLost=0
+# account geo-greedy seed=16 flow=1 offered=1183 refused=0 delivered=63 received=63 dup=0 outageLost=1120 scatteredLost=0
+# account geo-greedy seed=16 flow=2 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# account geo-greedy seed=16 flow=3 offered=1190 refused=0 delivered=0 received=0 dup=0 outageLost=1190 scatteredLost=0
+# outage geo-greedy seed=16 class=startup n=4 lost=4306 p50=296.000 p90=297.500 max=297.500
+# outage geo-greedy seed=16 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=16 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=16 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=16 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=16 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=16 flow=1 London-Tokyo hopChangesPerMin=2.683 meanHops=27.381 delivered=63
+# churn geo-greedy seed=16 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=16 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=16 noRouteOrigin=0 noRouteForward=4659
+##RUN## 16 geo-greedy 1.33 103.92 110.00 0.15 0.00 0.00 0.52
+# handover geo-greedy seed=17 scheduled=92 forced=0 islFailures=4781 ticks=20
+# account geo-greedy seed=17 flow=0 offered=1190 refused=0 delivered=0 received=0 dup=0 outageLost=1190 scatteredLost=0
+# account geo-greedy seed=17 flow=1 offered=1190 refused=0 delivered=58 received=58 dup=0 outageLost=1131 scatteredLost=1
+# account geo-greedy seed=17 flow=2 offered=1177 refused=0 delivered=0 received=0 dup=0 outageLost=1177 scatteredLost=0
+# account geo-greedy seed=17 flow=3 offered=1179 refused=0 delivered=0 received=0 dup=0 outageLost=1179 scatteredLost=0
+# outage geo-greedy seed=17 class=startup n=4 lost=4307 p50=294.750 p90=297.500 max=297.500
+# outage geo-greedy seed=17 class=scheduled n=1 lost=249 p50=62.250 p90=62.250 max=62.250
+# outage geo-greedy seed=17 class=unplanned n=1 lost=4 p50=1.000 p90=1.000 max=1.000
+# outage geo-greedy seed=17 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=17 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=17 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=17 flow=1 London-Tokyo hopChangesPerMin=1.342 meanHops=27.483 delivered=58
+# churn geo-greedy seed=17 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=17 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=17 noRouteOrigin=0 noRouteForward=4645
+##RUN## 17 geo-greedy 1.22 104.35 110.00 0.14 0.00 0.00 0.48
+# handover geo-greedy seed=18 scheduled=92 forced=0 islFailures=4785 ticks=20
+# account geo-greedy seed=18 flow=0 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# account geo-greedy seed=18 flow=1 offered=1177 refused=0 delivered=62 received=62 dup=0 outageLost=1114 scatteredLost=1
+# account geo-greedy seed=18 flow=2 offered=1181 refused=0 delivered=0 received=0 dup=0 outageLost=1181 scatteredLost=0
+# account geo-greedy seed=18 flow=3 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# outage geo-greedy seed=18 class=startup n=4 lost=4298 p50=296.000 p90=296.000 max=296.000
+# outage geo-greedy seed=18 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=18 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=18 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=18 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=18 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=18 flow=1 London-Tokyo hopChangesPerMin=1.341 meanHops=27.323 delivered=62
+# churn geo-greedy seed=18 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=18 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=18 noRouteOrigin=0 noRouteForward=4612
+##RUN## 18 geo-greedy 1.31 103.72 110.00 0.15 0.00 0.00 0.40
+# handover geo-greedy seed=19 scheduled=92 forced=0 islFailures=4694 ticks=20
+# account geo-greedy seed=19 flow=0 offered=1181 refused=0 delivered=0 received=0 dup=0 outageLost=1181 scatteredLost=0
+# account geo-greedy seed=19 flow=1 offered=1178 refused=0 delivered=61 received=61 dup=0 outageLost=1117 scatteredLost=0
+# account geo-greedy seed=19 flow=2 offered=1180 refused=0 delivered=0 received=0 dup=0 outageLost=1180 scatteredLost=0
+# account geo-greedy seed=19 flow=3 offered=1185 refused=0 delivered=0 received=0 dup=0 outageLost=1185 scatteredLost=0
+# outage geo-greedy seed=19 class=startup n=4 lost=4298 p50=295.250 p90=296.250 max=296.250
+# outage geo-greedy seed=19 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=19 class=unplanned n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=19 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=19 class=other n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# churn geo-greedy seed=19 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=19 flow=1 London-Tokyo hopChangesPerMin=1.357 meanHops=27.295 delivered=61
+# churn geo-greedy seed=19 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=19 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=19 noRouteOrigin=0 noRouteForward=4652
+##RUN## 19 geo-greedy 1.29 103.65 110.00 0.15 0.00 0.00 0.37
+# handover geo-greedy seed=20 scheduled=92 forced=0 islFailures=4733 ticks=20
+# account geo-greedy seed=20 flow=0 offered=1184 refused=0 delivered=0 received=0 dup=0 outageLost=1184 scatteredLost=0
+# account geo-greedy seed=20 flow=1 offered=1192 refused=0 delivered=56 received=56 dup=0 outageLost=1136 scatteredLost=0
+# account geo-greedy seed=20 flow=2 offered=1181 refused=0 delivered=0 received=0 dup=0 outageLost=1181 scatteredLost=0
+# account geo-greedy seed=20 flow=3 offered=1181 refused=0 delivered=0 received=0 dup=0 outageLost=1181 scatteredLost=0
+# outage geo-greedy seed=20 class=startup n=4 lost=4317 p50=295.250 p90=296.000 max=296.000
+# outage geo-greedy seed=20 class=scheduled n=1 lost=248 p50=62.000 p90=62.000 max=62.000
+# outage geo-greedy seed=20 class=unplanned n=1 lost=117 p50=29.250 p90=29.250 max=29.250
+# outage geo-greedy seed=20 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage geo-greedy seed=20 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn geo-greedy seed=20 flow=0 NewYork-London hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=20 flow=1 London-Tokyo hopChangesPerMin=1.396 meanHops=27.143 delivered=56
+# churn geo-greedy seed=20 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# churn geo-greedy seed=20 flow=3 Tokyo-Sydney hopChangesPerMin=0.000 meanHops=0.000 delivered=0
+# geo geo-greedy seed=20 noRouteOrigin=0 noRouteForward=4605
+##RUN## 20 geo-greedy 1.18 103.07 110.00 0.14 0.00 0.00 0.47
+geo-greedy      1.22     104.14       110.60          0.14     0.00       0.00        0.48
+##PROV## commit=cd4a765c009377ded9c5297b18d1022bcdebac01 ref=main run_id=39590126058 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker

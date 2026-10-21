@@ -114,6 +114,60 @@ merged before its first dispatch:
 native baseline, paired per seed (`tools/bench/native_view.py`). The family
 joins the cross-family view (#711) with these cells.
 
+## Results (v2.4.0)
+
+The pre-registered campaign, as planned: the three shells with `--sagin`, 20
+seeds each, six arms, on `ns3:3.48`. The two Starlink gpsr3d cells ran in
+2-seed blocks. Their first 20-seed job needed about 55 min a seed and hit
+the 6 h runner limit
+([#738](https://github.com/danieljoppi/AntHocNet/pull/738)); only the job
+split changed. The cells are `results/cells/sagin-*-v240.txt`.
+`scenario_check.py results`: OK, 0 FAIL, 0 WARN, per file and per cell.
+
+Mean over 20 seeds, PDR with its 95 % t-interval:
+
+| arm | walker16 PDR % | delay99 ms | NRL | Starlink S1 PDR % | delay99 ms | NRL | S1 storm PDR % | delay99 ms | NRL |
+|---|---|---|---|---|---|---|---|---|---|
+| **AntHocNet** | 93.11 ± 0.36 | 116.9 | 122 | 82.07 ± 0.61 | 181.4 | 1221 | 80.57 ± 1.01 | 193.9 | 1369 |
+| OPSPF | 99.05 ± 1.43 | 124.0 | 549 | 99.18 ± 0.58 | 109.0 | 19240 | 98.31 ± 1.04 | 125.2 | 16240 |
+| gpsr3d | 40.26 ± 0.33 | 86.0 | 201 | 5.04 ± 0.13 | 51.0 | 8662 | 4.94 ± 0.75 | 62.9 | 11155 |
+| geo-greedy | 39.51 ± 0.25 | 84.2 | 0 | 1.22 ± 0.06 | 110.6 | 0 | 0.74 ± 0.79 | 28.6 | 0 |
+| hop oracle | 98.72 ± 0.12 | 124.0 | 0 | 97.01 ± 0.23 | 109.0 | 0 | 96.84 ± 0.22 | 123.0 | 0 |
+| delay oracle | 99.82 ± 0.02 | 98.0 | 0 | 96.66 ± 0.19 | 103.1 | 0 | 96.67 ± 0.21 | 107.7 | 0 |
+
+**The readings**, paired per seed (`tools/bench/native_view.py`):
+
+| shell | AntHocNet − hop oracle (pp) | AntHocNet − OPSPF, the best native (pp) | d delay99 (ms) | d NRL | verdict |
+|---|---|---|---|---|---|
+| walker16 | −5.61 [−6.00, −5.23] | −5.95 [−7.42, −4.47] | −7.10 [−11.25, −2.85] | −427 [−441, −414] | PAIRED-MIXED |
+| Starlink S1 | −14.94 [−15.61, −14.27] | −17.11 [−17.83, −16.40] | +72.35 [+64.95, +79.50] | −18019 [−18195, −17844] | PAIRED-MIXED |
+| S1 storm | −16.27 [−17.26, −15.28] | −17.74 [−19.14, −16.35] | +68.65 [+55.80, +80.60] | −14871 [−15185, −14557] | PAIRED-MIXED |
+
+What they say:
+
+- **OPSPF leads every shell, as on the plain LEO cells.** It delivers 6–18 pp
+  more than AntHocNet, at 4.5× (walker16) to 16× (Starlink) its control.
+  OPSPF also sits above both 1 s oracles on the Starlink shells. Neither is
+  a delivery bound with unpredicted failures
+  ([#720](https://github.com/danieljoppi/AntHocNet/issues/720)), which
+  holds for the delay oracle here as for the hop oracle on the LEO page.
+- **AntHocNet is far ahead of the geographic arms.** It leads gpsr3d by
+  +52.9 pp on walker16 and +77.0 / +75.6 pp on Starlink. On the 1584-satellite
+  shell, greedy forwarding collapses: gpsr3d delivers 5 % and geo-greedy
+  1 %. On walker16 they reach about 40 %, the structural dead ends of a
+  +grid shell. gpsr3d's control also grows to 8662–11155 NRL on Starlink,
+  7–8× AntHocNet's.
+- **The air layer helps every routing arm a little.** On the same shells
+  without it (the [LEO page](leo-walker.md), v2.4.0), AntHocNet delivers
+  92.74 / 79.34 / 79.17 % and OPSPF 98.90 / 96.82 / 96.12 %. With the HAPS
+  layer, AntHocNet delivers 93.11 / 82.07 / 80.57 % and OPSPF 99.05 / 99.18 /
+  98.31 %. These are different scenarios on the same seeds, so they are
+  compared by their means, not paired.
+
+The family joins the cross-family view
+([VANET page](../scenarios/vanet.md#ranking-stability-across-the-families))
+as the eighth family.
+
 ## Threats to validity
 
 - **HAPS only, no UAV relays.** The layer is stratospheric platforms on
@@ -127,3 +181,6 @@ joins the cross-family view (#711) with these cells.
   150 km ring at 20 km.
 - **gpsr3d is adapted** (above). Its numbers measure greedy-geographic
   routing on this geometry, not GPSR as published.
+- **OPSPF's LSA floods are accounted, not transmitted** (the LEO page's
+  [opspf section](leo-walker.md#opspf-the-link-state-incumbent-707)), as on
+  the plain shells.
