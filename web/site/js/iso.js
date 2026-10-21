@@ -284,6 +284,7 @@ export class IsoRenderer {
     if (!this.meta) return;
     this.t = s.time || 0;
     this.drawGround();
+    if (s.jams?.length && this.kind !== 'space') this.drawJams(s.jams);
     const pos = s.positions;
     const n = pos.length / 4;
     if (this.kind !== 'space') this.track(pos, s.simNow || 0);
@@ -664,6 +665,37 @@ export class IsoRenderer {
     }
     trees.sort((a, b) => this.depth(a[0], a[1]) - this.depth(b[0], b[1]));
     for (const [x, y] of trees) this.tree(x, y);
+  }
+
+  /** #582: the jamming zones active now (a jammer, a fire front), from the
+   *  flat [n, x0, y0, ...] list, shaded and clipped to the field. */
+  drawJams(f) {
+    const { ctx, colors: c, meta } = this;
+    const path = (pts) => {
+      ctx.beginPath();
+      pts.forEach(([x, y], k) => { const [px, py] = this.project(x, y, 0); if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py); });
+      ctx.closePath();
+    };
+    ctx.save();
+    path([[0, 0], [meta.areaX, 0], [meta.areaX, meta.areaY], [0, meta.areaY]]);
+    ctx.clip();
+    for (let k = 0; k < f.length;) {
+      const n = f[k];
+      const poly = [];
+      for (let j = 0; j < n; j++) poly.push([f[k + 1 + 2 * j], f[k + 2 + 2 * j]]);
+      k += 1 + 2 * n;
+      path(poly);
+      ctx.fillStyle = c.critical;
+      ctx.globalAlpha = c.night ? 0.35 : 0.3;
+      ctx.fill();
+      ctx.globalAlpha = 0.8;
+      ctx.strokeStyle = c.critical;
+      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.restore();
   }
 
   /** #575: the world's attenuation zones as [[x, y], ...] polygons. */

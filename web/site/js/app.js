@@ -560,6 +560,7 @@ function frame(ts) {
       flights: anim.flights, rings: anim.rings, marks: anim.marks, flash,
       flows: playground.flows, selected: playground.selected, tool: playground.tool,
       hover, ghost, ghostRange: playground.ghostRange || 0, rangeRings: playground.rangeRings || null,
+      jams: w.jamZones(),
     });
     if (ts - lastInspector > 300) { updateRoutes(w, ts); renderInspector(w); updateStatus(w); lastInspector = ts; }
     flushLog();

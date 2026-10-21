@@ -10,6 +10,7 @@
 //   world: { area: [x, y, z?], range,           -- the field and default radio
 //            channel: 'disk' | 'urban' | 'isl',  -- urban: blocks [bx, by], street
 //            zones: [{ poly: [x0, y0, ...], factor }],   canopy (#575)
+//            jams: [{ poly, from, until, v: [vx, vy] }],  jamming / fire front (#582)
 //            shell: { planes, slots, inc, period },      satellites (isl, #575)
 //            devices: [{ class, x, y, z, lat, lon, route, battery, moves, draggable }],
 //            flows: [{ src, dst, rate, start }] }  device indices
@@ -51,6 +52,12 @@ export const DEVICES = Object.freeze(Object.fromEntries(Object.entries({
   station:  { range: 0, sprite: 'tower', moves: null, ground: 25 },
   dish:     { range: 0, sprite: 'tower', moves: null, ground: 60 },  // a small dish: sees only near-zenith satellites
   satellite:{ range: 0, sprite: 'satellite', moves: null, orbit: true },
+  // Chapter 6 (#583). A rescuer walks the search loop its device gives it;
+  // a portable mast is set down where the player puts it; the command post
+  // stays put.
+  rescuer:  { range: 150, sprite: 'phone', moves: null },
+  mast:     { range: 350, sprite: 'tower', moves: null },
+  post:     { range: 300, sprite: 'pc', moves: null },
 }).map(([k, d]) => [k, localized(d, `device.${k}`, ['label', 'note'])])));
 
 /** Seconds of simulated time per runner step (hazards and samples land on it). */
@@ -147,6 +154,7 @@ export function buildWorld(M, level, seed) {
   else if (lw.channel === 'isl') w.setIslChannel();
   else w.setDiskChannel(lw.range ?? 250);
   for (const z of lw.zones || []) w.addAttenuationZone(z.poly, z.factor, z.top ?? 30);
+  for (const j of lw.jams || []) w.addJammingZone(j.poly, j.from ?? 0, j.until ?? 1e18, j.v?.[0] ?? 0, j.v?.[1] ?? 0);
   const ids = lw.devices.map((d) => addDevice(w, d.class, d.x, d.y, d.moves !== false, d));
   // Satellites come after the devices, so device indices (flows, hazards)
   // stay the level's own; hazards address a satellite as 'sat:k'.
