@@ -37,6 +37,15 @@
  * Traffic runs between ground stations (#211: endpoints are on the ground, so
  * GSL handover is endpoint churn the routing must absorb).
  *
+ * --sagin (#581, the space-air-ground family): a HAPS relay layer between the
+ * ground and the shell. Each city gets --haps high-altitude platforms at
+ * --hapsAltitude km on a ring of --hapsRing km around it, each linked to the
+ * city's station and to its ring neighbours by point-to-point links. The
+ * platforms, not the stations, reach the shell: each holds the access segment
+ * a station holds without --sagin (elevation-gated, handed over on the same
+ * clock), and the station reaches space only through its platforms. Every
+ * arm routes end to end over the three layers.
+ *
  * Output: the isl-grid / anthocnet-compare row format (PDR, delays, NRL, ...)
  * and ##RUN## per-seed rows, plus the handover metric family (#297 item 3):
  *   # handover   scheduled/forced GSL handovers, ISL failure events
@@ -68,6 +77,8 @@
 #include "ns3/point-to-point-module.h"
 
 #include "ns3/aodv-module.h"
+#include "ns3/gpsr-helper.h"
+#include "ns3/gpsr-ptable.h"
 #include "ns3/olsr-module.h"
 #include "ns3/oracle-module.h"
 #include "ns3/anthocnet-helper.h"
@@ -145,6 +156,10 @@ struct Params {
     std::string timingProfile = "terrestrial";
     std::string vizTrace;  ///< #641: the first anthocnet run as a replay trace
     double vizStep = 1.0;
+    /// #581: the SAGIN air layer (see the file comment).
+    bool sagin = false;
+    uint32_t haps = 3;
+    double hapsAltKm = 20, hapsRingKm = 150;
 };
 
 // #641: the one recorded run of --vizTrace (see viz-trace.h).
@@ -321,6 +336,14 @@ void SetLink(Link& l, bool up, bool gateIp = true) {
 
 struct World {
     NodeContainer sats, ground;
+    /// #581: the access nodes, which hold the space segment: the stations
+    /// themselves, or with --sagin the HAPS layer (air). accessCity maps an
+    /// access index to its city.
+    NodeContainer air, access;
+    std::vector<uint32_t> accessCity;
+    /// #581: the air layer's fixed links (station-HAPS, HAPS-HAPS); a/b are
+    /// global indices: satellites, then access nodes, then stations.
+    std::vector<Link> airLinks;
     std::vector<Link> isls;
     // gsl[g] = links from ground station g to its candidate satellites
     std::vector<std::vector<Link>> gsl;
@@ -361,6 +384,32 @@ std::map<uint32_t, Ptr<Node>> g_addrToNode;  ///< every assigned address -> node
 /// at whichever satellite is nearest it but holds no GSL.
 std::map<uint32_t, Ptr<Node>> g_servingSat;
 uint64_t g_geoNoRouteOrigin = 0, g_geoNoRouteForward = 0;
+/// #581: with --sagin, a station or HAPS has no single uplink, so the
+/// location service also names, per non-satellite node, the neighbour that
+/// leads up: a station's first served HAPS, a HAPS's serving satellite (or,
+/// unserved, a served ring neighbour). geo-greedy takes it when the goal is
+/// not a neighbour.
+bool g_sagin = false;
+std::map<uint32_t, Ptr<Node>> g_uplink;
+
+/// #581: GPSR's position source in this harness. Greedy forwarding on raw
+/// Earth-centred positions never leaves the ground: the chord between two
+/// cities runs through the Earth, so every satellite is farther from the
+/// destination than the source station is (measured: 0 % delivered on
+/// walker16). GPSR here therefore sees each node at its latitude and
+/// longitude on one common sphere of radius kGpsrSphereM -- distance becomes
+/// angular separation, as seen from the Earth's centre, and climbing to the
+/// shell costs nothing. The 10 000 km shift on every axis keeps the
+/// coordinates positive (GPSR's headers carry them unsigned); a translation
+/// changes no distance.
+constexpr double kGpsrOffsetM = 1.0e7;
+constexpr double kGpsrSphereM = 7.0e6;
+Vector GpsrPosition(Ptr<Node> n) {
+    const Vector p = PosOf(n);
+    const double r = std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+    const double k = r > 0 ? kGpsrSphereM / r : 0.0;
+    return Vector(p.x * k + kGpsrOffsetM, p.y * k + kGpsrOffsetM, p.z * k + kGpsrOffsetM);
+}
 
 class GeoGreedy : public Ipv4RoutingProtocol {
 public:
@@ -442,6 +491,13 @@ private:
         const bool ground = !self->GetObject<LeoCircularOrbitMobilityModel>();
         double bestD = ground ? 1e300 : Dist(PosOf(self), target);
         Ptr<Ipv4Route> best;
+        // #581: off the shell with several up links, the uplink (or the goal
+        // itself, when it is a neighbour) is the only choice.
+        Ptr<Node> uplink;
+        if (ground && g_sagin) {
+            auto u = g_uplink.find(self->GetId());
+            uplink = u == g_uplink.end() ? nullptr : u->second;
+        }
         for (uint32_t i = 1; i < m_ipv4->GetNInterfaces(); ++i) {
             if (!m_ipv4->IsUp(i) || m_ipv4->GetNAddresses(i) == 0) continue;
             Ptr<NetDevice> dev = m_ipv4->GetNetDevice(i);
@@ -454,6 +510,7 @@ private:
                 const int32_t pIf = pIp->GetInterfaceForDevice(peer);
                 if (pIf < 0 || !pIp->IsUp(static_cast<uint32_t>(pIf))) continue;
                 const bool isDst = peer->GetNode() == it->second || peer->GetNode() == goal;
+                if (ground && g_sagin && !isDst && peer->GetNode() != uplink) continue;
                 const double d = isDst ? -1.0 : Dist(PosOf(peer->GetNode()), target);
                 if (d < bestD) {
                     bestD = d;
@@ -486,7 +543,7 @@ void UpdateDelays(World* w, double every) {
     for (uint32_t g = 0; g < w->gsl.size(); ++g) {
         for (Link& l : w->gsl[g]) {
             if (!l.up) continue;
-            const double d = Dist(PosOf(w->ground.Get(g)), PosOf(w->sats.Get(l.b)));
+            const double d = Dist(PosOf(w->access.Get(g)), PosOf(w->sats.Get(l.b)));
             l.channel->SetAttribute("Delay", TimeValue(Seconds(d / kLightSpeed)));
         }
     }
@@ -495,7 +552,7 @@ void UpdateDelays(World* w, double every) {
 
 /// Best visible serving satellite for station g (index into gsl[g]), or -1.
 int BestGsl(World* w, uint32_t g, double minElev) {
-    const Vector gs = PosOf(w->ground.Get(g));
+    const Vector gs = PosOf(w->access.Get(g));
     int best = -1;
     double bestEl = minElev;
     for (uint32_t k = 0; k < w->gsl[g].size(); ++k) {
@@ -510,34 +567,56 @@ int BestGsl(World* w, uint32_t g, double minElev) {
     return best;
 }
 
+/// #581: after a city's HAPS change service, refresh what the location
+/// service tells geo-greedy: the station's serving satellite is its first
+/// served HAPS's, and each node's uplink (see g_uplink).
+void SaginService(World* w, uint32_t city) {
+    const uint32_t n = static_cast<uint32_t>(w->access.GetN());
+    Ptr<Node> station = w->ground.Get(city), firstHaps, firstSat;
+    for (uint32_t g = 0; g < n; ++g) {
+        if (w->accessCity[g] != city || w->serving[g] < 0) continue;
+        firstHaps = w->access.Get(g);
+        firstSat = w->sats.Get(w->gsl[g][w->serving[g]].b);
+        break;
+    }
+    g_servingSat[station->GetId()] = firstSat;
+    g_uplink[station->GetId()] = firstHaps;
+    for (uint32_t g = 0; g < n; ++g) {
+        if (w->accessCity[g] != city) continue;
+        g_uplink[w->access.Get(g)->GetId()] =
+            w->serving[g] >= 0 ? w->sats.Get(w->gsl[g][w->serving[g]].b) : firstHaps;
+    }
+}
+
 void Handover(World* w, uint32_t g, int to, int kind) {
     const int from = w->serving[g];
     if (from == to) return;
     if (from >= 0) SetLink(w->gsl[g][from], false);
     if (to >= 0) SetLink(w->gsl[g][to], true);
     w->serving[g] = to;
-    g_servingSat[w->ground.Get(g)->GetId()] = to >= 0 ? w->sats.Get(w->gsl[g][to].b) : nullptr;
+    g_servingSat[w->access.Get(g)->GetId()] = to >= 0 ? w->sats.Get(w->gsl[g][to].b) : nullptr;
+    if (g_sagin) SaginService(w, w->accessCity[g]);
     g_events.emplace_back(Simulator::Now().GetSeconds(), kind);
-    g_eventGs.push_back(static_cast<int>(g));
+    g_eventGs.push_back(static_cast<int>(w->accessCity[g]));
     g_eventLink.push_back(-1);
     (kind == 1 ? g_scheduledHo : g_forcedHo)++;
 }
 
 void HandoverClock(World* w, const Params* P) {
     ++g_clockTicks;
-    for (uint32_t g = 0; g < w->ground.GetN(); ++g) Handover(w, g, BestGsl(w, g, P->minElevDeg), 1);
+    for (uint32_t g = 0; g < w->access.GetN(); ++g) Handover(w, g, BestGsl(w, g, P->minElevDeg), 1);
     Simulator::Schedule(Seconds(P->clock), &HandoverClock, w, P);
 }
 
 /// Between clock ticks: if the serving satellite sets (or fails), hand over now.
 void VisibilityWatch(World* w, const Params* P) {
-    for (uint32_t g = 0; g < w->ground.GetN(); ++g) {
+    for (uint32_t g = 0; g < w->access.GetN(); ++g) {
         const int k = w->serving[g];
         bool lost = k < 0;
         if (k >= 0) {
             const uint32_t s = w->gsl[g][k].b;
             lost = !w->satUp[s] ||
-                   ElevationDeg(PosOf(w->ground.Get(g)), PosOf(w->sats.Get(s))) < P->minElevDeg;
+                   ElevationDeg(PosOf(w->access.Get(g)), PosOf(w->sats.Get(s))) < P->minElevDeg;
         }
         if (lost) {
             const int best = BestGsl(w, g, P->minElevDeg);
@@ -563,7 +642,9 @@ uint64_t g_lsaFloods = 0;
 /// arm's routing control (NRL, NRL bytes).
 void FloodLsa(World* w, uint32_t origin, std::vector<Ptr<Channel>> channels, bool down) {
     const uint32_t nSat = w->sats.GetN();
-    const uint32_t n = nSat + w->ground.GetN();
+    const uint32_t nAcc = w->access.GetN();
+    // Satellites, access nodes, then (with --sagin) the stations behind them.
+    const uint32_t n = nSat + nAcc + (g_sagin ? w->ground.GetN() : 0);
     // Up adjacency over satellites and stations, with each link's delay.
     std::vector<std::vector<std::pair<uint32_t, double>>> adj(n);
     auto delayOf = [](const Link& l) {
@@ -577,13 +658,18 @@ void FloodLsa(World* w, uint32_t origin, std::vector<Ptr<Channel>> channels, boo
         adj[l.a].emplace_back(l.b, d);
         adj[l.b].emplace_back(l.a, d);
     }
-    for (uint32_t g = 0; g < w->ground.GetN(); ++g) {
+    for (uint32_t g = 0; g < nAcc; ++g) {
         const int k = w->serving[g];
         if (k < 0) continue;
         const Link& l = w->gsl[g][k];
         const double d = delayOf(l);
         adj[nSat + g].emplace_back(l.b, d);
         adj[l.b].emplace_back(nSat + g, d);
+    }
+    for (const Link& l : w->airLinks) {  // #581: fixed, always up
+        const double d = delayOf(l);
+        adj[l.a].emplace_back(l.b, d);
+        adj[l.b].emplace_back(l.a, d);
     }
     std::vector<double> at(n, -1.0);
     std::set<std::pair<double, uint32_t>> q;
@@ -608,7 +694,9 @@ void FloodLsa(World* w, uint32_t origin, std::vector<Ptr<Channel>> channels, boo
         const uint64_t tx = adj[u].size() - (u == origin ? 0 : 1);
         g_controlPkts += tx;
         g_controlBytes += tx * kLsaBytes;
-        Ptr<Node> node = u < nSat ? w->sats.Get(u) : w->ground.Get(u - nSat);
+        Ptr<Node> node = u < nSat          ? w->sats.Get(u)
+                         : u < nSat + nAcc ? w->access.Get(u - nSat)
+                                           : w->ground.Get(u - nSat - nAcc);
         Simulator::Schedule(Seconds(at[u]), [node, channels, down] {
             for (const Ptr<Channel>& ch : channels) g_opspfTopo->LearnLinkState(node, ch, down);
         });
@@ -700,6 +788,48 @@ void OnForward(uint32_t node, const Ipv4Header& ip, Ptr<const Packet> p, uint32_
     g_pktPath[p->GetUid()].push_back(node);
 }
 
+/// #581: one access site (where a node holds the space segment): a station,
+/// or with --sagin one of its city's HAPS.
+struct Site {
+    double lat, lon, altM;
+    uint32_t city;
+};
+
+/// The point `distM` from (lat, lon) along initial bearing `bearingDeg`, on
+/// the sphere of radius kEarthRadiusM (degrees in, degrees out).
+std::pair<double, double> Destination(double lat, double lon, double bearingDeg, double distM) {
+    const double r = M_PI / 180.0, d = distM / kEarthRadiusM, th = bearingDeg * r;
+    const double p1 = lat * r, l1 = lon * r;
+    const double p2 =
+        std::asin(std::sin(p1) * std::cos(d) + std::cos(p1) * std::sin(d) * std::cos(th));
+    const double l2 = l1 + std::atan2(std::sin(th) * std::sin(d) * std::cos(p1),
+                                      std::cos(d) - std::sin(p1) * std::sin(p2));
+    return {p2 / r, l2 / r};
+}
+
+std::vector<Site> AccessSites(const Params& P) {
+    std::vector<Site> out;
+    for (uint32_t c = 0; c < g_cities.size(); ++c) {
+        if (!P.sagin) {
+            out.push_back({g_cities[c].lat, g_cities[c].lon, 0.0, c});
+            continue;
+        }
+        for (uint32_t k = 0; k < P.haps; ++k) {
+            const auto [la, lo] = Destination(g_cities[c].lat, g_cities[c].lon, 360.0 * k / P.haps,
+                                              P.hapsRingKm * 1000);
+            out.push_back({la, lo, P.hapsAltKm * 1000, c});
+        }
+    }
+    return out;
+}
+
+Vector SitePosition(const Site& s) {
+    Ptr<GeocentricConstantPositionMobilityModel> m =
+        CreateObject<GeocentricConstantPositionMobilityModel>();
+    m->SetGeographicPosition(Vector(s.lat, s.lon, s.altM));
+    return m->GetGeocentricPosition();
+}
+
 /// Probe pass: build the shell and the stations alone, sample which
 /// satellites each station sees above the minimum elevation at every second of
 /// the run, and tear the probe down. Orbits are deterministic, so the real run
@@ -708,14 +838,11 @@ std::vector<std::set<uint32_t>> VisibleCandidates(const Params& P) {
     LeoOrbitNodeHelper orbit;
     NodeContainer sats = orbit.CreateNodesAndInstallMobility(
         LeoOrbitalShell(P.altKm, P.incDeg, P.planes, P.sats, P.phasing, 360.0));
-    const uint32_t nGs = static_cast<uint32_t>(g_cities.size());
+    // #581: the access sites: the stations, or with --sagin their HAPS.
+    const std::vector<Site> sites = AccessSites(P);
+    const uint32_t nGs = static_cast<uint32_t>(sites.size());
     std::vector<Vector> gs(nGs);
-    for (uint32_t g = 0; g < nGs; ++g) {
-        Ptr<GeocentricConstantPositionMobilityModel> m =
-            CreateObject<GeocentricConstantPositionMobilityModel>();
-        m->SetGeographicPosition(Vector(g_cities[g].lat, g_cities[g].lon, 0));
-        gs[g] = m->GetGeocentricPosition();
-    }
+    for (uint32_t g = 0; g < nGs; ++g) gs[g] = SitePosition(sites[g]);
     std::vector<std::set<uint32_t>> cand(nGs);
     for (double t = 0; t <= P.simTime; t += 1.0) {
         Simulator::Schedule(Seconds(t), [&] {
@@ -793,6 +920,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
     g_geoNoRouteOrigin = g_geoNoRouteForward = 0;
     g_addrToNode.clear();
     g_servingSat.clear();
+    // #581: before this run schedules anything, so the last run's nodes it
+    // held are released while their timers' events still belong to it.
+    g_uplink.clear();
     g_events.clear();
     g_eventGs.clear();
     g_eventLink.clear();
@@ -816,16 +946,35 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
         m->SetGeographicPosition(Vector(g_cities[g].lat, g_cities[g].lon, 0));
         w.ground.Get(g)->AggregateObject(m);
     }
+    // #581: the access nodes. Without --sagin they are the stations.
+    const std::vector<Site> sites = AccessSites(P);
+    if (P.sagin) {
+        w.air.Create(static_cast<uint32_t>(sites.size()));
+        for (uint32_t h = 0; h < sites.size(); ++h) {
+            Ptr<GeocentricConstantPositionMobilityModel> m =
+                CreateObject<GeocentricConstantPositionMobilityModel>();
+            m->SetGeographicPosition(Vector(sites[h].lat, sites[h].lon, sites[h].altM));
+            w.air.Get(h)->AggregateObject(m);
+        }
+        w.access = w.air;
+    } else {
+        w.access = w.ground;
+    }
+    for (const Site& site : sites) w.accessCity.push_back(site.city);
+    const uint32_t nAcc = w.access.GetN();
+    g_sagin = P.sagin;
 
     // Routing on every node (satellites and stations alike), helpers hoisted so
     // AssignStreams can pin them (#352).
     NodeContainer all(w.sats, w.ground);
+    if (P.sagin) all.Add(w.air);
     InternetStackHelper internet;
     AntHocNetHelper ahn;
     AodvHelper aodv;
     OlsrHelper olsr;
     OracleHelper oracleHelper;
     GeoGreedyHelper geoHelper;
+    GpsrHelper gpsrHelper;
     if (proto == "anthocnet")
         internet.SetRoutingHelper(ahn);
     else if (proto == "aodv")
@@ -836,7 +985,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
         internet.SetRoutingHelper(oracleHelper);
     else if (proto == "geo-greedy")
         internet.SetRoutingHelper(geoHelper);
-    else if (proto == "opspf") {
+    else if (proto == "gpsr3d") {
+        // #581: the air layer's native comparator, the FANET family's 3-D
+        // geographic arm (#710): the vendored GPSR's ThreeD mode, its hellos
+        // on every link, positions Earth-centred (GpsrPosition).
+        gpsrHelper.Set("ThreeD", BooleanValue(true));
+        internet.SetRoutingHelper(gpsrHelper);
+    } else if (proto == "opspf") {
         // #707: OPSPF-style link state on the predicted orbit schedule; the
         // oracle's machinery with predicted knowledge only (see FloodLsa).
         oracleHelper.Set("Knowledge", StringValue("predicted"));
@@ -853,8 +1008,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
     } else
         NS_ABORT_MSG("unknown protocol '"
                      << proto
-                     << "' (anthocnet, aodv, olsr, oracle, oracle-delay, geo-greedy, opspf)");
+                     << "' (anthocnet, aodv, olsr, oracle, oracle-delay, geo-greedy, opspf, "
+                        "gpsr3d)");
     internet.Install(all);
+    if (proto == "gpsr3d") {
+        gpsr::SetPositionSource(MakeCallback(&GpsrPosition));
+        gpsrHelper.Install(all);  // the data packets' position header (#296)
+    }
     stream += internet.AssignStreams(all, stream);
     if (proto == "anthocnet")
         stream += ahn.AssignStreams(all, stream);
@@ -862,6 +1022,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
         stream += aodv.AssignStreams(all, stream);
     else if (proto == "olsr")
         stream += olsr.AssignStreams(all, stream);
+    else if (proto == "gpsr3d")
+        stream += gpsrHelper.AssignStreams(all, stream);
     else if (proto != "geo-greedy")
         stream += oracleHelper.AssignStreams(all, stream);  // oracle(-delay), opspf: 0 streams
     NS_ABORT_MSG_IF(stream - streamBase >= kAppStreamOffset, "RNG stream budget exhausted (#352)");
@@ -990,17 +1152,43 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
                   << "\n";
     }
 
+    // #581: the air layer's fixed links, each city's station to every one of
+    // its HAPS and each HAPS to its ring neighbours, at the access rate, with
+    // the propagation delay of their (constant) length. Built before the
+    // access segments, so a station's first interface is its first HAPS link.
+    if (P.sagin) {
+        PointToPointHelper airH;
+        airH.SetDeviceAttribute("DataRate", StringValue(P.gslRate));
+        auto fixed = [&](Ptr<Node> a, Ptr<Node> b, uint32_t ia, uint32_t ib) {
+            Link l = build(airH, a, b, ia, ib);
+            l.channel->SetAttribute("Delay",
+                                    TimeValue(Seconds(Dist(PosOf(a), PosOf(b)) / kLightSpeed)));
+            w.airLinks.push_back(l);
+        };
+        for (uint32_t h = 0; h < nAcc; ++h) {
+            const uint32_t c = w.accessCity[h];
+            fixed(w.ground.Get(c), w.air.Get(h), nSat + nAcc + c, nSat + h);
+        }
+        for (uint32_t c = 0; c < nGs; ++c) {
+            for (uint32_t k = 0; k < P.haps && P.haps > 1; ++k) {
+                if (P.haps == 2 && k == 1) break;  // two HAPS: one ring link
+                const uint32_t h = c * P.haps + k, h2 = c * P.haps + (k + 1) % P.haps;
+                fixed(w.air.Get(h), w.air.Get(h2), nSat + h, nSat + h2);
+            }
+        }
+    }
+
     // GSL candidates (from the probe pass in main -- it must run before any
     // run builds nodes, because Simulator::Destroy disposes every node in the
     // global NodeList): one link per (station, satellite ever visible), all
     // down until a handover raises it.
-    w.gsl.resize(nGs);
-    w.serving.assign(nGs, -1);
+    w.gsl.resize(nAcc);
+    w.serving.assign(nAcc, -1);
     CsmaHelper gsl;
     gsl.SetChannelAttribute("DataRate", StringValue(P.gslRate));
-    for (uint32_t g = 0; g < nGs; ++g) {
+    for (uint32_t g = 0; g < nAcc; ++g) {
         if (cand[g].empty()) continue;
-        NodeContainer seg(w.ground.Get(g));
+        NodeContainer seg(w.access.Get(g));
         for (uint32_t s : cand[g]) seg.Add(w.sats.Get(s));
         NetDeviceContainer d = gsl.Install(seg);
         // CSMA backoff draws randomness: pin it, or the auto-assigned streams
@@ -1059,12 +1247,15 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
     // events on the same seed (#517).
     UpdateDelays(&w, P.delayUpdate);
     Simulator::Schedule(Seconds(0), [&w, &P] {
-        for (uint32_t g = 0; g < w.ground.GetN(); ++g) {
+        for (uint32_t g = 0; g < w.access.GetN(); ++g) {
             const int best = BestGsl(&w, g, P.minElevDeg);
             if (best >= 0) SetLink(w.gsl[g][best], true);
             w.serving[g] = best;
-            g_servingSat[w.ground.Get(g)->GetId()] =
+            g_servingSat[w.access.Get(g)->GetId()] =
                 best >= 0 ? w.sats.Get(w.gsl[g][best].b) : nullptr;
+        }
+        if (g_sagin) {
+            for (uint32_t c = 0; c < w.ground.GetN(); ++c) SaginService(&w, c);
         }
     });
     const double firstTick = std::fmod(P.clockOffset, P.clock);
@@ -1112,11 +1303,22 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
     ApplicationContainer apps;
     for (uint32_t f = 0; f < nFlows; ++f) {
         const uint32_t src = g_pairs[f].first, dst = g_pairs[f].second;
-        NS_ABORT_MSG_IF(w.gsl[src].empty() || w.gsl[dst].empty(),
-                        "station " << g_cities[w.gsl[src].empty() ? src : dst].name
+        // #581: a city reaches space through any of its access sites.
+        auto served = [&](uint32_t c) {
+            for (uint32_t g = 0; g < nAcc; ++g) {
+                if (w.accessCity[g] == c && !w.gsl[g].empty()) return true;
+            }
+            return false;
+        };
+        NS_ABORT_MSG_IF(!served(src) || !served(dst),
+                        "station " << g_cities[!served(src) ? src : dst].name
                                    << " never sees a satellite above " << P.minElevDeg
                                    << " deg: lower --minElevation or densify the shell");
-        const Ipv4Address dstAddr = w.gsl[dst][0].ipA->GetAddress(w.gsl[dst][0].ifA, 0).GetLocal();
+        // A station's canonical address: its first interface (its first GSL,
+        // or with --sagin its first HAPS link).
+        const Ipv4Address dstAddr =
+            P.sagin ? w.ground.Get(dst)->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal()
+                    : w.gsl[dst][0].ipA->GetAddress(w.gsl[dst][0].ifA, 0).GetLocal();
         g_dstAddrToFlow[dstAddr.Get()] = f;
         g_flowGs[f] = {static_cast<int>(src), static_cast<int>(dst)};
         // UdpClient stamps a SeqTsHeader into every packet, which gives the
@@ -1373,6 +1575,24 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed,
 
 }  // namespace
 
+/// #581: the air layer's geometry, checked before any run. A HAPS ring link
+/// must clear the Earth's limb (both ends at the HAPS altitude: distance
+/// below 2 sqrt(2 R h)), or the layer would be wired through the ground.
+void SaginAnchor(const Params& P) {
+    NS_ABORT_MSG_UNLESS(P.haps >= 1 && P.hapsAltKm > 0 && P.hapsRingKm > 0,
+                        "--sagin needs --haps >= 1, --hapsAltitude > 0 and --hapsRing > 0");
+    const std::vector<Site> sites = AccessSites(P);
+    const Site gs{g_cities[0].lat, g_cities[0].lon, 0.0, 0};
+    const double up = Dist(SitePosition(gs), SitePosition(sites[0])) / 1000.0;
+    const double ring =
+        P.haps > 1 ? Dist(SitePosition(sites[0]), SitePosition(sites[1])) / 1000.0 : 0.0;
+    const double limb = 2 * std::sqrt(2 * kEarthRadiusM * P.hapsAltKm * 1000) / 1000.0;
+    std::cout << std::fixed << std::setprecision(3) << "# anchor sagin haps=" << P.haps
+              << " stationHapsKm=" << up << " hapsHapsKm=" << ring << " limbKm=" << limb << "\n";
+    NS_ABORT_MSG_IF(ring > limb, "--sagin: a HAPS ring link ("
+                                     << ring << " km) is beyond the limb (" << limb << " km)");
+}
+
 int main(int argc, char* argv[]) {
     Params P;
     CommandLine cmd(__FILE__);
@@ -1394,7 +1614,8 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("protocols",
                  "comma list: anthocnet, aodv, olsr, oracle (hop bound), oracle-delay (latency "
                  "bound), geo-greedy (idealised greedy geographic), opspf (link state on "
-                 "the predicted orbit schedule, unpredicted failures flooded, #707)",
+                 "the predicted orbit schedule, unpredicted failures flooded, #707), gpsr3d "
+                 "(3-D geographic, the SAGIN air layer's comparator, #581)",
                  P.protocols);
     cmd.AddValue("islRate", "ISL data rate", P.islRate);
     cmd.AddValue("gslRate", "GSL data rate", P.gslRate);
@@ -1420,6 +1641,12 @@ int main(int argc, char* argv[]) {
                  P.timingProfile);
     cmd.AddValue("vizTrace", "#641: write the first anthocnet run as a replay trace", P.vizTrace);
     cmd.AddValue("vizStep", "#641: --vizTrace sampling interval (s)", P.vizStep);
+    cmd.AddValue("sagin",
+                 "#581: the space-air-ground layer: HAPS between the stations and the shell",
+                 P.sagin);
+    cmd.AddValue("haps", "#581: HAPS per city (--sagin)", P.haps);
+    cmd.AddValue("hapsAltitude", "#581: HAPS altitude (km, --sagin)", P.hapsAltKm);
+    cmd.AddValue("hapsRing", "#581: HAPS ring radius around each city (km, --sagin)", P.hapsRingKm);
     cmd.AddValue("csv", "machine-readable rows", P.csv);
     cmd.Parse(argc, argv);
     if (P.shell == "starlink1") {
@@ -1452,14 +1679,24 @@ int main(int argc, char* argv[]) {
               << " islDown=" << P.islDown << " islMeanDown=" << P.islMeanDown
               << " massFailAt=" << P.massFailAt << " massFailFrac=" << P.massFailFrac
               << " delayUpdate=" << P.delayUpdate << " oracleInterval=" << P.oracleInterval
-              << " protocols=" << P.protocols << (P.pairs == "default" ? "" : " pairs=" + P.pairs)
-              << "\n";
+              << " protocols=" << P.protocols << (P.pairs == "default" ? "" : " pairs=" + P.pairs);
+    // #581: named only with --sagin, so every other row stays byte-identical.
+    if (P.sagin) {
+        std::cout << " sagin=1 haps=" << P.haps << " hapsAltitude=" << P.hapsAltKm
+                  << " hapsRing=" << P.hapsRingKm;
+    }
+    std::cout << "\n";
+    if (P.sagin) SaginAnchor(P);
     Anchors(P);
     const std::vector<std::set<uint32_t>> cand = VisibleCandidates(P);
     {
         std::cout << "# visibility minElevation=" << P.minElevDeg;
-        for (uint32_t g = 0; g < cand.size(); ++g)
-            std::cout << ' ' << g_cities[g].name << '=' << cand[g].size();
+        const std::vector<Site> sites = AccessSites(P);
+        for (uint32_t g = 0; g < cand.size(); ++g) {
+            std::cout << ' ' << g_cities[sites[g].city].name;
+            if (P.sagin) std::cout << '#' << g % P.haps;
+            std::cout << '=' << cand[g].size();
+        }
         std::cout << "\n";
     }
 

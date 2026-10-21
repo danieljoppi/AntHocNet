@@ -123,6 +123,15 @@ private:
   std::map<Ipv4Address, std::pair<Vector, Time> > m_table;
 };
 
+/// #581: where a node is, for every position this module reads. Unset (every
+/// harness but leo-walker), it is MobilityModel::GetPosition. leo-walker sets
+/// an Earth-centred source: its ground and air nodes' GetPosition is
+/// topocentric, its satellites' is ECEF. The source must keep every
+/// coordinate non-negative, since the hello header carries them as uint64.
+typedef Callback<Vector, Ptr<Node> > PositionSource;
+void SetPositionSource (PositionSource source);
+Vector PositionOf (Ptr<Node> node);
+
 }   // gpsr
 } // ns3
 #endif /* GPSR_PTABLE_H */

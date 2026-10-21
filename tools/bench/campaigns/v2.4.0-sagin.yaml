@@ -1,0 +1,42 @@
+# The SAGIN family's first campaign (#581; docs/benchmarks/satellite/sagin.md):
+# the three LEO shells of leo-walker with the HAPS air layer (--sagin: 3 HAPS
+# per city at 20 km on a 150 km ring), on the family's native set declared
+# before the first run (ADR-0026, maintainer decision on #581): AntHocNet,
+# OPSPF and geo-greedy for the space layer, gpsr3d for the air layer, and the
+# hop and delay oracles. One arm, control, at the shipped defaults; one job
+# per (shell, protocol), as the LEO cells run. Pre-registered: merged before
+# the first dispatch.
+#
+#   python3 tools/bench/campaign.py plan tools/bench/campaigns/v2.4.0-sagin.yaml
+generation: v240
+ref: main
+cap: 12
+control: control
+
+arms:
+  control: ""
+
+x-leo: &leo {harness: leo-walker, version: "3.48", time: 300, runs: 20, flows: 4, cbrBps: 2048, islRate: 10Mbps, protocols: anthocnet}
+
+cells:
+  sagin-walker16-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: anthocnet, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-walker16-opspf: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: opspf, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-walker16-gpsr3d: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: gpsr3d, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-walker16-geo-greedy: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: geo-greedy, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-walker16-oracle: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-walker16-oracle-delay: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle-delay, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-starlink1-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: anthocnet, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-starlink1-opspf: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: opspf, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-starlink1-gpsr3d: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: gpsr3d, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-starlink1-geo-greedy: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: geo-greedy, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-starlink1-oracle: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-starlink1-oracle-delay: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle-delay, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-starlink1-storm-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: anthocnet, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-starlink1-storm-opspf: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: opspf, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-starlink1-storm-gpsr3d: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: gpsr3d, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-starlink1-storm-geo-greedy: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: geo-greedy, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-starlink1-storm-oracle: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+  sagin-starlink1-storm-oracle-delay: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: oracle-delay, extraArgs: "--planes=72 --sats=22 --phasing=39 --altitude=550 --oracleInterval=1 --massFailAt=150 --inclination=53 --minElevation=25 --islDown=0.01 --sagin"}}
+
+jobs:
+  - {arms: [control], cells: [sagin-walker16-anthocnet, sagin-walker16-opspf, sagin-walker16-gpsr3d, sagin-walker16-geo-greedy, sagin-walker16-oracle, sagin-walker16-oracle-delay, sagin-starlink1-anthocnet, sagin-starlink1-opspf, sagin-starlink1-gpsr3d, sagin-starlink1-geo-greedy, sagin-starlink1-oracle, sagin-starlink1-oracle-delay, sagin-starlink1-storm-anthocnet, sagin-starlink1-storm-opspf, sagin-starlink1-storm-gpsr3d, sagin-starlink1-storm-geo-greedy, sagin-starlink1-storm-oracle, sagin-starlink1-storm-oracle-delay]}

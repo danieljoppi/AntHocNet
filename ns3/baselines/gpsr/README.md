@@ -165,3 +165,40 @@ against. The survey's §5.2 trend is that "The deterministic progress-based
 forwarding algorithms have the lowest delivery rate" while face-based
 recovery achieves "better results ... but the worst results in term of path
 dilation".
+
+## Multi-interface nodes and a position source (#581)
+
+The SAGIN family runs the ThreeD arm in `leo-walker`. There every node has one
+interface per link: four ISLs per satellite, the access segments, and the
+HAPS's air links. The vendored module assumed one interface, and said so
+(`FIXME: Does not work for multiple interfaces`). Two changes make it work
+there. On a single-interface node, which is every node of every other
+harness, both resolve to interface 1 as before. Output of the gpsr, gpcr and
+gpsr3d arms is byte-identical to `main` (md5, ns-3.42, VANET and FANET).
+
+- **Broadcasts and forwarding pick their interface.** A hello goes to each
+  interface's subnet broadcast, and now leaves on the interface that
+  broadcast names. A forwarded or originated packet leaves on the interface
+  whose subnet holds its next hop (`IfaceToward`), and an unbound source
+  takes that interface's address. Before this change, every hello but
+  interface 1's was queued and dropped, so the protocol never formed
+  neighbours on a satellite.
+- **Positions come from `gpsr::PositionOf`.** It is unset by default
+  (`MobilityModel::GetPosition`, as before). A harness may set a
+  `PositionSource` instead.
+
+  `leo-walker` sets one. Its ground and air nodes' `GetPosition` is
+  topocentric while the satellites' is Earth-centred. On raw Earth-centred
+  positions, greedy forwarding never climbs: the chord between two cities
+  passes through the Earth, so every satellite is farther from the
+  destination than the source station is (measured: 0 % delivered).
+
+  The source therefore places each node at its latitude and longitude on
+  one common sphere (7000 km), so distance is angular separation seen from
+  the Earth's centre. It also shifts every axis by 10 000 km, because the
+  headers carry unsigned coordinates; a translation changes no distance.
+
+**This is an adaptation, disclosed with the family.** GPSR on a constellation
+is not what its paper evaluated. Greedy-geographic routing on a +grid shell
+meets the structural dead ends `leo-walker.md` documents for geo-greedy, and
+gpsr3d's CFace(3) recovery is planar face routing on projections.

@@ -127,7 +127,9 @@ build_lib_example(
 # #192/#297: the time-varying LEO constellation. Its substrate is stock ns-3's
 # LeoCircularOrbitMobilityModel (the #193 decision), new in ns-3.48, so it is
 # built only where that header exists; on 3.36-3.47 the example is skipped.
-if(AHN_HAVE_ORACLE AND EXISTS ${PROJECT_SOURCE_DIR}/src/mobility/model/leo-circular-orbit-mobility-model.h)
+# #581: leo-walker links the vendored GPSR (the SAGIN air layer's gpsr3d
+# arm), so it needs the comparison modules, which are installed together.
+if(AHN_HAVE_BASELINES AND EXISTS ${PROJECT_SOURCE_DIR}/src/mobility/model/leo-circular-orbit-mobility-model.h)
   build_lib_example(
     NAME leo-walker
     SOURCE_FILES leo-walker.cc
@@ -144,5 +146,6 @@ if(AHN_HAVE_ORACLE AND EXISTS ${PROJECT_SOURCE_DIR}/src/mobility/model/leo-circu
       ${libaodv}
       ${libolsr}
       ${liboracle}
+      ${libgpsr}
   )
 endif()

@@ -54,6 +54,9 @@
 #    field for field. With the failure overlay on, it must have flooded LSAs
 #    (its only control traffic): an arm that learned failures some other way
 #    would read floods=0.
+# 10. The SAGIN air layer (#581): every HAPS sees the shell, the oracles
+#    and the family's native arms deliver through the air layer, and OPSPF
+#    still equals the hop oracle without unpredicted failures.
 #
 # Runs on ns-3.48 only: the stock LEO model first ships there, and the
 # example is not built on older trees (ADR-0022).
@@ -203,6 +206,35 @@ else
 fi
 floods=$(printf '%s\n' "$out" | sed -n 's/^# opspf opspf seed=1 floods=\([0-9]*\).*/\1/p')
 [ "${floods:-0}" -gt 0 ] || { say "FAIL: opspf flooded no LSA under the failure overlay"; fail=1; }
+
+# --- 10. the SAGIN air layer (#581) --------------------------------------------------
+# With --sagin each city's station reaches the shell only through its HAPS.
+# Every HAPS must see the shell; the oracles must still route (the layer is
+# wired, not a dead end); every native arm of the family must deliver; and
+# OPSPF must still equal the hop oracle with no unpredicted failure (its
+# predicted knowledge covers the air layer's fixed links too).
+SAGIN_ARGS="--planes=16 --sats=16 --altitude=1150 --inclination=53 --minElevation=25 --time=60 --runs=1 --sagin"
+sg=$(./ns3 run "$(echo leo-walker --csv --islDown=0.01 --protocols=oracle-delay,anthocnet,opspf,gpsr3d,geo-greedy $SAGIN_ARGS)" 2>/dev/null)
+printf '%s\n' "$sg" | grep -q '^# anchor sagin haps=3 ' || { say "FAIL: no '# anchor sagin' line"; fail=1; }
+dark=$(printf '%s\n' "$sg" | sed -n 's/^# visibility //p' | tr ' ' '\n' | grep '#' | grep -c '=0$' || true)
+[ "${dark:-1}" -eq 0 ] || { say "FAIL: $dark HAPS see no satellite above --minElevation"; fail=1; }
+for spec in oracle-delay:95 anthocnet:80 opspf:95 gpsr3d:5; do
+    arm=${spec%%:*}; min=${spec##*:}
+    p=$(printf '%s\n' "$sg" | awk -v a="$arm" '$1=="##RUN##" && $3==a {print $4}')
+    if awk -v p="${p:-0}" -v m="$min" 'BEGIN{exit !(p>=m)}'; then say "ok: sagin $arm PDR ${p}% >= ${min}%"
+    else say "FAIL: sagin $arm PDR ${p:-none}% < ${min}%"; fail=1; fi
+done
+sq=$(./ns3 run "$(echo leo-walker --csv --protocols=oracle,opspf $SAGIN_ARGS)" 2>/dev/null)
+sorc=$(printf '%s\n' "$sq" | awk '$1=="##RUN##" && $3=="oracle" {$3=""; print}')
+sops=$(printf '%s\n' "$sq" | awk '$1=="##RUN##" && $3=="opspf" {$3=""; print}')
+if [ -z "$sorc" ] || [ "$sorc" != "$sops" ]; then
+    say "FAIL: with --sagin and no unpredicted failure, opspf must route as the hop oracle:"
+    say "  oracle: $sorc"
+    say "  opspf:  $sops"
+    fail=1
+else
+    say "ok: sagin failure-free opspf rows equal the hop oracle's"
+fi
 
 if [ "$fail" -ne 0 ]; then
     say "leo-walker smoke: FAIL"
