@@ -128,7 +128,11 @@ namespace {
 //
 // Buildings are the blocks of the Manhattan grid --mobility=manhattan drives
 // on: BlocksX x BlocksY blocks over AreaX x AreaY, each inset by half a
-// StreetWidth from the street centre lines the vehicles travel. The model is
+// StreetWidth from the street centre lines the vehicles travel. #580: an
+// explicit Buildings list (rectangles "xmin,ymin,xmax,ymax;...") replaces the
+// grid, for a scene whose buildings are not a street grid (the disaster
+// family). A node inside a building then pays for the walls and the metres
+// between it and the outside, which is the indoor/outdoor shadowing. The model is
 // deterministic (no RNG), so it pins no stream and the oracle may evaluate it
 // per pair (ns3/baselines/oracle: "decode-los-approx").
 class UrbanObstacleShadowingLossModel : public PropagationLossModel {
@@ -163,18 +167,30 @@ public:
                 .AddAttribute("DbPerMeter", "Loss per metre inside buildings (dB)",
                               DoubleValue(0.4),
                               MakeDoubleAccessor(&UrbanObstacleShadowingLossModel::m_dbPerMeter),
-                              MakeDoubleChecker<double>(0.0));
+                              MakeDoubleChecker<double>(0.0))
+                .AddAttribute("Buildings",
+                              "#580: explicit buildings 'xmin,ymin,xmax,ymax;...' "
+                              "(m); empty = the street grid's blocks",
+                              StringValue(""),
+                              MakeStringAccessor(&UrbanObstacleShadowingLossModel::SetBuildings,
+                                                 &UrbanObstacleShadowingLossModel::GetBuildings),
+                              MakeStringChecker());
         return tid;
     }
 
     // Obstacle loss (dB) on the straight line a -> b. Public so the CI smoke
     // can print it; the channel only ever reaches it through DoCalcRxPower.
     double ObstacleLossDb(const Vector& a, const Vector& b) const {
-        const double bx = m_areaX / m_blocksX, by = m_areaY / m_blocksY;
-        const double h = m_street / 2.0;
         const double dx = b.x - a.x, dy = b.y - a.y;
         const double len = std::sqrt(dx * dx + dy * dy);
         if (len <= 0.0) return 0.0;
+        if (!m_rects.empty()) {
+            double loss = 0.0;
+            for (const Rect& r : m_rects) loss += RectLossDb(a, dx, dy, len, r);
+            return loss;
+        }
+        const double bx = m_areaX / m_blocksX, by = m_areaY / m_blocksY;
+        const double h = m_street / 2.0;
         // Only the blocks the segment's bounding box touches can be crossed.
         auto clampIdx = [](double v, double size, uint32_t n) {
             const double k = std::floor(v / size);
@@ -187,37 +203,63 @@ public:
         double loss = 0.0;
         for (uint32_t i = i0; i <= i1; ++i) {
             for (uint32_t j = j0; j <= j1; ++j) {
-                const double xmin = i * bx + h, xmax = (i + 1) * bx - h;
-                const double ymin = j * by + h, ymax = (j + 1) * by - h;
-                if (xmin >= xmax || ymin >= ymax) continue;
-                // Liang-Barsky clip of the segment against the building.
-                double t0 = 0.0, t1 = 1.0;
-                const double pq[4][2] = {
-                    {-dx, a.x - xmin}, {dx, xmax - a.x}, {-dy, a.y - ymin}, {dy, ymax - a.y}};
-                bool outside = false;
-                for (const auto& e : pq) {
-                    if (e[0] == 0.0) {
-                        if (e[1] < 0.0) {
-                            outside = true;
-                            break;
-                        }
-                    } else {
-                        const double t = e[1] / e[0];
-                        if (e[0] < 0.0)
-                            t0 = std::max(t0, t);
-                        else
-                            t1 = std::min(t1, t);
-                    }
-                }
-                if (outside || t0 >= t1) continue;
-                const int cuts = (t0 > 0.0 ? 1 : 0) + (t1 < 1.0 ? 1 : 0);
-                loss += m_dbPerCut * cuts + m_dbPerMeter * (t1 - t0) * len;
+                const Rect r{i * bx + h, j * by + h, (i + 1) * bx - h, (j + 1) * by - h};
+                if (r.xmin >= r.xmax || r.ymin >= r.ymax) continue;
+                loss += RectLossDb(a, dx, dy, len, r);
             }
         }
         return loss;
     }
 
+    void SetBuildings(std::string spec) {
+        m_spec = spec;
+        m_rects.clear();
+        std::istringstream all(spec);
+        std::string item;
+        while (std::getline(all, item, ';')) {
+            if (item.find_first_not_of(" ") == std::string::npos) continue;
+            for (char& c : item) {
+                if (c == ',') c = ' ';
+            }
+            std::istringstream one(item);
+            Rect r{};
+            NS_ABORT_MSG_UNLESS(
+                (one >> r.xmin >> r.ymin >> r.xmax >> r.ymax) && r.xmin < r.xmax && r.ymin < r.ymax,
+                "--buildings: '" << item
+                                 << "' is not 'xmin,ymin,xmax,ymax' with "
+                                    "xmin < xmax and ymin < ymax (#580)");
+            m_rects.push_back(r);
+        }
+    }
+    std::string GetBuildings() const { return m_spec; }
+
 private:
+    struct Rect {
+        double xmin, ymin, xmax, ymax;
+    };
+
+    // One building's loss on the segment a -> a + (dx, dy): a Liang-Barsky
+    // clip, then the walls cut and the metres inside.
+    double RectLossDb(const Vector& a, double dx, double dy, double len, const Rect& r) const {
+        double t0 = 0.0, t1 = 1.0;
+        const double pq[4][2] = {
+            {-dx, a.x - r.xmin}, {dx, r.xmax - a.x}, {-dy, a.y - r.ymin}, {dy, r.ymax - a.y}};
+        for (const auto& e : pq) {
+            if (e[0] == 0.0) {
+                if (e[1] < 0.0) return 0.0;
+            } else {
+                const double t = e[1] / e[0];
+                if (e[0] < 0.0)
+                    t0 = std::max(t0, t);
+                else
+                    t1 = std::min(t1, t);
+            }
+        }
+        if (t0 >= t1) return 0.0;
+        const int cuts = (t0 > 0.0 ? 1 : 0) + (t1 < 1.0 ? 1 : 0);
+        return m_dbPerCut * cuts + m_dbPerMeter * (t1 - t0) * len;
+    }
+
     double DoCalcRxPower(double txPowerDbm, Ptr<MobilityModel> a,
                          Ptr<MobilityModel> b) const override {
         return txPowerDbm - ObstacleLossDb(a->GetPosition(), b->GetPosition());
@@ -227,6 +269,8 @@ private:
     double m_areaX = 1000.0, m_areaY = 1000.0;
     uint32_t m_blocksX = 5, m_blocksY = 5;
     double m_street = 20.0, m_dbPerCut = 9.0, m_dbPerMeter = 0.4;
+    std::string m_spec;
+    std::vector<Rect> m_rects;  // #580: explicit buildings; empty = the grid
 };
 NS_OBJECT_ENSURE_REGISTERED(UrbanObstacleShadowingLossModel);
 
@@ -1467,6 +1511,7 @@ struct Params {
     // blocks over areaX x areaY, streets on the block edges.
     uint32_t blocksX, blocksY;
     double streetWidth;
+    std::string buildings;  // #580: explicit buildings for the urban channel
     // #639: replay a scene. --mobility=trace moves the nodes along an ns-2
     // movement trace (Ns2MobilityHelper); --flowsFile replaces the generated
     // i -> n-1-i pairing with explicit flows. --dumpTrace / --dumpFlows write
@@ -1850,7 +1895,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         channel.AddPropagationLoss("ns3::UrbanObstacleShadowingLossModel", "AreaX",
                                    DoubleValue(P.areaX), "AreaY", DoubleValue(P.areaY), "BlocksX",
                                    UintegerValue(P.blocksX), "BlocksY", UintegerValue(P.blocksY),
-                                   "StreetWidth", DoubleValue(P.streetWidth));
+                                   "StreetWidth", DoubleValue(P.streetWidth), "Buildings",
+                                   StringValue(P.buildings));
     } else if (P.range > 0.0) {
         // A clean disk model at the paper's transmission range (reproducible
         // connectivity, independent of tx-power/sensitivity defaults).
@@ -3602,6 +3648,7 @@ int main(int argc, char* argv[]) {
     double offTime = 0.0;               // #521
     uint32_t blocksX = 0, blocksY = 0;  // #488 grid; 0 = preset (4 vanet, else 5)
     double streetWidth = 20.0;          // #488
+    std::string buildings;              // #580
     int32_t nFlows = 0;
     int32_t sink = -1;
     uint32_t runs = 0;  // 0 = unset; resolved below (preset-dependent, #58)
@@ -3747,6 +3794,11 @@ int main(int argc, char* argv[]) {
                  "Urban channel: street width (m); buildings are "
                  "the blocks inset by half of it (#488)",
                  streetWidth);
+    cmd.AddValue("buildings",
+                 "#580: with --propagation=urban, explicit buildings "
+                 "'xmin,ymin,xmax,ymax;...' (m) in place of the street grid's "
+                 "blocks (the disaster scene; tools/bench/disaster_scene.py)",
+                 buildings);
     cmd.AddValue("propagation",
                  "Propagation loss model: 'range' (disk) | 'tworay' (#24) | "
                  "'nakagami' (#60: the same two-ray path loss plus Nakagami-m "
@@ -3837,10 +3889,11 @@ int main(int argc, char* argv[]) {
     // #482: refuse an unknown preset rather than silently running the legacy
     // defaults under a label that claims otherwise (a typo'd "fanet" would
     // otherwise produce a planar 20-node RWP run tagged scenario=fanet).
-    NS_ABORT_MSG_UNLESS(
-        scenario.empty() || scenario == "paper" || scenario == "thesis" || scenario == "fanet" ||
-            scenario == "vanet",
-        "unknown --scenario='" << scenario << "' (expected paper|thesis|fanet|vanet, or omit it)");
+    NS_ABORT_MSG_UNLESS(scenario.empty() || scenario == "paper" || scenario == "thesis" ||
+                            scenario == "fanet" || scenario == "vanet" || scenario == "disaster",
+                        "unknown --scenario='"
+                            << scenario
+                            << "' (expected paper|thesis|fanet|vanet|disaster, or omit it)");
     const bool thesis = (scenario == "thesis");
     const bool paper = (scenario == "paper") || thesis;
     // #482 FANET preset (family #300). Scenario knobs ONLY (ADR-0019): no
@@ -3881,6 +3934,14 @@ int main(int argc, char* argv[]) {
     //                                  4 pkt/s, 64 B)
     //   time      900 s                Bai & Helmy 2003; the paper horizon
     const bool vanet = (scenario == "vanet");
+    // #580 disaster preset (family axis III). Scenario knobs ONLY (ADR-0019).
+    // The scene is generated, not built in: tools/bench/disaster_scene.py
+    // writes the movement trace (the Aschenbruck et al. 2007 disaster-area
+    // model's zones and roles), the flows and the building list, and the
+    // preset replays them on the urban channel with those buildings, so
+    // indoor responders are shadowed by the walls between them and the
+    // outside. Values and sources: docs/benchmarks/scenarios/disaster.md.
+    const bool disaster = (scenario == "disaster");
     // #58: the thesis averages 20 repetitions; everything else keeps the
     // historical default of 1. Explicit --runs=N always overrides.
     if (runs < 1) runs = thesis ? 20 : 1;
@@ -3891,21 +3952,23 @@ int main(int argc, char* argv[]) {
                              : fanet ? 30
                              : vanet ? 100
                                      : 20);
-    P.simTime = simTime >= 0 ? simTime : ((paper || fanet || vanet) ? 900.0 : 40.0);
+    P.simTime = simTime >= 0 ? simTime : ((paper || fanet || vanet || disaster) ? 900.0 : 40.0);
     P.areaX = areaX >= 0 ? areaX
                          : (area >= 0 ? area
-                                      : (thesis  ? 2400.0
-                                         : paper ? 1500.0
-                                         : fanet ? 1000.0
-                                         : vanet ? 800.0
-                                                 : 300.0));
+                                      : (thesis     ? 2400.0
+                                         : paper    ? 1500.0
+                                         : fanet    ? 1000.0
+                                         : vanet    ? 800.0
+                                         : disaster ? 1000.0
+                                                    : 300.0));
     P.areaY = areaY >= 0 ? areaY
                          : (area >= 0 ? area
-                                      : (thesis  ? 800.0
-                                         : paper ? 300.0
-                                         : fanet ? 1000.0
-                                         : vanet ? 800.0
-                                                 : 300.0));
+                                      : (thesis     ? 800.0
+                                         : paper    ? 300.0
+                                         : fanet    ? 1000.0
+                                         : vanet    ? 800.0
+                                         : disaster ? 500.0
+                                                    : 300.0));
     // -1 = unset (the preset decides); an explicit --areaZ=0 forces planar.
     NS_ABORT_MSG_UNLESS(areaZ >= 0.0 || areaZ == -1.0,
                         "--areaZ must be >= 0 (got " << areaZ << ")");
@@ -3932,7 +3995,9 @@ int main(int argc, char* argv[]) {
                                                          : 8000.0);
     P.offTime = offTime;
     P.startWindow = (paper || fanet || vanet) ? 180.0 : 5.0;
-    if (mobilityModel.empty()) mobilityModel = fanet ? "gaussmarkov" : vanet ? "manhattan" : "rwp";
+    if (mobilityModel.empty()) {
+        mobilityModel = fanet ? "gaussmarkov" : vanet ? "manhattan" : disaster ? "trace" : "rwp";
+    }
     if (blocksX == 0) blocksX = vanet ? 4 : 5;
     if (blocksY == 0) blocksY = vanet ? 4 : 5;
     // #506: the oracle control re-derives its graph every RecomputeInterval
@@ -3950,7 +4015,9 @@ int main(int argc, char* argv[]) {
     // 1 s default the oracle delivered 48.3 % against AODV's 50.5 % on 10
     // vehicles -- a 1 s-old graph misses every corner a vehicle has just
     // turned. At 100 ms it delivers 99.6 % on the anchor cell.
-    if (fanet || vanet) {
+    // #580: the disaster scene's links open and close at building walls as
+    // responders walk in and out, the VANET corner case on foot.
+    if (fanet || vanet || disaster) {
         bool explicitRecompute = false;
         for (int k = 1; k < argc; ++k) {
             if (std::string(argv[k]).find("oracle::Topology::RecomputeInterval") !=
@@ -3966,7 +4033,7 @@ int main(int argc, char* argv[]) {
     // An explicitly empty --propagation= has always meant "the default", and
     // scenario-matrix.yml documents its blank input that way; normalise it
     // rather than letting the guard below reject a working dispatch.
-    if (propagation.empty()) propagation = vanet ? "urban" : "range";
+    if (propagation.empty()) propagation = (vanet || disaster) ? "urban" : "range";
     P.propagation = propagation;
     NS_ABORT_MSG_UNLESS(propagation == "range" || propagation == "tworay" ||
                             propagation == "nakagami" || propagation == "urban",
@@ -4019,6 +4086,17 @@ int main(int argc, char* argv[]) {
     P.blocksX = blocksX;
     P.blocksY = blocksY;
     P.streetWidth = streetWidth;
+    P.buildings = buildings;
+    NS_ABORT_MSG_IF(!buildings.empty() && propagation != "urban",
+                    "--buildings needs --propagation=urban: the buildings are its "
+                    "obstacle shadowing (#580)");
+    if (disaster) {
+        NS_ABORT_MSG_UNLESS(mobilityModel == "trace" && !traceFile.empty() && !flowsFile.empty() &&
+                                !buildings.empty(),
+                            "--scenario=disaster replays a generated scene: pass the "
+                            "--traceFile, --flowsFile and --buildings that "
+                            "tools/bench/disaster_scene.py gen writes (#580)");
+    }
     NS_ABORT_MSG_UNLESS(blocksX >= 1 && blocksY >= 1, "--blocksX/--blocksY must be >= 1 (#488)");
     if (mobilityModel == "manhattan") {
         NS_ABORT_MSG_UNLESS(P.areaZ == 0.0, "--mobility=manhattan with --areaZ="
@@ -4038,7 +4116,8 @@ int main(int argc, char* argv[]) {
                             "buildings are the street grid's blocks, and vehicles "
                             "off the streets would sit inside them (#488)");
         NS_ABORT_MSG_UNLESS(
-            streetWidth > 0.0 && streetWidth < std::min(P.areaX / blocksX, P.areaY / blocksY),
+            !buildings.empty() ||
+                (streetWidth > 0.0 && streetWidth < std::min(P.areaX / blocksX, P.areaY / blocksY)),
             "--streetWidth=" << streetWidth
                              << " must be > 0 and "
                                 "narrower than a block ("
@@ -4258,10 +4337,14 @@ int main(int argc, char* argv[]) {
               << " mobility=" << P.mobility;
     // #488: the grid geometry, named only when a grid is in use, so every
     // other row stays byte-identical.
-    if (P.mobility == "manhattan" || P.propagation == "urban") {
+    if (P.mobility == "manhattan" || (P.propagation == "urban" && P.buildings.empty())) {
         std::cout << " blocksX=" << P.blocksX << " blocksY=" << P.blocksY;
     }
-    if (P.propagation == "urban") std::cout << " streetWidth=" << P.streetWidth;
+    if (P.propagation == "urban" && P.buildings.empty()) {
+        std::cout << " streetWidth=" << P.streetWidth;
+    }
+    // #580: explicit buildings, named only when given.
+    if (!P.buildings.empty()) std::cout << " buildings=" << P.buildings;
     // #639: a replayed scene names its files; other rows stay byte-identical.
     if (!P.traceFile.empty()) std::cout << " traceFile=" << P.traceFile;
     if (!P.flowList.empty()) std::cout << " flowsFile=" << flowsFile;

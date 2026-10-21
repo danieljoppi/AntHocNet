@@ -1,0 +1,24 @@
+# The disaster family's first campaign (#580; docs/benchmarks/scenarios/disaster.md):
+# the disaster-area scene (tools/bench/disaster_scene.py gen --seed 1, committed
+# as ns3/tools/fixtures/disaster/) on its native set, declared before the first
+# run (ADR-0026): AntHocNet, AODV, OLSR and the oracle. One arm, control, at
+# the shipped defaults. Pre-registered: merged before the first dispatch.
+#
+#   python3 tools/bench/campaign.py plan tools/bench/campaigns/v2.4.0-disaster.yaml
+generation: v240
+ref: main
+cap: 12
+control: control
+
+arms:
+  control: ""
+
+# The workflow runs from /opt/ns-3 with the repository at $GITHUB_WORKSPACE;
+# extraArgs is expanded by the job's shell, so the fixture paths resolve there.
+x-disaster: &disaster {scenario: disaster, version: 3.42-opt, time: 900, runs: 10, areaX: 1000, areaY: 500, speed: 20, pause: 30, range: 300, propagation: urban, mobility: trace, transport: udp, harness: compare, protocols: anthocnet, extraArgs: "--traceFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/disaster/disaster.ns2 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/disaster/disaster.flows --buildings=120,170,320,330;680,170,880,330"}
+
+cells:
+  disaster-main: {workflow: paper-benchmark.yml, inputs: {<<: *disaster}, blocks: [1, 11]}
+
+jobs:
+  - {arms: [control], cells: [disaster-main], inputs: {protocols: "anthocnet,aodv,olsr,oracle"}}
