@@ -11,6 +11,7 @@
 //            channel: 'disk' | 'urban' | 'isl',  -- urban: blocks [bx, by], street
 //            zones: [{ poly: [x0, y0, ...], factor }],   canopy (#575)
 //            jams: [{ poly, from, until, v: [vx, vy] }],  jamming / fire front (#582)
+//            bitrate,                                 narrowband radios (bit/s, #584)
 //            shell: { planes, slots, inc, period },      satellites (isl, #575)
 //            devices: [{ class, x, y, z, lat, lon, route, battery, moves, draggable }],
 //            flows: [{ src, dst, rate, start }] }  device indices
@@ -58,6 +59,10 @@ export const DEVICES = Object.freeze(Object.fromEntries(Object.entries({
   rescuer:  { range: 150, sprite: 'phone', moves: null },
   mast:     { range: 350, sprite: 'tower', moves: null },
   post:     { range: 300, sprite: 'pc', moves: null },
+  // Chapter 7 (#584). A narrowband radio reaches far at a very low rate (the
+  // world's bitrate); a relay vehicle drives its device's route along the road.
+  nbradio:  { range: 600, sprite: 'phone', moves: null },
+  vehicle:  { range: 300, sprite: 'car', moves: null, route: 6 },
 }).map(([k, d]) => [k, localized(d, `device.${k}`, ['label', 'note'])])));
 
 /** Seconds of simulated time per runner step (hazards and samples land on it). */
@@ -154,6 +159,7 @@ export function buildWorld(M, level, seed) {
   else if (lw.channel === 'isl') w.setIslChannel();
   else w.setDiskChannel(lw.range ?? 250);
   for (const z of lw.zones || []) w.addAttenuationZone(z.poly, z.factor, z.top ?? 30);
+  if (lw.bitrate) w.setBitrate(lw.bitrate);
   for (const j of lw.jams || []) w.addJammingZone(j.poly, j.from ?? 0, j.until ?? 1e18, j.v?.[0] ?? 0, j.v?.[1] ?? 0);
   const ids = lw.devices.map((d) => addDevice(w, d.class, d.x, d.y, d.moves !== false, d));
   // Satellites come after the devices, so device indices (flows, hazards)
