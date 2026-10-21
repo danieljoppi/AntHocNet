@@ -119,14 +119,19 @@ _Measured at [`6b05bff`](https://github.com/danieljoppi/AntHocNet/commit/6b05bff
 ## Results by family
 
 The scenario table above is the MANET taxonomy. Each supported family has its
-own results page; the chart below puts them side by side as AntHocNet − AODV,
-paired per seed, with the same protocol configuration everywhere (ADR-0019).
-The ranking-stability statement that reads it is on the
-[VANET page](benchmarks/scenarios/vanet.md#ranking-stability-across-four-families).
+own results page, compared against that family's own protocols plus its oracle
+([ADR-0026](adr/0026-baselines-are-family-native.md)), with the same AntHocNet
+configuration everywhere (ADR-0019). The chart puts them side by side in the
+two terms that need no migrated protocol: AntHocNet's gap to each cell's
+oracle, and to its best native baseline, paired per seed
+([#711](https://github.com/danieljoppi/AntHocNet/issues/711); the
+[v2.4.0 control campaign](benchmarks/v2.4.0-campaign.md#results)). The
+ranking-stability statement that reads it is on the
+[VANET page](benchmarks/scenarios/vanet.md#ranking-stability-across-six-families).
 
-![AntHocNet minus AODV across four families: delivery gains on MANET, static mesh and FANET and a tie on VANET; a shorter tail in every cell; the overhead advantage shrinks and reverses as links get shorter-lived](benchmarks/charts/families-vs-aodv.png)
+![AntHocNet against each family's own yardsticks: its paired PDR gap to the oracle and to the best native baseline, in every cell of six families. Ahead of every native baseline on the MANET grid and FANET, tied with AODV on VANET, behind OLSR on the static mesh and behind OPSPF on the LEO shells; level with the oracle on the ISL grid](benchmarks/charts/families-native.png)
 
-_Reproduce: `make reproduce FIG=families-vs-aodv` re-renders it from the committed data and diffs the PNG ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
+_Reproduce: `make reproduce FIG=families-native` re-renders it from the committed data and diffs the PNG ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
 
 | family | page | chart |
 |---|---|---|

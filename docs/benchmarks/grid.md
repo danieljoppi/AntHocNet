@@ -72,9 +72,102 @@ try:
 
 **Re-measured for v2.2.0 (2026-10-16).** The [v2.2.0 campaign](v2.2.0-campaign.md#results) re-ran every cell on this page as its control generation, at `a8a16991`, with the shipped defaults and the same 20 seeds. Every `##RUN##` row is byte-identical to the cells this page cites. No default moved, so the numbers here stand as v2.2.0's. The control cells are `results/cells/grid-*-v220.txt`. What the campaign's four knobs do on this family is in [network-regimes.md §7](../network-regimes.md#7-measured-the-v220-knobs-per-regime).
 
+## Restated at v2.4.0: family-native baselines (ADR-0026)
+
+> **Current numbers: v2.4.0.** From v2.4.0 every family is compared against
+> its own protocols plus its oracle
+> ([ADR-0026](https://github.com/danieljoppi/AntHocNet/blob/main/docs/adr/0026-baselines-are-family-native.md)).
+> These cells are the [v2.4.0 control campaign](v2.4.0-campaign.md#results)
+> at the shipped defaults (no default moved), 20 seeds, mean ± 95 % t-interval.
+> AntHocNet's rows and every kept baseline row are byte-identical to v2.3.0's.
+> The blocks below this one are the dated record of their campaigns; their
+> migrant rows are **retired**, not deleted.
+
+**Native set:** AntHocNet, AODV, OLSR, DSDV, AOMDV (the family these protocols were built for), the oracle. Nothing is retired here; AOMDV joins the grid from v2.4.0.
+
+#### rwp-tworay
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 98.47 ± 0.14 | 176.1 | 7.05 |
+| AODV | 87.71 ± 0.56 | 523.0 | 32.99 |
+| OLSR | 88.30 ± 0.59 | 20.8 | 2.01 |
+| DSDV | 84.73 ± 0.79 | 381.7 | 11.57 |
+| AOMDV | 70.67 ± 0.97 | 3576.8 | 15.86 |
+| oracle | 97.94 ± 0.21 | 17.8 | 0.00 |
+
+AntHocNet − oracle +0.54 [+0.29, +0.78] pp; against the best native baseline (olsr, 88.30 %): dPDR +10.17 [+9.60, +10.73] pp, d delay99 +155.35 [+151.90, +158.80] ms, d NRL +5.04 [+4.90, +5.18] (PAIRED-MIXED).
+
+#### rwp-nakagami
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 91.90 ± 1.06 | 429.1 | 14.32 |
+| AODV | 74.31 ± 0.77 | 710.1 | 39.98 |
+| OLSR | 85.72 ± 0.49 | 2039.8 | 2.17 |
+| DSDV | 72.35 ± 1.15 | 1848.2 | 13.82 |
+| AOMDV | 65.32 ± 1.08 | 4299.8 | 22.33 |
+| oracle | 96.09 ± 0.47 | 2025.6 | 0.00 |
+
+AntHocNet − oracle -4.19 [-5.39, -2.99] pp; against the best native baseline (olsr, 85.72 %): dPDR +6.18 [+5.27, +7.10] pp, d delay99 -1610.70 [-1650.80, -1564.25] ms, d NRL +12.15 [+11.63, +12.67] (PAIRED-MIXED).
+
+#### ssrwp-tworay
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 98.47 ± 0.23 | 170.8 | 6.78 |
+| AODV | 87.60 ± 0.65 | 544.0 | 32.85 |
+| OLSR | 89.16 ± 0.71 | 20.9 | 1.99 |
+| DSDV | 86.06 ± 0.77 | 409.9 | 11.35 |
+| AOMDV | 72.17 ± 1.33 | 3691.8 | 15.16 |
+| oracle | 98.02 ± 0.23 | 17.2 | 0.00 |
+
+AntHocNet − oracle +0.46 [+0.15, +0.77] pp; against the best native baseline (olsr, 89.16 %): dPDR +9.31 [+8.70, +9.92] pp, d delay99 +149.85 [+146.95, +152.95] ms, d NRL +4.80 [+4.64, +4.95] (PAIRED-MIXED).
+
+#### ssrwp-nakagami
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 90.66 ± 1.18 | 438.1 | 14.56 |
+| AODV | 73.20 ± 1.06 | 713.0 | 40.35 |
+| OLSR | 84.91 ± 0.56 | 2041.8 | 2.18 |
+| DSDV | 71.94 ± 1.35 | 1887.5 | 13.87 |
+| AOMDV | 64.63 ± 1.50 | 4327.8 | 23.00 |
+| oracle | 95.55 ± 0.48 | 2026.0 | 0.00 |
+
+AntHocNet − oracle -4.89 [-6.05, -3.73] pp; against the best native baseline (olsr, 84.91 %): dPDR +5.76 [+4.73, +6.78] pp, d delay99 -1603.70 [-1651.25, -1555.05] ms, d NRL +12.38 [+11.74, +13.03] (PAIRED-MIXED).
+
+#### gaussmarkov-tworay
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 97.11 ± 0.29 | 218.3 | 8.88 |
+| AODV | 85.84 ± 0.78 | 501.2 | 32.73 |
+| OLSR | 82.31 ± 1.04 | 22.1 | 2.17 |
+| DSDV | 78.79 ± 1.12 | 389.6 | 12.52 |
+| AOMDV | 65.57 ± 1.37 | 3766.6 | 18.05 |
+| oracle | 96.55 ± 0.38 | 19.4 | 0.00 |
+
+AntHocNet − oracle +0.57 [+0.17, +0.97] pp; against the best native baseline (aodv, 85.84 %): dPDR +11.28 [+10.64, +11.92] pp, d delay99 -282.90 [-295.45, -270.90] ms, d NRL -23.86 [-24.36, -23.35] (PAIRED-IMPROVED).
+
+#### gaussmarkov-nakagami
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 86.86 ± 1.33 | 750.0 | 19.44 |
+| AODV | 65.83 ± 1.29 | 914.4 | 47.44 |
+| OLSR | 78.28 ± 0.78 | 2057.0 | 2.39 |
+| DSDV | 63.48 ± 1.35 | 2039.5 | 15.98 |
+| AOMDV | 55.28 ± 1.39 | 4810.4 | 29.84 |
+| oracle | 94.82 ± 0.42 | 2282.9 | 0.00 |
+
+AntHocNet − oracle -7.96 [-9.16, -6.76] pp; against the best native baseline (olsr, 78.28 %): dPDR +8.57 [+7.58, +9.57] pp, d delay99 -1306.95 [-1385.95, -1225.80] ms, d NRL +17.05 [+15.75, +18.35] (PAIRED-MIXED).
+
+AntHocNet leads delivery in every cell, 5.8–11.3 pp above the best native baseline. AOMDV is last in every cell (55–72 %). The rows other than AOMDV's are v2.3.0's, byte for byte.
+
 ## Restated at v2.3.0 defaults (quiet mode on)
 
-> **Current numbers: v2.3.0 defaults.** v2.3.0 turns quiet mode on by
+> **Dated record: v2.3.0 defaults** (superseded by the v2.4.0 block above). v2.3.0 turns quiet mode on by
 > default ([#571](https://github.com/danieljoppi/AntHocNet/issues/571), the
 > [v2.3.0 campaign](v2.3.0-campaign.md#results)). AntHocNet's rows below are the
 > campaign's `quiet` arm. Every baseline row is the campaign's `control`, and the

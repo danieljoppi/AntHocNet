@@ -60,9 +60,31 @@ around ([network-regimes.md](../network-regimes.md)):
 
 Whatever AntHocNet loses here, it loses to its own machinery.
 
+## Restated at v2.4.0: family-native baselines (ADR-0026)
+
+> **Current numbers: v2.4.0.** From v2.4.0 every family is compared against
+> its own protocols plus its oracle
+> ([ADR-0026](https://github.com/danieljoppi/AntHocNet/blob/main/docs/adr/0026-baselines-are-family-native.md)).
+> These cells are the [v2.4.0 control campaign](v2.4.0-campaign.md#results)
+> at the shipped defaults (no default moved), 20 seeds, mean ± 95 % t-interval.
+> AntHocNet's rows and every kept baseline row are byte-identical to v2.3.0's.
+> The blocks below this one are the dated record of their campaigns; their
+> migrant rows are **retired**, not deleted.
+
+**Native set:** AntHocNet, OLSR, IEEE 802.11s HWMP ([#708](https://github.com/danieljoppi/AntHocNet/issues/708)), the oracle. **Retired:** AODV, DSDV. Every arm runs 802.11a at a fixed 6 Mbit/s and `PeerLink::MaxBeaconLoss=20` (the [plan](v2.4.0-campaign.md#the-static-mesh-cell) has why), so these rows are not paired with the 802.11b record below.
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 99.34 ± 0.26 | 1.7 | 4.17 |
+| OLSR | 99.98 ± 0.02 | 1.5 | 1.78 |
+| HWMP | 91.00 ± 1.15 | 1098.2 | 49.48 |
+| oracle | 99.94 ± 0.09 | 1.6 | 0.00 |
+
+AntHocNet − oracle -0.60 [-0.90, -0.30] pp; against the best native baseline (olsr, 99.98 %): dPDR -0.65 [-0.91, -0.39] pp, d delay99 +0.20 [+0.05, +0.40] ms, d NRL +2.40 [+2.19, +2.61] (PAIRED-WORSE). OLSR leads the family, as it did on 802.11b. HWMP is third: AntHocNet − HWMP is +8.34 pp [+7.10, +9.58], delay99 −1097 ms, NRL −45.3, all paired-significant. At ns-3's default `MaxBeaconLoss` of 2, HWMP collapses to 56.5 % on this field ([finding on #708](https://github.com/danieljoppi/AntHocNet/issues/708#issuecomment-6294616370)).
+
 ## Restated at v2.3.0 defaults (quiet mode on)
 
-> **Current numbers: v2.3.0 defaults.** v2.3.0 turns quiet mode on by
+> **Dated record: v2.3.0 defaults** (superseded by the v2.4.0 block above). v2.3.0 turns quiet mode on by
 > default ([#571](https://github.com/danieljoppi/AntHocNet/issues/571), the
 > [v2.3.0 campaign](v2.3.0-campaign.md#results)). AntHocNet's rows below are the
 > campaign's `quiet` arm. Every baseline row is the campaign's `control`, and the

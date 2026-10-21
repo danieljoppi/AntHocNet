@@ -230,9 +230,48 @@ corner turns: on the `vanet-building` field with 10 vehicles it delivered
 measuring instrument, not a protocol under test, so this is not the
 per-family protocol default ADR-0019 forbids.
 
+## Restated at v2.4.0: family-native baselines (ADR-0026)
+
+> **Current numbers: v2.4.0.** From v2.4.0 every family is compared against
+> its own protocols plus its oracle
+> ([ADR-0026](https://github.com/danieljoppi/AntHocNet/blob/main/docs/adr/0026-baselines-are-family-native.md)).
+> These cells are the [v2.4.0 control campaign](../v2.4.0-campaign.md#results)
+> at the shipped defaults (no default moved), 20 seeds, mean ± 95 % t-interval.
+> AntHocNet's rows and every kept baseline row are byte-identical to v2.3.0's.
+> The blocks below this one are the dated record of their campaigns; their
+> migrant rows are **retired**, not deleted.
+
+**Native set:** AntHocNet, AODV (the VANET literature's standard reactive baseline), GPSR, GPCR ([#709](https://github.com/danieljoppi/AntHocNet/issues/709)), the oracle. **Retired:** OLSR, DSDV, AOMDV. GPSR's rows differ from v2.3.0's: the [#717](https://github.com/danieljoppi/AntHocNet/issues/717) fix moved its first hello after stream pinning.
+
+#### main (100 vehicles)
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 42.09 ± 0.66 | 1849.3 | 73.61 |
+| AODV | 42.26 ± 0.60 | 3748.5 | 60.45 |
+| GPSR | 25.82 ± 0.50 | 790.6 | 5.42 |
+| GPCR | 28.73 ± 0.52 | 673.6 | 4.87 |
+| oracle | 81.70 ± 0.45 | 609.0 | 0.00 |
+
+AntHocNet − oracle -39.61 [-40.20, -39.01] pp; against the best native baseline (aodv, 42.26 %): dPDR -0.16 [-0.59, +0.26] pp, d delay99 -1899.15 [-1949.00, -1852.55] ms, d NRL +13.16 [+11.40, +14.91] (PAIRED-MIXED).
+
+#### sparse (40 vehicles)
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 23.93 ± 0.59 | 649.5 | 27.19 |
+| AODV | 23.79 ± 0.65 | 8583.1 | 7.06 |
+| GPSR | 16.30 ± 0.52 | 1685.5 | 3.44 |
+| GPCR | 16.90 ± 0.53 | 1686.8 | 3.33 |
+| oracle | 30.79 ± 0.52 | 26.3 | 0.00 |
+
+AntHocNet − oracle -6.85 [-7.02, -6.68] pp; against the best native baseline (aodv, 23.79 %): dPDR +0.15 [-0.18, +0.47] pp, d delay99 -7933.60 [-8041.95, -7829.40] ms, d NRL +20.13 [+19.35, +20.90] (PAIRED-MIXED).
+
+AntHocNet ties AODV on delivery in both cells, with a far shorter tail at more overhead. GPCR beats GPSR on the same seeds in both cells (+2.91 pp on main, +0.59 pp on sparse, paired-improved), as its own paper predicts, but both geographic arms trail AODV by 7–16 pp on this street grid.
+
 ## Restated at v2.3.0 defaults (quiet mode on)
 
-> **Current numbers: v2.3.0 defaults.** v2.3.0 turns quiet mode on by
+> **Dated record: v2.3.0 defaults** (superseded by the v2.4.0 block above). v2.3.0 turns quiet mode on by
 > default ([#571](https://github.com/danieljoppi/AntHocNet/issues/571), the
 > [v2.3.0 campaign](../v2.3.0-campaign.md#results)). AntHocNet's rows below are the
 > campaign's `quiet` arm. Every baseline row is the campaign's `control`, and the
@@ -477,22 +516,56 @@ mechanism ([#574](https://github.com/danieljoppi/AntHocNet/issues/574)) keeps it
   neighbour-table junction test and the paper's proposed street-connectivity
   probing are not implemented.
 
-## Ranking stability across four families
+## Ranking stability across six families
 
-ADR-0019 keeps the protocol configuration identical across families, so a
-ranking that changes between them is a property of the network. Every number
-below is on CBR sources (#521) with OLSR's PDR offered-based (#510):
-[MANET grid](../grid.md#restated-on-cbr-sources-521) (six cells),
-[static mesh](../static-mesh.md#restated-on-cbr-sources-521),
-[FANET](fanet.md#restated-on-cbr-sources-521) (main cell) and this page's
-VANET main cell. Since v2.3.0 the chart draws the v2.3.0 generation (quiet
-mode on, each page's "Restated at v2.3.0 defaults" block). AntHocNet − AODV
-moved materially only on the static mesh's NRL (−13.03 → −13.42), and no
-sign or ranking below changes.
+ADR-0019 keeps AntHocNet's configuration identical across families, so a
+ranking that changes between them is a property of the network. From v2.4.0
+the statement is read in two terms that need no migrated protocol
+([#711](https://github.com/danieljoppi/AntHocNet/issues/711),
+[ADR-0026](../../adr/0026-baselines-are-family-native.md)): AntHocNet's gap
+to each cell's oracle, and AntHocNet against each cell's best native baseline
+(highest mean PDR), both paired per seed. The numbers are the
+[v2.4.0 control campaign](../v2.4.0-campaign.md#results), 20 seeds per cell.
 
-![AntHocNet minus AODV, paired per seed, across eleven cells in four families: delivery gains on every MANET, static-mesh and FANET cell and a tie on both VANET cells; delay99 lower in every cell; NRL lower on MANET and static mesh, near zero on FANET main, higher on FANET sparse and both VANET cells](../charts/families-vs-aodv.png)
+![AntHocNet against each family's own yardsticks: its paired PDR gap to the oracle and to the best native baseline, in every cell of six families](../charts/families-native.png)
 
-_Each dot is AntHocNet − AODV averaged over 20 paired seeds, with its 95 % paired t-CI; filled = the CI excludes 0. delay99 is per-seed relative to AODV's (%), since its scale differs by an order of magnitude between families. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed cells listed in the paragraph above._
+_Each dot is the mean over 20 paired seeds with its 95 % paired t-CI; filled = the CI excludes 0. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed v2.4.0 cells; the numbers come from [`tools/bench/native_view.py`](https://github.com/danieljoppi/AntHocNet/blob/main/tools/bench/native_view.py)._
+
+| family | best native baseline | AntHocNet − best native, PDR | AntHocNet − oracle, PDR |
+|---|---|---|---|
+| MANET grid (6 cells) | OLSR (AODV on Gauss-Markov/two-ray) | **+5.8 … +11.3 pp**, every cell | +0.5 … +0.6 pp on two-ray; −4.2 … −8.0 pp on Nakagami |
+| static mesh | OLSR | **−0.65 pp** | −0.60 pp |
+| FANET | 3-D GPSR (main), AODV (sparse) | **+6.20 pp** (main), **+2.52 pp** (sparse) | −2.41 pp (main), −7.70 pp (sparse) |
+| VANET | AODV | tie (−0.16 and +0.15 pp, CIs straddle 0) | **−39.6 pp** (main), −6.85 pp (sparse) |
+| ISL grid (4 cells) | none measured (OPSPF deferred) | — | 0.00 pp, every cell |
+| LEO shells (3) | OPSPF | **−6.17 pp** (walker16), **−17.48 / −16.94 pp** (Starlink S1, storm) | −5.62 pp (walker16), −15.9 pp (S1); the 1 s hop oracle is not a bound there (#720) |
+
+**What holds across families:**
+- **AntHocNet leads delivery on open mobile fields**: every MANET cell and
+  both FANET cells, against each family's strongest native protocol.
+- **Its tail is shorter than the best native baseline's wherever links break
+  abruptly**: −1.3 to −1.6 s on the Nakagami grid cells, −1.9 and −7.9 s on
+  VANET, −4.7 s on sparse FANET.
+
+**What does not hold:**
+- **On stable topologies, link state wins.** OLSR leads the static mesh and
+  OPSPF leads every LEO shell. The OPSPF lead is large on Starlink S1
+  (−17.5 pp), bought with 20× AntHocNet's control.
+- **On the street grid nothing native beats AODV, and neither does
+  AntHocNet.** It ties AODV, and the geographic comparators (GPSR, GPCR)
+  trail both. VANET main's 39.6 pp gap to the oracle is still the largest in
+  the corpus.
+- **The overhead ordering is family-dependent.** AntHocNet sends less
+  control than AODV on the MANET grid (−23.9 NRL on Gauss-Markov/two-ray)
+  but more than OLSR in every family OLSR runs in, and more than AODV on
+  VANET (+13.2 / +20.1).
+
+### Dated record: AntHocNet − AODV across four families (v2.3.0)
+
+The statement below is the v2.3.0 generation, read against AODV in every
+family. AODV is no longer a baseline on the static mesh or the satellite
+cells (ADR-0026), so this view is retired. Its numbers stand as measured;
+the chart it read (`families-vs-aodv.png`) is replaced by the one above.
 
 | | MANET grid (6 cells) | static mesh | FANET main | VANET main |
 |---|---|---|---|---|

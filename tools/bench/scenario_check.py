@@ -1478,13 +1478,23 @@ def parse_results(path):
     for proto in re.findall(r"^##RUN##\s+\d+\s+([A-Za-z][\w-]*)", text,
                             re.MULTILINE):
         run_counts[proto] = run_counts.get(proto, 0) + 1
+    # A campaign cell collected from seed blocks (campaign.py) holds one
+    # summary table per block. Each table's rows are grouped apart, by the
+    # block's firstRun, so the cross-row bounds compare an oracle against the
+    # arms of its own block, never against another block's seeds (v2.4.0).
+    blocks = re.findall(r"^##CONFIG## .*\bfirstRun=(\d+)", text, re.MULTILINE)
+    where = os.path.basename(path)
     for line in text.splitlines():
+        if len(blocks) > 1:
+            b = re.match(r"^##CONFIG## .*\bfirstRun=(\d+)", line)
+            if b:
+                where = f"{os.path.basename(path)} block{b.group(1)}"
         m = ROW.match(line)
         if m:
             proto, nums = m.group(1), m.group(2).split()
             if proto in ("protocol",) or len(nums) < 5:
                 continue
-            row = {"where": os.path.basename(path), "proto": proto,
+            row = {"where": where, "proto": proto,
                    "pdr": nums[0], "delay": nums[1], "delay99": nums[2],
                    "nrl": nums[4], "runs": run_counts.get(proto)}
             if len(nums) >= 6:

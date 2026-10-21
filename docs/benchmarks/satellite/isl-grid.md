@@ -39,9 +39,52 @@ to need separate suites is [`network-regimes.md`](../../network-regimes.md).
 
 On this suite the campaign's `sinr` arm is the hop-count metric under another name. A point-to-point ISL has no PHY SINR ([ADR-0024](../../adr/0024-per-neighbour-link-quality-port.md)), so the metric falls back, and PDR and delay are identical to the control. The two hold caps (`repair200`, `reconv1s`) never bind: their cells are byte-identical. The faster hello (`hello500`) costs NRL +1 to +18 and buys nothing on a fixed topology.
 
+## Restated at v2.4.0: family-native baselines (ADR-0026)
+
+> **Current numbers: v2.4.0.** From v2.4.0 every family is compared against
+> its own protocols plus its oracle
+> ([ADR-0026](https://github.com/danieljoppi/AntHocNet/blob/main/docs/adr/0026-baselines-are-family-native.md)).
+> These cells are the [v2.4.0 control campaign](../v2.4.0-campaign.md#results)
+> at the shipped defaults (no default moved), 20 seeds, mean ± 95 % t-interval.
+> AntHocNet's rows and every kept baseline row are byte-identical to v2.3.0's.
+> The blocks below this one are the dated record of their campaigns; their
+> migrant rows are **retired**, not deleted.
+
+**Native set:** AntHocNet and the oracle. **Retired:** AODV, OLSR. OPSPF on `isl-grid` is deferred (maintainer decision 2026-10-20): the arm exists in `leo-walker` only (#707), and on three of these four cells nothing fails unscheduled, so it would be the oracle by construction.
+
+#### sat-base
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 100.00 ± 0.00 | 11.0 | 1.12 |
+| oracle | 100.00 ± 0.00 | 11.0 | 0.00 |
+
+#### sat-failcell
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 100.00 ± 0.00 | 11.0 | 1.10 |
+| oracle | 100.00 ± 0.00 | 11.0 | 0.00 |
+
+#### sat-corridor
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 100.00 ± 0.00 | 61.6 | 18.36 |
+| oracle | 100.00 ± 0.00 | 99.0 | 0.00 |
+
+#### sat-seam
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 100.00 ± 0.00 | 31.0 | 2.32 |
+| oracle | 100.00 ± 0.00 | 31.0 | 0.00 |
+
+AntHocNet matches the oracle's delivery on all four cells, as it did at v2.3.0 (rows byte-identical).
+
 ## Restated at v2.3.0 defaults (quiet mode on)
 
-> **Current numbers: v2.3.0 defaults.** v2.3.0 turns quiet mode on by
+> **Dated record: v2.3.0 defaults** (superseded by the v2.4.0 block above). v2.3.0 turns quiet mode on by
 > default ([#571](https://github.com/danieljoppi/AntHocNet/issues/571), the
 > [v2.3.0 campaign](../v2.3.0-campaign.md#results)). AntHocNet's rows below are the
 > campaign's `quiet` arm. Every baseline row is the campaign's `control`, and the

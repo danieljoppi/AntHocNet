@@ -121,9 +121,16 @@ Two things follow, and both change #216:
    the failure overlay it floods each ISL change network-wide, the
    reconvergence cost OPSPF is known for, and it exposed that the 1 s-cadence
    oracle is not a delivery bound on failure cells
-   ([#720](https://github.com/danieljoppi/AntHocNet/issues/720)). The 20-seed
-   AntHocNet − OPSPF comparison is measured in the v2.4.0 control campaign and
-   recorded here then.
+   ([#720](https://github.com/danieljoppi/AntHocNet/issues/720)).
+   **Result (v2.4.0 control campaign, 20 seeds, paired):** AntHocNet − OPSPF
+   is −6.17 pp [−7.42, −4.91] on walker16, −17.48 pp [−19.08, −15.88] on
+   Starlink S1 and −16.94 pp [−19.27, −14.61] on the S1 storm. The
+   incumbent beats AntHocNet on delivery on every shell, at 5–20× its control
+   (NRL 499 against 98 on walker16, 16 357–19 399 against 934–974 on S1),
+   and with its floods accounted rather than transmitted. So AntHocNet's
+   satellite claim stands as it was before this arm existed: close to the
+   bounds on walker16 and ahead of naive routing, **not** better than the
+   incumbent ([v2.4.0 results](benchmarks/v2.4.0-campaign.md#results)).
 
 ## 3. Prior art: ACO on LEO constellations
 

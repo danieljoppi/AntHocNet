@@ -28,40 +28,40 @@ figures:
     image: docs/benchmarks/charts/family-static-mesh.png
     page: docs/benchmarks/static-mesh.md
     render: family-charts
-    data: [results/cells/static-mesh-v230-published.txt]
+    data: [results/cells/static-mesh-v240.txt]
     rerun:
-      - {cell: results/cells/static-mesh-v230-published.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/static-mesh-v240.txt, harness: anthocnet-compare, from-config: true}
 
   family-fanet:
     image: docs/benchmarks/charts/family-fanet.png
     page: docs/benchmarks/scenarios/fanet.md
     render: family-charts
-    data: [results/cells/fanet-main-v230-published.txt, results/cells/fanet-sparse-v230-published.txt]
+    data: [results/cells/fanet-main-v240.txt, results/cells/fanet-sparse-v240.txt]
     rerun:
-      - {cell: results/cells/fanet-main-v230-published.txt, harness: anthocnet-compare, from-config: true}
-      - {cell: results/cells/fanet-sparse-v230-published.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/fanet-main-v240.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/fanet-sparse-v240.txt, harness: anthocnet-compare, from-config: true}
 
   family-vanet:
     image: docs/benchmarks/charts/family-vanet.png
     page: docs/benchmarks/scenarios/vanet.md
     render: family-charts
-    data: [results/cells/vanet-main-v230-published.txt, results/cells/vanet-sparse-v230-published.txt]
+    data: [results/cells/vanet-main-v240.txt, results/cells/vanet-sparse-v240.txt]
     rerun:
-      - {cell: results/cells/vanet-main-v230-published.txt, harness: anthocnet-compare, from-config: true}
-      - {cell: results/cells/vanet-sparse-v230-published.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/vanet-main-v240.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/vanet-sparse-v240.txt, harness: anthocnet-compare, from-config: true}
 
   grid:
     image: docs/benchmarks/charts/grid.png
     page: docs/benchmarks/grid.md
     render: family-charts
-    data: ["results/cells/grid-*-*-v230-published.txt"]
+    data: ["results/cells/grid-*-*-v240.txt"]
     rerun:
-      - {cell: results/cells/grid-rwp-tworay-v230-published.txt, harness: anthocnet-compare, from-config: true}
-      - {cell: results/cells/grid-rwp-nakagami-v230-published.txt, harness: anthocnet-compare, from-config: true}
-      - {cell: results/cells/grid-ssrwp-tworay-v230-published.txt, harness: anthocnet-compare, from-config: true}
-      - {cell: results/cells/grid-ssrwp-nakagami-v230-published.txt, harness: anthocnet-compare, from-config: true}
-      - {cell: results/cells/grid-gaussmarkov-tworay-v230-published.txt, harness: anthocnet-compare, from-config: true}
-      - {cell: results/cells/grid-gaussmarkov-nakagami-v230-published.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/grid-rwp-tworay-v240.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/grid-rwp-nakagami-v240.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/grid-ssrwp-tworay-v240.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/grid-ssrwp-nakagami-v240.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/grid-gaussmarkov-tworay-v240.txt, harness: anthocnet-compare, from-config: true}
+      - {cell: results/cells/grid-gaussmarkov-nakagami-v240.txt, harness: anthocnet-compare, from-config: true}
 
   satellite:
     image: docs/benchmarks/charts/satellite.png
@@ -78,27 +78,29 @@ figures:
         harness: isl-grid
         args: --rows=6 --cols=6 --torus=true --islDelayMs=5 --islRate=10Mbps --time=900 --runs=20 --flows=0 --cbrBps=4096 --diag --protocols=anthocnet,aodv,olsr,oracle --corridorLoad=12Mbps --corridorLoadAt=15
 
-  families-vs-aodv:
-    image: docs/benchmarks/charts/families-vs-aodv.png
+  families-native:
+    # #711: AntHocNet's gap to each cell's oracle and to its best native
+    # baseline (tools/bench/native_view.py), every cell of six families.
+    image: docs/benchmarks/charts/families-native.png
     page: docs/benchmarks.md
     render: family-charts
-    data: ["results/cells/grid-*-*-v230-published.txt", results/cells/static-mesh-v230-published.txt,
-           results/cells/fanet-main-v230-published.txt, results/cells/fanet-sparse-v230-published.txt,
-           results/cells/vanet-main-v230-published.txt, results/cells/vanet-sparse-v230-published.txt]
-    rerun: same cells as family-* and grid
+    data: ["results/cells/grid-*-*-v240.txt", results/cells/static-mesh-v240.txt,
+           "results/cells/fanet-*-v240.txt", "results/cells/vanet-*-v240.txt",
+           "results/cells/sat-*-v240.txt", "results/cells/leo-*-v240.txt"]
+    rerun: same cells as family-*, grid and constellation (tools/bench/campaigns/v2.4.0.yaml)
 
   constellation:
     image: docs/benchmarks/charts/constellation.png
     page: docs/benchmarks/satellite/leo-walker.md
     render: family-charts
-    data: ["results/cells/leo-walker16-*-v230*.txt", "results/cells/leo-starlink1-*-v230*.txt"]
+    data: ["results/cells/leo-walker16-*-v240.txt", "results/cells/leo-starlink1-*-v240.txt"]
     rerun:
       # ns-3.48 only (leo-walker needs it), one arm per dispatch (#362).
       # Shown for walker16's AntHocNet arm; the other arms swap --protocols,
       # starlink1 uses --planes=72 --sats=22 --phasing=39 --altitude=550
       # --oracleInterval=1, and the storm adds --massFailAt=150
-      # (tools/bench/campaigns/v2.3.0.yaml holds every cell's inputs).
-      - cell: results/cells/leo-walker16-anthocnet-v230-quiet.txt
+      # (tools/bench/campaigns/v2.4.0.yaml holds every cell's inputs).
+      - cell: results/cells/leo-walker16-anthocnet-v240.txt
         harness: leo-walker
         args: --time=300 --runs=20 --flows=4 --cbrBps=2048 --islRate=10Mbps --protocols=anthocnet --planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01
 

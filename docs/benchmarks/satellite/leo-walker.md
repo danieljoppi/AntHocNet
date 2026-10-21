@@ -90,9 +90,60 @@ flooding is the practical limit of the harness, not of the substrate
 (ADR-0022, criterion 5): even the 256-node walker16 cell took 5 h 54 min of
 CI for 20 seeds, and its v2.3.0 re-run exceeded the 6 h limit twice.
 
+## Restated at v2.4.0: family-native baselines (ADR-0026)
+
+> **Current numbers: v2.4.0.** From v2.4.0 every family is compared against
+> its own protocols plus its oracle
+> ([ADR-0026](https://github.com/danieljoppi/AntHocNet/blob/main/docs/adr/0026-baselines-are-family-native.md)).
+> These cells are the [v2.4.0 control campaign](../v2.4.0-campaign.md#results)
+> at the shipped defaults (no default moved), 20 seeds, mean ± 95 % t-interval.
+> AntHocNet's rows and every kept baseline row are byte-identical to v2.3.0's.
+> The blocks below this one are the dated record of their campaigns; their
+> migrant rows are **retired**, not deleted.
+
+**Native set:** AntHocNet, OPSPF ([#707](https://github.com/danieljoppi/AntHocNet/issues/707)), geo-greedy, the hop oracle and the delay oracle. **Retired:** AODV (OLSR was retired at v2.3.0).
+
+#### walker16
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 92.74 ± 0.39 | 141.6 | 97.66 |
+| OPSPF | 98.90 ± 1.12 | 123.5 | 498.69 |
+| geo-greedy | 41.35 ± 0.19 | 417.3 | 0.00 |
+| oracle | 98.35 ± 0.12 | 123.2 | 0.00 |
+| oracle-delay | 99.79 ± 0.03 | 103.2 | 0.00 |
+
+AntHocNet − oracle -5.62 [-6.01, -5.22] pp; against the best native baseline (opspf, 98.90 %): dPDR -6.17 [-7.42, -4.91] pp, d delay99 +18.10 [+9.25, +27.60] ms, d NRL -401.03 [-411.70, -390.35] (PAIRED-MIXED).
+
+#### Starlink S1
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 79.34 ± 0.53 | 214.1 | 973.56 |
+| OPSPF | 96.82 ± 1.26 | 132.2 | 19399.35 |
+| geo-greedy | 3.81 ± 0.01 | 27.9 | 0.00 |
+| oracle | 95.27 ± 0.34 | 132.1 | 0.00 |
+| oracle-delay | 94.92 ± 0.22 | 117.5 | 0.00 |
+
+AntHocNet − oracle -15.94 [-16.64, -15.23] pp; against the best native baseline (opspf, 96.82 %): dPDR -17.48 [-19.08, -15.88] pp, d delay99 +81.95 [+75.50, +88.25] ms, d NRL -18425.79 [-18691.83, -18159.75] (PAIRED-MIXED).
+
+#### Starlink S1 storm
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 79.17 ± 0.97 | 209.5 | 934.18 |
+| OPSPF | 96.12 ± 2.43 | 134.8 | 16356.53 |
+| geo-greedy | 3.60 ± 0.48 | 27.4 | 0.00 |
+| oracle | 95.08 ± 0.29 | 134.2 | 0.00 |
+| oracle-delay | 94.95 ± 0.26 | 126.8 | 0.00 |
+
+AntHocNet − oracle -15.91 [-16.80, -15.01] pp; against the best native baseline (opspf, 96.12 %): dPDR -16.94 [-19.27, -14.61] pp, d delay99 +74.75 [+70.35, +79.70] ms, d NRL -15422.35 [-15955.05, -14889.66] (PAIRED-MIXED).
+
+**The headline satellite comparison is AntHocNet − OPSPF, and it goes against AntHocNet:** −6.17 pp on walker16, −17.48 and −16.94 pp on Starlink S1 and its storm. OPSPF pays 5–20× AntHocNet's control for it (NRL 499 against 98; 16 357–19 399 against 934–974). Its LSA floods are also accounted, not transmitted. The [opspf section](#opspf-the-link-state-incumbent-707) lists that and its other simplifications. OPSPF also sits at or above the 1 s hop oracle (+0.55, +1.54 and +1.04 pp), so on these failure cells the oracle is not a delivery bound ([#720](https://github.com/danieljoppi/AntHocNet/issues/720)).
+
 ## Restated at v2.3.0 defaults (quiet mode on)
 
-> **Current numbers: v2.3.0 defaults.** v2.3.0 turns quiet mode on by
+> **Dated record: v2.3.0 defaults** (superseded by the v2.4.0 block above). v2.3.0 turns quiet mode on by
 > default ([#571](https://github.com/danieljoppi/AntHocNet/issues/571), the
 > [v2.3.0 campaign](../v2.3.0-campaign.md#results)). AntHocNet's rows below are the
 > campaign's `quiet` arm. Every baseline row is the campaign's `control`, and the
