@@ -17,7 +17,7 @@ const $ = (id) => document.getElementById(id);
 
 /** Chapters the design promises next (learn-campaign.md §3), shown locked. */
 const LATER = [
-  { n: 8, ships: 'v2.4.0' },
+  { n: 9, ships: 'v3.3.0' },
 ].map((c) => localized(c, `chapter.${c.n}`, ['title', 'family']));
 
 function el(tag, attrs = {}, ...kids) {
@@ -213,7 +213,7 @@ export function initCampaign(pg) {
     // #578: a slot with a fixed site (a ground station's city, a satellite's
     // plane) is placed at once: there is nowhere on the globe to click.
     const fixed = cls && level.palette.find((p) => p.class === cls)?.spec;
-    if (fixed && (DEVICES[cls].ground || DEVICES[cls].orbit)) {
+    if (fixed && (DEVICES[cls].ground || DEVICES[cls].orbit || DEVICES[cls].sphere)) {
       picked = cls;
       place(fixed.lon ?? fixed.raan ?? 0, fixed.lat ?? fixed.phase ?? 0);
       picked = null;

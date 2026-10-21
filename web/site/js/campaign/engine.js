@@ -8,7 +8,8 @@
 // Level schema (web/README.md documents it):
 //   id, chapter, title, story, mechanism       -- text
 //   world: { area: [x, y, z?], range,           -- the field and default radio
-//            channel: 'disk' | 'urban' | 'isl',  -- urban: blocks [bx, by], street
+//            channel: 'disk' | 'urban' | 'isl' | 'mixed',  -- urban: blocks [bx, by], street;
+//                                                 mixed (#585): ground, air and space
 //            zones: [{ poly: [x0, y0, ...], factor }],   canopy (#575)
 //            jams: [{ poly, from, until, v: [vx, vy] }],  jamming / fire front (#582)
 //            bitrate,                                 narrowband radios (bit/s, #584)
@@ -63,6 +64,11 @@ export const DEVICES = Object.freeze(Object.fromEntries(Object.entries({
   // world's bitrate); a relay vehicle drives its device's route along the road.
   nbradio:  { range: 600, sprite: 'phone', moves: null },
   vehicle:  { range: 300, sprite: 'car', moves: null, route: 6 },
+  // Chapter 8 (#585), on the mixed channel: placed on the globe by (lat, lon)
+  // at `alt` metres. A HAPS reaches 450 km from 20 km up; a ground radio
+  // 50 km. A ground station there also links to its neighbours (#582).
+  haps:     { range: 4.5e5, sprite: 'drone', moves: null, sphere: true, alt: 2e4 },
+  radio:    { range: 5e4, sprite: 'phone', moves: null, sphere: true, alt: 0 },
 }).map(([k, d]) => [k, localized(d, `device.${k}`, ['label', 'note'])])));
 
 /** Seconds of simulated time per runner step (hazards and samples land on it). */
@@ -80,7 +86,7 @@ export function validatePlacements(level, placements) {
     if (slot.limit && used[p.class] > slot.limit) errors.push(t('campaign.err.limit', { n: slot.limit, label: DEVICES[p.class].label }));
     cost += slot.cost;
     const [ax, ay] = level.world.area;
-    const sited = DEVICES[p.class]?.ground || DEVICES[p.class]?.orbit;  // placed by site, not by (x, y)
+    const sited = DEVICES[p.class]?.ground || DEVICES[p.class]?.orbit || DEVICES[p.class]?.sphere;  // placed by site, not by (x, y)
     if (!sited && (p.x < 0 || p.y < 0 || p.x > ax || p.y > ay)) errors.push(t('campaign.err.outside', { label: DEVICES[p.class].label }));
   }
   if (cost > level.budget) errors.push(t('campaign.err.budget', { cost, budget: level.budget }));
@@ -93,9 +99,9 @@ const EARTH = 6.371e6;
 const SHELL_ALT = 1.2e6;
 
 /** A point on the Earth's surface, in the field frame (centre = field centre). */
-export function surface(w, lat, lon) {
-  const r = Math.PI / 180, cx = w.areaX() / 2, cy = w.areaY() / 2;
-  return [cx + EARTH * Math.cos(lat * r) * Math.cos(lon * r), cy + EARTH * Math.cos(lat * r) * Math.sin(lon * r), EARTH * Math.sin(lat * r)];
+export function surface(w, lat, lon, alt = 0) {
+  const r = Math.PI / 180, cx = w.areaX() / 2, cy = w.areaY() / 2, R = EARTH + alt;
+  return [cx + R * Math.cos(lat * r) * Math.cos(lon * r), cy + R * Math.cos(lat * r) * Math.sin(lon * r), R * Math.sin(lat * r)];
 }
 
 /**
@@ -113,6 +119,12 @@ export function addDevice(w, cls, x, y, moves = true, spec = {}) {
     w.setGroundStation(id, d.ground);
     return id;
   }
+  if (d.sphere) {
+    const [sx, sy, sz] = surface(w, spec.lat ?? y, spec.lon ?? x, d.alt);
+    id = w.addNode(sx, sy, sz);
+    w.setNodeRange(id, d.range);
+    return id;
+  }
   if (d.orbit) {
     id = w.addNode(0, 0, 0);
     w.setOrbit(id, EARTH + SHELL_ALT, spec.inc ?? 53, spec.raan ?? x, spec.phase ?? y, spec.period ?? 120);
@@ -128,13 +140,14 @@ export function addDevice(w, cls, x, y, moves = true, spec = {}) {
 }
 
 /** The teaching shell: planes x slots satellites on the +grid, as the satellite world. */
-function buildShell(w, shell) {
+function buildShell(w, shell, mixed) {
   const { planes, slots } = shell;
   const ids = [];
   const skip = new Set(shell.skip || []);  // a plane left empty: a coverage gap
   for (let p = 0; p < planes; p++) {
     for (let s = 0; s < slots; s++) {
       const id = w.addNode(0, 0, 0);
+      if (mixed) w.setSatellite(id);
       if (skip.has(p)) w.setNodeUp(id, false);
       w.setOrbit(id, EARTH + SHELL_ALT, shell.inc ?? 53, p * 360 / planes, s * 360 / slots + p * 360 / (planes * slots), shell.period ?? 120);
       ids.push(id);
@@ -157,6 +170,7 @@ export function buildWorld(M, level, seed) {
   w.setArea(ax, ay, az);
   if (lw.channel === 'urban') w.setUrbanChannel(lw.range ?? 300, lw.blocks?.[0] ?? 4, lw.blocks?.[1] ?? 4, lw.street ?? 20);
   else if (lw.channel === 'isl') w.setIslChannel();
+  else if (lw.channel === 'mixed') w.setMixedChannel(lw.range ?? 5e4);
   else w.setDiskChannel(lw.range ?? 250);
   for (const z of lw.zones || []) w.addAttenuationZone(z.poly, z.factor, z.top ?? 30);
   if (lw.bitrate) w.setBitrate(lw.bitrate);
@@ -164,7 +178,7 @@ export function buildWorld(M, level, seed) {
   const ids = lw.devices.map((d) => addDevice(w, d.class, d.x, d.y, d.moves !== false, d));
   // Satellites come after the devices, so device indices (flows, hazards)
   // stay the level's own; hazards address a satellite as 'sat:k'.
-  const sats = lw.shell ? buildShell(w, lw.shell) : [];
+  const sats = lw.shell ? buildShell(w, lw.shell, lw.channel === 'mixed') : [];
   for (const f of lw.flows) w.addFlow(ids[f.src], ids[f.dst], f.rate ?? 2, f.start ?? 2, 1e9);
   return { world: w, ids, sats };
 }

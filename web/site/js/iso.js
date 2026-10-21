@@ -112,7 +112,7 @@ export class IsoRenderer {
 
   /** The satellite world is seen as a globe: Earth at the field's centre,
    *  satellites on their orbits, an orthographic camera tilted 22 degrees. */
-  get globe() { return this.meta?.channel === 2; }
+  get globe() { return this.meta?.channel === 2 || this.meta?.channel === 3; }  // 3: #582 mixed
 
   fit() {
     if (!this.meta) return;
@@ -196,7 +196,7 @@ export class IsoRenderer {
   // --- world kind -------------------------------------------------------------
   get kind() {
     if (!this.meta) return 'field';
-    if (this.meta.channel === 2) return 'space';
+    if (this.globe) return 'space';
     if (this.meta.channel === 1) return 'city';
     return this.meta.areaZ > 0 ? 'sky' : 'field';
   }
@@ -897,7 +897,8 @@ export class IsoRenderer {
     // station under the shell. Worlds without sprites draw as before.
     const own = this.meta.sprites?.[i];
     if (own === 'tower' && k !== 'space') this.router(bx, by, ay, up, zs);
-    else if (own === 'tower' && k === 'space') this.station(ax, ay, up, zs);
+    else if ((own === 'tower' || own === 'phone') && k === 'space') this.station(ax, ay, up, zs);
+    else if (own === 'drone' && k === 'space') this.drone(bx, by, ax, ay, up, zs, i);  // #585: a HAPS
     else if (k === 'sky' && own !== 'phone') this.drone(bx, by, ax, ay, up, zs, i);
     else if (k === 'space') this.satellite(ax, ay, up, zs);
     else if (k === 'city') this.car(pos, i, up, zs);

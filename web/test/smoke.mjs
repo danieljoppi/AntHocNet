@@ -621,6 +621,32 @@ for (const scheme of ['light', 'dark']) {
   await p.close();
 }
 
+// 5e. Chapter 8 (#585): One network, the finale, played through the UI on the
+//     globe -- the HAPS slot fills the chain's gap -- and clears.
+{
+  const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  const ids = ['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '2.1', '2.2', '2.3', '2.4', '3.1', '3.2', '3.3', '3.4',
+    '4.1', '4.2', '4.3', '4.4', '5.1', '5.2', '5.3', '5.4', '5.5', '8.1', '8.2'];
+  await p.addInitScript((c) => { try { localStorage.setItem('ahn-campaign-v1', JSON.stringify(c)); } catch { /* none */ } },
+    Object.fromEntries(ids.map((id) => [id, 3])));
+  await p.goto(base + '#campaign');
+  await p.locator('#campaign .chip-btn[aria-label^="Level 8.3,"]').click({ timeout: 15000 });
+  await p.locator('#campaign button', { hasText: 'Plan' }).click();
+  await p.locator('#hud button', { hasText: 'Run' }).waitFor();
+  await p.locator('#dock .dock-btn', { hasText: 'HAPS' }).click();  // a fixed site: placed at once
+  const globe = await p.evaluate(async () => { const { playground } = await import('./js/app.js'); return playground.world.channel(); });
+  await p.locator('#hud button', { hasText: 'Run' }).click();
+  await p.evaluate(async () => { const { playground } = await import('./js/app.js'); playground.setSpeed(20); });
+  await p.locator('#campTitle', { hasText: 'cleared' }).waitFor({ timeout: 60000 }).catch(() => fail('campaign 8.3: One network did not clear'));
+  const stars = await p.evaluate(() => JSON.parse(localStorage.getItem('ahn-campaign-v1') || '{}')['8.3'] || 0);
+  if (globe !== 3) fail(`campaign 8.3: expected the mixed channel (3), got ${globe}`);
+  else if (errors.length) fail(`campaign 8.3: page errors: ${errors.join(' | ')}`);
+  else if (stars) console.log(`ok: campaign 8.3 — One network played through the UI on the mixed channel, the HAPS gap filled; cleared with ${stars} stars`);
+  await p.close();
+}
+
 // 4. The default ad hoc world mixes walking and standing phones (#542 follow-up).
 {
   const { p, errors } = await page('#manet?seed=1');

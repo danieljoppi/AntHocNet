@@ -185,6 +185,18 @@ one satellite to matter.
 | 8.2 | Ocean crossing | no ground path, the satellite path is slow | a HAPS chain vs the satellite path | delay-aware trails across layers |
 | 8.3 | One network (finale) | everything from Chapters 1–7 on one map | connecting all of them under one budget | the whole protocol, every network type |
 
+*As shipped in v2.4.0, Chapter 8 is watch-and-predict, like Chapter 5.*
+- **The world.** A village and a city 2400 km apart across an ocean, on the
+  mixed ground/air/space channel (#582). Each town has a ground station under
+  the teaching shell, and seven HAPS slots span the ocean.
+- **8.1 and 8.2** are a quiz plus a delivery goal. In 8.1 the ants settle on
+  the HAPS chain. In 8.2 they fall back on the satellites while the middle
+  HAPS is down, and return to the chain when it is back.
+- **8.3** is a single choice of one device at a fixed site under a solar
+  storm: the HAPS that closes the chain, or a ground station in the village.
+  It is not every chapter on one map. On a globe there is nowhere to click a
+  device into place, the same reason Chapter 5 stayed watch-and-predict.
+
 ## 4. Upgrades are real gated mechanisms
 
 A "research" screen unlocks **upgrades**. Each one is a **real default-off
