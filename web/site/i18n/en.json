@@ -559,7 +559,8 @@
     "metricsNrl": "Metrics: NRL",
     "regimes": "Network regimes",
     "disaster": "Disaster results",
-    "partition": "Partition and re-merge"
+    "partition": "Partition and re-merge",
+    "tactical": "The tactical narrowband cell"
   },
   "device": {
     "phone": {
@@ -633,6 +634,14 @@
     "post": {
       "label": "Command post",
       "note": "the incident command, 300 m"
+    },
+    "nbradio": {
+      "label": "Narrowband radio",
+      "note": "long range, very low rate, 600 m"
+    },
+    "vehicle": {
+      "label": "Relay vehicle",
+      "note": "drives its route along the road, 300 m"
     }
   },
   "chapter": {
@@ -686,7 +695,11 @@
     },
     "7": {
       "title": "Contested zone",
-      "family": "tactical radio"
+      "family": "tactical radio",
+      "blurb": "Narrowband radios in a valley: long range, very low rate. A jammer cuts the road, a convoy drives out of reach. Keep the network up; nobody is harmed.",
+      "results": {
+        "label": "The tactical cell (deferred)"
+      }
     },
     "8": {
       "title": "Sky to space",
@@ -1033,6 +1046,36 @@
         "Build the evacuation channel on the ground the fire reaches last."
       ],
       "debrief": "The low masts carry the call until the front reaches them, then the trail is gone at once. A channel on the high ground was already sampled by the proactive ants, so the call moves to it within moments. A disaster network is planned for where the hazard will be, not where it is."
+    },
+    "7_1": {
+      "title": "Radio silence",
+      "mechanism": "control overhead as the binding cost (NRL)",
+      "story": "Two outposts 1 km apart talk over narrowband radios at 9.6 kbit/s. Every hello and every ant takes airtime from the calls. Join them, and keep the air quiet.",
+      "hints": [
+        "Each relay adds its own hellos and its own share of every ant flood.",
+        "Count the ants per delivered packet at the end: that is the third star."
+      ],
+      "debrief": "Both answers deliver. A chain of short repeaters sends four to eight ants per packet delivered; one long-range radio sends about two. On a narrowband radio that overhead is airtime the calls do not get, which is why the tactical cell is judged on NRL as much as on delivery."
+    },
+    "7_2": {
+      "title": "Jammed",
+      "mechanism": "link failure and re-discovery",
+      "story": "Two bases at either end of a valley call each other through routers along the road. From 30 s a jammer covers the middle of the valley: no link touching it, or crossing it, survives.",
+      "hints": [
+        "The jammer covers the valley floor, not the ridges.",
+        "A mast reaches 350 m. How many would it take along one ridge?"
+      ],
+      "debrief": "Once the jammer is on, the road is gone: links fail, the failure notices spread, and the ants look for another way. With masts on a ridge the valley has a path the jammer does not touch, and the calls go over it. Nothing here attacks the jammer; the network routes around it."
+    },
+    "7_3": {
+      "title": "Convoy",
+      "mechanism": "mobility along roads",
+      "story": "A convoy of three relay vehicles drives east along the road at 6 m/s. The lead vehicle reports to headquarters at the west end. In two minutes the convoy is 850 m away.",
+      "hints": [
+        "The vehicles relay for each other, but the last one leaves headquarters' range within a minute.",
+        "Masts along the road, about 300 m apart, keep the convoy's tail in reach."
+      ],
+      "debrief": "A convoy is a moving chain: its links to the fixed network change as it drives, in the order the road sets. Masts along the road hand the tail from one to the next, and the ants follow each handover. The VANET results measure the same pattern on a street grid."
     }
   },
   "campaign": {

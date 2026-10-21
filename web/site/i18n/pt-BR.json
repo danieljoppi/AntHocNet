@@ -559,7 +559,8 @@
     "metricsNrl": "Métricas: NRL",
     "regimes": "Regimes de rede",
     "disaster": "Resultados de desastre",
-    "partition": "Partição e reunião"
+    "partition": "Partição e reunião",
+    "tactical": "A célula tática de banda estreita"
   },
   "device": {
     "phone": {
@@ -633,6 +634,14 @@
     "post": {
       "label": "Posto de comando",
       "note": "o comando do incidente, 300 m"
+    },
+    "nbradio": {
+      "label": "Rádio de banda estreita",
+      "note": "longo alcance, taxa muito baixa, 600 m"
+    },
+    "vehicle": {
+      "label": "Veículo de retransmissão",
+      "note": "percorre sua rota pela estrada, 300 m"
     }
   },
   "chapter": {
@@ -686,7 +695,11 @@
     },
     "7": {
       "title": "Zona contestada",
-      "family": "rádio tático"
+      "family": "rádio tático",
+      "blurb": "Rádios de banda estreita num vale: longo alcance, taxa muito baixa. Um bloqueador corta a estrada, um comboio sai do alcance. Mantenha a rede de pé; ninguém sai ferido.",
+      "results": {
+        "label": "A célula tática (adiada)"
+      }
     },
     "8": {
       "title": "Do céu ao espaço",
@@ -1033,6 +1046,36 @@
         "Monte o canal de evacuação no terreno que o fogo alcança por último."
       ],
       "debrief": "Os mastros baixos levam a chamada até a frente chegar neles, e então a trilha some de uma vez. Um canal no terreno alto já foi amostrado pelas formigas proativas, então a chamada passa para ele em instantes. Uma rede de desastre é planejada para onde o perigo vai estar, não para onde ele está."
+    },
+    "7_1": {
+      "title": "Silêncio de rádio",
+      "mechanism": "o custo de controle como limite (NRL)",
+      "story": "Dois postos a 1 km um do outro conversam por rádios de banda estreita a 9,6 kbit/s. Cada hello e cada formiga tira tempo de ar das chamadas. Ligue os dois e mantenha o ar silencioso.",
+      "hints": [
+        "Cada retransmissor acrescenta os próprios hellos e a sua parte de cada inundação de formigas.",
+        "Conte as formigas por pacote entregue no fim: essa é a terceira estrela."
+      ],
+      "debrief": "As duas respostas entregam. Uma corrente de repetidores curtos envia de quatro a oito formigas por pacote entregue; um rádio de longo alcance envia cerca de duas. Num rádio de banda estreita esse excesso é tempo de ar que as chamadas não têm, por isso a célula tática é julgada pelo NRL tanto quanto pela entrega."
+    },
+    "7_2": {
+      "title": "Bloqueado",
+      "mechanism": "falha de enlace e redescoberta",
+      "story": "Duas bases nas pontas de um vale se chamam por roteadores ao longo da estrada. A partir de 30 s um bloqueador cobre o meio do vale: nenhum enlace que o toque, ou que o cruze, sobrevive.",
+      "hints": [
+        "O bloqueador cobre o fundo do vale, não as cristas.",
+        "Um mastro alcança 350 m. Quantos seriam precisos ao longo de uma crista?"
+      ],
+      "debrief": "Com o bloqueador ligado, a estrada some: os enlaces falham, os avisos de falha se espalham e as formigas procuram outro caminho. Com mastros numa crista o vale tem um caminho que o bloqueador não toca, e as chamadas passam por ele. Nada aqui ataca o bloqueador; a rede desvia dele."
+    },
+    "7_3": {
+      "title": "Comboio",
+      "mechanism": "mobilidade ao longo de estradas",
+      "story": "Um comboio de três veículos de retransmissão segue para leste pela estrada a 6 m/s. O veículo da frente informa o quartel-general na ponta oeste. Em dois minutos o comboio está a 850 m.",
+      "hints": [
+        "Os veículos retransmitem uns para os outros, mas o último sai do alcance do quartel-general em menos de um minuto.",
+        "Mastros ao longo da estrada, a uns 300 m um do outro, mantêm a cauda do comboio ao alcance."
+      ],
+      "debrief": "Um comboio é uma corrente em movimento: seus enlaces com a rede fixa mudam à medida que ele anda, na ordem que a estrada impõe. Mastros ao longo da estrada passam a cauda de um para o outro, e as formigas seguem cada passagem. Os resultados de VANET medem o mesmo padrão numa grade de ruas."
     }
   },
   "campaign": {

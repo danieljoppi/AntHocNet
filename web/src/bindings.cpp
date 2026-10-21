@@ -282,6 +282,7 @@ EMSCRIPTEN_BINDINGS(anthocnet) {
                 const std::vector<double> z = w.zonesFlat();
                 return val::global("Float64Array").new_(typed_memory_view(z.size(), z.data()));
             }))
+        .function("setBitrate", &World::setBitrate)
         .function("setMixedChannel", &World::setMixedChannel)
         .function("setSatellite", &World::setSatellite)
         .function("addJammingZone", &addJammingZone)

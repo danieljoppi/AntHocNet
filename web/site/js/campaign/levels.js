@@ -27,6 +27,8 @@ export const CHAPTERS = [
     results: { href: RES + 'satellite/leo-walker/' } },
   { n: 6,
     results: { href: RES + 'scenarios/disaster/' } },
+  { n: 7,
+    results: { href: RES + 'scenarios/disaster/#the-tactical-narrowband-cell-deferred' } },
 ].map((c) => {
   localized(c, `chapter.${c.n}`, ['title', 'family', 'blurb']);
   localized(c.results, `chapter.${c.n}.results`, ['label']);
@@ -50,6 +52,9 @@ const rescuer = ([x0, y0, x1, y1], k, speed = 1) => {
   return { class: 'rescuer', x: route[0][0], y: route[0][1], route, speed };
 };
 const WEST = [150, 150, 350, 300], EAST = [650, 150, 850, 300];
+// Chapter 7 (#584): a valley 1200 x 600 m with a road along y = 300 and
+// ridges at y = 100 and 500; narrowband radios at 64 kbit/s.
+const VALLEY = { area: [1200, 600], range: 250, bitrate: 64e3 };
 const teams = () => [0, 1, 2].map((k) => rescuer(WEST, k, 1 + 0.1 * k))
   .concat([0, 1, 2].map((k) => rescuer(EAST, k, 1 + 0.1 * k)));
 const station = (lat, lon) => ({ class: 'station', lat, lon });
@@ -479,6 +484,47 @@ export const LEVELS = [
     stars: { budgetLeft: 0, maxNrl: 40 },
     debrief: { links: [['doc.disaster', RES + 'scenarios/disaster/'], ['doc.antTypesProactive', DOC + 'ant-types/']] },
     par: [{ class: 'mast', x: 400, y: 520 }, { class: 'mast', x: 700, y: 520 }],
+  },
+  // --- Chapter 7: Contested zone (#584) ------------------------------------------------
+  // Keeping a network up under jamming and failures; no level rewards
+  // harming anyone (7.4, the adversary, waits for v3.0.0).
+  {
+    id: '7.1', chapter: 7,
+    world: { ...VALLEY, bitrate: 9.6e3,
+             devices: [{ class: 'nbradio', x: 100, y: 300 }, { class: 'nbradio', x: 1100, y: 300 }],
+             flows: [{ src: 0, dst: 1, rate: 1, start: 3 }, { src: 1, dst: 0, rate: 1, start: 4 }] },
+    budget: 60, palette: [{ class: 'nbradio', cost: 40, limit: 1 }, { class: 'repeater', cost: 10, limit: 6 }], duration: 120,
+    objectives: [{ kind: 'deliver', flows: 'all', ratio: 0.8, from: 20, to: 120 }],
+    stars: { budgetLeft: 0, maxNrl: 3 },  // one long-range relay ~2 ants per packet; a repeater chain 4.5-8
+    debrief: { links: [['doc.metricsNrl', RES + 'metrics/'], ['doc.tactical', RES + 'scenarios/disaster/#the-tactical-narrowband-cell-deferred']] },
+    par: [{ class: 'nbradio', x: 600, y: 300 }],
+  },
+  {
+    id: '7.2', chapter: 7,
+    // The jammer covers the middle of the valley from 30 s on.
+    world: { ...VALLEY, jams: [{ poly: [480, 180, 720, 180, 720, 420, 480, 420], from: 30 }],
+             devices: [{ class: 'mast', x: 60, y: 300 }, { class: 'mast', x: 1140, y: 300 },
+                       { class: 'router', x: 350, y: 300 }, { class: 'router', x: 600, y: 300 }, { class: 'router', x: 850, y: 300 }],
+             flows: [{ src: 0, dst: 1, rate: 1, start: 3 }, { src: 1, dst: 0, rate: 1, start: 4 }] },
+    budget: 120, palette: [{ class: 'mast', cost: 40, limit: 3 }], duration: 120,
+    objectives: [{ kind: 'deliver', flows: 'all', ratio: 0.8, from: 35, to: 120 }],
+    stars: { budgetLeft: 0, maxNrl: 40 },
+    debrief: { links: [['doc.antTypesRepair', DOC + 'ant-types/#repair-ants'], ['doc.tactical', RES + 'scenarios/disaster/#the-tactical-narrowband-cell-deferred']] },
+    par: [{ class: 'mast', x: 300, y: 100 }, { class: 'mast', x: 600, y: 100 }, { class: 'mast', x: 900, y: 100 }],
+  },
+  {
+    id: '7.3', chapter: 7,
+    // A convoy of three relay vehicles drives east along the road at 6 m/s,
+    // 100 m apart; the lead vehicle reports to headquarters at the west end.
+    world: { ...VALLEY,
+             devices: [{ class: 'mast', x: 60, y: 300 },
+                       ...[0, 1, 2].map((k) => ({ class: 'vehicle', x: 300 - 100 * k, y: 300, route: [[300 - 100 * k, 300], [1150, 300]] }))],
+             flows: [{ src: 1, dst: 0, rate: 1, start: 3 }] },
+    budget: 120, palette: [{ class: 'mast', cost: 40, limit: 3 }], duration: 150,
+    objectives: [{ kind: 'deliver', flows: [0], ratio: 0.8, from: 10, to: 150 }],
+    stars: { budgetLeft: 0, maxNrl: 40 },
+    debrief: { links: [['doc.vanet', RES + 'scenarios/vanet/'], ['doc.regimes', DOC + 'network-regimes/']] },
+    par: [{ class: 'mast', x: 400, y: 260 }, { class: 'mast', x: 700, y: 260 }, { class: 'mast', x: 1000, y: 260 }],
   },
 ].map((l) => {
   const key = `level.${l.id.replace('.', '_')}`;
