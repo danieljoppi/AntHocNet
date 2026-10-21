@@ -129,9 +129,9 @@ oracle, and to its best native baseline, paired per seed
 ([#711](https://github.com/danieljoppi/AntHocNet/issues/711); the
 [v2.4.0 control campaign](benchmarks/v2.4.0-campaign.md#results)). The
 ranking-stability statement that reads it is on the
-[VANET page](benchmarks/scenarios/vanet.md#ranking-stability-across-six-families).
+[VANET page](benchmarks/scenarios/vanet.md#ranking-stability-across-the-families).
 
-![AntHocNet against each family's own yardsticks: its paired PDR gap to the oracle and to the best native baseline, in every cell of six families. Ahead of every native baseline on the MANET grid and FANET, tied with AODV on VANET, behind OLSR on the static mesh and behind OPSPF on the LEO shells; level with the oracle on the ISL grid](benchmarks/charts/families-native.png)
+![AntHocNet against each family's own yardsticks: its paired PDR gap to the oracle and to the best native baseline, in every cell of seven families. Ahead of every native baseline on the MANET grid and FANET, tied with AODV on VANET and the disaster scene, behind OLSR on the static mesh and behind OPSPF on the LEO shells; level with the oracle on the ISL grid](benchmarks/charts/families-native.png)
 
 _Reproduce: `make reproduce FIG=families-native` re-renders it from the committed data and diffs the PNG ([#621](https://github.com/danieljoppi/AntHocNet/issues/621))._
 

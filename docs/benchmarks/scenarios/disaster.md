@@ -148,8 +148,60 @@ It is merged before its first dispatch, as every campaign here is:
   paired per seed (`tools/bench/native_view.py`).
 
 The family joins the cross-family view (#711) with that cell, so the
-statement on the [VANET page](vanet.md#ranking-stability-across-six-families)
+statement on the [VANET page](vanet.md#ranking-stability-across-the-families)
 then reads seven families. One scene seed is a disclosed threat (below).
+
+## Results (v2.4.0)
+
+The pre-registered campaign, as planned: `disaster-main`, 20 seeds, 900 s,
+on `ns3:3.42-opt` at `bb628a0` (runs 39539327103 and 39539339168). The cell
+is [`results/cells/disaster-main-v240.txt`](https://github.com/danieljoppi/AntHocNet/blob/main/results/cells/disaster-main-v240.txt).
+Mean over 20 seeds, PDR with its 95 % t-interval:
+
+| protocol | PDR % ± 95 % CI | delay99 ms | NRL |
+|---|---|---|---|
+| **AntHocNet** | 77.70 ± 0.39 | 138.8 | 10.07 |
+| AODV | 77.12 ± 0.58 | 926.0 | 8.23 |
+| OLSR | 66.69 ± 0.14 | 14.8 | 2.49 |
+| oracle | 81.47 ± 0.04 | 15.4 | 0.00 |
+
+**The readings**, paired per seed (`tools/bench/native_view.py`):
+
+- **AntHocNet − oracle:** −3.77 [−4.16, −3.38] pp.
+- **AntHocNet − the best native baseline (AODV, 77.12 %):**
+  - dPDR +0.58 [−0.22, +1.38] pp;
+  - d delay99 −787.2 [−910.5, −684.6] ms;
+  - d NRL +1.84 [+1.38, +2.31].
+  - Verdict: PAIRED-MIXED. Delivery is a tie, the tail is shorter, and the
+    control overhead is higher.
+- **Against OLSR:** +11.01 [+10.62, +11.41] pp, at a delay99 124 ms longer
+  and NRL 7.6 higher.
+
+What they say:
+
+- **AntHocNet and AODV deliver alike; the tail separates them.** They
+  deliver within 0.6 pp of each other, and the difference is not
+  significant. AODV's 99th-percentile delay is 0.93 s; AntHocNet's is
+  0.14 s.
+- **OLSR has the shortest tail and the lowest delivery.** Its delay99 is
+  the tightest of the routing arms (14.8 ms), and it trails both reactive
+  protocols by 10–11 pp.
+- **The oracle loses 18.5 %.** The 2-seed runs above read 81.4 and
+  81.5 %; at 20 seeds it is 81.47 ± 0.04 %. Those packets have no path when
+  they are sent, which is #580's condition for a store-carry-forward arm.
+  [#727](https://github.com/danieljoppi/AntHocNet/issues/727) carries it to
+  v2.5.0.
+- **`scenario_check.py results`: WARN, 0 FAIL.**
+  - The oracle is approximate on this channel (it is a reference point, not
+    a proven bound) and finds no path for about 3240 lookups per seed: the
+    partition again.
+  - AntHocNet shows a few ICMP re-injections.
+  - Path diversity is churn-dominated, so the `path_div_*` columns are not
+    quoted. PDR, delay and NRL are unaffected.
+
+The cell joins the cross-family view
+([VANET page](vanet.md#ranking-stability-across-the-families)) as the
+seventh family.
 
 ## The tactical narrowband cell: deferred
 
