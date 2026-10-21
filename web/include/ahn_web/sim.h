@@ -113,6 +113,7 @@ enum class ChannelKind {
     Disk,   ///< linked iff within range()
     Urban,  ///< within range() and no building on the line of sight
     Isl,    ///< linked iff an inter-satellite link was added (and not cut)
+    Mixed,  ///< #582: ground, air and space in one world (see setMixedChannel)
 };
 
 /// Event kinds of the log the front end animates and the parity test diffs.
@@ -234,6 +235,7 @@ private:
     double battery_ = 0;                ///< energy left (J)
     double batteryAt_ = 0;              ///< when battery_ was last brought up to date
     double groundMinSinEl_ = 2;         ///< #575: sin(min elevation); > 1 = not a ground station
+    bool satellite_ = false;            ///< #582: a satellite on the Mixed channel
 };
 
 /// The whole simulation: nodes, radio, mobility, traffic and the event queue.
@@ -251,8 +253,18 @@ public:
     void setUrbanChannel(double range, int blocksX, int blocksY, double streetWidth);
     /// Links only where addIslLink() says, delay tracking distance.
     void setIslChannel();
-    /// Add an inter-satellite link (ChannelKind::Isl).
+    /// Add an inter-satellite link (ChannelKind::Isl, Mixed).
     void addIslLink(int a, int b);
+    /// #582: ground, air and space nodes in one world. Satellites (see
+    /// setSatellite) link only by their ISLs and to the ground stations that
+    /// see them; every other pair links by the disk rule, in 3-D, with the
+    /// world range `range` for nodes without their own. Unlike the Isl
+    /// channel, a ground station also links to its neighbours by the disk
+    /// rule (a HAPS holds both its ring and its uplink). Every link's delay is
+    /// its length at the speed of light.
+    void setMixedChannel(double range);
+    /// #582: mark `node` as a satellite on the Mixed channel.
+    void setSatellite(int node);
     /// Transmitter bit rate (default 2 Mbit/s).
     void setBitrate(double bps) { bitrate_ = bps; }
     /// Independent per-reception loss probability (default 0).
@@ -283,6 +295,16 @@ public:
     /// the horizon being the plane normal to the Earth's radius through it
     /// (the Earth's centre is the field's centre, as for orbits).
     void setGroundStation(int node, double minElevationDeg);
+    /// #582: a jamming zone. While from <= t < until, any disk or urban link
+    /// with an end inside the polygon `xy` (x0, y0, x1, y1, ...), or crossing
+    /// it, fails. The polygon moves at (vx, vy) m/s from `from` on (a fire
+    /// front); (0, 0) holds it still (a jammer). It covers every altitude.
+    /// Satellite links are never jammed.
+    void addJammingZone(const std::vector<double>& xy, double from, double until, double vx = 0,
+                        double vy = 0);
+    /// #582: a scripted event -- switch `node` off (up = false) or back on at
+    /// simulated time t (an aftershock, a device restored), as setNodeUp.
+    void scheduleNodeUp(int node, double t, bool up);
     /// Add a CBR flow; returns its index.
     int addFlow(int src, int dst, double rate, double start, double stop);
     /// #579: the link metric every node is built with, by registry name
@@ -352,6 +374,9 @@ public:
     ChannelKind channel() const { return channel_; }
     /// #575: the attenuation zones as [factor, n, x0, y0, ... x(n-1), y(n-1), ...].
     std::vector<double> zonesFlat() const;
+    /// #582: the jamming zones active now, where they are now, as
+    /// [n, x0, y0, ... x(n-1), y(n-1), ...].
+    std::vector<double> jamZonesFlat() const;
     /// Field size in metres.
     Vec3 area() const { return area_; }
 
@@ -433,6 +458,13 @@ private:
         double top;
     };
     std::vector<Zone> zones_;  ///< #575 attenuation zones
+    struct JamZone {
+        std::vector<double> xy;
+        double from, until, vx, vy;
+    };
+    std::vector<JamZone> jams_;  ///< #582 jamming zones
+    /// Whether a jamming zone active at t holds an end of a-b or crosses it.
+    bool jammed(const Vec3& a, const Vec3& b, double t) const;
     /// The smallest attenuation factor of the zones containing (x, y), or 1.
     double rangeFactorAt(const Vec3& p) const;
     /// Bring `n`'s battery up to now; switch it off when empty.

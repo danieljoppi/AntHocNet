@@ -37,6 +37,24 @@ double dist(const Vec3& a, const Vec3& b) {
     return std::sqrt(dx * dx + dy * dy + dz * dz);  // sqrt is exactly rounded everywhere
 }
 
+/// #582: whether (px, py) lies inside the polygon `xy` shifted by (ox, oy):
+/// even-odd ray casting along +x, arithmetic only.
+bool inPolygon(const std::vector<double>& xy, double ox, double oy, double px, double py) {
+    const std::size_t n = xy.size() / 2;
+    bool in = false;
+    for (std::size_t i = 0, j = n - 1; i < n; j = i++) {
+        const double xi = xy[2 * i] + ox, yi = xy[2 * i + 1] + oy;
+        const double xj = xy[2 * j] + ox, yj = xy[2 * j + 1] + oy;
+        if ((yi > py) != (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) in = !in;
+    }
+    return in;
+}
+
+/// #582: twice the signed area of (a, b, c) in the x-y plane.
+double orient(double ax, double ay, double bx, double by, double cx, double cy) {
+    return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+}
+
 /// Approximate standard normal with arithmetic only (Irwin-Hall, n = 12):
 /// no libm transcendental, so native and WASM draw identical values.
 double normal(SplitMix64& r) {
@@ -101,6 +119,13 @@ void World::setUrbanChannel(double range, int blocksX, int blocksY, double stree
 }
 
 void World::setIslChannel() { channel_ = ChannelKind::Isl; }
+
+void World::setMixedChannel(double range) {
+    channel_ = ChannelKind::Mixed;
+    range_ = range;
+}
+
+void World::setSatellite(int node) { nodes_.at(node)->satellite_ = true; }
 
 void World::addIslLink(int a, int b) { isl_.insert({std::min(a, b), std::max(a, b)}); }
 
@@ -541,6 +566,53 @@ bool World::groundSees(int g, int s, double t) const {
     return (d.x * u.x + d.y * u.y + d.z * u.z) / (lu * ld) >= nodes_[g]->groundMinSinEl_;
 }
 
+// --- #582: jamming zones, scripted events ---------------------------------------
+
+void World::addJammingZone(const std::vector<double>& xy, double from, double until, double vx,
+                           double vy) {
+    jams_.push_back(JamZone{xy, from, until, vx, vy});
+}
+
+std::vector<double> World::jamZonesFlat() const {
+    std::vector<double> out;
+    for (const JamZone& z : jams_) {
+        if (now_ < z.from || now_ >= z.until) continue;
+        const double ox = z.vx * (now_ - z.from), oy = z.vy * (now_ - z.from);
+        out.push_back(static_cast<double>(z.xy.size() / 2));
+        for (std::size_t i = 0; i + 1 < z.xy.size(); i += 2) {
+            out.push_back(z.xy[i] + ox);
+            out.push_back(z.xy[i + 1] + oy);
+        }
+    }
+    return out;
+}
+
+bool World::jammed(const Vec3& a, const Vec3& b, double t) const {
+    for (const JamZone& z : jams_) {
+        if (t < z.from || t >= z.until) continue;
+        const double ox = z.vx * (t - z.from), oy = z.vy * (t - z.from);
+        if (inPolygon(z.xy, ox, oy, a.x, a.y) || inPolygon(z.xy, ox, oy, b.x, b.y)) return true;
+        // Neither end inside: jammed iff a-b properly crosses an edge.
+        const std::size_t n = z.xy.size() / 2;
+        for (std::size_t i = 0, j = n - 1; i < n; j = i++) {
+            const double cx = z.xy[2 * j] + ox, cy = z.xy[2 * j + 1] + oy;
+            const double dx = z.xy[2 * i] + ox, dy = z.xy[2 * i + 1] + oy;
+            const double o1 = orient(a.x, a.y, b.x, b.y, cx, cy);
+            const double o2 = orient(a.x, a.y, b.x, b.y, dx, dy);
+            const double o3 = orient(cx, cy, dx, dy, a.x, a.y);
+            const double o4 = orient(cx, cy, dx, dy, b.x, b.y);
+            if (((o1 < 0 && o2 > 0) || (o1 > 0 && o2 < 0)) &&
+                ((o3 < 0 && o4 > 0) || (o3 > 0 && o4 < 0)))
+                return true;
+        }
+    }
+    return false;
+}
+
+void World::scheduleNodeUp(int node, double t, bool up) {
+    schedule(t, [this, node, up] { setNodeUp(node, up); });
+}
+
 double World::nodeRange(int node) const {
     const double own = nodes_.at(node)->range_;
     return own < 0 ? range_ : own;
@@ -555,6 +627,16 @@ bool World::linkUpAt(int a, int b, double t) const {
         if (ga || gb) return ga != gb && (ga ? groundSees(a, b, t) : groundSees(b, a, t));
         return isl_.count({std::min(a, b), std::max(a, b)}) > 0;
     }
+    if (channel_ == ChannelKind::Mixed) {
+        // #582: a satellite links by its ISLs and to the ground stations that
+        // see it; any other pair falls through to the disk rule.
+        const bool sa = nodes_[a]->satellite_, sb = nodes_[b]->satellite_;
+        if (sa && sb) return isl_.count({std::min(a, b), std::max(a, b)}) > 0;
+        if (sa || sb) {
+            const int g = sa ? b : a, s = sa ? a : b;
+            return nodes_[g]->groundMinSinEl_ <= 1 && groundSees(g, s, t);
+        }
+    }
     const Vec3 pa = positionAt(a, t), pb = positionAt(b, t);
     // #568: a link needs both ends to reach; nodes without a device range use
     // the world's, so min(range_, range_) keeps every existing world as it was.
@@ -565,11 +647,12 @@ bool World::linkUpAt(int a, int b, double t) const {
         rb *= rangeFactorAt(pb);
     }
     if (dist(pa, pb) > std::min(ra, rb)) return false;
+    if (!jams_.empty() && jammed(pa, pb, t)) return false;  // #582
     return channel_ != ChannelKind::Urban || lineOfSight(pa, pb);
 }
 
 double World::propagation(int a, int b, double t) const {
-    if (channel_ != ChannelKind::Isl) return 0;
+    if (channel_ != ChannelKind::Isl && channel_ != ChannelKind::Mixed) return 0;
     return dist(positionAt(a, t), positionAt(b, t)) / kLightSpeed;
 }
 

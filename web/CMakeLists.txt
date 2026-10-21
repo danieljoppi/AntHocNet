@@ -30,10 +30,13 @@ target_include_directories(ahn_web PUBLIC ${CORE}/include include)
 
 add_executable(ahn-web-trace src/trace_main.cpp)
 target_link_libraries(ahn-web-trace ahn_web)
+add_executable(ahn-web-features test/features.cpp)
+target_link_libraries(ahn-web-features ahn_web)
 
 if(EMSCRIPTEN)
   target_link_options(ahn-web-trace PRIVATE -sENVIRONMENT=node -sALLOW_MEMORY_GROWTH=1
                       -sNODERAWFS=1)
+  target_link_options(ahn-web-features PRIVATE -sENVIRONMENT=node)
   add_executable(anthocnet src/bindings.cpp)
   target_link_libraries(anthocnet ahn_web)
   target_link_options(anthocnet PRIVATE --bind -sMODULARIZE=1 -sEXPORT_ES6=1
