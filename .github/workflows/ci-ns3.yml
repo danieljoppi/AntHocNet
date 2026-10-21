@@ -193,6 +193,13 @@ jobs:
         # merge. One 900 s seed.
         if: matrix.version == '3.42'
         run: bash tools/checks/check-partition.sh /opt/ns-3 "$GITHUB_WORKSPACE"
+      - name: Disaster-family gate (#580, --scenario=disaster --buildings)
+        # The committed scene matches its generator; the walled fire
+        # compartments cost the oracle >= 8 pp against the same scene with
+        # their loss zeroed (else --buildings is not reaching the channel);
+        # AntHocNet, AODV and OLSR each route. 300 s, 2 seeds.
+        if: matrix.version == '3.42'
+        run: bash tools/checks/check-disaster.sh /opt/ns-3 "$GITHUB_WORKSPACE"
       - name: Validation-anchor gate (single-hop PDR floor, #59)
         # Blocking anchor from docs/benchmarks/methodology.md "Validation
         # anchors": on a static, in-range 2-node link the *stock* stack

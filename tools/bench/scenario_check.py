@@ -952,6 +952,66 @@ def check_replay_files(a):
     return nodes
 
 
+def parse_buildings(spec):
+    """#580: --buildings 'xmin,ymin,xmax,ymax;...' as the harness parses it.
+    None when not given; malformed rectangles are reported and skipped."""
+    if not spec:
+        return None
+    rects = []
+    for item in spec.split(";"):
+        if not item.strip():
+            continue
+        try:
+            x0, y0, x1, y1 = (float(v) for v in item.split(","))
+        except ValueError:
+            report("FAIL", f"--buildings: '{item}' is not 'xmin,ymin,xmax,ymax'; "
+                           "the harness refuses it (#580)")
+            continue
+        if not (x0 < x1 and y0 < y1):
+            report("FAIL", f"--buildings: '{item}' needs xmin < xmax and ymin < ymax; "
+                           "the harness refuses it (#580)")
+            continue
+        rects.append((x0, y0, x1, y1))
+    return rects
+
+
+def check_buildings(a, rects, urban, mobility):
+    """#580: explicit buildings replace the street grid on the urban channel
+    (the disaster scene). They must sit in the field, and the run needs the
+    urban channel and a scene whose nodes are placed with them in mind."""
+    if not urban:
+        report("FAIL", "--buildings needs --propagation=urban: they are its "
+                       "obstacle shadowing; the harness refuses it (#580)")
+    if mobility != "trace":
+        report("WARN", f"--buildings with --mobility={mobility}: the mobility "
+                       "model knows nothing of the buildings, so nodes walk "
+                       "through walls. The disaster scene is a --mobility=trace "
+                       "replay (tools/bench/disaster_scene.py, #580)")
+    for x0, y0, x1, y1 in rects:
+        if x0 < 0 or y0 < 0 or x1 > a.areaX or y1 > a.areaY:
+            report("FAIL", f"--buildings: {x0:g},{y0:g},{x1:g},{y1:g} leaves the "
+                           f"{a.areaX:g} x {a.areaY:g} m field (#580)")
+    trace = getattr(a, "traceFile", None)
+    if trace and rects:
+        try:
+            with open(trace) as fh:
+                text = fh.read()
+        except OSError:
+            return
+        start = {}
+        for i, axis, v in re.findall(r"\$node_\((\d+)\) set ([XY])_ (-?[0-9.eE+-]+)", text):
+            start.setdefault(int(i), {})[axis] = float(v)
+        pts = [(p["X"], p["Y"]) for p in start.values() if "X" in p and "Y" in p]
+        indoor = sum(any(x0 <= x <= x1 and y0 <= y <= y1 for x0, y0, x1, y1 in rects)
+                     for x, y in pts)
+        print(f"  buildings: {len(rects)}; {indoor} of {len(pts)} nodes start indoors")
+        if indoor == 0:
+            report("WARN", "--buildings: no node starts inside a building, so the "
+                           "walls only shadow links that cross them, and the "
+                           "indoor/outdoor split the disaster family measures "
+                           "is absent at t = 0 (#580)")
+
+
 def cmd_preflight(a):
     # #444: the satellite harness has its own geometry; everything below this
     # dispatch is MANET field arithmetic and would be meaningless for it.
@@ -1083,7 +1143,10 @@ def cmd_preflight(a):
                        "Manhattan model never pauses, so pause is inert; a "
                        "pause sweep would produce N identical cells (#488). "
                        "Pass --pause=0")
-    if urban and mobility != "manhattan":
+    buildings = parse_buildings(getattr(a, "buildings", None))
+    if buildings is not None:
+        check_buildings(a, buildings, urban, mobility)
+    elif urban and mobility not in ("manhattan", "trace"):
         report("FAIL", "--propagation=urban needs --mobility=manhattan: the "
                        "buildings are the street grid's blocks, and vehicles "
                        "off the streets would sit inside them; the harness "
@@ -1091,7 +1154,8 @@ def cmd_preflight(a):
     if mobility == "manhattan" and area_z > 0:
         report("FAIL", f"--mobility=manhattan with --areaZ={area_z:g}: a "
                        "street grid is planar; the harness refuses it (#488)")
-    if urban and not 0 < street < min(a.areaX / blocks_x, a.areaY / blocks_y):
+    if urban and buildings is None and \
+            not 0 < street < min(a.areaX / blocks_x, a.areaY / blocks_y):
         report("FAIL", f"--streetWidth={street:g} must be > 0 and narrower "
                        f"than a block ({a.areaX / blocks_x:g} x "
                        f"{a.areaY / blocks_y:g} m); the harness refuses it "
@@ -2934,6 +2998,8 @@ def main():
     p.add_argument("--blocksX", type=int, default=5)
     p.add_argument("--blocksY", type=int, default=5)
     p.add_argument("--streetWidth", type=float, default=20.0)
+    # #580: explicit buildings for the urban channel (the disaster scene).
+    p.add_argument("--buildings", default=None)
     p.add_argument("--transport", choices=("udp", "tcp"), default="udp")
     # #639: a replayed scene (anthocnet-compare --traceFile / --flowsFile).
     p.add_argument("--traceFile", default=None)

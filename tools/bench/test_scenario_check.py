@@ -2648,6 +2648,23 @@ def _seed_blocks_grouped():
            "blocks-still-checked", out)
 
 
+@case("#580 --buildings: outside the field FAILs, off the urban channel FAILs, a good list passes")
+def _buildings_rules():
+    good = "120,170,320,330;680,170,880,330"
+    _, out = run_preflight(areaX=1000.0, areaY=500.0, propagation="urban",
+                                mobility="trace", buildings=good)
+    expect("FAIL: --buildings" not in out, "buildings-good", out)
+    _, out = run_preflight(areaX=1000.0, areaY=500.0, propagation="urban",
+                                mobility="trace", buildings="900,170,1100,330")
+    expect("leaves the 1000 x 500 m field" in out, "buildings-outside", out)
+    _, out = run_preflight(areaX=1000.0, areaY=500.0, propagation="range",
+                                buildings=good)
+    expect("--buildings needs --propagation=urban" in out, "buildings-channel", out)
+    _, out = run_preflight(areaX=1000.0, areaY=500.0, propagation="urban",
+                                mobility="trace", buildings="320,170,120,330")
+    expect("needs xmin < xmax" in out, "buildings-malformed", out)
+
+
 def main():
     for name, fn in CASES:
         fn()

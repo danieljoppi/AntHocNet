@@ -145,3 +145,12 @@ mesh_hwmp_pdr_min: 95.0
 # exact and lives in the script). Measured 1.04-1.05; 1.10 leaves room for
 # the odd detour during path discovery.
 mesh_hwmp_stretch_max: 1.10
+
+# --- disaster family (#580, consumed by tools/checks/check-disaster.sh) -----
+# The scene (tools/bench/disaster_scene.py, scene seed 1), 300 s, 2 seeds.
+# With the walls' loss zeroed the oracle is the field's ceiling; with them it
+# must lose a clear margin, or --buildings is not reaching the channel.
+disaster_nowalls_oracle_pdr_min: 90.0
+disaster_walls_cost_pp_min: 8.0
+# Each native arm must route on the walled scene (#439).
+disaster_arm_pdr_min: 50.0
