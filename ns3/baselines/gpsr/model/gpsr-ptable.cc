@@ -18,6 +18,26 @@ NS_LOG_COMPONENT_DEFINE ("GpsrTable");
 namespace ns3 {
 namespace gpsr {
 
+namespace {
+PositionSource g_positionSource;  // #581: null = MobilityModel::GetPosition
+}
+
+void
+SetPositionSource (PositionSource source)
+{
+  g_positionSource = source;
+}
+
+Vector
+PositionOf (Ptr<Node> node)
+{
+  if (!g_positionSource.IsNull ())
+    {
+      return g_positionSource (node);
+    }
+  return node->GetObject<MobilityModel> ()->GetPosition ();
+}
+
 /*
   GPSR position table
 */
@@ -83,7 +103,7 @@ PositionTable::GetPosition (Ipv4Address id)
       Ptr<Node> node = *i;
       if (node->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal () == id)
         {
-          return node->GetObject<MobilityModel> ()->GetPosition ();
+          return PositionOf (node);
         }
     }
   return PositionTable::GetInvalidPosition ();

@@ -61,6 +61,7 @@ index: the headline cross-scenario summary, plus a link to every detail page.
 | **Satellite suite** | |
 | [satellite/isl-grid.md](benchmarks/satellite/isl-grid.md) | The ISL-grid regime: harness, analytic anchors, how to dispatch — and the [#216](https://github.com/danieljoppi/AntHocNet/issues/216) result, including the **only cell where the oracle is exact** (`mode=wired approx=0`: the graph *is* the wiring, so the bound is proven rather than approximate). The MANET grid's oracle numbers are `approx=1` and cannot be read that strongly. |
 | [satellite/leo-walker.md](benchmarks/satellite/leo-walker.md) | The moving constellation ([#297](https://github.com/danieljoppi/AntHocNet/issues/297)): walker16, Starlink S1 and an S1 mass-failure storm at 20 seeds. AntHocNet beats AODV by +15.5 / +28.2 / +32.3 pp PDR and loses 9–11 packets per scheduled handover against AODV's 35–58; the handover metric family, the geo-greedy verdict, and the Hypatia and LENS calibration deltas. |
+| [satellite/sagin.md](benchmarks/satellite/sagin.md) | Space-air-ground ([#581](https://github.com/danieljoppi/AntHocNet/issues/581)): the LEO shells with a HAPS layer between the stations and the shell (`leo-walker --sagin`); AntHocNet, OPSPF, geo-greedy and gpsr3d against the hop and delay oracles. Pre-registered, campaign pending. |
 | [benchmarks/README.md](benchmarks/README.md) | How the figures and this folder are generated. |
 
 ## Results

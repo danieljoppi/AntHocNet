@@ -2474,7 +2474,9 @@ def check_leo_dynamics(path):
     base = os.path.basename(path)
     kv = dict(re.findall(r"(\w+)=(\S+)", cfg.group(0)))
     vis = re.search(r"^# visibility .*$", text, re.MULTILINE)
-    stations = (len(re.findall(r"\b[A-Z]\w*=\d+", vis.group(0))) if vis else 6) or 6
+    # #581: one entry per access site -- a station, or with --sagin one of its
+    # HAPS, named City#k -- since each holds its own handover schedule.
+    stations = (len(re.findall(r"\b[A-Z]\w*(?:#\d+)?=\d+", vis.group(0))) if vis else 6) or 6
 
     # --- 1. clock coherence ---------------------------------------------------
     t_end, clock, offset = float(kv["time"]), float(kv["clock"]), float(kv["clockOffset"])

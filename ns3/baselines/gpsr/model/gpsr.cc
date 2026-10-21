@@ -29,6 +29,31 @@
 
 namespace ns3 {
 NS_LOG_COMPONENT_DEFINE ("GpsrRoutingProtocol");
+
+namespace {
+// #581: the interface a next hop is reached on: the one whose subnet holds
+// it. The vendored module assumed one interface ("FIXME: Does not work for
+// multiple interfaces") and forwarded every packet on interface 1; a node of
+// leo-walker's shell has one per link. A single-interface node, every other
+// harness's, resolves to interface 1, as before.
+uint32_t
+IfaceToward (Ptr<Ipv4> ipv4, Ipv4Address nextHop)
+{
+  for (uint32_t i = 1; i < ipv4->GetNInterfaces (); ++i)
+    {
+      if (ipv4->GetNAddresses (i) == 0)
+        {
+          continue;
+        }
+      const Ipv4InterfaceAddress a = ipv4->GetAddress (i, 0);
+      if (a.GetMask ().IsMatch (a.GetLocal (), nextHop))
+        {
+          return i;
+        }
+    }
+  return 1;
+}
+} // namespace
 namespace gpsr {
 
 
@@ -209,7 +234,7 @@ RoutingProtocol::GetGodPosition (Ipv4Address adr) const
           Ptr<MobilityModel> mm = node->GetObject<MobilityModel> ();
           if (mm)
             {
-              return mm->GetPosition ();
+              return PositionOf (node);
             }
         }
     }
@@ -406,10 +431,10 @@ RoutingProtocol::SendPacketFromQueue (Ipv4Address dst)
 
   Vector myPos;
 
-  Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
-  myPos.x = MM->GetPosition ().x;
-  myPos.y = MM->GetPosition ().y;
-  myPos.z = m_threeD ? MM->GetPosition ().z : 0;  // #710
+  const Vector here = PositionOf (m_ipv4->GetObject<Node> ());
+  myPos.x = here.x;
+  myPos.y = here.y;
+  myPos.z = m_threeD ? here.z : 0;  // #710
   Ipv4Address nextHop;
 
   if(m_neighbors.isNeighbour (dst))
@@ -486,9 +511,7 @@ RoutingProtocol::SendPacketFromQueue (Ipv4Address dst)
   Ptr<Ipv4Route> route = Create<Ipv4Route> ();
   route->SetDestination (dst);
   route->SetGateway (nextHop);
-
-  // FIXME: Does not work for multiple interfaces
-  route->SetOutputDevice (m_ipv4->GetNetDevice (1));
+  route->SetOutputDevice (m_ipv4->GetNetDevice (IfaceToward (m_ipv4, nextHop)));
 
   while (m_queue.Dequeue (dst, queueEntry))
     {
@@ -530,12 +553,12 @@ RoutingProtocol::RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCall
   Vector myPos;
   Vector recPos;
 
-  Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
-  positionX = MM->GetPosition ().x;
-  positionY = MM->GetPosition ().y;
+  const Vector here = PositionOf (m_ipv4->GetObject<Node> ());
+  positionX = here.x;
+  positionY = here.y;
   myPos.x = positionX;
   myPos.y = positionY;
-  myPos.z = m_threeD ? MM->GetPosition ().z : 0;  // #710
+  myPos.z = m_threeD ? here.z : 0;  // #710
 
   // Fault-3 rework: the GPSR headers sit beneath the UDP header. RecoveryMode
   // is only ever entered with a GPSR-headered (UDP) packet — Forwarding and
@@ -628,9 +651,7 @@ RoutingProtocol::RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCall
   Ptr<Ipv4Route> route = Create<Ipv4Route> ();
   route->SetDestination (dst);
   route->SetGateway (nextHop);
-
-  // FIXME: Does not work for multiple interfaces
-  route->SetOutputDevice (m_ipv4->GetNetDevice (1));
+  route->SetOutputDevice (m_ipv4->GetNetDevice (IfaceToward (m_ipv4, nextHop)));
   route->SetSource (header.GetSource ());
 
   NS_LOG_LOGIC (route->GetOutputDevice () << " forwarding in Recovery to " << dst << " through " << route->GetGateway () << " packet " << p->GetUid ());
@@ -973,10 +994,10 @@ RoutingProtocol::SendHello ()
   double positionX;
   double positionY;
 
-  Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
+  const Vector here = PositionOf (m_ipv4->GetObject<Node> ());
 
-  positionX = MM->GetPosition ().x;
-  positionY = MM->GetPosition ().y;
+  positionX = here.x;
+  positionY = here.y;
 
   for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
     {
@@ -996,7 +1017,7 @@ RoutingProtocol::SendHello ()
         }
       if (m_threeD)
         {
-          const uint64_t z = (uint64_t) MM->GetPosition ().z;
+          const uint64_t z = (uint64_t) here.z;
           for (int b = 7; b >= 0; --b)
             {
               payload[len++] = (uint8_t) (z >> (8 * b));
@@ -1103,10 +1124,10 @@ RoutingProtocol::AddHeaders (Ptr<Packet> p, Ipv4Address source, Ipv4Address dest
   NS_LOG_FUNCTION (this << " source " << source << " destination " << destination);
 
   Vector myPos;
-  Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
-  myPos.x = MM->GetPosition ().x;
-  myPos.y = MM->GetPosition ().y;
-  myPos.z = m_threeD ? MM->GetPosition ().z : 0;  // #710
+  const Vector here = PositionOf (m_ipv4->GetObject<Node> ());
+  myPos.x = here.x;
+  myPos.y = here.y;
+  myPos.z = m_threeD ? here.z : 0;  // #710
 
   Ipv4Address nextHop;
 
@@ -1223,10 +1244,10 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
     }
 
   Vector myPos;
-  Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
-  myPos.x = MM->GetPosition ().x;
-  myPos.y = MM->GetPosition ().y;
-  myPos.z = m_threeD ? MM->GetPosition ().z : 0;  // #710
+  const Vector here = PositionOf (m_ipv4->GetObject<Node> ());
+  myPos.x = here.x;
+  myPos.y = here.y;
+  myPos.z = m_threeD ? here.z : 0;  // #710
 
   if(inRec == 1 && CalculateDistance (myPos, Position) < CalculateDistance (RecPosition, Position)){
     inRec = 0;
@@ -1291,9 +1312,7 @@ RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header
           route->SetDestination (dst);
           route->SetSource (header.GetSource ());
           route->SetGateway (nextHop);
-
-          // FIXME: Does not work for multiple interfaces
-          route->SetOutputDevice (m_ipv4->GetNetDevice (1));
+          route->SetOutputDevice (m_ipv4->GetNetDevice (IfaceToward (m_ipv4, nextHop)));
           route->SetDestination (header.GetDestination ());
           NS_ASSERT (route);
           NS_LOG_DEBUG ("Exist route to " << route->GetDestination () << " from interface " << route->GetOutputDevice ());
@@ -1588,13 +1607,25 @@ RoutingProtocol::RouteOutput (Ptr<Packet> p, const Ipv4Header &header,
   // protocol deadlocks silently at cold start: 45k hellos counted at L3 (the
   // loopback Tx) with a byte-silent medium. Hand broadcasts straight to the
   // interface instead, as AODV's broadcast routing-table entry does.
-  if (dst.IsBroadcast () || dst == m_ipv4->GetAddress (1, 0).GetBroadcast ())
+  // #581: a node with several interfaces (leo-walker's satellites, HAPS and
+  // stations) sends a hello on each, to that interface's subnet broadcast,
+  // so the broadcast is matched against every interface and leaves on the
+  // one it names. A single-interface node resolves to interface 1, as before.
+  uint32_t bif = 1;
+  for (uint32_t i = 1; i < m_ipv4->GetNInterfaces (); ++i)
+    {
+      if (m_ipv4->GetNAddresses (i) > 0 && dst == m_ipv4->GetAddress (i, 0).GetBroadcast ())
+        {
+          bif = i;
+          break;
+        }
+    }
+  if (dst.IsBroadcast () || dst == m_ipv4->GetAddress (bif, 0).GetBroadcast ())
     {
       route->SetDestination (dst);
-      route->SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
+      route->SetSource (m_ipv4->GetAddress (bif, 0).GetLocal ());
       route->SetGateway (dst);
-      // FIXME: Does not work for multiple interfaces
-      route->SetOutputDevice (m_ipv4->GetNetDevice (1));
+      route->SetOutputDevice (m_ipv4->GetNetDevice (bif));
       if (oif && route->GetOutputDevice () != oif)
         {
           NS_LOG_DEBUG ("Output device doesn't match. Dropped.");
@@ -1616,10 +1647,10 @@ RoutingProtocol::RouteOutput (Ptr<Packet> p, const Ipv4Header &header,
   // only through the no-greedy-neighbour path below.
 
   Vector myPos;
-  Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
-  myPos.x = MM->GetPosition ().x;
-  myPos.y = MM->GetPosition ().y;
-  myPos.z = m_threeD ? MM->GetPosition ().z : 0;  // #710
+  const Vector here = PositionOf (m_ipv4->GetObject<Node> ());
+  myPos.x = here.x;
+  myPos.y = here.y;
+  myPos.z = m_threeD ? here.z : 0;  // #710
 
 
   Ipv4Address nextHop;
@@ -1643,17 +1674,18 @@ RoutingProtocol::RouteOutput (Ptr<Packet> p, const Ipv4Header &header,
       // 102.102.102.102 placeholder, or what unbound sockets pass on
       // ns-3-dev (#611) -- takes interface 1's; otherwise
       // GetInterfaceForAddress() returns -1 and GetNetDevice(-1) is null.
+      // #581: an unbound source leaves on the interface toward the next hop.
       if (header.GetSource () == Ipv4Address ("102.102.102.102")
           || m_ipv4->GetInterfaceForAddress (header.GetSource ()) < 0)
         {
-          route->SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
+          route->SetSource (m_ipv4->GetAddress (IfaceToward (m_ipv4, nextHop), 0).GetLocal ());
         }
       else
         {
           route->SetSource (header.GetSource ());
         }
       route->SetGateway (nextHop);
-      route->SetOutputDevice (m_ipv4->GetNetDevice (m_ipv4->GetInterfaceForAddress (route->GetSource ())));
+      route->SetOutputDevice (m_ipv4->GetNetDevice (IfaceToward (m_ipv4, nextHop)));
       route->SetDestination (header.GetDestination ());
       NS_ASSERT (route);
       NS_LOG_DEBUG ("Exist route to " << route->GetDestination () << " from interface " << route->GetSource ());

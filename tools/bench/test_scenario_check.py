@@ -2665,6 +2665,23 @@ def _buildings_rules():
     expect("needs xmin < xmax" in out, "buildings-malformed", out)
 
 
+@case("#581 with --sagin each HAPS is an access site: the ticks x sites bound counts them")
+def _leo_sagin_sites():
+    vis = ("# visibility minElevation=25.000 NewYork=9 London=7 SaoPaulo=3 "
+           "Johannesburg=5 Tokyo=6 Sydney=7")
+    sagin = " ".join(f"{c}#{k}=5" for c in ("NewYork", "London", "SaoPaulo",
+                                              "Johannesburg", "Tokyo", "Sydney")
+                     for k in range(3))
+    cell = LEO_CELL.replace(vis, f"# visibility minElevation=25.000 {sagin}")
+    # 4 ticks x 18 HAPS = 72: 40 scheduled handovers is legitimate here.
+    fails, out = _leo_fails(cell.replace("scheduled=3", "scheduled=40"))
+    expect(not any("exceed ticks x stations" in f for f in fails), "sagin-sites",
+           f"40 handovers on 4 ticks x 18 HAPS was flagged\n{out}")
+    fails, out = _leo_fails(cell.replace("scheduled=3", "scheduled=73"))
+    expect(any("exceed ticks x stations = 72" in f for f in fails), "sagin-sites-bound",
+           f"73 handovers on 4 ticks x 18 HAPS was not flagged\n{out}")
+
+
 def main():
     for name, fn in CASES:
         fn()

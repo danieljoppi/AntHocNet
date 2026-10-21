@@ -115,6 +115,7 @@ nav:
       - benchmarks/static-mesh.md
       - benchmarks/satellite/isl-grid.md
       - benchmarks/satellite/leo-walker.md
+      - benchmarks/satellite/sagin.md
       - benchmarks/v2.2.0-campaign.md
       - benchmarks/v2.3.0-campaign.md
       - benchmarks/v2.4.0-campaign.md
