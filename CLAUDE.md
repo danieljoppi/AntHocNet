@@ -1,8 +1,13 @@
 # CLAUDE.md
 
-**Project specifics live in [`AGENTS.md`](AGENTS.md) (golden rules, build/verify,
-where-to-look) and [`CONTEXT.md`](CONTEXT.md) — read those first.** The
-guidelines below are general behavioural defaults layered on top.
+**Project specifics live in [`AGENTS.md`](AGENTS.md)** (golden rules,
+build/verify, where-to-look), imported below so it survives context
+compaction. [`CONTEXT.md`](CONTEXT.md) is orientation and history (domain
+background, current state, glossary, open questions): read the section the task
+needs, not the whole file. The guidelines further down are general behavioural
+defaults layered on top.
+
+@AGENTS.md
 
 **Skills** (`.claude/skills/`): `protocol-review` (golden-rule checks on a diff),
 `benchmark-results` (dispatch → fetch → validate → compare), `learn-site`

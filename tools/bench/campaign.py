@@ -207,7 +207,8 @@ def cmd_status(plan, a):
             r = json.loads(gh(f"repos/{REPO}/actions/runs/{rid}"))
             state = r["conclusion"] or r["status"]
         counts[state] = counts.get(state, 0) + 1
-        print(f"{label}\t{rid or '-'}\t{state}")
+        if not (a.brief and state == "success"):
+            print(f"{label}\t{rid or '-'}\t{state}")
     print(", ".join(f"{v} {k}" for k, v in sorted(counts.items())),
           file=sys.stderr)
 
@@ -261,6 +262,13 @@ def cmd_collect(plan, a):
             text = results_text(src) if src else None
             if not rid or text is None:
                 break
+            if "##RUN##" not in text and "##BENCH##" not in text:
+                # A run killed at its time limit still uploads a stub with
+                # only the ##PROV## line; it is a missing run, not a result.
+                print(f"{label}: artifact has no result rows (a timed-out "
+                      "run's stub?); re-run it, or edit the cell by hand",
+                      file=sys.stderr)
+                break
             if "##PROV##" not in text:
                 print(f"{label}: no ##PROV## line in the artifact (a run from "
                       "before #674?); the cell is not self-describing",
@@ -311,6 +319,9 @@ def main(argv=None):
         s.add_argument("plan")
         if name in ("dispatch", "status", "collect"):
             s.add_argument("--log", required=True)
+        if name == "status":
+            s.add_argument("--brief", action="store_true",
+                           help="list only the labels not yet successful")
         if name == "dispatch":
             s.add_argument("--cap", type=int)
             s.add_argument("--wait", action="store_true",
