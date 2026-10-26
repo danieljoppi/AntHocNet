@@ -22,6 +22,8 @@ output is deterministic (the bootstrap is seeded by stats_util).
     forest plot over every family cell: AntHocNet's paired per-seed PDR gap
     to the oracle and to the cell's best native baseline, 95 % t-CI
     (tools/bench/native_view.py computes both).
+  * scale-v240.png     -- #62: PDR and routing packets per node against node
+    count, 50-500 nodes at constant density (the v2.4.0 scale campaign).
   * ../sweep-<name>.png -- the area / pause / scale sweep charts, re-rendered
     by make-charts.py from the committed campaign CSVs each sweep page's
     current block cites (SWEEP_SOURCES below).
@@ -47,6 +49,7 @@ import matplotlib
 matplotlib.use("Agg")  # headless: write PNGs, no display
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from matplotlib.ticker import FuncFormatter, NullLocator
 
 SKILL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..",
                      "tools", "bench")
@@ -519,6 +522,76 @@ def plot_families(cells_dir, outdir):
     return out
 
 
+SCALE_POINTS = [(50, ["scale-50-v240.txt"]), (100, ["scale-100-v240.txt"]),
+                (200, ["scale-200-v240.txt"]),
+                (500, ["scale-500-v240.txt", "scale-500-olsr-v240.txt",
+                       "scale-500-oracle-v240.txt"])]
+SCALE_OFFERED = 4418  # packets offered per seed (20 CBR flows, 300 s)
+
+
+def plot_scale(cells_dir, outdir):
+    """#62: the v2.4.0 scale campaign. PDR (mean, 95 % CI) and routing
+    packets per node (NRL x delivered / nodes, the same yardstick for every
+    protocol) against node count at constant density."""
+    if not all(os.path.exists(os.path.join(cells_dir, f))
+               for _, fs in SCALE_POINTS for f in fs):
+        return None
+    pts = []
+    for n, files in SCALE_POINTS:
+        runs = {}
+        for f in files:
+            with open(os.path.join(cells_dir, f)) as fh:
+                for p, r in bp.parse_runs(fh.read()).items():
+                    runs.setdefault(p, {}).update(r)
+        pts.append((n, runs))
+    xs = [n for n, _ in pts]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.4))
+    fig.suptitle("Scale at constant density, 300 s (v2.4.0): mean of 20 seeds "
+                 "(OLSR at 500 nodes: 19), 95 % CI",
+                 x=0.01, ha="left", fontsize=12, fontweight="bold")
+    for ax in (a1, a2):
+        style_axis(ax)
+        ax.set_xscale("log")
+        ax.set_xticks(xs)
+        ax.set_xticklabels([str(x) for x in xs])
+        ax.xaxis.set_minor_locator(NullLocator())
+        ax.set_xlabel("nodes")
+    a1.set_title("PDR (%)", fontsize=9, color=INK2, fontweight="normal")
+    a2.set_title("routing packets sent per node", fontsize=9, color=INK2,
+                 fontweight="normal")
+    a2.set_yscale("log")
+    a2.yaxis.set_minor_locator(NullLocator())
+    a2.set_yticks([200, 500, 1000, 2000, 5000])
+    a2.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:,.0f}"))
+    for arm in ("anthocnet", "aodv", "olsr", "oracle"):
+        color = PROTO_COLOR.get(arm, CONTEXT)
+        means, los, his, ctrl = [], [], [], []
+        for n, runs in pts:
+            v = [r["pdr"] for r in runs[arm].values()]
+            m = sum(v) / len(v)
+            hw = su.t_halfwidth(su.sample_sd(v), len(v))
+            means.append(m)
+            los.append(m - hw)
+            his.append(m + hw)
+            ctrl.append(sum(r["nrl"] * r["pdr"] / 100 * SCALE_OFFERED / n
+                            for r in runs[arm].values()) / len(runs[arm]))
+        style = "--" if arm == "oracle" else "-"
+        a1.plot(xs, means, style, marker=PROTO_MARKER.get(arm, "o"), color=color,
+                label=LABEL[arm], linewidth=1.6, markersize=5)
+        a1.fill_between(xs, los, his, color=color, alpha=0.15, linewidth=0)
+        if arm != "oracle":
+            a2.plot(xs, ctrl, style, marker=PROTO_MARKER[arm], color=color,
+                    label=LABEL[arm], linewidth=1.6, markersize=5)
+    a1.set_ylim(0, 100)
+    a1.legend(frameon=False, fontsize=8, loc="lower left")
+    a2.legend(frameon=False, fontsize=8, loc="upper left")
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    out = os.path.join(outdir, "scale-v240.png")
+    fig.savefig(out, dpi=130)
+    plt.close(fig)
+    return out
+
+
 def plot_sweeps(campaign_dir, outdir):
     """Re-render the sweep charts with make-charts.py's own sweep plot."""
     spec = importlib.util.spec_from_file_location(
@@ -556,7 +629,8 @@ def main():
     written.append(plot_satellite(args.cells, args.outdir))
     written.append(plot_families(args.cells, args.outdir))
     written += [w for w in (plot_constellation(args.cells, args.outdir),
-                            plot_calibration(args.cells, args.outdir)) if w]
+                            plot_calibration(args.cells, args.outdir),
+                            plot_scale(args.cells, args.outdir)) if w]
     written += plot_sweeps(args.campaign, args.sweep_outdir)
     for w in written:
         print(os.path.relpath(w))

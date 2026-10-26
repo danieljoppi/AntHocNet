@@ -80,14 +80,24 @@ figures:
 
   families-native:
     # #711: AntHocNet's gap to each cell's oracle and to its best native
-    # baseline (tools/bench/native_view.py), every cell of six families.
+    # baseline (tools/bench/native_view.py), every cell of eight families.
     image: docs/benchmarks/charts/families-native.png
     page: docs/benchmarks.md
     render: family-charts
     data: ["results/cells/grid-*-*-v240.txt", results/cells/static-mesh-v240.txt,
            "results/cells/fanet-*-v240.txt", "results/cells/vanet-*-v240.txt",
-           "results/cells/sat-*-v240.txt", "results/cells/leo-*-v240.txt"]
-    rerun: same cells as family-*, grid and constellation (tools/bench/campaigns/v2.4.0.yaml)
+           "results/cells/sat-*-v240.txt", "results/cells/leo-*-v240.txt",
+           results/cells/disaster-main-v240.txt, "results/cells/sagin-*-v240.txt"]
+    rerun: same cells as family-*, grid and constellation (tools/bench/campaigns/v2.4.0.yaml); disaster and SAGIN from tools/bench/campaigns/v2.4.0-disaster.yaml and v2.4.0-sagin.yaml
+
+  scale-v240:
+    # #62: PDR and routing packets per node against node count, 50-500
+    # nodes at constant density (tools/bench/campaigns/v2.4.0-scale.yaml).
+    image: docs/benchmarks/charts/scale-v240.png
+    page: docs/benchmarks/sweeps/scale.md
+    render: family-charts
+    data: ["results/cells/scale-*-v240.txt"]
+    rerun: tools/bench/campaigns/v2.4.0-scale.yaml (63 jobs; the 500-node OLSR seeds take 4-5.7 h each)
 
   constellation:
     image: docs/benchmarks/charts/constellation.png
