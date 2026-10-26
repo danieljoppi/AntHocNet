@@ -5,7 +5,7 @@
 collect, verdicts.
 
 A campaign is cells x arms. The plan (YAML, committed in the PR that
-pre-registers the campaign) names each cell's workflow and dispatch inputs,
+pre-registers the campaign) names each cell's harness command line,
 each arm's extra attributes, and which arm runs on which cells. Every job gets
 a label, `<arm>/<cell>`, or `<arm>/<cell>-s<firstRun>` for a cell split into
 seed blocks.
@@ -47,10 +47,11 @@ Plan format:
       control: ""
       quiet: "--ns3::anthocnet::RoutingProtocol::QuietMode=true"
     cells:
-      grid-rwp-tworay:
-        workflow: paper-benchmark.yml
-        inputs: {scenario: paper, mobility: rwp, ...}
-      vanet-main:
+      scale-500:
+        workflow: benchmark-cell.yml
+        inputs: {harness: anthocnet-compare, version: 3.42-opt,
+                 args: "--scenario=paper --nNodes=500 --runs=2 --diag ..."}
+      vanet-main:                  # a v2.2.0-v2.4.0 cell: still accepted
         workflow: paper-benchmark.yml
         inputs: {scenario: vanet, runs: 4, ...}
         blocks: [1, 5, 9, 13, 17]  # one job per firstRun, one file
@@ -62,6 +63,12 @@ Plan format:
 A job entry's `inputs` override the cell's. An arm's attributes are appended to
 the cell's `extraArgs`, then the cell's `armArgs` for that arm, if any (an arm
 whose value depends on the cell, such as a radio range).
+
+Every job is dispatched to benchmark-cell.yml (#746). A cell naming
+paper-benchmark.yml or satellite-benchmark.yml (the committed v2.2.0-v2.4.0
+plans) is translated into the command line that workflow built from the same
+inputs, flag for flag, so an old plan re-runs the same cells. `plan` prints
+each job's image and command line.
 """
 
 import argparse
@@ -74,8 +81,75 @@ import time
 import zipfile
 
 REPO = os.environ.get("AHN_REPO", "danieljoppi/AntHocNet")
-WORKFLOWS = ("paper-benchmark.yml", "satellite-benchmark.yml")
-RESULTS = ("paper-results.txt", "satellite-results.txt")
+# Every job runs on benchmark-cell.yml (#612, #746). A cell written for the
+# retired paper-benchmark / satellite-benchmark workflows is translated into
+# the harness command line that workflow built (legacy_command), so the
+# committed v2.2.0-v2.4.0 plans re-run unchanged.
+WORKFLOW = "benchmark-cell.yml"
+RESULTS = ("results.txt", "paper-results.txt", "satellite-results.txt")
+
+# The retired workflows' input defaults, for inputs a plan leaves out.
+PAPER_DEFAULTS = {"scenario": "paper", "version": "3.42", "nNodes": "50",
+                  "time": "300", "runs": "3", "areaX": "1500", "areaY": "",
+                  "pause": "30", "speed": "20",
+                  "protocols": "anthocnet,aodv,olsr,dsdv", "propagation": "range",
+                  "mobility": "rwp", "transport": "udp", "range": "300",
+                  "harness": "compare", "extraArgs": ""}
+SAT_DEFAULTS = {"harness": "isl-grid", "version": "3.42", "rows": "4", "cols": "4",
+                "torus": "true", "islDelayMs": "5", "islRate": "10Mbps",
+                "time": "300", "runs": "3", "flows": "8", "cbrBps": "4096",
+                "protocols": "anthocnet,aodv,olsr,oracle", "extraArgs": ""}
+
+
+def legacy_command(wf, inp):
+    """(harness, args, version) for one job, as benchmark-cell.yml inputs.
+
+    paper-benchmark.yml and satellite-benchmark.yml built the harness command
+    line in shell from their inputs; this is that expansion, flag for flag and
+    in the same order. A benchmark-cell.yml cell gives harness/args/version
+    itself, and its extraArgs (seed block, arm) are appended to args.
+    """
+    if wf == WORKFLOW:
+        args = " ".join(x for x in (inp.get("args", ""), inp.get("extraArgs", "")) if x)
+        return inp.get("harness", "anthocnet-compare"), args, inp.get("version", "3.42-opt")
+    if wf == "paper-benchmark.yml":
+        i = dict(PAPER_DEFAULTS, **inp)
+        if i["harness"] != "compare":
+            sys.exit(f"paper-benchmark harness '{i['harness']}' has no benchmark-cell "
+                     "equivalent (manet-baselines is not a benchmark-cell harness)")
+        args = [f"--scenario={i['scenario'] or 'paper'}", f"--runs={i['runs']}",
+                f"--nNodes={i['nNodes']}", f"--time={i['time']}",
+                f"--areaX={i['areaX']}", f"--pause={i['pause']}",
+                f"--speed={i['speed']}", f"--propagation={i['propagation']}",
+                f"--range={i['range']}"]
+        if i["areaY"]:
+            args.append(f"--areaY={i['areaY']}")
+        if i["extraArgs"]:
+            args.append(i["extraArgs"])
+        args += ["--diag", f"--mobility={i['mobility']}",
+                 f"--transport={i['transport']}", f"--protocols={i['protocols']}"]
+        return "anthocnet-compare", " ".join(args), i["version"]
+    if wf == "satellite-benchmark.yml":
+        i = dict(SAT_DEFAULTS, **inp)
+        common = [f"--time={i['time']}", f"--runs={i['runs']}", f"--flows={i['flows']}",
+                  f"--cbrBps={i['cbrBps']}", f"--islRate={i['islRate']}"]
+        if i["harness"] == "leo-walker":
+            args = common + [f"--protocols={i['protocols']}"]
+        elif i["harness"] == "isl-grid":
+            args = [f"--rows={i['rows']}", f"--cols={i['cols']}",
+                    f"--torus={i['torus']}", f"--islDelayMs={i['islDelayMs']}",
+                    f"--islRate={i['islRate']}", f"--time={i['time']}",
+                    f"--runs={i['runs']}", f"--flows={i['flows']}",
+                    f"--cbrBps={i['cbrBps']}", "--diag",
+                    f"--protocols={i['protocols']}"]
+        else:
+            sys.exit(f"unknown satellite harness '{i['harness']}'")
+        if i["extraArgs"]:
+            args.append(i["extraArgs"])
+        return i["harness"], " ".join(args), i["version"]
+    sys.exit(f"workflow '{wf}': a cell names benchmark-cell.yml, or a retired "
+             "workflow campaign.py translates (paper-benchmark.yml, "
+             "satellite-benchmark.yml)")
 
 
 def load_plan(path):
@@ -142,12 +216,11 @@ def gh(*args, stdin=None, binary=False):
 
 
 def active_runs():
-    """Benchmark runs holding or waiting for a runner, both workflows."""
+    """Benchmark runs holding or waiting for a runner."""
     n = 0
-    for wf in WORKFLOWS:
-        for status in ("queued", "in_progress"):
-            n += int(gh(f"repos/{REPO}/actions/workflows/{wf}/runs?status={status}"
-                        "&per_page=1", "--jq", ".total_count").strip() or 0)
+    for status in ("queued", "in_progress"):
+        n += int(gh(f"repos/{REPO}/actions/workflows/{WORKFLOW}/runs?status={status}"
+                    "&per_page=1", "--jq", ".total_count").strip() or 0)
     return n
 
 
@@ -158,7 +231,8 @@ def newest_dispatch(wf):
 
 def cmd_plan(plan, _a):
     for label, _c, _arm, wf, inp in jobs(plan):
-        print(f"{label}\t{wf}\t{json.dumps(inp, sort_keys=True)}")
+        harness, args, version = legacy_command(wf, inp)
+        print(f"{label}\tns3:{version}\t{harness} {args}")
     print(f"{len(jobs(plan))} job(s), cap {plan['cap']}, ref {plan['ref']}",
           file=sys.stderr)
 
@@ -168,6 +242,7 @@ def cmd_dispatch(plan, a):
     done = read_log(a.log)
     todo = [j for j in jobs(plan) if j[0] not in done]
     for label, _c, _arm, wf, inp in todo:
+        harness, args, version = legacy_command(wf, inp)
         while active_runs() >= cap:
             if not a.wait:
                 print(f"cap {cap} reached; {len(read_log(a.log))} of "
@@ -175,16 +250,18 @@ def cmd_dispatch(plan, a):
                       file=sys.stderr)
                 return
             time.sleep(120)
-        before = newest_dispatch(wf)
-        gh("-X", "POST", f"repos/{REPO}/actions/workflows/{wf}/dispatches",
-           "--input", "-", stdin=json.dumps({"ref": plan["ref"], "inputs": inp}))
+        before = newest_dispatch(WORKFLOW)
+        body = {"ref": plan["ref"],
+                "inputs": {"harness": harness, "args": args, "version": version}}
+        gh("-X", "POST", f"repos/{REPO}/actions/workflows/{WORKFLOW}/dispatches",
+           "--input", "-", stdin=json.dumps(body))
         # The dispatch API returns no run id: poll for the newest dispatched
         # run until it changes. Runs are dispatched one at a time, so the new
         # one is ours.
         rid = ""
         for _ in range(30):
             time.sleep(4)
-            rid = newest_dispatch(wf)
+            rid = newest_dispatch(WORKFLOW)
             if rid and rid != before:
                 break
         else:

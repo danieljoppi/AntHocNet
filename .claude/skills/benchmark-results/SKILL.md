@@ -1,6 +1,6 @@
 ---
 name: benchmark-results
-description: Run the full AntHocNet benchmark loop — pre-flight-validate scenario configs, dispatch paper-benchmark / scenario-matrix, fetch results cheaply, check result plausibility and anchor floors, parse and A/B-compare runs, and summarize classified campaign CSVs — with automatic run-to-run-noise verdicts. Use whenever dispatching benchmark workflows, validating a scenario or its results, or collecting/comparing AntHocNet benchmark numbers (including results/campaign/*.csv sweeps) so validation, parsing, deltas, filtering, and the noise call are done by scripts instead of by hand in context.
+description: Run the full AntHocNet benchmark loop — pre-flight-validate scenario configs, dispatch benchmark-cell runs and campaign plans, fetch results cheaply, check result plausibility and anchor floors, parse and A/B-compare runs, and summarize classified campaign CSVs — with automatic run-to-run-noise verdicts. Use whenever dispatching benchmark workflows, validating a scenario or its results, or collecting/comparing AntHocNet benchmark numbers (including results/campaign/*.csv sweeps) so validation, parsing, deltas, filtering, and the noise call are done by scripts instead of by hand in context.
 ---
 
 # benchmark-results
@@ -22,11 +22,13 @@ the blob hosts (`api.github.com` JSON reads work; log/artifact/zip 403). So the
 result text must come through `mcp__github__get_job_logs`. Two ways to keep that
 fetch cheap:
 
-- **Preferred:** the `paper-benchmark` workflow's last step prints a compact
-  `##BENCH## <proto> <pdr> <delay> <delay99> <thrput> <nrl>` block *after* the
-  upload step, so `get_job_logs` with `tail_lines: 8` captures just the numbers.
-  The very last line of that block is `##PROV## commit=…` (#365) — the commit
-  the cell was measured at. Keep it in whatever you save: it is what makes the
+- **Preferred:** collect the run's artifact (`campaign.py collect`, or
+  `open_pr=true` on the dispatch). The artifact's `results.txt` is the
+  harness output plus `##ARGS##` and `##PROV## commit=…` (#365, #674).
+- **Log tail:** `benchmark-cell.yml`'s last step prints a compact block (the
+  `##RUN##` and table rows, the scenario_check verdict, then `##PROV##`), so
+  `get_job_logs` with `tail_lines: 45` captures the numbers. `##PROV##` is the
+  commit the cell was measured at. Keep it in whatever you save: it is what makes the
   saved file self-describing after the run's logs expire. The artifact's
   results file ends with the same line (#674), so a cell saved from the
   artifact needs no provenance rebuilt from the run record.
@@ -71,17 +73,22 @@ never quote numbers from that cell. Details: [reference/statistics.md](reference
 
 ## Dispatching runs
 
-Fire a single run via `mcp__github__actions_run_trigger` (workflow
-`paper-benchmark.yml`). Drive
-scenario knobs through the `extraArgs` input, e.g.
-`--cbrBps=8000 --sink=25 --flows=30 --ns3::anthocnet::RoutingProtocol::EnableMacMetric=true`.
+Fire a single run via `mcp__github__actions_run_trigger` on
+`benchmark-cell.yml` (#612): `harness` (anthocnet-compare | isl-grid |
+leo-walker), `version` (`3.42-opt`; `3.48` for leo-walker) and `args`, the
+harness's own flags verbatim, e.g.
+`--scenario=paper --runs=20 --diag --protocols=anthocnet,aodv --ns3::anthocnet::RoutingProtocol::EnableMacMetric=true`.
+`open_pr=true` with `cell=<name>` opens a PR adding `results/cells/<name>.txt`.
+paper-benchmark / satellite-benchmark / scenario-matrix are superseded and go in #746.
 Pair every ON run with an identical OFF run for a clean A/B (baselines are
 deterministic on identical seeds).
 
 **A campaign (more than a handful of runs) goes through
 `tools/bench/campaign.py` and a committed plan** (#662). The plan is
 `tools/bench/campaigns/<release>.yaml`: cells, arms and which arm runs where;
-`campaigns/v2.2.0-phase2.yaml` is the worked example. The plan is committed in
+`campaigns/v2.2.0-phase2.yaml` is the worked example. Every job runs on
+`benchmark-cell.yml`; cells written for the retired workflows are translated
+to the same command line (`plan` prints it). The plan is committed in
 the PR that pre-registers the campaign.
 
 ```bash
@@ -118,20 +125,15 @@ The cross-session procedure (formerly buried in issue #91's session notes):
    `scenario_check.py preflight` with the knobs you intend to override —
    flags partitioned fields, channel saturation, accidental single-hop,
    too-short sim time (see below).
-1. **Dispatch** `paper-benchmark.yml` (single point, ##BENCH## output) or
-   `scenario-matrix.yml` (taxonomy/sweeps → classified CSV artifact) via
-   `mcp__github__actions_run_trigger` on `main` or a branch ref. For
-   `scenario-matrix`, `only=<sweep>` + `point=<x>` runs one point;
-   `commit=true` writes CSV+charts into `docs/benchmarks/` on that ref.
-2. **Wait** — a real sweep point can exceed an hour (job timeout 720 min).
+1. **Dispatch** `benchmark-cell.yml` (one cell) or a campaign plan via
+   `campaign.py` (a sweep is a set of cells), on `main` or a branch ref.
+2. **Wait** — a real cell can exceed an hour (job timeout 360 min).
    Poll `mcp__github__actions_get` occasionally or schedule a check-in; do
    not spin.
-3. **Fetch cheap.** `paper-benchmark`: `get_job_logs` with `tail_lines: 15`
-   (the `##BENCH##` block is last; `# stddev` / `# diag hold[...]` lines sit
-   just above — fetch ~55 lines if you need those). Save the tail verbatim to
-   a file, one per run. `scenario-matrix`: the CSV artifact is
-   proxy-blocked; use `commit=true` on dispatch, or the `rescue-artifacts`
-   workflow, then read `results/campaign/<runid>-*.csv` from the ref.
+3. **Fetch cheap.** The artifact (`campaign.py collect`, or the bot PR from
+   `open_pr=true`); otherwise the log tail above. Save each run verbatim, one
+   file per run. Older `results/campaign/*.csv` sweeps came from the retired
+   scenario-matrix workflow and stay readable by `sweep_summary.py`.
 4. **Validate before comparing**: `scenario_check.py results` on the saved
    cell/CSV — plausibility invariants (PDR bounds, delay99 ≥ mean, negative
    metrics) and, for anchor-shaped scenarios, the `ns3/tools/anchors.yml`
@@ -140,7 +142,7 @@ The cross-session procedure (formerly buried in issue #91's session notes):
    `##PROV##` commit (#365) and WARNs when a log cell has none — a number whose
    version is unknown is not publishable, and the usual cause is a tail cut
    above the line rather than a workflow that failed to emit it.
-5. **Parse by script, never by eye**: `bench_parse.py` for `##BENCH##` cells,
+5. **Parse by script, never by eye**: `bench_parse.py` for harness cells,
    `sweep_summary.py` for campaign CSVs (below).
 6. **Attribution control** when a campaign changes code between two
    generations: `bench_parse.py --control BEFORE AFTER` on a cell run with
