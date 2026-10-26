@@ -8,6 +8,28 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v2.4.0 (2026-10-26)
+
+### Feat
+
+- **bench**: pre-register the v2.4.0 scale campaign (50-500 nodes, 300 s) (#736)
+- **ns3**: add the SAGIN family, a HAPS air layer in leo-walker with gpsr3d end to end (#730)
+- **web**: campaign chapter 8, Sky to space (three layers, ocean crossing, one network) (#735)
+- **web**: campaign chapter 7, Contested zone (radio silence, jammed, convoy) (#733)
+- **web**: campaign chapter 6, Disaster zone (split teams, aftershock, fire front) (#732)
+- **web**: scenario features for chapters 6-8 (jamming zones, scripted events, mixed layers) (#731)
+- **bench**: disaster family: scene, --scenario=disaster, gate and plan (#728)
+- **bench**: partition/merge stress scene and its bounded-control gate (#724)
+- **ns3**: opspf arm, link state on the predicted orbit schedule for leo (#721)
+- **ns3**: gpsr3d arm, 3-D greedy with cface(3) recovery for fanet (#719)
+- **ns3**: gpcr arm (junction-aware geographic) and a gpsr seed-independence fix (#718)
+- **ns3**: 802.11s hwmp arm and an 802.11a radio for the static mesh (#716)
+
+### Fix
+
+- **bench**: run the SAGIN Starlink gpsr3d cells in 2-seed blocks (#738)
+- **bench**: the disaster plan names the scene's 47 nodes (#729)
+
 ## v2.3.0 (2026-10-18)
 
 ### Feat
