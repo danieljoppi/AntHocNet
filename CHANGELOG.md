@@ -32,7 +32,7 @@ which gates packet compatibility independently.
 
 ### Known limitations
 
-- **AntHocNet does not scale to 500 nodes** ([#740](https://github.com/danieljoppi/AntHocNet/issues/740)). In the v2.4.0 scale sweep ([results](docs/benchmarks/sweeps/scale.md)), AntHocNet delivers 13.3 % at 500 nodes, against AODV 22.2 %, OLSR 28.1 % (n=19: one seed exceeded the 340-minute job limit twice) and the oracle 73.4 %. Reactive ants grow from 27 % to 90 % of control traffic, and routing packets per node from 924 to 7679. No default moves in this release; the cause and any fix are tracked in #740.
+- **AntHocNet does not scale to 500 nodes** ([#740](https://github.com/danieljoppi/AntHocNet/issues/740)). In the v2.4.0 scale sweep ([results](https://danieljoppi.github.io/AntHocNet/docs/benchmarks/sweeps/scale/)), AntHocNet delivers 13.3 % at 500 nodes, against AODV 22.2 %, OLSR 28.1 % (n=19: one seed exceeded the 340-minute job limit twice) and the oracle 73.4 %. Reactive ants grow from 27 % to 90 % of control traffic, and routing packets per node from 924 to 7679. No default moves in this release; the cause and any fix are tracked in #740.
 
 ## v2.3.0 (2026-10-18)
 
