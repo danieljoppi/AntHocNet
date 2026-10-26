@@ -16,6 +16,7 @@ import argparse
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import sys
 import tempfile
@@ -199,6 +200,44 @@ def _collect():
                "collect-body", text)
         expect("quiet/sat: no ##PROV## line" in err, "collect-prov-warn", err)
         expect("SKIP grid-vtest.txt: 0 of 1" in err, "collect-skip", err)
+
+
+@case("status --brief: only the labels not yet successful, counts on stderr")
+def _status_brief():
+    def fake(*args, **_k):
+        rid = args[0].rsplit("/", 1)[1]
+        done = rid == "11"
+        return json.dumps({"conclusion": "success" if done else None,
+                           "status": "completed" if done else "in_progress"})
+    cp.gh = fake
+    with tempfile.TemporaryDirectory() as d:
+        log = os.path.join(d, "runs.tsv")
+        with open(log, "w") as f:
+            f.write("quiet/vanet-s1\t11\nquiet/vanet-s5\t12\n")
+        a = argparse.Namespace(log=log, brief=True)
+        with contextlib.redirect_stderr(io.StringIO()) as err, \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            cp.cmd_status(PLAN, a)
+    lines = out.getvalue().splitlines()
+    expect("quiet/vanet-s1\t11\tsuccess" not in lines
+           and "quiet/vanet-s5\t12\tin_progress" in lines
+           and "control/grid\t-\tnot-dispatched" in lines, "status-brief", lines)
+    expect("1 success" in err.getvalue(), "status-brief-counts", err.getvalue())
+
+
+@case("collect: a timed-out run's stub artifact is a missing run")
+def _collect_stub():
+    with tempfile.TemporaryDirectory() as d:
+        src, out, log = (os.path.join(d, x) for x in ("src", "out", "runs.tsv"))
+        with open(log, "w") as f:
+            f.write("quiet/vanet-s1\t11\nquiet/vanet-s5\t12\n")
+        write_run(src, "quiet/vanet-s1", "##RUN## 1 anthocnet 40\n##PROV## commit=a\n")
+        write_run(src, "quiet/vanet-s5", "##PROV## commit=a\n")
+        err = collect(log, src, out)
+        expect(not os.path.exists(os.path.join(out, "vanet-vtest-quiet.txt")),
+               "collect-stub", os.listdir(out))
+        expect("quiet/vanet-s5: artifact has no result rows" in err
+               and "SKIP vanet-vtest-quiet.txt: 1 of 2" in err, "collect-stub", err)
 
 
 @case("collect: a cell with a block still running is not written")

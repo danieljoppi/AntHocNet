@@ -106,8 +106,12 @@ the concept ID `20981979` returns HTTP 404 there, as measured 2026-10-02. Any
 version record lists every version of the concept, for example v0.1.1's:
 
 ```
-curl -s "https://zenodo.org/api/records/20981980/versions?size=25&sort=version"
+curl -sL "https://zenodo.org/api/records/20981980/versions/latest"   # the newest version only
+curl -s "https://zenodo.org/api/records/20981980/versions?size=25&page=2"   # or page through all
 ```
+
+(`sort=version` is ignored, as measured 2026-10-26: hits come oldest first, so
+with more than 25 versions the newest are on the last page.)
 
 Each hit carries `metadata.version` (the tag) and `doi`. `size` above 25 is
 rejected unauthenticated (HTTP 400). `zenodo.org` has been proxy-blocked from
