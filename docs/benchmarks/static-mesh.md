@@ -124,7 +124,7 @@ AntHocNet − oracle -0.60 [-0.90, -0.30] pp; against the best native baseline (
 > [#521](https://github.com/danieljoppi/AntHocNet/issues/521) every source ran ns-3's default 1 s on / 1 s off,
 > so this field was offered 0.5 pkt/s per flow, not the stated 1 pkt/s.
 >
-> **Provenance.** Run [37172238042](https://github.com/danieljoppi/AntHocNet/actions/runs/37172238042) at `main`
+> **Provenance.** Run `37172238042` at `main`
 > @ `d26ae640`, with the knobs of the published dispatch: 20 seeds, 900 s,
 > `pause=900`, disk, `3.42-opt`. Cell:
 > `results/cells/static-mesh-cbr521.txt`. `scenario_check.py

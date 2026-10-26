@@ -311,8 +311,8 @@ independent evidence.
 > **Provenance.** Six arms, 20 seeds, 900 s, `3.42-opt`, at `main` @
 > `d26ae640`. The knobs are identical to the published dispatch, and the
 > oracle's 100 ms recompute is the preset default.
-> Main cell: [37172235137](https://github.com/danieljoppi/AntHocNet/actions/runs/37172235137).
-> Sparse cell: [37172236293](https://github.com/danieljoppi/AntHocNet/actions/runs/37172236293).
+> Main cell: `37172235137`.
+> Sparse cell: `37172236293`.
 > Cells: `results/cells/fanet-{main,sparse}-cbr521.txt`.
 > `scenario_check.py results`: 0 FAIL; the WARNs are the expected oracle
 > no-path partitions and the 3-D hop-check note. `bench_parse` column
@@ -603,10 +603,10 @@ re-runs:
 
 | cell | arms | run | commit | cell file |
 |---|---|---|---|---|
-| main, 350 m | anthocnet, aodv, olsr, dsdv, aomdv, oracle (100 ms), `##ENERGY##` | [36957200584](https://github.com/danieljoppi/AntHocNet/actions/runs/36957200584) | `77098cfe` | `results/cells/fanet-main-6arm.txt` |
-| sparse, 250 m | same | [36957203615](https://github.com/danieljoppi/AntHocNet/actions/runs/36957203615) | `77098cfe` | `results/cells/fanet-sparse-6arm.txt` |
-| main, 350 m | olsr, #510 offered-based PDR | [36962716872](https://github.com/danieljoppi/AntHocNet/actions/runs/36962716872) | `bd1f4e49` | `results/cells/fanet-main-olsr510.txt` |
-| sparse, 250 m | olsr, #510 offered-based PDR | [36962719693](https://github.com/danieljoppi/AntHocNet/actions/runs/36962719693) | `bd1f4e49` | `results/cells/fanet-sparse-olsr510.txt` |
+| main, 350 m | anthocnet, aodv, olsr, dsdv, aomdv, oracle (100 ms), `##ENERGY##` | `36957200584` | `77098cfe` | `results/cells/fanet-main-6arm.txt` |
+| sparse, 250 m | same | `36957203615` | `77098cfe` | `results/cells/fanet-sparse-6arm.txt` |
+| main, 350 m | olsr, #510 offered-based PDR | `36962716872` | `bd1f4e49` | `results/cells/fanet-main-olsr510.txt` |
+| sparse, 250 m | olsr, #510 offered-based PDR | `36962719693` | `bd1f4e49` | `results/cells/fanet-sparse-olsr510.txt` |
 
 `77098cfe` is the #508 branch head; its code is what merged as `a412ab0f`.
 `bd1f4e49` is the #511 branch head; its code is what merged as `f480d0ae`.
@@ -626,10 +626,10 @@ and OLSR's pre-#510 denominator:
 
 | cell | arms | run | commit | cell file |
 |---|---|---|---|---|
-| main, 350 m | anthocnet, aodv, olsr, dsdv (+ oracle at 1 s) | [36932609311](https://github.com/danieljoppi/AntHocNet/actions/runs/36932609311) | `54886e2a` | `results/cells/fanet-main.txt` |
-| sparse, 250 m | anthocnet, aodv, olsr, dsdv (+ oracle at 1 s) | [36932612649](https://github.com/danieljoppi/AntHocNet/actions/runs/36932612649) | `54886e2a` | `results/cells/fanet-sparse.txt` |
-| main, 350 m | oracle at 100 ms (all five arms re-run) | [36936966493](https://github.com/danieljoppi/AntHocNet/actions/runs/36936966493) | `0197fe66` | `results/cells/fanet-main-oracle100ms.txt` |
-| sparse, 250 m | oracle at 100 ms (all five arms re-run) | [36936970028](https://github.com/danieljoppi/AntHocNet/actions/runs/36936970028) | `0197fe66` | `results/cells/fanet-sparse-oracle100ms.txt` |
+| main, 350 m | anthocnet, aodv, olsr, dsdv (+ oracle at 1 s) | `36932609311` | `54886e2a` | `results/cells/fanet-main.txt` |
+| sparse, 250 m | anthocnet, aodv, olsr, dsdv (+ oracle at 1 s) | `36932612649` | `54886e2a` | `results/cells/fanet-sparse.txt` |
+| main, 350 m | oracle at 100 ms (all five arms re-run) | `36936966493` | `0197fe66` | `results/cells/fanet-main-oracle100ms.txt` |
+| sparse, 250 m | oracle at 100 ms (all five arms re-run) | `36936970028` | `0197fe66` | `results/cells/fanet-sparse-oracle100ms.txt` |
 
 **Dispatch:** `paper-benchmark.yml` with
 

@@ -340,8 +340,8 @@ inputs `nNodes`, `areaX=800`, `areaY=800`, `pause=0`, `speed=20`,
 
 | cell | runs |
 |---|---|
-| main (100 vehicles, 4 seeds per job) | [37638802518](https://github.com/danieljoppi/AntHocNet/actions/runs/37638802518) (1–4), [37638813699](https://github.com/danieljoppi/AntHocNet/actions/runs/37638813699) (5–8), [37638825144](https://github.com/danieljoppi/AntHocNet/actions/runs/37638825144) (9–12), [37638836620](https://github.com/danieljoppi/AntHocNet/actions/runs/37638836620) (13–16), [37638847225](https://github.com/danieljoppi/AntHocNet/actions/runs/37638847225) (17–20) |
-| sparse (40 vehicles, 10 seeds per job) | [37638857489](https://github.com/danieljoppi/AntHocNet/actions/runs/37638857489) (1–10), [37638868141](https://github.com/danieljoppi/AntHocNet/actions/runs/37638868141) (11–20) |
+| main (100 vehicles, 4 seeds per job) | `37638802518` (1–4), `37638813699` (5–8), `37638825144` (9–12), `37638836620` (13–16), `37638847225` (17–20) |
+| sparse (40 vehicles, 10 seeds per job) | `37638857489` (1–10), `37638868141` (11–20) |
 
 Cells: `results/cells/vanet-{main,sparse}.txt`, 140 `##RUN##` rows
 each (20 seeds × 7 arms). A main-cell job took 3.5–4 h (about 50 min per

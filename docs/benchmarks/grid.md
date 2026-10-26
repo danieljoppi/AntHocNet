@@ -293,12 +293,12 @@ AntHocNet leads delivery in every cell, 5.8–11.3 pp above the best native base
 >
 > | mobility | channel | run |
 > |---|---|---|
-> | rwp | tworay | [37169506292](https://github.com/danieljoppi/AntHocNet/actions/runs/37169506292) |
-> | ssrwp | tworay | [37169507825](https://github.com/danieljoppi/AntHocNet/actions/runs/37169507825) |
-> | gaussmarkov | tworay | [37169509243](https://github.com/danieljoppi/AntHocNet/actions/runs/37169509243) |
-> | rwp | nakagami | [37169510406](https://github.com/danieljoppi/AntHocNet/actions/runs/37169510406) |
-> | ssrwp | nakagami | [37169511723](https://github.com/danieljoppi/AntHocNet/actions/runs/37169511723) |
-> | gaussmarkov | nakagami | [37169513137](https://github.com/danieljoppi/AntHocNet/actions/runs/37169513137) |
+> | rwp | tworay | `37169506292` |
+> | ssrwp | tworay | `37169507825` |
+> | gaussmarkov | tworay | `37169509243` |
+> | rwp | nakagami | `37169510406` |
+> | ssrwp | nakagami | `37169511723` |
+> | gaussmarkov | nakagami | `37169513137` |
 >
 > ![MANET grid on CBR sources, six mobility-by-channel cells: AntHocNet delivers the most of the three arms in every cell, at or above the oracle on two-ray and below it on Nakagami; its delay99 sits between OLSR's and AODV's on two-ray; OLSR has the lowest NRL and AODV the highest](charts/grid.png)
 >
