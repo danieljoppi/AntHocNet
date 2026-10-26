@@ -1,0 +1,71 @@
+# Stage 1 of the #740 scale investigation: an EXPLORATORY screen, not a
+# published result. Diagnosis (#740 comments, from the committed v2.4.0
+# cells): at 500 nodes AntHocNet's loss is the reconvergence hold, not the
+# MAC. 96-98 % of reconv-held packets age out at ReconvHoldCap = 200 ms, and
+# the ns-3 retry timer (ReactiveRetryInterval = 0.25 s) re-floods from every
+# holding node, bypassing the core's 1 s per-destination limit.
+#
+# The screen asks one question per arm at 500 nodes, on 4 seeds paired with
+# the committed control (results/cells/scale-500-v240.txt, seeds 1-4):
+#   hold1s   the hold outlasts a ~15-hop re-discovery
+#   retry1s  the adapter's retry falls to the core's own 1 s rate
+#   both     the two together
+#   retry0   no adapter retry timer (pre-#21): discovery only through the
+#            core's data-driven, rate-limited path
+# Prior evidence: v2.2.0's reconv1s (= hold1s) gained +4 to +6 pp on VANET and
+# FANET but lost -1.4 / -6.0 pp on grid Nakagami (docs/benchmarks/v2.2.0-
+# campaign.md), so no constant here is a default candidate.
+#
+# Screen rule, fixed before dispatch: an arm goes to stage 2 if its paired
+# dPDR at 500 nodes is >= +5 pp with the 95 % CI excluding zero (n = 4), or,
+# if none does, the arm with the largest paired dPDR whose CI excludes zero.
+# If none excludes zero, the hypothesis is not supported and #740 says so.
+# Stage 2 (50/200/500 nodes, 20 seeds, paired) gets its own pre-registered
+# plan; no number from this screen is published.
+#
+# recheck reruns the control's first block (seeds 1-2, anthocnet + aodv) on
+# benchmark-cell.yml. Its ##RUN## rows must equal the committed cell's
+# (bench_parse.py --control): that attributes every arm's delta to the arm,
+# and is #746's old-path vs new-path control for anthocnet-compare.
+#
+# Sizing: AntHocNet + AODV at 500 nodes took about 80 min a seed (v2.4.0
+# sizing run 39527509217), so a 2-seed job is about 2.7 h with both, less
+# with AntHocNet alone. 9 jobs, cap 9.
+#
+#   python3 tools/bench/campaign.py plan tools/bench/campaigns/v2.5.0-scale-screen.yaml
+generation: v250s
+ref: main
+cap: 9
+control: recheck
+
+arms:
+  recheck: ""
+  hold1s: "--ns3::anthocnet::RoutingProtocol::ReconvHoldCap=1s"
+  retry1s: "--ns3::anthocnet::RoutingProtocol::ReactiveRetryInterval=1s"
+  both: "--ns3::anthocnet::RoutingProtocol::ReconvHoldCap=1s --ns3::anthocnet::RoutingProtocol::ReactiveRetryInterval=1s"
+  retry0: "--ns3::anthocnet::RoutingProtocol::ReactiveRetryInterval=0s"
+
+cells:
+  scale-500:
+    workflow: benchmark-cell.yml
+    inputs:
+      harness: anthocnet-compare
+      version: 3.42-opt
+      # The v2.4.0 scale-500 command line (campaign.py plan on v2.4.0-scale.yaml),
+      # AntHocNet only for the arms.
+      args: "--scenario=paper --runs=2 --nNodes=500 --time=300 --areaX=4743 --pause=30 --speed=20 --propagation=range --range=300 --areaY=1581 --diag --mobility=rwp --transport=udp --protocols=anthocnet"
+    blocks: [1, 3]
+  scale-500-recheck:
+    workflow: benchmark-cell.yml
+    inputs:
+      harness: anthocnet-compare
+      version: 3.42-opt
+      args: "--scenario=paper --runs=2 --nNodes=500 --time=300 --areaX=4743 --pause=30 --speed=20 --propagation=range --range=300 --areaY=1581 --diag --mobility=rwp --transport=udp --protocols=anthocnet,aodv"
+    blocks: [1]
+
+# Arms are read against the committed v2.4.0 control, not a control file of
+# this generation: bench_parse.py --ab results/cells/scale-500-v240.txt
+# results/cells/scale-500-v250s-<arm>.txt (pairs by seed; seeds 1-4).
+jobs:
+  - {arms: [recheck], cells: [scale-500-recheck]}
+  - {arms: [hold1s, retry1s, both, retry0], cells: [scale-500]}
