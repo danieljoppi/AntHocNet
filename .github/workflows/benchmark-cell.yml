@@ -110,6 +110,10 @@ jobs:
             --enable-modules='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
           ./ns3 build && ./ns3 show profile
       - name: Run the cell
+        # As paper-benchmark: stop the run 20 min before the job ceiling, so
+        # the always() steps still upload the stderr tail and a stub results
+        # file that campaign.py collect recognises as a missing run (#746).
+        timeout-minutes: 340
         shell: bash
         env:
           HARNESS: ${{ inputs.harness }}

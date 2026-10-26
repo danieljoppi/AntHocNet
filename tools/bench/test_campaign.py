@@ -80,8 +80,8 @@ class FakeGh:
     def __call__(self, *args, stdin=None, binary=False):
         url = args[0] if args[0] != "-X" else args[2]
         if "status=" in url:
-            # All active runs count once, as paper-benchmark's queued runs.
-            hit = "paper-benchmark" in url and "status=queued" in url
+            # All active runs count once, as benchmark-cell's queued runs.
+            hit = "benchmark-cell" in url and "status=queued" in url
             return f"{self.active if hit else 0}\n"
         if url.endswith("/dispatches"):
             self.dispatched.append(stdin)
@@ -161,8 +161,64 @@ def _dispatch_body():
         dispatch(os.path.join(d, "runs.tsv"), fake, cap=1)
         body = json.loads(fake.dispatched[0])
         expect(body == {"ref": "main", "inputs": {
-            "scenario": "paper", "runs": "20", "protocols": "anthocnet,aodv"}},
+            "harness": "anthocnet-compare", "version": "3.42",
+            "args": "--scenario=paper --runs=20 --nNodes=50 --time=300 "
+                    "--areaX=1500 --pause=30 --speed=20 --propagation=range "
+                    "--range=300 --diag --mobility=rwp --transport=udp "
+                    "--protocols=anthocnet,aodv"}},
             "dispatch-body", body)
+
+
+@case("legacy cells: the retired workflows' command lines, flag for flag")
+def _legacy():
+    # paper-benchmark.yml's shell: common flags, areaY if set, extraArgs,
+    # then --diag --mobility --transport --protocols.
+    h, a, v = cp.legacy_command("paper-benchmark.yml", {
+        "scenario": "paper", "version": "3.42-opt", "nNodes": "500",
+        "time": "300", "runs": "2", "areaX": "4743", "areaY": "1581",
+        "pause": "30", "speed": "20", "protocols": "anthocnet,aodv",
+        "propagation": "range", "mobility": "rwp", "transport": "udp",
+        "range": "300", "harness": "compare", "extraArgs": "--firstRun=3"})
+    expect((h, v) == ("anthocnet-compare", "3.42-opt") and a ==
+           "--scenario=paper --runs=2 --nNodes=500 --time=300 --areaX=4743 "
+           "--pause=30 --speed=20 --propagation=range --range=300 --areaY=1581 "
+           "--firstRun=3 --diag --mobility=rwp --transport=udp "
+           "--protocols=anthocnet,aodv", "legacy-paper", a)
+    h, a, v = cp.legacy_command("satellite-benchmark.yml", {
+        "harness": "isl-grid", "version": "3.42-opt", "time": "900",
+        "runs": "20", "cbrBps": "4096", "protocols": "anthocnet",
+        "extraArgs": "--breakAt=450"})
+    expect(h == "isl-grid" and a ==
+           "--rows=4 --cols=4 --torus=true --islDelayMs=5 --islRate=10Mbps "
+           "--time=900 --runs=20 --flows=8 --cbrBps=4096 --diag "
+           "--protocols=anthocnet --breakAt=450", "legacy-isl", a)
+    h, a, v = cp.legacy_command("satellite-benchmark.yml", {
+        "harness": "leo-walker", "version": "3.48", "flows": "4",
+        "cbrBps": "2048", "protocols": "anthocnet", "extraArgs": "--shell=s1"})
+    expect((h, v) == ("leo-walker", "3.48") and a ==
+           "--time=300 --runs=3 --flows=4 --cbrBps=2048 --islRate=10Mbps "
+           "--protocols=anthocnet --shell=s1", "legacy-leo", a)
+    h, a, v = cp.legacy_command("benchmark-cell.yml", {
+        "harness": "isl-grid", "args": "--rows=8", "extraArgs": "--firstRun=5"})
+    expect((h, a, v) == ("isl-grid", "--rows=8 --firstRun=5", "3.42-opt"),
+           "native-cell", (h, a, v))
+    for wf, inp in (("paper-benchmark.yml", {"harness": "baselines"}),
+                    ("scenario-matrix.yml", {})):
+        try:
+            cp.legacy_command(wf, inp)
+        except SystemExit:
+            continue
+        expect(False, "legacy-refused", f"{wf} {inp} was accepted")
+
+
+@case("every committed plan translates to benchmark-cell inputs")
+def _plans_translate():
+    import glob
+    for path in sorted(glob.glob(os.path.join(HERE, "campaigns", "*.yaml"))):
+        for _l, _c, _a, wf, inp in cp.jobs(cp.load_plan(path)):
+            h, a, _v = cp.legacy_command(wf, inp)
+            expect(h in ("anthocnet-compare", "isl-grid", "leo-walker") and a,
+                   "plans-translate", f"{path}: {h} {a}")
 
 
 def collect(log, src, out):
