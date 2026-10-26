@@ -307,3 +307,99 @@ delivers far below the oracle (15–30 % against 83 %), and AntHocNet's NRL is
 the highest. That is one seed, not a result. If it holds at 20 seeds, it is
 a finding to file (ADR-0013): where and why the colony's overhead stops
 scaling.
+
+### Results (v2.4.0)
+
+The campaign ran as planned: 63 jobs, `ns3:3.42-opt`, 300 s, 20 seeds per
+point. The cells are `results/cells/scale-{50,100,200,500}-v240.txt`, plus
+`scale-500-olsr-v240.txt` and `scale-500-oracle-v240.txt`.
+
+**One seed is missing: OLSR at 500 nodes has 19 seeds.** A single 500-node
+OLSR seed takes 3.9–5.7 h. Four seeds (4, 9, 17, 20) hit the 340-minute step
+limit, and each was re-run once. Seeds 4, 9 and 17 then finished. Seed 20
+timed out twice (runs 39715756649 and 39753891585). By the maintainer's
+decision (2026-10-26), OLSR at 500 nodes is reported with n = 19. Paired
+readings against it use those 19 seeds.
+
+![Scale at constant density: PDR and routing packets per node for AntHocNet, AODV, OLSR and the oracle at 50, 100, 200 and 500 nodes. AntHocNet leads up to 200 nodes and falls below AODV and OLSR at 500, where its routing traffic per node passes AODV's](../charts/scale-v240.png)
+
+_Routing packets per node are NRL × packets delivered ÷ nodes, the same
+yardstick for every protocol. Drawn by
+[`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py)
+from the committed cells._
+
+Mean, with the PDR's 95 % t-interval:
+
+| nodes | protocol | PDR % | delay99 ms | NRL | routing packets per node |
+|---:|---|---|---|---|---|
+| 50 | **AntHocNet** | 95.38 ± 0.58 | 436.0 | 10.97 | 924 |
+| 50 | AODV | 82.75 ± 1.42 | 513.4 | 29.26 | 2 136 |
+| 50 | OLSR | 72.50 ± 2.32 | 35.0 | 3.37 | 215 |
+| 50 | oracle | 94.96 ‡ | 23.6 | 0 | 0 |
+| 100 | **AntHocNet** | 92.66 ± 0.75 | 1129.5 | 30.17 | 1 234 |
+| 100 | AODV | 72.72 ± 1.46 | 1062.5 | 85.32 | 2 734 |
+| 100 | OLSR | 60.80 ± 1.64 | 945.6 | 9.87 | 264 |
+| 100 | oracle | 90.52 ‡ | 36.5 | 0 | 0 |
+| 200 | **AntHocNet** | 72.85 ± 5.63 | 2174.8 | 181.35 | 2 709 |
+| 200 | AODV | 47.52 ± 2.53 | 2002.0 | 389.96 | 4 027 |
+| 200 | OLSR | 45.23 ± 2.17 | 1322.0 | 33.35 | 330 |
+| 200 | oracle | 83.64 ‡ | 211.2 | 0 | 0 |
+| 500 | **AntHocNet** | 13.31 ± 2.31 | 3539.9 | 7482.62 | 7 679 |
+| 500 | AODV | 22.22 ± 2.36 | 2934.1 | 2824.88 | 5 229 |
+| 500 | OLSR (n = 19) | 28.14 ± 2.65 | 2593.8 | 211.42 | 504 |
+| 500 | oracle | 73.40 ‡ | 564.6 | 0 | 0 |
+
+‡ **The oracle's PDR is restated over offered traffic.** The oracle drops a
+send it has no route for before the books open, so the harness's own PDR
+leaves those packets out of the denominator
+([#464](https://github.com/danieljoppi/AntHocNet/issues/464);
+`scenario_check.py` FAILs the 200- and 500-node oracle cells on it). There
+were 83 to 342 such refusals over 20 seeds. Counting them lowers the oracle
+by 0.09 to 0.27 pp: 95.05 → 94.96, 90.72 → 90.52, 83.90 → 83.64 and
+73.67 → 73.40 %.
+
+**The readings**, paired per seed. The gap to the oracle uses the harness's
+PDR, so with the restated oracle each gap is 0.1–0.3 pp smaller in
+magnitude.
+
+| nodes | AntHocNet − oracle (pp) | AntHocNet − best native (pp) | d delay99 (ms) | d NRL | verdict |
+|---:|---|---|---|---|---|
+| 50 | +0.33 [−0.45, +1.11] | +12.62 [+11.32, +13.93] (AODV) | −77.35 [−157.70, +12.85] | −18.29 | PAIRED-IMPROVED |
+| 100 | +1.93 [+0.88, +2.99] | +19.93 [+18.38, +21.49] (AODV) | +67.00 [+45.50, +86.80] | −55.14 | PAIRED-MIXED |
+| 200 | −11.05 [−15.87, −6.23] | +25.32 [+21.57, +29.08] (AODV) | +172.75 [+40.50, +305.25] | −208.61 | PAIRED-MIXED |
+| 500 | −60.36 [−62.21, −58.51] | **−14.72 [−17.11, −12.32] (OLSR)** | +947.26 [+665.11, +1221.74] | +7252.74 | **PAIRED-WORSE** |
+
+What they say:
+
+- **Up to 200 nodes, AntHocNet leads every native protocol, and by more as
+  the network grows.** It leads AODV by +12.6 pp at 50 nodes and +25.3 pp at
+  200, while sending less routing traffic than AODV at every one of those
+  sizes. At 50 and 100 nodes it matches or beats the oracle. At 200 nodes it
+  is 11 pp short of the oracle, and its seeds spread widely (±5.6 pp).
+- **At 500 nodes it collapses.** AntHocNet delivers 13.3 %, against AODV's
+  22.2 %, OLSR's 28.1 % and the oracle's 73.4 %. It is the worst routing arm,
+  paired against OLSR (−14.72 pp) and with a tail 0.95 s longer.
+- **The cause is reactive-ant flooding.** AntHocNet's routing traffic per
+  node grows 8.3× from 50 to 500 nodes; AODV's grows 2.4× and OLSR's 2.3×.
+  Between 200 and 500 nodes AntHocNet passes AODV. Reactive ants are 27 % of
+  its control traffic at 50 nodes and 90 % at 500. Filed as
+  [#740](https://github.com/danieljoppi/AntHocNet/issues/740) for v2.5.0.
+- **The ACO claim of graceful scaling holds here to about 200 nodes and
+  fails at 500.** It fails on the protocol's control traffic, not on the
+  field: the oracle still delivers 73 % at 500 nodes.
+
+**Checker** (`scenario_check.py results`):
+
+- The oracle cells FAIL on #464, restated above.
+- Two AntHocNet seed blocks at 500 nodes FAIL on a "Jain's fairness index"
+  of 3853 and 5035. That is a formatting defect in the harness's summary
+  table, not a fairness result. The block's mean NRL of 10 114.56 overflows
+  its fixed-width column and runs into the throughput column
+  (`1.0810114.56`). The checker reads that table by position, so every
+  column after it shifts by one, and "Jain" is the jitter column. The
+  readings here come from the per-seed `##RUN##` rows, which are
+  space-separated and unaffected. Filed as
+  [#741](https://github.com/danieljoppi/AntHocNet/issues/741).
+- Every WARN is a known caveat: churn-dominated path diversity, the oracle's
+  no-path lookups, and ICMP re-injections.
+
