@@ -174,10 +174,10 @@ AntHocNet matches the oracle's delivery on all four cells, as it did at v2.3.0 (
 > `324063f8` (the #531 merge), image `ns3:3.42-opt`, `profile=release`, 900 s,
 > seeds 1–20, `protocols=anthocnet,aodv,olsr,oracle`, CBR sources, knobs
 > identical to the #521 dispatches:
-> base [37319129653](https://github.com/danieljoppi/AntHocNet/actions/runs/37319129653),
-> failcell [37319142249](https://github.com/danieljoppi/AntHocNet/actions/runs/37319142249),
-> corridor [37319154658](https://github.com/danieljoppi/AntHocNet/actions/runs/37319154658),
-> seam [37319168168](https://github.com/danieljoppi/AntHocNet/actions/runs/37319168168).
+> base `37319129653`,
+> failcell `37319142249`,
+> corridor `37319154658`,
+> seam `37319168168`.
 > Cells: `results/cells/sat-{base,failcell,corridor,seam}-app517.txt`.
 > `scenario_check.py results`: OK (0 fail, 0 warn) on all four. `±` is a
 > 95 % t-CI half-width; `[lo, hi]` a paired per-seed 95 % t-CI; p is
@@ -239,10 +239,10 @@ AntHocNet matches the oracle's delivery on all four cells, as it did at v2.3.0 (
 > `d26ae640` (the #524 merge), image `ns3:3.42-opt`, `profile=release`, 900 s,
 > seeds 1–20, `protocols=anthocnet,aodv,olsr,oracle`. Knobs are identical to
 > each cell's published dispatch:
-> base [37172251221](https://github.com/danieljoppi/AntHocNet/actions/runs/37172251221),
-> failcell [37172253492](https://github.com/danieljoppi/AntHocNet/actions/runs/37172253492),
-> corridor [37172255336](https://github.com/danieljoppi/AntHocNet/actions/runs/37172255336),
-> seam [37172257652](https://github.com/danieljoppi/AntHocNet/actions/runs/37172257652).
+> base `37172251221`,
+> failcell `37172253492`,
+> corridor `37172255336`,
+> seam `37172257652`.
 > Cells: `results/cells/sat-{base,failcell,corridor,seam}-cbr521.txt`.
 > `scenario_check.py results`: OK (0 fail, 0 warn) on all four. Means and
 > intervals are by script (`bench_parse.py`, `stats_util`); `±` is a 95 %

@@ -28,10 +28,10 @@ hand over, ISLs fail and recover. The static ISL torus that came first is
 >
 > | cell | anthocnet | aodv | olsr | geo-greedy | oracle | oracle-delay |
 > |---|---|---|---|---|---|---|
-> | `walker16` | [37827387100](https://github.com/danieljoppi/AntHocNet/actions/runs/37827387100) | [37827390737](https://github.com/danieljoppi/AntHocNet/actions/runs/37827390737) | [37827395914](https://github.com/danieljoppi/AntHocNet/actions/runs/37827395914) | [37827410383](https://github.com/danieljoppi/AntHocNet/actions/runs/37827410383) | [37827401516](https://github.com/danieljoppi/AntHocNet/actions/runs/37827401516) | [37827405771](https://github.com/danieljoppi/AntHocNet/actions/runs/37827405771) |
-> | `starlink1` | [37827426356](https://github.com/danieljoppi/AntHocNet/actions/runs/37827426356) | [37827430778](https://github.com/danieljoppi/AntHocNet/actions/runs/37827430778) |  | [37827443695](https://github.com/danieljoppi/AntHocNet/actions/runs/37827443695) | [37827433965](https://github.com/danieljoppi/AntHocNet/actions/runs/37827433965) | [37827439616](https://github.com/danieljoppi/AntHocNet/actions/runs/37827439616) |
-> | `starlink1-storm` | [37827449496](https://github.com/danieljoppi/AntHocNet/actions/runs/37827449496) | [37827453949](https://github.com/danieljoppi/AntHocNet/actions/runs/37827453949) |  | [37827467035](https://github.com/danieljoppi/AntHocNet/actions/runs/37827467035) | [37827458721](https://github.com/danieljoppi/AntHocNet/actions/runs/37827458721) | [37827462965](https://github.com/danieljoppi/AntHocNet/actions/runs/37827462965) |
-> | `hypatia` calibration | | | | | | [37827470132](https://github.com/danieljoppi/AntHocNet/actions/runs/37827470132) |
+> | `walker16` | `37827387100` | `37827390737` | `37827395914` | `37827410383` | `37827401516` | `37827405771` |
+> | `starlink1` | `37827426356` | `37827430778` |  | `37827443695` | `37827433965` | `37827439616` |
+> | `starlink1-storm` | `37827449496` | `37827453949` |  | `37827467035` | `37827458721` | `37827462965` |
+> | `hypatia` calibration | | | | | | `37827470132` |
 >
 > Cells: `results/cells/leo-<cell>-<arm>.txt`. **Every leo-walker
 > number measured before `0b5a65ad` is superseded** — see

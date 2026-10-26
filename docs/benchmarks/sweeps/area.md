@@ -129,8 +129,8 @@ _Sweep `area` — mean of 20 run(s) per point, every baseline on identical reali
 >
 > **Provenance.** `main` @ `3edbab6a`, `3.42-opt`, 900 s, range/disk PHY,
 > 20 seeds per point, one point per `scenario-matrix` job: runs
-> [37233283127](https://github.com/danieljoppi/AntHocNet/actions/runs/37233283127) (1500), [37233284897](https://github.com/danieljoppi/AntHocNet/actions/runs/37233284897) (1900), [37233286413](https://github.com/danieljoppi/AntHocNet/actions/runs/37233286413) (2100), [37233288164](https://github.com/danieljoppi/AntHocNet/actions/runs/37233288164) (2300) and
-> [37233289720](https://github.com/danieljoppi/AntHocNet/actions/runs/37233289720) (2500).
+> `37233283127` (1500), `37233284897` (1900), `37233286413` (2100), `37233288164` (2300) and
+> `37233289720` (2500).
 > Rescued as `results/campaign/<run>-run.csv` (aggregate) and
 > `<run>-run-runs.csv` (per seed).
 > `scenario_check.py results`: 0 FAIL; the WARNs are the #230 path-diversity

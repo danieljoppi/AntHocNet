@@ -989,6 +989,14 @@ the realisation, pinning RNG streams per seed so that "seed 7" no longer denotes
 the run it used to. Neither number is wrong; they are simply not the same
 experiment.
 
+**Run IDs in plain text.** A results page links each workflow run it cites.
+A run ID shown as plain code, not a link, names a run whose record was later
+deleted from GitHub Actions
+([#737](https://github.com/danieljoppi/AntHocNet/issues/737)). The numbers do
+not depend on the run record. Each cell the page cites is committed under
+`results/` (`results/cells/`, `results/campaign/`), and its `##PROV##` lines
+name the commit and the run it came from.
+
 ### The rule
 
 **A merge that changes protocol behaviour or stream assignment invalidates the
