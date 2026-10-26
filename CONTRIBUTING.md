@@ -144,6 +144,7 @@ table is that record.
 | v2.1.0 | `10.5281/zenodo.23265537` | [record 23265537](https://zenodo.org/records/23265537) — the restructure: the whole site is the game ([#626](https://github.com/danieljoppi/AntHocNet/issues/626)), the new `ns3/` layout ([#608](https://github.com/danieljoppi/AntHocNet/issues/608)) and the install path |
 | v2.2.0 | `10.5281/zenodo.23423439` | [record 23423439](https://zenodo.org/records/23423439) — the v2.2.0 re-baseline campaign ([#565](https://github.com/danieljoppi/AntHocNet/issues/565): four knobs A/B'd in every family, no default moves), the learn-site campaign chapters 1–2 and the Workshop, the infrastructure track |
 | v2.3.0 | `10.5281/zenodo.23456208` | [record 23456208](https://zenodo.org/records/23456208) — the v2.3.0 mechanism campaign (six regime-gated mechanisms in every family; quiet mode moves on by default, [#571](https://github.com/danieljoppi/AntHocNet/issues/571)), the restated v2.3.0 corpus, learn-site chapters 3–5, upgrades and the ns-3 replay, signed release artifacts and the bake recipe |
+| v2.4.0 | `10.5281/zenodo.23653720` | [record 23653720](https://zenodo.org/records/23653720) — family-native baselines (ADR-0026: HWMP, GPCR, GPSR-3D, OPSPF), the disaster and SAGIN families, the 50–500-node scale sweep with its known limitation ([#740](https://github.com/danieljoppi/AntHocNet/issues/740)), learn-site chapters 6–8 |
 
 **Adding a row is the whole per-release chore.** Append the new version DOI
 here; do **not** touch the README badge or `CITATION.cff`, which already point
