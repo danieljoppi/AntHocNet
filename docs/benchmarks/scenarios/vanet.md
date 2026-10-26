@@ -526,10 +526,12 @@ the statement is read in two terms that need no migrated protocol
 to each cell's oracle, and AntHocNet against each cell's best native baseline
 (highest mean PDR), both paired per seed. The numbers are the
 [v2.4.0 control campaign](../v2.4.0-campaign.md#results), 20 seeds per cell,
-and the disaster family's own [v2.4.0 campaign](disaster.md#results-v240),
-also 20 seeds. Seven families in all.
+and the disaster and SAGIN families' own v2.4.0 campaigns
+([disaster](disaster.md#results-v240),
+[SAGIN](../satellite/sagin.md#results-v240)), also 20 seeds. Eight families
+in all.
 
-![AntHocNet against each family's own yardsticks: its paired PDR gap to the oracle and to the best native baseline, in every cell of seven families](../charts/families-native.png)
+![AntHocNet against each family's own yardsticks: its paired PDR gap to the oracle and to the best native baseline, in every cell of eight families](../charts/families-native.png)
 
 _Each dot is the mean over 20 paired seeds with its 95 % paired t-CI; filled = the CI excludes 0. Drawn by [`ns3/tools/family-charts.py`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/tools/family-charts.py) from the committed v2.4.0 cells; the numbers come from [`tools/bench/native_view.py`](https://github.com/danieljoppi/AntHocNet/blob/main/tools/bench/native_view.py)._
 
@@ -542,6 +544,7 @@ _Each dot is the mean over 20 paired seeds with its 95 % paired t-CI; filled = t
 | ISL grid (4 cells) | none measured (OPSPF deferred) | — | 0.00 pp, every cell |
 | LEO shells (3) | OPSPF | **−6.17 pp** (walker16), **−17.48 / −16.94 pp** (Starlink S1, storm) | −5.62 pp (walker16), −15.9 pp (S1); the 1 s hop oracle is not a bound there (#720) |
 | disaster | AODV | tie (+0.58 pp, CI straddles 0) | −3.77 pp; the oracle itself loses 18.5 % to partitions |
+| SAGIN (3 shells + HAPS) | OPSPF | **−5.95 pp** (walker16), **−17.11 / −17.74 pp** (Starlink S1, storm) | −5.61 pp (walker16), −14.9 / −16.3 pp (S1); the 1 s oracles are not bounds there (#720) |
 
 **What holds across families:**
 - **AntHocNet leads delivery on open mobile fields**: every MANET cell and
@@ -552,7 +555,7 @@ _Each dot is the mean over 20 paired seeds with its 95 % paired t-CI; filled = t
 
 **What does not hold:**
 - **On stable topologies, link state wins.** OLSR leads the static mesh and
-  OPSPF leads every LEO shell. The OPSPF lead is large on Starlink S1
+  OPSPF leads every LEO shell, with or without the SAGIN air layer. The OPSPF lead is large on Starlink S1
   (−17.5 pp), bought with 20× AntHocNet's control.
 - **On the street grid nothing native beats AODV, and neither does
   AntHocNet.** It ties AODV, and the geographic comparators (GPSR, GPCR)

@@ -224,7 +224,7 @@ there — the family table, the side-by-side harness comparison, and the
 mechanism-by-mechanism live/inert map are all in
 [docs/network-regimes.md](docs/network-regimes.md).
 
-![AntHocNet against each family's own yardsticks, paired per seed with 95 % CIs: its gap to the oracle, and to the best native baseline, in every cell of seven families. Ahead of every native baseline on the MANET grid and FANET, tied with AODV on VANET and the disaster scene, behind OLSR on the static mesh and behind OPSPF on the LEO shells](docs/benchmarks/charts/families-native.png)
+![AntHocNet against each family's own yardsticks, paired per seed with 95 % CIs: its gap to the oracle, and to the best native baseline, in every cell of eight families. Ahead of every native baseline on the MANET grid and FANET, tied with AODV on VANET and the disaster scene, behind OLSR on the static mesh and behind OPSPF on the LEO shells](docs/benchmarks/charts/families-native.png)
 
 ## Roadmap
 

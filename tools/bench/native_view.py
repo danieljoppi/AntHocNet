@@ -51,12 +51,14 @@ FAMILIES = [
     ("LEO", ["leo-walker16", "leo-starlink1", "leo-starlink1-storm"],
      ["opspf", "geo-greedy"]),
     ("disaster", ["disaster-main"], ["aodv", "olsr"]),
+    ("SAGIN", ["sagin-walker16", "sagin-starlink1", "sagin-starlink1-storm"],
+     ["opspf", "geo-greedy", "gpsr3d"]),
 ]
-LEO_PROTOS = ["anthocnet", "opspf", "geo-greedy", "oracle", "oracle-delay"]
+LEO_PROTOS = ["anthocnet", "opspf", "geo-greedy", "gpsr3d", "oracle", "oracle-delay"]
 
 
 def load_cell(cell, gen, d):
-    if cell.startswith("leo-"):
+    if cell.startswith(("leo-", "sagin-")):
         runs = {}
         for p in LEO_PROTOS:
             path = os.path.join(d, f"{cell}-{p}-{gen}.txt")
