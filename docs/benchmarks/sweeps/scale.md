@@ -403,3 +403,50 @@ What they say:
 - Every WARN is a known caveat: churn-dominated path diversity, the oracle's
   no-path lookups, and ICMP re-injections.
 
+
+## Why AntHocNet collapses at 500 nodes: the v2.5.0 screen (pre-registered, exploratory)
+
+The diagnosis ([#740](https://github.com/danieljoppi/AntHocNet/issues/740)), read from the committed v2.4.0 cells:
+
+- **The loss is not at the MAC.** At 500 nodes AntHocNet loses 11–18 % of
+  offered packets on the channel and under 0.5 % at the MAC, against AODV's
+  35–41 % on the channel.
+- **It is the reconvergence hold.** Route drops at a node that had a route and
+  lost it reach 49–64 % of offered packets at 500 nodes, against 1.4 % at 50.
+  The hold is capped at `ReconvHoldCap` = 200 ms, while a ~15-hop
+  re-discovery takes seconds. 96–98 % of reconv-held packets age out at 500
+  nodes, against 25–30 % at 50 and 42–62 % at 200.
+- **The adapter re-floods.** The ns-3 retry timer
+  (`ReactiveRetryInterval` = 0.25 s) launches a reactive ant from every node
+  holding data for a lost route, bypassing the core's own one-per-second
+  per-destination limit. That fits reactive ants rising from 27 % to 90 % of
+  control traffic.
+
+**The screen** (`tools/bench/campaigns/v2.5.0-scale-screen.yaml`) runs four
+arms at 500 nodes on seeds 1–4, AntHocNet only, paired with the committed
+`scale-500-v240` control:
+
+| arm | override |
+|---|---|
+| `hold1s` | `ReconvHoldCap=1s` |
+| `retry1s` | `ReactiveRetryInterval=1s` |
+| `both` | both overrides |
+| `retry0` | `ReactiveRetryInterval=0s` (the timer off, pre-#21) |
+
+A `recheck` job re-runs the control's seeds 1–2 (AntHocNet + AODV) on
+`benchmark-cell.yml`. Its `##RUN##` rows must equal the committed cell's,
+so each arm's delta is attributable to the arm; it is also the old-path
+vs new-path control for [#746](https://github.com/danieljoppi/AntHocNet/issues/746).
+
+**Rule, fixed before dispatch.** An arm goes to stage 2 if its paired dPDR at
+500 nodes is at least +5 pp with the 95 % CI excluding zero. If none does,
+the arm with the largest paired dPDR whose CI excludes zero goes. If no CI
+excludes zero, the hypothesis is not supported and #740 says so. **No number
+from this screen is published.** Stage 2 (50 / 200 / 500 nodes, 20 seeds,
+paired, no regression at 50) gets its own pre-registered plan.
+
+Earlier evidence that no constant here is a default candidate: v2.2.0's
+`reconv1s` arm (the same override as `hold1s`) gained +4 to +6 pp on VANET and
+FANET and lost 1.4 and 6.0 pp on the grid Nakagami cells
+([v2.2.0 campaign](../v2.2.0-campaign.md)). A fix that helps here ships as a
+gated mechanism, default off (golden rule 8).
