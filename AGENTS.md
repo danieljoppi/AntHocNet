@@ -80,9 +80,9 @@ results.
 - Validate the **core** half locally first (`make test`); only the adapter/build
   half needs CI.
 - Heavier, manual workflows: `benchmark-cell` (one harness cell, any
-  harness; campaigns dispatch it through `tools/bench/campaign.py`; the older
-  `paper-benchmark` / `scenario-matrix` / `satellite-benchmark` are superseded
-  and go in #746),
+  harness; campaigns dispatch it through `tools/bench/campaign.py`; it replaced
+  `paper-benchmark` / `scenario-matrix` / `satellite-benchmark`, removed in
+  v2.5.0, #746),
   `release.yml` (Commitizen bump + install-bundle), `images.yml`
   (republish simulator images). Automatic: `charts.yml` (re-renders charts from
   committed data), `core-bench.yml` (core ns/op: PR vs base as a warning, history

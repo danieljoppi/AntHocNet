@@ -79,7 +79,8 @@ leo-walker), `version` (`3.42-opt`; `3.48` for leo-walker) and `args`, the
 harness's own flags verbatim, e.g.
 `--scenario=paper --runs=20 --diag --protocols=anthocnet,aodv --ns3::anthocnet::RoutingProtocol::EnableMacMetric=true`.
 `open_pr=true` with `cell=<name>` opens a PR adding `results/cells/<name>.txt`.
-paper-benchmark / satellite-benchmark / scenario-matrix are superseded and go in #746.
+paper-benchmark / satellite-benchmark / scenario-matrix were removed in v2.5.0
+(#746); `campaign.py` still translates plans that name them.
 Pair every ON run with an identical OFF run for a clean A/B (baselines are
 deterministic on identical seeds).
 

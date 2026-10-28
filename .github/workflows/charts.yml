@@ -17,9 +17,8 @@ name: Charts
 # before merge, and upload the PNGs for the reviewer.
 #
 # Re-measuring a sweep: rescue its CSV into results/campaign/, cite it
-# on the sweep page, and point SWEEP_SOURCES in family-charts.py at it. A
-# scenario-matrix run with commit=true writes sweep PNGs from its own fresh
-# CSV; the next run here re-renders them from the cited CSVs, which is what
+# on the sweep page, and point SWEEP_SOURCES in family-charts.py at it; the
+# next run here re-renders the sweep PNGs from the cited CSVs, which is what
 # the pages say they show.
 on:
   push:

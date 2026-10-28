@@ -1,17 +1,15 @@
 name: Rescue run artifacts into docs (manual)
 
-# One-shot rescue tool (#122): workflow artifacts expire (7-day retention on
-# the campaign runs), but the #110 campaign's completed sweep CSVs are
-# irreplaceable without re-paying the simulation cost. This job downloads the
-# `scenario-matrix` artifact of each given run and commits its scenarios.csv
-# into results/campaign/ so the data survives expiry. Runs in seconds;
-# it does NOT dispatch any simulation.
+# Rescue tool (#122): workflow artifacts expire, and a run's result data is
+# irreplaceable without re-paying the simulation cost. It runs in seconds and
+# does NOT dispatch any simulation.
 #
-# #259 extends the same rescue to the satellite suite: the `satellite-benchmark`
-# artifact's satellite-results.txt (human table + ##RUN## rows, not a CSV)
-# lands as results/campaign/<runid>-sat.txt.
+# The first two modes (#122 scenario-matrix CSVs, #259 satellite-benchmark
+# results) went with those workflows in v2.5.0 (#746): campaigns run on
+# benchmark-cell.yml, whose artifacts the bundle mode below gathers. What they
+# rescued is committed under results/campaign/.
 #
-# #229 extends it to the per-merge `benchmarks` workflow: its
+# The per-merge mode (#229) serves the `benchmarks` workflow: its
 # `benchmark-results` artifact carries the scenarios.csv with the drop_*_pct
 # columns that the job log swallows (run-scenarios.py keeps only CSV rows), so
 # the only drop-cause data the per-merge run produces dies with the artifact
@@ -25,14 +23,8 @@ name: Rescue run artifacts into docs (manual)
 on:
   workflow_dispatch:
     inputs:
-      run_ids:
-        description: 'Comma-separated workflow run IDs whose scenario-matrix artifact to rescue (the June #110 campaign was 30031902395,30031904151 — long expired; kept as labels in the step)'
-        default: ''
-      sat_run_ids:
-        description: 'Comma-separated workflow run IDs whose satellite-benchmark artifact to rescue (#259); clear run_ids when rescuing only satellite runs'
-        default: ''
       merge_run_ids:
-        description: 'Comma-separated workflow run IDs whose benchmark-results artifact (per-merge benchmarks workflow, #229) to rescue; clear the other inputs when rescuing only these'
+        description: 'Comma-separated workflow run IDs whose benchmark-results artifact (per-merge benchmarks workflow, #229) to rescue'
         default: ''
       bundle_run_ids:
         description: 'Comma-separated workflow run IDs whose artifacts to gather into one rescue-bundle artifact (campaign collect); commits nothing'
@@ -49,70 +41,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Download artifacts and stage CSVs
-        if: github.event.inputs.run_ids != ''
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          mkdir -p results/campaign
-          IFS=',' read -ra IDS <<< "${{ github.event.inputs.run_ids }}"
-          for id in "${IDS[@]}"; do
-            id="$(echo "$id" | tr -d ' ')"
-            # Known campaign runs get a readable label; anything else keeps the id.
-            case "$id" in
-              30031902395) label="area-disk" ;;   # area sweep, range PHY, runs=5, time=900
-              30031904151) label="pause-disk" ;;  # pause sweep, range PHY, runs=5, time=900
-              *)           label="run" ;;
-            esac
-            dir="rescue-tmp/$id"
-            gh run download "$id" -R "$GITHUB_REPOSITORY" -n scenario-matrix -D "$dir"
-            if [ ! -f "$dir/scenarios.csv" ]; then
-              echo "FAIL: no scenarios.csv in artifact of run $id"; exit 1
-            fi
-            rows=$(( $(wc -l < "$dir/scenarios.csv") - 1 ))
-            if [ "$rows" -lt 1 ]; then
-              echo "FAIL: scenarios.csv of run $id has no data rows"; exit 1
-            fi
-            echo "run $id ($label): $rows data rows"
-            cp "$dir/scenarios.csv" "results/campaign/${id}-${label}.csv"
-            # #319: the per-run sibling rides along when the producing run is
-            # new enough to have written it; absent for older runs.
-            if [ -f "$dir/scenarios-runs.csv" ]; then
-              cp "$dir/scenarios-runs.csv" \
-                 "results/campaign/${id}-${label}-runs.csv"
-            fi
-          done
-          rm -rf rescue-tmp
-      - name: Download satellite artifacts and stage results (#259)
-        if: github.event.inputs.sat_run_ids != ''
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          mkdir -p results/campaign
-          IFS=',' read -ra IDS <<< "${{ github.event.inputs.sat_run_ids }}"
-          for id in "${IDS[@]}"; do
-            id="$(echo "$id" | tr -d ' ')"
-            # satellite-benchmark uploads a results *text* (human table +
-            # ##RUN## per-seed rows), not a CSV; the -sat.txt suffix tells
-            # readers and scenario_check.py the format on sight.
-            label="sat"
-            dir="rescue-tmp/$id"
-            gh run download "$id" -R "$GITHUB_REPOSITORY" -n satellite-benchmark -D "$dir"
-            if [ ! -f "$dir/satellite-results.txt" ]; then
-              echo "FAIL: no satellite-results.txt in artifact of run $id"; exit 1
-            fi
-            runs=$(grep -c '##RUN##' "$dir/satellite-results.txt" || true)
-            if [ "$runs" -lt 1 ]; then
-              echo "FAIL: satellite-results.txt of run $id has no ##RUN## result rows (#28 empty-table class)"; exit 1
-            fi
-            echo "run $id ($label): $runs per-run result rows"
-            cp "$dir/satellite-results.txt" "results/campaign/${id}-${label}.txt"
-          done
-          rm -rf rescue-tmp
       - name: Download per-merge benchmark artifacts and stage CSVs (#229)
         if: github.event.inputs.merge_run_ids != ''
         shell: bash
@@ -170,6 +98,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "nothing new to commit"
           else
-            git commit -m "benchmarks: rescue campaign results from expiring artifacts (#122, #259, #229) [skip ci]"
+            git commit -m "benchmarks: rescue per-merge results from expiring artifacts (#229) [skip ci]"
             git push origin "HEAD:${{ github.ref_name }}"
           fi

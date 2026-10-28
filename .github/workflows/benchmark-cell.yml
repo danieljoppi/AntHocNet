@@ -6,17 +6,17 @@ name: Benchmark cell
 # verdict. That replaces the "save the artifact, rebuild the provenance,
 # commit by hand" loop.
 #
-# Every dispatch shape of the older workflows fits here, because `args` is
-# the harness's own command line:
+# Every dispatch shape of the older workflows (removed in v2.5.0, #746) fits
+# here, because `args` is the harness's own command line:
 #   paper-benchmark.yml      harness=anthocnet-compare, args = its flags
 #                            (--scenario=paper --runs=20 ... --diag)
 #   satellite-benchmark.yml  harness=isl-grid | leo-walker, args = the flags
 #                            those inputs expanded to, plus extraArgs
 #   scenario-matrix.yml      one dispatch per sweep point; a sweep is a set
 #                            of cells (tools/bench/campaign.py dispatches sets)
-# rescue-artifacts.yml is recovery, not a dispatch shape, and stays. The
-# older workflows stay for one release of overlap (v2.3.0); they go in
-# v2.4.0 once campaign.py dispatches here.
+# campaign.py translates committed plans that still name the old workflows
+# into these inputs. rescue-artifacts.yml is recovery, not a dispatch shape,
+# and stays.
 #
 # The bot PR is opened with a GitHub App installation token when the
 # repository has one configured (#705): variable AHN_BOT_APP_ID and secret
@@ -94,7 +94,7 @@ jobs:
       - name: Install AntHocNet module
         run: make install-ns3 NS3DIR=/opt/ns-3
       - name: Resolve ns-3 build profile (#123)
-        # Same rule as paper-benchmark.yml: state the image's profile
+        # State the image's profile
         # explicitly, so the reconfigure never downgrades an -opt image.
         env:
           VERSION_TAG: ${{ inputs.version }}
@@ -116,7 +116,7 @@ jobs:
             --enable-modules='anthocnet;aomdv;gpsr;oracle;adaptive;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
           ./ns3 build && ./ns3 show profile
       - name: Run the cell
-        # As paper-benchmark: stop the run 20 min before the job ceiling, so
+        # Stop the run 20 min before the job ceiling, so
         # the always() steps still upload the stderr tail and a stub results
         # file that campaign.py collect recognises as a missing run (#746).
         timeout-minutes: 340
@@ -131,7 +131,7 @@ jobs:
           [ -n "$REPLAY" ] && ARGS="$ARGS --vizTrace=$GITHUB_WORKSPACE/replay.jsonl"
           timewrap=""
           [ -x /usr/bin/time ] && timewrap="/usr/bin/time -v -o $GITHUB_WORKSPACE/time-v.log"
-          # As paper-benchmark (#256): cap the address space below the
+          # #256: cap the address space below the
           # runner's, so an over-large cell dies by bad_alloc and keeps its logs.
           ulimit -v 13631488 || true
           echo "running: $HARNESS $ARGS"

@@ -182,7 +182,7 @@ def build_args(flags, runs, time, protocols, propagation, extra_args="",
         parts.append(f"--{k}={v}")
     # #177: caller-supplied args, appended verbatim and LAST so they override
     # the taxonomy's own flags (ns-3's CommandLine takes the last occurrence).
-    # Same contract as paper-benchmark.yml's extraArgs input: the string is
+    # Same contract as the retired paper-benchmark.yml's extraArgs input: the string is
     # spliced into the `./ns3 run "anthocnet-compare ..."` command line and
     # word-split there, so it may carry several space-separated arguments.
     if extra_args:

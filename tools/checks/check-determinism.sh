@@ -55,11 +55,12 @@ case "$HARNESS" in
 esac
 
 # Keep only the summary-table metric rows ("<proto> <number> ..."), the same
-# row pattern paper-benchmark.yml's ##BENCH## awk matches. This drops ./ns3
+# row pattern the retired paper-benchmark.yml's ##BENCH## awk matched. This drops ./ns3
 # build chatter, '# diag'/'# stddev' lines, and anything timing-dependent
 # (timestamps, build durations), so the diff compares simulation results, not
 # wall-clock artefacts.
-# #421: keep this arm list in step with paper-benchmark.yml's ##BENCH## awk.
+# #421: keep this arm list in step with the harness's arms (check-allowlists.sh
+# enforces it).
 # An arm missing here is not "not compared" loudly — it is dropped from BOTH
 # sides of the diff, so a non-deterministic oracle/gpsr/aomdv would pass this
 # gate silently. That is how the three post-v1.4.0 arms went unchecked.

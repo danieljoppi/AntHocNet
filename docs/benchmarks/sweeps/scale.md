@@ -58,10 +58,12 @@ are f = 1.0 (50 nodes, 1500×500 m), 1.4 (98, 2100×700), 1.8 (162, 2700×900) a
 ## How it is produced
 
 Sweeps are **too heavy for the per-merge `benchmarks` workflow**, which runs
-only the discrete scenarios. They come from the manual **Scenario matrix +
-charts** workflow (`scenario-matrix.yml`), which renders `sweep-scale.png` into
-[`docs/benchmarks/`](../) and uploads the classified CSV; the table below is
-filled in by pointing `update-benchmarks.py` at that CSV.
+only the discrete scenarios. They came from the manual **Scenario matrix +
+charts** workflow (`scenario-matrix.yml`, removed in v2.5.0, #746), which
+uploaded the classified CSV; the table below is filled in by pointing
+`update-benchmarks.py` at that CSV, and `charts.yml` re-renders `sweep-scale.png`
+from it. A new sweep is a campaign plan of one cell per point on
+`benchmark-cell.yml` (`tools/bench/campaign.py`).
 
 Raw sweep data rescued from expired artifacts lives in
 [`results/campaign/`](../../../results/campaign/) and is summarizable with the `benchmark-results`

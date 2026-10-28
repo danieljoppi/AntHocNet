@@ -33,7 +33,7 @@ on:
   # of them: its bump commit (CHANGELOG.md, VERSION) is how a new release's
   # notes page reaches the site.
   workflow_run:
-    workflows: ["Benchmarks", "Charts", "Scenario matrix + charts (manual)", "Release", "Core speed"]
+    workflows: ["Benchmarks", "Charts", "Release", "Core speed"]
     types: [completed]
     branches: [main]
   workflow_dispatch:

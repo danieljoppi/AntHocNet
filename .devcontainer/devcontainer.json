@@ -23,8 +23,8 @@
   //     different toolchain. A newcomer's first run should be reproducible.
   //   * ns-3 version: 3.42 is this repo's reference version — the single matrix
   //     leg ci.yml runs the validation-anchor, determinism and satellite-anchor
-  //     gates on, and the default `version` input of the scenario-matrix /
-  //     paper-benchmark campaigns. Numbers produced in here are therefore
+  //     gates on, and the `version` the benchmark-cell campaigns run on
+  //     (3.42-opt). Numbers produced in here are therefore
   //     comparable to the ones in docs/benchmarks/.
   //   * release: v2.3.0 = the current VERSION. The full tag list is visible via
   //     the GHCR API (`ghcr.io/v2/danieljoppi/anthocnet-ns3/tags/list`).

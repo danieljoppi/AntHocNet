@@ -86,8 +86,8 @@ COPY . .
 # gpsr and oracle into contrib/, and anthocnet-compare.cc includes all four
 # module headers, so an arm absent here breaks the example build rather than
 # merely omitting the arm. This is the same coupling as ci.yml's mods=, the
-# five campaign workflows' --enable-modules, check-determinism.sh's
-# filter_rows() and paper-benchmark.yml's ##BENCH## awk. Any new module has to
+# campaign workflows' --enable-modules (benchmark-cell.yml, benchmarks.yml) and
+# check-determinism.sh's filter_rows(). Any new module has to
 # be added to all of them — enforced since #435 by tools/checks/check-allowlists.sh
 # (CI `allowlists` job), which also asserts the stock base list above stays
 # free of vendored modules (the #24 control).

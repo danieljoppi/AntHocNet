@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Allowlist consistency gate (#435): assert that every hand-maintained
-# module / protocol-arm / ##MARKER## allowlist in the tree agrees with a
+# module / protocol-arm allowlist in the tree agrees with a
 # ground truth DERIVED from the tree, so the next module/arm/marker addition
 # fails this cheap per-PR check instead of the next campaign or release.
 #
@@ -11,7 +11,7 @@
 # failing silently or misleadingly (#421, #423, #435):
 #   - ci-ns3.yml's two mods= lines             -> compile error on all 5 versions
 #   - paper-benchmark.yml's ##BENCH## awk  -> arm silently absent from the
-#     published compact block
+#     published compact block (that workflow is gone since v2.5.0, #746)
 #   - check-determinism.sh's filter_rows() -> arm dropped from BOTH sides of
 #     the diff, gate said PASS having compared nothing
 #   - docker/Dockerfile.ns3 --enable-modules -> every v1.5.0 ns-3 release
@@ -22,7 +22,6 @@
 # Ground truths (derived, never listed here):
 #   modules  = LIBNAME entries of the vendored module CMakeLists under ns3/
 #   arms     = the `proto == "<name>"` dispatch in anthocnet-compare.cc
-#   markers  = the `"##NAME## ` string literals anthocnet-compare.cc prints
 #
 # Failure-to-find is failure: if a checked file or the pattern locating a
 # list inside it disappears (a refactor moved the list), this gate FAILS
@@ -71,18 +70,6 @@ if ! printf '%s\n' "$arms" | grep -qx 'anthocnet'; then
     exit 1
 fi
 
-# --- ground truth 3: ##MARKER##s the compare harness emits ----------------
-# Emission sites all print a string literal of the form "##NAME## " (trailing
-# space distinguishes an emission from a marker merely *mentioned* in help
-# text, e.g. "read ##GOODPUT##.").
-markers=$(grep -oE '"##[A-Z]+## ' "$harness" | grep -oE '[A-Z]+' | sort -u)
-if ! printf '%s\n' "$markers" | grep -qx 'RUN'; then
-    echo "FAIL [allowlists]: could not derive the ##MARKER## set from $harness"
-    echo "  (no '\"##RUN## ' emission found). If the emission format changed, update"
-    echo "  the derivation here — do not hardcode a list (#435)."
-    exit 1
-fi
-
 # Stock ns-3 modules the compare harness links beyond the vendored ones and
 # their dependencies: mesh, for the hwmp arm (#708). ns-3 skips an example
 # whose module is not enabled, so a list without it loses the whole harness.
@@ -93,7 +80,6 @@ mesh"
 
 echo "[allowlists] modules: $(printf '%s\n' "$modules" | tr '\n' ' ')"
 echo "[allowlists] arms:    $(printf '%s\n' "$arms" | tr '\n' ' ')"
-echo "[allowlists] markers: $(printf '%s\n' "$markers" | tr '\n' ' ')"
 
 # --- check class 1: module allowlists -------------------------------------
 # $1 file, $2 line regex, $3 expected match count, $4 human label.
@@ -132,12 +118,8 @@ check_module_list .github/workflows/ci-ns3.yml \
     "^[[:space:]]*mods='" 2 "ci-ns3.yml mods= (ns3-build + ns3-asan)"
 check_module_list .github/workflows/benchmarks.yml \
     "--enable-modules='" 1 "benchmarks.yml --enable-modules"
-check_module_list .github/workflows/paper-benchmark.yml \
-    "--enable-modules='" 1 "paper-benchmark.yml --enable-modules"
-check_module_list .github/workflows/scenario-matrix.yml \
-    "--enable-modules='" 1 "scenario-matrix.yml --enable-modules"
-check_module_list .github/workflows/satellite-benchmark.yml \
-    "--enable-modules='" 1 "satellite-benchmark.yml --enable-modules"
+check_module_list .github/workflows/benchmark-cell.yml \
+    "--enable-modules='" 1 "benchmark-cell.yml --enable-modules"
 # The devcontainer mirrors ci-ns3.yml's ns3-build recipe (#334) — an eleventh
 # hand-maintained copy, found while writing this gate (#435).
 check_module_list .devcontainer/post-create.sh \
@@ -222,7 +204,6 @@ check_arm_alternation() {
     done
 }
 
-check_arm_alternation .github/workflows/paper-benchmark.yml "##BENCH## awk arm filter"
 check_arm_alternation tools/checks/check-determinism.sh "check-determinism.sh filter_rows()"
 
 # --- check class 2b: the harnesses' own --protocols help lists ------------
@@ -302,32 +283,14 @@ check_help_list ns3/anthocnet/examples/anthocnet-compare.cc ""
 # an exception here, not a miss.
 check_help_list ns3/anthocnet/examples/isl-grid.cc "dsdv"
 
-# --- check class 3: ##MARKER## re-emit list -------------------------------
-# paper-benchmark.yml's compact-block step re-emits each harness marker via
-# `grep '^##NAME##' ...` so a cheap log tail carries everything. A marker
-# emitted but not re-emitted is unreachable from that tail — the class hit by
-# ##MATCH## and again by ##ORACLE## (#423): "emitting it is only half of
-# shipping it".
-pb=.github/workflows/paper-benchmark.yml
-if need_file "$pb"; then
-    reemit=$(grep -oE "grep '\^##[A-Z]+##'" "$pb" | grep -oE '[A-Z]+' | sort -u || true)
-    if [ -z "$reemit" ]; then
-        echo "FAIL [allowlists]: found no \"grep '^##NAME##'\" re-emit lines in $pb —"
-        echo "  the compact-block step moved or changed shape; update check-allowlists.sh (#435)."
-        fail=1
-    else
-        for mk in $markers; do
-            if ! printf '%s\n' "$reemit" | grep -qx "$mk"; then
-                echo "FAIL [allowlists]: ##$mk## is emitted by $harness but not re-emitted in"
-                echo "  $pb's compact block — unreachable from a cheap log tail (#423)."
-                fail=1
-            fi
-        done
-    fi
-fi
+# --- check class 3 (retired in v2.5.0, #746) -----------------------------
+# Class 3 checked paper-benchmark.yml's compact block, which re-emitted every
+# ##MARKER## into the log tail. Campaigns now run on benchmark-cell.yml, which
+# uploads the harness's whole results file as the artifact that collect reads,
+# so no marker can be lost to a tail; the workflow and the check went together.
 
 if [ "$fail" -ne 0 ]; then
     echo "FAIL [allowlists]: at least one hand-maintained allowlist disagrees with the tree (#435)."
     exit 1
 fi
-echo "PASS [allowlists] every module/arm/marker allowlist matches the tree-derived ground truth"
+echo "PASS [allowlists] every module/arm allowlist matches the tree-derived ground truth"

@@ -147,12 +147,12 @@ notification floods cost −7.5 pp PDR).
 - Statistics: 5 independent problem instances × 5 runs each (25 runs per
   point).
 
-Repo mapping: `--scenario=paper` in `ns3/tools`/`paper-benchmark.yml` runs 50
+Repo mapping: `--scenario=paper` in `ns3/tools` and the campaign cells runs 50
 nodes / 1500 × 300 / RWP 20 m/s / pause 30 / 20 CBR flows; the repo's CI runs
 use 300 s (time-boxed) vs the paper's 900 s, disk-model `--propagation=range`
 by default vs the paper's two-ray (`--propagation=tworay` available), and ns-3
 vs Qualnet (CONTEXT.md §8 cross-simulator caveat). The scale/pause/area sweeps
-are `scenario-matrix.yml`.
+were `scenario-matrix.yml` (campaign plans on `benchmark-cell.yml` since v2.5.0).
 
 ## 5. Results digest (§4.2)
 
