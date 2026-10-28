@@ -14,15 +14,14 @@ Targets ns-3.36+ (CMake). A `wscript` is included for older waf-based ns-3
 ns3/
   anthocnet/          our module: model/, helper/, examples/ (the harnesses), test/
   baselines/<name>/   vendored comparison arms, each a self-contained module:
-                      aomdv/, gpsr/, oracle/, adaptive/ (provenance in each README)
+                      aomdv/, gpsr/, oracle/ (provenance in each README)
   tools/              harness drivers, chart scripts, anchors.yml
   Makefile            the installer (make install-ns3 from the repo root)
 ```
 
 CI check scripts live in [`tools/checks/`](../tools/checks). The installed
 layout is the same as before the #608 move: `contrib/anthocnet`,
-`contrib/aomdv`, `contrib/gpsr` and `contrib/oracle`, plus `contrib/adaptive`
-(the v2.5.0 ARA, Termite and Q-routing comparators, #563).
+`contrib/aomdv`, `contrib/gpsr` and `contrib/oracle`.
 
 ## Install
 
@@ -40,8 +39,8 @@ cd /path/to/ns-3-dev
 `make doctor` checks that the tree is ns-3.36–3.48 with CMake, a C++17
 compiler, Python and a writable `contrib/`, and reports what is installed. It
 ends with one machine-readable `##DOCTOR##` line (versioned, fields only ever
-added). `BASELINES=0` skips the `aomdv`, `gpsr`, `oracle` and `adaptive`
-comparison modules: the module, its test suite and `anthocnet-example` build as usual,
+added). `BASELINES=0` skips the `aomdv`, `gpsr` and `oracle` comparison
+modules: the module, its test suite and `anthocnet-example` build as usual,
 and ns-3 skips the comparison harnesses that link those modules.
 
 No checkout? Each release ships `anthocnet-ns3-modules-<version>.tar.gz`,
@@ -78,10 +77,10 @@ data packets delivered, counted uniformly at the IP layer):
 
 ```bash
 # requires aodv, aomdv, olsr, dsdv, gpsr (the vendored #296 baselines),
-# oracle (the #296 shortest-path control), adaptive (the ara, termite and
-# qrouting arms, #563), mesh (the 802.11s hwmp arm, #708) and flow-monitor enabled
+# oracle (the #296 shortest-path control), mesh (the 802.11s hwmp arm, #708)
+# and flow-monitor enabled
 ./ns3 configure --enable-examples \
-  --enable-modules='anthocnet;aomdv;gpsr;oracle;adaptive;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
+  --enable-modules='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
 ./ns3 build
 
 # the paper's base scenario (50 nodes, 1500x300 m, RWP 20 m/s / 30 s pause,
@@ -304,8 +303,6 @@ ns3/
   wscript                              ns-3 < 3.36 build
   aomdv/                               vendored AOMDV baseline module (#296;
                                        provenance + license in aomdv/README.md)
-  adaptive/                            ARA, Termite and Q-routing, written from their
-                                       papers (#563; fidelity sheets in adaptive/README.md)
 ```
 
 ## Notes

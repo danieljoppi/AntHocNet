@@ -8,7 +8,7 @@
 # parses locally:
 #
 #   ##DOCTOR## v=1 ns3=3.42 cmake=3.28.3 cxx=g++-13.2.0 python=3.11.9
-#              contrib=writable module=installed baselines=aomdv:ok,gpsr:ok,oracle:ok,adaptive:ok
+#              contrib=writable module=installed baselines=aomdv:ok,gpsr:ok,oracle:ok
 #              built=no verdict=ok
 #
 # (one line in the output). The format is versioned by v=; fields are only ever
@@ -73,7 +73,7 @@ else
         module=missing; warn "AntHocNet not installed yet: make install-ns3 NS3DIR=$NS3DIR"
     fi
     b=""
-    for m in aomdv gpsr oracle adaptive; do
+    for m in aomdv gpsr oracle; do
         if [ -d "$NS3DIR/contrib/$m" ]; then s=ok; else s=missing; fi
         b="${b:+$b,}$m:$s"
     done

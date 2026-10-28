@@ -114,7 +114,7 @@ jobs:
         run: |
           cd /opt/ns-3
           ./ns3 configure --enable-examples \
-            --enable-modules='anthocnet;aomdv;gpsr;oracle;adaptive;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
+            --enable-modules='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
           ./ns3 build
       - name: Install matplotlib
         run: apt-get update && apt-get install -y python3-matplotlib

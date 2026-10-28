@@ -20,7 +20,7 @@ build_lib_example(
 )
 
 # The comparison harnesses link the vendored baseline modules (aomdv, gpsr,
-# oracle, and adaptive for anthocnet-compare). ns-3 skips an example whose module is present but not enabled, but
+# oracle). ns-3 skips an example whose module is present but not enabled, but
 # a module that is not installed at all leaves its ${lib...} variable empty and
 # the example is compiled anyway (seen on ns-3.48 with BASELINES=0, #605). So
 # each harness is gated on its contrib modules existing, the same way
@@ -32,11 +32,10 @@ endif()
 set(AHN_HAVE_BASELINES FALSE)
 if(AHN_HAVE_ORACLE
    AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/aomdv/CMakeLists.txt
-   AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/gpsr/CMakeLists.txt
-   AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/adaptive/CMakeLists.txt)
+   AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/gpsr/CMakeLists.txt)
   set(AHN_HAVE_BASELINES TRUE)
 else()
-  message(STATUS "anthocnet: comparison modules (aomdv, gpsr, oracle, adaptive) not all "
+  message(STATUS "anthocnet: comparison modules (aomdv, gpsr, oracle) not all "
                  "installed -- skipping anthocnet-compare, isl-grid and "
                  "leo-walker (make install-ns3 without BASELINES=0 adds them)")
 endif()
@@ -80,9 +79,6 @@ build_lib_example(
     # installed by the same `make install-ns3`). Same rule as the baselines —
     # not enabled, example skipped.
     ${liboracle}
-    # v2.5.0 (#563): the adaptive comparators (ara, termite, qrouting),
-    # contrib/adaptive, installed by the same `make install-ns3`.
-    ${libadaptive}
 )
 endif()
 

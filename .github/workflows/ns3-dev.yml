@@ -57,7 +57,7 @@ jobs:
       - name: Configure (scope examples/tests to AntHocNet, as ci.yml)
         run: |
           cd "$NS3DIR"
-          mods='anthocnet;aomdv;gpsr;oracle;adaptive;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
+          mods='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
           ./ns3 configure --enable-tests --enable-examples \
             --filter-module-examples-and-tests='anthocnet;oracle' \
             --enable-modules="$mods"

@@ -18,18 +18,12 @@ name: Benchmark cell
 # older workflows stay for one release of overlap (v2.3.0); they go in
 # v2.4.0 once campaign.py dispatches here.
 #
-# The bot PR is opened with a GitHub App installation token when the
-# repository has one configured (#705): variable AHN_BOT_APP_ID and secret
-# AHN_BOT_APP_KEY, for an app with contents: write and pull-requests: write
-# on this repository. Pushes and PRs made with an app token start the normal
-# PR workflows, so the cell PR gets CI (lint, the replay check) and can
-# auto-merge (#616). Without them the job falls back to the workflow's own
-# token, with two consequences:
+# The bot PR is opened with the workflow's own token. Two consequences:
 # - it needs the repository setting "Allow GitHub Actions to create and
 #   approve pull requests"; without it the branch is still pushed, and the
 #   job summary links it;
-# - CI does not run on a PR a workflow token opens; close and reopen it if a
-#   check is wanted. The job prints a notice saying so.
+# - CI does not run on a PR a workflow token opens. The PR only adds a data
+#   file; close and reopen it if a check is wanted.
 on:
   workflow_dispatch:
     inputs:
@@ -113,7 +107,7 @@ jobs:
           cd /opt/ns-3
           # $NS3_PROFILE_FLAG unquoted on purpose: empty must expand to nothing.
           ./ns3 configure $NS3_PROFILE_FLAG --enable-examples \
-            --enable-modules='anthocnet;aomdv;gpsr;oracle;adaptive;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
+            --enable-modules='anthocnet;aomdv;gpsr;oracle;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
           ./ns3 build && ./ns3 show profile
       - name: Run the cell
         # As paper-benchmark: stop the run 20 min before the job ceiling, so
@@ -204,28 +198,14 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      # #705: an app token, when configured, so the PR's push starts CI.
-      - name: GitHub App token
-        id: app
-        if: ${{ vars.AHN_BOT_APP_ID != '' }}
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ vars.AHN_BOT_APP_ID }}
-          private-key: ${{ secrets.AHN_BOT_APP_KEY }}
-      - name: Token notice
-        if: ${{ steps.app.outputs.token == '' }}
-        run: echo "::notice::No AHN_BOT_APP_ID/AHN_BOT_APP_KEY configured (#705); the PR is opened with GITHUB_TOKEN and CI will not run on it."
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          token: ${{ steps.app.outputs.token || github.token }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-cell
           path: ${{ runner.temp }}/cell
       - name: Commit the cell on a branch and open the PR
         env:
-          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
-          APP_TOKEN: ${{ steps.app.outputs.token != '' }}
+          GH_TOKEN: ${{ github.token }}
           CELL: ${{ inputs.cell }}
           REPLAY: ${{ inputs.replay }}
           TITLE: ${{ inputs.title }}
@@ -269,7 +249,7 @@ jobs:
             "" "**Dispatch:** \`${HARNESS} ${ARGS}\` on \`ns3:${VERSION}\` at ${GITHUB_SHA}." \
             "" "**scenario_check results:**" '```' "$verdict" '```' \
             "" "**check-viz-trace (#641):**" '```' "$check" '```' \
-            "" "$(if [ "$APP_TOKEN" = true ]; then echo "Opened by benchmark-cell.yml (#612) with the app token (#705); CI runs on this PR."; else echo "Opened by benchmark-cell.yml (#612). CI does not run on a workflow-opened PR (no app token configured, #705); close and reopen it to run checks."; fi)")
+            "" "Opened by benchmark-cell.yml (#612). CI does not run on a workflow-opened PR; close and reopen it to run checks.")
           if ! gh pr create --base "${GITHUB_REF_NAME}" --head "$branch" \
                  --title "docs(bench): add ${name} (run ${GITHUB_RUN_ID})" --body "$body"; then
             url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${GITHUB_REF_NAME}...${branch}?expand=1"
