@@ -1,0 +1,255 @@
+# v250c campaign anchor-termite-s20-v250c: 1 run(s): 40706870840 (arms/anchor-termite-s20); ref main
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=paper nNodes=100 time=600 runs=10 firstRun=1 areaX=1250 areaY=1250 speed=20 pause=0 range=250 propagation=range mobility=rwp flowsFile=/__w/AntHocNet/AntHocNet/ns3/tools/fixtures/termite/termite-anchor.flows transport=udp flows=20 cbrBps=512 offTime=0 rateManager=constant2 protocols=termite,aodv
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr P2pHelloEvery=1
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ShareKinematics=false
+##CONFIG## attr EnableLinkLifetime=false
+##CONFIG## attr LinkLifetimeRange=250
+##CONFIG## attr LinkLifetimeHorizon=3
+##CONFIG## attr LinkLifetimeFloor=0.05
+##CONFIG## attr EnableQuietMode=true
+##CONFIG## attr QuietTolerance=0.2
+##CONFIG## attr QuietBackoffFactor=2
+##CONFIG## attr QuietMaxBackoff=8
+##CONFIG## attr EnableAdaptiveEvaporation=false
+##CONFIG## attr AdaptiveEvapRefChurn=0.1
+##CONFIG## attr AdaptiveEvapMin=0.25
+##CONFIG## attr AdaptiveEvapMax=4
+##CONFIG## attr AdaptiveEvapTau=10
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+##DROPID## 1 termite hopTx=761176 hopRx=743284 ackedHops=743038 macDrops=7460 reinjected=6609 macTerminal=851 macLost=7214 queue=0 hopLoss=17892 overlap=-424 unackedRx=246
+# diag termite seed=1 pdr=44.27 firstDeliveryS=60.77 ctrlTx=5942 setupMedS=9.51 setupMaxS=20.58 flowsNoDelivery=0
+##RUN## 1 termite 44.3 396.4 5933.5 11.70 0.62 462.01 inf inf 0.3522
+##AIR## 1 termite 1459.681 10881.810 9507.532 36.4150
+##ENERGY## 1 termite 50890.305 5.337211 1.0355e-02 4.442
+##GOODPUT## 1 termite 8.191
+##ROUTE## 1 termite 9.5061 20.5772 0 0.43112 0.500 4106 6.7919 6.7756
+##DROPID## 2 termite hopTx=761710 hopRx=743053 ackedHops=742725 macDrops=8160 reinjected=7278 macTerminal=882 macLost=7832 queue=0 hopLoss=18657 overlap=-574 unackedRx=328
+# diag termite seed=2 pdr=43.78 firstDeliveryS=60.76 ctrlTx=5573 setupMedS=3.51 setupMaxS=22.43 flowsNoDelivery=0
+##RUN## 2 termite 43.8 517.2 7072.5 11.57 0.59 594.79 inf inf 0.3340
+##AIR## 2 termite 1476.725 11332.766 10238.357 38.4131
+##ENERGY## 2 termite 50964.465 5.404503 1.0475e-02 4.081
+##GOODPUT## 2 termite 8.109
+##ROUTE## 2 termite 3.5146 22.4327 0 0.46684 0.500 4399 7.4514 7.3434
+##DROPID## 3 termite hopTx=757194 hopRx=736146 ackedHops=735815 macDrops=8367 reinjected=7464 macTerminal=903 macLost=8036 queue=0 hopLoss=21048 overlap=-992 unackedRx=331
+# diag termite seed=3 pdr=43.19 firstDeliveryS=62.84 ctrlTx=5668 setupMedS=6.60 setupMaxS=33.14 flowsNoDelivery=0
+##RUN## 3 termite 43.2 657.0 7513.5 11.41 0.61 712.22 inf inf 0.3443
+##AIR## 3 termite 1429.423 11377.662 10031.105 38.0637
+##ENERGY## 3 termite 50955.414 5.476721 1.0603e-02 4.384
+##GOODPUT## 3 termite 8.009
+##ROUTE## 3 termite 6.5986 33.1380 0 0.53610 0.500 4982 8.3599 8.3479
+##DROPID## 4 termite hopTx=815942 hopRx=796252 ackedHops=795899 macDrops=8872 reinjected=7856 macTerminal=1016 macLost=8519 queue=0 hopLoss=19690 overlap=-873 unackedRx=353
+# diag termite seed=4 pdr=37.99 firstDeliveryS=60.51 ctrlTx=6616 setupMedS=7.01 setupMaxS=49.06 flowsNoDelivery=0
+##RUN## 4 termite 38.0 610.9 7183.5 10.04 0.81 700.99 inf inf 0.4570
+##AIR## 4 termite 1582.570 11533.702 10539.220 39.4258
+##ENERGY## 4 termite 51006.271 6.233199 1.2043e-02 4.825
+##GOODPUT## 4 termite 7.059
+##ROUTE## 4 termite 7.0134 49.0579 0 0.52575 0.500 4298 8.8752 8.8003
+##DROPID## 5 termite hopTx=775490 hopRx=752900 ackedHops=752571 macDrops=8790 reinjected=7771 macTerminal=1019 macLost=8461 queue=0 hopLoss=22590 overlap=-772 unackedRx=329
+# diag termite seed=5 pdr=42.02 firstDeliveryS=61.01 ctrlTx=6080 setupMedS=5.56 setupMaxS=62.26 flowsNoDelivery=0
+##RUN## 5 termite 42.0 594.2 7287.5 11.10 0.67 654.12 inf inf 0.3797
+##AIR## 5 termite 1481.239 11309.254 10054.075 38.0743
+##ENERGY## 5 termite 50941.954 5.628323 1.0898e-02 4.786
+##GOODPUT## 5 termite 7.791
+##ROUTE## 5 termite 5.5636 62.2632 0 0.50619 0.500 4578 8.7507 8.6662
+##DROPID## 6 termite hopTx=669878 hopRx=652690 ackedHops=652479 macDrops=6914 reinjected=6028 macTerminal=886 macLost=6703 queue=0 hopLoss=17188 overlap=-622 unackedRx=211
+# diag termite seed=6 pdr=48.86 firstDeliveryS=60.76 ctrlTx=6007 setupMedS=11.12 setupMaxS=60.65 flowsNoDelivery=0
+##RUN## 6 termite 48.9 473.9 7189.5 12.91 0.57 537.60 inf inf 0.3226
+##AIR## 6 termite 1258.499 10133.172 8803.560 33.6587
+##ENERGY## 6 termite 50749.973 4.822308 9.3731e-03 4.221
+##GOODPUT## 6 termite 9.024
+##ROUTE## 6 termite 11.1167 60.6548 0 0.42359 0.500 4454 6.5669 6.5257
+##DROPID## 7 termite hopTx=772717 hopRx=751487 ackedHops=751158 macDrops=8464 reinjected=7416 macTerminal=1048 macLost=8135 queue=0 hopLoss=21230 overlap=-837 unackedRx=329
+# diag termite seed=7 pdr=42.87 firstDeliveryS=60.77 ctrlTx=5956 setupMedS=6.55 setupMaxS=35.13 flowsNoDelivery=0
+##RUN## 7 termite 42.9 632.3 8056.5 11.33 0.65 738.85 inf inf 0.3646
+##AIR## 7 termite 1466.605 11122.367 9967.221 37.5937
+##ENERGY## 7 termite 50929.676 5.515451 1.0678e-02 4.128
+##GOODPUT## 7 termite 7.950
+##ROUTE## 7 termite 6.5531 35.1263 0 0.51301 0.500 4733 8.1419 8.1166
+##DROPID## 8 termite hopTx=715156 hopRx=697926 ackedHops=697707 macDrops=7626 reinjected=6742 macTerminal=884 macLost=7407 queue=0 hopLoss=17230 overlap=-606 unackedRx=219
+# diag termite seed=8 pdr=44.87 firstDeliveryS=60.76 ctrlTx=6122 setupMedS=13.58 setupMaxS=62.91 flowsNoDelivery=0
+##RUN## 8 termite 44.9 492.5 7212.5 11.85 0.63 586.98 inf inf 0.3581
+##AIR## 8 termite 1373.396 10770.543 9569.361 36.1888
+##ENERGY## 8 termite 50856.215 5.262439 1.0226e-02 4.551
+##GOODPUT## 8 termite 8.288
+##ROUTE## 8 termite 13.5760 62.9078 0 0.43569 0.500 4207 7.0266 6.9870
+##DROPID## 9 termite hopTx=787357 hopRx=767140 ackedHops=766819 macDrops=8881 reinjected=7743 macTerminal=1138 macLost=8560 queue=0 hopLoss=20217 overlap=-531 unackedRx=321
+# diag termite seed=9 pdr=41.12 firstDeliveryS=60.75 ctrlTx=6535 setupMedS=8.04 setupMaxS=81.57 flowsNoDelivery=0
+##RUN## 9 termite 41.1 553.1 7647.5 10.87 0.74 629.65 inf inf 0.4170
+##AIR## 9 termite 1535.594 11664.104 10589.452 39.6486
+##ENERGY## 9 termite 51018.068 5.759547 1.1172e-02 3.827
+##GOODPUT## 9 termite 7.611
+##ROUTE## 9 termite 8.0443 81.5662 0 0.47148 0.500 4174 7.8641 7.7560
+##DROPID## 10 termite hopTx=849104 hopRx=825218 ackedHops=824848 macDrops=9826 reinjected=8556 macTerminal=1270 macLost=9456 queue=0 hopLoss=23886 overlap=-1002 unackedRx=370
+# diag termite seed=10 pdr=36.35 firstDeliveryS=60.56 ctrlTx=5800 setupMedS=1.52 setupMaxS=17.01 flowsNoDelivery=0
+##RUN## 10 termite 36.3 702.2 7908.5 9.60 0.74 776.61 inf inf 0.4187
+##AIR## 10 termite 1622.234 11385.495 10133.647 38.5690
+##ENERGY## 10 termite 51010.910 6.515635 1.2629e-02 4.373
+##GOODPUT## 10 termite 6.732
+##ROUTE## 10 termite 1.5185 17.0132 0 0.55276 0.500 4322 10.1106 10.0541
+##DROPID## 1 aodv hopTx=63708 hopRx=60964 ackedHops=60931 macDrops=1425 reinjected=0 macTerminal=1425 macLost=1392 queue=0 hopLoss=2744 overlap=-1352 unackedRx=33 pqSilent=0 pqEcb=99
+# diag aodv seed=1 pdr=72.01 firstDeliveryS=60.51 ctrlTx=720828 setupMedS=1.73 setupMaxS=13.64 flowsNoDelivery=0
+##RUN## 1 aodv 72.0 58.0 767.5 19.03 46.47 61.22 21.5 inf 24.7680
+##AIR## 1 aodv 900.800 6473.312 6064.611 22.3979
+##ENERGY## 1 aodv 50204.261 3.236479 6.3212e-03 2.034
+##GOODPUT## 1 aodv 13.237
+##ROUTE## 1 aodv 1.7337 13.6380 0 0.19571 2.000 3032 3.0690 3.0690
+##DROPID## 2 aodv hopTx=65213 hopRx=61960 ackedHops=61929 macDrops=1687 reinjected=0 macTerminal=1687 macLost=1656 queue=0 hopLoss=3253 overlap=-1597 unackedRx=31 pqSilent=0 pqEcb=78
+# diag aodv seed=2 pdr=66.88 firstDeliveryS=60.51 ctrlTx=805207 setupMedS=1.27 setupMaxS=7.01 flowsNoDelivery=0
+##RUN## 2 aodv 66.9 59.8 772.5 17.67 55.89 71.60 47.5 inf 29.7834
+##AIR## 2 aodv 1000.092 7337.562 7077.301 25.6916
+##ENERGY## 2 aodv 50332.238 3.493839 6.8239e-03 2.100
+##GOODPUT## 2 aodv 12.293
+##ROUTE## 2 aodv 1.2670 7.0130 0 0.22717 2.000 3268 3.1745 3.1745
+##DROPID## 3 aodv hopTx=63178 hopRx=59415 ackedHops=59385 macDrops=1620 reinjected=0 macTerminal=1620 macLost=1590 queue=0 hopLoss=3763 overlap=-2173 unackedRx=30 pqSilent=0 pqEcb=0
+# diag aodv seed=3 pdr=65.93 firstDeliveryS=60.50 ctrlTx=781771 setupMedS=1.84 setupMaxS=9.94 flowsNoDelivery=0
+##RUN## 3 aodv 65.9 61.0 804.5 17.42 55.05 69.20 49.5 inf 29.3763
+##AIR## 3 aodv 968.244 7227.873 6915.967 25.1868
+##ENERGY## 3 aodv 50318.016 3.543023 6.9200e-03 1.896
+##GOODPUT## 3 aodv 12.119
+##ROUTE## 3 aodv 1.8378 9.9387 0 0.22507 2.000 3192 3.0553 3.0553
+##DROPID## 4 aodv hopTx=69386 hopRx=65769 ackedHops=65733 macDrops=1870 reinjected=0 macTerminal=1870 macLost=1834 queue=0 hopLoss=3617 overlap=-1783 unackedRx=36 pqSilent=0 pqEcb=19
+# diag aodv seed=4 pdr=62.74 firstDeliveryS=60.51 ctrlTx=851908 setupMedS=1.58 setupMaxS=7.03 flowsNoDelivery=0
+##RUN## 4 aodv 62.7 65.3 813.5 16.58 63.04 75.10 78.5 inf 33.5774
+##AIR## 4 aodv 1051.093 7375.502 7024.474 25.7518
+##ENERGY## 4 aodv 50346.548 3.725510 7.2764e-03 2.109
+##GOODPUT## 4 aodv 11.532
+##ROUTE## 4 aodv 1.5782 7.0279 0 0.25041 2.000 3379 3.4390 3.4390
+##DROPID## 5 aodv hopTx=64858 hopRx=61491 ackedHops=61461 macDrops=1621 reinjected=0 macTerminal=1621 macLost=1591 queue=0 hopLoss=3367 overlap=-1776 unackedRx=30 pqSilent=0 pqEcb=0
+# diag aodv seed=5 pdr=68.34 firstDeliveryS=60.51 ctrlTx=719006 setupMedS=1.77 setupMaxS=17.07 flowsNoDelivery=0
+##RUN## 5 aodv 68.3 52.6 765.5 18.06 48.84 62.86 31.5 inf 26.0145
+##AIR## 5 aodv 896.488 6387.419 6010.099 22.1567
+##ENERGY## 5 aodv 50192.868 3.409610 6.6594e-03 1.778
+##GOODPUT## 5 aodv 12.562
+##ROUTE## 5 aodv 1.7692 17.0672 0 0.22060 2.000 3243 3.1397 3.1397
+##DROPID## 6 aodv hopTx=59095 hopRx=55151 ackedHops=55114 macDrops=1568 reinjected=0 macTerminal=1568 macLost=1531 queue=0 hopLoss=3944 overlap=-2413 unackedRx=37 pqSilent=0 pqEcb=82
+# diag aodv seed=6 pdr=65.40 firstDeliveryS=60.51 ctrlTx=773172 setupMedS=2.14 setupMaxS=10.02 flowsNoDelivery=0
+##RUN## 6 aodv 65.4 56.6 683.5 17.28 54.88 66.38 47.5 inf 29.2905
+##AIR## 6 aodv 955.670 7066.808 6785.039 24.6792
+##ENERGY## 6 aodv 50267.472 3.568106 6.9690e-03 1.929
+##GOODPUT## 6 aodv 12.022
+##ROUTE## 6 aodv 2.1423 10.0185 0 0.20650 2.000 2905 2.9229 2.9229
+##DROPID## 7 aodv hopTx=64940 hopRx=61439 ackedHops=61393 macDrops=1761 reinjected=0 macTerminal=1761 macLost=1715 queue=0 hopLoss=3501 overlap=-1786 unackedRx=46 pqSilent=0 pqEcb=77
+# diag aodv seed=7 pdr=66.18 firstDeliveryS=60.52 ctrlTx=838515 setupMedS=2.02 setupMaxS=9.02 flowsNoDelivery=0
+##RUN## 7 aodv 66.2 66.4 805.5 17.49 58.82 74.17 58.5 inf 31.3861
+##AIR## 7 aodv 1039.766 7589.089 7308.139 26.5617
+##ENERGY## 7 aodv 50384.169 3.534243 6.9028e-03 2.105
+##GOODPUT## 7 aodv 12.165
+##ROUTE## 7 aodv 2.0212 9.0163 0 0.22745 2.000 3238 3.0648 3.0648
+##DROPID## 8 aodv hopTx=59816 hopRx=56741 ackedHops=56709 macDrops=1512 reinjected=0 macTerminal=1512 macLost=1480 queue=0 hopLoss=3075 overlap=-1595 unackedRx=32 pqSilent=0 pqEcb=0
+# diag aodv seed=8 pdr=70.13 firstDeliveryS=60.50 ctrlTx=728162 setupMedS=1.50 setupMaxS=28.20 flowsNoDelivery=0
+##RUN## 8 aodv 70.1 61.0 875.5 18.53 48.20 63.97 24.5 inf 25.6981
+##AIR## 8 aodv 906.206 6638.006 6252.967 22.9953
+##ENERGY## 8 aodv 50223.465 3.324516 6.4932e-03 1.703
+##GOODPUT## 8 aodv 12.891
+##ROUTE## 8 aodv 1.5047 28.1963 0 0.19699 2.000 2972 2.8538 2.8538
+##DROPID## 9 aodv hopTx=65225 hopRx=61996 ackedHops=61960 macDrops=1657 reinjected=0 macTerminal=1657 macLost=1621 queue=0 hopLoss=3229 overlap=-1608 unackedRx=36 pqSilent=0 pqEcb=19
+# diag aodv seed=9 pdr=67.06 firstDeliveryS=60.51 ctrlTx=787140 setupMedS=1.61 setupMaxS=17.00 flowsNoDelivery=0
+##RUN## 9 aodv 67.1 58.6 782.5 17.72 54.49 67.36 38.5 inf 29.0312
+##AIR## 9 aodv 979.721 7244.986 6932.055 25.2613
+##ENERGY## 9 aodv 50299.305 3.482126 6.8010e-03 1.882
+##GOODPUT## 9 aodv 12.326
+##ROUTE## 9 aodv 1.6092 17.0018 0 0.21241 2.000 3064 3.1092 3.1092
+##DROPID## 10 aodv hopTx=70835 hopRx=67589 ackedHops=67551 macDrops=1743 reinjected=0 macTerminal=1743 macLost=1705 queue=0 hopLoss=3246 overlap=-1541 unackedRx=38 pqSilent=0 pqEcb=57
+# diag aodv seed=10 pdr=65.93 firstDeliveryS=61.00 ctrlTx=754940 setupMedS=2.51 setupMaxS=10.01 flowsNoDelivery=0
+##RUN## 10 aodv 65.9 56.2 754.5 17.42 53.16 65.36 44.5 inf 28.2967
+##AIR## 10 aodv 939.504 6456.026 6016.940 22.3541
+##ENERGY## 10 aodv 50211.156 3.535748 6.9058e-03 2.068
+##GOODPUT## 10 aodv 12.118
+##ROUTE## 10 aodv 2.5077 10.0094 0 0.23221 2.000 3293 3.4450 3.4450
+##MATCH## 1 termite 9535 9535 5933.5 5933.5
+##MATCH## 1 aodv 15512 9535 767.5 14.5
+##MATCH## 2 termite 9430 9430 7072.5 7072.5
+##MATCH## 2 aodv 14406 9430 772.5 22.5
+##MATCH## 3 termite 9304 9304 7513.5 7513.5
+##MATCH## 3 aodv 14202 9304 804.5 21.5
+##MATCH## 4 termite 8183 8183 7183.5 7183.5
+##MATCH## 4 aodv 13514 8183 813.5 20.5
+##MATCH## 5 termite 9051 9051 7287.5 7287.5
+##MATCH## 5 aodv 14721 9051 765.5 15.5
+##MATCH## 6 termite 10524 10524 7189.5 7189.5
+##MATCH## 6 aodv 14088 10524 683.5 37.5
+##MATCH## 7 termite 9234 9234 8056.5 8056.5
+##MATCH## 7 aodv 14256 9234 805.5 23.5
+##MATCH## 8 termite 9664 9664 7212.5 7212.5
+##MATCH## 8 aodv 15107 9664 875.5 15.5
+##MATCH## 9 termite 8858 8858 7647.5 7647.5
+##MATCH## 9 aodv 14445 8858 782.5 15.5
+##MATCH## 10 termite 7829 7829 7908.5 7908.5
+##MATCH## 10 aodv 14201 7829 754.5 13.5
+##COMMON## 1 termite 9544 7676 5448.5 340.3 7158.6 5.954 9.828
+##COMMON## 1 aodv 15512 7676 532.0 39.4 1013.3 2.311 3.812
+##COMMON## 2 termite 9443 7320 6298.7 417.8 8926.4 6.230 11.035
+##COMMON## 2 aodv 14406 7320 620.2 46.4 911.1 2.445 3.928
+##COMMON## 3 termite 9313 6751 6955.3 582.5 9372.7 7.451 10.491
+##COMMON## 3 aodv 14202 6751 701.9 49.9 908.1 2.411 3.639
+##COMMON## 4 termite 8195 5983 6573.7 524.5 8734.4 7.726 11.481
+##COMMON## 4 aodv 13514 5983 688.4 52.9 894.8 2.663 4.056
+##COMMON## 5 termite 9064 6919 6515.4 486.1 9062.5 7.557 12.077
+##COMMON## 5 aodv 14721 6919 470.0 39.3 1024.7 2.401 3.795
+##COMMON## 6 termite 10535 7910 6911.4 397.3 8554.2 5.599 9.272
+##COMMON## 6 aodv 14088 7910 493.4 41.1 1014.9 2.315 3.701
+##COMMON## 7 termite 9246 6928 7106.0 525.3 9619.2 6.981 11.205
+##COMMON## 7 aodv 14256 6928 627.9 52.4 951.2 2.414 3.681
+##COMMON## 8 termite 9676 7838 6983.9 430.5 8058.8 6.131 10.376
+##COMMON## 8 aodv 15107 7838 549.4 39.9 1317.8 2.221 3.536
+##COMMON## 9 termite 8873 6856 6570.5 450.5 9987.3 6.690 11.140
+##COMMON## 9 aodv 14445 6856 599.5 45.1 997.3 2.366 3.781
+##COMMON## 10 termite 7839 5881 7284.0 599.6 8943.2 8.695 13.870
+##COMMON## 10 aodv 14201 5881 717.0 48.4 794.2 2.688 3.980
+AntHocNet protocol comparison (mean of 10 run(s))
+  nodes=100 time=600.000s area=1250.000x1250.000m maxSpeed=20.000m/s pause=0.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+termite         42.5      563.0       7300.5        11.24    0.66      639.38         inf         inf       0.375     50932.3      5.5955        7.94      0.9157      1332.28
+aodv            67.1       59.6        782.5        17.72   53.88       67.72        44.2         inf      28.722     50277.9      3.4853        3.13      0.9831       495.09
+# paths termite divUsed=2.087 divMax=13.4 entropyBits=0.603 windowS=10.0 hopsMean=7.94 hopsMax=64.0
+# paths aodv divUsed=1.516 divMax=11.7 entropyBits=0.295 windowS=10.0 hopsMean=3.13 hopsMax=48.6
+# energy termite initJ=5000.0 resMinJ=4477.4 resMeanJ=4490.7 resSdJ=4.362 firstDeathS=-1.0
+# energy aodv initJ=5000.0 resMinJ=4493.1 resMeanJ=4497.2 resSdJ=1.960 firstDeathS=-1.0
+# drops termite pdr=42.53 route=3.27 queue=0.00 mac=4.59 chan=3.36 ttl=47.33 sum=101.08 other=0.00 [route: setup=- reconv=- repair=-]
+# drops aodv pdr=67.06 route=16.81 queue=0.20 mac=7.48 chan=8.18 ttl=0.21 sum=99.95 other=0.00 [route: setup=- reconv=- repair=-]
+# stddev termite pdr=3.52 delay=93.8 delay99=583.2 nrl=0.076 nrl_bytes=0.043
+# stddev aodv pdr=2.59 delay=4.2 delay99=49.2 nrl=5.035 nrl_bytes=2.686
+# reorder termite ratio=0.1091 ratioWorstFlow=0.2505 extentMean=4.22 extentMax=38.60 bufMax=613.00
+# reorder aodv ratio=0.0032 ratioWorstFlow=0.0090 extentMean=1.82 extentMax=4.90 bufMax=4.40
+##ARGS## anthocnet-compare --scenario=paper --runs=10 --nNodes=100 --time=600 --areaX=1250 --areaY=1250 --range=250 --propagation=range --mobility=rwp --pause=0 --speed=20 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/termite/termite-anchor.flows --diag --protocols=termite,aodv
+##PROV## commit=77b928e984bc5eca9779b8ed6e65a0d97ddc61ea ref=main run_id=40706870840 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=anthocnet-compare
