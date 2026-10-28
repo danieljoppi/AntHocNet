@@ -479,6 +479,37 @@ If both hold, `ReactiveRetryInterval=0s` is the documented operating point for
 large fields, and the default goes to an every-family A/B in a later release
 (golden rule 8). No default moves on this evidence.
 
+**Stage 2 result** (dispatched and collected 2026-10-28; cells
+`results/cells/scale-{50,200,500}-v250s2.txt`, 20 seeds each, AntHocNet only,
+paired by seed with `scale-{50,200,500}-v240`):
+
+| nodes | paired dPDR | 95 % CI | seeds | d NRL | d delay99 | rule |
+|---|---|---|---|---|---|---|
+| 50 | −1.97 pp | [−2.85, −1.09] | 17/20 negative | −0.87 [−1.08, −0.65] | −66 ms [−175, +48] | **fails**: CI wholly below −1 pp |
+| 200 | +4.92 pp | [+0.28, +9.56] | 13/20 positive | −94.1 [−129.6, −58.6] | −322 ms [−445, −208] | reported |
+| 500 | +33.91 pp | [+29.73, +38.09] | 20/20 positive | −6745 [−8187, −5302] | −683 ms [−947, −422] | **passes** |
+
+At 500 nodes the arm takes AntHocNet from 13.3 % to 47.2 % PDR and cuts NRL
+by 90 %. That confirms the diagnosis: the adapter's 0.25 s retry flood is the
+collapse. At 50 nodes the same switch costs 2 pp. There, the fast retry
+recovers packets that the core's one-per-second limit would let age out of the
+hold.
+
+The pre-registered branch applies: **helps at scale, costs small fields.**
+`ReactiveRetryInterval=0s` is not a default candidate. The follow-up is a
+gated, size-aware mechanism: the retry routed through the core's
+rate-limited emission, default off, A/B'd in every family
+([#760](https://github.com/danieljoppi/AntHocNet/issues/760)).
+
+Two campaign-path checks rode along with stage 2:
+
+- The scale-500 seeds 1–4 reproduce the screen's rows byte for byte across
+  two commits (c20b058 and 5b1c3d0).
+- `campaign.py collect` had keyed its artifact cache by label, so it first
+  read the screen's artifacts for those seeds. The `##RUN##` rows were
+  identical, and the cells committed here carry the stage-2 runs
+  ([#759](https://github.com/danieljoppi/AntHocNet/pull/759)).
+
 Earlier evidence that no constant here is a default candidate: v2.2.0's
 `reconv1s` arm (the same override as `hold1s`) gained +4 to +6 pp on VANET and
 FANET and lost 1.4 and 6.0 pp on the grid Nakagami cells
