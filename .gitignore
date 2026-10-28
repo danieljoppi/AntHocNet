@@ -64,3 +64,6 @@ __pycache__/
 # checkout of this repo created for a subagent to work in isolation, so it must
 # never be committed into the repo it is a copy of.
 .claude/worktrees/
+
+# campaign.py collect downloads run artifacts here (#662); never committed.
+.campaign-artifacts/
