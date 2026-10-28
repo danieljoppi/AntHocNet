@@ -29,7 +29,8 @@ control arm and `<cell>-<generation>-<arm>.txt` for the others, with a `#`
 header naming the runs. The seed blocks of a split cell are concatenated, and
 bench_parse.py pairs them by seed. Each artifact already ends with its run's
 ##PROV## line (#674). Without --from it downloads each run's artifact with
-`gh api`. Where that cannot follow the blob redirect, fetch the artifacts
+`gh api` into --cache (default .campaign-artifacts/<run id>/; by run id, since
+two plans can share a label). Where that cannot follow the blob redirect, fetch the artifacts
 another way and pass --from DIR, holding DIR/<label>/<results file>: the
 rescue-artifacts workflow's bundle_run_ids input gathers every run's artifact
 into one `rescue-bundle` (<run id>/...), one download for the whole campaign.
@@ -330,7 +331,9 @@ def cmd_collect(plan, a):
             rid = log.get(label)
             src = os.path.join(a.src, label) if a.src else None
             if rid and not a.src:
-                src = os.path.join(a.cache, label)
+                # Keyed by run id: two plans can share a label (#740's
+                # screen and stage 2 both have retry0/scale-500-s1).
+                src = os.path.join(a.cache, str(rid))
                 if results_text(src) is None:
                     try:
                         fetch(rid, src)

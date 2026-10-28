@@ -234,6 +234,26 @@ def write_run(src, label, text, name="paper-results.txt"):
         f.write(text)
 
 
+@case("collect: the artifact cache is keyed by run id, not by label")
+def _collect_cache():
+    # Two plans may share a label (the v2.5.0 screen and stage 2 both have
+    # retry0/scale-500-s1); a label-keyed cache handed stage 2 the screen's
+    # artifact. A run id names one run.
+    with tempfile.TemporaryDirectory() as d:
+        cache, out, log = (os.path.join(d, x) for x in ("cache", "out", "runs.tsv"))
+        with open(log, "w") as f:
+            f.write("quiet/vanet-s1\t21\nquiet/vanet-s5\t22\n")
+        write_run(cache, "quiet/vanet-s1", "##RUN## 1 anthocnet 1\n##PROV## commit=stale\n")
+        write_run(cache, "21", "##RUN## 1 anthocnet 40\n##PROV## commit=a\n")
+        write_run(cache, "22", "##RUN## 5 anthocnet 41\n##PROV## commit=b\n")
+        a = argparse.Namespace(log=log, out=out, src=None, cache=cache)
+        with contextlib.redirect_stderr(io.StringIO()):
+            cp.cmd_collect(PLAN, a)
+        with open(os.path.join(out, "vanet-vtest-quiet.txt")) as f:
+            text = f.read()
+        expect("commit=a" in text and "commit=stale" not in text, "collect-cache-key", text)
+
+
 @case("collect: seed blocks concatenate into one file per cell and arm")
 def _collect():
     with tempfile.TemporaryDirectory() as d:

@@ -128,6 +128,10 @@ jobs:
         run: |
           cd /opt/ns-3
           set -o pipefail
+          # A plan names repo fixtures as $GITHUB_WORKSPACE/... (the disaster
+          # trace, the Termite anchor flows). The input arrives as literal
+          # text, so expand that one variable here; ##ARGS## keeps the literal.
+          ARGS="${ARGS//\$GITHUB_WORKSPACE/$GITHUB_WORKSPACE}"
           [ -n "$REPLAY" ] && ARGS="$ARGS --vizTrace=$GITHUB_WORKSPACE/replay.jsonl"
           timewrap=""
           [ -x /usr/bin/time ] && timewrap="/usr/bin/time -v -o $GITHUB_WORKSPACE/time-v.log"
