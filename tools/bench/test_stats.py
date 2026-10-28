@@ -279,6 +279,23 @@ def _():
     assert any(f[1] == "delay99" for f in fails), fails
 
 
+@case("mapping check reads a multi-block cell per block (#740)")
+def _():
+    # Two seed blocks, each with its own '# stddev' over its own two seeds:
+    # sd(10, 20) = 7.07 and sd(60, 80) = 14.14. Over all four seeds the sd is
+    # 32.27, which matches neither line, so a whole-cell recompute fails both.
+    def block(r0, a, b, sd):
+        return (f"##RUN## {r0} anthocnet {a} 100.0 200.0 5.0 1.0 1.0 1.0 1.0 1.0\n"
+                f"##RUN## {r0 + 1} anthocnet {b} 100.0 200.0 5.0 1.0 1.0 1.0 1.0 1.0\n"
+                f"# stddev anthocnet pdr={sd:.2f}\n")
+    text = block(1, 10.0, 20.0, 7.0711) + block(3, 60.0, 80.0, 14.1421)
+    runs = bp.parse_runs(text)
+    checks, fails = bp.mapping_check(runs, bp.parse_stddev(text, blocks=True))
+    assert checks == 2 and not fails, (checks, fails)
+    _c, fails = bp.mapping_check(runs, bp.parse_stddev(text))
+    assert fails, "the whole-cell recompute must still disagree with one block"
+
+
 @case("paired_stats: consistent shift -> PAIRED-IMPROVED with tight CIs")
 def _():
     base = bp.parse_runs(_cell("off", 80.0, 500.0))["anthocnet"]
