@@ -206,6 +206,27 @@ def mapping_check(runs, sds):
     return checks, fails
 
 
+def mapping_check_blocks(text):
+    """mapping_check per seed block. campaign.py collect concatenates a cell's
+    seed blocks, each ending in its ##PROV## line, and each block's '# stddev'
+    line covers that block's seeds only. Checking the pooled seeds against
+    the last block's line (the pre-fix behaviour) failed every multi-block
+    cell, the v2.4.0 scale cells included. Returns (n_checks, failures)."""
+    checks, fails = 0, []
+    block = []
+    for line in text.splitlines() + ["##PROV## end"]:
+        block.append(line)
+        if line.startswith("##PROV##"):
+            seg = "\n".join(block)
+            runs, sds = parse_runs(seg), parse_stddev(seg)
+            if runs and sds:
+                c, f = mapping_check(runs, sds)
+                checks += c
+                fails += f
+            block = []
+    return checks, fails
+
+
 def paired(base_runs, cur_runs):
     """Paired per-seed dPDR line (#128), or None without common runs.
 
@@ -425,7 +446,7 @@ def main():
             text = fh.read()
         perf = [m.group(0) for m in map(PERF.search, text.splitlines()) if m]
         cells.append((label_of(path, text), parse_cell(text),
-                      parse_runs(text), perf, parse_stddev(text)))
+                      parse_runs(text), perf, text))
 
     protos = ([args.proto] if not args.all else
               sorted({p for _, r, _, _, _ in cells for p in r}))
@@ -434,7 +455,7 @@ def main():
     print(hdr)
     print("-" * len(hdr))
     mapping_failed = False
-    for lbl, rows, runs, perf, sds in cells:
+    for lbl, rows, runs, perf, text in cells:
         for p in protos:
             if p in rows:
                 print(f"{lbl:<28}{p:<11}" + "".join(fmt(rows[p][m]) for m in METRICS))
@@ -446,8 +467,8 @@ def main():
         # #293 column-mapping self-check: runs automatically on any cell that
         # carries both ##RUN## rows and '# stddev' lines (all protocols, not
         # just the compared one — the extra checks are free).
-        if runs and sds:
-            checks, fails = mapping_check(runs, sds)
+        if runs:
+            checks, fails = mapping_check_blocks(text)
             if fails:
                 mapping_failed = True
                 print(f"{lbl}: ##RUN## column-mapping check FAILED "

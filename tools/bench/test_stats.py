@@ -279,6 +279,28 @@ def _():
     assert any(f[1] == "delay99" for f in fails), fails
 
 
+@case("mapping check runs per seed block in a concatenated campaign cell")
+def _():
+    import re
+    def block(base, d99, first):
+        t = _cell("blk", base, d99, runs=3)
+        t = re.sub(r"^##RUN## (\d+)",
+                   lambda m: f"##RUN## {int(m.group(1)) + first - 1}", t, flags=re.MULTILINE)
+        return t + "##PROV## commit=abc\n"
+    # Two blocks with very different spreads: each block's '# stddev' line is
+    # right for its own seeds, wrong for the pooled six.
+    text = block(80.0, 500.0, 1) + block(20.0, 2000.0, 4)
+    checks, fails = bp.mapping_check_blocks(text)
+    assert checks == 10 and not fails, (checks, fails)
+    _c, pooled = bp.mapping_check(bp.parse_runs(text), bp.parse_stddev(text))
+    assert pooled, "the pooled check should have fired (the pre-fix bug)"
+    # A poisoned line in one block still fires.
+    bad = block(80.0, 500.0, 1) + _cell("blk", 20.0, 2000.0, runs=3,
+                                         sd_override=("delay99", 0.3))
+    _c, fails = bp.mapping_check_blocks(bad)
+    assert any(f[1] == "delay99" for f in fails), fails
+
+
 @case("paired_stats: consistent shift -> PAIRED-IMPROVED with tight CIs")
 def _():
     base = bp.parse_runs(_cell("off", 80.0, 500.0))["anthocnet"]
