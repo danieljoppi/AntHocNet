@@ -82,6 +82,9 @@
 // #296: the vendored AOMDV baseline module (contrib/aomdv, installed together
 // with anthocnet by `make install-ns3`).
 #include "ns3/aomdv-module.h"
+// v2.5.0 (#563): the adaptive-routing comparators (contrib/adaptive): ARA,
+// Termite and tabular Q-routing, each written from its paper.
+#include "ns3/adaptive-module.h"
 #include "ns3/olsr-module.h"
 #include "ns3/dsdv-module.h"
 // #296: the vendored GPSR baseline (contrib/gpsr). Geographic — position
@@ -894,6 +897,14 @@ void CountDataHopRx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
 // same trace the AntHocNet adapter uses for ADR-0008 detector D, so the column
 // means the same thing in all four arms. Other drop reasons (queue full,
 // lifetime expiry) are congestion and are counted by FlowMonitor instead.
+// v2.5.0 (#563): data packets the adaptive arms recovered from a MAC drop.
+uint64_t g_adaptiveReinjData = 0;
+void CountAdaptiveReinject(const Ipv4Header& ip, Ptr<const Packet> p) {
+    Ptr<Packet> c = p->Copy();
+    c->AddHeader(ip);
+    if (IsDataIp(c)) ++g_adaptiveReinjData;
+}
+
 void CountMacDataDrop(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu) {
     if (reason != WIFI_MAC_DROP_REACHED_RETRY_LIMIT || !mpdu) return;
     Ptr<Packet> pkt = mpdu->GetPacket()->Copy();
@@ -1797,6 +1808,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_pqPending.clear();                                     // #229
     g_pqEcbDrops = 0;                                        // #229
     g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;          // #215
+    g_adaptiveReinjData = 0;                                 // #563
     g_ackedDataHops = 0;                                     // #377
     // #217
     g_hopSum = g_hopCount = 0;
@@ -2228,6 +2240,10 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // stops run N inheriting run N-1's nodes.
     OracleHelper oracleHelper;
     Ipv4StaticRoutingHelper hwmpL3Helper;  // #708
+    // v2.5.0 (#563): one helper per adaptive arm, per run like the others.
+    AdaptiveHelper araHelper("ns3::adaptive::AraRoutingProtocol");
+    AdaptiveHelper termiteHelper("ns3::adaptive::TermiteRoutingProtocol");
+    AdaptiveHelper qroutingHelper("ns3::adaptive::QRoutingProtocol");
     // #296/#431: the oracle derives its adjacency from the installed objects
     // on every channel this harness configures — the disk channel's own
     // MaxRange (exact), the two-ray decode radius at the PHY's decode
@@ -2267,6 +2283,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(gpsrHelper);
     } else if (proto == "oracle") {
         internet.SetRoutingHelper(oracleHelper);
+    } else if (proto == "ara") {
+        // #586: ARA (Guenes et al. 2002), purely reactive ACO.
+        internet.SetRoutingHelper(araHelper);
+    } else if (proto == "termite") {
+        // #587: Termite (Roth & Wicker 2003), stigmergic: every packet lays
+        // pheromone, discovery is a random walk.
+        internet.SetRoutingHelper(termiteHelper);
+    } else if (proto == "qrouting") {
+        // #588: tabular Q-routing (Boyan & Littman 1994), the learned arm.
+        internet.SetRoutingHelper(qroutingHelper);
     } else if (proto == "hwmp") {
         // #708: path selection is the mesh's, below IP. IP only needs the
         // on-link route to the one /16 the mesh point carries, which static
@@ -2327,6 +2353,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // makes that a measured zero rather than a gap in the #352 coverage.
         TakeStreams(stream, streamBase, oracleHelper.AssignStreams(nodes, stream),
                     "oracle routing");
+    } else if (proto == "ara") {
+        TakeStreams(stream, streamBase, araHelper.AssignStreams(nodes, stream), "ara routing");
+    } else if (proto == "termite") {
+        TakeStreams(stream, streamBase, termiteHelper.AssignStreams(nodes, stream),
+                    "termite routing");
+    } else if (proto == "qrouting") {
+        TakeStreams(stream, streamBase, qroutingHelper.AssignStreams(nodes, stream),
+                    "qrouting routing");
     } else if (proto == "hwmp") {
         // #708: static IP routing draws nothing, and HWMP's streams were taken
         // with the mesh devices above. A measured zero, as for the oracle.
@@ -2335,6 +2369,15 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // #448: unreachable once the install chain above aborts, but the two
         // dispatch chains stay structurally parallel by convention — guard both.
         NS_ABORT_MSG("unknown protocol '" << proto << "' -- see --PrintHelp's --protocols list");
+    }
+
+    // v2.5.0 (#563): an adaptive arm reports each packet it re-routes after
+    // a MAC drop; the drop book nets out the data ones.
+    for (uint32_t i = 0; i < nodes.GetN(); ++i) {
+        Ptr<ns3::adaptive::RoutingBase> arm = DynamicCast<ns3::adaptive::RoutingBase>(
+            nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol());
+        if (arm)
+            arm->TraceConnectWithoutContext("MacReinject", MakeCallback(&CountAdaptiveReinject));
     }
 
     // Count routing-control transmissions uniformly at the IP layer. Connect to
@@ -3109,6 +3152,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             r.dropSetupPct = 100.0 * holdSetup / tx;
             r.dropReconvPct = 100.0 * holdReconv / tx;
             r.dropRepairPct = 100.0 * repairPkts / tx;
+        } else {
+            // v2.5.0 (#563): the adaptive arms also re-route a packet the MAC
+            // gave up on (ARA §3.3, Termite's route repair). The data ones
+            // (IsDataIp, the same predicate as g_macDataDrops) are netted out
+            // of the mac column; ICMP errors re-routed alongside are not data.
+            reinjected = g_adaptiveReinjData;
         }
         // Every one of these three ends in an error callback, so together they
         // are a *sub-breakdown* of dropRoutePct, not extra causes on top of it;
@@ -3720,7 +3769,10 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue(
         "protocols",
-        "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,gpcr,gpsr3d,aomdv,hwmp,oracle). "
+        // clang-format off
+        // check-allowlists.sh and check-arm-delivery.sh read this list as one literal (#435).
+        "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,gpcr,gpsr3d,aomdv,hwmp,oracle,ara,termite,qrouting). "
+        // clang-format on
         "`oracle` is the #296 global-knowledge shortest-path CONTROL "
         "(upper bound, zero control traffic), off unless named.",
         protocols);
