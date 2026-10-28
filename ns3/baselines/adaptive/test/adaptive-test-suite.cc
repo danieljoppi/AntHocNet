@@ -72,6 +72,44 @@ private:
     }
 };
 
+class BoundedTableTest : public TestCase {
+public:
+    BoundedTableTest() : TestCase("Termite bounded table: initial, floor, ceiling, pruning") {}
+
+private:
+    void DoRun() override {
+        // Table 4.1: tau = 0.105, initial 1, floor 0.1, ceiling 10000.
+        BoundedPheromoneTable<int> t;
+        t.Configure(0.105, 1.0, 0.1, 10000.0);
+        // A packet from source 9 over neighbour 2: new row and column at the
+        // initial value, then gamma = 1 on (9, 2) -> 2.
+        t.Deposit(9, 2, 1.0, 0.0);
+        NS_TEST_ASSERT_MSG_EQ_TOL(t.Get(9, 2, 0.0), 2.0, 1e-12, "initial + gamma");
+        // A second neighbour joins: its cell for the known destination starts
+        // at the initial value.
+        t.AddNeighbor(3, 0.0);
+        NS_TEST_ASSERT_MSG_EQ_TOL(t.Get(9, 3, 0.0), 1.0, 1e-12, "new row at initial");
+        // 2 e^{-0.105 * 10} = 2 e^{-1.05} = 0.699875.
+        NS_TEST_ASSERT_MSG_EQ_TOL(t.Get(9, 2, 10.0), 0.699875, 1e-6, "decay");
+        // 1 e^{-0.105 * 30} = 0.0429 < 0.1: held at the floor.
+        NS_TEST_ASSERT_MSG_EQ_TOL(t.Get(9, 3, 30.0), 0.1, 1e-12, "floor");
+        // The ceiling caps a deposit.
+        t.Deposit(9, 3, 1e6, 30.0);
+        NS_TEST_ASSERT_MSG_EQ_TOL(t.Get(9, 3, 30.0), 10000.0, 1e-9, "ceiling");
+        // At t = 300 every cell is at the floor: neighbour 2 (row decayed) is
+        // pruned; 3 too; destination 9 then goes once no neighbour holds it.
+        auto gone = t.Prune(300.0);
+        NS_TEST_ASSERT_MSG_EQ(gone.size(), 2u, "both rows decayed");
+        NS_TEST_ASSERT_MSG_EQ(t.HasNeighbor(2), false, "row 2 removed");
+        t.Prune(301.0);
+        NS_TEST_ASSERT_MSG_EQ(t.HasDestination(9), false, "column 9 removed");
+        // A lost link removes the row at once.
+        t.Deposit(5, 4, 1.0, 400.0);
+        t.RemoveNeighbor(4);
+        NS_TEST_ASSERT_MSG_EQ(t.HasNeighbor(4), false, "link loss");
+    }
+};
+
 class SelectionTest : public TestCase {
 public:
     SelectionTest() : TestCase("proportional draw, Termite weight, Q-routing update") {}
@@ -134,6 +172,7 @@ class AdaptiveTestSuite : public TestSuite {
 public:
     AdaptiveTestSuite() : TestSuite("adaptive", ADAPTIVE_TEST_TYPE_UNIT) {
         AddTestCase(new PheromoneDecayTest, ADAPTIVE_TEST_QUICK);
+        AddTestCase(new BoundedTableTest, ADAPTIVE_TEST_QUICK);
         AddTestCase(new SelectionTest, ADAPTIVE_TEST_QUICK);
         AddTestCase(new HeaderTest, ADAPTIVE_TEST_QUICK);
     }

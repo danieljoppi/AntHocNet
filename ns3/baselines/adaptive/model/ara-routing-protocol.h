@@ -11,8 +11,8 @@
  *   a node seeing it for the first time records pheromone toward the source
  *   over the neighbour it came from, valued by the hops it travelled.
  *   Duplicate FANTs are destroyed. The destination answers with a backward
- *   ant (BANT) that lays the trail toward the destination the same way; per
- *   Fig. 3 it can lay more than one (duplicates update, are not relayed).
+ *   ant (BANT) that retraces the FANT's path, laying the trail toward the
+ *   destination the same way.
  * - §3.2 route maintenance: data packets are the only maintenance traffic.
  *   Relaying a packet for D to neighbour j adds Delta to (D, j); the receiver
  *   adds Delta to (S, previous hop). Pheromone evaporates (eq. 2). A node
@@ -104,7 +104,8 @@ private:
     uint32_t m_seq;
     std::map<std::tuple<uint32_t, uint32_t, uint8_t>, Time> m_seenAnts;
     std::map<DataKey, Time> m_seenData;
-    std::map<std::pair<uint32_t, uint32_t>, uint8_t> m_bantHops;  // (origin, seq) -> first hops
+    /// (FANT origin, seq) -> the neighbour the first copy came from (BANT path).
+    std::map<std::pair<uint32_t, uint32_t>, Ipv4Address> m_fantFrom;
     Time m_seenLifetime;
     EventId m_purge;
     uint64_t m_fantsSent;

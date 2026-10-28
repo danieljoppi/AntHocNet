@@ -18,6 +18,7 @@
 #ifndef ADAPTIVE_TABLES_H
 #define ADAPTIVE_TABLES_H
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <map>
@@ -170,6 +171,130 @@ private:
     double m_rate = 0.1;
     double m_period = 1.0;
     double m_floor = 1e-3;
+};
+
+/**
+ * Termite's pheromone table (Roth 2005, §4.2): one row per neighbour, one
+ * column per known destination, every cell bounded to [floor, ceiling].
+ *
+ * Unlike PheromoneTable nothing expires: decay stops at the floor, which
+ * marks a cell as unused. A new destination's column and a new neighbour's
+ * row start every cell at the initial pheromone (§4.2.4). A destination is
+ * forgotten when its whole column has decayed to the floor, a neighbour when
+ * its whole row has (§4.2.3), or at once when the link is lost.
+ */
+template <typename Addr>
+class BoundedPheromoneTable {
+public:
+    void Configure(double rate, double initial, double floor, double ceiling) {
+        m_rate = rate;
+        m_initial = initial;
+        m_floor = floor;
+        m_ceiling = ceiling;
+    }
+
+    bool HasNeighbor(const Addr& nb) const { return m_neighbors.count(nb) > 0; }
+    bool HasDestination(const Addr& d) const { return m_cells.count(d) > 0; }
+    const std::set<Addr>& Neighbors() const { return m_neighbors; }
+    double Floor() const { return m_floor; }
+
+    /// Add a neighbour row, every known destination at the initial value.
+    void AddNeighbor(const Addr& nb, double now) {
+        if (!m_neighbors.insert(nb).second) {
+            return;
+        }
+        for (auto& d : m_cells) {
+            d.second[nb] = Cell{m_initial, now};
+        }
+    }
+
+    /// Add a destination column, every neighbour at the initial value.
+    void AddDestination(const Addr& d, double now) {
+        if (m_cells.count(d)) {
+            return;
+        }
+        auto& col = m_cells[d];
+        for (const Addr& nb : m_neighbors) {
+            col[nb] = Cell{m_initial, now};
+        }
+    }
+
+    /// P(nb, d) += delta, creating the row and column first if needed.
+    void Deposit(const Addr& d, const Addr& nb, double delta, double now) {
+        AddNeighbor(nb, now);
+        AddDestination(d, now);
+        Cell& c = m_cells[d][nb];
+        Refresh(c, now);
+        c.value = std::min(m_ceiling, c.value + delta);
+    }
+
+    double Get(const Addr& d, const Addr& nb, double now) {
+        auto col = m_cells.find(d);
+        if (col == m_cells.end()) {
+            return 0.0;
+        }
+        auto it = col->second.find(nb);
+        if (it == col->second.end()) {
+            return 0.0;
+        }
+        Refresh(it->second, now);
+        return it->second.value;
+    }
+
+    void RemoveNeighbor(const Addr& nb) {
+        m_neighbors.erase(nb);
+        for (auto& d : m_cells) {
+            d.second.erase(nb);
+        }
+    }
+
+    /// Forget decayed destinations and neighbours (§4.2.3). Returns the
+    /// neighbours removed.
+    std::vector<Addr> Prune(double now) {
+        std::vector<Addr> gone;
+        for (auto d = m_cells.begin(); d != m_cells.end();) {
+            bool live = false;
+            for (auto& c : d->second) {
+                Refresh(c.second, now);
+                live = live || c.second.value > m_floor;
+            }
+            // A neighbour's own column stays while its row is in use.
+            d = (live || m_neighbors.count(d->first)) ? std::next(d) : m_cells.erase(d);
+        }
+        for (const Addr& nb : std::vector<Addr>(m_neighbors.begin(), m_neighbors.end())) {
+            bool live = false;
+            for (auto& d : m_cells) {
+                auto it = d.second.find(nb);
+                live = live || (it != d.second.end() && it->second.value > m_floor);
+            }
+            if (!live) {
+                RemoveNeighbor(nb);
+                gone.push_back(nb);
+            }
+        }
+        return gone;
+    }
+
+private:
+    struct Cell {
+        double value = 0.0;
+        double last = 0.0;
+    };
+
+    void Refresh(Cell& c, double now) const {
+        const double dt = now - c.last;
+        if (dt > 0.0) {
+            c.value = std::max(m_floor, c.value * std::exp(-m_rate * dt));
+        }
+        c.last = now;
+    }
+
+    std::map<Addr, std::map<Addr, Cell>> m_cells;  // destination -> neighbour -> cell
+    std::set<Addr> m_neighbors;
+    double m_rate = 0.105;
+    double m_initial = 1.0;
+    double m_floor = 0.1;
+    double m_ceiling = 10000.0;
 };
 
 /**

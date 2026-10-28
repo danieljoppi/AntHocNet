@@ -897,12 +897,20 @@ void CountDataHopRx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
 // same trace the AntHocNet adapter uses for ADR-0008 detector D, so the column
 // means the same thing in all four arms. Other drop reasons (queue full,
 // lifetime expiry) are congestion and are counted by FlowMonitor instead.
-// v2.5.0 (#563): data packets the adaptive arms recovered from a MAC drop.
+// v2.5.0 (#563): data packets the adaptive arms recovered from a MAC drop,
+// and from an ARP drop (the next hop never answered: the frame never reached
+// the medium, so it sits in hopLoss without being channel loss).
 uint64_t g_adaptiveReinjData = 0;
+uint64_t g_adaptiveArpReinjData = 0;
 void CountAdaptiveReinject(const Ipv4Header& ip, Ptr<const Packet> p) {
     Ptr<Packet> c = p->Copy();
     c->AddHeader(ip);
     if (IsDataIp(c)) ++g_adaptiveReinjData;
+}
+void CountAdaptiveArpReinject(const Ipv4Header& ip, Ptr<const Packet> p) {
+    Ptr<Packet> c = p->Copy();
+    c->AddHeader(ip);
+    if (IsDataIp(c)) ++g_adaptiveArpReinjData;
 }
 
 void CountMacDataDrop(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu) {
@@ -1808,7 +1816,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_pqPending.clear();                                     // #229
     g_pqEcbDrops = 0;                                        // #229
     g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;          // #215
-    g_adaptiveReinjData = 0;                                 // #563
+    g_adaptiveReinjData = g_adaptiveArpReinjData = 0;        // #563
     g_ackedDataHops = 0;                                     // #377
     // #217
     g_hopSum = g_hopCount = 0;
@@ -2372,12 +2380,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     }
 
     // v2.5.0 (#563): an adaptive arm reports each packet it re-routes after
-    // a MAC drop; the drop book nets out the data ones.
+    // a MAC or an ARP drop; the drop book nets out the data ones.
     for (uint32_t i = 0; i < nodes.GetN(); ++i) {
         Ptr<ns3::adaptive::RoutingBase> arm = DynamicCast<ns3::adaptive::RoutingBase>(
             nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol());
-        if (arm)
-            arm->TraceConnectWithoutContext("MacReinject", MakeCallback(&CountAdaptiveReinject));
+        if (!arm) continue;
+        arm->TraceConnectWithoutContext("MacReinject", MakeCallback(&CountAdaptiveReinject));
+        arm->TraceConnectWithoutContext("ArpReinject", MakeCallback(&CountAdaptiveArpReinject));
     }
 
     // Count routing-control transmissions uniformly at the IP layer. Connect to
@@ -3260,8 +3269,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         const uint64_t macTerminalCapAware =
             macTerminal > skipsDelivEvents ? macTerminal - skipsDelivEvents : 0;
         r.dropMacPct = 100.0 * (reinjected ? macTerminalCapAware : macLost) / tx;
-        r.dropChanPct =
-            100.0 * (hopLoss - static_cast<double>(macLost) - static_cast<double>(dropQueue)) / tx;
+        // v2.5.0 (#563): an adaptive arm's ARP re-injections never reached the
+        // medium; they leave the channel residual (0 on every other arm).
+        r.dropChanPct = 100.0 *
+                        (hopLoss - static_cast<double>(macLost) - static_cast<double>(dropQueue) -
+                         static_cast<double>(g_adaptiveArpReinjData)) /
+                        tx;
         // L3 drops in none of the buckets above (bad checksum, interface down,
         // fragment timeout — all structurally zero in this harness). Diagnostic
         // only: if it is ever non-zero it is the reason the identity misses.
@@ -3308,8 +3321,8 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // it.
         const int64_t hopLossN =
             static_cast<int64_t>(g_dataHopTx) - static_cast<int64_t>(g_dataHopRx);
-        const int64_t overlap =
-            static_cast<int64_t>(macLost) + static_cast<int64_t>(dropQueue) - hopLossN;
+        const int64_t overlap = static_cast<int64_t>(macLost) + static_cast<int64_t>(dropQueue) +
+                                static_cast<int64_t>(g_adaptiveArpReinjData) - hopLossN;
         // Not emitted under TCP. Since #389 the counters above DO count TCP
         // data segments, but the drop-cause identity itself is unvalidated
         // under TCP — it was closed on per-packet UDP books, and TCP counts

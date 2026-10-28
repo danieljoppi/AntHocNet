@@ -4,6 +4,7 @@
 #include "adaptive-routing-base.h"
 
 #include "ns3/arp-cache.h"
+#include "ns3/arp-l3-protocol.h"
 #include "ns3/inet-socket-address.h"
 #include "ns3/ipv4-interface.h"
 #include "ns3/ipv4-route.h"
@@ -36,20 +37,22 @@ TypeId PrevHopTag::GetTypeId() {
 
 TypeId PrevHopTag::GetInstanceTypeId() const { return GetTypeId(); }
 
-uint32_t PrevHopTag::GetSerializedSize() const { return 8; }
+uint32_t PrevHopTag::GetSerializedSize() const { return 12; }
 
 void PrevHopTag::Serialize(TagBuffer i) const {
     i.WriteU32(m_addr.Get());
     i.WriteU32(m_upstream.Get());
+    i.WriteU32(m_next.Get());
 }
 
 void PrevHopTag::Deserialize(TagBuffer i) {
     m_addr = Ipv4Address(i.ReadU32());
     m_upstream = Ipv4Address(i.ReadU32());
+    m_next = Ipv4Address(i.ReadU32());
 }
 
 void PrevHopTag::Print(std::ostream& os) const {
-    os << "prevHop=" << m_addr << " upstream=" << m_upstream;
+    os << "prevHop=" << m_addr << " upstream=" << m_upstream << " next=" << m_next;
 }
 
 NS_OBJECT_ENSURE_REGISTERED(BacktrackTag);
@@ -95,6 +98,11 @@ TypeId RoutingBase::GetTypeId() {
                             "A packet recovered from a MAC retry-limit drop and routed "
                             "again (IP header, packet without it).",
                             MakeTraceSourceAccessor(&RoutingBase::m_macReinjectTrace),
+                            "ns3::adaptive::RoutingBase::MacReinjectCallback")
+            .AddTraceSource("ArpReinject",
+                            "A data packet recovered from an ARP drop (the next hop never "
+                            "answered) and routed again (IP header, packet without it).",
+                            MakeTraceSourceAccessor(&RoutingBase::m_arpReinjectTrace),
                             "ns3::adaptive::RoutingBase::MacReinjectCallback");
     return tid;
 }
@@ -104,7 +112,9 @@ RoutingBase::RoutingBase()
       m_maxQueueTime(Seconds(30)),
       m_purgeTimer(Timer::CANCEL_ON_DESTROY),
       m_rng(CreateObject<UniformRandomVariable>()),
-      m_macReinjected(0) {}
+      m_macReinjected(0),
+      m_arpReinjected(0),
+      m_arpHooked(false) {}
 
 RoutingBase::~RoutingBase() = default;
 
@@ -226,7 +236,7 @@ Ptr<Ipv4Route> RoutingBase::RouteOutput(Ptr<Packet> p, const Ipv4Header& header,
             if (p) {
                 PrevHopTag old;
                 p->RemovePacketTag(old);
-                p->AddPacketTag(PrevHopTag(route->GetSource(), Ipv4Address()));
+                p->AddPacketTag(PrevHopTag(route->GetSource(), Ipv4Address(), next));
             }
             OnDataForwarded(p, header, next);
             return route;
@@ -327,7 +337,7 @@ void RoutingBase::ForwardData(Ptr<const Packet> p, const Ipv4Header& header, Ipv
     const Ipv4Address upstream =
         !hadPrev ? Ipv4Address()
                  : (IsMyAddress(oldPrev.Get()) ? oldPrev.Upstream() : oldPrev.Get());
-    q->AddPacketTag(PrevHopTag(me, upstream));
+    q->AddPacketTag(PrevHopTag(me, upstream, next));
     BacktrackTag oldBt;
     q->RemovePacketTag(oldBt);
     if (backtrack) {
@@ -465,6 +475,18 @@ void RoutingBase::NotifyInterfaceUp(uint32_t interface) {
     if (wifi && wifi->GetMac()) {
         wifi->GetMac()->TraceConnectWithoutContext("DroppedMpdu",
                                                    MakeCallback(&RoutingBase::NotifyTxError, this));
+    }
+
+    // ARP drops: the cache's wait-reply expiry (the neighbour never answered)
+    // and the node's ARP layer (dead entry, full pending queue).
+    Ptr<ArpCache> cache = l3->GetInterface(interface)->GetArpCache();
+    if (cache) {
+        cache->TraceConnectWithoutContext("Drop", MakeCallback(&RoutingBase::NotifyArpDrop, this));
+    }
+    Ptr<ArpL3Protocol> arp = GetObject<Node>()->GetObject<ArpL3Protocol>();
+    if (arp && !m_arpHooked) {
+        arp->TraceConnectWithoutContext("Drop", MakeCallback(&RoutingBase::NotifyArpDrop, this));
+        m_arpHooked = true;
     }
 }
 
@@ -610,9 +632,39 @@ void RoutingBase::NotifyTxError(WifiMacDropReason reason, Ptr<const ADAPTIVE_WIF
     if (!haveData || ip.GetTtl() <= 1 || m_cachedUcb.IsNull()) {
         return;
     }
-    const Ipv4Address dst = ip.GetDestination();
     ++m_macReinjected;  // the MAC drop was not terminal; the drop book nets it out
     m_macReinjectTrace(ip, pkt);
+    Reroute(pkt, ip);
+}
+
+void RoutingBase::NotifyArpDrop(Ptr<const Packet> packet) {
+    if (m_sockets.empty() || !packet || m_cachedUcb.IsNull()) {
+        return;
+    }
+    // Only this node's own forwarded data carries our stamp; ARP's own
+    // packets and control messages never do.
+    PrevHopTag stamp;
+    if (!packet->PeekPacketTag(stamp) || !IsMyAddress(stamp.Get()) ||
+        stamp.Next() == Ipv4Address()) {
+        return;
+    }
+    Ptr<Packet> pkt = packet->Copy();
+    Ipv4Header ip;
+    if (pkt->GetSize() < ip.GetSerializedSize()) {
+        return;
+    }
+    pkt->RemoveHeader(ip);
+    OnLinkFailure(stamp.Next());
+    if (ip.GetTtl() <= 1) {
+        return;
+    }
+    ++m_arpReinjected;
+    m_arpReinjectTrace(ip, pkt);
+    Reroute(pkt, ip);
+}
+
+void RoutingBase::Reroute(Ptr<Packet> pkt, const Ipv4Header& ip) {
+    const Ipv4Address dst = ip.GetDestination();
     PrevHopTag stamp;  // our own stamp: its upstream is where the packet came from
     const Ipv4Address upstream = pkt->PeekPacketTag(stamp) ? stamp.Upstream() : Ipv4Address();
     const Ipv4Address next = SelectNextHop(dst, ip.GetSource(), upstream, pkt);

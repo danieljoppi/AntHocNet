@@ -80,6 +80,11 @@ jobs:
         # protocol's default: the control's baselines plus the arm's rows for
         # that protocol. The family pages' numbers come from its output.
         run: python3 tools/bench/test_compose_cell.py
+      - name: Comparator-view self-test (v2.5.0)
+        # comparator_view.py reads the v2.5.0 comparator campaign: anchors in
+        # one file, family cells paired by seed with the v2.4.0 control rows.
+        # The sign (arm minus reference) and the best-native pick are tested.
+        run: python3 tools/bench/test_comparator_view.py
       - name: Every published figure has a reproduce entry (#621)
         # results/figures.yml must cover every PNG under docs/benchmarks/, and
         # each entry's data and re-run cells must exist. The byte-identical

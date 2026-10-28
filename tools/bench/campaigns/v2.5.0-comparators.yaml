@@ -1,0 +1,72 @@
+# The v2.5.0 comparator campaign (#563), pre-registered before dispatch in
+# docs/benchmarks/v2.5.0-comparators.md. Two parts.
+#
+# 1. Anchors: each arm against the trend its own source reports.
+#      ara       Guenes et al. 2002 §4: 50 nodes, 1500 x 300 m, max 10 m/s,
+#                900 s, 10 CBR flows, pause {0, 30, 120, 600} s, vs AODV.
+#      termite   Roth 2005 §4.4 (the Termite of chapter 4, not §7.3's
+#                ReTermite): 100 nodes, 600 s, zero pause, Table 4.1's
+#                50 x 50 m at 10 m range scaled to 1250 x 1250 m at 250 m
+#                (the same field in ranges), speeds {1, 5, 10, 20} m/s,
+#                64-byte packets every 0.5 s with a reply flow standing in
+#                for the per-packet acknowledgement. The trend: goodput falls
+#                and data paths lengthen with speed. AODV rides along as
+#                context; §4.4 compares against nothing.
+#      qrouting  Boyan & Littman 1994 §3: a static field at low and high
+#                offered load, vs the shortest-path oracle.
+#    10 seeds each (ARA's paper used 10 runs).
+#
+# 2. Family comparison (ADR-0026: each arm where it is native). ara and
+#    termite run the six MANET grid cells; qrouting, a learned arm tied to
+#    no family, runs every family the anthocnet-compare harness carries
+#    (grid, static mesh, FANET, VANET, disaster). The arms run alone, on the
+#    v2.4.0 control's exact command lines and seeds, and are read paired by
+#    seed against the committed results/cells/<cell>-v240.txt rows: the v2.5.0
+#    screen's recheck showed those rows still reproduce byte for byte.
+#    The satellite and SAGIN shells run on isl-grid and leo-walker, which do
+#    not carry the adaptive module; they are out of this campaign's scope.
+#
+#   python3 tools/bench/campaign.py plan tools/bench/campaigns/v2.5.0-comparators.yaml
+generation: v250c
+ref: main
+cap: 12
+control: arms
+
+arms:
+  arms: ""
+
+x-grid: &grid {scenario: paper, version: 3.42-opt, nNodes: 50, time: 900, runs: 10, areaX: 1500, areaY: 300, speed: 20, range: 300, transport: udp, harness: compare}
+x-fanet: &fanet {scenario: fanet, version: 3.42-opt, nNodes: 30, time: 900, runs: 20, areaX: 1000, areaY: 1000, pause: 0, speed: 30, propagation: range, mobility: gaussmarkov, transport: udp, harness: compare}
+x-vanet: &vanet {scenario: vanet, version: 3.42-opt, time: 900, areaX: 800, areaY: 800, pause: 0, speed: 20, range: 300, propagation: urban, mobility: manhattan, transport: udp, harness: compare}
+x-disaster: &disaster {scenario: disaster, version: 3.42-opt, nNodes: 47, time: 900, runs: 10, areaX: 1000, areaY: 500, speed: 20, pause: 30, range: 300, propagation: urban, mobility: trace, transport: udp, harness: compare, extraArgs: "--traceFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/disaster/disaster.ns2 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/disaster/disaster.flows --buildings=120,170,320,330;680,170,880,330"}
+
+cells:
+  # --- anchors -------------------------------------------------------------
+  anchor-ara-p0: {workflow: benchmark-cell.yml, inputs: {harness: anthocnet-compare, version: 3.42-opt, args: "--scenario=paper --runs=10 --nNodes=50 --time=900 --areaX=1500 --areaY=300 --speed=10 --pause=0 --flows=10 --diag --protocols=ara,aodv"}}
+  anchor-ara-p30: {workflow: benchmark-cell.yml, inputs: {harness: anthocnet-compare, version: 3.42-opt, args: "--scenario=paper --runs=10 --nNodes=50 --time=900 --areaX=1500 --areaY=300 --speed=10 --pause=30 --flows=10 --diag --protocols=ara,aodv"}}
+  anchor-ara-p120: {workflow: benchmark-cell.yml, inputs: {harness: anthocnet-compare, version: 3.42-opt, args: "--scenario=paper --runs=10 --nNodes=50 --time=900 --areaX=1500 --areaY=300 --speed=10 --pause=120 --flows=10 --diag --protocols=ara,aodv"}}
+  anchor-ara-p600: {workflow: benchmark-cell.yml, inputs: {harness: anthocnet-compare, version: 3.42-opt, args: "--scenario=paper --runs=10 --nNodes=50 --time=900 --areaX=1500 --areaY=300 --speed=10 --pause=600 --flows=10 --diag --protocols=ara,aodv"}}
+  anchor-termite-s1: {workflow: benchmark-cell.yml, inputs: {harness: anthocnet-compare, version: 3.42-opt, args: "--scenario=paper --runs=10 --nNodes=100 --time=600 --areaX=1250 --areaY=1250 --range=250 --propagation=range --mobility=rwp --pause=0 --speed=1 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/termite/termite-anchor.flows --diag --protocols=termite,aodv"}}
+  anchor-termite-s5: {workflow: benchmark-cell.yml, inputs: {harness: anthocnet-compare, version: 3.42-opt, args: "--scenario=paper --runs=10 --nNodes=100 --time=600 --areaX=1250 --areaY=1250 --range=250 --propagation=range --mobility=rwp --pause=0 --speed=5 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/termite/termite-anchor.flows --diag --protocols=termite,aodv"}}
+  anchor-termite-s10: {workflow: benchmark-cell.yml, inputs: {harness: anthocnet-compare, version: 3.42-opt, args: "--scenario=paper --runs=10 --nNodes=100 --time=600 --areaX=1250 --areaY=1250 --range=250 --propagation=range --mobility=rwp --pause=0 --speed=10 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/termite/termite-anchor.flows --diag --protocols=termite,aodv"}}
+  anchor-termite-s20: {workflow: benchmark-cell.yml, inputs: {harness: anthocnet-compare, version: 3.42-opt, args: "--scenario=paper --runs=10 --nNodes=100 --time=600 --areaX=1250 --areaY=1250 --range=250 --propagation=range --mobility=rwp --pause=0 --speed=20 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/termite/termite-anchor.flows --diag --protocols=termite,aodv"}}
+  anchor-qrouting-low: {workflow: benchmark-cell.yml, inputs: {harness: anthocnet-compare, version: 3.42-opt, args: "--runs=10 --nNodes=36 --time=300 --areaX=600 --areaY=600 --range=175 --pause=1000 --flows=10 --cbrBps=2048 --diag --protocols=qrouting,oracle"}}
+  anchor-qrouting-high: {workflow: benchmark-cell.yml, inputs: {harness: anthocnet-compare, version: 3.42-opt, args: "--runs=10 --nNodes=36 --time=300 --areaX=600 --areaY=600 --range=175 --pause=1000 --flows=10 --cbrBps=65536 --diag --protocols=qrouting,oracle"}}
+  # --- family comparison: the v2.4.0 control cells, arms only ---------------
+  grid-rwp-tworay: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: tworay, pause: 30}, blocks: [1, 11]}
+  grid-rwp-nakagami: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: nakagami, pause: 30}, blocks: [1, 11]}
+  grid-ssrwp-tworay: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: ssrwp, propagation: tworay, pause: 30}, blocks: [1, 11]}
+  grid-ssrwp-nakagami: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: ssrwp, propagation: nakagami, pause: 30}, blocks: [1, 11]}
+  grid-gaussmarkov-tworay: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: gaussmarkov, propagation: tworay, pause: 0}, blocks: [1, 11]}
+  grid-gaussmarkov-nakagami: {workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: gaussmarkov, propagation: nakagami, pause: 0}, blocks: [1, 11]}
+  static-mesh: {workflow: paper-benchmark.yml, inputs: {<<: *grid, runs: 5, mobility: rwp, propagation: range, pause: 900, extraArgs: "--standard=80211a --rateManager=constant6 --ns3::dot11s::PeerLink::MaxBeaconLoss=20"}, blocks: [1, 6, 11, 16]}
+  fanet-main: {workflow: paper-benchmark.yml, inputs: {<<: *fanet, range: 350}}
+  fanet-sparse: {workflow: paper-benchmark.yml, inputs: {<<: *fanet, range: 250}}
+  vanet-main: {workflow: paper-benchmark.yml, inputs: {<<: *vanet, nNodes: 100, runs: 4}, blocks: [1, 5, 9, 13, 17]}
+  vanet-sparse: {workflow: paper-benchmark.yml, inputs: {<<: *vanet, nNodes: 40, runs: 10}, blocks: [1, 11]}
+  disaster-main: {workflow: paper-benchmark.yml, inputs: {<<: *disaster}, blocks: [1, 11]}
+
+jobs:
+  - {arms: [arms], cells: [anchor-ara-p0, anchor-ara-p30, anchor-ara-p120, anchor-ara-p600, anchor-termite-s1, anchor-termite-s5, anchor-termite-s10, anchor-termite-s20, anchor-qrouting-low, anchor-qrouting-high]}
+  - {arms: [arms], cells: [grid-rwp-tworay, grid-rwp-nakagami, grid-ssrwp-tworay, grid-ssrwp-nakagami, grid-gaussmarkov-tworay, grid-gaussmarkov-nakagami], inputs: {protocols: "ara,termite,qrouting"}}
+  - {arms: [arms], cells: [static-mesh, fanet-main, fanet-sparse, vanet-main, vanet-sparse, disaster-main], inputs: {protocols: "qrouting"}}

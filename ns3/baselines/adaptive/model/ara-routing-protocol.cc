@@ -254,9 +254,9 @@ void AraRoutingProtocol::PurgeSeen() {
     for (auto it = m_seenData.begin(); it != m_seenData.end();) {
         it = it->second <= now ? m_seenData.erase(it) : std::next(it);
     }
-    // BANT hop records only matter while copies of that flood can still arrive.
-    if (m_bantHops.size() > 4096) {
-        m_bantHops.clear();
+    // FANT reverse hops only matter while that discovery's BANT can come back.
+    if (m_fantFrom.size() > 4096) {
+        m_fantFrom.clear();
     }
     m_table.Prune(Now());
     m_purge = Simulator::Schedule(Seconds(1), &AraRoutingProtocol::PurgeSeen, this);
@@ -279,24 +279,29 @@ void AraRoutingProtocol::RecvControl(Ptr<Packet> p, Ipv4Address from, Ipv4Addres
 
     if (h.type == ARA_FANT) {
         // §3.1: duplicate FANTs are destroyed; the first one records the
-        // trail toward its source and is relayed.
+        // trail toward its source and is relayed. The node remembers which
+        // neighbour the FANT came from, so the BANT can retrace the path.
         if (!first) {
             return;
         }
         m_table.SetAtLeast(h.origin, from, InitialPheromone(hops), Now());
+        m_fantFrom[std::make_pair(h.origin.Get(), h.seq)] = from;
         FlushQueue(h.origin);
         if (IsMyAddress(h.target)) {
+            // §3.1: the destination answers with a BANT, sent back along the
+            // path the FANT came (the reading of the ARA reviews; the 2002
+            // paper's Fig. 3 does not say how the BANT travels). It carries
+            // the FANT's sequence number so each hop finds its way back.
             ControlHeader b;
             b.type = ARA_BANT;
             b.hops = 0;
             b.ttl = m_antTtl;
-            b.seq = ++m_seq;
+            b.seq = h.seq;
             b.origin = MainAddress();
             b.target = h.origin;
-            SeenAnt(b.origin, b.seq, ARA_BANT);
             Ptr<Packet> q = Create<Packet>();
             q->AddHeader(b);
-            BroadcastControl(q);
+            UnicastControl(q, from);
             return;
         }
         if (h.ttl > 1) {
@@ -309,41 +314,27 @@ void AraRoutingProtocol::RecvControl(Ptr<Packet> p, Ipv4Address from, Ipv4Addres
         return;
     }
 
-    // BANT: the first copy lays the trail toward the destination and is
-    // relayed. A later copy adds a second track only if it is no longer than
-    // the first (Fig. 3: node 3's two tracks, via 4 and via 6, are equally
-    // long). A longer copy came back from a node further out; its trail would
-    // point away from the destination and loop.
-    const auto key = std::make_pair(h.origin.Get(), h.seq);
-    if (first) {
-        m_bantHops[key] = hops;
-    } else {
-        auto b = m_bantHops.find(key);
-        if (b == m_bantHops.end() || hops > b->second) {
-            return;
-        }
-    }
+    // BANT: lays the trail toward the destination over the neighbour it came
+    // from, then retraces the FANT's path toward the source.
     m_table.SetAtLeast(h.origin, from, InitialPheromone(hops), Now());
-    if (!first) {
-        return;
-    }
+    FlushQueue(h.origin);
     if (IsMyAddress(h.target)) {
         auto it = m_discovery.find(h.origin);
         if (it != m_discovery.end()) {
             it->second.timer.Cancel();
             m_discovery.erase(it);
         }
-        FlushQueue(h.origin);
         return;
     }
-    FlushQueue(h.origin);
-    if (h.ttl > 1) {
-        h.hops = hops;
-        h.ttl -= 1;
-        Ptr<Packet> q = Create<Packet>();
-        q->AddHeader(h);
-        BroadcastControlJittered(q, m_floodJitter);
+    auto back = m_fantFrom.find(std::make_pair(h.target.Get(), h.seq));
+    if (back == m_fantFrom.end() || h.ttl <= 1) {
+        return;  // this node never relayed that FANT, or the BANT ran out of hops
     }
+    h.hops = hops;
+    h.ttl -= 1;
+    Ptr<Packet> q = Create<Packet>();
+    q->AddHeader(h);
+    UnicastControl(q, back->second);
 }
 
 }  // namespace adaptive

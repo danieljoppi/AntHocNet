@@ -31,58 +31,58 @@ TypeId TermiteRoutingProtocol::GetTypeId() {
             .SetGroupName("Adaptive")
             .AddConstructor<TermiteRoutingProtocol>()
             .AddAttribute("Gamma",
-                          "Pheromone each arriving packet adds to the link toward its "
-                          "source. Nominal 1 (secondary sources; the slides give none).",
+                          "Pheromone each arriving packet adds to the link toward its source "
+                          "(§4.2.2). Table 4.1 gives no value; 1, the initial pheromone.",
                           DoubleValue(1.0), MakeDoubleAccessor(&TermiteRoutingProtocol::m_gamma),
                           MakeDoubleChecker<double>(0.0))
-            .AddAttribute("Decay",
-                          "tau, the continuous decay rate (1/s). The slides give no value, "
-                          "only that moderate rates are preferred and that the best rate "
-                          "grows with node speed: repo choice.",
-                          DoubleValue(1.0), MakeDoubleAccessor(&TermiteRoutingProtocol::m_decay),
+            .AddAttribute("Decay", "tau, the decay rate per second (Table 4.1: 0.105).",
+                          DoubleValue(0.105), MakeDoubleAccessor(&TermiteRoutingProtocol::m_decay),
                           MakeDoubleChecker<double>(0.0))
-            .AddAttribute("Threshold",
-                          "K, the pheromone threshold of the forwarding equation. Not "
-                          "given: 0, the value Termite-Hill (derived from Termite) uses.",
-                          DoubleValue(0.0), MakeDoubleAccessor(&TermiteRoutingProtocol::m_k),
-                          MakeDoubleChecker<double>(0.0))
-            .AddAttribute("Sensitivity",
-                          "F, the pheromone sensitivity exponent. Not given: 2, the value "
-                          "Termite-Hill uses.",
-                          DoubleValue(2.0), MakeDoubleAccessor(&TermiteRoutingProtocol::m_f),
+            .AddAttribute("InitialPheromone",
+                          "Value of a new destination's or neighbour's cells (Table 4.1: 1).",
+                          DoubleValue(1.0), MakeDoubleAccessor(&TermiteRoutingProtocol::m_initial),
                           MakeDoubleChecker<double>(0.0))
             .AddAttribute("Floor",
-                          "Underflow guard: pheromone below this is treated as none. Termite "
-                          "has no expiry (normalised probabilities route on any positive "
-                          "value); trails end when a neighbour is lost.",
-                          DoubleValue(1e-9), MakeDoubleAccessor(&TermiteRoutingProtocol::m_floor),
+                          "Pheromone floor; a cell at the floor is unused (Table 4.1: 0.1).",
+                          DoubleValue(0.1), MakeDoubleAccessor(&TermiteRoutingProtocol::m_floor),
                           MakeDoubleChecker<double>(0.0))
-            .AddAttribute("HelloInterval",
-                          "A node that transmitted nothing for this long broadcasts a hello, "
-                          "so a silent node (a sink) stays someone's neighbour. Not in the "
-                          "slides, which rely on overhearing alone: repo choice (AODV's "
-                          "hello interval), suppressed whenever the node was overheard.",
-                          TimeValue(Seconds(1)),
-                          MakeTimeAccessor(&TermiteRoutingProtocol::m_helloInterval),
+            .AddAttribute("Ceiling", "Pheromone ceiling (Table 4.1: 10000).", DoubleValue(10000.0),
+                          MakeDoubleAccessor(&TermiteRoutingProtocol::m_ceiling),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("Threshold", "K of eq. 4.3; nominal 0 (§4.2.5).", DoubleValue(0.0),
+                          MakeDoubleAccessor(&TermiteRoutingProtocol::m_k),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("Sensitivity",
+                          "F of eq. 4.3. Table 4.1 gives none; 10: §5.4 finds high "
+                          "sensitivities best and §7.3 runs F = 10.",
+                          DoubleValue(10.0), MakeDoubleAccessor(&TermiteRoutingProtocol::m_f),
+                          MakeDoubleChecker<double>(0.0))
+            .AddAttribute("RreqTimeout",
+                          "Wait for a route reply before the held packets are dropped "
+                          "(Table 4.1: 2 s).",
+                          TimeValue(Seconds(2)),
+                          MakeTimeAccessor(&TermiteRoutingProtocol::m_rreqTimeout),
                           MakeTimeChecker())
-            .AddAttribute("NeighborTimeout",
-                          "A neighbour not heard for this long is forgotten (a lost one is also "
-                          "removed at once on a MAC failure, the slides' route repair).",
-                          TimeValue(Seconds(3)),
-                          MakeTimeAccessor(&TermiteRoutingProtocol::m_neighborTimeout),
-                          MakeTimeChecker())
-            .AddAttribute("RreqTtl", "Steps a route request's random walk may take.",
-                          UintegerValue(64),
+            .AddAttribute("RreqTtl", "Hops a route request or reply may travel (Table 4.1: 32).",
+                          UintegerValue(32),
                           MakeUintegerAccessor(&TermiteRoutingProtocol::m_rreqTtl),
                           MakeUintegerChecker<uint8_t>(1))
-            .AddAttribute(
-                "DiscoveryTimeout", "Wait for a route before a new random walk; doubles per retry.",
-                TimeValue(Seconds(1)),
-                MakeTimeAccessor(&TermiteRoutingProtocol::m_discoveryTimeout), MakeTimeChecker())
-            .AddAttribute("DiscoveryRetries", "Walks re-sent before the held packets are dropped.",
+            .AddAttribute("RreqsPerRequest", "Random walks sent per route request (Table 4.1: 2).",
                           UintegerValue(2),
-                          MakeUintegerAccessor(&TermiteRoutingProtocol::m_discoveryRetries),
-                          MakeUintegerChecker<uint32_t>())
+                          MakeUintegerAccessor(&TermiteRoutingProtocol::m_rreqsPerRequest),
+                          MakeUintegerChecker<uint32_t>(1))
+            .AddAttribute("SeedTtl", "Hops a seed's random walk travels (Table 4.1: 4).",
+                          UintegerValue(4),
+                          MakeUintegerAccessor(&TermiteRoutingProtocol::m_seedTtl),
+                          MakeUintegerChecker<uint8_t>(1))
+            .AddAttribute("SeedPeriod", "Interval between a node's seeds (Table 4.1: 30 s).",
+                          TimeValue(Seconds(30)),
+                          MakeTimeAccessor(&TermiteRoutingProtocol::m_seedPeriod),
+                          MakeTimeChecker())
+            .AddAttribute(
+                "HelloPeriod", "Interval between an isolated node's hellos (Table 4.1: 1 s).",
+                TimeValue(Seconds(1)), MakeTimeAccessor(&TermiteRoutingProtocol::m_helloPeriod),
+                MakeTimeChecker())
             .AddAttribute("Overhear", "Learn from overheard transmissions (promiscuous reception).",
                           BooleanValue(true),
                           MakeBooleanAccessor(&TermiteRoutingProtocol::m_overhear),
@@ -92,25 +92,27 @@ TypeId TermiteRoutingProtocol::GetTypeId() {
 
 TermiteRoutingProtocol::TermiteRoutingProtocol()
     : m_gamma(1.0),
-      m_decay(1.0),
+      m_decay(0.105),
+      m_initial(1.0),
+      m_floor(0.1),
+      m_ceiling(10000.0),
       m_k(0.0),
-      m_f(2.0),
-      m_floor(1e-9),
-      m_helloInterval(Seconds(1)),
-      m_neighborTimeout(Seconds(3)),
-      m_rreqTtl(64),
-      m_discoveryTimeout(Seconds(1)),
-      m_discoveryRetries(2),
+      m_f(10.0),
+      m_rreqTimeout(Seconds(2)),
+      m_rreqTtl(32),
+      m_rreqsPerRequest(2),
+      m_seedTtl(4),
+      m_seedPeriod(Seconds(30)),
+      m_helloPeriod(Seconds(1)),
       m_overhear(true),
       m_seq(0),
-      m_lastTx(Seconds(0)),
       m_rreqsSent(0),
       m_overheard(0) {}
 
 TermiteRoutingProtocol::~TermiteRoutingProtocol() = default;
 
 void TermiteRoutingProtocol::DoInitialize() {
-    m_table.Configure(PheromoneTable<Ipv4Address>::Decay::Exponential, m_decay, 1.0, m_floor);
+    m_table.Configure(m_decay, m_initial, m_floor, m_ceiling);
     Ptr<Node> node = GetObject<Node>();
     if (m_overhear && node) {
         for (uint32_t i = 0; i < node->GetNDevices(); ++i) {
@@ -121,17 +123,24 @@ void TermiteRoutingProtocol::DoInitialize() {
             }
         }
     }
-    m_helloTimer = Simulator::Schedule(MicroSeconds(Rng()->GetInteger(0, 1000000)),
+    // Every node starts isolated: its first hellos find the neighbourhood.
+    m_helloTimer = Simulator::Schedule(MicroSeconds(Rng()->GetInteger(0, 100000)),
                                        &TermiteRoutingProtocol::HelloTimer, this);
+    m_seedTimer =
+        Simulator::Schedule(MicroSeconds(Rng()->GetInteger(0, m_seedPeriod.GetMicroSeconds())),
+                            &TermiteRoutingProtocol::SeedTimer, this);
+    m_pruneTimer = Simulator::Schedule(Seconds(1), &TermiteRoutingProtocol::PruneTimer, this);
     RoutingBase::DoInitialize();
 }
 
 void TermiteRoutingProtocol::DoDispose() {
     m_helloTimer.Cancel();
-    for (auto& kv : m_discovery) {
-        kv.second.timer.Cancel();
+    m_seedTimer.Cancel();
+    m_pruneTimer.Cancel();
+    for (auto& kv : m_pendingRreq) {
+        kv.second.Cancel();
     }
-    m_discovery.clear();
+    m_pendingRreq.clear();
     RoutingBase::DoDispose();
 }
 
@@ -141,52 +150,28 @@ void TermiteRoutingProtocol::Learn(Ipv4Address neighbor, Ipv4Address source) {
     if (neighbor == Ipv4Address() || IsMyAddress(neighbor)) {
         return;
     }
-    m_neighbors[neighbor] = Simulator::Now();
+    m_table.AddNeighbor(neighbor, Now());
     if (source != Ipv4Address() && !IsMyAddress(source)) {
-        m_table.Add(source, neighbor, m_gamma, Now());
+        m_table.Deposit(source, neighbor, m_gamma, Now());
     }
 }
 
-std::vector<Ipv4Address> TermiteRoutingProtocol::LiveNeighbors() {
-    const Time now = Simulator::Now();
-    std::vector<Ipv4Address> out;
-    for (auto it = m_neighbors.begin(); it != m_neighbors.end();) {
-        if (now - it->second > m_neighborTimeout) {
-            m_table.EraseNeighbor(it->first);
-            it = m_neighbors.erase(it);
-            continue;
-        }
-        out.push_back(it->first);
-        ++it;
-    }
-    return out;
-}
-
-std::set<Ipv4Address> TermiteRoutingProtocol::KnownNeighbors() const {
-    std::set<Ipv4Address> out;
-    for (const auto& kv : m_neighbors) {
-        out.insert(kv.first);
-    }
-    return out;
-}
+std::set<Ipv4Address> TermiteRoutingProtocol::KnownNeighbors() const { return m_table.Neighbors(); }
 
 Ipv4Address TermiteRoutingProtocol::SelectNextHop(Ipv4Address dst, Ipv4Address, Ipv4Address prev,
                                                   Ptr<const Packet>) {
-    const std::vector<Ipv4Address> nbs = LiveNeighbors();
+    if (!m_table.HasDestination(dst)) {
+        return Ipv4Address();  // unknown destination: route request
+    }
+    // eq. 4.3 over N - r: never back to the link the packet arrived on.
     std::vector<Ipv4Address> hops;
     std::vector<double> weights;
-    bool any = false;
-    for (const Ipv4Address& n : nbs) {
-        if (n == prev && nbs.size() > 1) {
-            continue;  // never straight back while another neighbour exists
+    for (const Ipv4Address& n : m_table.Neighbors()) {
+        if (n == prev) {
+            continue;
         }
-        const double ph = m_table.Get(dst, n, Now());
-        any = any || ph > m_floor;
         hops.push_back(n);
-        weights.push_back(TermiteWeight(ph < m_floor ? 0.0 : ph, m_k, m_f));
-    }
-    if (!any) {
-        return Ipv4Address();  // no pheromone for dst: route discovery
+        weights.push_back(TermiteWeight(m_table.Get(dst, n, Now()), m_k, m_f));
     }
     const int i = PickProportional(weights, Rng()->GetValue(0.0, 1.0));
     return i < 0 ? Ipv4Address() : hops[i];
@@ -199,15 +184,15 @@ bool TermiteRoutingProtocol::OnDataReceived(Ptr<const Packet>, const Ipv4Header&
 }
 
 void TermiteRoutingProtocol::OnLinkFailure(Ipv4Address neighbor) {
-    // Route repair: the lost neighbour leaves the table.
-    m_neighbors.erase(neighbor);
-    m_table.EraseNeighbor(neighbor);
+    m_table.RemoveNeighbor(neighbor);  // lost neighbour: its row goes (§4.2.3)
 }
 
 Ipv4Address TermiteRoutingProtocol::RandomNeighbor(Ipv4Address exclude) {
-    std::vector<Ipv4Address> nbs = LiveNeighbors();
-    if (nbs.size() > 1) {
-        nbs.erase(std::remove(nbs.begin(), nbs.end(), exclude), nbs.end());
+    std::vector<Ipv4Address> nbs;
+    for (const Ipv4Address& n : m_table.Neighbors()) {
+        if (n != exclude) {
+            nbs.push_back(n);
+        }
     }
     if (nbs.empty()) {
         return Ipv4Address();
@@ -216,49 +201,51 @@ Ipv4Address TermiteRoutingProtocol::RandomNeighbor(Ipv4Address exclude) {
 }
 
 void TermiteRoutingProtocol::HelloTimer() {
-    // Suppressed while the node transmits anyway: its neighbours overheard it.
-    if (Simulator::Now() - m_lastTx >= m_helloInterval) {
+    // §4.2.6: hellos only while the node knows no neighbour.
+    if (m_table.Neighbors().empty()) {
         ControlHeader h;
         h.type = TERMITE_HELLO;
         h.origin = MainAddress();
         Ptr<Packet> p = Create<Packet>();
         p->AddHeader(h);
         BroadcastControl(p);
-        m_lastTx = Simulator::Now();
     }
-    // +-10 % jitter keeps neighbours' beacons from locking in phase.
-    const double j = Rng()->GetValue(0.9, 1.1);
-    m_helloTimer =
-        Simulator::Schedule(m_helloInterval * j, &TermiteRoutingProtocol::HelloTimer, this);
+    m_helloTimer = Simulator::Schedule(m_helloPeriod, &TermiteRoutingProtocol::HelloTimer, this);
 }
 
-void TermiteRoutingProtocol::OnDataForwarded(Ptr<const Packet>, const Ipv4Header&, Ipv4Address) {
-    m_lastTx = Simulator::Now();
+void TermiteRoutingProtocol::SeedTimer() {
+    const Ipv4Address next = RandomNeighbor(Ipv4Address());
+    if (next != Ipv4Address()) {
+        ControlHeader h;
+        h.type = TERMITE_SEED;
+        h.ttl = m_seedTtl;
+        h.seq = ++m_seq;
+        h.origin = MainAddress();
+        Ptr<Packet> p = Create<Packet>();
+        p->AddHeader(h);
+        UnicastControl(p, next);
+    }
+    m_seedTimer = Simulator::Schedule(m_seedPeriod, &TermiteRoutingProtocol::SeedTimer, this);
 }
 
-void TermiteRoutingProtocol::SendControl(Ptr<Packet> p, Ipv4Address next) {
-    m_lastTx = Simulator::Now();
-    UnicastControl(p, next);
+void TermiteRoutingProtocol::PruneTimer() {
+    m_table.Prune(Now());
+    m_pruneTimer = Simulator::Schedule(Seconds(1), &TermiteRoutingProtocol::PruneTimer, this);
 }
 
 void TermiteRoutingProtocol::StartDiscovery(Ipv4Address dst) {
-    if (SelectNextHop(dst, Ipv4Address(), Ipv4Address(), nullptr) != Ipv4Address()) {
+    if (m_table.HasDestination(dst)) {
         FlushQueue(dst);
         return;
     }
-    auto it = m_discovery.find(dst);
-    if (it != m_discovery.end() && !it->second.timer.IsExpired()) {
-        return;
+    if (m_pendingRreq.count(dst)) {
+        return;  // one route request per destination at a time
     }
-    m_discovery[dst].attempts = 0;
-    SendRreq(dst);
-}
-
-void TermiteRoutingProtocol::SendRreq(Ipv4Address dst) {
-    Discovery& d = m_discovery[dst];
-    LiveNeighbors();
-    const Ipv4Address next = m_neighbors.count(dst) ? dst : RandomNeighbor(Ipv4Address());
-    if (next != Ipv4Address()) {
+    for (uint32_t i = 0; i < m_rreqsPerRequest; ++i) {
+        const Ipv4Address next = RandomNeighbor(Ipv4Address());
+        if (next == Ipv4Address()) {
+            break;
+        }
         ControlHeader h;
         h.type = TERMITE_RREQ;
         h.ttl = m_rreqTtl;
@@ -267,27 +254,20 @@ void TermiteRoutingProtocol::SendRreq(Ipv4Address dst) {
         h.target = dst;
         Ptr<Packet> p = Create<Packet>();
         p->AddHeader(h);
-        SendControl(p, next);
+        UnicastControl(p, next);
         ++m_rreqsSent;
     }
-    const Time wait = m_discoveryTimeout * static_cast<double>(1u << std::min(d.attempts, 8u));
-    d.timer = Simulator::Schedule(wait, &TermiteRoutingProtocol::DiscoveryTimeout, this, dst);
+    m_pendingRreq[dst] =
+        Simulator::Schedule(m_rreqTimeout, &TermiteRoutingProtocol::RreqTimeout, this, dst);
 }
 
-void TermiteRoutingProtocol::DiscoveryTimeout(Ipv4Address dst) {
-    if (SelectNextHop(dst, Ipv4Address(), Ipv4Address(), nullptr) != Ipv4Address()) {
-        m_discovery.erase(dst);
+void TermiteRoutingProtocol::RreqTimeout(Ipv4Address dst) {
+    m_pendingRreq.erase(dst);
+    if (m_table.HasDestination(dst)) {
         FlushQueue(dst);
         return;
     }
-    Discovery& d = m_discovery[dst];
-    if (d.attempts < m_discoveryRetries && HasQueued(dst)) {
-        ++d.attempts;
-        SendRreq(dst);
-        return;
-    }
-    m_discovery.erase(dst);
-    DropQueued(dst);
+    DropQueued(dst);  // §4.2.6: no reply within the rreq timeout
 }
 
 void TermiteRoutingProtocol::RecvControl(Ptr<Packet> p, Ipv4Address from, Ipv4Address) {
@@ -297,21 +277,39 @@ void TermiteRoutingProtocol::RecvControl(Ptr<Packet> p, Ipv4Address from, Ipv4Ad
     }
     p->RemoveHeader(h);
     switch (h.type) {
-        case TERMITE_HELLO:
+        case TERMITE_HELLO: {
+            Learn(from, from);
+            ControlHeader r;
+            r.type = TERMITE_HELLO_REPLY;
+            r.origin = MainAddress();
+            Ptr<Packet> q = Create<Packet>();
+            q->AddHeader(r);
+            // Every neighbour answers the same broadcast: spread the replies.
+            Simulator::Schedule(MicroSeconds(Rng()->GetInteger(0, 10000)),
+                                &TermiteRoutingProtocol::UnicastControl, this, q, from);
+            return;
+        }
+        case TERMITE_HELLO_REPLY:
             Learn(from, from);
             return;
+        case TERMITE_SEED: {
+            Learn(from, h.origin);
+            const Ipv4Address next = RandomNeighbor(from);
+            if (h.ttl > 1 && next != Ipv4Address() && !IsMyAddress(h.origin)) {
+                h.ttl -= 1;
+                h.hops += 1;
+                Ptr<Packet> q = Create<Packet>();
+                q->AddHeader(h);
+                UnicastControl(q, next);
+            }
+            return;
+        }
         case TERMITE_RREQ: {
             // Like every packet, the request lays pheromone toward its source.
             Learn(from, h.origin);
-            // A walk that passes back through its requester just keeps walking.
-            const bool known =
-                IsMyAddress(h.origin)
-                    ? false
-                    : IsMyAddress(h.target) ||
-                          SelectNextHop(h.target, Ipv4Address(), from, nullptr) != Ipv4Address();
-            if (known) {
-                // Reply as the destination's trail: the RREP's source is the
-                // destination, so every node it crosses learns the way there.
+            if (!IsMyAddress(h.origin) &&
+                (IsMyAddress(h.target) || m_table.HasDestination(h.target))) {
+                // §4.2.6: the reply's source is the requested destination.
                 ControlHeader r;
                 r.type = TERMITE_RREP;
                 r.ttl = m_rreqTtl;
@@ -323,23 +321,18 @@ void TermiteRoutingProtocol::RecvControl(Ptr<Packet> p, Ipv4Address from, Ipv4Ad
                 if (next != Ipv4Address()) {
                     Ptr<Packet> q = Create<Packet>();
                     q->AddHeader(r);
-                    SendControl(q, next);
+                    UnicastControl(q, next);
                 }
                 return;
             }
-            if (h.ttl > 1) {
-                // The walk looks for the destination: a step straight to it when
-                // it is a neighbour, a uniformly random neighbour otherwise.
-                const Ipv4Address next =
-                    m_neighbors.count(h.target) ? h.target : RandomNeighbor(from);
-                if (next == Ipv4Address()) {
-                    return;  // knows no one to walk to; the walk ends here
-                }
+            // The walk: uniform over the neighbours but the arrival link.
+            const Ipv4Address next = RandomNeighbor(from);
+            if (h.ttl > 1 && next != Ipv4Address()) {
                 h.ttl -= 1;
                 h.hops += 1;
                 Ptr<Packet> q = Create<Packet>();
                 q->AddHeader(h);
-                SendControl(q, next);
+                UnicastControl(q, next);
             }
             return;
         }
@@ -347,22 +340,20 @@ void TermiteRoutingProtocol::RecvControl(Ptr<Packet> p, Ipv4Address from, Ipv4Ad
             Learn(from, h.origin);
             FlushQueue(h.origin);
             if (IsMyAddress(h.target)) {
-                auto it = m_discovery.find(h.origin);
-                if (it != m_discovery.end()) {
-                    it->second.timer.Cancel();
-                    m_discovery.erase(it);
+                auto it = m_pendingRreq.find(h.origin);
+                if (it != m_pendingRreq.end()) {
+                    it->second.Cancel();
+                    m_pendingRreq.erase(it);
                 }
                 return;
             }
-            if (h.ttl > 1) {
-                const Ipv4Address next = SelectNextHop(h.target, Ipv4Address(), from, nullptr);
-                if (next != Ipv4Address()) {
-                    h.ttl -= 1;
-                    h.hops += 1;
-                    Ptr<Packet> q = Create<Packet>();
-                    q->AddHeader(h);
-                    SendControl(q, next);
-                }
+            const Ipv4Address next = SelectNextHop(h.target, Ipv4Address(), from, nullptr);
+            if (h.ttl > 1 && next != Ipv4Address()) {
+                h.ttl -= 1;
+                h.hops += 1;
+                Ptr<Packet> q = Create<Packet>();
+                q->AddHeader(h);
+                UnicastControl(q, next);
             }
             return;
         }
@@ -394,9 +385,9 @@ void TermiteRoutingProtocol::Overhear(Ptr<NetDevice>, Ptr<const Packet> packet, 
                 if (p->GetSize() >= h.GetSerializedSize()) {
                     p->RemoveHeader(h);
                     ++m_overheard;
-                    Learn(ip.GetSource(), h.type == TERMITE_RREQ || h.type == TERMITE_RREP
-                                              ? h.origin
-                                              : ip.GetSource());
+                    const bool walk =
+                        h.type == TERMITE_RREQ || h.type == TERMITE_RREP || h.type == TERMITE_SEED;
+                    Learn(ip.GetSource(), walk ? h.origin : ip.GetSource());
                 }
                 return;
             }
