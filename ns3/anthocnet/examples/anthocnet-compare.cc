@@ -3769,8 +3769,10 @@ int main(int argc, char* argv[]) {
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
     cmd.AddValue(
         "protocols",
-        "Comma-separated list "
-        "(anthocnet,aodv,olsr,dsdv,gpsr,gpcr,gpsr3d,aomdv,hwmp,oracle,ara,termite,qrouting). "
+        // clang-format off
+        // check-allowlists.sh and check-arm-delivery.sh read this list as one literal (#435).
+        "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,gpcr,gpsr3d,aomdv,hwmp,oracle,ara,termite,qrouting). "
+        // clang-format on
         "`oracle` is the #296 global-knowledge shortest-path CONTROL "
         "(upper bound, zero control traffic), off unless named.",
         protocols);
