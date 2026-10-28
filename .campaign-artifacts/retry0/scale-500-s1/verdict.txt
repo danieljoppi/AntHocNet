@@ -1,0 +1,4 @@
+ok: results.txt: measured at c20b058
+WARN: results.txt/anthocnet: 2 run(s) — below the #293 published-point floor (>=10; tail quantiles need 20). Diagnostic only, do not publish.
+checked 1 rows
+verdict: WARN (0 fail, 1 warn)

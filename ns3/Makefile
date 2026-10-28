@@ -35,6 +35,9 @@ AOMDV_DEST = $(NS3DIR)/contrib/aomdv
 # it needs (the Dijkstra layer) the same way the anthocnet module carries the
 # algorithm core.
 ORACLEDEST = $(NS3DIR)/contrib/oracle
+# v2.5.0 (#563): the adaptive-routing comparators (ARA, Termite, Q-routing),
+# one self-contained module written from the papers (baselines/adaptive/README.md).
+ADAPTIVEDEST = $(NS3DIR)/contrib/adaptive
 
 .PHONY: install install-baselines uninstall doctor require-ns3dir
 
@@ -63,7 +66,7 @@ install: require-ns3dir
 	cp $(CORE)/include/anthocnet/core/*.h "$(DEST)/core/include/anthocnet/core/"
 	cp $(CORE)/src/*.cpp "$(DEST)/core/src/"
 	@if [ "$(BASELINES)" = 0 ]; then \
-	  echo ">> BASELINES=0: skipping the aomdv, gpsr and oracle comparison modules."; \
+	  echo ">> BASELINES=0: skipping the aomdv, gpsr, oracle and adaptive comparison modules."; \
 	  echo "   ns-3 will skip anthocnet-compare, isl-grid and leo-walker (they link them);"; \
 	  echo "   the module, its test suite and anthocnet-example build as usual."; \
 	else $(MAKE) --no-print-directory install-baselines NS3DIR="$(NS3DIR)"; fi
@@ -95,6 +98,12 @@ install-baselines: require-ns3dir
 	cp $(CORE)/include/anthocnet/core/shortest_path.h \
 	   "$(ORACLEDEST)/core/include/anthocnet/core/"
 	cp $(CORE)/src/shortest_path.cpp "$(ORACLEDEST)/core/src/"
+	@echo ">> Installing adaptive comparator module into $(ADAPTIVEDEST)"
+	mkdir -p "$(ADAPTIVEDEST)/model" "$(ADAPTIVEDEST)/helper" "$(ADAPTIVEDEST)/test"
+	cp $(BASE)/adaptive/model/*.h  $(BASE)/adaptive/model/*.cc  "$(ADAPTIVEDEST)/model/"
+	cp $(BASE)/adaptive/helper/*.h $(BASE)/adaptive/helper/*.cc "$(ADAPTIVEDEST)/helper/"
+	cp $(BASE)/adaptive/test/*.cc "$(ADAPTIVEDEST)/test/" 2>/dev/null || true
+	cp $(BASE)/adaptive/CMakeLists.txt "$(ADAPTIVEDEST)/"
 
 uninstall: require-ns3dir
 	@echo ">> Removing $(DEST)"
@@ -105,4 +114,6 @@ uninstall: require-ns3dir
 	rm -rf "$(AOMDV_DEST)"
 	@echo ">> Removing $(ORACLEDEST)"
 	rm -rf "$(ORACLEDEST)"
+	@echo ">> Removing $(ADAPTIVEDEST)"
+	rm -rf "$(ADAPTIVEDEST)"
 	@echo ">> Done. Reconfigure/build ns-3 to drop the modules."
