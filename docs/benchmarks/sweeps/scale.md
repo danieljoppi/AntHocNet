@@ -445,6 +445,38 @@ excludes zero, the hypothesis is not supported and #740 says so. **No number
 from this screen is published.** Stage 2 (50 / 200 / 500 nodes, 20 seeds,
 paired, no regression at 50) gets its own pre-registered plan.
 
+**Screen result** (dispatched 2026-10-27, collected 2026-10-28; exploratory,
+not published). The recheck reproduced the committed `scale-500-v240`
+`##RUN##` rows for seeds 1–2, AntHocNet and AODV, byte for byte, so each arm's
+delta below belongs to the arm. Paired against the control, n = 4 at 500 nodes:
+
+| arm | paired dPDR | 95 % CI | rule |
+|---|---|---|---|
+| `retry0` | +34.75 pp | [+20.94, +48.56] | **passes** (≥ +5 pp, CI excludes 0) |
+| `retry1s` | +15.47 pp | [−2.14, +33.09] | CI spans 0 |
+| `both` | +4.47 pp | [−0.84, +9.79] | CI spans 0 |
+| `hold1s` | −2.25 pp | [−6.29, +1.79] | CI spans 0 (4/4 seeds negative) |
+
+The reading is the diagnosis's second half. The adapter's 0.25 s retry timer,
+which floods from every holding node, is what collapses the 500-node field.
+Lengthening the hold alone does not help, and combining it with a slower retry
+takes back most of what the slower retry gains.
+
+**Stage 2** (`tools/bench/campaigns/v2.5.0-scale-stage2.yaml`, pre-registered
+before dispatch) runs `retry0` at 50, 200 and 500 nodes, 20 seeds each,
+AntHocNet only, paired by seed with the committed `scale-{50,200,500}-v240`
+controls. Rule:
+
+- **supported at scale:** the paired dPDR at 500 nodes is above zero, with its
+  95 % CI excluding zero;
+- **no regression at 50 nodes:** the paired dPDR CI at 50 nodes does not lie
+  wholly below −1 pp;
+- 200 nodes is reported, not gated.
+
+If both hold, `ReactiveRetryInterval=0s` is the documented operating point for
+large fields, and the default goes to an every-family A/B in a later release
+(golden rule 8). No default moves on this evidence.
+
 Earlier evidence that no constant here is a default candidate: v2.2.0's
 `reconv1s` arm (the same override as `hold1s`) gained +4 to +6 pp on VANET and
 FANET and lost 1.4 and 6.0 pp on the grid Nakagami cells
