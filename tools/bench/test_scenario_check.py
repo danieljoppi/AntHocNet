@@ -2682,6 +2682,30 @@ def _leo_sagin_sites():
            f"73 handovers on 4 ticks x 18 HAPS was not flagged\n{out}")
 
 
+# #741: the scale-500-v240 block-1 row, where NRL 10114.56 fills its 8-wide
+# field and merges with thrput, so every later column shifts by one.
+MERGED_CELL = """\
+##RUN## 1 anthocnet 10.79 392.5 3118.0 1.08 10114.56 415.50 inf inf 24206.1460
+##RUN## 1 aodv 16.37 264.0 2709.0 1.64 3934.86 283.25 inf inf 2185.9900
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+anthocnet       10.8      392.5       3118.0         1.0810114.56      415.50         inf         inf   24206.146    129744.4    348.7869        7.56      0.3270      3853.47
+aodv            16.4      264.0       2709.0         1.64 3934.86      283.25         inf         inf    2185.990    127078.0    192.6068        4.37      0.4626      5313.08
+"""
+
+
+@case("#741 a merged-column table row is a format error, not a shifted Jain FAIL")
+def _merged_columns():
+    _levels, out = run_cell(MERGED_CELL)
+    expect("13 fields under a 14-column header" in out, "merged-columns",
+           f"the merged row was not reported as a format error\n{out}")
+    expect("Jain" not in out, "merged-columns-shift",
+           f"the merged row was mapped by position\n{out}")
+    _levels, out = run_cell(MERGED_CELL.replace("1.0810114.56", "1.08 10114.56"))
+    expect("#741" not in out, "separated-columns",
+           f"a well-formed row was flagged\n{out}")
+
+
 def main():
     for name, fn in CASES:
         fn()
