@@ -8,6 +8,21 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v2.5.0 (2026-10-28)
+
+### Feat
+
+- **ns3**: adaptive comparator module: ara, termite and qrouting arms (#754)
+- **bench**: campaign.py dispatches through benchmark-cell.yml (#747)
+
+### Fix
+
+- **bench**: campaign-path fixes and the #740 stage 2 result (#759)
+- **ns3**: termite per roth's table 4.1, ara bant retrace, arp-drop recovery; pre-register the comparator campaign (#757)
+- **bench**: bench_parse checks a multi-block cell's column mapping per block (#752)
+- **bench**: compare table keeps a space between columns; scenario_check rejects merged rows (#750)
+- **bench**: campaign collect refuses stub artifacts; leaner agent files (#745)
+
 ## v2.4.0 (2026-10-26)
 
 ### Feat
