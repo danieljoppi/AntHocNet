@@ -1,0 +1,701 @@
+# v250c campaign grid-gaussmarkov-nakagami-v250c: 2 run(s): 40702043145 (arms/grid-gaussmarkov-nakagami-s1) / 40703046578 (arms/grid-gaussmarkov-nakagami-s11); ref main
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=paper nNodes=50 time=900 runs=10 firstRun=1 areaX=1500 areaY=300 speed=20 pause=0 range=300 propagation=nakagami mobility=gaussmarkov transport=udp flows=20 cbrBps=512 offTime=0 rateManager=constant2 protocols=ara,termite,qrouting
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr P2pHelloEvery=1
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ShareKinematics=false
+##CONFIG## attr EnableLinkLifetime=false
+##CONFIG## attr LinkLifetimeRange=250
+##CONFIG## attr LinkLifetimeHorizon=3
+##CONFIG## attr LinkLifetimeFloor=0.05
+##CONFIG## attr EnableQuietMode=true
+##CONFIG## attr QuietTolerance=0.2
+##CONFIG## attr QuietBackoffFactor=2
+##CONFIG## attr QuietMaxBackoff=8
+##CONFIG## attr EnableAdaptiveEvaporation=false
+##CONFIG## attr AdaptiveEvapRefChurn=0.1
+##CONFIG## attr AdaptiveEvapMin=0.25
+##CONFIG## attr AdaptiveEvapMax=4
+##CONFIG## attr AdaptiveEvapTau=10
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+##DROPID## 1 ara hopTx=66472 hopRx=64596 ackedHops=60873 macDrops=4813 reinjected=2043 macTerminal=2770 macLost=1090 queue=0 hopLoss=1876 overlap=-69 unackedRx=3723
+# diag ara seed=1 pdr=79.50 firstDeliveryS=28.47 ctrlTx=146554 setupMedS=4.91 setupMaxS=129.78 flowsNoDelivery=0
+##RUN## 1 ara 79.5 790.1 10910.5 10.16 11.80 452.84 4.5 inf 6.6679
+##AIR## 1 ara 273.769 2716.333 1738.935 10.5090
+##ENERGY## 1 ara 37252.879 2.998702 5.3828e-03 0.921
+##GOODPUT## 1 ara 7.690
+##ROUTE## 1 ara 4.9138 129.7793 0 0.17191 2.000 2158 2.3760 2.6225
+##DROPID## 2 ara hopTx=69518 hopRx=67687 ackedHops=63717 macDrops=5065 reinjected=2020 macTerminal=3045 macLost=1095 queue=0 hopLoss=1831 overlap=-62 unackedRx=3970
+# diag ara seed=2 pdr=77.43 firstDeliveryS=3.93 ctrlTx=141566 setupMedS=3.02 setupMaxS=70.12 flowsNoDelivery=0
+##RUN## 2 ara 77.4 678.1 9886.5 10.03 11.55 408.99 4.5 inf 6.5271
+##AIR## 2 ara 276.993 2853.986 1844.512 11.0566
+##ENERGY## 2 ara 37250.799 3.038649 5.4868e-03 0.847
+##GOODPUT## 2 ara 7.543
+##ROUTE## 2 ara 3.0250 70.1249 0 0.15387 2.000 1898 2.3279 2.5564
+##DROPID## 3 ara hopTx=68404 hopRx=66601 ackedHops=62785 macDrops=4990 reinjected=2374 macTerminal=2616 macLost=1174 queue=0 hopLoss=1803 overlap=-31 unackedRx=3816
+# diag ara seed=3 pdr=79.76 firstDeliveryS=4.48 ctrlTx=163471 setupMedS=3.11 setupMaxS=76.41 flowsNoDelivery=0
+##RUN## 3 ara 79.8 712.9 9434.5 10.74 12.45 416.23 6.5 inf 7.0355
+##AIR## 3 ara 295.316 3134.937 2051.223 12.1811
+##ENERGY## 3 ara 37291.831 2.839552 5.0605e-03 0.725
+##GOODPUT## 3 ara 8.188
+##ROUTE## 3 ara 3.1140 76.4076 0 0.17737 2.000 2342 2.4036 2.6887
+##DROPID## 4 ara hopTx=72008 hopRx=70196 ackedHops=66360 macDrops=4904 reinjected=2191 macTerminal=2713 macLost=1068 queue=0 hopLoss=1812 overlap=-61 unackedRx=3836
+# diag ara seed=4 pdr=80.66 firstDeliveryS=15.61 ctrlTx=159724 setupMedS=4.04 setupMaxS=30.82 flowsNoDelivery=0
+##RUN## 4 ara 80.7 743.2 9532.5 10.57 12.36 449.70 5.5 inf 6.9875
+##AIR## 4 ara 296.759 3096.830 2002.793 11.9920
+##ENERGY## 4 ara 37321.696 2.888676 5.1573e-03 0.811
+##GOODPUT## 4 ara 8.041
+##ROUTE## 4 ara 4.0414 30.8248 0 0.17123 2.000 2233 2.3815 2.6312
+##DROPID## 5 ara hopTx=83565 hopRx=81432 ackedHops=76833 macDrops=5986 reinjected=2687 macTerminal=3299 macLost=1387 queue=0 hopLoss=2133 overlap=-51 unackedRx=4599
+# diag ara seed=5 pdr=79.67 firstDeliveryS=8.01 ctrlTx=174961 setupMedS=3.06 setupMaxS=54.18 flowsNoDelivery=0
+##RUN## 5 ara 79.7 826.6 10896.5 10.69 13.39 478.97 8.5 inf 7.5680
+##AIR## 5 ara 337.869 3532.209 2313.942 13.7423
+##ENERGY## 5 ara 37385.629 2.861072 5.0616e-03 0.781
+##GOODPUT## 5 ara 8.207
+##ROUTE## 5 ara 3.0592 54.1792 0 0.19608 2.000 2582 2.5994 2.8686
+##DROPID## 6 ara hopTx=61302 hopRx=59741 ackedHops=56639 macDrops=3965 reinjected=1732 macTerminal=2233 macLost=863 queue=0 hopLoss=1561 overlap=-42 unackedRx=3102
+# diag ara seed=6 pdr=80.83 firstDeliveryS=25.23 ctrlTx=133831 setupMedS=3.01 setupMaxS=51.22 flowsNoDelivery=0
+##RUN## 6 ara 80.8 630.0 9940.5 10.68 10.25 374.35 3.5 inf 5.7929
+##AIR## 6 ara 249.548 2645.370 1708.845 10.2306
+##ENERGY## 6 ara 37211.206 2.849686 5.1688e-03 0.587
+##GOODPUT## 6 ara 7.999
+##ROUTE## 6 ara 3.0080 51.2188 0 0.13937 2.000 1834 2.1775 2.3926
+##DROPID## 7 ara hopTx=74863 hopRx=73028 ackedHops=69015 macDrops=5126 reinjected=2401 macTerminal=2725 macLost=1113 queue=0 hopLoss=1835 overlap=-26 unackedRx=4013
+# diag ara seed=7 pdr=80.33 firstDeliveryS=22.48 ctrlTx=167492 setupMedS=3.04 setupMaxS=24.06 flowsNoDelivery=0
+##RUN## 7 ara 80.3 773.4 9632.5 10.76 12.74 473.66 6.5 inf 7.1981
+##AIR## 7 ara 310.374 3265.492 2132.618 12.6855
+##ENERGY## 7 ara 37338.702 2.839013 5.0577e-03 0.756
+##GOODPUT## 7 ara 8.203
+##ROUTE## 7 ara 3.0416 24.0550 0 0.17922 2.000 2373 2.4109 2.6780
+##DROPID## 8 ara hopTx=78129 hopRx=76027 ackedHops=71348 macDrops=6023 reinjected=2320 macTerminal=3703 macLost=1344 queue=0 hopLoss=2102 overlap=-56 unackedRx=4679
+# diag ara seed=8 pdr=77.04 firstDeliveryS=19.28 ctrlTx=164403 setupMedS=3.03 setupMaxS=14.41 flowsNoDelivery=0
+##RUN## 8 ara 77.0 876.9 10766.5 10.13 13.27 514.72 9.5 inf 7.4987
+##AIR## 8 ara 316.603 3281.597 2115.055 12.6961
+##ENERGY## 8 ara 37342.186 3.013411 5.4073e-03 0.872
+##GOODPUT## 8 ara 7.673
+##ROUTE## 8 ara 3.0300 14.4150 0 0.18514 2.000 2307 2.5935 2.8257
+##DROPID## 9 ara hopTx=77110 hopRx=75066 ackedHops=70811 macDrops=5549 reinjected=2379 macTerminal=3170 macLost=1294 queue=0 hopLoss=2044 overlap=-85 unackedRx=4255
+# diag ara seed=9 pdr=78.40 firstDeliveryS=4.28 ctrlTx=162361 setupMedS=3.04 setupMaxS=32.06 flowsNoDelivery=0
+##RUN## 9 ara 78.4 683.9 10018.5 10.64 12.48 409.43 5.5 inf 7.0565
+##AIR## 9 ara 311.288 3272.082 2102.908 12.6362
+##ENERGY## 9 ara 37330.417 2.870467 5.1331e-03 0.890
+##GOODPUT## 9 ara 8.080
+##ROUTE## 9 ara 3.0393 32.0638 0 0.16918 2.000 2219 2.2810 2.5480
+##DROPID## 10 ara hopTx=69547 hopRx=67793 ackedHops=63746 macDrops=5144 reinjected=2128 macTerminal=3016 macLost=1097 queue=0 hopLoss=1754 overlap=-54 unackedRx=4047
+# diag ara seed=10 pdr=77.12 firstDeliveryS=23.71 ctrlTx=153874 setupMedS=4.24 setupMaxS=18.07 flowsNoDelivery=0
+##RUN## 10 ara 77.1 753.7 9830.5 9.88 12.73 443.01 7.5 inf 7.1955
+##AIR## 10 ara 290.517 3009.439 1930.300 11.6228
+##ENERGY## 10 ara 37289.044 3.085054 5.5435e-03 0.824
+##GOODPUT## 10 ara 7.474
+##ROUTE## 10 ara 4.2417 18.0696 0 0.17650 2.000 2144 2.3924 2.5775
+##DROPID## 1 termite hopTx=603931 hopRx=237994 ackedHops=182451 macDrops=137111 reinjected=110597 macTerminal=26514 macLost=81568 queue=0 hopLoss=365937 overlap=-31083 unackedRx=55543
+# diag termite seed=1 pdr=41.17 firstDeliveryS=27.46 ctrlTx=4889 setupMedS=5.62 setupMaxS=36.08 flowsNoDelivery=0
+##RUN## 1 termite 41.2 1555.5 11189.5 5.26 0.76 1672.84 inf inf 0.4295
+##AIR## 1 termite 1194.166 11370.655 8245.643 46.2455
+##ENERGY## 1 termite 38602.786 5.999811 7.1642e-03 3.657
+##GOODPUT## 1 termite 5.987
+##ROUTE## 1 termite 5.6237 36.0828 0 0.81643 1.000 5337 26.8112 19.6515
+##DROPID## 2 termite hopTx=611815 hopRx=234710 ackedHops=177209 macDrops=142329 reinjected=114595 macTerminal=27734 macLost=84828 queue=0 hopLoss=377105 overlap=-33661 unackedRx=57501
+# diag termite seed=2 pdr=36.83 firstDeliveryS=6.95 ctrlTx=4940 setupMedS=3.39 setupMaxS=275.42 flowsNoDelivery=0
+##RUN## 2 termite 36.8 1579.0 10761.5 4.77 0.85 1630.36 inf inf 0.4788
+##AIR## 2 termite 1217.038 11642.250 8582.069 47.6475
+##ENERGY## 2 termite 38642.697 6.627113 8.2028e-03 3.211
+##GOODPUT## 2 termite 5.234
+##ROUTE## 2 termite 3.3932 275.4155 0 0.80935 2.000 4780 26.0511 18.7790
+##DROPID## 3 termite hopTx=615974 hopRx=226484 ackedHops=170715 macDrops=141018 reinjected=113720 macTerminal=27298 macLost=85249 queue=0 hopLoss=389490 overlap=-32764 unackedRx=55769
+# diag termite seed=3 pdr=34.96 firstDeliveryS=3.48 ctrlTx=5052 setupMedS=4.92 setupMaxS=22.20 flowsNoDelivery=0
+##RUN## 3 termite 35.0 1781.7 11584.5 4.71 0.88 1960.62 inf inf 0.4960
+##AIR## 3 termite 1169.460 11920.242 8641.357 48.2912
+##ENERGY## 3 termite 38660.814 6.715444 7.7557e-03 3.220
+##GOODPUT## 3 termite 5.539
+##ROUTE## 3 termite 4.9166 22.2049 0 0.87314 1.000 5093 28.9105 20.6434
+##DROPID## 4 termite hopTx=620148 hopRx=248702 ackedHops=193746 macDrops=137464 reinjected=110690 macTerminal=26774 macLost=82508 queue=0 hopLoss=371446 overlap=-30956 unackedRx=54956
+# diag termite seed=4 pdr=37.75 firstDeliveryS=4.20 ctrlTx=4771 setupMedS=5.30 setupMaxS=34.15 flowsNoDelivery=0
+##RUN## 4 termite 37.8 1655.1 10976.5 4.95 0.79 1796.23 inf inf 0.4459
+##AIR## 4 termite 1218.605 11880.611 8711.334 48.4679
+##ENERGY## 4 termite 38671.835 6.395210 7.3090e-03 2.855
+##GOODPUT## 4 termite 5.879
+##ROUTE## 4 termite 5.3027 34.1506 0 0.87531 1.000 5377 27.3506 20.4888
+##DROPID## 5 termite hopTx=605797 hopRx=238718 ackedHops=182001 macDrops=140217 reinjected=112675 macTerminal=27542 macLost=83500 queue=0 hopLoss=367079 overlap=-34135 unackedRx=56717
+# diag termite seed=5 pdr=32.97 firstDeliveryS=5.99 ctrlTx=5016 setupMedS=8.50 setupMaxS=38.13 flowsNoDelivery=0
+##RUN## 5 termite 33.0 1770.6 11804.5 4.42 0.93 1855.91 inf inf 0.5243
+##AIR## 5 termite 1191.550 11859.055 8636.414 48.1934
+##ENERGY## 5 termite 38660.536 7.150090 8.4937e-03 3.107
+##GOODPUT## 5 termite 5.057
+##ROUTE## 5 termite 8.5045 38.1308 0 0.87354 2.000 4801 28.8232 19.6963
+##DROPID## 6 termite hopTx=600203 hopRx=227005 ackedHops=172088 macDrops=135269 reinjected=108288 macTerminal=26981 macLost=80352 queue=0 hopLoss=373198 overlap=-31767 unackedRx=54917
+# diag termite seed=6 pdr=37.58 firstDeliveryS=34.66 ctrlTx=5059 setupMedS=8.92 setupMaxS=74.01 flowsNoDelivery=0
+##RUN## 6 termite 37.6 1717.2 11622.5 4.96 0.83 1860.85 inf inf 0.4711
+##AIR## 6 termite 1146.878 11620.314 8336.850 46.8979
+##ENERGY## 6 termite 38617.555 6.362035 7.8290e-03 2.653
+##GOODPUT## 6 termite 5.481
+##ROUTE## 6 termite 8.9241 74.0093 0 0.82911 1.000 5104 26.8745 19.1880
+##DROPID## 7 termite hopTx=632528 hopRx=235798 ackedHops=178480 macDrops=142849 reinjected=114965 macTerminal=27884 macLost=85531 queue=0 hopLoss=396730 overlap=-33456 unackedRx=57318
+# diag termite seed=7 pdr=35.31 firstDeliveryS=27.77 ctrlTx=4894 setupMedS=5.96 setupMaxS=49.73 flowsNoDelivery=0
+##RUN## 7 termite 35.3 1854.3 12481.5 4.73 0.85 1978.24 inf inf 0.4785
+##AIR## 7 termite 1209.391 11936.468 8769.948 48.7018
+##ENERGY## 7 termite 38675.555 6.690115 7.8941e-03 2.738
+##GOODPUT## 7 termite 5.444
+##ROUTE## 7 termite 5.9634 49.7258 0 0.86286 2.000 5084 30.5458 20.4301
+##DROPID## 8 termite hopTx=618023 hopRx=240615 ackedHops=184926 macDrops=136048 reinjected=109119 macTerminal=26929 macLost=80359 queue=0 hopLoss=377408 overlap=-33022 unackedRx=55689
+# diag termite seed=8 pdr=35.17 firstDeliveryS=33.01 ctrlTx=5029 setupMedS=6.52 setupMaxS=31.60 flowsNoDelivery=0
+##RUN## 8 termite 35.2 1693.9 11210.5 4.63 0.89 1853.57 inf inf 0.5025
+##AIR## 8 termite 1192.082 11758.156 8553.230 47.7855
+##ENERGY## 8 termite 38648.616 6.831999 8.2887e-03 2.848
+##GOODPUT## 8 termite 5.181
+##ROUTE## 8 termite 6.5220 31.5991 0 0.85354 2.000 4913 29.2387 20.0071
+##DROPID## 9 termite hopTx=605928 hopRx=236441 ackedHops=181634 macDrops=139382 reinjected=111961 macTerminal=27421 macLost=84575 queue=0 hopLoss=369487 overlap=-31473 unackedRx=54807
+# diag termite seed=9 pdr=37.61 firstDeliveryS=2.24 ctrlTx=4603 setupMedS=4.44 setupMaxS=54.93 flowsNoDelivery=0
+##RUN## 9 termite 37.6 1681.1 11540.5 5.10 0.74 1806.28 inf inf 0.4171
+##AIR## 9 termite 1202.675 11905.042 8695.812 48.4523
+##ENERGY## 9 termite 38669.635 6.199044 7.6716e-03 2.732
+##GOODPUT## 9 termite 5.601
+##ROUTE## 9 termite 4.4446 54.9303 0 0.83325 2.000 5267 26.1366 19.1329
+##DROPID## 10 termite hopTx=609116 hopRx=240370 ackedHops=186165 macDrops=134816 reinjected=108379 macTerminal=26437 macLost=80611 queue=0 hopLoss=368746 overlap=-31778 unackedRx=54205
+# diag termite seed=10 pdr=34.16 firstDeliveryS=27.95 ctrlTx=4871 setupMedS=9.09 setupMaxS=98.01 flowsNoDelivery=0
+##RUN## 10 termite 34.2 1683.8 11357.5 4.38 0.91 1794.54 inf inf 0.5142
+##AIR## 10 termite 1196.802 11636.509 8535.660 47.4866
+##ENERGY## 10 termite 38635.518 7.216197 8.6986e-03 2.858
+##GOODPUT## 10 termite 4.935
+##ROUTE## 10 termite 9.0902 98.0072 0 0.84180 2.000 4592 28.7878 19.3988
+##DROPID## 1 qrouting hopTx=254404 hopRx=233559 ackedHops=221874 macDrops=20511 reinjected=18778 macTerminal=1733 macLost=8826 queue=0 hopLoss=20845 overlap=-2532 unackedRx=11685
+# diag qrouting seed=1 pdr=91.12 firstDeliveryS=27.27 ctrlTx=302324 setupMedS=1.05 setupMaxS=5.16 flowsNoDelivery=0
+##RUN## 1 qrouting 91.1 283.1 4138.5 11.64 21.23 284.60 28.5 4007.5 12.0008
+##AIR## 1 qrouting 883.600 7987.485 6739.858 34.6910
+##ENERGY## 1 qrouting 38097.003 2.675539 3.5963e-03 2.437
+##GOODPUT## 1 qrouting 11.770
+##ROUTE## 1 qrouting 1.0457 5.1598 0 0.43205 1.000 6174 7.0502 12.0138
+##DROPID## 2 qrouting hopTx=236390 hopRx=223133 ackedHops=213922 macDrops=15854 reinjected=14870 macTerminal=984 macLost=6643 queue=0 hopLoss=13257 overlap=-1079 unackedRx=9211
+# diag qrouting seed=2 pdr=92.78 firstDeliveryS=5.95 ctrlTx=292279 setupMedS=1.23 setupMaxS=6.02 flowsNoDelivery=0
+##RUN## 2 qrouting 92.8 219.6 4005.5 12.01 19.90 239.24 23.5 1837.5 11.2458
+##AIR## 2 qrouting 812.763 7636.280 6394.297 32.9852
+##ENERGY## 2 qrouting 38029.843 2.588825 3.5647e-03 1.797
+##GOODPUT## 2 qrouting 11.854
+##ROUTE## 2 qrouting 1.2250 6.0192 0 0.42538 1.000 6268 6.5073 10.7275
+##DROPID## 3 qrouting hopTx=262021 hopRx=244524 ackedHops=233646 macDrops=19704 reinjected=18485 macTerminal=1219 macLost=8826 queue=0 hopLoss=17497 overlap=-1827 unackedRx=10878
+# diag qrouting seed=3 pdr=91.39 firstDeliveryS=3.47 ctrlTx=311561 setupMedS=1.80 setupMaxS=5.38 flowsNoDelivery=0
+##RUN## 3 qrouting 91.4 289.8 4127.5 12.31 20.70 297.57 40.5 3428.5 11.7018
+##AIR## 3 qrouting 898.686 8596.229 7425.440 37.6008
+##ENERGY## 3 qrouting 38173.038 2.536583 3.3704e-03 1.792
+##GOODPUT## 3 qrouting 12.584
+##ROUTE## 3 qrouting 1.7970 5.3826 0 0.48038 1.000 7247 7.1144 11.4981
+##DROPID## 4 qrouting hopTx=266127 hopRx=248072 ackedHops=236975 macDrops=19778 reinjected=18524 macTerminal=1254 macLost=8681 queue=0 hopLoss=18055 overlap=-1744 unackedRx=11097
+# diag qrouting seed=4 pdr=91.47 firstDeliveryS=8.21 ctrlTx=313315 setupMedS=1.71 setupMaxS=8.21 flowsNoDelivery=0
+##RUN## 4 qrouting 91.5 289.8 4124.5 11.98 21.39 298.79 38.5 3454.5 12.0881
+##AIR## 4 qrouting 904.385 8445.648 7227.777 36.8396
+##ENERGY## 4 qrouting 38158.758 2.604693 3.4244e-03 1.851
+##GOODPUT## 4 qrouting 12.381
+##ROUTE## 4 qrouting 1.7070 8.2129 0 0.46976 1.000 6913 7.4245 12.0713
+##DROPID## 5 qrouting hopTx=265991 hopRx=248592 ackedHops=237195 macDrops=20615 reinjected=19178 macTerminal=1437 macLost=9218 queue=0 hopLoss=17399 overlap=-2201 unackedRx=11397
+# diag qrouting seed=5 pdr=90.91 firstDeliveryS=5.98 ctrlTx=314135 setupMedS=1.17 setupMaxS=5.08 flowsNoDelivery=0
+##RUN## 5 qrouting 90.9 304.2 4154.5 12.19 21.07 302.63 46.5 4154.5 11.9084
+##AIR## 5 qrouting 918.020 8647.220 7456.827 37.8268
+##ENERGY## 5 qrouting 38185.290 2.561052 3.4167e-03 1.434
+##GOODPUT## 5 qrouting 12.418
+##ROUTE## 5 qrouting 1.1685 5.0829 0 0.47735 1.000 7146 7.3405 11.6027
+##DROPID## 6 qrouting hopTx=228030 hopRx=219420 ackedHops=212380 macDrops=12081 reinjected=11551 macTerminal=530 macLost=5041 queue=0 hopLoss=8610 overlap=-350 unackedRx=7040
+# diag qrouting seed=6 pdr=92.52 firstDeliveryS=26.28 ctrlTx=282533 setupMedS=1.22 setupMaxS=6.16 flowsNoDelivery=0
+##RUN## 6 qrouting 92.5 172.4 3343.5 12.22 18.90 195.73 16.5 1441.5 10.6854
+##AIR## 6 qrouting 740.390 7438.209 6119.605 31.7738
+##ENERGY## 6 qrouting 37983.256 2.541536 3.6960e-03 1.789
+##GOODPUT## 6 qrouting 11.419
+##ROUTE## 6 qrouting 1.2205 6.1591 0 0.40323 1.000 6044 5.8440 9.3393
+##DROPID## 7 qrouting hopTx=254035 hopRx=239518 ackedHops=228900 macDrops=19084 reinjected=17903 macTerminal=1181 macLost=8466 queue=0 hopLoss=14517 overlap=-1948 unackedRx=10618
+# diag qrouting seed=7 pdr=91.53 firstDeliveryS=22.46 ctrlTx=301671 setupMedS=1.03 setupMaxS=7.02 flowsNoDelivery=0
+##RUN## 7 qrouting 91.5 277.3 4031.5 12.26 20.13 279.52 40.5 3164.5 11.3779
+##AIR## 7 qrouting 869.034 8419.775 7182.719 36.6034
+##ENERGY## 7 qrouting 38142.422 2.545204 3.4378e-03 1.695
+##GOODPUT## 7 qrouting 12.328
+##ROUTE## 7 qrouting 1.0272 7.0236 0 0.46825 1.000 7034 6.9885 11.3168
+##DROPID## 8 qrouting hopTx=264460 hopRx=244388 ackedHops=232386 macDrops=21555 reinjected=19844 macTerminal=1711 macLost=9553 queue=0 hopLoss=20072 overlap=-3004 unackedRx=12002
+# diag qrouting seed=8 pdr=89.36 firstDeliveryS=18.23 ctrlTx=310752 setupMedS=2.03 setupMaxS=3.14 flowsNoDelivery=0
+##RUN## 8 qrouting 89.4 336.8 4240.5 11.75 21.62 338.04 48.5 inf 12.2195
+##AIR## 8 qrouting 915.010 8425.408 7267.218 36.9059
+##ENERGY## 8 qrouting 38159.733 2.654775 3.5178e-03 2.020
+##GOODPUT## 8 qrouting 12.053
+##ROUTE## 8 qrouting 2.0327 3.1405 0 0.48863 1.000 7045 7.6301 11.9833
+##DROPID## 9 qrouting hopTx=279681 hopRx=255432 ackedHops=240477 macDrops=27218 reinjected=24766 macTerminal=2452 macLost=12263 queue=0 hopLoss=24249 overlap=-4737 unackedRx=14955
+# diag qrouting seed=9 pdr=88.82 firstDeliveryS=1.24 ctrlTx=323615 setupMedS=1.34 setupMaxS=5.03 flowsNoDelivery=0
+##RUN## 9 qrouting 88.8 351.7 4675.5 12.05 21.96 351.61 54.5 inf 12.4143
+##AIR## 9 qrouting 1010.349 9355.563 8216.329 41.2939
+##ENERGY## 9 qrouting 38301.948 2.599562 3.4119e-03 2.124
+##GOODPUT## 9 qrouting 12.473
+##ROUTE## 9 qrouting 1.3438 5.0332 0 0.44871 1.000 6640 7.8355 12.7325
+##DROPID## 10 qrouting hopTx=269224 hopRx=247674 ackedHops=233784 macDrops=25211 reinjected=23296 macTerminal=1915 macLost=11321 queue=0 hopLoss=21550 overlap=-3323 unackedRx=13890
+# diag qrouting seed=10 pdr=90.69 firstDeliveryS=20.68 ctrlTx=317292 setupMedS=1.06 setupMaxS=6.04 flowsNoDelivery=0
+##RUN## 10 qrouting 90.7 355.4 4136.5 11.62 22.32 340.02 69.5 4422.5 12.6171
+##AIR## 10 qrouting 977.874 8903.948 7753.224 39.1890
+##ENERGY## 10 qrouting 38236.372 2.690050 3.3410e-03 2.100
+##GOODPUT## 10 qrouting 12.716
+##ROUTE## 10 qrouting 1.0582 6.0376 0 0.49516 1.000 7064 8.0409 13.4950
+##MATCH## 1 ara 12423 6434 10910.5 2.5
+##MATCH## 1 termite 6434 6434 11189.5 11189.5
+##MATCH## 1 qrouting 14239 6434 4138.5 11.5
+##MATCH## 2 ara 12259 5831 9886.5 2.5
+##MATCH## 2 termite 5831 5831 10761.5 10761.5
+##MATCH## 2 qrouting 14690 5831 4005.5 7.5
+##MATCH## 3 ara 13133 5757 9434.5 2.5
+##MATCH## 3 termite 5757 5757 11584.5 11584.5
+##MATCH## 3 qrouting 15049 5757 4127.5 9.5
+##MATCH## 4 ara 12920 6047 9532.5 2.5
+##MATCH## 4 termite 6047 6047 10976.5 10976.5
+##MATCH## 4 qrouting 14650 6047 4124.5 11.5
+##MATCH## 5 ara 13067 5407 10896.5 2.5
+##MATCH## 5 termite 5407 5407 11804.5 11804.5
+##MATCH## 5 qrouting 14910 5407 4154.5 9.5
+##MATCH## 6 ara 13058 6070 9940.5 2.5
+##MATCH## 6 termite 6070 6070 11622.5 11622.5
+##MATCH## 6 qrouting 14945 6070 3343.5 6.5
+##MATCH## 7 ara 13152 5781 9632.5 2.5
+##MATCH## 7 termite 5781 5781 12481.5 12481.5
+##MATCH## 7 qrouting 14986 5781 4031.5 10.5
+##MATCH## 8 ara 12392 5657 10766.5 3.5
+##MATCH## 8 termite 5657 5657 11210.5 11210.5
+##MATCH## 8 qrouting 14374 5657 4240.5 11.5
+##MATCH## 9 ara 13005 6238 10018.5 2.5
+##MATCH## 9 termite 6238 6238 11540.5 11540.5
+##MATCH## 9 qrouting 14734 6238 4675.5 13.5
+##MATCH## 10 ara 12087 5354 9830.5 2.5
+##MATCH## 10 termite 5354 5354 11357.5 11357.5
+##MATCH## 10 qrouting 14214 5354 4136.5 13.5
+##COMMON## 1 ara 12573 5398 13474.9 711.6 18453.4 2.105 2.729
+##COMMON## 1 termite 6557 5398 14530.2 2046.8 18685.0 12.933 23.583
+##COMMON## 1 qrouting 14310 5398 4739.4 247.3 7920.3 3.970 8.760
+##COMMON## 2 ara 12355 4699 13858.0 719.2 14480.6 2.083 2.617
+##COMMON## 2 termite 5926 4699 14626.5 2006.0 16222.6 12.307 24.181
+##COMMON## 2 qrouting 14755 4699 4337.0 210.6 6882.6 4.019 8.030
+##COMMON## 3 ara 13224 4618 12904.6 822.4 12819.5 2.316 2.658
+##COMMON## 3 termite 5853 4618 15567.3 2517.8 14171.1 15.181 22.579
+##COMMON## 3 qrouting 15106 4618 4970.5 311.5 7167.0 4.676 8.399
+##COMMON## 4 ara 13061 4870 16138.7 934.8 15437.2 2.273 2.645
+##COMMON## 4 termite 6163 4870 15008.6 2355.5 16033.1 14.786 21.749
+##COMMON## 4 qrouting 14736 4870 5397.2 321.2 7170.9 4.891 8.697
+##COMMON## 5 ara 13188 4395 12705.9 814.9 16810.1 2.355 2.873
+##COMMON## 5 termite 5516 4395 16466.3 2364.5 16589.8 14.182 22.275
+##COMMON## 5 qrouting 14990 4395 5506.7 325.4 7249.9 4.680 8.468
+##COMMON## 6 ara 13179 5053 12183.3 616.9 17465.3 1.985 2.479
+##COMMON## 6 termite 6176 5053 15123.5 2243.4 16809.1 13.412 22.819
+##COMMON## 6 qrouting 15009 5053 3751.6 157.5 5820.4 3.898 7.293
+##COMMON## 7 ara 13261 4688 13753.0 846.0 14092.9 2.255 2.698
+##COMMON## 7 termite 5912 4688 15533.6 2539.8 17514.6 15.254 21.595
+##COMMON## 7 qrouting 15042 4688 5309.0 323.0 6621.6 5.059 8.139
+##COMMON## 8 ara 12481 4466 12744.8 812.8 14428.1 2.317 2.901
+##COMMON## 8 termite 5776 4466 15961.1 2312.6 15145.4 14.404 22.243
+##COMMON## 8 qrouting 14438 4466 5312.3 318.5 7562.4 4.697 8.833
+##COMMON## 9 ara 13136 5182 13843.2 743.3 16409.4 2.045 2.619
+##COMMON## 9 termite 6341 5182 15381.5 2212.8 17481.2 13.316 22.984
+##COMMON## 9 qrouting 14818 5182 5505.1 294.3 8671.1 4.119 9.203
+##COMMON## 10 ara 12167 4264 11002.7 649.2 13008.1 2.037 2.677
+##COMMON## 10 termite 5475 4264 14336.4 2203.9 15564.2 13.731 22.238
+##COMMON## 10 qrouting 14286 4264 5081.2 314.5 7538.2 4.677 9.412
+AntHocNet protocol comparison (mean of 10 run(s))
+  nodes=50 time=900.000s area=1500.000x300.000m maxSpeed=20.000m/s pause=0.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ara             79.1      746.9      10084.9        10.43   12.30      442.19         6.2         inf       6.953     37301.4      2.9284        2.64      0.9800       849.79
+termite         36.4     1697.2      11452.9         4.79    0.84     1820.94         inf         inf       0.476     38648.6      6.6187       19.74      0.9526      2014.16
+qrouting        91.1      288.0       4097.8        12.00   20.92      292.77        40.7         inf      11.826     38146.8      2.5998       11.68      0.9947       414.92
+# paths ara divUsed=1.477 divMax=8.4 entropyBits=0.300 windowS=10.0 hopsMean=2.64 hopsMax=51.9
+# paths termite divUsed=2.081 divMax=15.8 entropyBits=0.734 windowS=10.0 hopsMean=19.74 hopsMax=64.0
+# paths qrouting divUsed=2.765 divMax=23.0 entropyBits=0.818 windowS=10.0 hopsMean=11.68 hopsMax=64.0
+# energy ara initJ=5000.0 resMinJ=4251.8 resMeanJ=4254.0 resSdJ=0.801 firstDeathS=-1.0
+# energy termite initJ=5000.0 resMinJ=4220.1 resMeanJ=4227.0 resSdJ=2.988 firstDeathS=-1.0
+# energy qrouting initJ=5000.0 resMinJ=4232.4 resMeanJ=4237.1 resSdJ=1.904 firstDeathS=-1.0
+# drops ara pdr=79.07 route=16.42 queue=0.00 mac=18.17 chan=0.33 ttl=3.50 sum=117.50 other=0.00 [route: setup=- reconv=- repair=-]
+# drops termite pdr=36.35 route=1.60 queue=0.00 mac=168.44 chan=201.07 ttl=15.49 sum=422.95 other=0.00 [route: setup=- reconv=- repair=-]
+# drops qrouting pdr=91.06 route=0.00 queue=0.00 mac=8.94 chan=14.09 ttl=13.88 sum=127.98 other=0.00 [route: setup=- reconv=- repair=-]
+# stddev ara pdr=1.47 delay=74.1 delay99=564.4 nrl=0.918 nrl_bytes=0.519
+# stddev termite pdr=2.34 delay=90.6 delay99=480.5 nrl=0.063 nrl_bytes=0.036
+# stddev qrouting pdr=1.23 delay=57.2 delay99=323.9 nrl=1.036 nrl_bytes=0.586
+# reorder ara ratio=0.0975 ratioWorstFlow=0.1649 extentMean=2.90 extentMax=36.70 bufMax=819.80
+# reorder termite ratio=0.4791 ratioWorstFlow=0.6025 extentMean=3.98 extentMax=58.90 bufMax=669.30
+# reorder qrouting ratio=0.3349 ratioWorstFlow=0.4702 extentMean=3.38 extentMax=59.80 bufMax=1295.20
+##ARGS## anthocnet-compare --scenario=paper --runs=10 --nNodes=50 --time=900 --areaX=1500 --pause=0 --speed=20 --propagation=nakagami --range=300 --areaY=300 --firstRun=1 --diag --mobility=gaussmarkov --transport=udp --protocols=ara,termite,qrouting
+##PROV## commit=afd9568e856893d39f4e551b05cfbe4591ddae8d ref=main run_id=40702043145 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=anthocnet-compare
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=paper nNodes=50 time=900 runs=10 firstRun=11 areaX=1500 areaY=300 speed=20 pause=0 range=300 propagation=nakagami mobility=gaussmarkov transport=udp flows=20 cbrBps=512 offTime=0 rateManager=constant2 protocols=ara,termite,qrouting
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr P2pHelloEvery=1
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ShareKinematics=false
+##CONFIG## attr EnableLinkLifetime=false
+##CONFIG## attr LinkLifetimeRange=250
+##CONFIG## attr LinkLifetimeHorizon=3
+##CONFIG## attr LinkLifetimeFloor=0.05
+##CONFIG## attr EnableQuietMode=true
+##CONFIG## attr QuietTolerance=0.2
+##CONFIG## attr QuietBackoffFactor=2
+##CONFIG## attr QuietMaxBackoff=8
+##CONFIG## attr EnableAdaptiveEvaporation=false
+##CONFIG## attr AdaptiveEvapRefChurn=0.1
+##CONFIG## attr AdaptiveEvapMin=0.25
+##CONFIG## attr AdaptiveEvapMax=4
+##CONFIG## attr AdaptiveEvapTau=10
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+##DROPID## 11 ara hopTx=68511 hopRx=66853 ackedHops=63200 macDrops=4694 reinjected=2020 macTerminal=2674 macLost=1041 queue=0 hopLoss=1658 overlap=-31 unackedRx=3653
+# diag ara seed=11 pdr=81.54 firstDeliveryS=7.59 ctrlTx=144618 setupMedS=3.82 setupMaxS=43.03 flowsNoDelivery=0
+##RUN## 11 ara 81.5 652.9 9586.5 10.74 11.01 412.64 4.5 inf 6.2226
+##AIR## 11 ara 276.812 2911.533 1879.227 11.2613
+##ENERGY## 11 ara 37254.697 2.836076 5.1328e-03 0.896
+##GOODPUT## 11 ara 8.065
+##ROUTE## 11 ara 3.8229 43.0297 0 0.16288 2.000 2148 2.3415 2.5540
+##DROPID## 12 ara hopTx=69588 hopRx=67755 ackedHops=63700 macDrops=5095 reinjected=2117 macTerminal=2978 macLost=1040 queue=0 hopLoss=1833 overlap=-50 unackedRx=4055
+# diag ara seed=12 pdr=82.85 firstDeliveryS=12.46 ctrlTx=149119 setupMedS=2.06 setupMaxS=15.46 flowsNoDelivery=0
+##RUN## 12 ara 82.9 693.8 10070.5 11.13 10.95 427.76 4.5 inf 6.1901
+##AIR## 12 ara 284.290 3070.929 1998.035 11.8961
+##ENERGY## 12 ara 37314.393 2.740481 4.9177e-03 0.856
+##GOODPUT## 12 ara 8.431
+##ROUTE## 12 ara 2.0614 15.4571 0 0.16598 2.000 2282 2.2675 2.4901
+##DROPID## 13 ara hopTx=69750 hopRx=67840 ackedHops=63549 macDrops=5453 reinjected=2140 macTerminal=3313 macLost=1162 queue=0 hopLoss=1910 overlap=-37 unackedRx=4291
+# diag ara seed=13 pdr=78.20 firstDeliveryS=12.06 ctrlTx=150727 setupMedS=2.09 setupMaxS=15.08 flowsNoDelivery=0
+##RUN## 13 ara 78.2 823.2 10919.5 10.10 12.20 479.18 5.5 inf 6.8955
+##AIR## 13 ara 290.307 3003.125 1923.506 11.5932
+##ENERGY## 13 ara 37303.250 3.019284 5.4359e-03 0.718
+##GOODPUT## 13 ara 7.625
+##ROUTE## 13 ara 2.0880 15.0779 0 0.16591 2.000 2055 2.3999 2.6072
+##DROPID## 14 ara hopTx=73096 hopRx=71195 ackedHops=66937 macDrops=5367 reinjected=2175 macTerminal=3192 macLost=1109 queue=0 hopLoss=1901 overlap=-61 unackedRx=4258
+# diag ara seed=14 pdr=78.93 firstDeliveryS=6.39 ctrlTx=156185 setupMedS=4.07 setupMaxS=12.11 flowsNoDelivery=0
+##RUN## 14 ara 78.9 819.0 10948.5 10.39 12.29 457.99 5.5 inf 6.9467
+##AIR## 14 ara 297.922 3135.612 2020.511 12.1201
+##ENERGY## 14 ara 37309.014 2.935868 5.2424e-03 0.834
+##GOODPUT## 14 ara 7.908
+##ROUTE## 14 ara 4.0659 12.1124 0 0.16975 2.000 2181 2.4686 2.7380
+##DROPID## 15 ara hopTx=66050 hopRx=64170 ackedHops=60314 macDrops=4965 reinjected=2048 macTerminal=2917 macLost=1109 queue=0 hopLoss=1880 overlap=-54 unackedRx=3856
+# diag ara seed=15 pdr=79.04 firstDeliveryS=5.98 ctrlTx=151179 setupMedS=2.44 setupMaxS=30.44 flowsNoDelivery=0
+##RUN## 15 ara 79.0 736.6 9838.5 10.35 11.94 443.54 5.5 inf 6.7506
+##AIR## 15 ara 280.260 3018.342 1958.520 11.6825
+##ENERGY## 15 ara 37301.722 2.946889 5.2908e-03 0.736
+##GOODPUT## 15 ara 7.834
+##ROUTE## 15 ara 2.4367 30.4367 0 0.15725 2.000 2009 2.2591 2.4675
+##DROPID## 16 ara hopTx=62604 hopRx=60999 ackedHops=57489 macDrops=4487 reinjected=1977 macTerminal=2510 macLost=977 queue=0 hopLoss=1605 overlap=-38 unackedRx=3510
+# diag ara seed=16 pdr=82.12 firstDeliveryS=14.35 ctrlTx=141736 setupMedS=3.03 setupMaxS=47.08 flowsNoDelivery=0
+##RUN## 16 ara 82.1 655.1 9404.5 10.75 10.78 385.33 4.5 inf 6.0949
+##AIR## 16 ara 262.216 2835.560 1852.499 11.0006
+##ENERGY## 16 ara 37277.641 2.836096 5.1349e-03 0.727
+##GOODPUT## 16 ara 8.066
+##ROUTE## 16 ara 3.0271 47.0777 0 0.15622 2.000 2062 2.3081 2.5797
+##DROPID## 17 ara hopTx=68799 hopRx=67013 ackedHops=63459 macDrops=4571 reinjected=2093 macTerminal=2478 macLost=1017 queue=0 hopLoss=1786 overlap=-95 unackedRx=3554
+# diag ara seed=17 pdr=82.34 firstDeliveryS=7.10 ctrlTx=152834 setupMedS=2.16 setupMaxS=30.42 flowsNoDelivery=0
+##RUN## 17 ara 82.3 756.1 10530.5 11.02 11.34 417.56 4.5 inf 6.4079
+##AIR## 17 ara 281.754 3004.480 1970.492 11.6816
+##ENERGY## 17 ara 37294.656 2.766461 4.9707e-03 0.713
+##GOODPUT## 17 ara 8.336
+##ROUTE## 17 ara 2.1608 30.4190 0 0.15774 2.000 2142 2.3197 2.5749
+##DROPID## 18 ara hopTx=79035 hopRx=77080 ackedHops=72558 macDrops=5688 reinjected=2385 macTerminal=3303 macLost=1166 queue=0 hopLoss=1955 overlap=-48 unackedRx=4522
+# diag ara seed=18 pdr=80.17 firstDeliveryS=10.58 ctrlTx=161038 setupMedS=5.04 setupMaxS=31.46 flowsNoDelivery=0
+##RUN## 18 ara 80.2 731.2 9989.5 10.60 12.42 436.86 5.5 inf 7.0206
+##AIR## 18 ara 314.688 3381.523 2202.043 13.1072
+##ENERGY## 18 ara 37320.955 2.878593 5.1070e-03 0.815
+##GOODPUT## 18 ara 8.120
+##ROUTE## 18 ara 5.0351 31.4640 0 0.17114 2.000 2245 2.4235 2.7039
+##DROPID## 19 ara hopTx=64486 hopRx=62809 ackedHops=59199 macDrops=4550 reinjected=1999 macTerminal=2551 macLost=940 queue=0 hopLoss=1677 overlap=-83 unackedRx=3610
+# diag ara seed=19 pdr=83.33 firstDeliveryS=13.71 ctrlTx=140864 setupMedS=3.84 setupMaxS=30.22 flowsNoDelivery=0
+##RUN## 19 ara 83.3 641.3 10070.5 10.98 10.49 384.01 3.5 inf 5.9302
+##AIR## 19 ara 266.093 2792.062 1800.046 10.7960
+##ENERGY## 19 ara 37263.071 2.775441 4.9907e-03 0.774
+##GOODPUT## 19 ara 8.296
+##ROUTE## 19 ara 3.8390 30.2158 0 0.15566 2.000 2110 2.2903 2.5169
+##DROPID## 20 ara hopTx=65283 hopRx=63498 ackedHops=59659 macDrops=4913 reinjected=2024 macTerminal=2889 macLost=1074 queue=0 hopLoss=1785 overlap=-45 unackedRx=3839
+# diag ara seed=20 pdr=81.80 firstDeliveryS=13.61 ctrlTx=143749 setupMedS=3.01 setupMaxS=117.03 flowsNoDelivery=0
+##RUN## 20 ara 81.8 760.0 10173.5 10.58 11.11 441.92 4.5 inf 6.2799
+##AIR## 20 ara 271.079 2775.617 1781.207 10.7287
+##ENERGY## 20 ara 37261.055 2.879970 5.1886e-03 0.736
+##GOODPUT## 20 ara 7.979
+##ROUTE## 20 ara 3.0065 117.0337 0 0.15796 2.000 2056 2.4007 2.6300
+##DROPID## 11 termite hopTx=602881 hopRx=238802 ackedHops=183357 macDrops=135100 reinjected=108518 macTerminal=26582 macLost=79655 queue=0 hopLoss=364079 overlap=-32944 unackedRx=55445
+# diag termite seed=11 pdr=35.89 firstDeliveryS=6.52 ctrlTx=4808 setupMedS=5.02 setupMaxS=50.86 flowsNoDelivery=0
+##RUN## 11 termite 35.9 1686.6 11125.5 4.73 0.83 1747.50 inf inf 0.4700
+##AIR## 11 termite 1161.928 11565.535 8335.876 46.8074
+##ENERGY## 11 termite 38615.808 6.678625 8.1142e-03 2.946
+##GOODPUT## 11 termite 5.288
+##ROUTE## 11 termite 5.0229 50.8553 0 0.84723 1.000 4958 27.7439 19.3555
+##DROPID## 12 termite hopTx=604014 hopRx=237540 ackedHops=181089 macDrops=142060 reinjected=113926 macTerminal=28134 macLost=85609 queue=0 hopLoss=366474 overlap=-31816 unackedRx=56451
+# diag termite seed=12 pdr=38.44 firstDeliveryS=9.45 ctrlTx=4687 setupMedS=4.41 setupMaxS=31.96 flowsNoDelivery=0
+##RUN## 12 termite 38.4 1600.3 11368.5 5.17 0.74 1684.55 inf inf 0.4194
+##AIR## 12 termite 1209.362 12058.638 8934.577 49.3391
+##ENERGY## 12 termite 38690.195 6.124774 7.3209e-03 2.612
+##GOODPUT## 12 termite 5.872
+##ROUTE## 12 termite 4.4140 31.9559 0 0.82188 1.000 5274 26.3391 19.1946
+##DROPID## 13 termite hopTx=588623 hopRx=232343 ackedHops=178168 macDrops=135002 reinjected=107915 macTerminal=27087 macLost=80827 queue=0 hopLoss=356280 overlap=-30295 unackedRx=54175
+# diag termite seed=13 pdr=37.58 firstDeliveryS=23.04 ctrlTx=4874 setupMedS=4.08 setupMaxS=20.01 flowsNoDelivery=0
+##RUN## 13 termite 37.6 1646.5 11251.5 4.86 0.82 1756.49 inf inf 0.4639
+##AIR## 13 termite 1163.212 11362.093 8202.745 46.0623
+##ENERGY## 13 termite 38591.826 6.499129 7.6968e-03 2.598
+##GOODPUT## 13 termite 5.571
+##ROUTE## 13 termite 4.0769 20.0085 0 0.83444 1.000 5020 25.9703 19.5393
+##DROPID## 14 termite hopTx=611077 hopRx=232112 ackedHops=174216 macDrops=145757 reinjected=116546 macTerminal=29211 macLost=87861 queue=0 hopLoss=378965 overlap=-33403 unackedRx=57896
+# diag termite seed=14 pdr=31.22 firstDeliveryS=5.63 ctrlTx=5311 setupMedS=7.36 setupMaxS=65.03 flowsNoDelivery=0
+##RUN## 14 termite 31.2 1917.7 12222.5 4.11 1.06 2015.74 inf inf 0.5971
+##AIR## 14 termite 1214.949 11883.404 8615.291 48.2525
+##ENERGY## 14 termite 38670.976 7.692655 8.7438e-03 3.033
+##GOODPUT## 14 termite 4.914
+##ROUTE## 14 termite 7.3612 65.0287 0 0.87183 2.000 4476 32.7716 21.3757
+##DROPID## 15 termite hopTx=597160 hopRx=227801 ackedHops=170733 macDrops=142977 reinjected=115746 macTerminal=27231 macLost=85909 queue=0 hopLoss=369359 overlap=-34186 unackedRx=57068
+# diag termite seed=15 pdr=34.26 firstDeliveryS=4.97 ctrlTx=4863 setupMedS=3.79 setupMaxS=35.18 flowsNoDelivery=0
+##RUN## 15 termite 34.3 1769.3 11218.5 4.49 0.89 1852.08 inf inf 0.5010
+##AIR## 15 termite 1197.740 11948.953 8773.647 48.7119
+##ENERGY## 15 termite 38673.335 7.049459 8.3583e-03 2.365
+##GOODPUT## 15 termite 5.141
+##ROUTE## 15 termite 3.7860 35.1849 0 0.85530 2.000 4764 28.7143 19.9228
+##DROPID## 16 termite hopTx=584491 hopRx=219520 ackedHops=162994 macDrops=144542 reinjected=116693 macTerminal=27849 macLost=88016 queue=0 hopLoss=364971 overlap=-32444 unackedRx=56526
+# diag termite seed=16 pdr=35.06 firstDeliveryS=14.35 ctrlTx=5172 setupMedS=3.60 setupMaxS=20.04 flowsNoDelivery=0
+##RUN## 16 termite 35.1 1728.4 11112.5 4.59 0.92 1898.35 inf inf 0.5210
+##AIR## 16 termite 1177.626 11914.507 8754.578 48.5482
+##ENERGY## 16 termite 38662.747 6.890527 7.7545e-03 2.794
+##GOODPUT## 16 termite 5.540
+##ROUTE## 16 termite 3.6012 20.0356 0 0.89774 1.000 5127 28.7695 20.2301
+##DROPID## 17 termite hopTx=595180 hopRx=225330 ackedHops=168474 macDrops=143231 reinjected=115345 macTerminal=27886 macLost=86375 queue=0 hopLoss=369850 overlap=-32868 unackedRx=56856
+# diag termite seed=17 pdr=37.67 firstDeliveryS=6.92 ctrlTx=4732 setupMedS=3.29 setupMaxS=27.50 flowsNoDelivery=0
+##RUN## 17 termite 37.7 1692.5 11269.5 5.04 0.77 1808.32 inf inf 0.4336
+##AIR## 17 termite 1180.525 11971.475 8777.706 48.7327
+##ENERGY## 17 termite 38670.497 6.269536 7.4530e-03 2.351
+##GOODPUT## 17 termite 5.765
+##ROUTE## 17 termite 3.2907 27.4951 0 0.84296 1.000 5266 26.2676 19.6319
+##DROPID## 18 termite hopTx=614822 hopRx=234213 ackedHops=178091 macDrops=137046 reinjected=109525 macTerminal=27521 macLost=80924 queue=0 hopLoss=380609 overlap=-33429 unackedRx=56122
+# diag termite seed=18 pdr=33.24 firstDeliveryS=10.56 ctrlTx=4664 setupMedS=5.12 setupMaxS=26.23 flowsNoDelivery=0
+##RUN## 18 termite 33.2 1785.1 12046.5 4.40 0.87 1955.07 inf inf 0.4905
+##AIR## 18 termite 1165.431 11830.375 8593.723 47.9767
+##ENERGY## 18 termite 38648.734 7.190462 8.4873e-03 2.627
+##GOODPUT## 18 termite 5.060
+##ROUTE## 18 termite 5.1196 26.2333 0 0.86801 2.000 4748 28.6002 20.1642
+##DROPID## 19 termite hopTx=606565 hopRx=232647 ackedHops=177289 macDrops=138458 reinjected=110771 macTerminal=27687 macLost=83100 queue=0 hopLoss=373918 overlap=-32634 unackedRx=55358
+# diag termite seed=19 pdr=33.50 firstDeliveryS=7.29 ctrlTx=4786 setupMedS=5.64 setupMaxS=39.25 flowsNoDelivery=0
+##RUN## 19 termite 33.5 1656.0 11242.5 4.41 0.89 1778.43 inf inf 0.5012
+##AIR## 19 termite 1184.400 11768.862 8551.448 47.7882
+##ENERGY## 19 termite 38647.443 7.160912 8.8388e-03 2.649
+##GOODPUT## 19 termite 4.858
+##ROUTE## 19 termite 5.6368 39.2476 0 0.84450 1.000 4627 27.4048 19.0782
+##DROPID## 20 termite hopTx=594978 hopRx=250742 ackedHops=196797 macDrops=133492 reinjected=107600 macTerminal=25892 macLost=79547 queue=0 hopLoss=344236 overlap=-30396 unackedRx=53945
+# diag termite seed=20 pdr=40.06 firstDeliveryS=12.60 ctrlTx=4888 setupMedS=6.99 setupMaxS=34.36 flowsNoDelivery=0
+##RUN## 20 termite 40.1 1456.1 10032.5 5.18 0.77 1546.59 inf inf 0.4360
+##AIR## 20 termite 1207.452 11574.754 8508.888 47.3135
+##ENERGY## 20 termite 38631.534 6.096186 7.3141e-03 2.628
+##GOODPUT## 20 termite 5.869
+##ROUTE## 20 termite 6.9876 34.3636 0 0.82979 1.000 5353 25.0286 19.0319
+##DROPID## 11 qrouting hopTx=231061 hopRx=216956 ackedHops=206822 macDrops=17932 reinjected=16608 macTerminal=1324 macLost=7798 queue=0 hopLoss=14105 overlap=-2066 unackedRx=10134
+# diag qrouting seed=11 pdr=91.92 firstDeliveryS=7.56 ctrlTx=282052 setupMedS=1.09 setupMaxS=6.01 flowsNoDelivery=0
+##RUN## 11 qrouting 91.9 247.1 3931.5 12.11 19.05 247.67 21.5 2594.5 10.7651
+##AIR## 11 qrouting 813.487 7746.929 6554.578 33.5889
+##ENERGY## 11 qrouting 38045.268 2.569064 3.5702e-03 1.991
+##GOODPUT## 11 qrouting 11.840
+##ROUTE## 11 qrouting 1.0878 6.0094 0 0.41051 1.000 6096 6.3711 10.7284
+##DROPID## 12 qrouting hopTx=218765 hopRx=208066 ackedHops=199184 macDrops=15759 reinjected=14852 macTerminal=907 macLost=6877 queue=0 hopLoss=10699 overlap=-1291 unackedRx=8882
+# diag qrouting seed=12 pdr=93.06 firstDeliveryS=11.46 ctrlTx=273313 setupMedS=1.88 setupMaxS=4.06 flowsNoDelivery=0
+##RUN## 12 qrouting 93.1 213.1 3596.5 12.51 17.87 222.88 18.5 1585.5 10.1014
+##AIR## 12 qrouting 765.747 7544.916 6351.274 32.5821
+##ENERGY## 12 qrouting 38004.651 2.485101 3.5132e-03 1.951
+##GOODPUT## 12 qrouting 12.019
+##ROUTE## 12 qrouting 1.8783 4.0628 0 0.39537 1.000 6057 5.7059 9.6661
+##DROPID## 13 qrouting hopTx=266265 hopRx=246228 ackedHops=233638 macDrops=22852 reinjected=20976 macTerminal=1876 macLost=10262 queue=0 hopLoss=20037 overlap=-3292 unackedRx=12590
+# diag qrouting seed=13 pdr=89.19 firstDeliveryS=11.04 ctrlTx=312506 setupMedS=1.57 setupMaxS=5.13 flowsNoDelivery=0
+##RUN## 13 qrouting 89.2 333.0 4253.5 11.52 22.18 323.29 43.5 inf 12.5343
+##AIR## 13 qrouting 934.464 8513.416 7380.310 37.3960
+##ENERGY## 13 qrouting 38175.041 2.708987 3.5564e-03 1.309
+##GOODPUT## 13 qrouting 11.927
+##ROUTE## 13 qrouting 1.5746 5.1336 0 0.45624 1.000 6454 7.6542 12.4704
+##DROPID## 14 qrouting hopTx=265741 hopRx=242466 ackedHops=230580 macDrops=21534 reinjected=19972 macTerminal=1562 macLost=9648 queue=0 hopLoss=23275 overlap=-2420 unackedRx=11886
+# diag qrouting seed=14 pdr=91.71 firstDeliveryS=3.63 ctrlTx=314091 setupMedS=1.07 setupMaxS=5.02 flowsNoDelivery=0
+##RUN## 14 qrouting 91.7 319.8 4211.5 12.08 21.27 332.86 46.5 3266.5 12.0229
+##AIR## 14 qrouting 927.318 8620.084 7445.773 37.7626
+##ENERGY## 14 qrouting 38184.252 2.585958 3.4135e-03 1.935
+##GOODPUT## 14 qrouting 12.429
+##ROUTE## 14 qrouting 1.0662 5.0196 0 0.47966 1.000 7110 7.7574 12.0172
+##DROPID## 15 qrouting hopTx=231093 hopRx=215826 ackedHops=206136 macDrops=17743 reinjected=16612 macTerminal=1131 macLost=8053 queue=0 hopLoss=15267 overlap=-1778 unackedRx=9690
+# diag qrouting seed=15 pdr=91.76 firstDeliveryS=6.97 ctrlTx=283484 setupMedS=1.01 setupMaxS=5.20 flowsNoDelivery=0
+##RUN## 15 qrouting 91.8 263.4 4101.5 12.02 19.29 270.44 28.5 2937.5 10.9030
+##AIR## 15 qrouting 808.592 7898.369 6713.527 34.2678
+##ENERGY## 15 qrouting 38059.022 2.589754 3.5587e-03 1.841
+##GOODPUT## 15 qrouting 11.883
+##ROUTE## 15 qrouting 1.0117 5.1990 0 0.44203 1.000 6516 6.4495 10.4129
+##DROPID## 16 qrouting hopTx=196499 hopRx=188096 ackedHops=180903 macDrops=12732 reinjected=12122 macTerminal=610 macLost=5539 queue=0 hopLoss=8403 overlap=-702 unackedRx=7193
+# diag qrouting seed=16 pdr=93.60 firstDeliveryS=14.33 ctrlTx=251079 setupMedS=1.05 setupMaxS=5.08 flowsNoDelivery=0
+##RUN## 16 qrouting 93.6 174.0 3146.5 12.25 16.76 187.89 15.5 1116.5 9.4723
+##AIR## 16 qrouting 679.525 6848.057 5662.573 29.3115
+##ENERGY## 16 qrouting 37892.712 2.529216 3.6837e-03 1.822
+##GOODPUT## 16 qrouting 11.430
+##ROUTE## 16 qrouting 1.0471 5.0819 0 0.39959 1.000 6001 5.4239 8.4946
+##DROPID## 17 qrouting hopTx=245983 hopRx=231586 ackedHops=222027 macDrops=17059 reinjected=16063 macTerminal=996 macLost=7500 queue=0 hopLoss=14397 overlap=-1043 unackedRx=9559
+# diag qrouting seed=17 pdr=92.56 firstDeliveryS=6.91 ctrlTx=296883 setupMedS=2.01 setupMaxS=9.17 flowsNoDelivery=0
+##RUN## 17 qrouting 92.6 222.2 3562.5 12.39 19.59 238.68 25.5 1980.5 11.0725
+##AIR## 17 qrouting 834.145 8067.430 6854.721 35.0140
+##ENERGY## 17 qrouting 38088.170 2.513241 3.4543e-03 1.917
+##GOODPUT## 17 qrouting 12.252
+##ROUTE## 17 qrouting 2.0096 9.1717 0 0.43322 1.000 6585 6.3790 10.8297
+##DROPID## 18 qrouting hopTx=234404 hopRx=223024 ackedHops=213315 macDrops=17014 reinjected=16091 macTerminal=923 macLost=7305 queue=0 hopLoss=11380 overlap=-1227 unackedRx=9709
+# diag qrouting seed=18 pdr=92.95 firstDeliveryS=11.55 ctrlTx=288876 setupMedS=1.11 setupMaxS=5.13 flowsNoDelivery=0
+##RUN## 18 qrouting 93.0 221.3 3259.5 12.29 19.22 226.64 24.5 1558.5 10.8620
+##AIR## 18 qrouting 826.427 8026.491 6792.359 34.7673
+##ENERGY## 18 qrouting 38081.530 2.533364 3.4441e-03 1.612
+##GOODPUT## 18 qrouting 12.286
+##ROUTE## 18 qrouting 1.1089 5.1295 0 0.43317 1.000 6540 6.4097 10.9047
+##DROPID## 19 qrouting hopTx=243896 hopRx=232195 ackedHops=223170 macDrops=15929 reinjected=15023 macTerminal=906 macLost=6904 queue=0 hopLoss=11701 overlap=-944 unackedRx=9025
+# diag qrouting seed=19 pdr=92.07 firstDeliveryS=5.29 ctrlTx=299501 setupMedS=2.05 setupMaxS=6.70 flowsNoDelivery=0
+##RUN## 19 qrouting 92.1 201.7 3560.5 12.13 20.19 217.35 22.5 2037.5 11.4118
+##AIR## 19 qrouting 829.320 7985.564 6685.167 34.4446
+##ENERGY## 19 qrouting 38077.798 2.566927 3.5642e-03 1.663
+##GOODPUT## 19 qrouting 11.870
+##ROUTE## 19 qrouting 2.0547 6.6954 0 0.41082 1.000 6115 6.1822 10.3664
+##DROPID## 20 qrouting hopTx=253471 hopRx=237334 ackedHops=226313 macDrops=19644 reinjected=18190 macTerminal=1454 macLost=8623 queue=0 hopLoss=16137 overlap=-2216 unackedRx=11021
+# diag qrouting seed=20 pdr=91.07 firstDeliveryS=12.61 ctrlTx=306577 setupMedS=1.01 setupMaxS=5.11 flowsNoDelivery=0
+##RUN## 20 qrouting 91.1 286.1 4085.5 11.78 21.28 295.19 37.5 4004.5 12.0293
+##AIR## 20 qrouting 887.436 8203.873 7025.765 35.8157
+##ENERGY## 20 qrouting 38124.315 2.646603 3.5597e-03 1.809
+##GOODPUT## 20 qrouting 11.900
+##ROUTE## 20 qrouting 1.0133 5.1082 0 0.44862 1.000 6483 7.0209 11.6111
+##MATCH## 11 ara 13136 5782 9586.5 2.5
+##MATCH## 11 termite 5782 5782 11125.5 11125.5
+##MATCH## 11 qrouting 14809 5782 3931.5 6.5
+##MATCH## 12 ara 13616 6317 10070.5 2.5
+##MATCH## 12 termite 6317 6317 11368.5 11368.5
+##MATCH## 12 qrouting 15293 6317 3596.5 6.5
+##MATCH## 13 ara 12355 5938 10919.5 2.5
+##MATCH## 13 termite 5938 5938 11251.5 11251.5
+##MATCH## 13 qrouting 14092 5938 4253.5 11.5
+##MATCH## 14 ara 12708 5027 10948.5 2.5
+##MATCH## 14 termite 5027 5027 12222.5 12222.5
+##MATCH## 14 qrouting 14766 5027 4211.5 8.5
+##MATCH## 15 ara 12658 5486 9838.5 2.5
+##MATCH## 15 termite 5486 5486 11218.5 11218.5
+##MATCH## 15 qrouting 14696 5486 4101.5 6.5
+##MATCH## 16 ara 13144 5611 9404.5 2.5
+##MATCH## 16 termite 5611 5611 11112.5 11112.5
+##MATCH## 16 qrouting 14982 5611 3146.5 5.5
+##MATCH## 17 ara 13481 6168 10530.5 2.5
+##MATCH## 17 termite 6168 6168 11269.5 11269.5
+##MATCH## 17 qrouting 15155 6168 3562.5 9.5
+##MATCH## 18 ara 12965 5375 9989.5 2.5
+##MATCH## 18 termite 5375 5375 12046.5 12046.5
+##MATCH## 18 qrouting 15032 5375 3259.5 5.5
+##MATCH## 19 ara 13426 5397 10070.5 1.5
+##MATCH## 19 termite 5397 5397 11242.5 11242.5
+##MATCH## 19 qrouting 14834 5397 3560.5 5.5
+##MATCH## 20 ara 12938 6337 10173.5 2.5
+##MATCH## 20 termite 6337 6337 10032.5 10032.5
+##MATCH## 20 qrouting 14405 6337 4085.5 14.5
+##COMMON## 11 ara 13208 4780 11866.6 598.2 14060.1 2.084 2.609
+##COMMON## 11 termite 5872 4780 14389.0 2237.3 16648.3 13.804 22.056
+##COMMON## 11 qrouting 14870 4780 5025.6 254.0 6595.6 4.008 7.586
+##COMMON## 12 ara 13769 5329 14929.0 830.9 16352.7 2.026 2.564
+##COMMON## 12 termite 6437 5329 16261.7 2237.9 15196.7 13.249 22.465
+##COMMON## 12 qrouting 15340 5329 4375.1 218.4 6224.1 3.911 7.124
+##COMMON## 13 ara 12406 4670 13961.3 829.9 13801.9 2.163 2.635
+##COMMON## 13 termite 6036 4670 15653.8 2212.4 16420.3 13.286 21.851
+##COMMON## 13 qrouting 14166 4670 5854.4 327.4 7808.9 4.568 8.868
+##COMMON## 14 ara 12868 4158 18004.9 1075.6 16566.2 2.267 2.719
+##COMMON## 14 termite 5154 4158 16443.3 2657.6 16228.7 15.513 25.795
+##COMMON## 14 qrouting 14843 4158 6086.1 385.0 7505.2 5.220 8.657
+##COMMON## 15 ara 12796 4389 14057.1 899.8 14662.6 2.071 2.477
+##COMMON## 15 termite 5590 4389 14707.4 2362.5 14808.1 14.401 22.435
+##COMMON## 15 qrouting 14761 4389 5016.8 266.7 7168.5 4.178 7.725
+##COMMON## 16 ara 13219 4628 12389.2 792.4 12877.7 2.246 2.542
+##COMMON## 16 termite 5731 4628 15133.4 2480.7 16295.4 14.903 22.215
+##COMMON## 16 qrouting 15038 4628 4084.0 196.7 5106.6 4.037 6.377
+##COMMON## 17 ara 13599 5199 14100.6 795.2 16275.7 2.223 2.565
+##COMMON## 17 termite 6267 5199 15409.3 2276.4 18425.2 13.342 22.325
+##COMMON## 17 qrouting 15220 5199 4362.1 239.3 6763.0 4.284 7.798
+##COMMON## 18 ara 13138 4498 17092.7 931.5 16562.5 2.145 2.701
+##COMMON## 18 termite 5490 4498 16574.6 2513.8 15349.9 14.789 21.410
+##COMMON## 18 qrouting 15118 4498 5041.5 241.1 5851.8 4.064 7.736
+##COMMON## 19 ara 13575 4686 12830.8 621.7 17055.4 2.066 2.559
+##COMMON## 19 termite 5499 4686 14851.7 2181.9 17056.9 13.437 24.369
+##COMMON## 19 qrouting 14905 4686 4201.9 199.9 6244.6 3.906 7.553
+##COMMON## 20 ara 13036 5357 12669.4 750.4 15257.6 2.217 2.710
+##COMMON## 20 termite 6471 5357 15756.3 2100.8 16428.9 12.966 21.915
+##COMMON## 20 qrouting 14471 5357 5113.0 277.5 6950.0 4.524 8.580
+AntHocNet protocol comparison (mean of 10 run(s))
+  nodes=50 time=900.000s area=1500.000x300.000m maxSpeed=20.000m/s pause=0.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ara             81.0      726.9      10153.2        10.67   11.45      428.68         4.8         inf       6.474     37290.0      2.8615        2.59      0.9809       789.13
+termite         35.7     1693.9      11289.0         4.70    0.86     1804.31         inf         inf       0.483     38650.3      6.7652       19.75      0.9554      2063.29
+qrouting        92.0      248.2       3770.9        12.11   19.67      256.29        28.4         inf      11.117     38073.3      2.5728       10.75      0.9953       398.39
+# paths ara divUsed=1.461 divMax=8.7 entropyBits=0.293 windowS=10.0 hopsMean=2.59 hopsMax=48.7
+# paths termite divUsed=2.078 divMax=16.7 entropyBits=0.734 windowS=10.0 hopsMean=19.75 hopsMax=64.0
+# paths qrouting divUsed=2.648 divMax=21.5 entropyBits=0.767 windowS=10.0 hopsMean=10.75 hopsMax=64.0
+# energy ara initJ=5000.0 resMinJ=4252.0 resMeanJ=4254.2 resSdJ=0.781 firstDeathS=-1.0
+# energy termite initJ=5000.0 resMinJ=4220.7 resMeanJ=4227.0 resSdJ=2.660 firstDeathS=-1.0
+# energy qrouting initJ=5000.0 resMinJ=4233.9 resMeanJ=4238.5 resSdJ=1.785 firstDeathS=-1.0
+# drops ara pdr=81.03 route=14.70 queue=0.00 mac=17.91 chan=0.34 ttl=3.16 sum=117.13 other=0.00 [route: setup=- reconv=- repair=-]
+# drops termite pdr=35.69 route=1.74 queue=0.00 mac=170.91 chan=201.56 ttl=14.78 sum=424.69 other=0.00 [route: setup=- reconv=- repair=-]
+# drops qrouting pdr=91.99 route=0.00 queue=0.00 mac=7.28 chan=10.59 ttl=13.24 sum=123.10 other=0.00 [route: setup=- reconv=- repair=-]
+# stddev ara pdr=1.81 delay=65.7 delay99=514.6 nrl=0.698 nrl_bytes=0.395
+# stddev termite pdr=2.74 delay=122.2 delay99=586.6 nrl=0.092 nrl_bytes=0.052
+# stddev qrouting pdr=1.24 delay=51.9 delay99=398.7 nrl=1.639 nrl_bytes=0.926
+# reorder ara ratio=0.0950 ratioWorstFlow=0.1589 extentMean=3.04 extentMax=41.70 bufMax=837.50
+# reorder termite ratio=0.4832 ratioWorstFlow=0.5937 extentMean=4.53 extentMax=81.00 bufMax=667.20
+# reorder qrouting ratio=0.3146 ratioWorstFlow=0.4611 extentMean=3.16 extentMax=56.20 bufMax=1306.00
+##ARGS## anthocnet-compare --scenario=paper --runs=10 --nNodes=50 --time=900 --areaX=1500 --pause=0 --speed=20 --propagation=nakagami --range=300 --areaY=300 --firstRun=11 --diag --mobility=gaussmarkov --transport=udp --protocols=ara,termite,qrouting
+##PROV## commit=afd9568e856893d39f4e551b05cfbe4591ddae8d ref=main run_id=40703046578 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=anthocnet-compare
