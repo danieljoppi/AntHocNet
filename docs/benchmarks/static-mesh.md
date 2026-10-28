@@ -322,7 +322,9 @@ All cells:
 - the control run reproduces the pre-#496 200 ms AntHocNet rows byte for
   byte, so `TimerJitter=0` is exactly the old timer.
 
-Reproduce with `paper-benchmark.yml` using `nNodes=50 time=900 runs=20
+Reproduce with a campaign plan cell (`workflow: paper-benchmark.yml`, which
+`tools/bench/campaign.py` translates for `benchmark-cell.yml` since v2.5.0,
+#746) using `nNodes=50 time=900 runs=20
 areaX=1500 pause=900 speed=20 range=300 propagation=range
 protocols=anthocnet,aodv,olsr,dsdv,oracle version=3.42-opt`. For the pre-#496
 arms, add `extraArgs=--ns3::anthocnet::RoutingProtocol::TimerJitter=0`, plus

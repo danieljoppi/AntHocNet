@@ -1,0 +1,28 @@
+# #746 part 2: the old-vs-new dispatch path control for the two satellite
+# harnesses. campaign.py sends every job through benchmark-cell.yml since
+# #747; the anthocnet-compare harness was already checked by the v2.5.0
+# screen's recheck (scale-500 seeds 1-2, byte-identical). These two jobs re-run
+# seeds 1-2 of a committed v2.4.0 cell per satellite harness, with the v2.4.0
+# plan's inputs, on the new path. The rule: their ##RUN## rows equal the
+# committed rows for the same seeds (results/cells/sat-base-v240.txt,
+# results/cells/leo-walker16-anthocnet-v240.txt). Once both hold, the three
+# superseded workflows go.
+#
+#   python3 tools/bench/campaign.py plan tools/bench/campaigns/v2.5.0-path-control.yaml
+generation: pc746
+ref: main
+cap: 12
+control: control
+
+arms:
+  control: ""
+
+x-isl: &isl {harness: isl-grid, version: 3.42-opt, torus: "true", islDelayMs: 5, islRate: 10Mbps, time: 900, runs: 2, cbrBps: 4096, protocols: anthocnet}
+x-leo: &leo {harness: leo-walker, version: "3.48", time: 300, runs: 2, flows: 4, cbrBps: 2048, islRate: 10Mbps, protocols: anthocnet}
+
+cells:
+  sat-base: {workflow: satellite-benchmark.yml, inputs: {<<: *isl, rows: 4, cols: 4, flows: 8}}
+  leo-walker16-anthocnet: {workflow: satellite-benchmark.yml, inputs: {<<: *leo, protocols: anthocnet, extraArgs: "--planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01"}}
+
+jobs:
+  - {arms: [control], cells: "*"}

@@ -59,10 +59,11 @@ In CI:
 - **Benchmarks** (`.github/workflows/benchmarks.yml`, every merge to the default
   branch) runs the *discrete* scenarios with `--quick` and commits the refreshed
   index summary, scenario pages and `discrete-summary.png`.
-- **Scenario matrix + charts** (`.github/workflows/scenario-matrix.yml`, manual)
-  runs the heavier sweeps, uploads the CSV + PNGs as artifacts and, with
-  `commit=true`, writes the figures here. Point step 3 at its CSV to refresh the
-  sweep pages' tables.
+- **Benchmark cell** (`.github/workflows/benchmark-cell.yml`, manual, dispatched
+  by `tools/bench/campaign.py`) runs the heavier campaigns and sweeps one cell
+  at a time; **Charts** (`charts.yml`) re-renders the sweep figures from the
+  committed CSVs. The `scenario-matrix.yml` workflow that used to run the sweeps
+  was removed in v2.5.0 (#746).
 
 ## Figures
 

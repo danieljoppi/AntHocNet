@@ -882,11 +882,11 @@ standard pipeline compares the cell without any new parsing.
 
 ## How to run it
 
-- **Dispatch** the manual **Satellite benchmark** workflow
-  (`satellite-benchmark.yml`) — the regime's counterpart of the MANET
-  `paper-benchmark.yml`. Same contract: results file + `time -v` artifact, a
-  compact tail block cheap to fetch from the job log, `extraArgs` for ns-3
-  attribute overrides (e.g.
+- **Dispatch** the manual **Benchmark cell** workflow
+  (`benchmark-cell.yml`) with `harness=isl-grid` and the harness's flags in
+  `args` (it replaced `satellite-benchmark.yml` in v2.5.0, #746): results file
+  + `time -v` artifact, a compact tail block cheap to fetch from the job log,
+  ns-3 attribute overrides as extra flags (e.g.
   `--ns3::anthocnet::RoutingProtocol::EnableDirectedReactive=true` for the
   [#244](https://github.com/danieljoppi/AntHocNet/issues/244) satellite arm).
 - **Locally**, with an ns-3 tree carrying the module:
@@ -940,12 +940,12 @@ cells (`single-isl`, `hop-delay`), which are derivation checks on
 deterministic point-to-point links — those stay low-run and are read as
 **diagnostic identities, not estimates** (#318 wording pass):
 
-1. **Dispatch** `satellite-benchmark.yml` (above). The results file
-   (`satellite-results.txt`: `##RUN##` per-seed rows plus the summary table)
-   is uploaded as the `satellite-benchmark` artifact (30-day retention).
-2. **Rescue** it past expiry with the `rescue-artifacts` workflow
-   (`sat_run_ids` input); it is committed as
-   `results/campaign/<runid>-sat.txt`.
+1. **Dispatch** `benchmark-cell.yml` (above), usually through a campaign plan
+   and `tools/bench/campaign.py`. The results file (`##RUN##` per-seed rows
+   plus the summary table) is uploaded as the run's artifact (30-day
+   retention).
+2. **Collect** it with `campaign.py collect` (or `open_pr=true` on a single
+   dispatch), which commits it as `results/cells/<cell>.txt`.
 3. **Validate** before reading:
    `python3 tools/bench/scenario_check.py results FILE`
    understands both the `--csv` schema and the human

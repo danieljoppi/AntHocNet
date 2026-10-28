@@ -114,8 +114,8 @@ preserved at the v1.9.0 tag.)
   campaign image must **never** replace them in CI. `release` (assertions and
   logging compiled out, typically 2-10x faster on simulation-heavy runs) is
   published as the extra `ns3:<ver>-opt` tag, for **ns-3.42 only**, and is
-  consumed solely by the manual `paper-benchmark` / `scenario-matrix`
-  campaigns via their `version` input. Each image records its profile in the
+  consumed solely by the manual `benchmark-cell` campaigns via its
+  `version` input. Each image records its profile in the
   `NS3_PROFILE` environment variable (`docker inspect`), which is how those
   workflows know whether their in-job `./ns3 configure` needs `-d release` —
   see [`docs/benchmarks/methodology.md`](../docs/benchmarks/methodology.md#build-profiles-default-for-ci-release-for-campaigns)

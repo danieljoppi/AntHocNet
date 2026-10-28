@@ -447,9 +447,9 @@ python3 $S preflight                              # paper base defaults
 python3 $S preflight --areaX 2500 --flows 40      # exactly what you intend to dispatch
 ```
 
-**1. Sweep one parameter at a time**, through the ns-3 attribute, via
-`paper-benchmark.yml`'s `extraArgs` input (appended verbatim to the
-`anthocnet-compare` command line):
+**1. Sweep one parameter at a time**, through the ns-3 attribute, as extra
+flags in a `benchmark-cell.yml` dispatch's `args` (the `anthocnet-compare`
+command line), or as an arm of a campaign plan (`tools/bench/campaigns/`):
 
 ```
 --ns3::anthocnet::RoutingProtocol::HopTime=0.05
@@ -458,8 +458,8 @@ python3 $S preflight --areaX 2500 --flows 40      # exactly what you intend to d
 
 Pair **every** ON run with an identical OFF run — baselines are deterministic on
 identical seeds, so an A/B pair is a clean comparison and a lone run is not. For
-multi-point sweeps use `scenario-matrix.yml` (`only=<sweep> point=<x>` runs a
-single point; `commit=true` writes the CSV into `results/campaign/`).
+multi-point sweeps write one cell per point in a campaign plan and dispatch
+it with `tools/bench/campaign.py`.
 Core-only parameters (`—` in §3.1) cannot be swept this way; they need a
 `config.h` edit and a rebuilt image.
 

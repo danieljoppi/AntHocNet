@@ -1,0 +1,14 @@
+# pc746 campaign sat-base-pc746: 1 run(s): 40692288859 (control/sat-base); ref main
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##RUN## 1 anthocnet 100.00 10.15 11.00 46.69 1.12 1.85 0.00
+# diag anthocnet seed=1 ctrlTx=63675 antTx[1=14397,2=184,4=4454,] antRx[1=57588,2=208,4=4742,]
+##RUN## 2 anthocnet 100.00 10.15 11.00 46.64 1.12 1.86 0.00
+# diag anthocnet seed=2 ctrlTx=63645 antTx[1=14402,2=207,4=4414,] antRx[1=57608,2=234,4=4680,]
++Grid torus 4x4 = 16 satellites, 32 ISLs (mean degree 4.00) @ 5.00 ms 10Mbps, 8 flows, 900.00 s, mean of 2 run(s)
+
+protocol          PDR%  delay(ms)  delay99(ms)  thrput(kbps)     NRL   NRLbytes  jitter(ms)
+-------------------------------------------------------------------------------------------
+anthocnet        100.0       10.2         11.0         46.67    1.12       1.86        0.00
+##ARGS## isl-grid --rows=4 --cols=4 --torus=true --islDelayMs=5 --islRate=10Mbps --time=900 --runs=2 --flows=8 --cbrBps=4096 --diag --protocols=anthocnet
+##PROV## commit=5b1c3d0820f62465716cf923d256c74ce47d7fe5 ref=main run_id=40692288859 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=isl-grid

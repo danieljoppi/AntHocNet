@@ -96,7 +96,7 @@ jobs:
       # image (`ns3:<ver>-opt`). Campaigns (#110/#121) pin this version, and an
       # extra full ns-3 compile per matrix leg is not worth spending on versions
       # nothing runs campaigns against. Keep in sync with the `version` default
-      # in scenario-matrix.yml / paper-benchmark.yml.
+      # in benchmark-cell.yml.
       NS_OPT: '3.42'
     strategy:
       fail-fast: false
@@ -134,8 +134,8 @@ jobs:
             ${{ (inputs.release || '') != '' && format('ghcr.io/{0}/ns3:{1}-{2}', github.repository_owner, matrix.version, inputs.release) || '' }}
           push: ${{ env.PUSH == 'true' }}
       # --- Docker Hub mirror (#158) -------------------------------------------
-      # GHCR is authoritative: it is what ci.yml, paper-benchmark and
-      # scenario-matrix pull. Docker Hub (added in #77/#79) is a convenience
+      # GHCR is authoritative: it is what ci.yml and benchmark-cell
+      # pull. Docker Hub (added in #77/#79) is a convenience
       # mirror for humans. They used to share one `tags:` block, so buildx pushed
       # both registries in a single invocation — and when DOCKERHUB_TOKEN lost
       # its write scope, the GHCR push succeeded, the Docker Hub push failed

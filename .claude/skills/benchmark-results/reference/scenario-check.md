@@ -150,6 +150,6 @@ nothing that could fail. So a new metric family is not done until it has:
    and catches the defect at zero dispatches.
 
 **Order of operations.** Run `preflight` (free), then *one cheap point* —
-`paper-benchmark.yml` at `runs=2`, `time=300`, a `-opt` image — and run
+`benchmark-cell.yml` at `--runs=2 --time=300`, a `-opt` image — and run
 `scenario_check.py results` on that before committing to a taxonomy sweep. A
 control that reads wrong reads wrong in 20 minutes just as clearly as in 115.

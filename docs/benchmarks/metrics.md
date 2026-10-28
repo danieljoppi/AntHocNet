@@ -688,7 +688,7 @@ numbers):
 
 ```
 ##PROV## commit=<sha> ref=<branch> run_id=<id> attempt=<n> image=<ghcr tag> \
-         profile=<default|release> harness=<compare|baselines|isl-grid|scenario-matrix>
+         profile=<default|release> harness=<anthocnet-compare|isl-grid|leo-walker>
 ```
 
 The other half of provenance: `##CONFIG##` says *how* the run was configured,
@@ -702,13 +702,10 @@ compact block that does not come from `anthocnet-compare`'s stdout, and it
 cannot: a simulation binary has no way to know the commit it was built from
 short of baking one in at configure time, which would then be wrong for anyone
 running it from a dirty tree. The workflow knows it for certain, so the workflow
-says it. Three campaign workflows emit the same line:
-[`paper-benchmark.yml`](../../.github/workflows/paper-benchmark.yml) and
-[`satellite-benchmark.yml`](../../.github/workflows/satellite-benchmark.yml)
-append it to their compact blocks; `scenario-matrix.yml` has no compact block —
-its numbers travel as a CSV artifact — so it emits the line from a step of its
-own, under `if: always()` so a sweep that dies mid-way still stamps the points
-that completed.
+says it. [`benchmark-cell.yml`](../../.github/workflows/benchmark-cell.yml)
+writes the line into the results file and repeats it at the end of its compact
+block. Older cells carry the `harness=compare|baselines|isl-grid|scenario-matrix`
+values of the three workflows it replaced in v2.5.0 (#746).
 
 **Position matters.** It is the *last* line of the block, after `##PERF##`. A
 cheap `get_job_logs` tail loses lines from the top, and losing the provenance of
@@ -819,12 +816,14 @@ and identically seeded, only the routing protocol differs — and the output
 makes a violation visible rather than silent: `nCommon` collapsing toward zero
 means the keys did not line up, which no real routing difference could produce.
 
-> **Adding a marker is two changes, not one.** The harness emitting a
-> `##MARKER##` line is only half of shipping it: `paper-benchmark.yml`'s
-> *"Compact result block"* step re-emits a **explicit allow-list** of markers at
+> **Adding a marker used to be two changes, not one** (until v2.5.0, #746, when
+> campaigns moved to `benchmark-cell.yml`, whose artifact is the whole results
+> file). The harness emitting a `##MARKER##` line was only half of shipping it:
+> the retired `paper-benchmark.yml`'s *"Compact result block"* step re-emitted
+> an **explicit allow-list** of markers at
 > the end of the log so one cheap `get_job_logs` tail carries everything. A
-> marker missing from that grep still reaches `paper-results.txt` (and the
-> artifact, which is proxy-blocked) but sits far above the compact block. That
+> marker missing from that grep still reached `paper-results.txt` (and the
+> artifact, which was proxy-blocked) but sat far above the compact block. That
 > is exactly what happened to `##MATCH##` on its first run: `tail_lines=215`
 > instead of ~50, and the top row scrolled off anyway, costing one seed out of
 > twenty in a paired analysis.

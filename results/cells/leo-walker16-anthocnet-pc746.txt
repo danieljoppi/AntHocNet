@@ -1,0 +1,41 @@
+# pc746 campaign leo-walker16-anthocnet-pc746: 1 run(s): 40692306522 (control/leo-walker16-anthocnet); ref main
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## harness=leo-walker planes=16 sats=16 phasing=1 altitude=1150 inclination=53 time=300 runs=2 firstRun=1 flows=4 cbrBps=2048 minElevation=25 clock=15 clockOffset=12 islDown=0.01 islMeanDown=2 massFailAt=-1 massFailFrac=0.1 delayUpdate=0.1 oracleInterval=0 protocols=anthocnet
+# anchor shell radiusKm=7521.000 altitudeKm(sphere)=1150.000 radiusSpreadM=0.000 chordKm=2934.549 chordErrM(t=0)=0.000 chordErrM(t=T/2)=0.000 periodMin=108.187
+# visibility minElevation=25.000 NewYork=14 London=9 SaoPaulo=5 Johannesburg=7 Tokyo=9 Sydney=9
+protocol        PDR%  delay(ms)  delay99(ms)  thrput(kbps)      NRL   NRLbytes  jitter(ms)
+# anchor isl crossShiftSlots=15 crossMeanKm=1838.432 sameSlotMeanKm=2527.281 inPlaneKm=2934.549
+# handover anthocnet seed=1 scheduled=11 forced=0 islFailures=790 ticks=20
+# account anthocnet seed=1 flow=0 offered=1183 refused=0 delivered=1152 received=1152 dup=0 outageLost=29 scatteredLost=2
+# account anthocnet seed=1 flow=1 offered=1181 refused=0 delivered=1046 received=1046 dup=0 outageLost=126 scatteredLost=9
+# account anthocnet seed=1 flow=2 offered=1190 refused=0 delivered=1096 received=1096 dup=0 outageLost=91 scatteredLost=3
+# account anthocnet seed=1 flow=3 offered=1192 refused=0 delivered=1118 received=1118 dup=0 outageLost=69 scatteredLost=5
+# outage anthocnet seed=1 class=startup n=1 lost=3 p50=0.750 p90=0.750 max=0.750
+# outage anthocnet seed=1 class=scheduled n=14 lost=108 p50=2.000 p90=2.750 max=2.750
+# outage anthocnet seed=1 class=unplanned n=28 lost=204 p50=1.750 p90=2.500 max=3.500
+# outage anthocnet seed=1 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=1 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn anthocnet seed=1 flow=0 NewYork-London hopChangesPerMin=0.814 meanHops=6.938 delivered=1152
+# churn anthocnet seed=1 flow=1 London-Tokyo hopChangesPerMin=6.106 meanHops=15.645 delivered=1046
+# churn anthocnet seed=1 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.010 meanHops=7.407 delivered=1096
+# churn anthocnet seed=1 flow=3 Tokyo-Sydney hopChangesPerMin=1.613 meanHops=7.275 delivered=1118
+##RUN## 1 anthocnet 92.96 66.95 148.00 10.82 95.47 169.70 1.89
+# handover anthocnet seed=2 scheduled=11 forced=0 islFailures=763 ticks=20
+# account anthocnet seed=2 flow=0 offered=1179 refused=0 delivered=1098 received=1098 dup=0 outageLost=76 scatteredLost=5
+# account anthocnet seed=2 flow=1 offered=1187 refused=0 delivered=1086 received=1086 dup=0 outageLost=97 scatteredLost=4
+# account anthocnet seed=2 flow=2 offered=1184 refused=0 delivered=1101 received=1101 dup=0 outageLost=81 scatteredLost=2
+# account anthocnet seed=2 flow=3 offered=1181 refused=0 delivered=1105 received=1105 dup=0 outageLost=74 scatteredLost=2
+# outage anthocnet seed=2 class=startup n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=2 class=scheduled n=12 lost=92 p50=2.000 p90=2.250 max=2.500
+# outage anthocnet seed=2 class=unplanned n=36 lost=236 p50=1.500 p90=2.250 max=2.500
+# outage anthocnet seed=2 class=massfail n=0 lost=0 p50=nan p90=nan max=nan
+# outage anthocnet seed=2 class=other n=0 lost=0 p50=nan p90=nan max=nan
+# churn anthocnet seed=2 flow=0 NewYork-London hopChangesPerMin=1.224 meanHops=6.886 delivered=1098
+# churn anthocnet seed=2 flow=1 London-Tokyo hopChangesPerMin=2.237 meanHops=14.395 delivered=1086
+# churn anthocnet seed=2 flow=2 SaoPaulo-Johannesburg hopChangesPerMin=1.218 meanHops=7.492 delivered=1101
+# churn anthocnet seed=2 flow=3 Tokyo-Sydney hopChangesPerMin=1.424 meanHops=8.494 delivered=1105
+##RUN## 2 anthocnet 92.79 67.70 139.00 10.77 105.02 189.45 2.35
+anthocnet      92.88      67.32       143.50         10.80   100.25     179.58        2.12
+##ARGS## leo-walker --time=300 --runs=2 --flows=4 --cbrBps=2048 --islRate=10Mbps --protocols=anthocnet --planes=16 --sats=16 --phasing=1 --altitude=1150 --inclination=53 --minElevation=25 --islDown=0.01
+##PROV## commit=5b1c3d0820f62465716cf923d256c74ce47d7fe5 ref=main run_id=40692306522 attempt=1 image=ghcr.io/danieljoppi/ns3:3.48 profile=default harness=leo-walker

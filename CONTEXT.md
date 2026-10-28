@@ -148,8 +148,9 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   sources, read by `anthocnet-compare --diag` (item 15).
 - **Benchmarks run on every merge**: a classified scenario taxonomy across all
   baselines (AODV/OLSR/DSDV) with the table + a chart auto-committed to
-  `docs/benchmarks*`; the paper's area/pause/scale sweeps + charts are the
-  manual `scenario-matrix` workflow (items 07/08).
+  `docs/benchmarks*`; the paper's area/pause/scale sweeps were the manual
+  `scenario-matrix` workflow (items 07/08), and are campaign plans on
+  `benchmark-cell` since v2.5.0 (#746).
 - **Versioned, citable, releasable**: SemVer tags, `VERSION` + `CITATION.cff` +
   `CHANGELOG.md`, a Commitizen-driven `Release` workflow that builds an
   install-bundle zip (Zenodo-ready); Conventional-Commit PR titles are

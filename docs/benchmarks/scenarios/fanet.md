@@ -631,7 +631,9 @@ and OLSR's pre-#510 denominator:
 | main, 350 m | oracle at 100 ms (all five arms re-run) | `36936966493` | `0197fe66` | `results/cells/fanet-main-oracle100ms.txt` |
 | sparse, 250 m | oracle at 100 ms (all five arms re-run) | `36936970028` | `0197fe66` | `results/cells/fanet-sparse-oracle100ms.txt` |
 
-**Dispatch:** `paper-benchmark.yml` with
+**Dispatch** (the inputs of the `paper-benchmark.yml` these cells ran on; since
+v2.5.0, #746, a campaign plan cell with the same inputs goes through
+`benchmark-cell.yml`, translated flag for flag by `tools/bench/campaign.py`):
 
 ```
 scenario=fanet version=3.42-opt nNodes=30 time=900 runs=20

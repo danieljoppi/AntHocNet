@@ -59,10 +59,12 @@ Defined as `SWEEPS["area"]` in
 ## How it is produced
 
 Sweeps are **too heavy for the per-merge `benchmarks` workflow**, which runs
-only the discrete scenarios. They come from the manual **Scenario matrix +
-charts** workflow (`scenario-matrix.yml`), which renders `sweep-area.png` into
-[`docs/benchmarks/`](../) and uploads the classified CSV; the table below is
-filled in by pointing `update-benchmarks.py` at that CSV.
+only the discrete scenarios. They came from the manual **Scenario matrix +
+charts** workflow (`scenario-matrix.yml`, removed in v2.5.0, #746), which
+uploaded the classified CSV; the table below is filled in by pointing
+`update-benchmarks.py` at that CSV, and `charts.yml` re-renders `sweep-area.png`
+from it. A new sweep is a campaign plan of one cell per point on
+`benchmark-cell.yml` (`tools/bench/campaign.py`).
 
 Raw sweep data rescued from expired artifacts lives in
 [`results/campaign/`](../../../results/campaign/). The published table below comes from the

@@ -13,8 +13,8 @@ name: Benchmarks
 # removed the excuse: at 2 runs the tables now render t(1)-wide intervals
 # their own methodology calls unpublishable. The 120 s duration stays -- the
 # floor is about dispersion, not duration, and absolute plausibility is the
-# anchor gate's job. The heavier parameter sweeps (area/pause/scale) stay in
-# the manual "Scenario matrix + charts" workflow at 900 s / 20 seeds.
+# anchor gate's job. The heavier parameter sweeps (area/pause/scale) are
+# manual campaigns (benchmark-cell.yml via tools/bench/campaign.py) at 900 s / 20 seeds.
 on:
   push:
     branches: [main, master]   # both, so it survives the default-branch rename

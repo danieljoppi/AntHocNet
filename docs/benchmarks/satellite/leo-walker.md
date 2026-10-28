@@ -590,5 +590,6 @@ python3 ns3/tools/leo-summary.py walker16 starlink1 starlink1-storm
 python3 ns3/tools/family-charts.py
 ```
 
-In CI: `satellite-benchmark.yml`, `harness=leo-walker`, one arm per dispatch,
-with the cell's flags in `extraArgs`.
+In CI: `benchmark-cell.yml`, `harness=leo-walker`, `version=3.48`, one arm per
+dispatch, with the cell's flags in `args` (a campaign plan lists them; before
+v2.5.0 this was `satellite-benchmark.yml`, #746).
