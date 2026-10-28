@@ -89,8 +89,8 @@ private:
         // at the initial value.
         t.AddNeighbor(3, 0.0);
         NS_TEST_ASSERT_MSG_EQ_TOL(t.Get(9, 3, 0.0), 1.0, 1e-12, "new row at initial");
-        // 2 e^{-0.105 * 10} = 0.699891.
-        NS_TEST_ASSERT_MSG_EQ_TOL(t.Get(9, 2, 10.0), 0.699891, 1e-6, "decay");
+        // 2 e^{-0.105 * 10} = 2 e^{-1.05} = 0.699875.
+        NS_TEST_ASSERT_MSG_EQ_TOL(t.Get(9, 2, 10.0), 0.699875, 1e-6, "decay");
         // 1 e^{-0.105 * 30} = 0.0429 < 0.1: held at the floor.
         NS_TEST_ASSERT_MSG_EQ_TOL(t.Get(9, 3, 30.0), 0.1, 1e-12, "floor");
         // The ceiling caps a deposit.
