@@ -161,10 +161,25 @@ def parse_runs(text):
     return runs
 
 
-def parse_stddev(text):
-    """Return {proto: {metric: float}} from the harness's '# stddev' lines."""
-    sds = {}
+def parse_stddev(text, blocks=False):
+    """Return {proto: {metric: float}} from the harness's '# stddev' lines.
+
+    With blocks=True, return a list of (proto, {metric: float}, runs) instead,
+    one entry per '# stddev' line, where runs is the set of that protocol's
+    ##RUN## numbers printed since its previous '# stddev' line. A campaign cell
+    collected from seed blocks (campaign.py) carries one '# stddev' per block,
+    over that block's seeds only, so the mapping check must recompute over the
+    same seeds (#740: the v2.4.0 scale cells read FAILED on every block but
+    the last). A protocol with a single '# stddev' line keeps the whole-cell
+    recompute (runs None): compose_cell.py appends a replacement seed's
+    ##RUN## row after that line, and it belongs to the same population.
+    """
+    sds, out, pending = {}, [], {}
     for line in text.splitlines():
+        r = RUN.search(line)
+        if r:
+            pending.setdefault(r.group(2), set()).add(int(r.group(1)))
+            continue
         m = STDDEV.match(line.strip())
         if not m:
             continue
@@ -179,7 +194,13 @@ def parse_stddev(text):
                 pass
         if vals:
             sds[m.group(1)] = vals
-    return sds
+            out.append((m.group(1), vals, pending.pop(m.group(1), set())))
+    if not blocks:
+        return sds
+    lines = {}
+    for proto, _vals, _runs in out:
+        lines[proto] = lines.get(proto, 0) + 1
+    return [(p, v, r if lines[p] > 1 else None) for p, v, r in out]
 
 
 def mapping_check(runs, sds):
@@ -187,10 +208,17 @@ def mapping_check(runs, sds):
     with the harness's '# stddev' line. Returns (n_checks, failures) where a
     failure is (proto, metric, recomputed, reported). A failure means the
     positional column mapping is wrong — no number from the cell is safe.
+
+    sds is parse_stddev's dict (one line per protocol, over all its runs) or
+    its blocks=True list (each line over its own block's runs).
     """
+    if isinstance(sds, dict):
+        sds = [(p, v, None) for p, v in sorted(sds.items())]
     checks, fails = 0, []
-    for proto, reported in sorted(sds.items()):
+    for proto, reported, block in sds:
         per_run = runs.get(proto, {})
+        if block:
+            per_run = {k: v for k, v in per_run.items() if k in block}
         for metric in ("pdr", "delay", "delay99", "nrl", "nrl_bytes"):
             if metric not in reported:
                 continue
@@ -425,7 +453,7 @@ def main():
             text = fh.read()
         perf = [m.group(0) for m in map(PERF.search, text.splitlines()) if m]
         cells.append((label_of(path, text), parse_cell(text),
-                      parse_runs(text), perf, parse_stddev(text)))
+                      parse_runs(text), perf, parse_stddev(text, blocks=True)))
 
     protos = ([args.proto] if not args.all else
               sorted({p for _, r, _, _, _ in cells for p in r}))
