@@ -4902,23 +4902,28 @@ int main(int argc, char* argv[]) {
               // interchangeable with; see docs/benchmarks/metrics.md.
               << std::setw(13) << "jitterEq51" << "\n";
     std::cout << std::string(174, '-') << "\n";
+    // #741: each value carries its own leading space (width - 1 after it), so
+    // the bytes are unchanged while a value fits, and a value that fills its
+    // field (NRL >= 10^4) still stays a separate whitespace-split column.
     for (std::size_t i = 0; i < list.size(); ++i) {
-        std::cout << std::left << std::setw(12) << list[i] << std::right << std::fixed
-                  << std::setw(8) << std::setprecision(1) << agg[i].pdr << std::setw(11)
-                  << std::setprecision(1) << agg[i].delay << std::setw(13) << std::setprecision(1)
-                  << agg[i].delay99 << std::setw(13) << std::setprecision(2) << agg[i].thrput
-                  << std::setw(8) << std::setprecision(2) << agg[i].nrl << std::setw(12)
+        std::cout << std::left << std::setw(12) << list[i] << std::right << std::fixed << " "
+                  << std::setw(7) << std::setprecision(1) << agg[i].pdr << " " << std::setw(10)
+                  << std::setprecision(1) << agg[i].delay << " " << std::setw(12)
+                  << std::setprecision(1) << agg[i].delay99 << " " << std::setw(12)
+                  << std::setprecision(2) << agg[i].thrput << " " << std::setw(7)
+                  << std::setprecision(2) << agg[i].nrl << " " << std::setw(11)
                   << std::setprecision(2) << agg[i].jitter;
         for (double v : {agg[i].dOff50, agg[i].dOff90}) {
             if (v < 0)
-                std::cout << std::setw(12) << "inf";
+                std::cout << " " << std::setw(11) << "inf";
             else
-                std::cout << std::setw(12) << std::setprecision(1) << v;
+                std::cout << " " << std::setw(11) << std::setprecision(1) << v;
         }
-        std::cout << std::setw(12) << std::setprecision(3) << agg[i].nrlBytes << std::setw(12)
-                  << std::setprecision(1) << agg[i].energy << std::setw(12) << std::setprecision(4)
-                  << agg[i].energyPerPkt << std::setw(12) << std::setprecision(2) << agg[i].hopsMean
-                  << std::setw(12) << std::setprecision(4) << agg[i].jain << std::setw(13)
+        std::cout << " " << std::setw(11) << std::setprecision(3) << agg[i].nrlBytes << " "
+                  << std::setw(11) << std::setprecision(1) << agg[i].energy << " " << std::setw(11)
+                  << std::setprecision(4) << agg[i].energyPerPkt << " " << std::setw(11)
+                  << std::setprecision(2) << agg[i].hopsMean << " " << std::setw(11)
+                  << std::setprecision(4) << agg[i].jain << " " << std::setw(12)
                   << std::setprecision(2) << agg[i].jitterEq51 << "\n";
     }
     // #217 path detail: used-path diversity (distinct next hops that actually

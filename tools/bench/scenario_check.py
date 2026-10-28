@@ -1548,7 +1548,15 @@ def parse_results(path):
     # arms of its own block, never against another block's seeds (v2.4.0).
     blocks = re.findall(r"^##CONFIG## .*\bfirstRun=(\d+)", text, re.MULTILINE)
     where = os.path.basename(path)
+    # #741: the summary table is fixed-width, so a value that fills its field
+    # (NRL 10114.56 in an 8-wide column) merges with its neighbour and every
+    # later column shifts by one. A row whose field count differs from the
+    # header above it is reported as a format error, never mapped by position.
+    header_cols = None
     for line in text.splitlines():
+        if line.startswith("protocol "):
+            header_cols = len(line.split()) - 1
+            continue
         if len(blocks) > 1:
             b = re.match(r"^##CONFIG## .*\bfirstRun=(\d+)", line)
             if b:
@@ -1557,6 +1565,12 @@ def parse_results(path):
         if m:
             proto, nums = m.group(1), m.group(2).split()
             if proto in ("protocol",) or len(nums) < 5:
+                continue
+            if (header_cols is not None and not line.startswith("##BENCH##")
+                    and len(nums) != header_cols):
+                report("FAIL", f"{where}: {proto} table row has {len(nums)} "
+                               f"fields under a {header_cols}-column header "
+                               "— merged columns, row not read (#741)")
                 continue
             row = {"where": where, "proto": proto,
                    "pdr": nums[0], "delay": nums[1], "delay99": nums[2],
