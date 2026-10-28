@@ -237,7 +237,7 @@ Every entry was retrieved on 2026-10-09 at abstract or summary level.
 - Güneş et al., ARA — the ant-colony based routing algorithm for MANETs (2002) — [FU Berlin](https://cst-pub.imp.fu-berlin.de/Guenes2002e.html)
 - Roth & Wicker, Termite (SIDM 2005) — [PDF](https://forum.cone.informatik.uni-freiburg.de/teaching/seminar/adhoc-s08/mobiPapers/SIDM2005.pdf); Roth thesis — [Cornell eCommons](https://hdl.handle.net/1813/240); seminar critique — [Freiburg](https://forum.cone.informatik.uni-freiburg.de/teaching/seminar/adhoc-s08/finalTalks/05fin_Termite_Max_Fechner.pdf)
 - Wang, HOPNET (2007 thesis) — [UManitoba MSpace](https://mspace.lib.umanitoba.ca/bitstream/1993/20935/1/Wang_HOPNET_a.pdf)
-- Ducatelle, AntHocNet thesis (2007) — [USI](https://susi.usi.ch/rerodoc/9027/files/2007INFO001.pdf)
+- Ducatelle, AntHocNet thesis (2007) — [SONAR (USI)](https://sonar.ch/global/documents/318075)
 - *Performance Analysis of Swarm Based Routing Protocols for MANETs* (NS-2 thesis, Thapar University) — [TUDR](https://tudr.thapar.edu/items/22361eb3-790e-4330-bfe9-1bb009c24e4c)
 
 **Secure comparators**
