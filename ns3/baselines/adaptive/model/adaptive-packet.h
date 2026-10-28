@@ -3,7 +3,7 @@
 
 /**
  * The control message of the adaptive arms: one fixed 24-byte layout for the
- * discovery ants of ARA (FANT, BANT), Termite (RREQ, RREP, HELLO) and the
+ * discovery ants of ARA (FANT, BANT), Termite (RREQ, RREP, hello, seed) and the
  * Q-routing hello and estimate feedback. Each arm uses only the fields it
  * needs; the layout is the arm's own (it never shares a port or a wire with
  * AntHocNet, whose format is core/ant_message_codec).
@@ -37,6 +37,8 @@ enum MessageType : uint8_t {
     TERMITE_RREQ = 10,
     TERMITE_RREP = 11,
     TERMITE_HELLO = 12,
+    TERMITE_HELLO_REPLY = 13,
+    TERMITE_SEED = 14,
     QR_HELLO = 20,
     QR_ESTIMATE = 21,
 };

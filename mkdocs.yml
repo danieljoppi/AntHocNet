@@ -119,6 +119,7 @@ nav:
       - benchmarks/v2.2.0-campaign.md
       - benchmarks/v2.3.0-campaign.md
       - benchmarks/v2.4.0-campaign.md
+      - benchmarks/v2.5.0-comparators.md
       - Scenarios:
           - benchmarks/scenarios/paper-base.md
           - benchmarks/scenarios/dense-small.md

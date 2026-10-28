@@ -45,13 +45,13 @@ pp. 79–85. Full text read (7 pp.). Section numbers below are the paper's.
 |---|---|---|
 | §3.1 FANT flooded from the source, unique sequence number, duplicates (source + seq) destroyed | Same; relays jittered by U[0, 10 ms) | as written (jitter: implementation detail, AODV's) |
 | §3.1 a node seeing a FANT for the first time records (source, previous node, φ = f(hops)) | φ raised to at least `1/hops` | **f not given**: inverse hop count, so the shorter trail is the stronger |
-| §3.1 destination answers with a BANT that "has the same task" toward the destination; Fig. 3 shows it laying two tracks at one node | BANT flooded like the FANT; every copy updates φ, only the first is relayed | **flood vs unicast not stated**: flood is what Fig. 3 draws |
+| §3.1 destination answers with a BANT that "has the same task" toward the destination | The BANT retraces the FANT's path: each node remembers the neighbour its first FANT copy came from, and the BANT, carrying the FANT's sequence number, is unicast back hop by hop, setting φ toward the destination at each hop | **path not stated in the 2002 paper**: the ARA reviews read it as "sent back along the path it came" (Arif & Rani 2012), and Roth 2005 §3.5.2 describes ARA's backward ant as returned along the forward path. A first implementation flooded the BANT; its duplicate copies laid backward trails and looped |
 | §3.2 data relayed toward D over j adds Δφ to (D, j); the receiver adds Δφ to (S, previous hop) | Same, at every hop including the destination | as written |
 | eq. 2 evaporation φ := (1 − q)·φ, applied periodically | Same law, evaluated continuously (lazily, on read) | **q, period not given**: q = 0.1 per 1 s |
 | Δφ | 0.1 | **not given** |
 | A route has evaporated | φ < 0.01 (a 1-hop trail with no data lasts ~44 s, a 10-hop one ~22 s) | **not given** |
 | §3.2 duplicate data packet (source + seq) → DUPLICATE_ERROR flag, sent back, previous node deactivates the link | Key (source, destination, IP identification). The packet is sent back carrying a `BacktrackTag`; the receiver erases (D, sender) and routes it again | as written; the flag rides as a tag (the paper gives no format) |
-| §3.3 missing acknowledgement → φ = 0 for that link, alternative link, else back to the previous node, backtracking toward the source; the source re-discovers | Same; a MAC failure erases the neighbour for every destination | as written |
+| §3.3 missing acknowledgement → φ = 0 for that link, alternative link, else back to the previous node, backtracking toward the source; the source re-discovers | Same; a MAC failure erases the neighbour for every destination. A next hop that never answers ARP (it left before any frame reached the MAC) is the same failure one layer earlier and is handled the same way | as written. Without the ARP case a one-seed 20 m/s paper run lost 52 % of packets with no MAC drop at all: trails learned from broadcast ants carry no ARP entry |
 | next hop ∝ φ (§2.2, §3.4 "multi-path") | Proportional draw. **Not straight back to the previous hop while another trail exists** | **deviation**: the paper only says loops are caught by duplicate detection. Returning to the previous hop is a certain duplicate error, which costs a hop to learn |
 | Discovery retries | FANT re-sent after 2.8 s, doubling, 2 retries, then the held packets are dropped | **not given**: ns-3 AODV's NetTraversalTime / RreqRetries, so the two reactive arms wait alike |
 | §3.4 sleep mode | not implemented | out of scope (a power feature) |
@@ -65,36 +65,39 @@ AODV's.
 
 ## Termite — fidelity sheet
 
-Sources: M. Roth, S. Wicker, *Termite: Ad-hoc networking with stigmergy*,
-GLOBECOM 2003, pp. 2937–2941. **Not obtained** (IEEE paywall). Roth's 2005
-Cornell dissertation is **not obtained** either (the eCommons download was
-blocked from the build sandbox; see #587). What was read: Roth's
-dissertation-defence slides (44 pp.), which state the algorithm's equations
-and its route management. Every constant the slides leave open is marked
-**not given**, and the issue tracks correcting them once the dissertation is
-read.
+Source: M. H. Roth, *Termite: A Swarm Intelligent Routing Algorithm for Mobile
+Wireless Ad-Hoc Networks*, PhD dissertation, Cornell University, 2005,
+chapter 4 (supplied by the maintainer; `papers` library). Section and table
+numbers below are the dissertation's. The GLOBECOM 2003 paper (Roth & Wicker)
+is the same algorithm's first report and was not obtained.
 
-| Slides | Implementation | Status |
+| Dissertation | Implementation | Status |
 |---|---|---|
-| every packet arriving at i from previous hop r with source s: P(r, s) ← P(r, s) + γ | Same, for data, discovery and hello packets, and for overheard ones | as written |
-| γ | 1 | **not given** (nominal 1 in secondary sources) |
-| continuous decay P ← P·e^{−(t − t_last)·τ} | Same (lazy) | as written |
-| τ | 1 s⁻¹ | **not given**: the slides prefer "moderate" rates, rising with node speed |
-| forwarding p(n, d) = (P(n,d) + K)^F / Σ_j (P(j,d) + K)^F | Same, over live neighbours, never straight back to the previous hop (unless it is the only one) | as written |
-| K (threshold), F (sensitivity) | K = 0, F = 2 | **not given**: Termite-Hill's values (an algorithm derived from Termite) |
-| route expiry | none; pheromone below 1e-9 counts as none (an underflow guard) | as written: normalised probabilities route on any positive pheromone |
-| RREQ: random walk, not a flood | Unicast to a uniformly random live neighbour, or straight to the destination when it is a neighbour; TTL 64. A node with pheromone for the destination, or the destination itself, replies | as written. The walk length is **not given** |
-| RREP routed to the source by the forwarding equation, like data | Same. The RREP carries the destination as its source, so it lays the trail toward the destination | as written |
-| control packets at high priority | not implemented (one MAC queue) | **deviation** |
-| route repair: lost neighbour removed, packet resent on a remaining link | Same | as written |
-| neighbours gained by overhearing | Promiscuous reception of data (via its `PrevHopTag`) and of control | as written |
-| (nothing) | **Hello** every 1 s, sent only by a node that transmitted nothing in that interval; neighbours not heard for 3 s are forgotten | **addition**: with one-way CBR a sink never transmits, so without it no one ever learns the sink exists. Suppressed whenever the node was overheard |
-| discovery retries | a new walk after 1 s, doubling, 2 retries | **not given** |
+| §4.2.2 every packet arriving at i from r with source s: P(r, s) ← P(r, s) + γ | Same, for data, every control type and overheard packets | as written |
+| γ | 1 | **not in Table 4.1**: equal to the initial pheromone |
+| decay P ← P·e^{−(t − t_last)·τ}, τ = 0.105 per 1 s period | Same law, evaluated continuously | as written (Table 4.1) |
+| §4.2.4 initial pheromone 1, floor 0.1, ceiling 10000: a new destination's column and a new neighbour's row start at the initial value; no cell below the floor or above the ceiling | Same (`BoundedPheromoneTable`) | as written (Table 4.1) |
+| §4.2.3 a destination is forgotten when its column has decayed to the floor; a neighbour when its row has; a lost neighbour's row is removed at once | Same, checked every second; a lost neighbour is a MAC retry-limit drop or an unanswered ARP | as written |
+| eq. 4.3 p(n, d) = (P(n,d) + K)^F / Σ_{j ∈ N − r} (P(j,d) + K)^F, never back to the arrival link | Same | as written |
+| K | 0 | as written (§4.2.5 "nominal value of K is zero") |
+| F | 10 | **not in Table 4.1**: §5.4 finds high sensitivities best, and §7.3 runs F = 10 |
+| §4.2.6 unknown destination: buffer, send RREQs on a uniform random walk (never back to the arrival link, pheromone ignored); a node with any pheromone for the destination replies; no reply within the rreq timeout → the buffered packets are dropped | Same: 2 RREQs per request, rreq timeout 2 s, TTL 32 | as written (Table 4.1) |
+| RREP's source is the requested destination, routed to the requester by eq. 4.3 | Same | as written |
+| hello only while isolated, every hello period, until a reply; every hearer replies | Same: hello period 1 s, replies jittered by U[0, 10 ms) | as written (jitter: implementation detail) |
+| seed: a short random walk advertising its origin | Every 30 s per node, TTL 4, phase drawn uniformly at start | as written (Table 4.1) |
+| neighbours gained by overhearing | Promiscuous reception of data (via its `PrevHopTag`) and control | as written |
+| data TTL 32 | the harness's IP TTL (64) | **deviation**: the data TTL belongs to the traffic generator, which every arm shares |
+| control packets at high priority (slides) | one MAC queue | **deviation** |
+| §4.4.1 traffic: every data packet is acknowledged by its destination | the harness's traffic, one-way CBR in the families | **not a protocol choice, but it matters**: with one-way traffic a sink never sends, so the trail toward it comes only from route replies and seeds, and decays to the floor in about 22 s. Data then random-walks to its TTL. On the 16-node static smoke Termite delivers 19.6 % this way, against 85.6 % for an earlier version that kept sinks known with a periodic hello the dissertation does not have. The anchor uses acknowledged (TCP) traffic, as Roth's did |
 
-Anchor (slides; the paper's setup is not available): Termite has higher
-goodput than AODV as node speed varies. The setup behind that statement
-(node count, area, traffic) is unknown. The anchor therefore runs the repo's
-paper base over node speed and states that limitation.
+Anchor (§7.3, the comparison with AODV; that chapter's ReTermite adds a
+pheromone repel term R and its own constants): 100 nodes, 2200 × 600 m,
+802.11b at 2 Mbit/s, 250 m range, random waypoint with zero pause, speeds
+1/5/10/20 m/s, 600 s, 10 flows, each packet acknowledged. Trend: ReTermite
+delivers at least 95 % and AODV at least 90 %; ReTermite degrades more
+gracefully with speed. This arm is chapter-4 Termite with Table 4.1
+constants, so it is held to the qualitative trend, not to ReTermite's
+numbers.
 
 ## Q-routing — fidelity sheet
 

@@ -17,6 +17,9 @@
  *   the error callback, which FlowMonitor books as a route drop);
  * - the previous hop of every data packet (PrevHopTag, below), which each of
  *   the three papers reads and ns-3's RouteInput does not expose;
+ * - a data packet ARP drops because its next hop never answered (the
+ *   neighbour left) is the same link failure seen one layer earlier, and is
+ *   recovered and re-routed the same way;
  * - MAC transmit failure (WifiMac "DroppedMpdu", retry limit) resolved to the
  *   failed neighbour's IP, with the dropped data packet recovered so the arm
  *   can re-route it — ARA §3.3 and Termite's route repair both resend a
@@ -79,7 +82,8 @@ namespace adaptive {
 class PrevHopTag : public Tag {
 public:
     PrevHopTag() = default;
-    PrevHopTag(Ipv4Address sender, Ipv4Address upstream) : m_addr(sender), m_upstream(upstream) {}
+    PrevHopTag(Ipv4Address sender, Ipv4Address upstream, Ipv4Address next)
+        : m_addr(sender), m_upstream(upstream), m_next(next) {}
 
     static TypeId GetTypeId();
     TypeId GetInstanceTypeId() const override;
@@ -94,9 +98,14 @@ public:
     /// that recovers its own packet from a MAC drop still send it back.
     Ipv4Address Upstream() const { return m_upstream; }
 
+    /// The neighbour the sender handed the packet to: names the failed link
+    /// when ARP drops the packet before it reaches the MAC.
+    Ipv4Address Next() const { return m_next; }
+
 private:
     Ipv4Address m_addr;
     Ipv4Address m_upstream;
+    Ipv4Address m_next;
 };
 
 /**
@@ -128,6 +137,10 @@ public:
     /// Data packets recovered from a MAC retry-limit drop and re-routed: the
     /// harness's drop book subtracts them from the MAC column (#215).
     uint64_t MacReinjectedPackets() const { return m_macReinjected; }
+
+    /// Data packets recovered from an ARP drop (the next hop never answered)
+    /// and re-routed; the harness nets them out of the channel column.
+    uint64_t ArpReinjectedPackets() const { return m_arpReinjected; }
 
     /// Fired for every packet recovered from a MAC drop (IP header, L4
     /// packet), so a harness can count the ones it classifies as data.
@@ -246,6 +259,9 @@ private:
     void PurgeQueue();
     void RecvSocket(Ptr<Socket> socket);
     void NotifyTxError(WifiMacDropReason reason, Ptr<const ADAPTIVE_WIFI_MPDU> mpdu);
+    void NotifyArpDrop(Ptr<const Packet> packet);
+    /// Route a recovered data packet again (alternative link, back, or hold).
+    void Reroute(Ptr<Packet> pkt, const Ipv4Header& ip);
     bool MapMacToIp(const Mac48Address& mac, Ipv4Address& out) const;
     int32_t InterfaceTowards(Ipv4Address next) const;
 
@@ -262,7 +278,10 @@ private:
     UnicastForwardCallback m_cachedUcb;
     ErrorCallback m_cachedEcb;
     uint64_t m_macReinjected;
+    uint64_t m_arpReinjected;
+    bool m_arpHooked;
     TracedCallback<const Ipv4Header&, Ptr<const Packet>> m_macReinjectTrace;
+    TracedCallback<const Ipv4Header&, Ptr<const Packet>> m_arpReinjectTrace;
 };
 
 }  // namespace adaptive

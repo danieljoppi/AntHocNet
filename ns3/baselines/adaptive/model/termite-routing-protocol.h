@@ -2,28 +2,32 @@
 // Copyright (C) 2026 Daniel Henrique Joppi
 
 /**
- * Termite (Roth & Wicker, GLOBECOM 2003; Roth's 2005 Cornell dissertation),
- * written from the dissertation-defence slides for the v2.5.0 stigmergic
- * comparator (#587). The GLOBECOM paper and the dissertation could not be
- * obtained (#587); what the slides specify is implemented as written, and
- * every constant they leave open is an attribute and a declared deviation in
- * ns3/baselines/adaptive/README.md.
+ * Termite (Roth & Wicker, GLOBECOM 2003), written from M. H. Roth, "Termite:
+ * A Swarm Intelligent Routing Algorithm for Mobile Wireless Ad-Hoc Networks",
+ * PhD dissertation, Cornell, 2005, chapter 4, for the v2.5.0 stigmergic
+ * comparator (#587). Constants are Table 4.1's unless the fidelity sheet
+ * (ns3/baselines/adaptive/README.md) says otherwise.
  *
- * - Pheromone update: every packet that arrives at node i from previous hop r
- *   with source s adds gamma to P(r, s), data and control alike. Routing
- *   state rides on the traffic itself; there is no periodic control.
- * - Continuous decay: P <- P e^{-(t - t_last) tau}.
- * - Forwarding equation: p(n, d) = (P(n, d) + K)^F / sum_j (P(j, d) + K)^F
- *   over the neighbours, never straight back to the previous hop.
- * - Route discovery: a route request (RREQ) makes a random walk, not a
- *   flood, until it reaches the destination or a node with pheromone for it;
- *   the route reply (RREP) is routed to the requester by the forwarding
- *   equation, like data.
- * - Route repair: a lost neighbour is removed from the table and the packet
- *   is resent on a remaining link.
- * - Neighbours are gained by overhearing transmissions (promiscuous
- *   reception). A node that transmitted nothing for a HelloInterval sends a
- *   hello, so a silent destination stays known (a declared addition).
+ * - Pheromone accounting (§4.2): every packet arriving at node i from
+ *   neighbour r with source s adds gamma to P(r, s), data and control alike,
+ *   overheard packets included. Cells decay continuously,
+ *   P <- P e^{-(t - t_last) tau}, and are bounded to [floor, ceiling]; a new
+ *   destination or neighbour starts its cells at the initial pheromone.
+ * - Forwarding (eq. 4.3): p(n, d) = (P(n, d) + K)^F / sum_{j in N - r}
+ *   (P(j, d) + K)^F, never back to the arrival link r.
+ * - Route request (§4.2.6): a node that does not know the destination
+ *   buffers the packet and sends RREQs on a random walk (uniform, never back
+ *   to the arrival link, pheromone ignored) until a node with pheromone for
+ *   the destination answers. The route reply's source is the destination, so
+ *   it lays that destination's trail back to the requester, routed by eq. 4.3.
+ *   No reply within the rreq timeout: the buffered packets are dropped.
+ * - Hello (§4.2.6): only an isolated node sends hellos, every hello period,
+ *   until a reply arrives; every node that hears one replies.
+ * - Seed (§4.2.6): every seed period a node advertises itself with a short
+ *   random walk, so destinations that never send (a CBR sink) stay known.
+ * - Neighbours: gained by hearing them; lost at once on a link failure (MAC
+ *   retry limit or an unanswered ARP), or when their whole row has decayed to
+ *   the floor (§4.2.3).
  */
 #ifndef TERMITE_ROUTING_PROTOCOL_H
 #define TERMITE_ROUTING_PROTOCOL_H
@@ -60,7 +64,6 @@ protected:
                               Ptr<const Packet> p) override;
     bool OnDataReceived(Ptr<const Packet> p, const Ipv4Header& header, Ipv4Address prev,
                         bool backtracked) override;
-    void OnDataForwarded(Ptr<const Packet> p, const Ipv4Header& header, Ipv4Address next) override;
     void StartDiscovery(Ipv4Address dst) override;
     void RecvControl(Ptr<Packet> p, Ipv4Address from, Ipv4Address receiver) override;
     void OnLinkFailure(Ipv4Address neighbor) override;
@@ -70,39 +73,35 @@ private:
     double Now() const;
     /// A packet from `source` arrived over the link from `neighbor`.
     void Learn(Ipv4Address neighbor, Ipv4Address source);
-    std::vector<Ipv4Address> LiveNeighbors();
     Ipv4Address RandomNeighbor(Ipv4Address exclude);
-    void SendRreq(Ipv4Address dst);
-    void DiscoveryTimeout(Ipv4Address dst);
+    void RreqTimeout(Ipv4Address dst);
     void HelloTimer();
-    void SendControl(Ptr<Packet> p, Ipv4Address next);
+    void SeedTimer();
+    void PruneTimer();
     void Overhear(Ptr<NetDevice> device, Ptr<const Packet> packet, uint16_t protocol,
                   const Address& from, const Address& to, NetDevice::PacketType type);
 
-    PheromoneTable<Ipv4Address> m_table;
+    BoundedPheromoneTable<Ipv4Address> m_table;
     double m_gamma;
     double m_decay;
+    double m_initial;
+    double m_floor;
+    double m_ceiling;
     double m_k;
     double m_f;
-    double m_floor;
-    Time m_helloInterval;
-    Time m_neighborTimeout;
+    Time m_rreqTimeout;
     uint8_t m_rreqTtl;
-    Time m_discoveryTimeout;
-    uint32_t m_discoveryRetries;
+    uint32_t m_rreqsPerRequest;
+    uint8_t m_seedTtl;
+    Time m_seedPeriod;
+    Time m_helloPeriod;
     bool m_overhear;
 
-    std::map<Ipv4Address, Time> m_neighbors;  // last heard
-
-    struct Discovery {
-        uint32_t attempts = 0;
-        EventId timer;
-    };
-
-    std::map<Ipv4Address, Discovery> m_discovery;
+    std::map<Ipv4Address, EventId> m_pendingRreq;  // destination -> rreq timeout
     uint32_t m_seq;
-    Time m_lastTx;
     EventId m_helloTimer;
+    EventId m_seedTimer;
+    EventId m_pruneTimer;
     uint64_t m_rreqsSent;
     uint64_t m_overheard;
 };

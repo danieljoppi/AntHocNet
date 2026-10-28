@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Termite anchor traffic (#587), after Roth 2005 section 4.4.1: each source sends
+# one 64-byte packet every 0.5 s (1024 bit/s) to a partner fixed at the start,
+# and the partner answers (the dissertation's per-packet acknowledgement, here a
+# reply flow at the same rate). 10 pairs of the 100 nodes, drawn with
+# random.Random(4).sample(range(100), 20); flows start at 60 s (the section's
+# initial equilibrium pause) and run to the end.
+# src dst start stop cbrBps
+30 38 60 600 1024
+38 30 60.25 600 1024
+13 92 60 600 1024
+92 13 60.25 600 1024
+50 61 60 600 1024
+61 50 60.25 600 1024
+19 11 60 600 1024
+11 19 60.25 600 1024
+8 2 60 600 1024
+2 8 60.25 600 1024
+51 70 60 600 1024
+70 51 60.25 600 1024
+37 97 60 600 1024
+97 37 60.25 600 1024
+7 28 60 600 1024
+28 7 60.25 600 1024
+66 68 60 600 1024
+68 66 60.25 600 1024
+46 35 60 600 1024
+35 46 60.25 600 1024
