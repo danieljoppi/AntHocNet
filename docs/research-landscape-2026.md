@@ -201,7 +201,7 @@ the measured next step, and maritime (§2) comes with it.
 Every entry was retrieved on 2026-10-09 at abstract or summary level.
 
 **Families**
-- Raffelsberger & Hellwagner, *Evaluation of MANET routing protocols in a realistic emergency response scenario*, WISES 2012 — [CCS Labs entry](https://www.ccs-labs.org/bib/raffelsberger2012evaluation/), [PDF](https://www.itec.aau.at/bib/files/WISES2012-cr.pdf)
+- Raffelsberger & Hellwagner, *Evaluation of MANET routing protocols in a realistic emergency response scenario*, WISES 2012 — [CCS Labs entry](https://www.ccs-labs.org/bib/raffelsberger2012evaluation/), [PDF (archived)](https://web.archive.org/web/20240416071219/https://www.itec.aau.at/bib/files/WISES2012-cr.pdf)
 - Reina et al., *Ad hoc network in a disaster area: a composite mobility model and its evaluation* — [HAL](https://hal.archives-ouvertes.fr/hal-00544222)
 - Kioumourtzis et al., tactical MANET routing evaluation (2012) — [Univ. Patras](https://telematics.upatras.gr/?p=1808)
 - Grandhomme et al., *Comparison of inter-MANET routing protocol evaluation tools* (2016) — [EURECOM](https://www.eurecom.edu/fr/publication/5061)
@@ -235,7 +235,7 @@ Every entry was retrieved on 2026-10-09 at abstract or summary level.
 
 **Swarm comparators**
 - Güneş et al., ARA — the ant-colony based routing algorithm for MANETs (2002) — [FU Berlin](https://cst-pub.imp.fu-berlin.de/Guenes2002e.html)
-- Roth & Wicker, Termite (SIDM 2005) — [PDF](https://forum.cone.informatik.uni-freiburg.de/teaching/seminar/adhoc-s08/mobiPapers/SIDM2005.pdf); Roth thesis — [Cornell eCommons](https://ecommons.cornell.edu/bitstream/handle/1813/240/thesis2.pdf;sequence=1); seminar critique — [Freiburg](https://forum.cone.informatik.uni-freiburg.de/teaching/seminar/adhoc-s08/finalTalks/05fin_Termite_Max_Fechner.pdf)
+- Roth & Wicker, Termite (SIDM 2005) — [PDF](https://forum.cone.informatik.uni-freiburg.de/teaching/seminar/adhoc-s08/mobiPapers/SIDM2005.pdf); Roth thesis — [Cornell eCommons](https://hdl.handle.net/1813/240); seminar critique — [Freiburg](https://forum.cone.informatik.uni-freiburg.de/teaching/seminar/adhoc-s08/finalTalks/05fin_Termite_Max_Fechner.pdf)
 - Wang, HOPNET (2007 thesis) — [UManitoba MSpace](https://mspace.lib.umanitoba.ca/bitstream/1993/20935/1/Wang_HOPNET_a.pdf)
 - Ducatelle, AntHocNet thesis (2007) — [USI](https://susi.usi.ch/rerodoc/9027/files/2007INFO001.pdf)
 - *Performance Analysis of Swarm Based Routing Protocols for MANETs* (NS-2 thesis, Thapar University) — [TUDR](https://tudr.thapar.edu/items/22361eb3-790e-4330-bfe9-1bb009c24e4c)
@@ -247,7 +247,7 @@ Every entry was retrieved on 2026-10-09 at abstract or summary level.
 - Cryptographic versus trust-based methods for MANET routing security (SAODV vs TAODV on hardware) — [Stevens](https://researchwith.stevens.edu/en/publications/cryptographic-versus-trust-based-methods-for-manet-routing-securi/)
 - Secure bee algorithms for MANET routing (survey; BeeSec, BeeAIS) — [UB](https://pubs.ub.ro/article/3797)
 - Secure routing in MANETs: a bio-inspired approach with honey bees — [Inderscience](https://www.inderscience.com/offer.php?id=66750)
-- Kalinin et al., attack prevention in self-organizing ad hoc networks using swarm intelligence (2018) — [doi:10.3103/S0146411618080163](https://www.doi.org/10.3103/S0146411618080163)
+- Kalinin et al., attack prevention in self-organizing ad hoc networks using swarm intelligence (2018) — [doi:10.3103/S0146411618080163](https://doi.org/10.3103/S0146411618080163)
 - Trust-based ant routing under DoS/DDoS (ICC 2014) — [UI](https://research.eng.ui.ac.id/detail/publication/2017031919060558ce742d99de4)
 - Blackhole prevention in MANET using ACO — [ITC](https://itc.ktu.lt/index.php/ITC/article/view/25265)
 - ACO approach for wormhole detection in MANETs (2023) — [Inderscience](https://www.inderscience.com/offers.php?id=132378)
