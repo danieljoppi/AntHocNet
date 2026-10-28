@@ -1,0 +1,64 @@
+# Stage 2 of the #740 scale investigation, pre-registered before dispatch.
+#
+# Stage 1 (v2.5.0-scale-screen.yaml, exploratory, n = 4 at 500 nodes) put one
+# arm through its rule: retry0 (ReactiveRetryInterval=0s: the ns-3 adapter's
+# retry timer off, discovery only through the core's rate-limited path),
+# paired dPDR +34.75 pp, 95 % CI [+20.94, +48.56]. hold1s (-2.25, CI spans 0),
+# retry1s (+15.47, CI spans 0) and both (+4.47, CI spans 0) did not. The
+# screen's recheck reproduced the committed scale-500-v240 ##RUN## rows for
+# seeds 1-2 byte for byte (AntHocNet and AODV), so the arm's delta is the arm's.
+#
+# Stage 2 runs retry0 at 50, 200 and 500 nodes, 20 seeds each, AntHocNet only,
+# on the v2.4.0 scale command lines, paired by seed with the committed
+# controls (results/cells/scale-{50,200,500}-v240.txt).
+#
+# Rule, fixed before dispatch:
+#   - supported at scale: paired dPDR at 500 nodes > 0 with the 95 % CI
+#     excluding zero (n = 20);
+#   - no regression at 50 nodes: the paired dPDR CI at 50 nodes does not lie
+#     wholly below -1 pp, and its upper bound is above zero or it overlaps it;
+#   - 200 nodes is reported, not gated.
+# If both hold, retry0 is the documented operating point for large fields
+# (docs/benchmarks/sweeps/scale.md) and the default question goes to an
+# every-family A/B (golden rule 8, ADR-0019) in a later release; no default
+# moves here. If the 50-node bound fails, the finding is "helps at scale,
+# costs small fields", and the follow-up is a gated, size-aware mechanism.
+#
+# Sizing: the screen's retry0 block (2 seeds, 500 nodes, AntHocNet only) took
+# about 75 min. 21 jobs, cap 12.
+#
+#   python3 tools/bench/campaign.py plan tools/bench/campaigns/v2.5.0-scale-stage2.yaml
+generation: v250s2
+ref: main
+cap: 12
+control: retry0
+
+arms:
+  retry0: "--ns3::anthocnet::RoutingProtocol::ReactiveRetryInterval=0s"
+
+cells:
+  scale-50:
+    workflow: benchmark-cell.yml
+    inputs:
+      harness: anthocnet-compare
+      version: 3.42-opt
+      args: "--scenario=paper --runs=20 --nNodes=50 --time=300 --areaX=1500 --pause=30 --speed=20 --propagation=range --range=300 --areaY=500 --diag --mobility=rwp --transport=udp --protocols=anthocnet"
+  scale-200:
+    workflow: benchmark-cell.yml
+    inputs:
+      harness: anthocnet-compare
+      version: 3.42-opt
+      args: "--scenario=paper --runs=2 --nNodes=200 --time=300 --areaX=3000 --pause=30 --speed=20 --propagation=range --range=300 --areaY=1000 --diag --mobility=rwp --transport=udp --protocols=anthocnet"
+    blocks: [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
+  scale-500:
+    workflow: benchmark-cell.yml
+    inputs:
+      harness: anthocnet-compare
+      version: 3.42-opt
+      args: "--scenario=paper --runs=2 --nNodes=500 --time=300 --areaX=4743 --pause=30 --speed=20 --propagation=range --range=300 --areaY=1581 --diag --mobility=rwp --transport=udp --protocols=anthocnet"
+    blocks: [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
+
+# Read against the committed v2.4.0 controls:
+#   bench_parse.py --ab results/cells/scale-<n>-v240.txt results/cells/scale-<n>-v250s2-retry0.txt
+jobs:
+  - {arms: [retry0], cells: "*"}
