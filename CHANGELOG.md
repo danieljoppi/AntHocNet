@@ -8,6 +8,12 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v2.6.1 (2026-10-29)
+
+### Fix
+
+- dual-license core/ and the standalone tooling as MIT OR GPL-2.0-only (#783)
+
 ## v2.6.0 (2026-10-29)
 
 ### Feat
