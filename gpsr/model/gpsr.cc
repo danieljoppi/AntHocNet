@@ -1,0 +1,1714 @@
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (c) 2011 António Fonseca <afonseca@tagus.inesc-id.pt> (original ns-3 GPSR port)
+// Copyright (C) 2026 Daniel Henrique Joppi (ns-3.36–3.48 port for AntHocNet #296)
+/*
+ * GPSR. Vendored from https://github.com/dwosion/ns3.29-with-gpsr
+ * commit 15241ef715d52627ff7679a5fca6b6d15eaa8cd4, path ns-3.29/src/gpsr.
+ * Provenance and the list of port changes: ns3/baselines/gpsr/README.md and gpsr.h.
+ */
+#define NS_LOG_APPEND_CONTEXT                                           \
+  if (m_ipv4) { std::clog << "[node " << m_ipv4->GetObject<Node> ()->GetId () << "] "; }
+
+#include "gpsr.h"
+#include "ns3/log.h"
+#include "ns3/boolean.h"
+#include "ns3/random-variable-stream.h"
+#include "ns3/inet-socket-address.h"
+#include "ns3/trace-source-accessor.h"
+#include "ns3/udp-socket-factory.h"
+#include "ns3/udp-l4-protocol.h"
+#include "ns3/wifi-net-device.h"
+#include "ns3/arp-cache.h"
+#include "ns3/node-list.h"
+#include "ns3/double.h"
+#include "ns3/uinteger.h"
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
+namespace ns3 {
+NS_LOG_COMPONENT_DEFINE ("GpsrRoutingProtocol");
+
+namespace {
+// #581: the interface a next hop is reached on: the one whose subnet holds
+// it. The vendored module assumed one interface ("FIXME: Does not work for
+// multiple interfaces") and forwarded every packet on interface 1; a node of
+// leo-walker's shell has one per link. A single-interface node, every other
+// harness's, resolves to interface 1, as before.
+uint32_t
+IfaceToward (Ptr<Ipv4> ipv4, Ipv4Address nextHop)
+{
+  for (uint32_t i = 1; i < ipv4->GetNInterfaces (); ++i)
+    {
+      if (ipv4->GetNAddresses (i) == 0)
+        {
+          continue;
+        }
+      const Ipv4InterfaceAddress a = ipv4->GetAddress (i, 0);
+      if (a.GetMask ().IsMatch (a.GetLocal (), nextHop))
+        {
+          return i;
+        }
+    }
+  return 1;
+}
+} // namespace
+namespace gpsr {
+
+
+
+struct DeferredRouteOutputTag : public Tag
+{
+  /// Positive if output device is fixed in RouteOutput
+  uint32_t m_isCallFromL3;
+
+  DeferredRouteOutputTag () : Tag (),
+                              m_isCallFromL3 (0)
+  {
+  }
+
+  static TypeId GetTypeId ()
+  {
+    static TypeId tid = TypeId ("ns3::gpsr::DeferredRouteOutputTag").SetParent<Tag> ();
+    return tid;
+  }
+
+  TypeId  GetInstanceTypeId () const
+  {
+    return GetTypeId ();
+  }
+
+  uint32_t GetSerializedSize () const
+  {
+    return sizeof(uint32_t);
+  }
+
+  void  Serialize (TagBuffer i) const
+  {
+    i.WriteU32 (m_isCallFromL3);
+  }
+
+  void  Deserialize (TagBuffer i)
+  {
+    m_isCallFromL3 = i.ReadU32 ();
+  }
+
+  void  Print (std::ostream &os) const
+  {
+    os << "DeferredRouteOutputTag: m_isCallFromL3 = " << m_isCallFromL3;
+  }
+};
+
+
+
+/********** Miscellaneous constants **********/
+
+/// Maximum allowed jitter.
+#define GPSR_MAXJITTER          (HelloInterval.GetSeconds () / 2)
+
+
+
+NS_OBJECT_ENSURE_REGISTERED (RoutingProtocol);
+
+/// UDP Port for GPSR control traffic, not defined by IANA yet
+const uint32_t RoutingProtocol::GPSR_PORT = 666;
+
+/// IANA protocol number of UDP. kUdpProtocolNumber is deprecated in
+/// ns-3.49 (its replacement header does not exist before then), so the value
+/// is named here to build unchanged on ns-3.36 through ns-3-dev (#611).
+static const uint8_t kUdpProtocolNumber = 17;
+
+RoutingProtocol::RoutingProtocol ()
+  : HelloInterval (Seconds (1)),
+    MaxQueueLen (64),
+    MaxQueueTime (Seconds (30)),
+    m_queue (MaxQueueLen, MaxQueueTime),
+    HelloIntervalTimer (Timer::CANCEL_ON_DESTROY),
+    CheckQueueTimer (Timer::CANCEL_ON_DESTROY),
+    PerimeterMode (false),
+    m_gpcr (false),
+    m_gpcrThreshold (0.9),
+    m_gpcrConeDeg (30.0),
+    m_threeD (false),
+    m_faceTtl (21),
+    m_recovery (true)
+{
+  m_neighbors = PositionTable ();
+  // #352 (port change): one member RNG, pinnable via AssignStreams, replaces
+  // the vendored per-call UniformRandomVariable constructions.
+  m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
+}
+
+TypeId
+RoutingProtocol::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::gpsr::RoutingProtocol")
+    .SetParent<Ipv4RoutingProtocol> ()
+    .AddConstructor<RoutingProtocol> ()
+    .AddAttribute ("HelloInterval", "HELLO messages emission interval.",
+                   TimeValue (Seconds (1)),
+                   MakeTimeAccessor (&RoutingProtocol::HelloInterval),
+                   MakeTimeChecker ())
+    // Port change: the vendored LocationServiceName enum attribute is gone —
+    // GOD (the only implemented value) is inlined; see GetGodPosition.
+    .AddAttribute ("PerimeterMode", "Indicates if PerimeterMode is enabled",
+                   BooleanValue (false),
+                   MakeBooleanAccessor (&RoutingProtocol::PerimeterMode),
+                   MakeBooleanChecker ())
+    // AntHocNet addition (#709): GPCR. Off by default, so plain GPSR is
+    // unchanged; the fidelity sheet for both values below is README.md.
+    .AddAttribute ("Gpcr", "Greedy Perimeter Coordinator Routing (Lochert et al. 2005) "
+                   "instead of GPSR: restricted greedy along streets and the "
+                   "right-hand rule only at junctions (#709)",
+                   BooleanValue (false),
+                   MakeBooleanAccessor (&RoutingProtocol::m_gpcr),
+                   MakeBooleanChecker ())
+    .AddAttribute ("GpcrCorrelationThreshold", "GPCR epsilon: a node is a coordinator "
+                   "iff |rho_xy| of its neighbours' positions is below it. The "
+                   "paper's 'very large value 0.?' is illegible in the available "
+                   "copies; 0.9 is the smallest one-digit reading (#709)",
+                   DoubleValue (0.9),
+                   MakeDoubleAccessor (&RoutingProtocol::m_gpcrThreshold),
+                   MakeDoubleChecker<double> (0.0, 1.0))
+    .AddAttribute ("GpcrStreetConeDeg", "GPCR street rule: a neighbour 'approximately "
+                   "extends the line' from the predecessor through this node when "
+                   "its bearing is within this many degrees of it. The paper gives "
+                   "no tolerance; 30 is a repo choice (#709)",
+                   DoubleValue (30.0),
+                   MakeDoubleAccessor (&RoutingProtocol::m_gpcrConeDeg),
+                   MakeDoubleChecker<double> (0.0, 180.0))
+    // AntHocNet addition (#710): the 3-D mode. Off by default.
+    .AddAttribute ("ThreeD", "3-D positions, 3-D greedy distance and CFace(3) recovery "
+                   "(projection onto xy, xz, yz) for a 3-D field (#710)",
+                   BooleanValue (false),
+                   MakeBooleanAccessor (&RoutingProtocol::m_threeD),
+                   MakeBooleanChecker ())
+    .AddAttribute ("FaceTtl", "ThreeD recovery: hops on one projection plane before the "
+                   "next plane is tried (CFace(3)'s TTLF). Bujari et al. use 2N with "
+                   "no IP TTL; 21 lets all three planes fit in the IP TTL of 64 (#710)",
+                   UintegerValue (21),
+                   MakeUintegerAccessor (&RoutingProtocol::m_faceTtl),
+                   MakeUintegerChecker<uint32_t> (1))
+    .AddAttribute ("Recovery", "false: a packet at a local minimum is dropped instead of "
+                   "recovered (pure greedy forwarding; the #710 anchor's reference)",
+                   BooleanValue (true),
+                   MakeBooleanAccessor (&RoutingProtocol::m_recovery),
+                   MakeBooleanChecker ())
+  ;
+  return tid;
+}
+
+RoutingProtocol::~RoutingProtocol ()
+{
+}
+
+void
+RoutingProtocol::DoDispose ()
+{
+  m_ipv4 = 0;
+  m_downTarget = IpL4Protocol::DownTargetCallback ();
+  Ipv4RoutingProtocol::DoDispose ();
+}
+
+int64_t
+RoutingProtocol::AssignStreams (int64_t stream)
+{
+  NS_LOG_FUNCTION (this << stream);
+  m_uniformRandomVariable->SetStream (stream);
+  return 1;
+}
+
+Vector
+RoutingProtocol::GetGodPosition (Ipv4Address adr) const
+{
+  // GOD location service, inlined (port change; the vendored tree's
+  // GodLocationService::GetPosition did this same NodeList scan).
+  for (NodeList::Iterator i = NodeList::Begin (); i != NodeList::End (); i++)
+    {
+      Ptr<Node> node = *i;
+      Ptr<Ipv4> ipv4 = node->GetObject<Ipv4> ();
+      if (ipv4 && ipv4->GetNInterfaces () > 1
+          && ipv4->GetAddress (1, 0).GetLocal () == adr)
+        {
+          Ptr<MobilityModel> mm = node->GetObject<MobilityModel> ();
+          if (mm)
+            {
+              return PositionOf (node);
+            }
+        }
+    }
+  return PositionTable::GetInvalidPosition ();
+}
+
+bool
+RoutingProtocol::StripTransport (Ptr<Packet> p, uint8_t protocol, UdpHeader &udp) const
+{
+  // Only UDP is wrapped by the down-target hook (GpsrHelper::Install re-points
+  // UdpL4Protocol alone), so only UDP carries GPSR headers beneath it.
+  if (protocol != kUdpProtocolNumber)
+    {
+      return false;
+    }
+  if (p->GetSize () < 8)
+    {
+      return false;
+    }
+  p->RemoveHeader (udp);
+  return true;
+}
+
+void
+RoutingProtocol::RestoreTransport (Ptr<Packet> p, const UdpHeader &udp, bool stripped) const
+{
+  if (stripped)
+    {
+      // Re-serialization recomputes the UDP length from the buffer, so the
+      // header stays consistent after the GPSR headers beneath it changed
+      // size or content. Checksums must stay globally disabled (ns-3
+      // default): the stored checksum is not refreshed here.
+      p->AddHeader (udp);
+    }
+}
+
+bool RoutingProtocol::RouteInput (Ptr<const Packet> p, const Ipv4Header &header, Ptr<const NetDevice> idev,
+                                  GPSR_RI_CB (UnicastForwardCallback) ucb, GPSR_RI_CB (MulticastForwardCallback) mcb,
+                                  GPSR_RI_CB (LocalDeliverCallback) lcb, GPSR_RI_CB (ErrorCallback) ecb)
+{
+
+NS_LOG_FUNCTION (this << p->GetUid () << header.GetDestination () << idev->GetAddress ());
+  if (m_socketAddresses.empty ())
+    {
+      NS_LOG_LOGIC ("No gpsr interfaces");
+      return false;
+    }
+  NS_ASSERT (m_ipv4);
+  NS_ASSERT (p);
+  // Check if input device supports IP
+  NS_ASSERT (m_ipv4->GetInterfaceForDevice (idev) >= 0);
+  int32_t iif = m_ipv4->GetInterfaceForDevice (idev);
+  Ipv4Address dst = header.GetDestination ();
+  Ipv4Address origin = header.GetSource ();
+
+  DeferredRouteOutputTag tag; //FIXME since I have to check if it's in origin for it to work it means I'm not taking some tag out...
+  if (p->PeekPacketTag (tag) && IsMyOwnAddress (origin))
+    {
+      Ptr<Packet> packet = p->Copy (); //FIXME ja estou a abusar de tirar tags
+      packet->RemovePacketTag(tag);
+      DeferredRouteOutput (packet, header, ucb, ecb);
+      return true;
+    }
+
+
+
+  if (m_ipv4->IsDestinationAddress (dst, iif))
+    {
+
+      Ptr<Packet> packet = p->Copy ();
+      // Fault-3 rework: the GPSR headers now sit *beneath* the UDP header
+      // (IP|UDP|GPSR); peel the UDP header off, strip them, put it back, so
+      // the application receives the datagram it was sent.
+      UdpHeader udpHeader;
+      const bool hasUdp = StripTransport (packet, header.GetProtocol (), udpHeader);
+      if (hasUdp && packet->GetSize () >= 1)
+        {
+          TypeHeader tHeader (GPSRTYPE_POS);
+          packet->RemoveHeader (tHeader);
+          if (!tHeader.IsValid ())
+            {
+              NS_LOG_DEBUG ("GPSR message " << packet->GetUid () << " with unknown type received: " << tHeader.Get () << ". Ignored");
+              return false;
+            }
+
+          if (tHeader.Get () == GPSRTYPE_POS)
+            {
+              PositionHeader phdr;
+              packet->RemoveHeader (phdr);
+              if (m_threeD)
+                {
+                  Position3dHeader zHdr;  // #710
+                  packet->RemoveHeader (zHdr);
+                }
+            }
+          RestoreTransport (packet, udpHeader, hasUdp);
+        }
+      else
+        {
+          RestoreTransport (packet, udpHeader, hasUdp);
+        }
+
+      if (dst != m_ipv4->GetAddress (1, 0).GetBroadcast ())
+        {
+          NS_LOG_LOGIC ("Unicast local delivery to " << dst);
+        }
+      else
+        {
+//          NS_LOG_LOGIC ("Broadcast local delivery to " << dst);
+        }
+
+      lcb (packet, header, iif);
+      return true;
+    }
+
+
+  return Forwarding (p, header, ucb, ecb);
+}
+
+
+void
+RoutingProtocol::DeferredRouteOutput (Ptr<const Packet> p, const Ipv4Header & header,
+                                      UnicastForwardCallback ucb, ErrorCallback ecb)
+{
+  NS_LOG_FUNCTION (this << p << header);
+  NS_ASSERT (p && p != Ptr<Packet> ());
+
+  if (m_queue.GetSize () == 0)
+    {
+      CheckQueueTimer.Cancel ();
+      CheckQueueTimer.Schedule (Time ("500ms"));
+    }
+
+  QueueEntry newEntry (p, header, ucb, ecb);
+  bool result = m_queue.Enqueue (newEntry);
+
+
+  m_queuedAddresses.insert (m_queuedAddresses.begin (), header.GetDestination ());
+  m_queuedAddresses.unique ();
+
+  if (result)
+    {
+      NS_LOG_LOGIC ("Add packet " << p->GetUid () << " to queue. Protocol " << (uint16_t) header.GetProtocol ());
+
+    }
+
+}
+
+void
+RoutingProtocol::CheckQueue ()
+{
+
+  CheckQueueTimer.Cancel ();
+
+  std::list<Ipv4Address> toRemove;
+
+  for (std::list<Ipv4Address>::iterator i = m_queuedAddresses.begin (); i != m_queuedAddresses.end (); ++i)
+    {
+      if (SendPacketFromQueue (*i))
+        {
+          //Insert in a list to remove later
+          toRemove.insert (toRemove.begin (), *i);
+        }
+    }
+
+  //remove all that are on the list
+  for (std::list<Ipv4Address>::iterator i = toRemove.begin (); i != toRemove.end (); ++i)
+    {
+      m_queuedAddresses.remove (*i);
+    }
+
+  if (!m_queuedAddresses.empty ()) //Only need to schedule if the queue is not empty
+    {
+      CheckQueueTimer.Schedule (Time ("500ms"));
+    }
+}
+
+bool
+RoutingProtocol::SendPacketFromQueue (Ipv4Address dst)
+{
+  NS_LOG_FUNCTION (this);
+  bool recovery = false;
+  QueueEntry queueEntry;
+
+  // GOD location service (port change): a position always exists for a known
+  // address and there is never a pending lookup, so the vendored IsInSearch /
+  // HasPosition gates collapse; only an unknown destination drops the queue.
+  if (CalculateDistance (GetGodPosition (dst), PositionTable::GetInvalidPosition ()) == 0)
+    {
+      m_queue.DropPacketWithDst (dst);
+      NS_LOG_LOGIC ("Location Service did not find dst. Drop packet to " << dst);
+      return true;
+    }
+
+  Vector myPos;
+
+  const Vector here = PositionOf (m_ipv4->GetObject<Node> ());
+  myPos.x = here.x;
+  myPos.y = here.y;
+  myPos.z = m_threeD ? here.z : 0;  // #710
+  Ipv4Address nextHop;
+
+  if(m_neighbors.isNeighbour (dst))
+    {
+      nextHop = dst;
+    }
+  else{
+    Vector dstPos = GetGodPosition (dst);
+    nextHop = m_neighbors.BestNeighbor (dstPos, myPos);
+    if (nextHop == Ipv4Address::GetZero ())
+      {
+        NS_LOG_LOGIC ("Fallback to recovery-mode. Packets to " << dst);
+        recovery = true;
+      }
+    if(recovery)
+      {
+
+        Vector Position;
+        uint32_t updated = 0;
+
+        while(m_queue.Dequeue (dst, queueEntry))
+          {
+            Ptr<Packet> p = ConstCast<Packet> (queueEntry.GetPacket ());
+            UnicastForwardCallback ucb = queueEntry.GetUnicastForwardCallback ();
+            Ipv4Header header = queueEntry.GetIpv4Header ();
+
+            // Fault-3 rework: the GPSR headers sit beneath the UDP header.
+            UdpHeader udpHeader;
+            const bool hasUdp = StripTransport (p, header.GetProtocol (), udpHeader);
+            if (!hasUdp || p->GetSize () < 1)
+              {
+                // No GPSR headers were ever added (non-UDP packet): recovery
+                // state cannot travel with it; drop it as routeless.
+                RestoreTransport (p, udpHeader, hasUdp);
+                queueEntry.GetErrorCallback () (p, header, Socket::ERROR_NOROUTETOHOST);
+                continue;
+              }
+            TypeHeader tHeader (GPSRTYPE_POS);
+            p->RemoveHeader (tHeader);
+            if (!tHeader.IsValid ())
+              {
+                NS_LOG_DEBUG ("GPSR message " << p->GetUid () << " with unknown type received: " << tHeader.Get () << ". Drop");
+                return false;     // drop
+              }
+            if (tHeader.Get () == GPSRTYPE_POS)
+              {
+                PositionHeader hdr;
+                p->RemoveHeader (hdr);
+                Position.x = hdr.GetDstPosx ();
+                Position.y = hdr.GetDstPosy ();
+                updated = hdr.GetUpdated ();
+                if (m_threeD)
+                  {
+                    Position3dHeader zHdr;
+                    p->RemoveHeader (zHdr);
+                    Position.z = zHdr.m_dstPosz;
+                  }
+              }
+
+            if (m_threeD)
+              {
+                p->AddHeader (Position3dHeader (Position.z, myPos.z, Position.z, 0, 0));
+              }
+            PositionHeader posHeader (Position.x, Position.y,  updated, myPos.x, myPos.y, (uint8_t) 1, Position.x, Position.y);
+            p->AddHeader (posHeader); //enters in recovery with last edge from Dst
+            p->AddHeader (tHeader);
+            RestoreTransport (p, udpHeader, hasUdp);
+
+            RecoveryMode(dst, p, ucb, header, queueEntry.GetErrorCallback ());
+          }
+        return true;
+      }
+  }
+  Ptr<Ipv4Route> route = Create<Ipv4Route> ();
+  route->SetDestination (dst);
+  route->SetGateway (nextHop);
+  route->SetOutputDevice (m_ipv4->GetNetDevice (IfaceToward (m_ipv4, nextHop)));
+
+  while (m_queue.Dequeue (dst, queueEntry))
+    {
+      DeferredRouteOutputTag tag;
+      Ptr<Packet> p = ConstCast<Packet> (queueEntry.GetPacket ());
+
+      UnicastForwardCallback ucb = queueEntry.GetUnicastForwardCallback ();
+      Ipv4Header header = queueEntry.GetIpv4Header ();
+
+      // A source that is not one of this node's addresses -- the old
+      // 102.102.102.102 placeholder, or what unbound sockets pass on
+      // ns-3-dev (#611) -- takes interface 1's; otherwise
+      // GetInterfaceForAddress() returns -1 and GetNetDevice(-1) is null.
+      if (header.GetSource () == Ipv4Address ("102.102.102.102")
+          || m_ipv4->GetInterfaceForAddress (header.GetSource ()) < 0)
+        {
+          route->SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
+          header.SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
+        }
+      else
+        {
+          route->SetSource (header.GetSource ());
+        }
+      ucb (route, p, header);
+    }
+  return true;
+}
+
+
+void
+RoutingProtocol::RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCallback ucb, Ipv4Header header,
+                              ErrorCallback ecb){
+
+  Vector Position;
+  Vector previousHop;
+  uint32_t updated = 0;
+  uint64_t positionX;
+  uint64_t positionY;
+  Vector myPos;
+  Vector recPos;
+
+  const Vector here = PositionOf (m_ipv4->GetObject<Node> ());
+  positionX = here.x;
+  positionY = here.y;
+  myPos.x = positionX;
+  myPos.y = positionY;
+  myPos.z = m_threeD ? here.z : 0;  // #710
+
+  // Fault-3 rework: the GPSR headers sit beneath the UDP header. RecoveryMode
+  // is only ever entered with a GPSR-headered (UDP) packet — Forwarding and
+  // SendPacketFromQueue route non-UDP packets greedily or drop them.
+  UdpHeader udpHeader;
+  const bool hasUdp = StripTransport (p, header.GetProtocol (), udpHeader);
+  if (!hasUdp)
+    {
+      NS_LOG_DEBUG ("RecoveryMode without a transport-wrapped GPSR packet " << p->GetUid () << ". Drop");
+      return;     // drop
+    }
+
+  TypeHeader tHeader (GPSRTYPE_POS);
+  p->RemoveHeader (tHeader);
+  if (!tHeader.IsValid ())
+    {
+      NS_LOG_DEBUG ("GPSR message " << p->GetUid () << " with unknown type received: " << tHeader.Get () << ". Drop");
+      return;     // drop
+    }
+  if (tHeader.Get () == GPSRTYPE_POS)
+    {
+      PositionHeader hdr;
+      p->RemoveHeader (hdr);
+      Position.x = hdr.GetDstPosx ();
+      Position.y = hdr.GetDstPosy ();
+      updated = hdr.GetUpdated ();
+      recPos.x = hdr.GetRecPosx ();
+      recPos.y = hdr.GetRecPosy ();
+      previousHop.x = hdr.GetLastPosx ();
+      previousHop.y = hdr.GetLastPosy ();
+   }
+
+  // #710: Recovery=false is pure greedy forwarding, the anchor's reference.
+  if (!m_recovery)
+    {
+      RestoreTransport (p, udpHeader, hasUdp);
+      ecb (p, header, Socket::ERROR_NOROUTETOHOST);
+      return;
+    }
+  Position3dHeader zHdr;
+  if (m_threeD)
+    {
+      // CFace(3): FaceTtl hops on a plane, then the next plane, each started
+      // afresh from this node with its first edge toward the destination;
+      // after yz, the packet is dropped.
+      p->RemoveHeader (zHdr);
+      Position.z = zHdr.m_dstPosz;
+      recPos.z = zHdr.m_recPosz;
+      previousHop.z = zHdr.m_lastPosz;
+      if (++zHdr.m_planeHops > m_faceTtl)
+        {
+          ++zHdr.m_plane;
+          zHdr.m_planeHops = 1;
+          previousHop = Position;
+        }
+      if (zHdr.m_plane > 2)
+        {
+          NS_LOG_DEBUG ("CFace(3): no plane left for packet " << p->GetUid () << ". Drop");
+          RestoreTransport (p, udpHeader, hasUdp);
+          ecb (p, header, Socket::ERROR_NOROUTETOHOST);
+          return;
+        }
+      zHdr.m_lastPosz = myPos.z;
+      p->AddHeader (zHdr);
+    }
+
+  PositionHeader posHeader (Position.x, Position.y,  updated, recPos.x, recPos.y, (uint8_t) 1, myPos.x, myPos.y);
+  p->AddHeader (posHeader);
+  p->AddHeader (tHeader);
+  RestoreTransport (p, udpHeader, hasUdp);
+
+
+
+  Ipv4Address nextHop = m_threeD ? Face3dNextHop (zHdr.m_plane, previousHop, myPos)
+                        : m_gpcr ? GpcrRepairNextHop (previousHop, myPos)
+                                 : m_neighbors.BestAngle (previousHop, myPos);
+  if (nextHop == Ipv4Address::GetZero ())
+    {
+      // #521: no neighbour at all to walk the perimeter to. The packet is
+      // dropped here as it always was, but through the error callback, so the
+      // L3 "Drop" trace (and FlowMonitor's route bucket) sees it. The vendored
+      // code returned silently, which hid these drops from the drop-cause book:
+      // ~12 % of offered packets once true-CBR load saturates the channel and
+      // hello loss empties neighbour tables (16-node arm-delivery field).
+      NS_LOG_DEBUG ("RecoveryMode: no neighbour for packet " << p->GetUid () << ". Drop");
+      ecb (p, header, Socket::ERROR_NOROUTETOHOST);
+      return;
+    }
+
+  Ptr<Ipv4Route> route = Create<Ipv4Route> ();
+  route->SetDestination (dst);
+  route->SetGateway (nextHop);
+  route->SetOutputDevice (m_ipv4->GetNetDevice (IfaceToward (m_ipv4, nextHop)));
+  route->SetSource (header.GetSource ());
+
+  NS_LOG_LOGIC (route->GetOutputDevice () << " forwarding in Recovery to " << dst << " through " << route->GetGateway () << " packet " << p->GetUid ());
+  ucb (route, p, header);
+  return;
+}
+
+
+void
+RoutingProtocol::NotifyInterfaceUp (uint32_t interface)
+{
+  NS_LOG_FUNCTION (this << m_ipv4->GetAddress (interface, 0).GetLocal ());
+  Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol> ();
+  if (l3->GetNAddresses (interface) > 1)
+    {
+      NS_LOG_WARN ("GPSR does not work with more then one address per each interface.");
+    }
+  Ipv4InterfaceAddress iface = l3->GetAddress (interface, 0);
+  if (iface.GetLocal () == Ipv4Address ("127.0.0.1"))
+    {
+      return;
+    }
+
+  // Create a socket to listen only on this interface
+  Ptr<Socket> socket = Socket::CreateSocket (GetObject<Node> (),
+                                             UdpSocketFactory::GetTypeId ());
+  NS_ASSERT (socket);
+  socket->SetRecvCallback (MakeCallback (&RoutingProtocol::RecvGPSR, this));
+  socket->Bind (InetSocketAddress (Ipv4Address::GetAny (), GPSR_PORT));
+  socket->BindToNetDevice (l3->GetNetDevice (interface));
+  socket->SetAllowBroadcast (true);
+  socket->SetAttribute ("IpTtl", UintegerValue (1));
+  m_socketAddresses.insert (std::make_pair (socket, iface));
+
+
+  // Allow neighbor manager use this interface for layer 2 feedback if possible
+  // Fault-1 rework: subscribe to the modern WifiMac "DroppedMpdu" trace (the
+  // vendored "TxErrHeader" trace was removed from ns-3). TraceConnect returns
+  // false if the source is absent on this ns-3 release; tolerated — neighbour
+  // liveness then rests on the hello-lifetime purge alone.
+  Ptr<NetDevice> dev = m_ipv4->GetNetDevice (m_ipv4->GetInterfaceForAddress (iface.GetLocal ()));
+  Ptr<WifiNetDevice> wifi = dev->GetObject<WifiNetDevice> ();
+  if (!wifi)
+    {
+      return;
+    }
+  Ptr<WifiMac> mac = wifi->GetMac ();
+  if (!mac)
+    {
+      return;
+    }
+
+  mac->TraceConnectWithoutContext ("DroppedMpdu",
+                                   MakeCallback (&RoutingProtocol::NotifyTxError, this));
+
+}
+
+
+void
+RoutingProtocol::NotifyTxError (WifiMacDropReason reason, Ptr<const GPSR_WIFI_MPDU> mpdu)
+{
+  if (!m_ipv4 || m_socketAddresses.empty () || !mpdu)
+    {
+      return;
+    }
+  // Only a retry-limit drop is a real broken link; other drop reasons
+  // (queue full, lifetime expiry) are congestion, not topology.
+  if (reason != WIFI_MAC_DROP_REACHED_RETRY_LIMIT)
+    {
+      return;
+    }
+  const Mac48Address dstMac = mpdu->GetHeader ().GetAddr1 ();
+  if (dstMac.IsBroadcast () || dstMac.IsGroup ())
+    {
+      return;   // no single next hop failed
+    }
+  Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol> ();
+  if (!l3)
+    {
+      return;
+    }
+  // Resolve the failed next-hop MAC to an IP by forward-looking each known
+  // neighbour in the per-interface ARP caches (ArpCache::LookupInverse's
+  // return type drifts across ns-3 versions; forward Lookup is stable).
+  std::vector<Ipv4Address> neighbours = m_neighbors.GetKnownNeighbors ();
+  for (uint32_t i = 0; i < l3->GetNInterfaces (); ++i)
+    {
+      Ptr<ArpCache> cache = l3->GetInterface (i)->GetArpCache ();
+      if (!cache)
+        {
+          continue;
+        }
+      for (std::vector<Ipv4Address>::const_iterator nb = neighbours.begin ();
+           nb != neighbours.end (); ++nb)
+        {
+          ArpCache::Entry *entry = cache->Lookup (*nb);
+          if (entry == 0)
+            {
+              continue;
+            }
+          // An entry still resolving carries no MAC yet; guard ConvertFrom,
+          // which asserts on a non-48-bit address.
+          const Address resolved = entry->GetMacAddress ();
+          if (Mac48Address::IsMatchingType (resolved)
+              && Mac48Address::ConvertFrom (resolved) == dstMac)
+            {
+              NS_LOG_LOGIC ("MAC tx failure to neighbour " << *nb << "; removing from position table");
+              m_neighbors.DeleteEntry (*nb);
+              return;
+            }
+        }
+    }
+}
+
+
+void
+RoutingProtocol::RecvGPSR (Ptr<Socket> socket)
+{
+  NS_LOG_FUNCTION (this << socket);
+  Address sourceAddress;
+  Ptr<Packet> packet = socket->RecvFrom (sourceAddress);
+
+  TypeHeader tHeader (GPSRTYPE_HELLO);
+  packet->RemoveHeader (tHeader);
+  if (!tHeader.IsValid ())
+    {
+      NS_LOG_DEBUG ("GPSR message " << packet->GetUid () << " with unknown type received: " << tHeader.Get () << ". Ignored");
+      return;
+    }
+
+  HelloHeader hdr;
+  packet->RemoveHeader (hdr);
+  Vector Position;
+  Position.x = hdr.GetOriginPosx ();
+  Position.y = hdr.GetOriginPosy ();
+  InetSocketAddress inetSourceAddr = InetSocketAddress::ConvertFrom (sourceAddress);
+  Ipv4Address sender = inetSourceAddr.GetIpv4 ();
+  Ipv4Address receiver = m_socketAddresses[socket].GetLocal ();
+
+  uint8_t payload[9] = {0};
+  const uint32_t len = (m_gpcr ? 1 : 0) + (m_threeD ? 8 : 0);
+  if (len && packet->GetSize () >= len)
+    {
+      packet->CopyData (payload, len);
+      if (m_gpcr)
+        {
+          m_neighborIsCoordinator[sender] = payload[0] != 0;
+        }
+      if (m_threeD)
+        {
+          uint64_t z = 0;
+          for (uint32_t b = m_gpcr ? 1 : 0; b < len; ++b)
+            {
+              z = (z << 8) | payload[b];
+            }
+          Position.z = (double) z;
+        }
+    }
+  UpdateRouteToNeighbor (sender, receiver, Position);
+
+}
+
+
+void
+RoutingProtocol::UpdateRouteToNeighbor (Ipv4Address sender, Ipv4Address receiver, Vector Pos)
+{
+  m_neighbors.AddEntry (sender, Pos);
+
+}
+
+
+
+void
+RoutingProtocol::NotifyInterfaceDown (uint32_t interface)
+{
+  NS_LOG_FUNCTION (this << m_ipv4->GetAddress (interface, 0).GetLocal ());
+
+  // Disable layer 2 link state monitoring (if possible)
+  Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol> ();
+  Ptr<NetDevice> dev = l3->GetNetDevice (interface);
+  Ptr<WifiNetDevice> wifi = dev->GetObject<WifiNetDevice> ();
+  if (wifi)
+    {
+      Ptr<WifiMac> mac = wifi->GetMac ();
+      if (mac)
+        {
+          mac->TraceDisconnectWithoutContext ("DroppedMpdu",
+                                              MakeCallback (&RoutingProtocol::NotifyTxError, this));
+        }
+    }
+
+  // Close socket
+  Ptr<Socket> socket = FindSocketWithInterfaceAddress (m_ipv4->GetAddress (interface, 0));
+  NS_ASSERT (socket);
+  socket->Close ();
+  m_socketAddresses.erase (socket);
+  if (m_socketAddresses.empty ())
+    {
+      NS_LOG_LOGIC ("No gpsr interfaces");
+      m_neighbors.Clear ();
+      return;
+    }
+}
+
+
+Ptr<Socket>
+RoutingProtocol::FindSocketWithInterfaceAddress (Ipv4InterfaceAddress addr ) const
+{
+  NS_LOG_FUNCTION (this << addr);
+  for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j =
+         m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
+    {
+      Ptr<Socket> socket = j->first;
+      Ipv4InterfaceAddress iface = j->second;
+      if (iface == addr)
+        {
+          return socket;
+        }
+    }
+  Ptr<Socket> socket;
+  return socket;
+}
+
+
+
+void RoutingProtocol::NotifyAddAddress (uint32_t interface, Ipv4InterfaceAddress address)
+{
+  NS_LOG_FUNCTION (this << " interface " << interface << " address " << address);
+  Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol> ();
+  if (!l3->IsUp (interface))
+    {
+      return;
+    }
+  if (l3->GetNAddresses ((interface) == 1))
+    {
+      Ipv4InterfaceAddress iface = l3->GetAddress (interface, 0);
+      Ptr<Socket> socket = FindSocketWithInterfaceAddress (iface);
+      if (!socket)
+        {
+          if (iface.GetLocal () == Ipv4Address ("127.0.0.1"))
+            {
+              return;
+            }
+          // Create a socket to listen only on this interface
+          Ptr<Socket> socket = Socket::CreateSocket (GetObject<Node> (),
+                                                     UdpSocketFactory::GetTypeId ());
+          NS_ASSERT (socket);
+          socket->SetRecvCallback (MakeCallback (&RoutingProtocol::RecvGPSR,this));
+          socket->BindToNetDevice (l3->GetNetDevice (interface));
+          // Bind to any IP address so that broadcasts can be received
+          socket->Bind (InetSocketAddress (Ipv4Address::GetAny (), GPSR_PORT));
+          socket->SetAllowBroadcast (true);
+          m_socketAddresses.insert (std::make_pair (socket, iface));
+
+          Ptr<NetDevice> dev = m_ipv4->GetNetDevice (m_ipv4->GetInterfaceForAddress (iface.GetLocal ()));
+        }
+    }
+  else
+    {
+      NS_LOG_LOGIC ("GPSR does not work with more then one address per each interface. Ignore added address");
+    }
+}
+
+void
+RoutingProtocol::NotifyRemoveAddress (uint32_t i, Ipv4InterfaceAddress address)
+{
+  NS_LOG_FUNCTION (this);
+  Ptr<Socket> socket = FindSocketWithInterfaceAddress (address);
+  if (socket)
+    {
+
+      m_socketAddresses.erase (socket);
+      Ptr<Ipv4L3Protocol> l3 = m_ipv4->GetObject<Ipv4L3Protocol> ();
+      if (l3->GetNAddresses (i))
+        {
+          Ipv4InterfaceAddress iface = l3->GetAddress (i, 0);
+          // Create a socket to listen only on this interface
+          Ptr<Socket> socket = Socket::CreateSocket (GetObject<Node> (),
+                                                     UdpSocketFactory::GetTypeId ());
+          NS_ASSERT (socket);
+          socket->SetRecvCallback (MakeCallback (&RoutingProtocol::RecvGPSR, this));
+          // Bind to any IP address so that broadcasts can be received
+          socket->Bind (InetSocketAddress (Ipv4Address::GetAny (), GPSR_PORT));
+          socket->SetAllowBroadcast (true);
+          m_socketAddresses.insert (std::make_pair (socket, iface));
+
+          // Add local broadcast record to the routing table
+          Ptr<NetDevice> dev = m_ipv4->GetNetDevice (m_ipv4->GetInterfaceForAddress (iface.GetLocal ()));
+
+        }
+      if (m_socketAddresses.empty ())
+        {
+          NS_LOG_LOGIC ("No gpsr interfaces");
+          m_neighbors.Clear ();
+          return;
+        }
+    }
+  else
+    {
+      NS_LOG_LOGIC ("Remove address not participating in GPSR operation");
+    }
+}
+
+void
+RoutingProtocol::SetIpv4 (Ptr<Ipv4> ipv4)
+{
+  NS_ASSERT (ipv4);
+  NS_ASSERT (!m_ipv4);
+
+  m_ipv4 = ipv4;
+
+  HelloIntervalTimer.SetFunction (&RoutingProtocol::HelloTimerExpire, this);
+  // The first hello is scheduled in Start (#717), not here: SetIpv4 runs
+  // inside InternetStackHelper::Install, before the harness pins this
+  // protocol's stream, so a draw here came from ns-3's process-global
+  // auto-stream counter and made every run depend on the runs before it.
+
+  //Schedule only when it has packets on queue
+  CheckQueueTimer.SetFunction (&RoutingProtocol::CheckQueue, this);
+
+  Simulator::ScheduleNow (&RoutingProtocol::Start, this);
+}
+
+void
+RoutingProtocol::HelloTimerExpire ()
+{
+  SendHello ();
+  HelloIntervalTimer.Cancel ();
+  // #352 (port change): jitter in [-GPSR_MAXJITTER, GPSR_MAXJITTER] from the
+  // pinned member RNG.
+  HelloIntervalTimer.Schedule (HelloInterval
+                               + Seconds (m_uniformRandomVariable->GetValue (-1 * GPSR_MAXJITTER,
+                                                                             GPSR_MAXJITTER)));
+}
+
+void
+RoutingProtocol::SendHello ()
+{
+  NS_LOG_FUNCTION (this);
+  double positionX;
+  double positionY;
+
+  const Vector here = PositionOf (m_ipv4->GetObject<Node> ());
+
+  positionX = here.x;
+  positionY = here.y;
+
+  for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
+    {
+      Ptr<Socket> socket = j->first;
+      Ipv4InterfaceAddress iface = j->second;
+      HelloHeader helloHeader (((uint64_t) positionX),((uint64_t) positionY));
+
+      // GPCR (#709): "A coordinator broadcasts its role along with its
+      // position information" (§III.A): one byte after the hello header,
+      // GPCR mode only, so a GPSR hello is byte-identical to the source's.
+      // ThreeD (#710): the hello's z rides after it, 8 bytes big-endian.
+      uint8_t payload[9];
+      uint32_t len = 0;
+      if (m_gpcr)
+        {
+          payload[len++] = IsCoordinator () ? 1 : 0;
+        }
+      if (m_threeD)
+        {
+          const uint64_t z = (uint64_t) here.z;
+          for (int b = 7; b >= 0; --b)
+            {
+              payload[len++] = (uint8_t) (z >> (8 * b));
+            }
+        }
+      Ptr<Packet> packet = len ? Create<Packet> (payload, len) : Create<Packet> ();
+      packet->AddHeader (helloHeader);
+      TypeHeader tHeader (GPSRTYPE_HELLO);
+      packet->AddHeader (tHeader);
+      // Send to all-hosts broadcast if on /32 addr, subnet-directed otherwise
+      Ipv4Address destination;
+      if (iface.GetMask () == Ipv4Mask::GetOnes ())
+        {
+          destination = Ipv4Address ("255.255.255.255");
+        }
+      else
+        {
+          destination = iface.GetBroadcast ();
+        }
+      socket->SendTo (packet, 0, InetSocketAddress (destination, GPSR_PORT));
+
+    }
+}
+
+bool
+RoutingProtocol::IsMyOwnAddress (Ipv4Address src)
+{
+  NS_LOG_FUNCTION (this << src);
+  for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j =
+         m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
+    {
+      Ipv4InterfaceAddress iface = j->second;
+      if (src == iface.GetLocal ())
+        {
+          return true;
+        }
+    }
+  return false;
+}
+
+
+
+
+void
+RoutingProtocol::Start ()
+{
+  NS_LOG_FUNCTION (this);
+  m_queuedAddresses.clear ();
+
+  // First hello cannot be in the past: jitter in [0, GPSR_MAXJITTER], from
+  // the pinned member RNG. Start runs at t = 0 of the simulation, after
+  // AssignStreams has pinned it (#352; moved from SetIpv4, #717).
+  HelloIntervalTimer.Schedule (Seconds (m_uniformRandomVariable->GetValue (0.0, GPSR_MAXJITTER)));
+
+  // Port change: the location-service switch is gone — GOD (the only
+  // implemented service) is inlined as GetGodPosition.
+}
+
+Ptr<Ipv4Route>
+RoutingProtocol::LoopbackRoute (const Ipv4Header & hdr, Ptr<NetDevice> oif)
+{
+  NS_LOG_FUNCTION (this << hdr);
+  m_lo = m_ipv4->GetNetDevice (0);
+  NS_ASSERT (m_lo);
+  Ptr<Ipv4Route> rt = Create<Ipv4Route> ();
+  rt->SetDestination (hdr.GetDestination ());
+
+  std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin ();
+  if (oif)
+    {
+      // Iterate to find an address on the oif device
+      for (j = m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
+        {
+          Ipv4Address addr = j->second.GetLocal ();
+          int32_t interface = m_ipv4->GetInterfaceForAddress (addr);
+          if (oif == m_ipv4->GetNetDevice (static_cast<uint32_t> (interface)))
+            {
+              rt->SetSource (addr);
+              break;
+            }
+        }
+    }
+  else
+    {
+      rt->SetSource (j->second.GetLocal ());
+    }
+  NS_ASSERT_MSG (rt->GetSource () != Ipv4Address (), "Valid GPSR source address not found");
+  rt->SetGateway (Ipv4Address ("127.0.0.1"));
+  rt->SetOutputDevice (m_lo);
+  return rt;
+}
+
+
+int
+RoutingProtocol::GetProtocolNumber (void) const
+{
+  return GPSR_PORT;
+}
+
+void
+RoutingProtocol::AddHeaders (Ptr<Packet> p, Ipv4Address source, Ipv4Address destination, uint8_t protocol, Ptr<Ipv4Route> route)
+{
+
+  NS_LOG_FUNCTION (this << " source " << source << " destination " << destination);
+
+  Vector myPos;
+  const Vector here = PositionOf (m_ipv4->GetObject<Node> ());
+  myPos.x = here.x;
+  myPos.y = here.y;
+  myPos.z = m_threeD ? here.z : 0;  // #710
+
+  Ipv4Address nextHop;
+
+  if(m_neighbors.isNeighbour (destination))
+    {
+      nextHop = destination;
+    }
+  else
+    {
+      nextHop = m_neighbors.BestNeighbor (GetGodPosition (destination), myPos);
+    }
+
+  uint16_t positionX = 0;
+  uint16_t positionY = 0;
+  uint64_t positionZ = 0;  // #710
+  uint32_t hdrTime = 0;
+
+  if(destination != m_ipv4->GetAddress (1, 0).GetBroadcast ())
+    {
+      positionX = GetGodPosition (destination).x;
+      positionY = GetGodPosition (destination).y;
+      positionZ = GetGodPosition (destination).z;
+      hdrTime = (uint32_t) Simulator::Now ().GetSeconds ();
+    }
+
+  // Fault-3 rework: the vendored code prepended the GPSR headers to the
+  // packet as handed down by UDP, producing IP|GPSR|UDP on the wire while
+  // ip.protocol still read 17 — FlowMonitor's Ipv4FlowClassifier then read
+  // the first four bytes of the IP payload (position bytes, changing per
+  // packet) as UDP ports and misclassified every data flow. Layer the same
+  // headers *beneath* the UDP header instead (IP|UDP|GPSR): identical bytes
+  // on the wire and identical routing state, but the IP payload now starts
+  // with the real transport header, so FlowMonitor classifies data flows
+  // correctly and port-based control/data accounting sees GPSR's port 666
+  // hellos. Non-UDP packets (the down target is only re-pointed for UDP)
+  // pass through untouched and are forwarded greedily without recovery
+  // state — see Forwarding.
+  UdpHeader udpHeader;
+  const bool hasUdp = StripTransport (p, protocol, udpHeader);
+  if (hasUdp)
+    {
+      if (m_threeD)
+        {
+          p->AddHeader (Position3dHeader (positionZ, 0, myPos.z));
+        }
+      PositionHeader posHeader (positionX, positionY,  hdrTime, (uint64_t) 0,(uint64_t) 0, (uint8_t) 0, myPos.x, myPos.y);
+      p->AddHeader (posHeader);
+      TypeHeader tHeader (GPSRTYPE_POS);
+      p->AddHeader (tHeader);
+      RestoreTransport (p, udpHeader, hasUdp);
+    }
+
+  m_downTarget (p, source, destination, protocol, route);
+
+}
+
+bool
+RoutingProtocol::Forwarding (Ptr<const Packet> packet, const Ipv4Header & header,
+                             UnicastForwardCallback ucb, ErrorCallback ecb)
+{
+  Ptr<Packet> p = packet->Copy ();
+  NS_LOG_FUNCTION (this);
+  Ipv4Address dst = header.GetDestination ();
+  Ipv4Address origin = header.GetSource ();
+
+
+  m_neighbors.Purge ();
+
+  uint32_t updated = 0;
+  Vector Position;
+  Vector RecPosition;
+  Vector previousHop;
+  uint8_t inRec = 0;
+
+  // Fault-3 rework: the GPSR headers sit beneath the UDP header; peel the UDP
+  // header off before reading them. Non-UDP packets carry no GPSR headers
+  // (see AddHeaders) and are forwarded greedily from GOD positions alone.
+  UdpHeader udpHeader;
+  const bool hasUdp = StripTransport (p, header.GetProtocol (), udpHeader);
+  bool hasGpsrHeader = false;
+
+  TypeHeader tHeader (GPSRTYPE_POS);
+  PositionHeader hdr;
+  Position3dHeader zHdr;  // #710, ThreeD mode only
+  if (hasUdp && p->GetSize () >= 1)
+    {
+      p->RemoveHeader (tHeader);
+      if (!tHeader.IsValid ())
+        {
+          NS_LOG_DEBUG ("GPSR message " << p->GetUid () << " with unknown type received: " << tHeader.Get () << ". Drop");
+          return false;     // drop
+        }
+      if (tHeader.Get () == GPSRTYPE_POS)
+        {
+
+          p->RemoveHeader (hdr);
+          Position.x = hdr.GetDstPosx ();
+          Position.y = hdr.GetDstPosy ();
+          updated = hdr.GetUpdated ();
+          RecPosition.x = hdr.GetRecPosx ();
+          RecPosition.y = hdr.GetRecPosy ();
+          inRec = hdr.GetInRec ();
+          previousHop.x = hdr.GetLastPosx ();
+          previousHop.y = hdr.GetLastPosy ();
+          if (m_threeD)
+            {
+              p->RemoveHeader (zHdr);
+              Position.z = zHdr.m_dstPosz;
+              RecPosition.z = zHdr.m_recPosz;
+              previousHop.z = zHdr.m_lastPosz;
+            }
+          hasGpsrHeader = true;
+        }
+    }
+
+  Vector myPos;
+  const Vector here = PositionOf (m_ipv4->GetObject<Node> ());
+  myPos.x = here.x;
+  myPos.y = here.y;
+  myPos.z = m_threeD ? here.z : 0;  // #710
+
+  if(inRec == 1 && CalculateDistance (myPos, Position) < CalculateDistance (RecPosition, Position)){
+    inRec = 0;
+    hdr.SetInRec(0);
+  NS_LOG_LOGIC ("No longer in Recovery to " << dst << " in " << myPos);
+  }
+
+  if(inRec){
+    if (m_threeD)
+      {
+        p->AddHeader (zHdr);
+      }
+    p->AddHeader (hdr);
+    p->AddHeader (tHeader); //put headers back so that the RecoveryMode is compatible with Forwarding and SendFromQueue
+    RestoreTransport (p, udpHeader, hasUdp);
+    RecoveryMode (dst, p, ucb, header, ecb);
+    return true;
+  }
+
+
+
+  // GOD location service (port change): this node always has the freshest
+  // destination position, so the header's carried estimate is refreshed
+  // unconditionally (the vendored GetEntryUpdateTime returned Now () for GOD,
+  // making its "is mine newer" check always true).
+  Position.x = GetGodPosition (dst).x;
+  Position.y = GetGodPosition (dst).y;
+  Position.z = m_threeD ? GetGodPosition (dst).z : 0;  // #710
+  updated = (uint32_t) Simulator::Now ().GetSeconds ();
+
+
+  Ipv4Address nextHop;
+
+/*  if(m_neighbors.isNeighbour (dst))
+    {
+      nextHop = dst;
+    }
+  else
+    {
+*/
+      // GPCR (#709) needs the street direction, which only a GPSR-headered
+      // packet carries; a headerless one is forwarded as GPSR would.
+      nextHop = (m_gpcr && hasGpsrHeader)
+                    ? GpcrGreedyNextHop (dst, Position, previousHop, myPos)
+                    : m_neighbors.BestNeighbor (Position, myPos);
+      if (nextHop != Ipv4Address::GetZero ())
+        {
+          if (hasGpsrHeader)
+            {
+              if (m_threeD)
+                {
+                  p->AddHeader (Position3dHeader (Position.z, 0, myPos.z));
+                }
+              PositionHeader posHeader (Position.x, Position.y,  updated, (uint64_t) 0, (uint64_t) 0, (uint8_t) 0, myPos.x, myPos.y);
+              p->AddHeader (posHeader);
+              p->AddHeader (tHeader);
+            }
+          RestoreTransport (p, udpHeader, hasUdp);
+
+
+          Ptr<Ipv4Route> route = Create<Ipv4Route> ();
+          route->SetDestination (dst);
+          route->SetSource (header.GetSource ());
+          route->SetGateway (nextHop);
+          route->SetOutputDevice (m_ipv4->GetNetDevice (IfaceToward (m_ipv4, nextHop)));
+          route->SetDestination (header.GetDestination ());
+          NS_ASSERT (route);
+          NS_LOG_DEBUG ("Exist route to " << route->GetDestination () << " from interface " << route->GetOutputDevice ());
+
+
+          NS_LOG_LOGIC (route->GetOutputDevice () << " forwarding to " << dst << " from " << origin << " through " << route->GetGateway () << " packet " << p->GetUid ());
+
+          ucb (route, p, header);
+          return true;
+        }
+//    }
+  if (!hasGpsrHeader)
+    {
+      // Greedy failed and there is no position header to carry recovery
+      // state (non-UDP packet): nothing GPSR can do — report no route.
+      NS_LOG_LOGIC ("Greedy failed for headerless packet to " << dst << ". Drop");
+      return false;
+    }
+  hdr.SetInRec(1);
+  hdr.SetRecPosx (myPos.x);
+  hdr.SetRecPosy (myPos.y);
+  hdr.SetLastPosx (Position.x); //when entering Recovery, the first edge is the Dst
+  hdr.SetLastPosy (Position.y);
+  if (m_threeD)
+    {
+      // #710: recovery starts on plane 0 (xy), from this node, first edge
+      // toward the destination.
+      p->AddHeader (Position3dHeader (Position.z, myPos.z, Position.z, 0, 0));
+    }
+
+
+  p->AddHeader (hdr);
+  p->AddHeader (tHeader);
+  RestoreTransport (p, udpHeader, hasUdp);
+  NS_LOG_LOGIC ("Entering recovery-mode to " << dst << " in " << m_ipv4->GetAddress (1, 0).GetLocal ());
+
+  RecoveryMode (dst, p, ucb, header, ecb);
+  return true;
+}
+
+
+
+// --- GPCR mode (#709) --------------------------------------------------------
+// Lochert, Mauve, Füßler & Hartenstein, "Geographic routing in city
+// scenarios", ACM MC2R 9(1):69-72, 2005. Section references are to that
+// paper; what it leaves open is in README.md's fidelity sheet.
+
+bool
+RoutingProtocol::IsCoordinator ()
+{
+  // §IV: rho_xy = |cov(x, y)| / (sigma_x sigma_y) over the neighbours'
+  // positions; close to 1 on a street, close to 0 on a junction. A neighbour
+  // set lying on one axis-parallel line has a zero sigma, and rho is then
+  // the limit of a perfect line, 1. Fewer than three neighbours cannot leave
+  // a line, so they read as a street too.
+  m_neighbors.Purge ();
+  std::vector<Ipv4Address> ids = m_neighbors.GetKnownNeighbors ();
+  if (ids.size () < 3)
+    {
+      return false;
+    }
+  double mx = 0, my = 0;
+  for (const Ipv4Address &id : ids)
+    {
+      Vector v = m_neighbors.GetPosition (id);
+      mx += v.x;
+      my += v.y;
+    }
+  mx /= ids.size ();
+  my /= ids.size ();
+  double sxy = 0, sxx = 0, syy = 0;
+  for (const Ipv4Address &id : ids)
+    {
+      Vector v = m_neighbors.GetPosition (id);
+      sxy += (v.x - mx) * (v.y - my);
+      sxx += (v.x - mx) * (v.x - mx);
+      syy += (v.y - my) * (v.y - my);
+    }
+  if (sxx < 1e-9 || syy < 1e-9)
+    {
+      return false;
+    }
+  const double rho = std::abs (sxy) / std::sqrt (sxx * syy);
+  return rho < m_gpcrThreshold;
+}
+
+Ipv4Address
+RoutingProtocol::GpcrStreetNextHop (Vector previousHop, Vector myPos)
+{
+  // §III.A: "the forwarding node selects those neighbors whose positions
+  // approximate an extension of the line between the forwarding node's
+  // predecessor and the forwarding node itself ... As long as there are no
+  // qualified neighbors which are coordinators the node with the largest
+  // distance to the forwarding node is chosen. If coordinators are qualified
+  // then one coordinator is randomly chosen as the next hop."
+  const double dx = myPos.x - previousHop.x, dy = myPos.y - previousHop.y;
+  const double dn = std::sqrt (dx * dx + dy * dy);
+  if (dn < 1e-9)
+    {
+      return Ipv4Address::GetZero ();     // no direction to extend
+    }
+  const double cosCone = std::cos (m_gpcrConeDeg * M_PI / 180.0);
+  std::vector<Ipv4Address> coordinators;
+  Ipv4Address farthest = Ipv4Address::GetZero ();
+  double farthestD = 0;
+  m_neighbors.Purge ();
+  for (const Ipv4Address &id : m_neighbors.GetKnownNeighbors ())
+    {
+      Vector n = m_neighbors.GetPosition (id);
+      const double vx = n.x - myPos.x, vy = n.y - myPos.y;
+      const double vn = std::sqrt (vx * vx + vy * vy);
+      if (vn < 1e-9 || (vx * dx + vy * dy) / (vn * dn) < cosCone)
+        {
+          continue;
+        }
+      auto c = m_neighborIsCoordinator.find (id);
+      if (c != m_neighborIsCoordinator.end () && c->second)
+        {
+          coordinators.push_back (id);
+        }
+      if (vn > farthestD)
+        {
+          farthestD = vn;
+          farthest = id;
+        }
+    }
+  if (!coordinators.empty ())
+    {
+      return coordinators[m_uniformRandomVariable->GetInteger (0, coordinators.size () - 1)];
+    }
+  return farthest;
+}
+
+Ipv4Address
+RoutingProtocol::GpcrGreedyNextHop (Ipv4Address dst, Vector dstPos, Vector previousHop,
+                                    Vector myPos)
+{
+  if (m_neighbors.isNeighbour (dst))
+    {
+      return dst;
+    }
+  // §III.A: "Once a packet reaches a coordinator ... the neighboring node
+  // with the largest progress towards the destination is chosen." A packet
+  // whose predecessor is this node (just originated) has no street direction
+  // yet and takes the same greedy choice.
+  if (IsCoordinator () || CalculateDistance (previousHop, myPos) < 1e-9)
+    {
+      return m_neighbors.BestNeighbor (dstPos, myPos);
+    }
+  Ipv4Address next = GpcrStreetNextHop (previousHop, myPos);
+  // The street ends with no neighbour along it (a dead end, or a gap the
+  // cone misses): plain greedy, and a local optimum if that fails too.
+  return next != Ipv4Address::GetZero () ? next : m_neighbors.BestNeighbor (dstPos, myPos);
+}
+
+Ipv4Address
+RoutingProtocol::GpcrRepairNextHop (Vector previousHop, Vector myPos)
+{
+  // §III.B: on a junction, "it chooses the street that is the next one
+  // counter-clockwise from the street the packet has arrived on" — the
+  // right-hand rule, taken here over the coordinator's neighbours, each of
+  // which stands on one of the streets that meet there. "In between
+  // junctions greedy routing to the next junction, as described above, can
+  // be used": the street rule, and the right-hand rule again at a dead end.
+  if (!IsCoordinator ())
+    {
+      Ipv4Address next = GpcrStreetNextHop (previousHop, myPos);
+      if (next != Ipv4Address::GetZero ())
+        {
+          return next;
+        }
+    }
+  return m_neighbors.BestAngle (previousHop, myPos);
+}
+
+// --- ThreeD mode (#710) -------------------------------------------------------
+// CFace(3) (Kao, Fevens & Opatrny 2005, section 4.2.8 of Bujari, Palazzi &
+// Ronzani, IEEE TMC 2018): "all the nodes are projected on the first xy plane
+// (node.z = 0) and then the face routing is started on the projected graph.
+// If the packet does not arrive at the destination (TTLF has expired), the
+// original coordinates of all nodes are projected on the xz plane ... then
+// on the yz plane". Face routing here is the right-hand rule on the Gabriel
+// graph of the projected neighbours (Face runs on "a planar subgraph ...
+// called Gabriel Graph", section 4.2.7). Deviation, as in this module's 2-D
+// perimeter mode: no face change where an edge crosses the reference
+// segment (Face2's rule); the right-hand rule walks the face it starts on.
+
+Ipv4Address
+RoutingProtocol::Face3dNextHop (uint8_t plane, Vector previousHop, Vector myPos)
+{
+  auto project = [plane] (const Vector &v) {
+    return plane == 0 ? Vector (v.x, v.y, 0) : plane == 1 ? Vector (v.x, v.z, 0)
+                                                          : Vector (v.y, v.z, 0);
+  };
+  const Vector me = project (myPos);
+  m_neighbors.Purge ();
+  std::vector<std::pair<Ipv4Address, Vector> > nbrs;
+  for (const Ipv4Address &id : m_neighbors.GetKnownNeighbors ())
+    {
+      nbrs.emplace_back (id, project (m_neighbors.GetPosition (id)));
+    }
+  // Gabriel graph: keep the edge (me, v) iff no other neighbour lies strictly
+  // inside the circle whose diameter is that edge.
+  std::vector<std::pair<Ipv4Address, Vector> > gg;
+  for (const auto &v : nbrs)
+    {
+      const Vector mid ((me.x + v.second.x) / 2, (me.y + v.second.y) / 2, 0);
+      const double r = CalculateDistance (me, v.second) / 2;
+      if (r < 1e-9)
+        {
+          continue;  // projects onto this node: no direction on this plane
+        }
+      bool keep = true;
+      for (const auto &w : nbrs)
+        {
+          if (w.first != v.first && CalculateDistance (mid, w.second) < r)
+            {
+              keep = false;
+              break;
+            }
+        }
+      if (keep)
+        {
+          gg.push_back (v);
+        }
+    }
+  // Right-hand rule: the first edge counter-clockwise from the one the
+  // packet arrived on, as PositionTable::BestAngle does in 2-D.
+  const Vector prev = project (previousHop);
+  Ipv4Address best = Ipv4Address::GetZero ();
+  double bestAngle = 360;
+  for (const auto &v : gg)
+    {
+      const double a = m_neighbors.GetAngle (me, prev, v.second);
+      if (a < bestAngle && a != 0)
+        {
+          best = v.first;
+          bestAngle = a;
+        }
+    }
+  if (best == Ipv4Address::GetZero () && !gg.empty ())
+    {
+      best = gg.front ().first;  // only the edge back: take it
+    }
+  return best;
+}
+
+void
+RoutingProtocol::SetDownTarget (IpL4Protocol::DownTargetCallback callback)
+{
+  m_downTarget = callback;
+}
+
+
+IpL4Protocol::DownTargetCallback
+RoutingProtocol::GetDownTarget (void) const
+{
+  return m_downTarget;
+}
+
+
+
+
+Ptr<Ipv4Route>
+RoutingProtocol::RouteOutput (Ptr<Packet> p, const Ipv4Header &header,
+                              Ptr<NetDevice> oif, Socket::SocketErrno &sockerr)
+{
+  NS_LOG_FUNCTION (this << header << (oif ? oif->GetIfIndex () : 0));
+
+  if (!p)
+    {
+      return LoopbackRoute (header, oif);     // later
+    }
+  if (m_socketAddresses.empty ())
+    {
+      sockerr = Socket::ERROR_NOROUTETOHOST;
+      NS_LOG_LOGIC ("No gpsr interfaces");
+      Ptr<Ipv4Route> route;
+      return route;
+    }
+  sockerr = Socket::ERROR_NOTERROR;
+  Ptr<Ipv4Route> route = Create<Ipv4Route> ();
+  Ipv4Address dst = header.GetDestination ();
+
+  // Port fix (#425): broadcasts — GPSR's own hellos first among them — must
+  // never go through greedy forwarding. On a subnet-masked interface the
+  // hello destination is the subnet-directed broadcast, which UdpSocketImpl
+  // resolves through this RouteOutput (the socket is bound to ANY); the
+  // greedy lookup below then defers it to the loopback queue, where
+  // SendPacketFromQueue drops it (no GOD position exists for a broadcast
+  // address). Hellos need neighbours and neighbours need hellos, so the
+  // protocol deadlocks silently at cold start: 45k hellos counted at L3 (the
+  // loopback Tx) with a byte-silent medium. Hand broadcasts straight to the
+  // interface instead, as AODV's broadcast routing-table entry does.
+  // #581: a node with several interfaces (leo-walker's satellites, HAPS and
+  // stations) sends a hello on each, to that interface's subnet broadcast,
+  // so the broadcast is matched against every interface and leaves on the
+  // one it names. A single-interface node resolves to interface 1, as before.
+  uint32_t bif = 1;
+  for (uint32_t i = 1; i < m_ipv4->GetNInterfaces (); ++i)
+    {
+      if (m_ipv4->GetNAddresses (i) > 0 && dst == m_ipv4->GetAddress (i, 0).GetBroadcast ())
+        {
+          bif = i;
+          break;
+        }
+    }
+  if (dst.IsBroadcast () || dst == m_ipv4->GetAddress (bif, 0).GetBroadcast ())
+    {
+      route->SetDestination (dst);
+      route->SetSource (m_ipv4->GetAddress (bif, 0).GetLocal ());
+      route->SetGateway (dst);
+      route->SetOutputDevice (m_ipv4->GetNetDevice (bif));
+      if (oif && route->GetOutputDevice () != oif)
+        {
+          NS_LOG_DEBUG ("Output device doesn't match. Dropped.");
+          sockerr = Socket::ERROR_NOROUTETOHOST;
+          return Ptr<Ipv4Route> ();
+        }
+      return route;
+    }
+
+  Vector dstPos = Vector (1, 0, 0);
+
+  if (!(dst == m_ipv4->GetAddress (1, 0).GetBroadcast ()))
+    {
+      dstPos = GetGodPosition (dst);
+    }
+
+  // GOD location service (port change): the vendored defer-while-in-search
+  // branch collapses — a position lookup never pends, so deferral happens
+  // only through the no-greedy-neighbour path below.
+
+  Vector myPos;
+  const Vector here = PositionOf (m_ipv4->GetObject<Node> ());
+  myPos.x = here.x;
+  myPos.y = here.y;
+  myPos.z = m_threeD ? here.z : 0;  // #710
+
+
+  Ipv4Address nextHop;
+
+  if(m_neighbors.isNeighbour (dst))
+    {
+      nextHop = dst;
+    }
+  else
+    {
+      nextHop = m_neighbors.BestNeighbor (dstPos, myPos);
+    }
+
+
+  if (nextHop != Ipv4Address::GetZero ())
+    {
+      NS_LOG_DEBUG ("Destination: " << dst);
+
+      route->SetDestination (dst);
+      // A source that is not one of this node's addresses -- the old
+      // 102.102.102.102 placeholder, or what unbound sockets pass on
+      // ns-3-dev (#611) -- takes interface 1's; otherwise
+      // GetInterfaceForAddress() returns -1 and GetNetDevice(-1) is null.
+      // #581: an unbound source leaves on the interface toward the next hop.
+      if (header.GetSource () == Ipv4Address ("102.102.102.102")
+          || m_ipv4->GetInterfaceForAddress (header.GetSource ()) < 0)
+        {
+          route->SetSource (m_ipv4->GetAddress (IfaceToward (m_ipv4, nextHop), 0).GetLocal ());
+        }
+      else
+        {
+          route->SetSource (header.GetSource ());
+        }
+      route->SetGateway (nextHop);
+      route->SetOutputDevice (m_ipv4->GetNetDevice (IfaceToward (m_ipv4, nextHop)));
+      route->SetDestination (header.GetDestination ());
+      NS_ASSERT (route);
+      NS_LOG_DEBUG ("Exist route to " << route->GetDestination () << " from interface " << route->GetSource ());
+      if (oif && route->GetOutputDevice () != oif)
+        {
+          NS_LOG_DEBUG ("Output device doesn't match. Dropped.");
+          sockerr = Socket::ERROR_NOROUTETOHOST;
+          return Ptr<Ipv4Route> ();
+        }
+      return route;
+    }
+  else
+    {
+      DeferredRouteOutputTag tag;
+      if (!p->PeekPacketTag (tag))
+        {
+          p->AddPacketTag (tag);
+        }
+      return LoopbackRoute (header, oif);     //in RouteInput the recovery-mode is called
+    }
+
+}
+
+
+}
+}
