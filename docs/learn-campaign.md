@@ -647,7 +647,7 @@ behind the code. [#635](https://github.com/danieljoppi/AntHocNet/issues/635).
   - the devices' movements as an ns-2 trace;
   - the calls as a flow list;
   - the bench's Config as attributes;
-  - a `run.sh` for `anthocnet-compare`.
+  - a `run.sh` for `routing-compare` (`anthocnet-compare` before v2.6.0).
 
   This needs the harness to replay a trace and a flow list ([#639](https://github.com/danieljoppi/AntHocNet/issues/639), which
   also finishes [#61](https://github.com/danieljoppi/AntHocNet/issues/61)).

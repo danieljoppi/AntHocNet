@@ -100,7 +100,7 @@ HOLD_CEILING_MS = 5000.0
 #     included, at ~1.00 — the sample-starvation floor) and informative.
 #   - The excess never invalidates a cell. divUsed is accumulated in its own
 #     (node, dest, window) map off the WifiMac AckedMpdu trace
-#     (routing-bench-harness.cc CountAckedDataHop / FlushDiversityWindow); PDR,
+#     (routing-bench-run.cc CountAckedDataHop / FlushDiversityWindow); PDR,
 #     delay, delay99, throughput, NRL and jitter come from FlowMonitor and the
 #     energy columns from the energy model. A churn-inflated divUsed cannot
 #     move a single published number.

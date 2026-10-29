@@ -47,8 +47,10 @@ endif()
 
 # ISL-grid scenario (#214): a static +Grid torus of point-to-point links — the
 # LEO inter-satellite-link abstraction — with no mobility and no wifi. Needs
-# point-to-point in addition to the comparison example's dependencies.
-if(AHN_HAVE_ORACLE)
+# point-to-point in addition to the comparison example's dependencies, and
+# routing-bench for the OLSR source-refusal counter it shares with
+# routing-compare (#513).
+if(AHN_HAVE_ORACLE AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/routing-bench/CMakeLists.txt)
 build_lib_example(
   NAME isl-grid
   SOURCE_FILES isl-grid.cc
@@ -65,6 +67,7 @@ build_lib_example(
     ${libdsdv}
     # #296 item 1 / #216: the oracle control, exact on this static torus.
     ${liboracle}
+    ${librouting-bench}
 )
 endif()
 

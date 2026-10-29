@@ -45,7 +45,7 @@ namespace {
 constexpr uint16_t kDataPort = 9;
 
 // --- RNG stream pinning (#352) ----------------------------------------------
-// The same fix, for the same reason, as ns3/routing-bench/model/routing-bench-harness.cc and
+// The same fix, for the same reason, as ns3/routing-bench/model/routing-bench-run.cc and
 // ns3/anthocnet/examples/isl-grid.cc: ns-3 hands every RandomVariableStream its stream
 // index from a *global* counter at CONSTRUCTION time, and neither
 // RngSeedManager::SetSeed/SetRun nor Simulator::Destroy resets that counter.
@@ -64,7 +64,7 @@ constexpr uint16_t kDataPort = 9;
 // three harnesses unpinned would keep exactly that comparison unsound.
 //
 // Same stride and same runtime budget check as the other two — see the longer
-// derivation in routing-bench-harness.cc.
+// derivation in routing-bench-run.cc.
 constexpr int64_t kStreamStride = 1000000;
 
 // Advance `next` by the number of streams a helper's AssignStreams() reported,

@@ -1,7 +1,7 @@
 // Take it to ns-3 (#640): any world or level as a ready-to-run ns-3 kit. The
 // game is the AntHocNet core on a teaching radio; this writes the scene --
 // where every node was over the run, and the flows -- in the formats
-// anthocnet-compare replays (#639: --mobility=trace --traceFile, --flowsFile),
+// routing-compare replays (#639: --mobility=trace --traceFile, --flowsFile),
 // with the command, so the same scene runs on ns-3's PHY and MAC. Built in
 // the browser; nothing is uploaded. No DOM here: web/tools/export-kit.mjs
 // builds the very same kit in Node for CI.
@@ -11,7 +11,7 @@ import { t } from './i18n.js';
 export const SAMPLE_STEP = 0.5;
 /** Samples kept (10 minutes at 0.5 s); a longer run exports its first 10. */
 export const MAX_SAMPLES = 1200;
-/** anthocnet-compare's CBR packet size (bytes), so cbrBps = rate x 512. */
+/** routing-compare's CBR packet size (bytes), so cbrBps = rate x 512. */
 const PACKET_BYTES = 64;
 const CHANNEL = ['disk', 'urban', 'isl'];
 
@@ -55,7 +55,7 @@ export function movements(samples, nodeCount) {
   return out.join('\n') + '\n';
 }
 
-/** The flows as anthocnet-compare's --flowsFile: src dst start stop cbrBps. */
+/** The flows as routing-compare's --flowsFile: src dst start stop cbrBps. */
 export function flowsFile(specs, horizon) {
   const out = ['# src dst start stop cbrBps (AntHocNet learn-site export, #640)']; // i18n-ok: a file-format comment
   for (let i = 0; i < specs.length; i += 5) {
@@ -112,7 +112,7 @@ export function buildKit(scene) {
     const channel = kind === 'urban'
       ? `--propagation=urban --blocksX=${scene.blocksX} --blocksY=${scene.blocksY} --streetWidth=${fmt(scene.streetWidth)}`
       : '--propagation=range';
-    command = `./ns3 run "anthocnet-compare --protocols=anthocnet,aodv,olsr --time=${time} --runs=1 `
+    command = `./ns3 run "routing-compare --protocols=anthocnet,aodv,olsr --time=${time} --runs=1 `
       + `--areaX=${areaX} --areaY=${areaY} --range=${fmt(scene.range)} ${channel} `
       + `--mobility=trace --traceFile=$KIT/mobility.ns_movements --flowsFile=$KIT/flows.txt${scene.attrs ? ' ' + scene.attrs : ''}"`;
   }
