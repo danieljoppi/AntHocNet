@@ -1,4 +1,4 @@
-# v250c campaign anchor-ara-p30-v250c: 1 run(s): 40695368847 (arms/anchor-ara-p30); ref main
+# v250c campaign anchor-ara-p30-v250c: 1 run(s): 40872858823 (arms/anchor-ara-p30); ref main
 [0/2] Re-checking globbed directories...
 ninja: no work to do.
 ##CONFIG## scenario=paper nNodes=50 time=900 runs=10 firstRun=1 areaX=1500 areaY=300 speed=10 pause=30 range=300 propagation=range mobility=rwp transport=udp flows=10 cbrBps=512 offTime=0 rateManager=constant2 protocols=ara,aodv
@@ -54,70 +54,70 @@ ninja: no work to do.
 ##CONFIG## attr LinkMetric=classic
 ##CONFIG## attr SinrCriticalDb=17
 ##CONFIG## attr SinrPenaltyCost=3
-##DROPID## 1 ara hopTx=24614 hopRx=24333 ackedHops=24333 macDrops=260 reinjected=260 macTerminal=0 macLost=260 queue=0 hopLoss=281 overlap=0 unackedRx=0
+##DROPID## 1 ara hopTx=24614 hopRx=24333 ackedHops=24333 macDrops=260 reinjected=260 macTerminal=0 macLost=260 queue=0 hopLoss=281 overlap=0 unackedRx=0 recovered=281 recoveredPkts=274 delivered=7910 termMac=0 termRoute=0 termTtl=85 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag ara seed=1 pdr=98.94 firstDeliveryS=27.50 ctrlTx=15750 setupMedS=2.01 setupMaxS=4.07 flowsNoDelivery=0
 ##RUN## 1 ara 98.9 35.5 1076.5 6.47 1.99 44.72 1.5 4.5 1.1254
 ##AIR## 1 ara 40.510 475.410 309.205 1.8336
 ##ENERGY## 1 ara 36880.451 4.662510 9.1065e-03 0.186
 ##GOODPUT## 1 ara 4.500
 ##ROUTE## 1 ara 2.0083 4.0681 0 0.08380 1.000 662 2.4240 2.4240
-##DROPID## 2 ara hopTx=27422 hopRx=27127 ackedHops=27127 macDrops=280 reinjected=276 macTerminal=4 macLost=280 queue=0 hopLoss=295 overlap=0 unackedRx=0
+##DROPID## 2 ara hopTx=27422 hopRx=27127 ackedHops=27127 macDrops=280 reinjected=276 macTerminal=4 macLost=280 queue=0 hopLoss=295 overlap=0 unackedRx=0 recovered=291 recoveredPkts=279 delivered=7730 termMac=4 termRoute=0 termTtl=117 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag ara seed=2 pdr=98.46 firstDeliveryS=22.40 ctrlTx=15597 setupMedS=1.09 setupMaxS=3.88 flowsNoDelivery=0
 ##RUN## 2 ara 98.5 34.4 1069.5 6.32 2.02 44.06 1.5 4.5 1.1405
 ##AIR## 2 ara 43.212 501.513 325.775 1.9344
 ##ENERGY## 2 ara 36886.534 4.771867 9.3201e-03 0.213
 ##GOODPUT## 2 ara 4.398
 ##ROUTE## 2 ara 1.0860 3.8769 0 0.08964 1.000 692 2.5770 2.5770
-##DROPID## 3 ara hopTx=27053 hopRx=26703 ackedHops=26702 macDrops=344 reinjected=340 macTerminal=4 macLost=343 queue=0 hopLoss=350 overlap=0 unackedRx=1
+##DROPID## 3 ara hopTx=27053 hopRx=26703 ackedHops=26702 macDrops=344 reinjected=340 macTerminal=4 macLost=343 queue=0 hopLoss=350 overlap=0 unackedRx=1 recovered=347 recoveredPkts=342 delivered=8237 termMac=3 termRoute=0 termTtl=111 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag ara seed=3 pdr=98.63 firstDeliveryS=4.52 ctrlTx=19066 setupMedS=2.01 setupMaxS=2.07 flowsNoDelivery=0
 ##RUN## 3 ara 98.6 30.3 1064.5 6.74 2.31 41.59 1.5 5.5 1.3083
 ##AIR## 3 ara 46.517 531.995 345.343 2.0530
 ##ENERGY## 3 ara 36886.213 4.478113 8.7463e-03 0.217
 ##GOODPUT## 3 ara 4.686
 ##ROUTE## 3 ara 2.0086 2.0682 0 0.09712 1.000 799 2.4207 2.4207
-##DROPID## 4 ara hopTx=22946 hopRx=22688 ackedHops=22688 macDrops=254 reinjected=250 macTerminal=4 macLost=254 queue=0 hopLoss=258 overlap=0 unackedRx=0
+##DROPID## 4 ara hopTx=22946 hopRx=22688 ackedHops=22688 macDrops=254 reinjected=250 macTerminal=4 macLost=254 queue=0 hopLoss=258 overlap=0 unackedRx=0 recovered=254 recoveredPkts=248 delivered=7654 termMac=4 termRoute=0 termTtl=78 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag ara seed=4 pdr=98.94 firstDeliveryS=51.16 ctrlTx=13930 setupMedS=1.10 setupMaxS=2.04 flowsNoDelivery=0
 ##RUN## 4 ara 98.9 26.8 1060.5 6.26 1.82 39.46 1.5 4.5 1.0287
 ##AIR## 4 ara 37.246 433.213 282.517 1.6733
 ##ENERGY## 4 ara 36867.831 4.816806 9.4078e-03 0.182
 ##GOODPUT## 4 ara 4.354
 ##ROUTE## 4 ara 1.1035 2.0418 0 0.07405 1.000 566 2.3433 2.3433
-##DROPID## 5 ara hopTx=33406 hopRx=33016 ackedHops=33016 macDrops=367 reinjected=366 macTerminal=1 macLost=367 queue=0 hopLoss=390 overlap=0 unackedRx=0
+##DROPID## 5 ara hopTx=33406 hopRx=33016 ackedHops=33016 macDrops=367 reinjected=366 macTerminal=1 macLost=367 queue=0 hopLoss=390 overlap=0 unackedRx=0 recovered=389 recoveredPkts=378 delivered=7990 termMac=1 termRoute=0 termTtl=173 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag ara seed=5 pdr=97.87 firstDeliveryS=6.00 ctrlTx=20512 setupMedS=1.06 setupMaxS=3.02 flowsNoDelivery=0
 ##RUN## 5 ara 97.9 34.4 1068.5 6.53 2.57 46.86 2.5 5.5 1.4510
 ##AIR## 5 ara 54.301 606.950 389.734 2.3355
 ##ENERGY## 5 ara 36912.437 4.619829 9.0231e-03 0.243
 ##GOODPUT## 5 ara 4.545
 ##ROUTE## 5 ara 1.0552 3.0205 0 0.10388 1.000 829 2.7946 2.7946
-##DROPID## 6 ara hopTx=28750 hopRx=28379 ackedHops=28379 macDrops=350 reinjected=344 macTerminal=6 macLost=350 queue=0 hopLoss=371 overlap=0 unackedRx=0
+##DROPID## 6 ara hopTx=28750 hopRx=28379 ackedHops=28379 macDrops=350 reinjected=344 macTerminal=6 macLost=350 queue=0 hopLoss=371 overlap=0 unackedRx=0 recovered=365 recoveredPkts=357 delivered=8027 termMac=6 termRoute=0 termTtl=121 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag ara seed=6 pdr=98.44 firstDeliveryS=28.58 ctrlTx=19336 setupMedS=1.06 setupMaxS=2.07 flowsNoDelivery=0
 ##RUN## 6 ara 98.4 33.0 1065.5 6.56 2.41 46.39 1.5 7.5 1.3615
 ##AIR## 6 ara 48.541 552.184 352.839 2.1190
 ##ENERGY## 6 ara 36888.699 4.595577 8.9757e-03 0.260
 ##GOODPUT## 6 ara 4.566
 ##ROUTE## 6 ara 1.0567 2.0715 0 0.09916 1.000 795 2.6138 2.6138
-##DROPID## 7 ara hopTx=24509 hopRx=24206 ackedHops=24206 macDrops=291 reinjected=291 macTerminal=0 macLost=291 queue=0 hopLoss=303 overlap=0 unackedRx=0
+##DROPID## 7 ara hopTx=24509 hopRx=24206 ackedHops=24206 macDrops=291 reinjected=291 macTerminal=0 macLost=291 queue=0 hopLoss=303 overlap=0 unackedRx=0 recovered=303 recoveredPkts=298 delivered=8010 termMac=0 termRoute=0 termTtl=75 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag ara seed=7 pdr=99.07 firstDeliveryS=23.60 ctrlTx=16377 setupMedS=1.08 setupMaxS=2.06 flowsNoDelivery=0
 ##RUN## 7 ara 99.1 24.9 1057.5 6.55 2.04 37.25 1.5 3.5 1.1556
 ##AIR## 7 ara 40.970 469.631 303.596 1.8093
 ##ENERGY## 7 ara 36872.530 4.603312 8.9908e-03 0.209
 ##GOODPUT## 7 ara 4.557
 ##ROUTE## 7 ara 1.0756 2.0601 0 0.07938 1.000 635 2.4605 2.4605
-##DROPID## 8 ara hopTx=29049 hopRx=28663 ackedHops=28662 macDrops=373 reinjected=369 macTerminal=4 macLost=372 queue=0 hopLoss=386 overlap=0 unackedRx=1
+##DROPID## 8 ara hopTx=29049 hopRx=28663 ackedHops=28662 macDrops=373 reinjected=369 macTerminal=4 macLost=372 queue=0 hopLoss=386 overlap=0 unackedRx=1 recovered=383 recoveredPkts=377 delivered=7814 termMac=4 termRoute=40 termTtl=138 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag ara seed=8 pdr=97.72 firstDeliveryS=16.25 ctrlTx=21167 setupMedS=2.01 setupMaxS=2.03 flowsNoDelivery=0
 ##RUN## 8 ara 97.7 33.3 1071.5 6.39 2.71 48.44 1.5 5.5 1.5311
 ##AIR## 8 ara 50.654 562.653 361.771 2.1668
 ##ENERGY## 8 ara 36893.400 4.721449 9.2216e-03 0.229
 ##GOODPUT## 8 ara 4.445
 ##ROUTE## 8 ara 2.0082 2.0301 0 0.10482 1.000 818 2.5738 2.5738
-##DROPID## 9 ara hopTx=28800 hopRx=28486 ackedHops=28486 macDrops=286 reinjected=279 macTerminal=7 macLost=286 queue=0 hopLoss=314 overlap=0 unackedRx=0
+##DROPID## 9 ara hopTx=28800 hopRx=28486 ackedHops=28486 macDrops=286 reinjected=279 macTerminal=7 macLost=286 queue=0 hopLoss=314 overlap=0 unackedRx=0 recovered=307 recoveredPkts=297 delivered=8183 termMac=7 termRoute=0 termTtl=128 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag ara seed=9 pdr=98.38 firstDeliveryS=5.48 ctrlTx=16877 setupMedS=2.01 setupMaxS=6.08 flowsNoDelivery=0
 ##RUN## 9 ara 98.4 32.7 1069.5 6.69 2.06 41.23 1.5 4.5 1.1657
 ##AIR## 9 ara 45.897 528.073 339.147 2.0291
 ##ENERGY## 9 ara 36890.522 4.508190 8.8051e-03 0.185
 ##GOODPUT## 9 ara 4.655
 ##ROUTE## 9 ara 2.0091 6.0836 0 0.07977 1.000 652 2.5159 2.5159
-##DROPID## 10 ara hopTx=23447 hopRx=23159 ackedHops=23159 macDrops=269 reinjected=269 macTerminal=0 macLost=269 queue=0 hopLoss=288 overlap=0 unackedRx=0
+##DROPID## 10 ara hopTx=23447 hopRx=23159 ackedHops=23159 macDrops=269 reinjected=269 macTerminal=0 macLost=269 queue=0 hopLoss=288 overlap=0 unackedRx=0 recovered=288 recoveredPkts=281 delivered=7647 termMac=0 termRoute=0 termTtl=75 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag ara seed=10 pdr=99.03 firstDeliveryS=19.62 ctrlTx=15815 setupMedS=2.01 setupMaxS=2.04 flowsNoDelivery=0
 ##RUN## 10 ara 99.0 54.3 1090.5 6.25 2.07 47.66 1.5 4.5 1.1689
 ##AIR## 10 ara 39.443 465.145 302.418 1.7933
@@ -252,4 +252,4 @@ aodv            89.6       25.7        417.5         5.88   49.39       40.26   
 # reorder ara ratio=0.0021 ratioWorstFlow=0.0062 extentMean=1.98 extentMax=4.80 bufMax=3.50
 # reorder aodv ratio=0.0004 ratioWorstFlow=0.0018 extentMean=1.07 extentMax=1.30 bufMax=1.20
 ##ARGS## anthocnet-compare --scenario=paper --runs=10 --nNodes=50 --time=900 --areaX=1500 --areaY=300 --speed=10 --pause=30 --flows=10 --diag --protocols=ara,aodv
-##PROV## commit=18714f207c0d8ba7229fedf665326be77dd410c7 ref=main run_id=40695368847 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=anthocnet-compare
+##PROV## commit=34f136bd4a5c267080d1e5a9548962398f6c86cc ref=main run_id=40872858823 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=anthocnet-compare

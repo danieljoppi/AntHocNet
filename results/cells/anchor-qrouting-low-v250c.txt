@@ -1,4 +1,4 @@
-# v250c campaign anchor-qrouting-low-v250c: 1 run(s): 40698326179 (arms/anchor-qrouting-low); ref main
+# v250c campaign anchor-qrouting-low-v250c: 1 run(s): 40872971539 (arms/anchor-qrouting-low); ref main
 [0/2] Re-checking globbed directories...
 ninja: no work to do.
 ##CONFIG## scenario= nNodes=36 time=300 runs=10 firstRun=1 areaX=600 areaY=600 speed=5 pause=1000 range=175 propagation=range mobility=rwp transport=udp flows=10 cbrBps=2048 offTime=0 rateManager=constant2 protocols=qrouting,oracle
@@ -54,70 +54,70 @@ ninja: no work to do.
 ##CONFIG## attr LinkMetric=classic
 ##CONFIG## attr SinrCriticalDb=17
 ##CONFIG## attr SinrPenaltyCost=3
-##DROPID## 1 qrouting hopTx=37973 hopRx=37968 ackedHops=37968 macDrops=1 reinjected=1 macTerminal=0 macLost=1 queue=0 hopLoss=5 overlap=0 unackedRx=0
+##DROPID## 1 qrouting hopTx=37973 hopRx=37968 ackedHops=37968 macDrops=1 reinjected=1 macTerminal=0 macLost=1 queue=0 hopLoss=5 overlap=0 unackedRx=0 recovered=5 recoveredPkts=4 delivered=11841 termMac=0 termRoute=0 termTtl=4 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag qrouting seed=1 pdr=99.97 firstDeliveryS=1.02 ctrlTx=48853 setupMedS=0.29 setupMaxS=1.33 flowsNoDelivery=0
 ##RUN## 1 qrouting 100.0 7.1 15.5 29.05 4.13 1.68 5.5 11.5 2.3319
 ##AIR## 1 qrouting 77.294 318.232 222.763 5.7249
 ##ENERGY## 1 qrouting 8902.992 0.751878 1.4685e-03 1.037
 ##GOODPUT## 1 qrouting 20.209
 ##ROUTE## 1 qrouting 0.2886 1.3258 0 0.13718 0.250 1623 3.1853 3.1853
-##DROPID## 2 qrouting hopTx=41804 hopRx=41796 ackedHops=41796 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=8 overlap=0 unackedRx=0
+##DROPID## 2 qrouting hopTx=41804 hopRx=41796 ackedHops=41796 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=8 overlap=0 unackedRx=0 recovered=8 recoveredPkts=7 delivered=11828 termMac=0 termRoute=0 termTtl=1 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag qrouting seed=2 pdr=99.99 firstDeliveryS=2.21 ctrlTx=52593 setupMedS=0.30 setupMaxS=2.06 flowsNoDelivery=0
 ##RUN## 2 qrouting 100.0 8.6 24.5 29.02 4.45 2.99 6.5 14.5 2.5132
 ##AIR## 2 qrouting 85.860 356.950 255.515 6.4660
 ##ENERGY## 2 qrouting 8911.842 0.753453 1.4716e-03 1.025
 ##GOODPUT## 2 qrouting 20.186
 ##ROUTE## 2 qrouting 0.2998 2.0568 0 0.07201 0.250 851 3.5289 3.5289
-##DROPID## 3 qrouting hopTx=45251 hopRx=45171 ackedHops=45171 macDrops=1 reinjected=1 macTerminal=0 macLost=1 queue=0 hopLoss=80 overlap=-1 unackedRx=0
+##DROPID## 3 qrouting hopTx=45251 hopRx=45171 ackedHops=45171 macDrops=1 reinjected=1 macTerminal=0 macLost=1 queue=0 hopLoss=80 overlap=-1 unackedRx=0 recovered=79 recoveredPkts=17 delivered=11868 termMac=0 termRoute=0 termTtl=14 termOther=0 termTx=1 termAtNode=0 unseen=0
 # diag qrouting seed=3 pdr=99.87 firstDeliveryS=0.63 ctrlTx=56073 setupMedS=0.55 setupMaxS=2.34 flowsNoDelivery=0
 ##RUN## 3 qrouting 99.9 8.4 27.5 29.12 4.72 2.44 6.5 16.5 2.6705
 ##AIR## 3 qrouting 90.965 377.910 271.231 6.8528
 ##ENERGY## 3 qrouting 8918.038 0.751436 1.4676e-03 0.839
 ##GOODPUT## 3 qrouting 20.255
 ##ROUTE## 3 qrouting 0.5471 2.3414 0 0.08787 0.250 1042 3.7320 3.7320
-##DROPID## 4 qrouting hopTx=50748 hopRx=50742 ackedHops=50742 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=6 overlap=0 unackedRx=0
+##DROPID## 4 qrouting hopTx=50748 hopRx=50742 ackedHops=50742 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=6 overlap=0 unackedRx=0 recovered=6 recoveredPkts=3 delivered=11817 termMac=0 termRoute=0 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag qrouting seed=4 pdr=100.00 firstDeliveryS=1.72 ctrlTx=61531 setupMedS=0.36 setupMaxS=0.51 flowsNoDelivery=0
 ##RUN## 4 qrouting 100.0 9.3 18.5 28.99 5.21 2.74 7.5 15.5 2.9431
 ##AIR## 4 qrouting 100.763 412.703 302.013 7.5507
 ##ENERGY## 4 qrouting 8922.175 0.755029 1.4747e-03 1.367
 ##GOODPUT## 4 qrouting 20.168
 ##ROUTE## 4 qrouting 0.3555 0.5067 0 0.27662 0.250 3266 4.2945 4.2945
-##DROPID## 5 qrouting hopTx=39654 hopRx=39652 ackedHops=39652 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=2 overlap=0 unackedRx=0
+##DROPID## 5 qrouting hopTx=39654 hopRx=39652 ackedHops=39652 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=2 overlap=0 unackedRx=0 recovered=2 recoveredPkts=2 delivered=11860 termMac=0 termRoute=0 termTtl=4 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag qrouting seed=5 pdr=99.97 firstDeliveryS=0.96 ctrlTx=50494 setupMedS=0.26 setupMaxS=1.27 flowsNoDelivery=0
 ##RUN## 5 qrouting 100.0 7.1 22.5 29.10 4.26 1.84 4.5 18.5 2.4064
 ##AIR## 5 qrouting 80.624 344.679 242.220 6.1808
 ##ENERGY## 5 qrouting 8910.420 0.751300 1.4674e-03 0.733
 ##GOODPUT## 5 qrouting 20.241
 ##ROUTE## 5 qrouting 0.2555 1.2660 0 0.05072 0.250 601 3.3219 3.3219
-##DROPID## 6 qrouting hopTx=34265 hopRx=34263 ackedHops=34263 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=2 overlap=0 unackedRx=0
+##DROPID## 6 qrouting hopTx=34265 hopRx=34263 ackedHops=34263 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=2 overlap=0 unackedRx=0 recovered=2 recoveredPkts=2 delivered=11862 termMac=0 termRoute=0 termTtl=1 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag qrouting seed=6 pdr=99.99 firstDeliveryS=0.99 ctrlTx=45087 setupMedS=0.32 setupMaxS=1.01 flowsNoDelivery=0
 ##RUN## 6 qrouting 100.0 6.4 13.5 29.10 3.80 3.53 3.5 9.5 2.1484
 ##AIR## 6 qrouting 70.440 402.292 282.202 6.9901
 ##ENERGY## 6 qrouting 8912.223 0.751326 1.4674e-03 1.108
 ##GOODPUT## 6 qrouting 20.244
 ##ROUTE## 6 qrouting 0.3173 1.0076 0 0.26789 0.250 3175 2.8832 2.8832
-##DROPID## 7 qrouting hopTx=36544 hopRx=36532 ackedHops=36532 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=12 overlap=0 unackedRx=0
+##DROPID## 7 qrouting hopTx=36544 hopRx=36532 ackedHops=36532 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=12 overlap=0 unackedRx=0 recovered=12 recoveredPkts=9 delivered=11851 termMac=0 termRoute=0 termTtl=3 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag qrouting seed=7 pdr=99.97 firstDeliveryS=0.89 ctrlTx=47345 setupMedS=0.27 setupMaxS=1.48 flowsNoDelivery=0
 ##RUN## 7 qrouting 100.0 6.8 14.5 29.07 4.00 1.86 6.5 11.5 2.2581
 ##AIR## 7 qrouting 74.660 320.227 225.632 5.7455
 ##ENERGY## 7 qrouting 8902.167 0.751174 1.4671e-03 0.940
 ##GOODPUT## 7 qrouting 20.226
 ##ROUTE## 7 qrouting 0.2687 1.4827 0 0.08800 0.250 1042 3.0674 3.0674
-##DROPID## 8 qrouting hopTx=41609 hopRx=41609 ackedHops=41609 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=0 overlap=0 unackedRx=0
+##DROPID## 8 qrouting hopTx=41609 hopRx=41609 ackedHops=41609 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=0 overlap=0 unackedRx=0 recovered=0 recoveredPkts=0 delivered=11846 termMac=0 termRoute=0 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag qrouting seed=8 pdr=100.00 firstDeliveryS=0.81 ctrlTx=52406 setupMedS=0.28 setupMaxS=0.73 flowsNoDelivery=0
 ##RUN## 8 qrouting 100.0 6.8 13.5 29.06 4.42 1.14 6.5 11.5 2.5005
 ##AIR## 8 qrouting 83.706 361.183 256.104 6.4907
 ##ENERGY## 8 qrouting 8911.764 0.752302 1.4693e-03 1.100
 ##GOODPUT## 8 qrouting 20.217
 ##ROUTE## 8 qrouting 0.2772 0.7280 0 0.18892 0.250 2236 3.5125 3.5125
-##DROPID## 9 qrouting hopTx=47632 hopRx=47630 ackedHops=47630 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=2 overlap=0 unackedRx=0
+##DROPID## 9 qrouting hopTx=47632 hopRx=47630 ackedHops=47630 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=2 overlap=0 unackedRx=0 recovered=2 recoveredPkts=2 delivered=11881 termMac=0 termRoute=0 termTtl=1 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag qrouting seed=9 pdr=99.99 firstDeliveryS=0.63 ctrlTx=58434 setupMedS=0.51 setupMaxS=0.96 flowsNoDelivery=0
 ##RUN## 9 qrouting 100.0 8.8 20.5 29.15 4.92 1.98 7.5 17.5 2.7799
 ##AIR## 9 qrouting 96.911 432.954 313.030 7.8046
 ##ENERGY## 9 qrouting 8924.399 0.751149 1.4671e-03 1.473
 ##GOODPUT## 9 qrouting 20.277
 ##ROUTE## 9 qrouting 0.5088 0.9642 0 0.07876 0.250 935 4.0037 4.0037
-##DROPID## 10 qrouting hopTx=30248 hopRx=30246 ackedHops=30246 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=2 overlap=0 unackedRx=0
+##DROPID## 10 qrouting hopTx=30248 hopRx=30246 ackedHops=30246 macDrops=0 reinjected=0 macTerminal=0 macLost=0 queue=0 hopLoss=2 overlap=0 unackedRx=0 recovered=2 recoveredPkts=2 delivered=11815 termMac=0 termRoute=0 termTtl=1 termOther=0 termTx=0 termAtNode=0 unseen=0
 # diag qrouting seed=10 pdr=99.99 firstDeliveryS=0.77 ctrlTx=41150 setupMedS=0.27 setupMaxS=0.82 flowsNoDelivery=0
 ##RUN## 10 qrouting 100.0 4.8 10.5 28.99 3.48 1.23 2.5 9.5 1.9686
 ##AIR## 10 qrouting 63.040 230.516 158.031 4.1814
@@ -262,4 +262,4 @@ oracle          99.6        2.8          5.3        28.97    0.00        0.18   
 # reorder qrouting ratio=0.0006 ratioWorstFlow=0.0031 extentMean=3.72 extentMax=7.50 bufMax=6.50
 # reorder oracle ratio=0.0000 ratioWorstFlow=0.0000 extentMean=0.00 extentMax=0.00 bufMax=0.00
 ##ARGS## anthocnet-compare --runs=10 --nNodes=36 --time=300 --areaX=600 --areaY=600 --range=175 --pause=1000 --flows=10 --cbrBps=2048 --diag --protocols=qrouting,oracle
-##PROV## commit=18714f207c0d8ba7229fedf665326be77dd410c7 ref=main run_id=40698326179 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=anthocnet-compare
+##PROV## commit=34f136bd4a5c267080d1e5a9548962398f6c86cc ref=main run_id=40872971539 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=anthocnet-compare
