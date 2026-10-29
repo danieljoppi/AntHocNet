@@ -264,6 +264,11 @@ DROPID_LINE = re.compile(
 DROPID_REINJ_FIELDS = re.compile(
     r"^\s*##DROPID##\s+(\d+)\s+([a-z][\w-]*)\s+.*\bmacDrops=(\d+)\b"
     r".*\breinjected=(\d+)\b.*\bunackedRx=(-?\d+)\b")
+# #761: the adaptive arms' per-packet terminal-fate tail (ara/termite/qrouting
+# only). `unseen` is offered minus every partition class, so it can only go
+# negative if one packet was booked in two classes.
+DROPID_FATE = re.compile(
+    r"^\s*##DROPID##\s+(\d+)\s+([a-z][\w-]*)\s+.*\bunseen=(-?\d+)\b")
 # #386: re-injection identity/fate, one row per (seed, anthocnet) on UDP cells.
 #   ##REINJ## <seed> <proto> events=.. parsed=.. unparsedIcmp=..
 #     unparsedOther=.. ofDelivered=.. pkts=.. pktsDelivBefore=..
@@ -1746,6 +1751,14 @@ def check_drop_identity(path):
         return
     worst = {}
     for line in text.splitlines():
+        # #761: the per-packet partition must not exceed the offered packets.
+        fm = DROPID_FATE.match(line)
+        if fm and int(fm.group(3)) < 0:
+            report("FAIL", f"{os.path.basename(path)}/{fm.group(2)}: seed "
+                           f"{fm.group(1)} per-packet fate partition exceeds "
+                           f"the offered packets (unseen={fm.group(3)}) — a "
+                           "packet was booked under two terminal fates, so "
+                           "the drop_* family is double-counting (#761)")
         m = DROPID_LINE.match(line)
         if not m:
             continue

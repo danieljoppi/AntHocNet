@@ -1425,6 +1425,64 @@ def _dropid_corrected_residual_quiet():
            f"the corrected residual was still flagged as overlapping\n{out}")
 
 
+@case("#761 an adaptive-arm fate tail with unseen=0 stays quiet")
+def _dropid_fate_clean_quiet():
+    # Verbatim 120 s grid-rwp-nakagami seed-1 termite row (local build).
+    row = ("##DROPID## 1 termite hopTx=76721 hopRx=28718 ackedHops=24221 "
+           "macDrops=9946 reinjected=8175 macTerminal=1771 macLost=5449 "
+           "queue=0 hopLoss=48003 overlap=-474 unackedRx=4497 recovered=47991 "
+           "recoveredPkts=1206 delivered=759 termMac=280 termRoute=18 "
+           "termTtl=58 termOther=0 termTx=474 termAtNode=0 unseen=0\n")
+    _levels, out = run_cell(ISL_CELL + row)
+    expect("fate partition" not in out, "dropid-fate-clean",
+           f"a coherent per-packet partition was flagged\n{out}")
+
+
+@case("#761 a negative unseen (a packet booked twice) FAILs")
+def _dropid_fate_double_fails():
+    row = ("##DROPID## 1 ara hopTx=3378 hopRx=3246 ackedHops=3171 macDrops=85 "
+           "reinjected=58 macTerminal=27 macLost=10 queue=0 hopLoss=132 "
+           "overlap=0 unackedRx=75 recovered=180 recoveredPkts=110 "
+           "delivered=1351 termMac=3 termRoute=165 termTtl=6 termOther=0 "
+           "termTx=0 termAtNode=64 unseen=-12\n")
+    levels, out = run_cell(ISL_CELL + row)
+    expect("FAIL" in levels and "fate partition exceeds" in out
+           and "unseen=-12" in out, "dropid-fate-double",
+           f"a double-booked partition was not failed\n{out}")
+
+
+# #761 regression: grid-rwp-nakagami seed 1, 900 s, termite alone, on a local
+# ns-3.42 build of the fix (the base reproduced the committed v250c seed-1
+# counters byte for byte). Before the per-packet book the same seed read
+# mac 166.32 + chan 188.87 (sum 405.39); after it, the identity closes.
+TERMITE_761 = """\
+##DROPID## 1 termite hopTx=517332 hopRx=202400 ackedHops=151167 macDrops=131344 reinjected=105353 macTerminal=25991 macLost=80111 queue=0 hopLoss=314932 overlap=-4567 unackedRx=51233 recovered=310659 recoveredPkts=12418 delivered=5902 termMac=4857 termRoute=86 termTtl=215 termOther=0 termTx=4567 termAtNode=0 unseen=0
+##RUN## 1 termite 37.3 1676.5 11117.5 4.77 0.81 1838.96 inf inf 0.4563
+AntHocNet protocol comparison (mean of 1 run(s))
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes
+-----------------------------------------------------------------------------------------------------------------
+termite         37.3     1676.5      11117.5         4.77    0.81     1838.96         inf         inf       0.456
+# drops termite pdr=37.33 route=0.55 queue=0.00 mac=31.08 chan=29.23 ttl=1.38 sum=99.56 other=0.00 [route: setup=- reconv=- repair=-]
+"""
+TERMITE_761_BEFORE = (
+    "# drops termite pdr=37.33 route=1.54 queue=0.00 mac=166.32 chan=188.87 "
+    "ttl=11.32 sum=405.39 other=0.00 [route: setup=- reconv=- repair=-]")
+
+
+@case("#761 the termite drop book closes per packet; the event book FAILed")
+def _termite_761():
+    _levels, out = run_cell(TERMITE_761)
+    expect("do not account" not in out and "drop causes off" not in out
+           and "outside [0,100]" not in out and "fate partition" not in out,
+           "termite-761-closes", f"the per-packet book did not close\n{out}")
+    after = TERMITE_761.splitlines()[-1]
+    _levels, out = run_cell(TERMITE_761.replace(after, TERMITE_761_BEFORE))
+    expect("drop_mac_pct 166.32 outside [0,100]" in out
+           and "do not account for the offered packets" in out,
+           "termite-761-before", f"the event book was not failed\n{out}")
+
+
 @case("#377 a cell with no ##DROPID## rows is not flagged")
 def _dropid_absent_quiet():
     # TCP cells and every pre-#377 run carry no such row; absence is not a
