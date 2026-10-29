@@ -182,5 +182,6 @@ nav:
           - adr/0024-per-neighbour-link-quality-port.md
           - adr/0025-kinematics-port-absent-when-unknown.md
           - adr/0026-baselines-are-family-native.md
+          - adr/0027-the-comparison-harness-is-protocol-agnostic.md
 not_in_nav: |
   /places/search.md

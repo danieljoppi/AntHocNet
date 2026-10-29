@@ -1,0 +1,233 @@
+# ADR-0027: The comparison harness is a protocol-agnostic module
+
+- **Status:** Accepted (maintainer request 2026-10-29, epic [#764](https://github.com/danieljoppi/AntHocNet/issues/764); decides [#765](https://github.com/danieljoppi/AntHocNet/issues/765))
+- **Date:** 2026-10-29
+- **Builds on:** [ADR-0023](0023-one-core-one-simulator-adapter.md) (one simulator), [ADR-0026](0026-baselines-are-family-native.md) (family-native baselines)
+
+## Context
+
+`anthocnet-compare` produces every MANET-family number in the corpus. It runs
+several routing protocols ("arms") on identical seeds and emits per-seed
+marker lines that pair across arms ([comparison-harness.md](../comparison-harness.md)).
+Outside developers want to use it for their own protocols: an undergraduate
+asked on [#589](https://github.com/danieljoppi/AntHocNet/issues/589). The
+maintainer asked for it to be agnostic and packaged on its own.
+
+Three facts stand in the way.
+
+**1. It lives inside AntHocNet.** It is one 5,083-line example in
+`ns3/anthocnet/examples/` and links `libanthocnet` and every comparison
+module. It cannot build without AntHocNet.
+
+**2. It names every arm.** Counted on `main` at v2.5.0, the harness branches
+on the protocol name in about 25 places:
+
+| kind of special case | where (`anthocnet-compare.cc`, v2.5.0) | arms |
+|---|---|---|
+| devices instead of ad-hoc Wi-Fi | mesh devices, mesh stream offset, ARP prefill (≈ lines 1788, 1941, 1965, 2489) | hwmp |
+| routing install | the `proto == …` chain (≈ 2265) | all |
+| post-stack install | GPSR's UDP re-wiring (2329); the energy probe (2318) | gpsr/gpcr/gpsr3d; anthocnet |
+| stream pinning | the second `proto == …` chain (≈ 2344) | all |
+| trace connections | MAC re-injection and its skip trace (2414); ant Tx/Rx tallies (2727); the pending-queue tracker (2437); mesh management frames (2465) | anthocnet; dsdv/aodv; hwmp |
+| offered-load corrections | packets refused at the source (2866, 2880) | oracle, olsr |
+| extra output | `##REINJ##`, `##HOLD##` and the ant tallies (3143, 3375, 3551); `# hwmp` (2894); `pqSilent`/`pqEcb` appended to `##DROPID##` (3344); `##ORACLE##` (3675) | anthocnet; hwmp; dsdv/aodv; oracle |
+| self-checks | the oracle must put nothing on the wire (3675) | oracle |
+| replay trace | `--vizTrace` (2748) | anthocnet |
+
+**3. Adding an arm is a scavenger hunt.** It means editing three places in
+the `.cc`, the help literal, the CMake link list, the module lists and
+`check-determinism.sh`'s alternation.
+`tools/checks/check-allowlists.sh` ([#435](https://github.com/danieljoppi/AntHocNet/issues/435))
+exists only to catch the edits people forget.
+
+The arms themselves are already separable. The v2.5.0 `adaptive` module links
+only stock ns-3.
+
+## Decision
+
+**The harness becomes its own ns-3 module, `routing-bench`, which links only
+stock ns-3 and names no arm. Each arm reaches it through one registration
+function in the arm's own module. Arm modules depend on `routing-bench`;
+`routing-bench` depends on none of them.**
+
+### 1. The module boundary
+
+`ns3/routing-bench/` (`LIBNAME routing-bench`) holds everything that is the
+same for every arm:
+
+- the scenario presets;
+- mobility, channels and buildings;
+- traffic (CBR, TCP, `--flowsFile`);
+- stream pinning;
+- FlowMonitor and the harness's trace sinks;
+- the drop book, route stability and the identity-matched set;
+- energy accounting;
+- the marker output.
+
+Its program is `routing-compare`. The stock ns-3 arms (`aodv`, `olsr`,
+`dsdv`, `hwmp`) register from inside `routing-bench`, so it is useful alone.
+
+The `anthocnet` module keeps no harness code. `isl-grid` and `leo-walker` stay
+where they are for now ([#773](https://github.com/danieljoppi/AntHocNet/issues/773)).
+
+### 2. The arm contract
+
+An arm is a class, instantiated fresh for every (seed, arm) run, as every
+helper already is. The oracle owns per-run ground truth, so state must not
+leak between runs. Every hook except the first three is optional, and the
+default does nothing:
+
+```cpp
+namespace ns3 { namespace bench {
+
+class Arm : public SimpleRefCount<Arm> {
+  public:
+    virtual ~Arm() = default;
+    virtual std::string Name() const = 0;      // "--protocols" token
+    virtual void InstallRouting(InternetStackHelper& internet, RunContext& run) = 0;
+    virtual int64_t AssignStreams(RunContext& run, int64_t stream) = 0;  // count taken
+
+    virtual bool ProvidesDevices() const { return false; }                 // hwmp
+    virtual NetDeviceContainer InstallDevices(RunContext& run);           // if ProvidesDevices
+    virtual void AfterStack(RunContext& run) {}            // gpsr re-wiring, energy probe, ARP prefill
+    virtual void ConnectTraces(RunContext& run, Measurement& m) {}   // re-injection, ant tallies, pq, mesh frames
+    virtual void AdjustCounts(RunContext& run, RunCounts& c) {}      // source refusals (oracle, olsr)
+    virtual void AppendDropId(RunContext& run, std::ostream& line) {} // extra ##DROPID## fields (pq)
+    virtual void EmitDiagnostics(RunContext& run, std::ostream& out) {} // ##REINJ##, ##HOLD##, ##ORACLE##, # hwmp
+    virtual void Check(RunContext& run, const RunCounts& c) {}       // abort on a broken invariant
+    virtual bool SupportsReplay() const { return false; }             // --vizTrace
+};
+
+using ArmFactory = Ptr<Arm> (*)();
+void RegisterArm(const std::string& name, const std::string& summary, ArmFactory make);
+
+}}  // namespace ns3::bench
+```
+
+`RunContext` carries the run's scenario parameters, nodes, devices, channel,
+seed and stream base, plus the `--diag`/`--qdiag` switches. `Measurement` is
+the harness's sinks, which an arm may feed: data re-injections, control
+packets and bytes, held packets. `RunCounts` is the run's offered, delivered
+and dropped tallies before the marker lines are printed.
+
+Every special case in the table above maps onto exactly one hook. #766 and
+#767 implement the classes. They may rename or add a field, but not change a
+hook's call point.
+
+**Hook order is fixed** and equals today's order of stream draws:
+
+1. channel streams;
+2. `InstallDevices` or the stock ad-hoc Wi-Fi;
+3. the internet stack's own streams;
+4. `InstallRouting`;
+5. `AfterStack`;
+6. `AssignStreams`;
+7. `ConnectTraces`;
+8. the run;
+9. `AdjustCounts`;
+10. the markers, with `AppendDropId`;
+11. `EmitDiagnostics`;
+12. `Check`.
+
+Any reordering changes a stream offset and therefore every number. The
+byte-identical control (#769) is what catches it.
+
+### 3. Registration is explicit, not static initialisation
+
+A module adds its arms in one function:
+
+```cpp
+// ns3/baselines/adaptive/helper/adaptive-arms.cc
+void ns3::bench::RegisterAdaptiveArms() {
+    RegisterArm("ara", "ARA (Günes et al. 2002)", &MakeAraArm);
+    RegisterArm("termite", "Termite (Roth 2005, ch. 4)", &MakeTermiteArm);
+    RegisterArm("qrouting", "tabular Q-routing (Boyan & Littman 1994)", &MakeQRoutingArm);
+}
+```
+
+`routing-compare`'s CMake looks for the arm modules installed beside it. It
+generates `arms-generated.cc`, which calls each present module's function at
+start-up.
+
+Registering from a static initialiser was rejected. ns-3 builds modules as
+shared libraries, and two risks follow:
+
+- a link with `--as-needed` drops a library nothing references by symbol, so
+  its arms would vanish silently;
+- initialisation order across libraries is unspecified.
+
+An explicit call is deterministic and visible in the build.
+
+The `--protocols` help, the `--PrintHelp` arm list, `check-arm-delivery.sh`,
+`check-determinism.sh` and the arm half of `check-allowlists.sh` all derive
+from the registry (#768). An unknown arm still aborts
+([#448](https://github.com/danieljoppi/AntHocNet/issues/448)).
+
+### 4. The compatibility promise
+
+- **No published number moves.** The move is accepted only when one cheap
+  block of every committed v2.4.0/v2.5.0 MANET-family cell reproduces its
+  `##RUN##`, `##ROUTE##` and `##COMMON##` rows byte for byte through
+  `routing-compare` ([#769](https://github.com/danieljoppi/AntHocNet/issues/769)).
+  The precedent is the #746 path control.
+- **The old name keeps working.** `anthocnet-compare` stays as a second
+  program in `routing-bench/examples/`. It takes the same arguments and gives
+  the same output, built from the same sources with every present arm
+  registered. That keeps committed campaign plans, `benchmark-cell` dispatches
+  and `campaign.py`'s legacy translation working.
+
+  It is kept at least through v3.x. Its removal, if ever, is a major-version
+  change announced one release ahead.
+- **The marker lines are an interface.**
+  - Their layout is the one [metrics.md](../benchmarks/metrics.md) defines
+    today.
+  - v2.7.0 versions it with a leading `##HARNESS## version=<n>` line, so the
+    readers refuse layouts they do not know
+    ([#771](https://github.com/danieljoppi/AntHocNet/issues/771)).
+  - Until then, adding a marker or a field is allowed; reordering or removing
+    one is not.
+
+### 5. Out of scope
+
+- **Other simulators.** ADR-0023 stands: the harness is ns-3.
+- **The satellite harnesses.** They come later, on the same registry (#773).
+- **Distribution.** The separate release packages and the readers' Python
+  package are v2.7.0 (#770, #771). This ADR fixes only the boundary they
+  package.
+
+## Consequences
+
+- **An arm becomes a module plus one function.** The wiring checklist in
+  [comparison-harness.md](../comparison-harness.md) shrinks to "register your
+  arm". #435's allowlist gate keeps only the module lists.
+- **AntHocNet becomes one arm among others.** Its diagnostics (`##REINJ##`,
+  `##HOLD##`, the ant tallies, the replay trace) move into its arm class.
+  That is where they belong: they describe AntHocNet, not the comparison.
+- **The harness can ship alone** (v2.7.0, #770), with the stock arms, and the
+  `adaptive` module beside it.
+- **Cost:** a large mechanical move across an ns-3 example that every
+  campaign depends on. The byte-identical control is the gate, and the move
+  lands in reviewable steps: registry (#766), extraction (#767), arm modules
+  (#768), control (#769).
+- **A new dependency edge:** every arm module links `routing-bench`. A user
+  who wants only an arm, for example the `adaptive` protocols in their own
+  program, still gets it. `routing-bench` is small, and the arm's protocol
+  classes do not use it.
+
+## Alternatives considered
+
+- **Keep the monolith and document the wiring.** That is what
+  [comparison-harness.md](../comparison-harness.md) does today. It still
+  needs AntHocNet installed, so it does not let anyone use the harness alone.
+- **Plugins loaded at run time (`dlopen`).** Rejected: it adds a second build
+  and load path per platform. The CMake-generated registration achieves the
+  same "drop a module in and it appears" with nothing to load at run time.
+- **A Python driver that composes ns-3 programs.** Rejected: one binary per
+  arm loses the single-process, same-seed pairing, and duplicates the
+  scenario code in two languages.
+
+## References
+
+- [comparison-harness.md](../comparison-harness.md), [metrics.md](../benchmarks/metrics.md), [methodology.md](../benchmarks/methodology.md)
+- #764 (epic), #766 to #769 (v2.6.0 steps), #770 to #773 (v2.7.0 and later)
+- #352 (pinned streams), #435 (allowlists), #439 (delivery smoke), #448 (unknown arm aborts), #746 (the path-control precedent)

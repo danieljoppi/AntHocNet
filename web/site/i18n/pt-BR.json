@@ -1337,7 +1337,12 @@
     "questIntro": "Rode cada comando no seu ns-3 e cole a saída abaixo. Ela é lida aqui, no seu navegador; nada é enviado. Sem um checkout? A <a href=\"https://github.com/danieljoppi/AntHocNet/releases/latest\">versão publicada</a> tem um tarball pronto para <code>contrib/</code>.",
     "paste": "Cole a saída de <code>make doctor</code> ou de <code>./test.py -s anthocnet</code>",
     "check": "Conferir",
-    "reset": "Recomeçar"
+    "reset": "Recomeçar",
+    "benchTitle": "Traga seu próprio protocolo: o harness de comparação",
+    "benchIntro": "Todo número do Laboratório vem de um único programa ns-3 que roda vários protocolos de roteamento nas mesmas sementes, então cada diferença vem com um intervalo de confiança. Você pode rodá-lo com o seu protocolo: um módulo de roteamento ns-3, ou um braço por salto sobre a base <code>adaptive</code> em cerca de 270 linhas.",
+    "benchNext": "Na v2.6.0: o harness vira <code>routing-bench</code>, um módulo que não nomeia nenhum protocolo. Seu braço se registra sozinho; <code>anthocnet-compare</code> continua funcionando.",
+    "benchLinks": "<a href=\"docs/comparison-harness/\">Leia o guia do harness</a> · <a href=\"docs/adr/0027-the-comparison-harness-is-protocol-agnostic/\">o projeto (ADR-0027)</a>",
+    "benchCmd": "Comando de exemplo"
   },
   "bench": {
     "unavailable": "A bancada não conseguiu carregar os dados dos parâmetros.",

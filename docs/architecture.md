@@ -279,3 +279,8 @@ The adapters do only what is intrinsically simulator-specific:
 - carry out `RouteDecision`s (send/queue/deliver/drop);
 - own the periodic timers (hello, proactive, maintenance);
 - hold the pending-packet queue.
+
+The comparison harness (`anthocnet-compare`) is not part of the adapter: it
+measures the adapter beside other protocols. How to run it and add a protocol
+is in [comparison-harness.md](comparison-harness.md); its planned
+protocol-agnostic form is [ADR-0027](adr/0027-the-comparison-harness-is-protocol-agnostic.md).

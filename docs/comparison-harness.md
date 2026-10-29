@@ -212,7 +212,8 @@ two vendored arms once compiled, passed CI and forwarded nothing
 **Planned** (epic [#764](https://github.com/danieljoppi/AntHocNet/issues/764)):
 
 - **v2.6.0:** the harness becomes a protocol-agnostic ns-3 module,
-  `routing-bench`. Arms register themselves, so adding one edits no harness
+  `routing-bench`
+  ([ADR-0027](adr/0027-the-comparison-harness-is-protocol-agnostic.md)). Arms register themselves, so adding one edits no harness
   source. Every committed cell must reproduce byte for byte.
 - **v2.7.0:** the harness and the `adaptive` arms ship as their own release
   packages, the readers as a Python package, and this guide becomes a
