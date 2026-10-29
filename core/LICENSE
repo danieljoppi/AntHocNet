@@ -1,0 +1,37 @@
+The AntHocNet algorithm core (this directory, core/) is dual-licensed:
+
+    SPDX-License-Identifier: MIT OR GPL-2.0-only
+
+You may use, copy, modify and distribute it under the terms of EITHER the MIT
+License below OR the GNU General Public License version 2 only, at your choice.
+The GPL-2.0 text is the LICENSE file at the root of the AntHocNet repository and
+release bundle (https://github.com/danieljoppi/AntHocNet/blob/main/LICENSE).
+
+The dual licence applies to the core/ directory only, from the first release
+after v2.6.0. Releases up to and including v2.6.0 are GPL-2.0-only. The rest of
+the repository (ns3/, web/, tools/, docs/, ...) is GPL-2.0-only; see
+LICENSING.md and docs/adr/0028-core-is-dual-licensed.md.
+
+-------------------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) 2026 Daniel Henrique Joppi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

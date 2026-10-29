@@ -1,8 +1,9 @@
 # ADR-0028: `core/` is dual-licensed `MIT OR GPL-2.0-only`
 
 - **Status:** Accepted (maintainer decision 2026-10-29; decides
-  [#782](https://github.com/danieljoppi/AntHocNet/issues/782)). Implementation
-  pending: the checklist under [Implementation](#implementation) lands as one PR.
+  [#782](https://github.com/danieljoppi/AntHocNet/issues/782)). Implemented by
+  the PR that closes #782 (checklist under [Implementation](#implementation));
+  takes effect from the first release after v2.6.0.
 - **Date:** 2026-10-29
 - **Amends:** the single repository licence (`LICENSE`, GPL-2.0-only) for the
   `core/` directory only. Every other directory is unchanged.
@@ -41,6 +42,15 @@ The adapters are in the opposite position. `ns3/anthocnet/`,
 licence of their host. `aomdv` and `gpsr` are third-party GPLv2 code (Copyright
 IITP RAS) and **cannot** be relicensed by this project at all.
 
+**Why the repository was GPL in the first place.** Through v1.9.0 the repo
+carried a full NS-2 integration (ADR-0005): files patched into, and built
+inside, the GPL NS-2 tree. Keeping the whole repository on NS-2's licence was
+the simple and correct choice then. ADR-0002 split the algorithm into a
+simulator-free `core/`, and v2.0.0 removed the NS-2 adapter (#307, ADR-0023).
+Since then nothing in `core/` comes from, or is built into, a simulator. The
+licence was inherited from a constraint that no longer applies to this
+directory.
+
 ## Decision
 
 **`core/` is licensed `MIT OR GPL-2.0-only`, recipient's choice. Every other
@@ -48,18 +58,24 @@ directory stays GPL-2.0-only.**
 
 1. **Scope.** Every tracked file under `core/` is covered, including
    `src/`, `include/`, `tests/` (and `tests/fuzz_corpus/`), `bench/` and
-   `CMakeLists.txt`. The SPDX line becomes
-   `SPDX-License-Identifier: MIT OR GPL-2.0-only`.
+   the `CMakeLists.txt` files. Every C++ file carries
+   `SPDX-License-Identifier: MIT OR GPL-2.0-only`. The build files and the
+   binary fuzz corpus carry no header, as they never did; `core/LICENSE`
+   covers them.
 2. **Licence texts.** `core/LICENSE` holds the MIT text and says that the
    GPL-2.0 option is the root `LICENSE`. The root `LICENSE` stays the stock GPL
-   text. A short `LICENSING.md` (or a README section) explains which licence
-   applies to which directory.
+   text. `LICENSING.md` at the root maps each directory to its licence.
+   `make install-ns3` (and so the module tarball) copies `core/LICENSE` next
+   to the core sources it lays into `contrib/anthocnet/core/` and
+   `contrib/oracle/core/`.
 3. **One-way dependency, enforced.** GPL code may depend on `core/`, but
    `core/` must never pull GPL-only code in. Golden rule 1 already makes this
-   structural, since `core/` includes nothing from outside `core/`. A CI check
-   makes it explicit: every file under `core/` must carry exactly
-   `MIT OR GPL-2.0-only`, and no `core/` file may include a header from outside
-   `core/` (`ns3/`, `web/`, or a vendored baseline).
+   structural, since `core/` includes nothing from outside `core/`.
+   `docs/tools/check-headers.py` (CI, `lint.yml`) makes it explicit. Every
+   `core/` C++ file must carry exactly `MIT OR GPL-2.0-only`. Its angle
+   includes must be C++ standard-library headers, and its quote includes must
+   resolve to a file under `core/`. So no `ns3/`, `web/` or vendored-baseline
+   header can get in, and neither can a third-party library.
 4. **Contributions.** Contributions to `core/` are accepted under both
    licences. Contributions elsewhere are accepted under GPL-2.0-only, as now.
    `CONTRIBUTING.md` states this per directory.
@@ -97,14 +113,16 @@ directory stays GPL-2.0-only.**
 - **Permanent.** Code released under the MIT option can be used in proprietary
   products, and that grant cannot be withdrawn for the versions that carry it.
   Later versions could drop the MIT option, but the released ones keep it.
-- **Provenance is now a gate, not a courtesy.** Only the copyright holder can
-  add a licence. Before the implementing PR merges:
-  - confirm that every line under `core/` is the maintainer's own, using the
-    **full** history (the agent checkouts are shallow), and that nothing was
-    carried in from third-party GPL code;
-  - in particular, confirm that the "original code" mentioned in
-    `core/include/anthocnet/core/ports.h:31` (the libc `rand()` note) is the
-    maintainer's own pre-core implementation.
+- **Provenance is a gate, not a courtesy.** Only the copyright holder can add
+  a licence. The maintainer confirmed on 2026-10-29 (#782) that every line
+  under `core/` is their own, including the pre-core implementation that
+  `core/include/anthocnet/core/ports.h:31` calls "the original code", and that
+  nothing was carried in from NS-2 or any other third-party code. A spot check
+  of `core/` at the v1.2.0 tag agrees. Every copyright line there is the
+  maintainer's. The only third-party text is citations of the Ducatelle thesis
+  and papers in comments (short quotations of the source the algorithm is
+  built from, not code). Any future core file from someone else needs the same
+  confirmation before it lands.
 - **AI-assisted commits.** Many `core/` commits carry a
   `Co-Authored-By: Claude …` trailer. They do not block relicensing by the
   sole human author: the author can license whatever rights they hold. The copyrightability of
@@ -115,28 +133,31 @@ directory stays GPL-2.0-only.**
   cannot be dual-licensed belongs outside `core/` or is declined.
 - **Tooling learns per-directory licences.** `check-headers.py` still accepts
   any SPDX expression elsewhere, but under `core/` it requires the exact
-  expression from Decision item 1. `CITATION.cff` gets an SPDX expression or a
-  list. The release bundle gate (`tools/release/check-bundle.sh`) checks that
-  both licence texts ship.
+  expression from Decision item 1. `CITATION.cff` lists both SPDX ids, because
+  CFF takes a list, not an expression; the per-directory split is in a comment
+  there and in `LICENSING.md`. The release bundle gate
+  (`tools/release/check-bundle.sh`) checks that `LICENSE`, `LICENSING.md` and
+  `core/LICENSE` all ship.
 - **The adapters are untouched.** This ADR adds no licence option to
   `ns3/`, `web/`, `tools/`, `docs/` or `results/`.
 
 ## Implementation
 
 Tracked in [#782](https://github.com/danieljoppi/AntHocNet/issues/782); one
-`chore:` PR:
+PR:
 
-- [ ] Provenance confirmed on full history (Consequences, above).
-- [ ] SPDX headers under `core/` set to `MIT OR GPL-2.0-only`.
-- [ ] `core/LICENSE` added (MIT text plus a pointer to the root `LICENSE` for the
-      GPL option); a `LICENSING.md` directory map added.
-- [ ] `docs/tools/check-headers.py` requires the dual expression under `core/`
-      (with self-test cases), and a check rejects `core/` includes from outside
-      `core/`.
-- [ ] `CITATION.cff`, the README licence section and badge, and the
+- [x] Provenance confirmed by the maintainer (Consequences, above).
+- [x] SPDX headers on all 62 `core/` C++ files set to `MIT OR GPL-2.0-only`.
+- [x] `core/LICENSE` added (MIT text plus a pointer to the root `LICENSE` for the
+      GPL option); `LICENSING.md` directory map added; `make install-ns3`
+      copies `core/LICENSE` with the core sources.
+- [x] `docs/tools/check-headers.py` requires the dual expression under `core/`
+      and rejects `core/` includes from outside `core/`, with self-test cases
+      for each rule.
+- [x] `CITATION.cff`, the README licence section and badge, and the
       `CONTRIBUTING.md` contribution clause updated.
-- [ ] `tools/release/check-bundle.sh` asserts both licence texts are in the
-      package.
+- [x] `tools/release/check-bundle.sh` asserts the licence texts are in the
+      package; `assemble-bundle.sh` ships `LICENSING.md`.
 
 ## References
 

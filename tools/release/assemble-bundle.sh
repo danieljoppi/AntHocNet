@@ -17,7 +17,7 @@ cd "$(dirname "$0")/../.."
 dest="$OUT/anthocnet-$VER"
 rm -rf "$dest"
 mkdir -p "$dest"
-for f in Makefile README.md LICENSE CHANGELOG.md CITATION.cff VERSION \
+for f in Makefile README.md LICENSE LICENSING.md CHANGELOG.md CITATION.cff VERSION \
          CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md SUPPORT.md CONTEXT.md; do
   [ -e "$f" ] && cp "$f" "$dest/"
 done

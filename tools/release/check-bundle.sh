@@ -6,6 +6,7 @@
 #   - caches and build output: __pycache__, *.pyc, build/ dirs
 #   - a shipped script that reaches into .claude/ (it would break in the package)
 #   - the tools the shipped harness imports (tools/bench/*.py)
+#   - the licence texts (LICENSE, LICENSING.md, core/LICENSE; ADR-0028)
 # It also checks that `git archive` (GitHub's "Source code" downloads, and what
 # Zenodo archives) honours the same exclusions via .gitattributes export-ignore.
 set -uo pipefail
@@ -27,7 +28,8 @@ refs=$(grep -rIlE '\.claude/skills/[^/"'"'"' ]+/[^/"'"'"' ]+\.(py|sh)|"\.claude"
        --include='CMakeLists.txt' --include='Makefile' --exclude-dir=release . 2>/dev/null | head -5)
 [ -n "$refs" ] && bad "shipped code references .claude/ (breaks in the package): $refs"
 for f in tools/bench/stats_util.py tools/bench/bench_parse.py tools/bench/scenario_check.py \
-         tools/bench/pool_runs.py ns3/tools/anchors.yml core/CMakeLists.txt Makefile; do
+         tools/bench/pool_runs.py ns3/tools/anchors.yml core/CMakeLists.txt Makefile \
+         LICENSE LICENSING.md core/LICENSE; do
   [ -e "$f" ] || bad "bundle is missing $f"
 done
 cd - >/dev/null
