@@ -777,6 +777,80 @@ void CountReinjL3Drop(const Ipv4Header& ip, Ptr<const Packet> p, Ipv4L3Protocol:
     }
 }
 
+// --- #761: per-packet terminal fate (adaptive arms + UDP only) ----------------
+// The adaptive arms (ara, termite, qrouting) recover a MAC- or ARP-dropped data
+// packet and re-route it, so one offered packet can be lost on several hops
+// before it is delivered or finally dropped. Every hop-level book above
+// (macDrops, hopLoss, FlowMonitor's per-reason drops) counts loss EVENTS, so on
+// a fading channel each column can exceed 100 % of the offered packets — the
+// identity pdr + route + queue + mac + chan + ttl = 100 assumes one terminal
+// cause per packet. For those arms the drop book is therefore kept per packet:
+// every observable event on a data packet's (flow, seq) key overwrites the
+// key's state, so at end of run the state IS the packet's terminal fate — the
+// last loss not followed by a re-injection. Events, in the order the traces
+// fire them:
+//   L3 "SendOutgoing" (source)   -> AtNode (handed to IP at its source)
+//   L3 "Tx" on a real interface  -> Tx    (on the medium; lost there unless
+//                                           a later event says otherwise)
+//   L3 "Rx" on a real interface  -> AtNode (arrived at a node)
+//   MAC retry-limit drop         -> Mac
+//   Mac/ArpReinject              -> AtNode (recovered: the loss was not
+//                                           terminal; counted in `recovered`)
+//   L3 "Drop"                    -> Route / Ttl / Other by reason
+// The harness's DroppedMpdu hook is connected before the interfaces come up,
+// i.e. before the adapter's own (NotifyInterfaceUp), so a MAC drop's Mac state
+// is always overwritten by the re-injection the same drop triggers. Identity is
+// the (flow, seq) key every other per-packet book uses (see #386 above), so the
+// copies a re-injection duplicates share one fate. Gated on g_fateOn: the other
+// arms never parse anything here and stay byte-identical.
+enum class Fate : uint8_t { Tx, AtNode, Mac, Route, Ttl, Other };
+struct FateInfo {
+    Fate last = Fate::Tx;
+    uint32_t recovered = 0;  // Mac/ArpReinject events on this key
+};
+bool g_fateOn = false;
+std::map<std::pair<Address, uint32_t>, FateInfo> g_fate;
+uint64_t g_fateRecovered = 0;  // recovered loss events (data re-injections)
+
+void FateMark(const Address& flow, uint32_t seq, Fate f) {
+    g_fate[std::make_pair(flow, seq)].last = f;
+}
+void FateMarkIp(Ptr<const Packet> p, Fate f) {
+    Address flow;
+    uint32_t seq = 0;
+    if (ReinjKeyFromIp(p, flow, seq)) FateMark(flow, seq, f);
+}
+void FateRecovered(const Ipv4Header& ip, Ptr<const Packet> p) {
+    Address flow;
+    uint32_t seq = 0;
+    if (!ReinjKeyFromUdp(ip, p, flow, seq)) return;
+    FateInfo& fi = g_fate[std::make_pair(flow, seq)];
+    fi.last = Fate::AtNode;
+    ++fi.recovered;
+    ++g_fateRecovered;
+}
+// The source's own hand-over to IP (L3 "SendOutgoing"): the packet exists at
+// its source node, so one that never reaches a real interface (held for a
+// route until the run stops) reads AtNode rather than unseen.
+void CountFateSend(const Ipv4Header& ip, Ptr<const Packet> p, uint32_t) {
+    Address flow;
+    uint32_t seq = 0;
+    if (ReinjKeyFromUdp(ip, p, flow, seq)) FateMark(flow, seq, Fate::AtNode);
+}
+void CountFateL3Drop(const Ipv4Header& ip, Ptr<const Packet> p, Ipv4L3Protocol::DropReason reason,
+                     Ptr<Ipv4>, uint32_t) {
+    Address flow;
+    uint32_t seq = 0;
+    if (!ReinjKeyFromUdp(ip, p, flow, seq)) return;
+    Fate f = Fate::Other;
+    if (reason == Ipv4L3Protocol::DROP_ROUTE_ERROR || reason == Ipv4L3Protocol::DROP_NO_ROUTE) {
+        f = Fate::Route;
+    } else if (reason == Ipv4L3Protocol::DROP_TTL_EXPIRED) {
+        f = Fate::Ttl;
+    }
+    FateMark(flow, seq, f);
+}
+
 void CountDataHopTx(Ptr<const Packet> p, Ptr<Ipv4> ipv4, uint32_t iface) {
     if (iface != 0 && IsDataIp(p)) {
         ++g_dataHopTx;
@@ -801,6 +875,7 @@ void CountDataHopTx(Ptr<const Packet> p, Ptr<Ipv4> ipv4, uint32_t iface) {
                 if (it != g_reinj.end()) ++it->second.postTx;
             }
         }
+        if (g_fateOn) FateMarkIp(p, Fate::Tx);  // #761
     }
 }
 void CountDataHopRx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
@@ -814,6 +889,7 @@ void CountDataHopRx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t iface) {
                 if (it != g_reinj.end()) ++it->second.postRx;
             }
         }
+        if (g_fateOn) FateMarkIp(p, Fate::AtNode);  // #761
     }
 }
 
@@ -831,11 +907,13 @@ void CountAdaptiveReinject(const Ipv4Header& ip, Ptr<const Packet> p) {
     Ptr<Packet> c = p->Copy();
     c->AddHeader(ip);
     if (IsDataIp(c)) ++g_adaptiveReinjData;
+    if (g_fateOn) FateRecovered(ip, p);  // #761
 }
 void CountAdaptiveArpReinject(const Ipv4Header& ip, Ptr<const Packet> p) {
     Ptr<Packet> c = p->Copy();
     c->AddHeader(ip);
     if (IsDataIp(c)) ++g_adaptiveArpReinjData;
+    if (g_fateOn) FateRecovered(ip, p);  // #761
 }
 
 void CountMacDataDrop(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu) {
@@ -847,6 +925,7 @@ void CountMacDataDrop(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu) {
     pkt->RemoveHeader(llc);
     if (llc.GetType() != 0x0800) return;  // not IPv4
     if (IsDataIp(pkt)) ++g_macDataDrops;
+    if (g_fateOn) FateMarkIp(pkt, Fate::Mac);  // #761
 }
 
 // --- #229: routing-layer pending-queue conservation (dsdv + aodv arms only) --
@@ -1741,6 +1820,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_pqEcbDrops = 0;                                        // #229
     g_dataHopTx = g_dataHopRx = g_macDataDrops = 0;          // #215
     g_adaptiveReinjData = g_adaptiveArpReinjData = 0;        // #563
+    g_fateOn = false;                                        // #761
+    g_fate.clear();                                          // #761
+    g_fateRecovered = 0;                                     // #761
     g_ackedDataHops = 0;                                     // #377
     // #217
     g_hopSum = g_hopCount = 0;
@@ -2296,6 +2378,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         if (!arm) continue;
         arm->TraceConnectWithoutContext("MacReinject", MakeCallback(&CountAdaptiveReinject));
         arm->TraceConnectWithoutContext("ArpReinject", MakeCallback(&CountAdaptiveArpReinject));
+        // #761: per-packet terminal fate, UDP only (the (flow, seq) key does
+        // not exist under TCP — same rule as ##DROPID##).
+        if (P.transport != "tcp") {
+            g_fateOn = true;
+            Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
+            if (l3) {
+                l3->TraceConnectWithoutContext("SendOutgoing", MakeCallback(&CountFateSend));
+                l3->TraceConnectWithoutContext("Drop", MakeCallback(&CountFateL3Drop));
+            }
+        }
     }
 
     // Count routing-control transmissions uniformly at the IP layer. Connect to
@@ -3234,8 +3326,62 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // it.
         const int64_t hopLossN =
             static_cast<int64_t>(g_dataHopTx) - static_cast<int64_t>(g_dataHopRx);
-        const int64_t overlap = static_cast<int64_t>(macLost) + static_cast<int64_t>(dropQueue) +
-                                static_cast<int64_t>(g_adaptiveArpReinjData) - hopLossN;
+        int64_t overlap = static_cast<int64_t>(macLost) + static_cast<int64_t>(dropQueue) +
+                          static_cast<int64_t>(g_adaptiveArpReinjData) - hopLossN;
+        // #761: on the adaptive arms the event books above count a re-routed
+        // packet once per lost hop, so mac/chan/route/ttl are replaced by the
+        // per-packet terminal fates (see the FateInfo block). Partition of the
+        // offered packets:
+        //   delivered (distinct keys at the sink) + termMac + termRoute +
+        //   termTtl + termOther + termTx + termAtNode + unseen = offered
+        // termTx is the channel pool (last seen on the medium); the interface /
+        // qdisc queue drops FlowMonitor reports also last saw the medium, so
+        // they are carved out of it exactly as from hopLoss, and overlap stays
+        // -chan in counts. termAtNode (sat at a node, never seen again: still
+        // queued at the end, or shed without an L3 error callback) is
+        // attributed to no cause — it is the identity's shortfall, never folded
+        // into a column. unseen (offered by FlowMonitor, never seen by any hook)
+        // is 0 when the books agree; negative means a packet was booked twice
+        // (scenario_check FAILs that).
+        uint64_t fDelivered = 0, fMac = 0, fRoute = 0, fTtl = 0, fOther = 0, fTx = 0, fAtNode = 0,
+                 fRecoveredPkts = 0;
+        int64_t fUnseen = 0;
+        if (g_fateOn) {
+            for (const auto& kv : g_rxCount) fDelivered += kv.second.size();
+            for (const auto& kv : g_fate) {
+                if (kv.second.recovered) ++fRecoveredPkts;
+                const auto f = g_rxCount.find(kv.first.first);
+                if (f != g_rxCount.end() && f->second.count(kv.first.second)) continue;
+                switch (kv.second.last) {
+                    case Fate::Mac:
+                        ++fMac;
+                        break;
+                    case Fate::Route:
+                        ++fRoute;
+                        break;
+                    case Fate::Ttl:
+                        ++fTtl;
+                        break;
+                    case Fate::Other:
+                        ++fOther;
+                        break;
+                    case Fate::Tx:
+                        ++fTx;
+                        break;
+                    case Fate::AtNode:
+                        ++fAtNode;
+                        break;
+                }
+            }
+            fUnseen = static_cast<int64_t>(r.txPackets) - static_cast<int64_t>(fDelivered) -
+                      static_cast<int64_t>(fMac + fRoute + fTtl + fOther + fTx + fAtNode);
+            const int64_t chanN = static_cast<int64_t>(fTx) - static_cast<int64_t>(dropQueue);
+            overlap = -chanN;
+            r.dropMacPct = 100.0 * fMac / tx;
+            r.dropRoutePct = 100.0 * fRoute / tx;
+            r.dropTtlPct = 100.0 * fTtl / tx;
+            r.dropChanPct = 100.0 * static_cast<double>(chanN) / tx;
+        }
         // Not emitted under TCP. Since #389 the counters above DO count TCP
         // data segments, but the drop-cause identity itself is unvalidated
         // under TCP — it was closed on per-packet UDP books, and TCP counts
@@ -3256,6 +3402,17 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             // must stay distinguishable from a measured zero.
             if (proto == "dsdv" || proto == "aodv") {
                 std::cout << " pqSilent=" << pqSilent << " pqEcb=" << pqEcb;
+            }
+            // #761: the per-packet terminal-fate partition, appended at the END
+            // and only on the adaptive arms (absence elsewhere, #382 rule).
+            // recovered/recoveredPkts are the losses a re-injection undid, in
+            // events and in distinct packets — never a drop cause.
+            if (g_fateOn) {
+                std::cout << " recovered=" << g_fateRecovered << " recoveredPkts=" << fRecoveredPkts
+                          << " delivered=" << fDelivered << " termMac=" << fMac
+                          << " termRoute=" << fRoute << " termTtl=" << fTtl
+                          << " termOther=" << fOther << " termTx=" << fTx
+                          << " termAtNode=" << fAtNode << " unseen=" << fUnseen;
             }
             std::cout << '\n';
         }

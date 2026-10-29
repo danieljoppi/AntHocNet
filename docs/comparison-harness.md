@@ -122,7 +122,7 @@ pair on top of it.
 | control channel | UDP sockets per interface, unicast and broadcast, on the arm's port. The harness counts it as control traffic automatically |
 | no-route hold | a packet without a next hop waits in a bounded queue (64 packets, 30 s) and is released when the arm learns a route, or dropped as a route drop |
 | previous hop | `PrevHopTag` tells every hop which neighbour sent the packet, which ns-3's `RouteInput` does not |
-| link failure | MAC retry-limit drops and unanswered ARP are turned into `OnLinkFailure(neighbor)`, and the lost data packet is recovered and re-routed. Traces `MacReinject` and `ArpReinject` keep the drop book honest |
+| link failure | MAC retry-limit drops and unanswered ARP are turned into `OnLinkFailure(neighbor)`, and the lost data packet is recovered and re-routed. Traces `MacReinject` and `ArpReinject` keep the drop book honest: an arm that re-routes is booked per packet, by terminal fate ([metrics](benchmarks/metrics.md#per-packet-terminal-fate-on-the-adaptive-arms-761), #761) |
 | randomness | one pinned random stream per node (`AssignStreams`) |
 
 **What the arm implements:**

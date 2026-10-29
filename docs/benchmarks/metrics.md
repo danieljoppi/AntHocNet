@@ -440,7 +440,10 @@ Two limits worth stating:
 ```
 ##DROPID## <seed> <proto> hopTx=.. hopRx=.. ackedHops=.. macDrops=.. \
            reinjected=.. macTerminal=.. macLost=.. queue=.. hopLoss=.. \
-           overlap=.. unackedRx=.. [pqSilent=.. pqEcb=..]
+           overlap=.. unackedRx=.. [pqSilent=.. pqEcb=..] \
+           [recovered=.. recoveredPkts=.. delivered=.. termMac=.. \
+            termRoute=.. termTtl=.. termOther=.. termTx=.. termAtNode=.. \
+            unseen=..]
 ```
 
 Not a metric — the **raw counters behind the drop-cause residual**, one row per
@@ -454,6 +457,11 @@ conservation hook is connected (`pqSilent` = keys the protocol queue swallowed
 with no observable signal; `pqEcb` = aodv queue drops re-attributed from the
 route to the queue column). On the other arms the quantity is unmeasured, and
 per the #382 rule absence — not zero — is the encoding.
+
+The second bracketed tail appears **only on the adaptive arms** (`ara`,
+`termite`, `qrouting`), whose drop book is kept per packet — see
+[Per-packet terminal fate on the adaptive arms](#per-packet-terminal-fate-on-the-adaptive-arms-761)
+below.
 
 `drop_chan_pct` is *inferred, not measured* — it is what is left of `hopLoss`
 after the counted causes are removed — so it is only non-negative while those
@@ -535,6 +543,69 @@ on #63, not something this marker introduces.)
 `scenario_check.py results` WARNs when a cell carries `##DROPID##` rows with
 `overlap > 0`, naming both figures, so the condition is caught by the gate
 rather than by a human noticing a negative percentage.
+
+### Per-packet terminal fate on the adaptive arms (#761)
+
+The adaptive arms (`ara`, `termite`, `qrouting`; `ns3::adaptive::RoutingBase`)
+recover a data packet the MAC or ARP dropped and re-route it (`MacReinject` /
+`ArpReinject`), so one offered packet can be lost on several hops before it is
+delivered or finally dropped. Every book above counts loss **events** —
+`macDrops`, `hopLoss` and FlowMonitor's per-reason drops alike — so on a fading
+channel each column could pass 100 % of the offered packets: the v2.5.0
+campaign's `grid-rwp-nakagami` termite rows read `mac` 162.27 + `chan` 190.26
+(`sum` 403 %), and ara's closed 9 pp high
+([#761](https://github.com/danieljoppi/AntHocNet/issues/761)). The identity
+assumes one terminal cause per packet.
+
+On those arms (UDP only) the harness therefore keeps the drop book **per
+packet**. Each observable event on a data packet's `(flow, seq)` key overwrites
+the key's state, so at the end of the run the state is the packet's terminal
+fate — the last loss not followed by a re-injection:
+
+| event | state |
+|---|---|
+| L3 `SendOutgoing` at the source | at a node |
+| L3 `Tx` on a real interface | on the medium |
+| L3 `Rx` on a real interface | at a node |
+| MAC retry-limit drop | MAC |
+| `MacReinject` / `ArpReinject` | at a node (the loss is **recovered**) |
+| L3 `Drop` | route (`NO_ROUTE`/`ROUTE_ERROR`), TTL, or other |
+
+The columns of an adaptive arm then read, over the undelivered packets:
+`drop_mac_pct` = `termMac`, `drop_route_pct` = `termRoute`, `drop_ttl_pct` =
+`termTtl`, and `drop_chan_pct` = `termTx − queue` (the packets last seen on the
+medium, less the interface/qdisc drops FlowMonitor also books there), so
+`overlap` = `queue − termTx` stays `−drop_chan_pct · tx / 100`.
+`drop_queue_pct` is unchanged. The tail fields:
+
+| field | reads as |
+|---|---|
+| `recovered` | loss events a re-injection undid (data `MacReinject` + `ArpReinject` fires) — never a drop cause |
+| `recoveredPkts` | distinct packets with at least one recovered loss |
+| `delivered` | distinct `(flow, seq)` keys the sinks received |
+| `termMac`, `termRoute`, `termTtl`, `termOther`, `termTx` | undelivered packets by terminal fate |
+| `termAtNode` | undelivered packets last seen sitting at a node: held for a route when the run stopped (the arms hold for up to `MaxQueueTime` = 30 s), or shed without an L3 error callback. Attributed to no cause: it is the identity's shortfall, never folded into a column |
+| `unseen` | offered (FlowMonitor) minus every class above; 0 when the books agree. `scenario_check.py results` FAILs a negative value — a packet booked under two fates |
+
+`delivered` can exceed FlowMonitor's `rxPackets`: FlowMonitor stops tracking a
+packet at its first drop event, so a re-routed duplicate that arrives after
+another copy died is not counted in `pdr`. That gap and `termAtNode` are what
+is left between `sum` and 100. Every non-adaptive arm keeps the event book
+above, byte for byte, and prints no tail.
+
+Measured on `grid-rwp-nakagami` seed 1 (900 s, the v2.5.0 command line, one arm
+per process, local ns-3.42 build; the base reproduced the committed v250c
+seed-1 `##DROPID##` counters exactly, and `##RUN##` is unchanged):
+
+| arm | event book `mac` / `chan` / `sum` | per-packet `mac` / `chan` / `sum` | `recovered` (pkts) |
+|---|---|---|---|
+| ara | 9.45 / 0.06 / 109.22 | 1.25 / 0.06 / **99.48** | 1865 (1181) |
+| termite | 166.32 / 188.87 / 405.39 | 31.08 / 29.23 / **99.56** | 310659 (12418) |
+| qrouting | 0.90 / 0.24 / 104.62 | 0.15 / 0.06 / **99.85** | 6611 (3155) |
+
+The route and TTL columns move too (ara 10.41 → 10.03 and 1.87 → 0.70;
+qrouting TTL 8.78 → 4.94): FlowMonitor counted every dropped copy of a
+re-routed packet, including copies of packets another copy delivered.
 
 ### Re-injection identity & fate (`##REINJ##`, #386, NS-3 only, AntHocNet + UDP only)
 
