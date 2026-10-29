@@ -109,6 +109,7 @@ nav:
       - benchmarks.md
       - benchmarks/metrics.md
       - benchmarks/methodology.md
+      - comparison-harness.md
       - benchmarks/core-speed.md
       - benchmarks/README.md
       - benchmarks/grid.md
