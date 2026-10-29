@@ -12,5 +12,6 @@ network type, how every number is made, and the raw data behind it
 [**Drones (FANET)** <span>A 3-D swarm at 20 m/s.</span>](../benchmarks/scenarios/fanet.md)
 [**Satellites** <span>A moving Walker constellation, and the ISL grid.</span>](../benchmarks/satellite/leo-walker.md)
 [**Metrics** <span>What PDR, delay99 and NRL mean, and their caveats.</span>](../benchmarks/metrics.md)
+[**Comparison harness** <span>The program behind every number: run it, read it, add your protocol.</span>](../comparison-harness.md)
 [**Methodology** <span>How to reproduce a number, the anchors, the determinism gate.</span>](../benchmarks/methodology.md)
 </div>

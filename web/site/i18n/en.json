@@ -1337,7 +1337,11 @@
     "questIntro": "Run each command in your ns-3 setup and paste the output below. It is read here, in your browser; nothing is uploaded. No checkout? The <a href=\"https://github.com/danieljoppi/AntHocNet/releases/latest\">release</a> has a drop-in tarball for <code>contrib/</code>.",
     "paste": "Paste <code>make doctor</code> or <code>./test.py -s anthocnet</code> output",
     "check": "Check",
-    "reset": "Start over"
+    "reset": "Start over",
+    "benchTitle": "Bring your own protocol: the comparison harness",
+    "benchIntro": "Every Lab number comes from one ns-3 program that runs several routing protocols on the same seeds, so each difference carries a confidence interval. You can run it on your own protocol: an ns-3 routing module, or a per-hop arm on the <code>adaptive</code> base in about 270 lines.",
+    "benchNext": "Coming in v2.6.0: the harness becomes <code>routing-bench</code>, a module that names no protocol. Your arm registers itself; <code>anthocnet-compare</code> keeps working.",
+    "benchLinks": "<a href=\"docs/comparison-harness/\">Read the harness guide</a> · <a href=\"docs/adr/0027-the-comparison-harness-is-protocol-agnostic/\">the design (ADR-0027)</a>"
   },
   "bench": {
     "unavailable": "The bench could not load its field data.",
