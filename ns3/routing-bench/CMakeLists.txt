@@ -1,7 +1,9 @@
 # routing-bench: the protocol-agnostic comparison harness (ADR-0027, epic
-# #764). This step (#766) carries the arm contract, the arm registry and the
-# arms of stock ns-3 (aodv, olsr, dsdv, hwmp). It links only stock ns-3 and
-# names no other arm: arm modules depend on routing-bench, never the reverse.
+# #764): the arm contract and registry (#766), the harness itself -- scenario,
+# traffic, measurement, drop book, markers (#767) -- and the arms of stock
+# ns-3 (aodv, olsr, dsdv, hwmp). It links only stock ns-3 and names no other
+# arm: arm modules depend on routing-bench, never the reverse. The programs
+# (routing-compare, and the anthocnet-compare alias) are in examples/.
 #
 # Installed into $(NS3DIR)/contrib/routing-bench by `make install-ns3`,
 # alongside the comparison modules.
@@ -27,6 +29,7 @@ build_lib(
   LIBNAME routing-bench
   SOURCE_FILES
     model/routing-bench-arm.cc
+    model/routing-bench-harness.cc
     model/source-refusal-counter.cc
     helper/stock-arms.cc
   HEADER_FILES
@@ -37,9 +40,19 @@ build_lib(
     ${libcore}
     ${libnetwork}
     ${libinternet}
+    ${libwifi}
+    ${libpropagation}
+    ${libmobility}
+    ${libapplications}
+    ${libflow-monitor}
+    # energy (#209): wifi depends on it in every ns-3 from 3.36 to 3.48; named
+    # for the harness's direct use.
+    ${libenergy}
     ${libaodv}
     ${libolsr}
     ${libdsdv}
+    # #708: stock 802.11s (MeshHelper, Dot11sStack) for the hwmp arm.
+    ${libmesh}
   TEST_SOURCES
     test/routing-bench-test-suite.cc
 )

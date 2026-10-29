@@ -1,6 +1,6 @@
 # ADR-0027: The comparison harness is a protocol-agnostic module
 
-- **Status:** Accepted (maintainer request 2026-10-29, epic [#764](https://github.com/danieljoppi/AntHocNet/issues/764); decides [#765](https://github.com/danieljoppi/AntHocNet/issues/765))
+- **Status:** Accepted (maintainer request 2026-10-29, epic [#764](https://github.com/danieljoppi/AntHocNet/issues/764); decides [#765](https://github.com/danieljoppi/AntHocNet/issues/765)). Implemented in v2.6.0 (#766, #767, #768); amended 2026-10-29 with the hooks the extraction needed (below)
 - **Date:** 2026-10-29
 - **Builds on:** [ADR-0023](0023-one-core-one-simulator-adapter.md) (one simulator), [ADR-0026](0026-baselines-are-family-native.md) (family-native baselines)
 
@@ -194,6 +194,55 @@ from the registry (#768). An unknown arm still aborts
 - **Distribution.** The separate release packages and the readers' Python
   package are v2.7.0 (#770, #771). This ADR fixes only the boundary they
   package.
+
+## Amendment (2026-10-29, #767/#768): the hooks the extraction needed
+
+The move added hooks; it changed no call point of the original ones. In call
+order, the full set the harness now calls (see `routing-bench-arm.h`):
+
+| hook | when | first user |
+|---|---|---|
+| `Configure(scenario)` | once per listed arm, while the scenario is resolved | the oracle's per-family recompute cadence (#506, #488, #580) |
+| `Validate(scenario)` | once per listed arm, before any run | planar GPSR on a 3-D field (#480); 802.11s off 802.11a (#708) |
+| `EmitConfig(out)` | once per listed arm, in the `##CONFIG##` block | the oracle's off-default recompute cadence |
+| `ProvidesDevices` / `InstallDevices` / `AssignDeviceStreams` | step 2; device streams from the fixed device sub-block | hwmp |
+| `InstallRouting` | step 4 | every arm |
+| `AfterStack` | step 5 | GPSR's UDP re-wiring; AntHocNet's energy probe |
+| `AssignStreams` | step 6 | every arm |
+| `ConnectTraces(run, m)` | step 7 | the opt-in books below; hwmp's mesh frames; AntHocNet's ant tallies |
+| `AfterAddresses(run, ifs)` | after IPv4 addresses | hwmp's ARP prefill |
+| `StartReplay` / `FinishReplay` | around the run | AntHocNet's `--vizTrace` (#641) |
+| `AdjustCounts` | step 9 | sends refused at the source (oracle #464, OLSR #510) |
+| `EmitRunNote` | after the counts | `# hwmp` |
+| `FillDropDetail` | the drop book | AntHocNet's pending-queue causes and its own re-injection count |
+| `CollectHoldTimes` | for `##HOLD##` | AntHocNet (#308) |
+| `AppendDiag` | the `# diag` line | AntHocNet's ant, linkfail, ptable and hold fields |
+| `EmitDiagnostics` | step 11 | `##ORACLE##` |
+| `Check` | step 12 | the oracle puts nothing on the wire (#296) |
+
+`Measurement` is what an arm may touch of the run's measurement: the sinks it
+connects its protocol's traces to, and three **opt-in books** whose lines are
+printed only for the arms that ask (#382: absence, not zero):
+`TrackReinjectionIdentity` (`##REINJ##`, #386), `TrackPendingQueue`
+(`pqSilent`/`pqEcb` on `##DROPID##`, #229) and `TrackPacketFate` (the
+per-packet drop book of the re-routing arms, #761).
+
+Two settled details:
+
+- **Naming.** A module's registration file is `helper/<module>-bench-arms.cc`
+  and defines `ns3::bench::RegisterArms_<module>()`, hyphens as underscores.
+  `routing-compare`'s CMake globs for the file and keeps the modules in
+  `ns3-all-enabled-modules`.
+- **No library token.** An arm module names `routing-bench`'s library through a
+  variable, compiled in only when it is installed and enabled: ns-3 resolves
+  module dependencies by scanning CMakeLists for `${lib…}` tokens, and every
+  arm module must still build alone (`BASELINES=0`, bake).
+
+Verified byte-identical against the pre-move harness on the ns-3.42 image:
+MANET (aodv, olsr, dsdv, anthocnet, oracle), mesh (hwmp), every vendored arm,
+FANET and VANET presets (the oracle's family cadence), TCP, Nakagami with
+energy, `--seriesEvery` and `--qdiag`, and the replay file. The committed-cell
+control is #769.
 
 ## Consequences
 

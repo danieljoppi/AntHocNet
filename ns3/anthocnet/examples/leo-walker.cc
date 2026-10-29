@@ -82,7 +82,7 @@
 #include "ns3/olsr-module.h"
 #include "ns3/oracle-module.h"
 #include "ns3/anthocnet-helper.h"
-#include "viz-trace.h"
+#include "ns3/anthocnet-viz-trace.h"
 
 #include "ns3/geocentric-constant-position-mobility-model.h"
 #include "ns3/leo-circular-orbit-mobility-model.h"
@@ -162,7 +162,7 @@ struct Params {
     double hapsAltKm = 20, hapsRingKm = 150;
 };
 
-// #641: the one recorded run of --vizTrace (see viz-trace.h).
+// #641: the one recorded run of --vizTrace (see anthocnet-viz-trace.h).
 static vizt::VizTrace g_viz;
 
 struct Result {

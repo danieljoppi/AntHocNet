@@ -83,9 +83,9 @@ COPY . .
 
 # #421/#435: the module list below is an allowlist and it fails SILENTLY when a
 # module is missing from it -- `make install-ns3` installs anthocnet, aomdv,
-# gpsr and oracle into contrib/, and anthocnet-compare.cc includes all four
-# module headers, so an arm absent here breaks the example build rather than
-# merely omitting the arm. This is the same coupling as ci.yml's mods=, the
+# gpsr, oracle, adaptive and routing-bench into contrib/, and routing-compare
+# links every arm module it finds, so an arm absent here is silently missing
+# from the harness rather than failing the build. This is the same coupling as ci.yml's mods=, the
 # campaign workflows' --enable-modules (benchmark-cell.yml, benchmarks.yml) and
 # check-determinism.sh's filter_rows(). Any new module has to
 # be added to all of them — enforced since #435 by tools/checks/check-allowlists.sh

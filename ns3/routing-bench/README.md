@@ -7,24 +7,28 @@ epic [#764](https://github.com/danieljoppi/AntHocNet/issues/764)). It links
 only stock ns-3 and names no protocol of its own. Arm modules depend on it;
 it depends on none of them.
 
-## What is here (v2.6.0, step 1: #766)
+## What is here (v2.6.0)
 
 | file | what |
 |---|---|
-| `model/routing-bench-arm.h/.cc` | the `Arm` contract, `RunContext`, `RunCounts` and the `ArmRegistry` |
+| `model/routing-bench-arm.h/.cc` | the `Arm` contract, `RunContext`, `RunCounts`, `Measurement` (what an arm may touch of the run's measurement) and the `ArmRegistry` (#766) |
+| `model/routing-bench-harness.cc` | the harness itself: scenario presets, mobility, channels, traffic, stream pinning, FlowMonitor and the trace sinks, the drop book, route stability, the identity-matched set, energy, the markers (#767). `bench::RunHarness()` |
 | `model/source-refusal-counter.h/.cc` | the #510 fallback that counts the sends OLSR refuses at the source |
-| `helper/stock-arms.h/.cc` | `RegisterStockArms()`: `aodv`, `olsr`, `dsdv` and `hwmp` |
+| `helper/stock-arms.h/.cc` | `RegisterStockArms()`: `aodv`, `olsr`, `dsdv` and `hwmp` (with its 802.11s devices) |
+| `examples/routing-compare.cc` | the program |
+| `examples/anthocnet-compare.cc` | the same program under its original name (ADR-0027 §4), kept at least through v3.x |
+| `examples/CMakeLists.txt` | finds the arm modules installed beside it and generates `arms-generated.cc` (#768) |
 | `test/routing-bench-test-suite.cc` | registry rules and the stock arms (`./test.py -s routing-bench`) |
 
-`anthocnet-compare` calls `RegisterStockArms()` at start-up and runs the four
-stock arms through the registry. Every other arm still goes through its own
-branch in the harness until the extraction (#767) and the arm modules
-(#768). hwmp's 802.11s devices are still installed by the harness; they move
-into the arm with #767.
+The other arms live in their own modules, each in one
+`helper/<module>-bench-arms.cc`: `anthocnet`, `aomdv`, `gpsr` (`gpsr`, `gpcr`,
+`gpsr3d`), `oracle` and `adaptive` (`ara`, `termite`, `qrouting`).
 
 ## Registering an arm
 
-Registration is an explicit call, never a static initialiser (ADR-0027 §3):
+Registration is an explicit call, never a static initialiser (ADR-0027 §3).
+A module adds its arms in one function, in a file named
+`helper/<module>-bench-arms.cc`:
 
 ```cpp
 #include "ns3/routing-bench-arm.h"
@@ -44,11 +48,35 @@ class MyArm : public ns3::bench::Arm {
 
 ns3::Ptr<ns3::bench::Arm> MakeMyArm() { return ns3::Create<MyArm>(); }
 
-void RegisterMyArms() { ns3::bench::RegisterArm("myproto", "My protocol (Author 2026)", &MakeMyArm); }
+namespace ns3 { namespace bench {
+void RegisterArms_mymodule() { RegisterArm("myproto", "My protocol (Author 2026)", &MakeMyArm); }
+}}
 ```
 
-A duplicate or empty name aborts. Until #768 generates the calls from the
-installed modules, the harness's `main` calls each registration function.
+Compile the file only when `routing-bench` is installed and enabled, and name
+its library through a variable: ns-3 scans module CMakeLists for library
+tokens to resolve dependencies, and your module should still build alone. The
+pattern, from `ns3/baselines/adaptive/CMakeLists.txt`:
+
+```cmake
+set(mymodule_bench_sources)
+set(mymodule_bench_libs)
+set(mymodule_bench_module routing-bench)
+if(EXISTS ${PROJECT_SOURCE_DIR}/contrib/${mymodule_bench_module}/CMakeLists.txt
+   AND mymodule_bench_module IN_LIST ns3-all-enabled-modules)
+  set(mymodule_bench_sources helper/mymodule-bench-arms.cc)
+  set(mymodule_bench_lib lib${mymodule_bench_module})
+  set(mymodule_bench_libs ${${mymodule_bench_lib}})
+endif()
+# then ${mymodule_bench_sources} in SOURCE_FILES, ${mymodule_bench_libs} in LIBRARIES_TO_LINK
+```
+
+`routing-compare`'s CMake globs `contrib/*/helper/*-bench-arms.cc`, keeps the
+enabled modules, and calls each `RegisterArms_<module>()` at start-up. A
+duplicate or empty name aborts.
+
+The optional hooks, in the order the harness calls them, are documented in
+[`routing-bench-arm.h`](model/routing-bench-arm.h) and ADR-0027 §2.
 
 ## Compatibility
 

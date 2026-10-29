@@ -59,7 +59,7 @@ install: require-ns3dir
 	mkdir -p "$(DEST)/model" "$(DEST)/helper" "$(DEST)/examples" "$(DEST)/test"
 	cp $(ANT)/model/*.h   $(ANT)/model/*.cc   "$(DEST)/model/"
 	cp $(ANT)/helper/*.h  $(ANT)/helper/*.cc  "$(DEST)/helper/"
-	cp $(ANT)/examples/*.cc $(ANT)/examples/*.h "$(DEST)/examples/"
+	cp $(ANT)/examples/*.cc "$(DEST)/examples/"
 	cp $(ANT)/examples/CMakeLists.txt "$(DEST)/examples/"
 	cp $(ANT)/examples/wscript "$(DEST)/examples/" 2>/dev/null || true
 	cp $(ANT)/test/*.cc   "$(DEST)/test/"
@@ -77,7 +77,7 @@ install: require-ns3dir
 	@echo ""
 	@echo ">> Done. Reconfigure and build ns-3:"
 	@echo "     cd $(NS3DIR) && ./ns3 configure --enable-examples --enable-tests && ./ns3 build"
-	@echo "   Run:    ./ns3 run anthocnet-example"
+	@echo "   Run:    ./ns3 run anthocnet-example   (comparison: ./ns3 run routing-compare)"
 	@echo "   Test:   ./test.py -s anthocnet"
 
 install-baselines: require-ns3dir
@@ -109,9 +109,10 @@ install-baselines: require-ns3dir
 	cp $(BASE)/adaptive/test/*.cc "$(ADAPTIVEDEST)/test/" 2>/dev/null || true
 	cp $(BASE)/adaptive/CMakeLists.txt "$(ADAPTIVEDEST)/"
 	@echo ">> Installing routing-bench harness module into $(BENCHDEST)"
-	mkdir -p "$(BENCHDEST)/model" "$(BENCHDEST)/helper" "$(BENCHDEST)/test"
+	mkdir -p "$(BENCHDEST)/model" "$(BENCHDEST)/helper" "$(BENCHDEST)/test" "$(BENCHDEST)/examples"
 	cp $(BENCH)/model/*.h  $(BENCH)/model/*.cc  "$(BENCHDEST)/model/"
 	cp $(BENCH)/helper/*.h $(BENCH)/helper/*.cc "$(BENCHDEST)/helper/"
+	cp $(BENCH)/examples/*.cc $(BENCH)/examples/CMakeLists.txt "$(BENCHDEST)/examples/"
 	cp $(BENCH)/test/*.cc "$(BENCHDEST)/test/"
 	cp $(BENCH)/CMakeLists.txt $(BENCH)/README.md "$(BENCHDEST)/"
 

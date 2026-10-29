@@ -59,7 +59,7 @@ jobs:
           cd "$NS3DIR"
           mods='anthocnet;aomdv;gpsr;oracle;adaptive;routing-bench;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
           ./ns3 configure --enable-tests --enable-examples \
-            --filter-module-examples-and-tests='anthocnet;oracle' \
+            --filter-module-examples-and-tests='anthocnet;oracle;routing-bench' \
             --enable-modules="$mods"
       - name: Build
         run: cd "$NS3DIR" && ./ns3 build
@@ -73,7 +73,7 @@ jobs:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-ns3-dev-${{ github.run_id }}
       - name: Run module test suite
-        run: cd "$NS3DIR" && ./test.py -s anthocnet && ./test.py -s oracle
+        run: cd "$NS3DIR" && ./test.py -s anthocnet && ./test.py -s oracle && ./test.py -s routing-bench
       - name: E2E delivery smoke (AntHocNet must deliver in a connected scenario)
         run: |
           cd "$NS3DIR"

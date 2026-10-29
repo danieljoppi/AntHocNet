@@ -18,9 +18,25 @@ if(NS3_VER MATCHES "^3\\.([0-9]+)")
   endif()
 endif()
 
+# ADR-0027 (#768): this module's arm(s) of the comparison harness, compiled in
+# only when routing-bench is installed and enabled beside it. The library is
+# named through a variable, not written as a token: ns-3 scans module
+# CMakeLists for library tokens to resolve dependencies, and this module must
+# still build alone.
+set(gpsr_bench_sources)
+set(gpsr_bench_libs)
+set(gpsr_bench_module routing-bench)
+if(EXISTS ${PROJECT_SOURCE_DIR}/contrib/${gpsr_bench_module}/CMakeLists.txt
+   AND gpsr_bench_module IN_LIST ns3-all-enabled-modules)
+  set(gpsr_bench_sources helper/gpsr-bench-arms.cc)
+  set(gpsr_bench_lib lib${gpsr_bench_module})
+  set(gpsr_bench_libs ${${gpsr_bench_lib}})
+endif()
+
 build_lib(
   LIBNAME gpsr
   SOURCE_FILES
+    ${gpsr_bench_sources}
     model/gpsr.cc
     model/gpsr-packet.cc
     model/gpsr-ptable.cc
@@ -33,6 +49,7 @@ build_lib(
     model/gpsr-rqueue.h
     helper/gpsr-helper.h
   LIBRARIES_TO_LINK
+    ${gpsr_bench_libs}
     ${libcore}
     ${libnetwork}
     ${libinternet}

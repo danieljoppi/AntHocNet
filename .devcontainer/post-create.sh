@@ -39,7 +39,7 @@ cd "$NS3DIR"
 mods='anthocnet;aomdv;gpsr;oracle;adaptive;routing-bench;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
 if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
     ./ns3 configure --enable-tests --enable-examples \
-        --filter-module-examples-and-tests=anthocnet \
+        --filter-module-examples-and-tests='anthocnet;routing-bench' \
         --enable-modules="$mods"
 else
     ./ns3 configure --enable-examples --enable-modules="$mods"

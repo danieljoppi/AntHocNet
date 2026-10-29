@@ -293,9 +293,10 @@ ns3/
     anthocnet-rqueue.{h,cc}            pending-packet queue (GC + cap)
     anthocnet-adapters.{h,cc}          IClock/IRng ports over Simulator/RNG
   helper/anthocnet-helper.{h,cc}       Ipv4RoutingHelper
+  helper/anthocnet-bench-arms.cc       AntHocNet's arm of the comparison harness
+                                       (built only with routing-bench, ADR-0027)
+  helper/anthocnet-viz-trace.h         the --vizTrace replay recorder (#641)
   examples/anthocnet-example.cc        minimal wifi adhoc demo
-  examples/anthocnet-compare.cc        vs AODV/AOMDV/OLSR/DSDV (FlowMonitor metrics;
-                                       aomdv is opt-in via --protocols, #296)
   examples/isl-grid.cc                 +Grid torus of point-to-point ISLs (#214)
   examples/leo-walker.cc               moving Walker shell, GSL handover, failures
                                        (ns-3.48+, ADR-0022)
@@ -306,6 +307,10 @@ ns3/
                                        provenance + license in aomdv/README.md)
   adaptive/                            ARA, Termite and Q-routing, written from their
                                        papers (#563; fidelity sheets in adaptive/README.md)
+  routing-bench/                       the protocol-agnostic comparison harness
+                                       (ADR-0027): routing-compare and its alias
+                                       anthocnet-compare, the arm registry, the
+                                       stock arms (routing-bench/README.md)
 ```
 
 ## Notes

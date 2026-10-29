@@ -2,7 +2,11 @@
 // Copyright (C) 2026 Daniel Henrique Joppi
 
 /*
- * AntHocNet vs. AODV / OLSR / DSDV / GPSR / HWMP / oracle comparison.
+ * The comparison harness (ADR-0027): routing-compare, and its alias
+ * anthocnet-compare. It names no protocol: every arm reaches it through the
+ * registry (routing-bench-arm.h), the stock ns-3 arms from this module and
+ * every other arm from its own module. Written as the AntHocNet comparison,
+ * whence the paper's metrics below.
  *
  * Runs the SAME mobile-ad-hoc scenario (identical node layout, mobility and
  * CBR traffic, driven from the same RNG run) under each routing protocol and
@@ -50,10 +54,9 @@
  * point (stock ns-3 `mesh` module, Dot11sStack) on the same PHY, channel and
  * rate manager as every other arm, and IP sees the whole mesh as one link.
  *
- * Requires the aodv, olsr, dsdv, gpsr (the #296 vendored baseline module),
- * oracle (the #296 control module), mesh (#708) and
- * flow-monitor modules. Build with those enabled, then e.g.:
- *   ./ns3 run "anthocnet-compare --scenario=paper --runs=5"
+ * Requires the stock aodv, olsr, dsdv, mesh (#708) and flow-monitor modules;
+ * the arm modules installed beside it register theirs. Build, then e.g.:
+ *   ./ns3 run "routing-compare --scenario=paper --runs=5"
  */
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
@@ -77,28 +80,12 @@
 // 802.11 header names the next hop; above that MAC header a wifi frame carries
 // an LLC/SNAP header before the IP header.
 #include "ns3/llc-snap-header.h"
+#include "ns3/propagation-module.h"
 
-#include "ns3/aodv-module.h"
-// #296: the vendored AOMDV baseline module (contrib/aomdv, installed together
-// with anthocnet by `make install-ns3`).
-#include "ns3/aomdv-module.h"
-// v2.5.0 (#563): the adaptive-routing comparators (contrib/adaptive): ARA,
-// Termite and tabular Q-routing, each written from its paper.
-#include "ns3/adaptive-module.h"
-#include "ns3/olsr-module.h"
-#include "ns3/dsdv-module.h"
-// #296: the vendored GPSR baseline (contrib/gpsr). Geographic — position
-// knowledge comes from the mobility models via its GOD location service.
-#include "ns3/gpsr-module.h"
-// #296 item 1: the oracle shortest-path control (contrib/oracle). Global
-// knowledge, no packets — see the note at the top and ns3/baselines/oracle/README.md.
-#include "ns3/oracle-module.h"
-// #708: IEEE 802.11s (MeshHelper, Dot11sStack, the HWMP path selection).
+// #708: IEEE 802.11s's mesh control header, stripped from data frames on an
+// arm that brings mesh devices.
 #include "ns3/mesh-module.h"
-#include "ns3/routing-bench-module.h"
-#include "ns3/anthocnet-helper.h"
-#include "ns3/anthocnet-routing-protocol.h"
-#include "viz-trace.h"
+#include "routing-bench-arm.h"
 
 #include <algorithm>
 #include <cmath>
@@ -402,11 +389,11 @@ void CountControlTx(Ptr<const Packet> p, Ptr<Ipv4>, uint32_t) {
 // open, confirm, close) and beacons. They are the analogue of a protocol's
 // hellos, but they are the 802.11s MAC rather than its path selection, and
 // metrics.md says which side of the line each one is on.
-bool g_meshArm = false;          // #708: this run is the hwmp arm
+bool g_meshArm = false;          // #708: this run's arm brings 802.11s mesh devices
 uint64_t g_meshPeeringPkts = 0;  // #708: self-protected action frames queued
 uint64_t g_meshBeacons = 0;      // #708: beacons queued
 
-void CountMeshMgtTx(Ptr<const AHN_WIFI_MPDU> mpdu) {
+void CountMeshMgtTx(Ptr<const BENCH_WIFI_MPDU> mpdu) {
     if (!mpdu) return;
     const WifiMacHeader& hdr = mpdu->GetHeader();
     if (hdr.IsBeacon()) {
@@ -428,7 +415,7 @@ void CountMeshMgtTx(Ptr<const AHN_WIFI_MPDU> mpdu) {
 
 // #708: an 802.11s data frame carries the mesh control header (mesh TTL,
 // sequence number, address extension) between the 802.11 header and the
-// LLC/SNAP header the MAC hooks below parse. Strip it on the hwmp arm so
+// LLC/SNAP header the MAC hooks below parse. Strip it on a mesh arm so
 // those hooks read the same IP packet they read on every other arm; a
 // no-op elsewhere.
 void StripMeshHeader(Ptr<Packet> pkt, const WifiMacHeader& hdr) {
@@ -801,8 +788,9 @@ void CountReinjL3Drop(const Ipv4Header& ip, Ptr<const Packet> p, Ipv4L3Protocol:
 // i.e. before the adapter's own (NotifyInterfaceUp), so a MAC drop's Mac state
 // is always overwritten by the re-injection the same drop triggers. Identity is
 // the (flow, seq) key every other per-packet book uses (see #386 above), so the
-// copies a re-injection duplicates share one fate. Gated on g_fateOn: the other
-// arms never parse anything here and stay byte-identical.
+// copies a re-injection duplicates share one fate. Gated on g_fateOn, set by an
+// arm that asks for the book (Measurement::TrackPacketFate: the adaptive arms,
+// UDP only): the other arms never parse anything here and stay byte-identical.
 enum class Fate : uint8_t { Tx, AtNode, Mac, Route, Ttl, Other };
 struct FateInfo {
     Fate last = Fate::Tx;
@@ -916,7 +904,7 @@ void CountAdaptiveArpReinject(const Ipv4Header& ip, Ptr<const Packet> p) {
     if (g_fateOn) FateRecovered(ip, p);  // #761
 }
 
-void CountMacDataDrop(WifiMacDropReason reason, Ptr<const AHN_WIFI_MPDU> mpdu) {
+void CountMacDataDrop(WifiMacDropReason reason, Ptr<const BENCH_WIFI_MPDU> mpdu) {
     if (reason != WIFI_MAC_DROP_REACHED_RETRY_LIMIT || !mpdu) return;
     Ptr<Packet> pkt = mpdu->GetPacket()->Copy();
     StripMeshHeader(pkt, mpdu->GetHeader());  // #708
@@ -1327,7 +1315,7 @@ void FlushDiversityWindow() {
     g_divCur.clear();
 }
 
-void CountAckedDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
+void CountAckedDataHop(uint32_t node, Ptr<const BENCH_WIFI_MPDU> mpdu) {
     if (!mpdu) return;
     Ptr<Packet> pkt = mpdu->GetPacket()->Copy();
     StripMeshHeader(pkt, mpdu->GetHeader());  // #708
@@ -1373,7 +1361,7 @@ void CountAckedDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
 // of each interface (UDP data is TID 0), one enqueue per hop however many
 // retries follow, and always before the frame is sent, so the path is complete
 // when the destination delivers (the last hop's ack arrives after that).
-void CountMeshDataHop(uint32_t node, Ptr<const AHN_WIFI_MPDU> mpdu) {
+void CountMeshDataHop(uint32_t node, Ptr<const BENCH_WIFI_MPDU> mpdu) {
     if (!g_routeOn || !mpdu || !mpdu->GetHeader().IsData()) return;
     Ptr<Packet> pkt = mpdu->GetPacket()->Copy();
     StripMeshHeader(pkt, mpdu->GetHeader());
@@ -1552,9 +1540,6 @@ struct Params {
     double seriesEvery = 0.0;  // #62: --seriesEvery, 0 = off
 };
 
-// #641: the one recorded run of --vizTrace (see viz-trace.h).
-static vizt::VizTrace g_viz;
-
 // --- #639: recording a run's movement as an ns-2 trace ---------------------------
 // Each node's track is piecewise linear between course changes (RWP legs and
 // pauses, Gauss-Markov steps, Manhattan waypoints), so a leg is written when
@@ -1709,10 +1694,10 @@ struct Result {
     // normalised by path length like-for-like.
     std::map<Address, std::map<uint32_t, uint32_t>> rxHopsBySeq;
     // #308 phase 2 step 4: pending-queue hold-time attribution, summed over
-    // nodes. `holdValid` is false for every protocol that is not AntHocNet —
-    // see the ##HOLD## emission for why absence, not zero, is the right
-    // representation there.
-    ns3::anthocnet::HoldStats hold;
+    // nodes. `holdValid` is false for every arm whose protocol has no measured
+    // pending queue (AntHocNet has one) — see the ##HOLD## emission for why
+    // absence, not zero, is the right representation there.
+    std::vector<bench::HoldTime> hold;
     bool holdValid = false;
     // #209 energy:
     // #308 phase 2 step 3: channel occupancy summed over nodes (node-seconds).
@@ -1777,6 +1762,90 @@ struct Result {
     double pathHopsMean = 0.0;   // mean path length over first deliveries
 };
 
+// ADR-0027: what an arm may touch of this run's measurement. The sinks are
+// the file's own trace callbacks; the opt-in books record that an arm asked
+// for them, so their lines are printed for that arm only (#382: absence, not
+// zero, on every other arm).
+class HarnessMeasurement : public bench::Measurement {
+public:
+    explicit HarnessMeasurement(const NodeContainer& nodes) : m_nodes(nodes) {}
+    uint64_t ControlPackets() const override { return g_controlPkts; }
+    uint64_t ControlBytes() const override { return g_controlBytes; }
+    // #386: re-injection identity & fate. The l3Drop stage is an isolated
+    // connect, cuttable with CountReinjL3Drop if a CI ns-3 version rejects
+    // the "Drop" signature.
+    void TrackReinjectionIdentity() override {
+        reinjIdentity = true;
+        for (uint32_t i = 0; i < m_nodes.GetN(); ++i) {
+            Ptr<Ipv4> ip = m_nodes.Get(i)->GetObject<Ipv4>();
+            Ptr<Ipv4RoutingProtocol> rp = ip ? ip->GetRoutingProtocol() : nullptr;
+            if (rp) {
+                rp->TraceConnectWithoutContext("MacReinject", MakeCallback(&CountMacReinject));
+                // #402: the capped-skip trace, same gate. Fires only when
+                // MaxReinjectPerPacket != 0, so every field it feeds is a
+                // measured zero on uncapped arms.
+                rp->TraceConnectWithoutContext("MacReinjectSkip",
+                                               MakeCallback(&CountMacReinjectSkip));
+            }
+            Ptr<Ipv4L3Protocol> l3 = m_nodes.Get(i)->GetObject<Ipv4L3Protocol>();
+            if (l3) {
+                l3->TraceConnectWithoutContext("Drop", MakeCallback(&CountReinjL3Drop));
+            }
+        }
+    }
+    void MacReinjectedData(const Ipv4Header& ip, Ptr<const Packet> p) override {
+        CountAdaptiveReinject(ip, p);
+    }
+    void ArpReinjectedData(const Ipv4Header& ip, Ptr<const Packet> p) override {
+        CountAdaptiveArpReinject(ip, p);
+    }
+    uint64_t ReinjectedData() const override { return g_adaptiveReinjData; }
+    // #761: per-packet terminal fate (see the FateInfo block).
+    void TrackPacketFate() override {
+        g_fateOn = true;
+        for (uint32_t i = 0; i < m_nodes.GetN(); ++i) {
+            Ptr<Ipv4L3Protocol> l3 = m_nodes.Get(i)->GetObject<Ipv4L3Protocol>();
+            if (l3) {
+                l3->TraceConnectWithoutContext("SendOutgoing", MakeCallback(&CountFateSend));
+                l3->TraceConnectWithoutContext("Drop", MakeCallback(&CountFateL3Drop));
+            }
+        }
+    }
+    // #229: pending-queue conservation (see the PqTrackTx block comment).
+    void TrackPendingQueue() override {
+        pendingQueue = true;
+        for (uint32_t i = 0; i < m_nodes.GetN(); ++i) {
+            Ptr<Ipv4L3Protocol> l3 = m_nodes.Get(i)->GetObject<Ipv4L3Protocol>();
+            if (l3) {
+                l3->TraceConnectWithoutContext("Tx", MakeCallback(&PqTrackTx));
+                l3->TraceConnectWithoutContext("Drop", MakeCallback(&PqTrackDrop));
+            }
+        }
+    }
+    void MeshManagementEnqueue(Ptr<const BENCH_WIFI_MPDU> mpdu) override { CountMeshMgtTx(mpdu); }
+    void MeshDataEnqueue(uint32_t node, Ptr<const BENCH_WIFI_MPDU> mpdu) override {
+        CountMeshDataHop(node, mpdu);
+    }
+    uint64_t MeshPeeringFrames() const override { return g_meshPeeringPkts; }
+    uint64_t MeshBeacons() const override { return g_meshBeacons; }
+    void TypedControlTx(uint8_t type, uint8_t dir, bool broadcast) override {
+        DiagAntTx(type, dir, broadcast);
+    }
+    void TypedControlRx(uint8_t type, uint8_t dir) override { DiagAntRx(type, dir); }
+    uint64_t TypedControlTxCount(uint8_t type) const override { return Tally(g_antTx, type); }
+    uint64_t TypedControlRxCount(uint8_t type) const override { return Tally(g_antRx, type); }
+
+    bool reinjIdentity = false;  // the arm asked for ##REINJ##
+    bool pendingQueue = false;   // the arm asked for pqSilent/pqEcb
+
+private:
+    static uint64_t Tally(const std::map<uint8_t, uint64_t>& m, uint8_t k) {
+        auto it = m.find(k);
+        return it == m.end() ? 0 : it->second;
+    }
+    NodeContainer m_nodes;
+};
+
 Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // Reset the RNG run so every protocol sees the identical realisation.
     RngSeedManager::SetSeed(1);
@@ -1789,7 +1858,26 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_controlPkts = 0;
     g_controlBytes = 0;
     g_meshPeeringPkts = g_meshBeacons = 0;  // #708
-    g_meshArm = proto == "hwmp";            // #708
+    // ADR-0027: a fresh arm per run, like every helper (the oracle's owns
+    // this run's ground-truth graph, #296). An unknown arm aborts here rather
+    // than run on the bare IP stack and emit a plausible-looking 0 % row (#448).
+    Ptr<bench::Arm> arm = bench::Registry().Make(proto);
+    NS_ABORT_MSG_UNLESS(arm,
+                        "unknown protocol '" << proto << "' -- see --PrintHelp's --protocols list");
+    bench::RunContext run;
+    run.seed = seed;
+    run.transport = P.transport;
+    run.standard = P.standard;
+    run.rateManager = P.rateManager;
+    run.simTime = P.simTime;
+    run.areaX = P.areaX;
+    run.areaY = P.areaY;
+    run.areaZ = P.areaZ;
+    run.energyJ = P.energyJ;
+    run.residualEnergy = &ResidualEnergyFraction;
+    run.diag = g_diag;
+    run.qdiag = g_qdiag;
+    g_meshArm = arm->ProvidesDevices();  // #708
     g_antTx.clear();
     g_antRx.clear();
     g_firstDeliveryS = -1.0;
@@ -1845,28 +1933,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         P.standard == "80211a" ? WIFI_STANDARD_80211a : WIFI_STANDARD_80211b;
     WifiHelper wifi;
     wifi.SetStandard(standard);
-    // #51: the ns-3 default (IdealWifiManager) oscillates 1<->11 Mbps and loses
-    // every second unicast to retry exhaustion (DSSS 11 Mbps never delivers in
-    // this setup), halving PDR for every protocol. Default is the paper's fixed
-    // 2 Mbit/s radio; --rateManager reaches the alternatives for A/B.
-    // #708: generic so the hwmp arm's MeshHelper gets the identical radio.
-    auto setRate = [&P](auto& helper) {
-        if (P.rateManager == "arf") {
-            helper.SetRemoteStationManager("ns3::ArfWifiManager");
-        } else if (P.rateManager.rfind("constant", 0) == 0) {
-            std::string rate = P.rateManager == "constant1"   ? "DsssRate1Mbps"
-                               : P.rateManager == "constant2" ? "DsssRate2Mbps"
-                               : P.rateManager == "constant5" ? "DsssRate5_5Mbps"
-                               : P.rateManager == "constant6" ? "OfdmRate6Mbps"  // #708, 11a
-                                                              : "DsssRate11Mbps";
-            // 802.11a's lowest (basic) rate carries control, as DSSS 1 Mbit/s
-            // does on 802.11b.
-            helper.SetRemoteStationManager(
-                "ns3::ConstantRateWifiManager", "DataMode", StringValue(rate), "ControlMode",
-                StringValue(P.standard == "80211a" ? "OfdmRate6Mbps" : "DsssRate1Mbps"));
-        }  // "ideal": keep the WifiHelper default
-    };
-    setRate(wifi);
+    // #51/#708: the run's rate manager (bench::ApplyRateManager says why the
+    // ns-3 default is not used), shared with a mesh arm's own helper.
+    bench::ApplyRateManager(wifi, P.rateManager, P.standard);
     YansWifiPhyHelper phy;
     YansWifiChannelHelper channel;
     if (P.propagation == "tworay") {
@@ -1936,28 +2005,18 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     phy.SetChannel(wifiChannel);
     WifiMacHelper mac;
     mac.SetType("ns3::AdhocWifiMac");
-    // #708: the hwmp arm puts one 802.11s mesh point on each node instead of
-    // an ad-hoc station: same standard, PHY, channel and rate manager, one
-    // interface on one channel. `devices` then holds the mesh point devices
-    // (what IP is bound to) and `radios` their wifi interfaces (what the
-    // energy and MAC hooks below read); on every other arm the two are the
-    // same container, so nothing changes there.
-    MeshHelper meshHelper;
+    // #708: an arm may bring its own devices (hwmp: one 802.11s mesh point
+    // per node) on the same standard, PHY, channel and rate manager.
+    // `devices` then holds what IP is bound to and `radios` the wifi
+    // interfaces (what the energy and MAC hooks below read); on every other
+    // arm the two are the same container, so nothing changes there.
+    run.nodes = nodes;
     NetDeviceContainer devices, radios;
-    if (proto == "hwmp") {
-        meshHelper.SetStandard(standard);
-        meshHelper.SetStackInstaller("ns3::Dot11sStack");
-        meshHelper.SetMacType();
-        meshHelper.SetSpreadInterfaceChannels(MeshHelper::ZERO_CHANNEL);
-        meshHelper.SetNumberOfInterfaces(1);
-        // MeshHelper's own default manager is ARF, so "ideal" is named here
-        // to match the WifiHelper default every other arm runs.
-        meshHelper.SetRemoteStationManager("ns3::IdealWifiManager");
-        setRate(meshHelper);
-        devices = meshHelper.Install(phy, nodes);
-        for (uint32_t i = 0; i < devices.GetN(); ++i) {
-            radios.Add(DynamicCast<MeshPointDevice>(devices.Get(i))->GetInterfaces().at(0));
-        }
+    if (arm->ProvidesDevices()) {
+        bench::DeviceRequest req;
+        req.phy = &phy;
+        req.standard = standard;
+        devices = arm->InstallDevices(run, req, radios);
     } else {
         devices = wifi.Install(phy, mac, nodes);
         radios = devices;
@@ -1967,17 +2026,20 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // fading model (Nakagami, ...) cannot reintroduce the position dependence.
     // WifiHelper::AssignStreams covers the PHY's reception-error variable, the
     // MAC/Txop backoff and the rate manager in one call.
+    run.devices = devices;
+    run.radios = radios;
     TakeStreams(stream, streamBase, channel.AssignStreams(wifiChannel, stream), "wifi channel");
-    if (proto == "hwmp") {
-        // #708: MeshHelper::AssignStreams covers the same PHY, MAC and Txop
-        // variables through each mesh point's interfaces, plus HWMP's and the
-        // peering protocol's own jitter, from the mesh sub-block (see
-        // kMeshStreamOffset). The running counter then advances by what the
-        // ad-hoc arms take: one scratch ad-hoc device, off this run's channel,
-        // measures the per-device count on this ns-3 release.
+    if (arm->ProvidesDevices()) {
+        // #708: the arm's devices (hwmp: MeshHelper::AssignStreams, the same
+        // PHY, MAC and Txop variables through each mesh point's interfaces,
+        // plus HWMP's and the peering protocol's own jitter) draw from the
+        // device sub-block (see kMeshStreamOffset). The running counter then
+        // advances by what the ad-hoc arms take: one scratch ad-hoc device,
+        // off this run's channel, measures the per-device count on this ns-3
+        // release.
         NS_ABORT_MSG_IF(stream - streamBase >= kMeshStreamOffset,
                         "running stream counter reached the mesh sub-block (#708)");
-        const int64_t meshUsed = meshHelper.AssignStreams(devices, streamBase + kMeshStreamOffset);
+        const int64_t meshUsed = arm->AssignDeviceStreams(run, streamBase + kMeshStreamOffset);
         NS_ABORT_MSG_IF(kMeshStreamOffset + meshUsed >= kAppStreamOffset,
                         "mesh streams overlap the application sub-block (#708)");
         NodeContainer scratch;
@@ -2234,97 +2296,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         Simulator::Schedule(Seconds(P.simTime / 2.0), geom);
     }
 
-    // #352: the routing helpers are hoisted out of the branches so their
-    // AssignStreams() can run after Install() (SetRoutingHelper stores a Copy(),
-    // but AssignStreams reaches the *installed* protocols through the nodes, so
-    // the local helper is the right handle). Constructing all of them is free —
-    // each is an ObjectFactory and instantiates nothing.
+    // #352: the arm owns its routing helper, so the helper's AssignStreams()
+    // can run after Install() (SetRoutingHelper stores a Copy(), but
+    // AssignStreams reaches the *installed* protocols through the nodes).
     InternetStackHelper internet;
-    AntHocNetHelper ahnHelper;
-    AomdvHelper aomdvHelper;
-    GpsrHelper gpsrHelper;
-    // #296: constructed per RunOne, like every other helper here — the oracle
-    // helper owns this run's ground-truth graph, so a fresh one per run is what
-    // stops run N inheriting run N-1's nodes.
-    OracleHelper oracleHelper;
-    // v2.5.0 (#563): one helper per adaptive arm, per run like the others.
-    AdaptiveHelper araHelper("ns3::adaptive::AraRoutingProtocol");
-    AdaptiveHelper termiteHelper("ns3::adaptive::TermiteRoutingProtocol");
-    AdaptiveHelper qroutingHelper("ns3::adaptive::QRoutingProtocol");
-    // #296/#431: the oracle derives its adjacency from the installed objects
-    // on every channel this harness configures — the disk channel's own
-    // MaxRange (exact), the two-ray decode radius at the PHY's decode
-    // threshold, or the Nakagami closed-form median radius at that same
-    // threshold (both flagged approx=1). LinkRangeM is deliberately NOT set
-    // here any more: pinning it to --range was what held the fading cells to
-    // a 300 m disk the radios outreach by 40 % (#431's measured hop
-    // violation). To force a radius, pass the attribute explicitly:
-    // --ns3::oracle::Topology::LinkRangeM=<m>. On a channel the oracle cannot
-    // derive, it still aborts rather than guess.
-    // ADR-0027 (#766): an arm in the routing-bench registry (today the stock
-    // ns-3 ones: aodv, olsr, dsdv, hwmp) installs itself; the chain below
-    // holds the arms not yet moved (#767/#768). A fresh arm per run, like the
-    // helpers.
-    bench::RunContext benchRun;
-    benchRun.nodes = nodes;
-    benchRun.seed = seed;
-    Ptr<bench::Arm> benchArm = bench::Registry().Make(proto);
-    if (benchArm) {
-        benchArm->InstallRouting(internet, benchRun);
-    } else if (proto == "anthocnet") {
-        internet.SetRoutingHelper(ahnHelper);
-    } else if (proto == "aomdv") {
-        // #296: vendored multipath baseline. Not in the default protocol list —
-        // it joins campaign dispatches explicitly (phase 3); the harness
-        // attaches to it exactly what it attaches to the other baselines.
-        internet.SetRoutingHelper(aomdvHelper);
-    } else if (proto == "gpsr") {
-        internet.SetRoutingHelper(gpsrHelper);
-    } else if (proto == "gpcr") {
-        // #709: GPCR, the VANET family's junction-aware geographic arm, is a
-        // mode of the vendored GPSR module (same beacons, same headers).
-        gpsrHelper.Set("Gpcr", BooleanValue(true));
-        internet.SetRoutingHelper(gpsrHelper);
-    } else if (proto == "gpsr3d") {
-        // #710: the FANET family's 3-D geographic arm, the vendored GPSR's
-        // ThreeD mode (3-D greedy, CFace(3) recovery).
-        gpsrHelper.Set("ThreeD", BooleanValue(true));
-        internet.SetRoutingHelper(gpsrHelper);
-    } else if (proto == "oracle") {
-        internet.SetRoutingHelper(oracleHelper);
-    } else if (proto == "ara") {
-        // #586: ARA (Guenes et al. 2002), purely reactive ACO.
-        internet.SetRoutingHelper(araHelper);
-    } else if (proto == "termite") {
-        // #587: Termite (Roth & Wicker 2003), stigmergic: every packet lays
-        // pheromone, discovery is a random walk.
-        internet.SetRoutingHelper(termiteHelper);
-    } else if (proto == "qrouting") {
-        // #588: tabular Q-routing (Boyan & Littman 1994), the learned arm.
-        internet.SetRoutingHelper(qroutingHelper);
-    } else {
-        // #448: an unknown arm must abort here, not run on the bare IP stack
-        // and emit a plausible-looking 0 % row.
-        NS_ABORT_MSG("unknown protocol '" << proto << "' -- see --PrintHelp's --protocols list");
-    }
+    arm->InstallRouting(internet, run);
     internet.Install(nodes);
-    // #145: the energy metric reads each node's battery through this probe.
-    // Only an anthocnet arm with energy accounting on gets one; elsewhere the
-    // metric sees "unknown" and degrades to hop count.
-    if (proto == "anthocnet" && P.energyJ > 0.0) {
-        for (uint32_t i = 0; i < nodes.GetN(); ++i) {
-            Ptr<ns3::anthocnet::RoutingProtocol> ahn = DynamicCast<ns3::anthocnet::RoutingProtocol>(
-                nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol());
-            if (ahn) ahn->SetEnergyProbe(MakeBoundCallback(&ResidualEnergyFraction, i));
-        }
-    }
-    // #296: gpsr's data packets carry a position header, injected by
-    // re-pointing the UDP down target — the helper wires that after the stack
-    // exists, exactly as the dwosion examples do (scoped to this run's nodes,
-    // not the global container, so repeated RunOne calls can't cross-wire).
-    if (proto == "gpsr" || proto == "gpcr" || proto == "gpsr3d") {
-        gpsrHelper.Install(nodes);
-    }
+    // Post-stack wiring the arm needs (gpsr's UDP re-wiring, AntHocNet's
+    // energy probe), on this run's nodes only, so repeated RunOne calls
+    // can't cross-wire.
+    arm->AfterStack(run);
     // The IPv4 stack is NOT stream-free, contrary to the first cut of this fix:
     // ArpL3Protocol owns m_requestJitter, a RandomVariableStream used to de-sync
     // ARP requests, and on a wifi MANET every next-hop change resolves through
@@ -2335,60 +2316,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // of the 3.36-3.48 matrix.
     TakeStreams(stream, streamBase, internet.AssignStreams(nodes, stream),
                 "internet stack (arp request jitter)");
-    // Each of these protocols builds a UniformRandomVariable per node (ant/RREQ
-    // jitter, hello jitter) at construction; pin them.
-    if (benchArm) {
-        // A registered arm pins its own streams (hwmp: a measured zero, its
-        // streams were taken with the mesh devices above).
-        TakeStreams(stream, streamBase, benchArm->AssignStreams(benchRun, stream),
-                    (proto + " routing").c_str());
-    } else if (proto == "anthocnet") {
-        TakeStreams(stream, streamBase, ahnHelper.AssignStreams(nodes, stream),
-                    "anthocnet routing");
-    } else if (proto == "aomdv") {
-        TakeStreams(stream, streamBase, aomdvHelper.AssignStreams(nodes, stream), "aomdv routing");
-    } else if (proto == "gpsr" || proto == "gpcr" || proto == "gpsr3d") {
-        TakeStreams(stream, streamBase, gpsrHelper.AssignStreams(nodes, stream),
-                    "gpsr/gpcr/gpsr3d routing");
-    } else if (proto == "oracle") {
-        // Pinned through the same path as every other arm even though the
-        // oracle draws nothing: the count it returns is 0, and taking it here
-        // makes that a measured zero rather than a gap in the #352 coverage.
-        TakeStreams(stream, streamBase, oracleHelper.AssignStreams(nodes, stream),
-                    "oracle routing");
-    } else if (proto == "ara") {
-        TakeStreams(stream, streamBase, araHelper.AssignStreams(nodes, stream), "ara routing");
-    } else if (proto == "termite") {
-        TakeStreams(stream, streamBase, termiteHelper.AssignStreams(nodes, stream),
-                    "termite routing");
-    } else if (proto == "qrouting") {
-        TakeStreams(stream, streamBase, qroutingHelper.AssignStreams(nodes, stream),
-                    "qrouting routing");
-    } else {
-        // #448: unreachable once the install chain above aborts, but the two
-        // dispatch chains stay structurally parallel by convention — guard both.
-        NS_ABORT_MSG("unknown protocol '" << proto << "' -- see --PrintHelp's --protocols list");
-    }
-
-    // v2.5.0 (#563): an adaptive arm reports each packet it re-routes after
-    // a MAC or an ARP drop; the drop book nets out the data ones.
-    for (uint32_t i = 0; i < nodes.GetN(); ++i) {
-        Ptr<ns3::adaptive::RoutingBase> arm = DynamicCast<ns3::adaptive::RoutingBase>(
-            nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol());
-        if (!arm) continue;
-        arm->TraceConnectWithoutContext("MacReinject", MakeCallback(&CountAdaptiveReinject));
-        arm->TraceConnectWithoutContext("ArpReinject", MakeCallback(&CountAdaptiveArpReinject));
-        // #761: per-packet terminal fate, UDP only (the (flow, seq) key does
-        // not exist under TCP — same rule as ##DROPID##).
-        if (P.transport != "tcp") {
-            g_fateOn = true;
-            Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
-            if (l3) {
-                l3->TraceConnectWithoutContext("SendOutgoing", MakeCallback(&CountFateSend));
-                l3->TraceConnectWithoutContext("Drop", MakeCallback(&CountFateL3Drop));
-            }
-        }
-    }
+    // Each protocol builds a UniformRandomVariable per node (ant/RREQ jitter,
+    // hello jitter) at construction; the arm pins them.
+    TakeStreams(stream, streamBase, arm->AssignStreams(run, stream), (proto + " routing").c_str());
 
     // Count routing-control transmissions uniformly at the IP layer. Connect to
     // this run's nodes specifically (not a global /NodeList/* path) so repeated
@@ -2406,44 +2336,14 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             l3->TraceConnectWithoutContext("LocalDeliver", MakeCallback(&CountDeliveredHops));
         }
     }
-    // #386: re-injection identity & fate. anthocnet + UDP only: the baselines
-    // have no detector (their arms emit NO ##REINJ## line — absence, not zero,
-    // per the #382 rule), and under TCP the SeqTs identity does not exist. The
-    // EnableMacFailureDetector=false arm keeps the hooks: its trace never
-    // fires, so every field reads a *measured* zero, which is what lets
-    // scenario_check assert the detector-off control as a number.
-    if (proto == "anthocnet" && P.transport != "tcp") {
-        for (uint32_t i = 0; i < nodes.GetN(); ++i) {
-            Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
-            Ptr<Ipv4RoutingProtocol> rp = ip ? ip->GetRoutingProtocol() : nullptr;
-            if (rp) {
-                rp->TraceConnectWithoutContext("MacReinject", MakeCallback(&CountMacReinject));
-                // #402: the capped-skip trace, same gate. Fires only when
-                // MaxReinjectPerPacket != 0, so every field it feeds is a
-                // measured zero on uncapped arms.
-                rp->TraceConnectWithoutContext("MacReinjectSkip",
-                                               MakeCallback(&CountMacReinjectSkip));
-            }
-            // l3Drop stage — isolated connect, cuttable with CountReinjL3Drop
-            // if a CI ns-3 version rejects the "Drop" signature (#386).
-            Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
-            if (l3) {
-                l3->TraceConnectWithoutContext("Drop", MakeCallback(&CountReinjL3Drop));
-            }
-        }
-    }
-    // #229: pending-queue conservation, dsdv + aodv + UDP only (see the
-    // PqTrackTx block comment). The other arms never connect these, so their
-    // books are byte-identical to pre-#229.
-    if ((proto == "dsdv" || proto == "aodv") && P.transport != "tcp") {
-        for (uint32_t i = 0; i < nodes.GetN(); ++i) {
-            Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
-            if (l3) {
-                l3->TraceConnectWithoutContext("Tx", MakeCallback(&PqTrackTx));
-                l3->TraceConnectWithoutContext("Drop", MakeCallback(&PqTrackDrop));
-            }
-        }
-    }
+    // ADR-0027: the arm connects its protocol's traces to this run's
+    // measurement, and asks for the opt-in books its protocol supports:
+    // #386's re-injection identity (AntHocNet + UDP: the baselines have no
+    // detector, and under TCP the SeqTs identity does not exist) and #229's
+    // pending-queue conservation (dsdv + aodv + UDP). An arm that asks for
+    // neither emits neither line (#382: absence, not zero).
+    HarnessMeasurement measurement(nodes);
+    arm->ConnectTraces(run, measurement);
     for (uint32_t i = 0; i < radios.GetN(); ++i) {
         Ptr<WifiNetDevice> w = radios.Get(i)->GetObject<WifiNetDevice>();
         Ptr<WifiMac> wmac = w ? w->GetMac() : nullptr;  // `mac` above is the helper
@@ -2460,46 +2360,13 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             wmac->TraceConnectWithoutContext("DroppedMpdu", MakeCallback(&CountMacDataDrop));
             wmac->TraceConnectWithoutContext("AckedMpdu", MakeBoundCallback(&CountAckedDataHop, i));
         }
-        // #708: HWMP's control, counted where its frames are queued: path
-        // selection and peering go to the VO (unicast) and BK (broadcast)
-        // queues, beacons to the non-QoS Txop.
-        if (wmac && proto == "hwmp") {
-            for (AcIndex ac : {AC_VO, AC_BK}) {
-                wmac->GetQosTxop(ac)->GetWifiMacQueue()->TraceConnectWithoutContext(
-                    "Enqueue", MakeCallback(&CountMeshMgtTx));
-            }
-            wmac->GetTxop()->GetWifiMacQueue()->TraceConnectWithoutContext(
-                "Enqueue", MakeCallback(&CountMeshMgtTx));
-            wmac->GetQosTxop(AC_BE)->GetWifiMacQueue()->TraceConnectWithoutContext(
-                "Enqueue", MakeBoundCallback(&CountMeshDataHop, i));
-        }
     }
 
     Ipv4AddressHelper address;
     address.SetBase("10.1.0.0", "255.255.0.0");
     Ipv4InterfaceContainer ifs = address.Assign(devices);
-    // #708: on the hwmp arm IP sees the whole mesh as one link, so every
-    // destination is ARP-resolved across the mesh. That resolution is IP's,
-    // not path selection's: a request sent while the peer links are still
-    // forming fails its three tries and ns-3's ArpCache then holds the
-    // destination dead for DeadTimeout (100 s), during which HWMP is never
-    // even asked for a path (measured: one flow at 0 % PDR with zero PREQs).
-    // The caches are filled up front instead, every mesh point's address as
-    // a permanent entry, so the arm measures HWMP and not ARP. The other arms
-    // resolve one radio hop at a time and keep the stock ARP.
-    if (proto == "hwmp") {
-        for (uint32_t i = 0; i < nodes.GetN(); ++i) {
-            Ptr<Ipv4L3Protocol> l3 = nodes.Get(i)->GetObject<Ipv4L3Protocol>();
-            Ptr<ArpCache> arp =
-                l3->GetInterface(l3->GetInterfaceForDevice(devices.Get(i)))->GetArpCache();
-            for (uint32_t j = 0; j < nodes.GetN(); ++j) {
-                if (j == i) continue;
-                ArpCache::Entry* e = arp->Add(ifs.GetAddress(j));
-                e->SetMacAddress(devices.Get(j)->GetAddress());
-                e->MarkPermanent();
-            }
-        }
-    }
+    // #708: what the arm does once addresses exist (hwmp: the ARP caches).
+    arm->AfterAddresses(run, ifs);
 
     // nFlows CBR flows from node i to node (nNodes-1-i), each starting at a
     // random time within the start window (paper staggers sources over 0-180 s).
@@ -2723,18 +2590,6 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 sinks.Get(i)->TraceConnectWithoutContext("Rx", MakeCallback(&DiagSinkRx));
             }
         }
-        // Per-type ant tallies from AntHocNet's own trace sources (item 15).
-        // Guarded to anthocnet: other protocols have no "Tx"/"Rx" ant traces.
-        if (proto == "anthocnet") {
-            for (uint32_t i = 0; i < nodes.GetN(); ++i) {
-                Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
-                if (!ip) continue;
-                Ptr<Ipv4RoutingProtocol> rp = ip->GetRoutingProtocol();
-                if (!rp) continue;
-                rp->TraceConnectWithoutContext("Tx", MakeCallback(&DiagAntTx));
-                rp->TraceConnectWithoutContext("Rx", MakeCallback(&DiagAntRx));
-            }
-        }
     }
 
     // Queue-depth sampler (#73): start after a 10% warm-up so convergence
@@ -2745,20 +2600,24 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 
     FlowMonitorHelper fmHelper;
     Ptr<FlowMonitor> monitor = fmHelper.InstallAll();
-    // #641: the first anthocnet run of the process, sampled for the replay.
-    const bool vizThisRun = !P.vizTrace.empty() && proto == "anthocnet" && !g_viz.Done();
-    if (vizThisRun) {
+    // #641: the replay (--vizTrace), recorded by the arm that supports it
+    // (AntHocNet's, on its first run of the process).
+    bool vizThisRun = false;
+    if (!P.vizTrace.empty()) {
         std::ostringstream h;
-        h << "\"harness\":\"anthocnet-compare\",\"seed\":" << seed << ",\"area\":[" << P.areaX
-          << ',' << P.areaY << ',' << P.areaZ << "],\"range\":" << P.range << ",\"mobility\":\""
-          << P.mobility << "\",\"propagation\":\"" << P.propagation << '"';
+        h << "\"seed\":" << seed << ",\"area\":[" << P.areaX << ',' << P.areaY << ',' << P.areaZ
+          << "],\"range\":" << P.range << ",\"mobility\":\"" << P.mobility
+          << "\",\"propagation\":\"" << P.propagation << '"';
         if (P.mobility == "manhattan") {
             h << ",\"blocks\":[" << P.blocksX << ',' << P.blocksY
               << "],\"street\":" << P.streetWidth;
         }
-        g_viz.Start(P.vizTrace, h.str(), nodes, monitor,
-                    DynamicCast<Ipv4FlowClassifier>(fmHelper.GetClassifier()), kDataPort, P.vizStep,
-                    P.simTime, 1.0);
+        bench::ReplayRequest req;
+        req.path = P.vizTrace;
+        req.header = h.str();
+        req.step = P.vizStep;
+        req.dataPort = kDataPort;
+        vizThisRun = arm->StartReplay(run, req, monitor, fmHelper.GetClassifier());
     }
 
     if (P.seriesEvery > 0.0) {
@@ -2848,59 +2707,37 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         dropQueue += reason(Ipv4FlowProbe::DROP_QUEUE) + reason(Ipv4FlowProbe::DROP_QUEUE_DISC);
         for (uint32_t v : pd) dropL3Total += v;
     }
-    // #464: the oracle refuses a locally originated send outright when its
-    // graph holds no path — RouteOutput returns nullptr, the socket send
-    // fails, and the packet never reaches Ipv4L3Protocol::Send. FlowMonitor
-    // therefore never counts it as transmitted, so without this correction
-    // PDR is computed over "the packets the control had a route for" rather
-    // than over offered traffic: a partitioned cell reported 100.0 % delivery
-    // on a seed with 4512 refused sends, and the drop book closed at
-    // sum=100.00 precisely because it excluded them. A refused send is an
-    // offered packet that was lost for want of a route, so it belongs in the
-    // denominator and in the route column. The RouteInput half of the
-    // topology's noRoute counter is NOT added: those packets were already in
-    // flight, FlowMonitor counted them, and the error callback already books
-    // them under DROP_ROUTE_ERROR — adding them here would double-count.
-    // dOff50/dOff90 below are offered-based by construction, so they become
-    // more honest for the same reason, not less.
-    uint64_t noRouteOrigin = 0;
-    if (proto == "oracle") {
-        Ptr<oracle::Topology> topo = oracleHelper.GetTopology();
-        if (topo) {
-            noRouteOrigin = topo->GetNoRouteOriginCount();
-            r.txPackets += noRouteOrigin;
-            dropRoute += noRouteOrigin;
-        }
-    }
-    // #510: the same correction for a registered arm that refuses at the
-    // source (OLSR, through its fallback counter). AntHocNet, AODV, AOMDV and
-    // DSDV defer an unroutable send (loopback or pending queue) instead of
-    // refusing it, so FlowMonitor already counts it -- measured, their
-    // delivered-bytes share of offered traffic matches their PDR to 0.05 pp
-    // in every committed cell (#510) -- and their AdjustCounts is a no-op.
-    if (benchArm) {
+    // #464/#510: an arm whose protocol refuses a locally originated send
+    // outright (the oracle when its graph holds no path, OLSR without a table
+    // entry) puts the refusals back: RouteOutput returns nullptr, the socket
+    // send fails and FlowMonitor never counts the packet as transmitted, so
+    // without this PDR is computed over "the packets the arm had a route for"
+    // rather than over offered traffic. A refused send is an offered packet
+    // lost for want of a route: it belongs in the denominator and in the
+    // route column. AntHocNet, AODV, AOMDV and DSDV defer an unroutable send
+    // (loopback or pending queue) instead, so FlowMonitor already counts it
+    // -- measured, their delivered-bytes share of offered traffic matches
+    // their PDR to 0.05 pp in every committed cell (#510).
+    {
         bench::RunCounts counts;
         counts.txPackets = r.txPackets;
         counts.dropRoute = dropRoute;
-        benchArm->AdjustCounts(benchRun, counts);
+        arm->AdjustCounts(run, counts);
         r.txPackets = counts.txPackets;
         dropRoute = counts.dropRoute;
     }
     r.pdr = r.txPackets ? 100.0 * r.rxPackets / r.txPackets : 0.0;
-    if (vizThisRun) g_viz.Finish(r.txPackets, r.rxPackets, r.pdr);
+    if (vizThisRun) arm->FinishReplay(r.txPackets, r.rxPackets, r.pdr);
     r.meanDelayMs = rxForDelay ? 1000.0 * totalDelay / rxForDelay : 0.0;
     r.throughputKbps = (totalRxBytes * 8.0 / 1000.0) / P.simTime;
     r.nrl = r.rxPackets ? static_cast<double>(g_controlPkts) / r.rxPackets : 0.0;
     // #132: same IP-layer counting point as nrl, but in bytes; delivered data
     // bytes are the FlowMonitor rxBytes already summed for throughput.
     r.nrlBytes = totalRxBytes > 0.0 ? static_cast<double>(g_controlBytes) / totalRxBytes : 0.0;
-    // #708: the mesh's link maintenance, which NRL does not count (see
-    // CountMeshMgtTx), so a reader can see its size beside the path selection.
-    if (g_diag && proto == "hwmp") {
-        std::cout << "# hwmp " << proto << " seed=" << seed << " pathSelFrames=" << g_controlPkts
-                  << " pathSelBytes=" << g_controlBytes << " peeringFrames=" << g_meshPeeringPkts
-                  << " beacons=" << g_meshBeacons << '\n';
-    }
+    // #708: a per-run note of the arm's (hwmp: the mesh's link maintenance,
+    // which NRL does not count, so a reader can see its size beside the path
+    // selection).
+    arm->EmitRunNote(run, measurement, std::cout);
     // #62: the --seriesEvery samples, one line each, cumulative counts.
     for (const SeriesSample& s : g_series) {
         std::cout << "# series " << proto << " seed=" << seed << " t=" << s.t << " ctrl=" << s.ctrl
@@ -3145,34 +2982,19 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // exist in no other arm, so they stay at the -1 "not applicable"
         // sentinel there rather than reporting a misleading 0.
         uint64_t reinjected = 0;
-        if (proto == "anthocnet") {
-            uint64_t holdSetup = 0, holdReconv = 0, repairPkts = 0;
-            for (uint32_t i = 0; i < nodes.GetN(); ++i) {
-                Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
-                if (!ip) continue;
-                Ptr<ns3::anthocnet::RoutingProtocol> ahn =
-                    DynamicCast<ns3::anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
-                if (!ahn) continue;
-                const ns3::anthocnet::HoldStats& s = ahn->HoldTimeStats();
-                holdSetup += s.droppedCount[ns3::anthocnet::HOLD_SETUP];
-                // A packet re-injected after a MAC failure (#46) and then aged
-                // out was still waiting for a route that had existed and did
-                // not come back — the reconvergence cause, not a separate one.
-                holdReconv += s.droppedCount[ns3::anthocnet::HOLD_RECONV] +
-                              s.droppedCount[ns3::anthocnet::HOLD_REPAIR];
-                repairPkts += ahn->RepairDiscardedPackets();
-                reinjected += ahn->MacReinjectedPackets();
-            }
-            r.dropSetupPct = 100.0 * holdSetup / tx;
-            r.dropReconvPct = 100.0 * holdReconv / tx;
-            r.dropRepairPct = 100.0 * repairPkts / tx;
-        } else {
-            // v2.5.0 (#563): the adaptive arms also re-route a packet the MAC
-            // gave up on (ARA §3.3, Termite's route repair). The data ones
-            // (IsDataIp, the same predicate as g_macDataDrops) are netted out
-            // of the mac column; ICMP errors re-routed alongside are not data.
-            reinjected = g_adaptiveReinjData;
+        // ADR-0027: the arm reports what its protocol can measure. AntHocNet
+        // has a pending queue and a local-repair discard (its own causes) and
+        // counts its own MAC re-injections; the adaptive arms (#563) report
+        // theirs through the measurement's sinks, the data ones (IsDataIp,
+        // the same predicate as g_macDataDrops) netted out of the mac column.
+        bench::DropDetail detail;
+        arm->FillDropDetail(run, detail);
+        if (detail.holdCauses) {
+            r.dropSetupPct = 100.0 * detail.holdSetup / tx;
+            r.dropReconvPct = 100.0 * detail.holdReconv / tx;
+            r.dropRepairPct = 100.0 * detail.repairPkts / tx;
         }
+        reinjected = detail.ownReinjected ? detail.reinjected : measurement.ReinjectedData();
         // Every one of these three ends in an error callback, so together they
         // are a *sub-breakdown* of dropRoutePct, not extra causes on top of it;
         // adding them to the identity would double-count.
@@ -3400,7 +3222,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             // END and only on the arms whose hook is connected — on the other
             // arms the quantity is unmeasured, and per the #382 rule absence
             // must stay distinguishable from a measured zero.
-            if (proto == "dsdv" || proto == "aodv") {
+            if (measurement.pendingQueue) {
                 std::cout << " pqSilent=" << pqSilent << " pqEcb=" << pqEcb;
             }
             // #761: the per-packet terminal-fate partition, appended at the END
@@ -3442,7 +3264,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         // detector / no SeqTs identity; #382 absence rule). A detector-off
         // anthocnet arm still emits, all fields measured zeros, so the
         // EnableMacFailureDetector=false control is a number, not an absence.
-        if (proto == "anthocnet" && P.transport != "tcp") {
+        if (measurement.reinjIdentity) {
             uint64_t pkts = 0, delivBefore = 0, delivAfterOnly = 0, never = 0;
             uint64_t dupDeliv = 0, dupRx = 0, postTx = 0, postRx = 0;
             uint64_t l3Route = 0, l3Ttl = 0, l3Other = 0;
@@ -3575,23 +3397,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // workflow's compact re-emit — so reading it for the phase-2 decomposition
     // needed a 900-line log tail and still lost three of twenty seeds. The
     // measurement was never the missing piece; reaching it was.
-    for (uint32_t i = 0; i < nodes.GetN(); ++i) {
-        Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
-        if (!ip) continue;
-        Ptr<ns3::anthocnet::RoutingProtocol> ahn =
-            DynamicCast<ns3::anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
-        if (!ahn) continue;
-        r.holdValid = true;
-        const ns3::anthocnet::HoldStats& s = ahn->HoldTimeStats();
-        for (uint8_t hr = 0; hr < ns3::anthocnet::kHoldReasons; ++hr) {
-            r.hold.deliveredCount[hr] += s.deliveredCount[hr];
-            r.hold.deliveredSumS[hr] += s.deliveredSumS[hr];
-            if (s.deliveredMaxS[hr] > r.hold.deliveredMaxS[hr])
-                r.hold.deliveredMaxS[hr] = s.deliveredMaxS[hr];
-            r.hold.droppedCount[hr] += s.droppedCount[hr];
-            r.hold.droppedSumS[hr] += s.droppedSumS[hr];
-        }
-    }
+    r.holdValid = arm->CollectHoldTimes(run, r.hold);
 
     // Diagnostics line (prefixed "# " so CSV consumers ignore it). Shows whether
     // routes form (reactive ants sent vs received elsewhere; back-ant arrivals)
@@ -3618,104 +3424,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                           << " flowsNoDelivery=" << never;
             }
         }
-        if (proto == "anthocnet") {
-            auto n = [](std::map<uint8_t, uint64_t>& m, uint8_t k) {
-                auto it = m.find(k);
-                return it == m.end() ? static_cast<uint64_t>(0) : it->second;
-            };
-            std::cout << " antTx[hello=" << n(g_antTx, 0x01) << ",reactive=" << n(g_antTx, 0x02)
-                      << ",proactive=" << n(g_antTx, 0x04) << ",repair=" << n(g_antTx, 0x08)
-                      << ",linkfail=" << n(g_antTx, 0x10) << "]"
-                      << " antRx[hello=" << n(g_antRx, 0x01) << ",reactive=" << n(g_antRx, 0x02)
-                      << ",proactive=" << n(g_antRx, 0x04) << ",repair=" << n(g_antRx, 0x08)
-                      << ",linkfail=" << n(g_antRx, 0x10) << "]";
-            // Issue #20: origin vs propagation split of the linkfail volume
-            // (origins = antTx[linkfail] - linkfailProp; budgetDrop counts
-            // propagations suppressed by the inherited broadcastBudget).
-            uint64_t lfProp = 0, lfBudget = 0, lfSuppressed = 0;
-            // Reactive ants steered by the diffusion gradient instead of
-            // broadcast (EnableDirectedReactive). Always 0 with the default
-            // gate off; on an enabled arm it is the "did the mechanism engage"
-            // number to read *before* comparing NRL between the two arms.
-            uint64_t steers = 0;
-            for (uint32_t i = 0; i < nodes.GetN(); ++i) {
-                Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
-                if (!ip) continue;
-                Ptr<ns3::anthocnet::RoutingProtocol> ahn =
-                    DynamicCast<ns3::anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
-                if (!ahn) continue;
-                lfProp += ahn->LinkfailPropagations();
-                lfBudget += ahn->LinkfailBudgetDrops();
-                lfSuppressed += ahn->LinkfailOriginsSuppressed();
-                steers += ahn->DirectedSteers();
-            }
-            std::cout << " linkfailProp=" << lfProp << " linkfailBudgetDrop=" << lfBudget
-                      << " linkfailOrigSuppressed=" << lfSuppressed << " directedSteers=" << steers;
-
-            // Issue #133: pheromone-table size gauge at end of run. Per node
-            // the table grows with destinations x neighbours (regular +
-            // virtual) and only evaporation / link-failure removal shrink it,
-            // so avg/max across nodes is the growth observable for long runs
-            // (notably the enableEvaporation=false ablation).
-            uint64_t ptRegSum = 0, ptRegMax = 0, ptVirSum = 0, ptVirMax = 0;
-            uint32_t ptNodes = 0;
-            for (uint32_t i = 0; i < nodes.GetN(); ++i) {
-                Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
-                if (!ip) continue;
-                Ptr<ns3::anthocnet::RoutingProtocol> ahn =
-                    DynamicCast<ns3::anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
-                if (!ahn) continue;
-                ++ptNodes;
-                const uint64_t reg = ahn->PtableEntriesRegular();
-                const uint64_t vir = ahn->PtableEntriesVirtual();
-                ptRegSum += reg;
-                ptVirSum += vir;
-                if (reg > ptRegMax) ptRegMax = reg;
-                if (vir > ptVirMax) ptVirMax = vir;
-            }
-            std::cout << " ptable[regAvg="
-                      << (ptNodes ? static_cast<double>(ptRegSum) / ptNodes : 0.0)
-                      << ",regMax=" << ptRegMax
-                      << ",virAvg=" << (ptNodes ? static_cast<double>(ptVirSum) / ptNodes : 0.0)
-                      << ",virMax=" << ptVirMax << "]";
-
-            // Issue #21: pending-queue hold-time attribution. dOff50 is ~3 ms
-            // (#88) so the delay/jitter gap vs AODV is carried by queue-held
-            // packets; this splits the delivered hold time (and the aged-out
-            // drops) across the setup / reconvergence / repair hold paths so
-            // the dominant one can be attacked. Summed across nodes.
-            const ns3::anthocnet::HoldStats& hs = r.hold;  // gathered above (#308)
-            // #215: the repair-discard cause from both sides — the core's
-            // simulator-agnostic event count (how many local repairs expired)
-            // and the adapter's packet count (how much data each released).
-            uint64_t repairEvents = 0, repairPkts = 0, macReinjected = 0;
-            for (uint32_t i = 0; i < nodes.GetN(); ++i) {
-                Ptr<Ipv4> ip = nodes.Get(i)->GetObject<Ipv4>();
-                if (!ip) continue;
-                Ptr<ns3::anthocnet::RoutingProtocol> ahn =
-                    DynamicCast<ns3::anthocnet::RoutingProtocol>(ip->GetRoutingProtocol());
-                if (!ahn) continue;
-                repairEvents += ahn->RepairDiscards();
-                repairPkts += ahn->RepairDiscardedPackets();
-                macReinjected += ahn->MacReinjectedPackets();
-            }
-            static const char* kReasonName[3] = {"setup", "reconv", "repair"};
-            std::cout << " hold[";
-            for (uint8_t r = 0; r < ns3::anthocnet::kHoldReasons; ++r) {
-                const double meanMs = hs.deliveredCount[r]
-                                          ? 1000.0 * hs.deliveredSumS[r] / hs.deliveredCount[r]
-                                          : 0.0;
-                std::cout << (r ? " " : "") << kReasonName[r] << "=" << hs.deliveredCount[r] << "/"
-                          << std::setprecision(1) << meanMs << "ms/max" << std::setprecision(1)
-                          << 1000.0 * hs.deliveredMaxS[r] << "ms";
-            }
-            std::cout << "] holdDrop[";
-            for (uint8_t r = 0; r < ns3::anthocnet::kHoldReasons; ++r) {
-                std::cout << (r ? " " : "") << kReasonName[r] << "=" << hs.droppedCount[r];
-            }
-            std::cout << "]" << " repairDiscard=" << repairEvents << "ev/" << repairPkts
-                      << "pkt macReinject=" << macReinjected;
-        }
+        arm->AppendDiag(run, measurement, std::cout);
         std::cout << "\n";
     }
 
@@ -3730,51 +3439,31 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                   << " pctNonzero=" << pct << " samples=" << g_qCount << "\n";
     }
 
-    // #296 item 1: the two things that make this arm a CONTROL rather than a
-    // protocol, asserted rather than assumed.
-    //
-    // (a) Zero control traffic. The oracle opens no socket and sends nothing;
-    //     if this ever fires, something in the arm started talking and its NRL
-    //     stopped being an upper-bound reference point. NS_ABORT, not
-    //     NS_ASSERT, so it holds in the optimized builds the campaign uses.
-    // (b) The topology it routed on is reported, not guessed at afterwards:
-    //     which adjacency rule was in force, whether that rule is exact for
-    //     this channel, and how often it was re-solved. `approx=1` marks a
-    //     cell whose oracle is an approximation (fading), which is what
-    //     scenario_check reads to refuse to treat it as exact.
-    if (proto == "oracle") {
-        NS_ABORT_MSG_IF(g_controlPkts != 0 || g_controlBytes != 0,
-                        "oracle arm transmitted "
-                            << g_controlPkts << " control packets (" << g_controlBytes
-                            << " B): the control is supposed to put NOTHING on "
-                               "the wire, so its NRL is no longer an upper-bound reference (#296)");
-        Ptr<oracle::Topology> topo = oracleHelper.GetTopology();
-        std::cout << "##ORACLE## " << seed << ' ' << proto << " mode=" << topo->GetMode()
-                  << " approx=" << (topo->IsApproximate() ? 1 : 0)
-                  << " nodes=" << topo->GetNodeCount() << " edges=" << topo->GetEdgeCount()
-                  << " recomputes=" << topo->GetRecomputeCount()
-                  << " changes=" << topo->GetTopologyChanges() << " range=" << std::fixed
-                  << std::setprecision(1) << topo->GetLinkRange() << " noRoute="
-                  << topo->GetNoRouteCount()
-                  // #464: appended, never inserted — the split between the two
-                  // failure paths, so the accounting can be audited rather than
-                  // inferred. noRouteOrigin is folded into the offered count
-                  // and the route column; noRouteForward was already booked.
-                  << " noRouteOrigin=" << topo->GetNoRouteOriginCount()
-                  << " noRouteFwd=" << topo->GetNoRouteForwardCount() << " nrl=" << std::fixed
-                  << std::setprecision(2) << r.nrl << "\n";
-    }
+    // ADR-0027: the arm's own diagnostics after the markers (the oracle's
+    // ##ORACLE##), then its invariants (the oracle puts nothing on the wire).
+    arm->EmitDiagnostics(run, measurement, r.nrl, std::cout);
+    arm->Check(run, measurement);
 
     Simulator::Destroy();
     return r;
 }
 
+// The arms named in --protocols that the registry knows, in order. An unknown
+// name is skipped here; RunOne aborts on it (#448).
+std::vector<Ptr<bench::Arm>> ListedArms(const std::string& protocols) {
+    std::vector<Ptr<bench::Arm>> arms;
+    std::stringstream ss(protocols);
+    std::string item;
+    while (std::getline(ss, item, ',')) {
+        Ptr<bench::Arm> a = item.empty() ? nullptr : bench::Registry().Make(item);
+        if (a) arms.push_back(a);
+    }
+    return arms;
+}
+
 }  // namespace
 
-int main(int argc, char* argv[]) {
-    // ADR-0027 §3 (#766): arms register by an explicit call, never a static
-    // initialiser. The stock ns-3 arms come from routing-bench.
-    bench::RegisterStockArms();
+int ns3::bench::RunHarness(int argc, char* argv[], const std::string& program) {
     // Sentinels (<0 / 0) mean "unset" so a preset or the legacy defaults fill in.
     std::string scenario;
     int32_t nNodes = 0;
@@ -3796,9 +3485,17 @@ int main(int argc, char* argv[]) {
     // split dispatches. Default 1 keeps every existing invocation identical.
     uint32_t firstRun = 1;
     bool csv = false;
-    std::string protocols = "anthocnet,aodv,olsr,dsdv";
+    // The default comparison, minus any arm not installed beside the harness.
+    std::string protocols;
+    for (const char* d : {"anthocnet", "aodv", "olsr", "dsdv"}) {
+        if (bench::Registry().Has(d)) protocols += (protocols.empty() ? "" : ",") + std::string(d);
+    }
+    std::string armList;
+    for (const std::string& n : bench::Registry().Names()) {
+        armList += (armList.empty() ? "" : ",") + n;
+    }
 
-    CommandLine cmd(__FILE__);
+    CommandLine cmd(program);
     cmd.AddValue("scenario",
                  "Preset: 'paper' (Broch/CMU calibration field), "
                  "'thesis' (AntHocNet's own evaluation field, "
@@ -3853,15 +3550,14 @@ int main(int argc, char* argv[]) {
                  "seeds can split across dispatches (#126)",
                  firstRun);
     cmd.AddValue("csv", "Emit machine-readable CSV instead of a table", csv);
-    cmd.AddValue(
-        "protocols",
-        // clang-format off
-        // check-allowlists.sh and check-arm-delivery.sh read this list as one literal (#435).
-        "Comma-separated list (anthocnet,aodv,olsr,dsdv,gpsr,gpcr,gpsr3d,aomdv,hwmp,oracle,ara,termite,qrouting). "
-        // clang-format on
-        "`oracle` is the #296 global-knowledge shortest-path CONTROL "
-        "(upper bound, zero control traffic), off unless named.",
-        protocols);
+    cmd.AddValue("protocols",
+                 // ADR-0027 (#768): the arm list comes from the registry. The
+                 // "Comma-separated list (a,b,c)" shape is what check-arm-delivery.sh
+                 // reads out of --PrintHelp (#435).
+                 "Comma-separated list (" + armList +
+                     "). `oracle` is the #296 global-knowledge shortest-path CONTROL "
+                     "(upper bound, zero control traffic), off unless named.",
+                 protocols);
     cmd.AddValue("diag", "Emit per-run '# diag' lines (ant tallies, first delivery)", g_diag);
     cmd.AddValue("qdiag",
                  "Emit per-run '# qdiag' lines: per-node MAC queue depth "
@@ -4138,35 +3834,14 @@ int main(int argc, char* argv[]) {
     }
     if (blocksX == 0) blocksX = vanet ? 4 : 5;
     if (blocksY == 0) blocksY = vanet ? 4 : 5;
-    // #506: the oracle control re-derives its graph every RecomputeInterval
-    // (1 s by default). At FANET closing speeds (up to 60 m/s) a 1 s-old graph
-    // routes over links that have already broken, and the oracle stops being a
-    // delivery bound -- measured: 88.89 % vs AntHocNet's 94.41 % on the main
-    // cell, 7.89 % MAC drops. At 100 ms it is above every arm on every seed
-    // (#506, both cells, 20 seeds). The oracle is the measuring instrument,
-    // not a protocol under test, so this is not the per-family protocol
-    // default ADR-0019 forbids. An explicit
-    // --ns3::oracle::Topology::RecomputeInterval=... on the command line
-    // still wins; no other scenario is touched.
-    // #488: the same instrument rule for VANET. Measured on the
-    // vanet-building anchor cell (one 280 m block, 20 vehicles, urban): at the
-    // 1 s default the oracle delivered 48.3 % against AODV's 50.5 % on 10
-    // vehicles -- a 1 s-old graph misses every corner a vehicle has just
-    // turned. At 100 ms it delivers 99.6 % on the anchor cell.
-    // #580: the disaster scene's links open and close at building walls as
-    // responders walk in and out, the VANET corner case on foot.
-    if (fanet || vanet || disaster) {
-        bool explicitRecompute = false;
-        for (int k = 1; k < argc; ++k) {
-            if (std::string(argv[k]).find("oracle::Topology::RecomputeInterval") !=
-                std::string::npos) {
-                explicitRecompute = true;
-            }
-        }
-        if (!explicitRecompute) {
-            Config::SetDefault("ns3::oracle::Topology::RecomputeInterval",
-                               TimeValue(MilliSeconds(100)));
-        }
+    // #506/#488/#580: per-family settings of the arms' measuring
+    // instruments (the oracle's recompute cadence), never protocol defaults
+    // (ADR-0019); each listed arm applies its own.
+    {
+        bench::RunContext scen;
+        scen.scenario = scenario;
+        for (int k = 1; k < argc; ++k) scen.args.emplace_back(argv[k]);
+        for (const Ptr<bench::Arm>& a : ListedArms(protocols)) a->Configure(scen);
     }
     // An explicitly empty --propagation= has always meant "the default", and
     // scenario-matrix.yml documents its blank input that way; normalise it
@@ -4278,9 +3953,6 @@ int main(int argc, char* argv[]) {
         NS_ABORT_MSG_IF(rateManager == "constant6",
                         "--rateManager=constant6 is an OFDM rate: it needs --standard=80211a");
     }
-    NS_ABORT_MSG_IF(protocols.find("hwmp") != std::string::npos && standard != "80211a",
-                    "--protocols includes hwmp: stock ns-3 802.11s tunes its mesh interfaces "
-                    "to 5 GHz channel 100, so it needs --standard=80211a (#708)");
     P.standard = standard;
     P.rateManager = rateManager;
     P.sink = sink;
@@ -4383,21 +4055,14 @@ int main(int argc, char* argv[]) {
     while (std::getline(ss, item, ',')) {
         if (!item.empty()) list.push_back(item);
     }
-    // #480: the vendored GPSR carries only x/y in its hello and position
-    // headers, and its perimeter mode planarizes a 2-D graph. Under --areaZ > 0
-    // it would route on projected positions -- a silent degradation that would
-    // read as a protocol result. Refused; the 3-D geographic arm is gpsr3d
-    // (#710), the same module's ThreeD mode.
-    if (P.areaZ > 0.0) {
-        for (const std::string& proto : list) {
-            NS_ABORT_MSG_UNLESS(proto != "gpsr" && proto != "gpcr",
-                                "--protocols includes "
-                                    << proto << " with --areaZ=" << P.areaZ
-                                    << ": the vendored GPSR is planar "
-                                       "(2-D headers, 2-D planarization) and would "
-                                       "route on projected positions. Use gpsr3d "
-                                       "for a 3-D field (#480, #710).");
-        }
+    // Each listed arm refuses a configuration it cannot run honestly (a planar
+    // GPSR on a 3-D field, #480; 802.11s off 802.11a, #708).
+    {
+        bench::RunContext scen;
+        scen.scenario = scenario;
+        scen.standard = P.standard;
+        scen.areaZ = P.areaZ;
+        for (const Ptr<bench::Arm>& a : ListedArms(protocols)) a->Validate(scen);
     }
 
     // Each protocol: mean over runs (every protocol sees the same seed set).
@@ -4494,50 +4159,11 @@ int main(int argc, char* argv[]) {
     // #708: named only off the default, so 802.11b rows stay byte-identical.
     if (P.standard != "80211b") std::cout << " standard=" << P.standard;
     std::cout << " protocols=" << protocols << '\n';
-    // Every AntHocNet attribute at its *effective* value. ns-3 routes
-    // `--ns3::anthocnet::RoutingProtocol::X=Y` through Config::SetDefault,
-    // which rewrites the TypeId's stored initial value -- so reading it back
-    // here reports overrides and compiled defaults alike, and any lever a
-    // future sweep adds is carried without touching this code. Baseline
-    // protocols' attributes are not dumped: nothing in this repo sweeps them,
-    // and the row is provenance for our own knobs.
-    {
-        TypeId tid;
-        if (TypeId::LookupByNameFailSafe("ns3::anthocnet::RoutingProtocol", &tid)) {
-            // std::size_t rather than decltype(GetAttributeN()): the return
-            // type changed from uint32_t to std::size_t across the ns-3
-            // versions in the matrix, and both convert to std::size_t without
-            // a sign-compare warning.
-            const std::size_t nAttr = tid.GetAttributeN();
-            for (std::size_t a = 0; a < nAttr; ++a) {
-                const TypeId::AttributeInformation info = tid.GetAttribute(a);
-                if (!info.initialValue || !info.checker) continue;
-                std::cout << "##CONFIG## attr " << info.name << '='
-                          << info.initialValue->SerializeToString(info.checker) << '\n';
-            }
-        }
-    }
-    // #506: the oracle's recompute cadence, when it is not the 1 s default.
-    // Printed only off-default so every existing oracle cell's ##CONFIG##
-    // block stays byte-identical; a FANET cell records its 100 ms here.
-    if (protocols.find("oracle") != std::string::npos) {
-        TypeId otid;
-        if (TypeId::LookupByNameFailSafe("ns3::oracle::Topology", &otid)) {
-            const std::size_t nO = otid.GetAttributeN();
-            for (std::size_t a = 0; a < nO; ++a) {
-                const TypeId::AttributeInformation info = otid.GetAttribute(a);
-                if (info.name != "RecomputeInterval") continue;
-                if (!info.initialValue || !info.checker) break;
-                const std::string v = info.initialValue->SerializeToString(info.checker);
-                if (v != "+1e+09ns") {
-                    std::cout << "##CONFIG## attr ns3::oracle::Topology::"
-                                 "RecomputeInterval="
-                              << v << '\n';
-                }
-                break;
-            }
-        }
-    }
+    // Module-level ##CONFIG## lines (AntHocNet's attributes at their effective
+    // values), then those of each listed arm (the oracle's recompute cadence
+    // off its default).
+    for (bench::ConfigDump dump : bench::Registry().ConfigDumps()) dump(std::cout);
+    for (const Ptr<bench::Arm>& a : ListedArms(protocols)) a->EmitConfig(std::cout);
     // #63: on a TCP run, the congestion-control variant IS part of the
     // configuration -- ns-3's default has changed across releases, so a cell
     // that does not record it is not reproducible against a future image.
@@ -4606,14 +4232,14 @@ int main(int argc, char* argv[]) {
             // and it is the same rule ##AIR## follows for --energyJ=0.
             if (r.holdValid) {
                 std::cout << std::fixed << "##HOLD## " << s << ' ' << list[i];
-                for (uint8_t hr = 0; hr < ns3::anthocnet::kHoldReasons; ++hr) {
+                for (std::size_t hr = 0; hr < r.hold.size(); ++hr) {
                     const double meanMs =
-                        r.hold.deliveredCount[hr]
-                            ? 1000.0 * r.hold.deliveredSumS[hr] / r.hold.deliveredCount[hr]
+                        r.hold[hr].deliveredCount
+                            ? 1000.0 * r.hold[hr].deliveredSumS / r.hold[hr].deliveredCount
                             : 0.0;
-                    std::cout << ' ' << r.hold.deliveredCount[hr] << ' ' << std::setprecision(2)
+                    std::cout << ' ' << r.hold[hr].deliveredCount << ' ' << std::setprecision(2)
                               << meanMs << ' ' << std::setprecision(2)
-                              << 1000.0 * r.hold.deliveredMaxS[hr];
+                              << 1000.0 * r.hold[hr].deliveredMaxS;
                 }
                 std::cout << "\n";
             }

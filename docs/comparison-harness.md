@@ -1,7 +1,7 @@
 # The comparison harness: running it and adding a protocol
 
-`anthocnet-compare` is the ns-3 program behind every MANET-family number in
-this repository. It runs several routing protocols ("arms") on the **same
+`routing-compare` (still also built as `anthocnet-compare`) is the ns-3
+program behind every MANET-family number in this repository. It runs several routing protocols ("arms") on the **same
 seeds**, with the same mobility, the same traffic and the same channel. It
 reports per-seed rows that pair across arms, so a difference between two
 protocols carries a confidence interval rather than an anecdote.
@@ -13,12 +13,13 @@ definitions are in [metrics.md](benchmarks/metrics.md).
 
 [← Benchmark index](benchmarks.md) · [Methodology](benchmarks/methodology.md) · [Metrics](benchmarks/metrics.md) · [v2.5.0 comparators](benchmarks/v2.5.0-comparators.md)
 
-> **Status: tied to AntHocNet today.** The harness is an example program
-> inside the `anthocnet` ns-3 module. It compiles in every arm it knows, so it
-> builds only with AntHocNet and all the comparison modules installed. Making
-> it protocol-agnostic, so that it builds without AntHocNet and is shipped as
-> its own package, is planned for v2.6.0 and v2.7.0. See
-> [Packaging](#packaging-and-what-is-planned) below.
+> **Status: protocol-agnostic since v2.6.0**
+> ([ADR-0027](adr/0027-the-comparison-harness-is-protocol-agnostic.md)). The
+> harness is its own ns-3 module, `routing-bench`, which links only stock ns-3
+> and names no protocol. Every arm registers itself from its own module, so
+> the harness builds and runs without AntHocNet. `anthocnet-compare` is the
+> same program under its old name, kept at least through v3.x. Shipping it as
+> its own package is planned for v2.7.0 ([Packaging](#packaging-and-what-is-planned)).
 
 ## What it measures
 
@@ -36,12 +37,16 @@ Built-in arms, as of v2.5.0:
 | arm | what it is | module |
 |---|---|---|
 | `anthocnet` | this project's protocol | `anthocnet` |
-| `aodv`, `olsr`, `dsdv` | stock ns-3 | ns-3 |
+| `aodv`, `olsr`, `dsdv` | stock ns-3 | `routing-bench` (stock arms) |
 | `aomdv` | multipath AODV | `aomdv` (vendored) |
 | `gpsr`, `gpcr`, `gpsr3d` | geographic routing and its VANET/FANET modes | `gpsr` (vendored) |
-| `hwmp` | 802.11s mesh path selection | ns-3 `mesh` |
+| `hwmp` | 802.11s mesh path selection | `routing-bench` (stock ns-3 `mesh`) |
 | `oracle` | shortest-path ground truth, an upper bound | `oracle` |
 | `ara`, `termite`, `qrouting` | ant-colony, stigmergic and learned comparators | `adaptive` |
+
+`routing-compare --PrintHelp` lists the arms actually installed: the
+`--protocols` help is built from the registry. With only `routing-bench`
+installed, the harness has the four stock arms.
 
 Scenario presets (`--scenario=paper|fanet|vanet|disaster|…`) set the field,
 mobility and channel of each network family. Any flag overrides a preset.
@@ -50,12 +55,12 @@ mobility and channel of each network family. Any flag overrides a preset.
 
 With the modules installed into an ns-3 tree (`make install-ns3
 NS3DIR=/path/to/ns-3`, or the release's `anthocnet-ns3-modules-<ver>.tar.gz`
-unpacked into `contrib/`):
+unpacked into `contrib/`; `routing-bench` alone is enough for the stock arms):
 
 ```bash
 cd /path/to/ns-3
 ./ns3 configure --enable-examples --enable-tests && ./ns3 build
-./ns3 run "anthocnet-compare --scenario=paper --runs=10 --time=900 \
+./ns3 run "routing-compare --scenario=paper --runs=10 --time=900 \
     --protocols=anthocnet,aodv,olsr --diag"
 ```
 
@@ -68,7 +73,7 @@ Useful flags:
 - `--firstRun` to split seeds across jobs;
 - any `--ns3::<TypeId>::<Attribute>=<value>` to change one protocol's parameter.
 
-`./ns3 run "anthocnet-compare --PrintHelp"` lists everything.
+`./ns3 run "routing-compare --PrintHelp"` lists everything.
 
 The output is a summary table plus machine-readable marker lines:
 
@@ -105,7 +110,7 @@ If your protocol already is an ns-3 `Ipv4RoutingProtocol` with an
 `Ipv4RoutingHelper`, it needs no rewrite. Vendor it like
 `ns3/baselines/aomdv/` or `ns3/baselines/gpsr/`: its own directory, a
 `CMakeLists.txt` built with `build_lib`, and a README carrying the fidelity
-sheet. Then wire it in, as described [below](#wiring-an-arm-in-today).
+sheet. Then register it, as described [below](#registering-an-arm).
 
 ### A per-hop, table-driven arm on the `adaptive` base
 
@@ -156,28 +161,38 @@ The module links only stock ns-3 (core, network, internet, wifi). Start from
 [`qrouting-routing-protocol.cc`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/baselines/adaptive/model/qrouting-routing-protocol.cc),
 the smallest complete arm (about 270 lines), and install it with `AdaptiveHelper("ns3::adaptive::<YourType>")`.
 
-### Wiring an arm in, today
+### Registering an arm
 
-The arm registry has started landing (v2.6.0,
-[#766](https://github.com/danieljoppi/AntHocNet/issues/766)): the stock ns-3
-arms (`aodv`, `olsr`, `dsdv`, `hwmp`) now register with the `routing-bench`
-module ([its README](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/routing-bench/README.md)).
-Until the other arms move (#767, #768), a new arm still touches these places.
-CI catches every one you miss:
+An arm is a class derived from `ns3::bench::Arm`
+([`routing-bench-arm.h`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/routing-bench/model/routing-bench-arm.h)),
+created fresh for every (seed, arm) run. Three hooks are required:
 
-1. **`ns3/anthocnet/examples/anthocnet-compare.cc`:**
-    - construct the helper next to the others;
-    - add a `proto == "<name>"` branch that installs it, and one in the
-      `AssignStreams` block that pins its streams;
-    - add the name to the `--protocols` help literal (one line, between the
-      `clang-format off/on` markers).
-2. **`ns3/anthocnet/examples/CMakeLists.txt`:** link the module's library into
-   `anthocnet-compare`.
-3. **`ns3/Makefile`, `ns3/doctor.sh` and the CI module lists:**
-   `tools/checks/check-allowlists.sh` derives the module and arm sets from the
-   tree and fails on any list that disagrees.
-4. **`tools/checks/check-determinism.sh`:** add the arm to the `filter_rows`
-   alternation. The allowlist check enforces this too.
+- `Name()`, the `--protocols` token;
+- `InstallRouting(internet, run)`, which sets your routing helper on the stack;
+- `AssignStreams(run, stream)`, which pins your protocol's random streams and
+  returns how many it took (#352).
+
+The optional hooks cover everything else the harness used to special-case:
+own devices (`hwmp`), post-stack wiring (`gpsr`), trace connections, refused
+sends added back to the offered load (`oracle`, `olsr`), extra diagnostics,
+self-checks and the replay. The stock arms in
+[`stock-arms.cc`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/routing-bench/helper/stock-arms.cc)
+and the module arms are the worked examples; Q-routing's is a dozen lines
+([`adaptive-bench-arms.cc`](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/baselines/adaptive/helper/adaptive-bench-arms.cc)).
+
+To join the harness, your module ships one file,
+`helper/<module>-bench-arms.cc`, defining
+`ns3::bench::RegisterArms_<module>()` (hyphens become underscores), which
+calls `RegisterArm("<name>", "<summary>", &MakeYourArm)` for each arm. Compile
+it into your module only when `routing-bench` is installed and enabled, the way
+[`adaptive`'s CMakeLists](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/baselines/adaptive/CMakeLists.txt)
+does. `routing-compare` finds the file at configure time, links your module and
+calls the function at start-up. No harness source, check script or workflow
+changes.
+
+What still needs a line: your module in the `--enable-modules` lists
+(`tools/checks/check-allowlists.sh` derives the module set from the tree and
+fails on a list that is missing it).
 
 ## The gates before a number counts
 
@@ -193,7 +208,7 @@ two vendored arms once compiled, passed CI and forwarded nothing
    [`adaptive` README](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/baselines/adaptive/README.md).
 2. **Delivery smoke** (`tools/checks/check-arm-delivery.sh <ns3-dir>`, on
    every PR; [#439](https://github.com/danieljoppi/AntHocNet/issues/439)).
-   Every arm in the `--protocols` help runs on a small static multi-hop field.
+   Every arm in `routing-compare`'s `--protocols` help runs on a small static multi-hop field.
    It must deliver above a floor, use multi-hop paths, and close its drop book.
 3. **Anchor.** The arm must reproduce its own paper's headline trend on a
    scenario matching the paper's. The rule is fixed in a pre-registration page
@@ -205,22 +220,22 @@ two vendored arms once compiled, passed CI and forwarded nothing
 
 ## Packaging and what is planned
 
-**Today:**
+**Today (v2.6.0):**
 
-- The release ships `anthocnet-ns3-modules-<ver>.tar.gz`, five ns-3 contrib
-  modules to unpack into `contrib/`. The harness comes with `anthocnet`.
+- The release ships `anthocnet-ns3-modules-<ver>.tar.gz`, six ns-3 contrib
+  modules to unpack into `contrib/`: `routing-bench` (the harness and the
+  stock arms), `anthocnet`, and the comparison modules `aomdv`, `gpsr`,
+  `oracle` and `adaptive`. Keep `routing-bench` and drop the rest to run the
+  harness on the stock arms alone, or add your own arm module beside it.
 - The `adaptive` module also works on its own in any ns-3 ≥ 3.36 tree. Copy
   `contrib/adaptive` alone and use `AdaptiveHelper` in your own program.
 
 **Planned** (epic [#764](https://github.com/danieljoppi/AntHocNet/issues/764)):
 
-- **v2.6.0:** the harness becomes a protocol-agnostic ns-3 module,
-  `routing-bench`
-  ([ADR-0027](adr/0027-the-comparison-harness-is-protocol-agnostic.md)). Arms register themselves, so adding one edits no harness
-  source. Every committed cell must reproduce byte for byte.
 - **v2.7.0:** the harness and the `adaptive` arms ship as their own release
-  packages, the readers as a Python package, and this guide becomes a
-  bring-your-own-protocol tutorial with an arm template.
+  packages, the readers as a Python package with a versioned marker contract,
+  and this guide becomes a bring-your-own-protocol tutorial with an arm
+  template.
 
 See the [roadmap](roadmap.md) for the exit criteria.
 

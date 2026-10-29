@@ -33,62 +33,17 @@ set(AHN_HAVE_BASELINES FALSE)
 if(AHN_HAVE_ORACLE
    AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/aomdv/CMakeLists.txt
    AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/gpsr/CMakeLists.txt
-   AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/adaptive/CMakeLists.txt
-   AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/routing-bench/CMakeLists.txt)
+   AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/adaptive/CMakeLists.txt)
   set(AHN_HAVE_BASELINES TRUE)
 else()
-  message(STATUS "anthocnet: comparison modules (aomdv, gpsr, oracle, adaptive, routing-bench) not all "
-                 "installed -- skipping anthocnet-compare, isl-grid and "
+  message(STATUS "anthocnet: comparison modules (aomdv, gpsr, oracle, adaptive) not all "
+                 "installed -- skipping isl-grid and "
                  "leo-walker (make install-ns3 without BASELINES=0 adds them)")
 endif()
 
-# Protocol comparison (AntHocNet vs AODV/OLSR/DSDV). Only built when those
-# modules + flow-monitor are enabled; otherwise ns-3 skips it automatically.
-if(AHN_HAVE_BASELINES)
-build_lib_example(
-  NAME anthocnet-compare
-  SOURCE_FILES anthocnet-compare.cc
-  LIBRARIES_TO_LINK
-    ${libanthocnet}
-    ${libcore}
-    ${libnetwork}
-    ${libinternet}
-    ${libwifi}
-    ${libmobility}
-    ${libapplications}
-    ${libflow-monitor}
-    # energy (#209): BasicEnergySource/BasicEnergySourceHelper live in the
-    # energy module. WifiRadioEnergyModel(Helper) is in wifi, already linked.
-    # wifi itself depends on energy in every ns-3 from 3.36 to 3.48, so
-    # --enable-modules lists that name wifi already pull energy in; this entry
-    # just makes the direct dependency explicit.
-    ${libenergy}
-    ${libaodv}
-    # aomdv (#296): the vendored multipath baseline, installed to contrib/
-    # alongside anthocnet by `make install-ns3` (see ../../baselines/aomdv/README.md).
-    ${libaomdv}
-    ${libolsr}
-    ${libdsdv}
-    # #708: stock 802.11s (MeshHelper, Dot11sStack) for the hwmp arm. Same
-    # rule: not enabled, example skipped, so every --enable-modules list that
-    # builds this harness names mesh.
-    ${libmesh}
-    # ADR-0027 (#766): the arm contract, the registry and the stock arms
-    # (contrib/routing-bench, installed by the same `make install-ns3`).
-    ${librouting-bench}
-    # #296: the vendored GPSR baseline module (contrib/gpsr, installed by the
-    # same `make install-ns3`). Like the stock baselines above, listing it here
-    # means the example is skipped when the module is not enabled.
-    ${libgpsr}
-    # #296 item 1: the oracle shortest-path control module (contrib/oracle,
-    # installed by the same `make install-ns3`). Same rule as the baselines —
-    # not enabled, example skipped.
-    ${liboracle}
-    # v2.5.0 (#563): the adaptive comparators (ara, termite, qrouting),
-    # contrib/adaptive, installed by the same `make install-ns3`.
-    ${libadaptive}
-)
-endif()
+# The comparison harness (anthocnet-compare) moved to the routing-bench module
+# (ADR-0027, #767): routing-compare, with anthocnet-compare kept there as an
+# alias. AntHocNet reaches it as an arm (helper/anthocnet-bench-arms.cc).
 
 # ISL-grid scenario (#214): a static +Grid torus of point-to-point links — the
 # LEO inter-satellite-link abstraction — with no mobility and no wifi. Needs

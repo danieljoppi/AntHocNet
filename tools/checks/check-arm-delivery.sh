@@ -59,8 +59,8 @@
 # byte-reproducible, so this gate never flakes — it can only change verdict
 # when the code does.
 #
-# The ns-3 tree must already be configured + built with the anthocnet module's
-# examples enabled (anthocnet-compare builds as part of the module's examples).
+# The ns-3 tree must already be configured + built with routing-bench's
+# examples enabled (routing-compare builds as part of routing-bench's examples).
 set -euo pipefail
 
 NS3DIR=${1:-}
@@ -106,12 +106,12 @@ cd "$NS3DIR"
 
 # The supported arms, straight from the harness's --protocols help text: the
 # parenthesised comma list in "Comma-separated list (a,b,c)".
-help=$(./ns3 run "anthocnet-compare --PrintHelp" 2>&1 || true)
+help=$(./ns3 run "routing-compare --PrintHelp" 2>&1 || true)
 arms=$(printf '%s\n' "$help" \
     | sed -n 's/.*Comma-separated list (\([a-z0-9,]*\)).*/\1/p' \
     | head -n 1 | tr ',' ' ')
 if [ -z "$arms" ]; then
-    echo "FAIL [arm-delivery]: could not read the arm list from anthocnet-compare --PrintHelp."
+    echo "FAIL [arm-delivery]: could not read the arm list from routing-compare --PrintHelp."
     echo "  The --protocols help text must keep its '(a,b,c)' list — this gate"
     echo "  derives its coverage from it so new arms are covered automatically."
     printf '%s\n' "$help" | tail -n 20
@@ -156,7 +156,7 @@ broken_issue() {
 fail=0
 for proto in $arms; do
     issue=$(broken_issue "$proto")
-    cmd="anthocnet-compare $ARGS $(arm_args "$proto") --protocols=$proto"
+    cmd="routing-compare $ARGS $(arm_args "$proto") --protocols=$proto"
     echo "[arm-delivery] ./ns3 run \"$cmd\""
     if ! out=$(./ns3 run "$cmd" 2>&1); then
         if [ -n "$issue" ]; then
