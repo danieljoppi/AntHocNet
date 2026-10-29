@@ -12,7 +12,10 @@ it depends on none of them.
 | file | what |
 |---|---|
 | `model/routing-bench-arm.h/.cc` | the `Arm` contract, `RunContext`, `RunCounts`, `Measurement` (what an arm may touch of the run's measurement) and the `ArmRegistry` (#766) |
-| `model/routing-bench-harness.cc` | the harness itself: scenario presets, mobility, channels, traffic, stream pinning, FlowMonitor and the trace sinks, the drop book, route stability, the identity-matched set, energy, the markers (#767). `bench::RunHarness()` |
+| `model/routing-bench-run.cc` | one (seed, arm) run: the world (scenario presets, mobility, channels, devices, traffic), stream pinning, the measurement (FlowMonitor and the trace sinks, the drop book, route stability, the identity-matched set, energy) and `RunOne` (#767) |
+| `model/routing-bench-harness.cc` | the command line, the runs over seeds and arms, and the summary and marker output: `bench::RunHarness()` |
+| `model/routing-bench-internal.h` | what those two share (`Params`, `Result`, `RunOne`, the defaults); not part of the API |
+| `model/urban-obstacle-loss-model.h/.cc` | the urban building-shadowing channel (#488, #580), Sommer et al.'s obstacle model |
 | `model/source-refusal-counter.h/.cc` | the #510 fallback that counts the sends OLSR refuses at the source |
 | `helper/stock-arms.h/.cc` | `RegisterStockArms()`: `aodv`, `olsr`, `dsdv` and `hwmp` (with its 802.11s devices) |
 | `examples/routing-compare.cc` | the program |

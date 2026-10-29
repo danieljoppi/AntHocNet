@@ -75,6 +75,8 @@
 // the point-to-point channels — which is why the satellite suite is where the
 // oracle is first proved correct. Off unless named in --protocols.
 #include "ns3/oracle-module.h"
+// #513: the OLSR source-refusal counter, shared with routing-compare.
+#include "ns3/source-refusal-counter.h"
 #include "ns3/anthocnet-helper.h"
 #include "ns3/anthocnet-routing-protocol.h"
 #include "ns3/anthocnet-viz-trace.h"
@@ -166,60 +168,15 @@ int64_t AssignDsdvStreams(const NodeContainer& nodes, int64_t stream) {
     return used;
 }
 
-// #513: the #510 source-refusal correction, ported from anthocnet-compare.cc
-// (the class below is a copy of the one there; keep the two in step). Stock
-// ns-3 OLSR refuses an unroutable send at the origin -- RouteOutput returns no
-// route, the UDP send fails before Ipv4L3Protocol::Send, and FlowMonitor never
-// counts the packet -- so PDR omitted those ticks from its denominator. On the
-// ISL torus they fall in OLSR's initial convergence (flows start in [1, 11] s)
-// and its reconvergence after a scripted break. The counter sits at the lowest
-// priority of an Ipv4ListRouting behind OLSR, so it is consulted only when OLSR
-// has already refused; it counts that refusal and refuses too.
-uint64_t g_refusedOrigin = 0;
-
-class SourceRefusalCounter : public Ipv4RoutingProtocol {
-public:
-    static TypeId GetTypeId() {
-        static TypeId tid = TypeId("ns3::AnthocnetCompareSourceRefusalCounter")
-                                .SetParent<Ipv4RoutingProtocol>()
-                                .SetGroupName("Internet")
-                                .AddConstructor<SourceRefusalCounter>();
-        return tid;
-    }
-    Ptr<Ipv4Route> RouteOutput(Ptr<Packet>, const Ipv4Header& header, Ptr<NetDevice>,
-                               Socket::SocketErrno& sockerr) override {
-        // Broadcast control never reaches RouteOutput (the UDP socket sends a
-        // limited broadcast straight out of the interface), so a unicast
-        // refusal here is a data send.
-        const Ipv4Address dst = header.GetDestination();
-        if (!dst.IsBroadcast() && !dst.IsMulticast() && !dst.IsLocalhost()) {
-            ++g_refusedOrigin;
-        }
-        sockerr = Socket::ERROR_NOROUTETOHOST;
-        return nullptr;
-    }
-    bool RouteInput(Ptr<const Packet>, const Ipv4Header&, Ptr<const NetDevice>,
-                    ORACLE_RI_CB(UnicastForwardCallback), ORACLE_RI_CB(MulticastForwardCallback),
-                    ORACLE_RI_CB(LocalDeliverCallback), ORACLE_RI_CB(ErrorCallback)) override {
-        return false;
-    }
-    void NotifyInterfaceUp(uint32_t) override {}
-    void NotifyInterfaceDown(uint32_t) override {}
-    void NotifyAddAddress(uint32_t, Ipv4InterfaceAddress) override {}
-    void NotifyRemoveAddress(uint32_t, Ipv4InterfaceAddress) override {}
-    void SetIpv4(Ptr<Ipv4>) override {}
-    void PrintRoutingTable(Ptr<OutputStreamWrapper>, Time::Unit = Time::S) const override {}
-};
-
-class SourceRefusalCounterHelper : public Ipv4RoutingHelper {
-public:
-    SourceRefusalCounterHelper* Copy() const override {
-        return new SourceRefusalCounterHelper(*this);
-    }
-    Ptr<Ipv4RoutingProtocol> Create(Ptr<Node>) const override {
-        return CreateObject<SourceRefusalCounter>();
-    }
-};
+// #513: the #510 source-refusal correction. Stock ns-3 OLSR refuses an
+// unroutable send at the origin -- RouteOutput returns no route, the UDP send
+// fails before Ipv4L3Protocol::Send, and FlowMonitor never counts the packet --
+// so PDR omitted those ticks from its denominator. On the ISL torus they fall
+// in OLSR's initial convergence (flows start in [1, 11] s) and its
+// reconvergence after a scripted break. routing-bench's counter (the one
+// routing-compare's olsr arm uses) sits at the lowest priority of an
+// Ipv4ListRouting behind OLSR, so it is consulted only when OLSR has already
+// refused; it counts that refusal and refuses too.
 
 uint64_t g_controlPkts = 0;
 uint64_t g_controlBytes = 0;
@@ -534,7 +491,6 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     int64_t stream = streamBase;
     g_controlPkts = 0;
     g_controlBytes = 0;
-    g_refusedOrigin = 0;
     g_antTx.clear();
     g_antRx.clear();
     g_breakAt = P.breakAt;
@@ -558,6 +514,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     OlsrHelper olsrHelper;
     // #513: OLSR behind a list router whose fallback counts refused sends.
     Ipv4ListRoutingHelper olsrList;
+    bench::SourceRefusalCounterHelper olsrRefusals;  // #513: a fresh tally per run
     DsdvHelper dsdvHelper;
     OracleHelper oracleHelper;
     if (proto == "anthocnet") {
@@ -566,7 +523,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
         internet.SetRoutingHelper(aodvHelper);
     } else if (proto == "olsr") {
         olsrList.Add(olsrHelper, 10);
-        olsrList.Add(SourceRefusalCounterHelper(), -10);
+        olsrList.Add(olsrRefusals, -10);
         internet.SetRoutingHelper(olsrList);
     } else if (proto == "dsdv") {
         internet.SetRoutingHelper(dsdvHelper);
@@ -893,7 +850,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // #513: OLSR's refused sends are offered packets (#510); the oracle's
     // noRoute is 0 on every wired cell (asserted in ##ORACLE##), and AntHocNet
     // and AODV defer rather than refuse.
-    if (proto == "olsr") r.txPackets += g_refusedOrigin;
+    if (proto == "olsr") r.txPackets += olsrRefusals.Refused();
     r.pdr = r.txPackets ? 100.0 * r.rxPackets / r.txPackets : 0.0;
     if (vizThisRun) g_viz.Finish(r.txPackets, r.rxPackets, r.pdr);
     r.meanDelayMs = rxForDelay ? 1000.0 * totalDelay / rxForDelay : 0.0;

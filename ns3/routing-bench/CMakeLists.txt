@@ -30,10 +30,13 @@ build_lib(
   SOURCE_FILES
     model/routing-bench-arm.cc
     model/routing-bench-harness.cc
+    model/routing-bench-run.cc
+    model/urban-obstacle-loss-model.cc
     model/source-refusal-counter.cc
     helper/stock-arms.cc
   HEADER_FILES
     model/routing-bench-arm.h
+    model/urban-obstacle-loss-model.h
     model/source-refusal-counter.h
     helper/stock-arms.h
   LIBRARIES_TO_LINK

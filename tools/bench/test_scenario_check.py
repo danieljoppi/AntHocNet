@@ -269,7 +269,7 @@ def _drop_quiet_when_balanced():
 @case("#229 post-fix dsdv row: queue counted, identity closes, no findings")
 def _drop_quiet_post_fix():
     # The expected dense-small dsdv reading once the harness's pending-queue
-    # conservation hook (routing-bench-harness.cc PqTrackTx, #229) folds the
+    # conservation hook (routing-bench-run.cc PqTrackTx, #229) folds the
     # silent PacketQueue sheds into drop_queue_pct: the former −21.8 pp
     # shortfall is now the queue column and the identity closes.
     # 21.2 + 0.23 + 21.85 + 45.63 + 10.97 + 0.15 = 100.03.

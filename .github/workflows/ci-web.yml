@@ -119,7 +119,7 @@ jobs:
 
   # The learn site's "Export to ns-3" kits (#640), as the pages job exported
   # them, run in the ns-3 image: every world's kit must deliver. Wi-Fi worlds
-  # replay through anthocnet-compare (#639) on 3.42; the satellite kit is
+  # replay through routing-compare (#639) on 3.42; the satellite kit is
   # leo-walker's moving shell, which needs 3.48.
   ns3-kits:
     name: ns-3 export kits run and deliver (#640)
