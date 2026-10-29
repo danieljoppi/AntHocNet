@@ -1,0 +1,155 @@
+# pc769 campaign scale-500-oracle-pc769: 2 run(s): 40828271502 (control/scale-500-oracle-s1) / 40828479162 (control/scale-500-oracle-s2); ref claude/next-release-finalization-2t0xkc
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=paper nNodes=500 time=300 runs=1 firstRun=1 areaX=4743 areaY=1581 speed=20 pause=30 range=300 propagation=range mobility=rwp transport=udp flows=20 cbrBps=512 offTime=0 rateManager=constant2 protocols=oracle
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr P2pHelloEvery=1
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ShareKinematics=false
+##CONFIG## attr EnableLinkLifetime=false
+##CONFIG## attr LinkLifetimeRange=250
+##CONFIG## attr LinkLifetimeHorizon=3
+##CONFIG## attr LinkLifetimeFloor=0.05
+##CONFIG## attr EnableQuietMode=true
+##CONFIG## attr QuietTolerance=0.2
+##CONFIG## attr QuietBackoffFactor=2
+##CONFIG## attr QuietMaxBackoff=8
+##CONFIG## attr EnableAdaptiveEvaporation=false
+##CONFIG## attr AdaptiveEvapRefChurn=0.1
+##CONFIG## attr AdaptiveEvapMin=0.25
+##CONFIG## attr AdaptiveEvapMax=4
+##CONFIG## attr AdaptiveEvapTau=10
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+##DROPID## 1 oracle hopTx=18622 hopRx=17940 ackedHops=17938 macDrops=377 reinjected=0 macTerminal=377 macLost=375 queue=0 hopLoss=682 overlap=-307 unackedRx=2
+# diag oracle seed=1 pdr=83.01 firstDeliveryS=22.09 ctrlTx=0 setupMedS=1.04 setupMaxS=4.02 flowsNoDelivery=0
+##ORACLE## 1 oracle mode=disk approx=0 nodes=500 edges=11518 recomputes=300 changes=270 range=300.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 1 oracle 83.0 33.5 1030.5 8.17 0.00 41.81 14.5 inf 0.0000
+##AIR## 1 oracle 28.299 493.032 318.480 0.5599
+##ENERGY## 1 oracle 120896.854 36.283570 7.0866e-02 18.799
+##GOODPUT## 1 oracle 5.687
+##ROUTE## 1 oracle 1.0421 4.0215 0 0.51721 1.000 1713 4.7392 4.7392
+##MATCH## 1 oracle 3332 3332 1030.5 1030.5
+##COMMON## 1 oracle 3332 3332 1030.6 33.5 na 4.739 na
+AntHocNet protocol comparison (mean of 1 run(s))
+  nodes=500 time=300.000s area=4743.000x1581.000m maxSpeed=20.000m/s pause=30.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+oracle          83.0       33.5       1030.5         8.17    0.00       41.81        14.5         inf       0.000    120896.9     36.2836        4.74      0.9052       362.17
+# paths oracle divUsed=1.372 divMax=6.0 entropyBits=0.284 windowS=10.0 hopsMean=4.74 hopsMax=12.0
+# energy oracle initJ=5000.0 resMinJ=4754.3 resMeanJ=4758.2 resSdJ=18.799 firstDeathS=-1.0
+# drops oracle pdr=83.01 route=0.00 queue=0.00 mac=9.34 chan=7.65 ttl=0.00 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# reorder oracle ratio=0.0042 ratioWorstFlow=0.0207 extentMean=1.43 extentMax=3.00 bufMax=3.00
+##ARGS## routing-compare --scenario=paper --runs=1 --nNodes=500 --time=300 --areaX=4743 --pause=30 --speed=20 --propagation=range --range=300 --areaY=1581 --firstRun=1 --diag --mobility=rwp --transport=udp --protocols=oracle
+##PROV## commit=5847520f164570aae30d8ddf330872ed175a0f00 ref=claude/next-release-finalization-2t0xkc run_id=40828271502 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=routing-compare
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=paper nNodes=500 time=300 runs=1 firstRun=2 areaX=4743 areaY=1581 speed=20 pause=30 range=300 propagation=range mobility=rwp transport=udp flows=20 cbrBps=512 offTime=0 rateManager=constant2 protocols=oracle
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr P2pHelloEvery=1
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ShareKinematics=false
+##CONFIG## attr EnableLinkLifetime=false
+##CONFIG## attr LinkLifetimeRange=250
+##CONFIG## attr LinkLifetimeHorizon=3
+##CONFIG## attr LinkLifetimeFloor=0.05
+##CONFIG## attr EnableQuietMode=true
+##CONFIG## attr QuietTolerance=0.2
+##CONFIG## attr QuietBackoffFactor=2
+##CONFIG## attr QuietMaxBackoff=8
+##CONFIG## attr EnableAdaptiveEvaporation=false
+##CONFIG## attr AdaptiveEvapRefChurn=0.1
+##CONFIG## attr AdaptiveEvapMin=0.25
+##CONFIG## attr AdaptiveEvapMax=4
+##CONFIG## attr AdaptiveEvapTau=10
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+##DROPID## 2 oracle hopTx=20528 hopRx=19212 ackedHops=19210 macDrops=719 reinjected=0 macTerminal=719 macLost=717 queue=0 hopLoss=1316 overlap=-599 unackedRx=2
+# diag oracle seed=2 pdr=67.80 firstDeliveryS=2.63 ctrlTx=0 setupMedS=1.04 setupMaxS=11.04 flowsNoDelivery=0
+##ORACLE## 2 oracle mode=disk approx=0 nodes=500 edges=12586 recomputes=300 changes=270 range=300.0 noRoute=34 noRouteOrigin=34 noRouteFwd=0 nrl=0.00
+##RUN## 2 oracle 67.8 30.2 1012.5 6.97 0.00 34.53 23.5 inf 0.0000
+##AIR## 2 oracle 32.749 558.049 345.427 0.6242
+##ENERGY## 2 oracle 120558.029 42.420137 8.2852e-02 20.501
+##GOODPUT## 2 oracle 4.850
+##ROUTE## 2 oracle 1.0450 11.0403 0 0.56060 2.000 1582 5.3557 5.3557
+##MATCH## 2 oracle 2842 2842 1012.5 1012.5
+##COMMON## 2 oracle 2842 2842 1015.1 30.2 na 5.356 na
+AntHocNet protocol comparison (mean of 1 run(s))
+  nodes=500 time=300.000s area=4743.000x1581.000m maxSpeed=20.000m/s pause=30.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+oracle          67.8       30.2       1012.5         6.97    0.00       34.53        23.5         inf       0.000    120558.0     42.4201        5.36      0.9011       674.49
+# paths oracle divUsed=1.351 divMax=7.0 entropyBits=0.267 windowS=10.0 hopsMean=5.36 hopsMax=17.0
+# energy oracle initJ=5000.0 resMinJ=4754.0 resMeanJ=4758.9 resSdJ=20.501 firstDeathS=-1.0
+# drops oracle pdr=67.80 route=0.81 queue=0.00 mac=17.10 chan=14.29 ttl=0.00 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# reorder oracle ratio=0.0018 ratioWorstFlow=0.0174 extentMean=1.40 extentMax=2.00 bufMax=2.00
+##ARGS## routing-compare --scenario=paper --runs=1 --nNodes=500 --time=300 --areaX=4743 --pause=30 --speed=20 --propagation=range --range=300 --areaY=1581 --firstRun=2 --diag --mobility=rwp --transport=udp --protocols=oracle
+##PROV## commit=5847520f164570aae30d8ddf330872ed175a0f00 ref=claude/next-release-finalization-2t0xkc run_id=40828479162 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=routing-compare

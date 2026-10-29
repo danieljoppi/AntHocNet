@@ -1,0 +1,113 @@
+# pc769 campaign anchor-qrouting-high-pc769: 1 run(s): 40829627304 (control/anchor-qrouting-high); ref claude/next-release-finalization-2t0xkc
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario= nNodes=36 time=300 runs=2 firstRun=1 areaX=600 areaY=600 speed=5 pause=1000 range=175 propagation=range mobility=rwp transport=udp flows=10 cbrBps=65536 offTime=0 rateManager=constant2 protocols=qrouting,oracle
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr P2pHelloEvery=1
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ShareKinematics=false
+##CONFIG## attr EnableLinkLifetime=false
+##CONFIG## attr LinkLifetimeRange=250
+##CONFIG## attr LinkLifetimeHorizon=3
+##CONFIG## attr LinkLifetimeFloor=0.05
+##CONFIG## attr EnableQuietMode=true
+##CONFIG## attr QuietTolerance=0.2
+##CONFIG## attr QuietBackoffFactor=2
+##CONFIG## attr QuietMaxBackoff=8
+##CONFIG## attr EnableAdaptiveEvaporation=false
+##CONFIG## attr AdaptiveEvapRefChurn=0.1
+##CONFIG## attr AdaptiveEvapMin=0.25
+##CONFIG## attr AdaptiveEvapMax=4
+##CONFIG## attr AdaptiveEvapTau=10
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+##DROPID## 1 qrouting hopTx=758626 hopRx=465159 ackedHops=462199 macDrops=6049 reinjected=5572 macTerminal=477 macLost=3089 queue=0 hopLoss=293467 overlap=-279320 unackedRx=2960 recovered=13729 recoveredPkts=11596 delivered=99405 termMac=469 termRoute=0 termTtl=2 termOther=0 termTx=279320 termAtNode=0 unseen=0
+# diag qrouting seed=1 pdr=26.21 firstDeliveryS=0.97 ctrlTx=475981 setupMedS=0.24 setupMaxS=14.99 flowsNoDelivery=0
+##RUN## 1 qrouting 26.2 519.0 1902.5 243.87 4.79 54.69 inf inf 2.7064
+##AIR## 1 qrouting 1014.573 2951.753 2799.777 62.6491
+##ENERGY## 1 qrouting 9523.997 0.095810 1.8703e-04 7.324
+##GOODPUT## 1 qrouting 169.738
+##ROUTE## 1 qrouting 0.2404 14.9947 0 0.09836 0.039 9776 2.0385 2.0395
+##DROPID## 2 qrouting hopTx=745498 hopRx=415666 ackedHops=411015 macDrops=8266 reinjected=7227 macTerminal=1039 macLost=3615 queue=0 hopLoss=329832 overlap=-319236 unackedRx=4651 recovered=9601 recoveredPkts=8949 delivered=58401 termMac=1031 termRoute=0 termTtl=14 termOther=0 termTx=319236 termAtNode=4 unseen=0
+# diag qrouting seed=2 pdr=15.42 firstDeliveryS=0.76 ctrlTx=426531 setupMedS=0.43 setupMaxS=4.01 flowsNoDelivery=0
+##RUN## 2 qrouting 15.4 929.9 2138.5 143.27 7.30 104.81 inf inf 4.1282
+##AIR## 2 qrouting 985.439 2691.111 2580.290 57.9337
+##ENERGY## 2 qrouting 9484.398 0.162407 3.1699e-04 5.600
+##GOODPUT## 2 qrouting 99.732
+##ROUTE## 2 qrouting 0.4331 4.0055 0 0.19166 0.062 11191 3.3442 3.3434
+##DROPID## 1 oracle hopTx=782156 hopRx=605037 ackedHops=602664 macDrops=3738 reinjected=0 macTerminal=3738 macLost=1365 queue=0 hopLoss=177119 overlap=-175754 unackedRx=2373
+# diag oracle seed=1 pdr=53.29 firstDeliveryS=0.77 ctrlTx=0 setupMedS=0.03 setupMaxS=107.96 flowsNoDelivery=0
+##ORACLE## 1 oracle mode=disk approx=0 nodes=36 edges=232 recomputes=300 changes=1 range=175.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 1 oracle 53.3 305.9 1402.5 495.76 0.00 6.24 985.5 inf 0.0000
+##AIR## 1 oracle 794.758 2761.566 2140.983 52.7528
+##ENERGY## 1 oracle 8681.331 0.042961 8.3907e-05 74.085
+##GOODPUT## 1 oracle 344.878
+##ROUTE## 1 oracle 0.0343 107.9567 0 0.00000 -1.000 0 2.2575 2.2575
+##DROPID## 2 oracle hopTx=732435 hopRx=488908 ackedHops=483117 macDrops=10072 reinjected=0 macTerminal=10072 macLost=4281 queue=0 hopLoss=243527 overlap=-239246 unackedRx=5791
+# diag oracle seed=2 pdr=35.69 firstDeliveryS=0.63 ctrlTx=0 setupMedS=0.52 setupMaxS=3.44 flowsNoDelivery=0
+##ORACLE## 2 oracle mode=disk approx=0 nodes=36 edges=234 recomputes=300 changes=1 range=175.0 noRoute=0 noRouteOrigin=0 noRouteFwd=0 nrl=0.00
+##RUN## 2 oracle 35.7 549.2 1427.5 331.59 0.00 10.51 inf inf 0.0000
+##AIR## 2 oracle 732.923 2472.449 1932.879 47.5764
+##ENERGY## 2 oracle 9366.688 0.069301 1.3535e-04 7.498
+##GOODPUT## 2 oracle 230.671
+##ROUTE## 2 oracle 0.5158 3.4407 0 0.00000 -1.000 0 2.6292 2.6292
+##MATCH## 1 qrouting 99405 99405 1902.5 1902.5
+##MATCH## 1 oracle 202077 99405 1402.5 25.5
+##MATCH## 2 qrouting 58399 58399 2138.5 2138.5
+##MATCH## 2 oracle 135159 58399 1427.5 488.5
+##COMMON## 1 qrouting 99405 87064 1709.2 445.9 2778.2 1.872 3.213
+##COMMON## 1 oracle 202077 87064 972.3 102.1 1460.4 1.563 2.783
+##COMMON## 2 qrouting 58401 32096 1865.4 849.8 2349.7 3.040 3.712
+##COMMON## 2 oracle 135159 32096 1390.6 364.7 1434.1 2.277 2.739
+AntHocNet protocol comparison (mean of 2 run(s))
+  nodes=36 time=300.000s area=600.000x600.000m maxSpeed=5.000m/s pause=1000.000s flows=10
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+qrouting        20.8      724.5       2020.5       193.57    6.05       79.75         inf         inf       3.417      9504.2      0.1291        2.69      0.5218        48.16
+oracle          44.5      427.6       1415.0       413.68    0.00        8.37         inf         inf       0.000      9024.0      0.0561        2.44      0.6424        19.48
+# paths qrouting divUsed=2.921 divMax=10.5 entropyBits=0.955 windowS=10.0 hopsMean=2.69 hopsMax=53.0
+# paths oracle divUsed=1.000 divMax=1.0 entropyBits=0.000 windowS=10.0 hopsMean=2.44 hopsMax=4.5
+# energy qrouting initJ=5000.0 resMinJ=4726.3 resMeanJ=4736.0 resSdJ=6.462 firstDeathS=-1.0
+# energy oracle initJ=5000.0 resMinJ=4724.1 resMeanJ=4749.3 resSdJ=40.792 firstDeathS=-1.0
+# drops qrouting pdr=20.82 route=0.00 queue=0.00 mac=0.20 chan=78.98 ttl=0.00 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# drops oracle pdr=44.49 route=0.00 queue=0.00 mac=0.75 chan=54.76 ttl=0.00 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# stddev qrouting pdr=7.63 delay=290.5 delay99=166.9 nrl=1.779 nrl_bytes=1.005
+# stddev oracle pdr=12.44 delay=172.1 delay99=17.7 nrl=0.000 nrl_bytes=0.000
+# reorder qrouting ratio=0.1307 ratioWorstFlow=0.3961 extentMean=13.93 extentMax=734.00 bufMax=14187.00
+# reorder oracle ratio=0.0000 ratioWorstFlow=0.0000 extentMean=0.00 extentMax=0.00 bufMax=0.00
+##ARGS## routing-compare --runs=2 --nNodes=36 --time=300 --areaX=600 --areaY=600 --range=175 --pause=1000 --flows=10 --cbrBps=65536 --diag --protocols=qrouting,oracle
+##PROV## commit=5847520f164570aae30d8ddf330872ed175a0f00 ref=claude/next-release-finalization-2t0xkc run_id=40829627304 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=routing-compare

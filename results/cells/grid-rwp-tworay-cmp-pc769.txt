@@ -1,0 +1,135 @@
+# pc769 campaign grid-rwp-tworay-cmp-pc769: 1 run(s): 40829640351 (control/grid-rwp-tworay-cmp); ref claude/next-release-finalization-2t0xkc
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=paper nNodes=50 time=900 runs=2 firstRun=1 areaX=1500 areaY=300 speed=20 pause=30 range=300 propagation=tworay mobility=rwp transport=udp flows=20 cbrBps=512 offTime=0 rateManager=constant2 protocols=ara,termite,qrouting
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr P2pHelloEvery=1
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ShareKinematics=false
+##CONFIG## attr EnableLinkLifetime=false
+##CONFIG## attr LinkLifetimeRange=250
+##CONFIG## attr LinkLifetimeHorizon=3
+##CONFIG## attr LinkLifetimeFloor=0.05
+##CONFIG## attr EnableQuietMode=true
+##CONFIG## attr QuietTolerance=0.2
+##CONFIG## attr QuietBackoffFactor=2
+##CONFIG## attr QuietMaxBackoff=8
+##CONFIG## attr EnableAdaptiveEvaporation=false
+##CONFIG## attr AdaptiveEvapRefChurn=0.1
+##CONFIG## attr AdaptiveEvapMin=0.25
+##CONFIG## attr AdaptiveEvapMax=4
+##CONFIG## attr AdaptiveEvapTau=10
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+##DROPID## 1 ara hopTx=38116 hopRx=37693 ackedHops=37692 macDrops=418 reinjected=415 macTerminal=3 macLost=417 queue=0 hopLoss=423 overlap=0 unackedRx=1 recovered=421 recoveredPkts=416 delivered=15533 termMac=2 termRoute=0 termTtl=92 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag ara seed=1 pdr=99.40 firstDeliveryS=26.32 ctrlTx=24320 setupMedS=1.07 setupMaxS=3.07 flowsNoDelivery=0
+##RUN## 1 ara 99.4 28.9 1061.5 12.70 1.57 36.32 1.5 5.5 0.8850
+##AIR## 1 ara 63.264 969.602 607.432 3.6451
+##ENERGY## 1 ara 36947.379 2.378638 4.6458e-03 0.234
+##GOODPUT## 1 ara 8.837
+##ROUTE## 1 ara 1.0689 3.0711 0 0.05853 1.000 908 2.0736 2.0736
+##DROPID## 2 ara hopTx=41517 hopRx=41078 ackedHops=41078 macDrops=422 reinjected=420 macTerminal=2 macLost=422 queue=0 hopLoss=439 overlap=0 unackedRx=0 recovered=437 recoveredPkts=433 delivered=15683 termMac=2 termRoute=40 termTtl=108 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag ara seed=2 pdr=99.05 firstDeliveryS=3.94 ctrlTx=24950 setupMedS=1.05 setupMaxS=2.05 flowsNoDelivery=0
+##RUN## 2 ara 99.1 28.1 1058.5 12.83 1.59 35.04 1.5 3.5 0.8992
+##AIR## 2 ara 66.502 1050.362 655.071 3.9376
+##ENERGY## 2 ara 36960.565 2.356728 4.6030e-03 0.210
+##GOODPUT## 2 ara 8.922
+##ROUTE## 2 ara 1.0541 2.0457 0 0.05663 1.000 887 2.2060 2.2060
+##DROPID## 1 termite hopTx=392073 hopRx=359840 ackedHops=359685 macDrops=8394 reinjected=7842 macTerminal=552 macLost=8239 queue=0 hopLoss=32233 overlap=-340 unackedRx=155 recovered=31483 recoveredPkts=6788 delivered=10346 termMac=524 termRoute=75 termTtl=4342 termOther=0 termTx=340 termAtNode=0 unseen=0
+# diag termite seed=1 pdr=66.17 firstDeliveryS=26.36 ctrlTx=6945 setupMedS=3.13 setupMaxS=43.01 flowsNoDelivery=0
+##RUN## 1 termite 66.2 351.4 5361.5 8.46 0.67 485.38 97.5 inf 0.3796
+##AIR## 1 termite 680.487 9818.656 7512.052 40.0249
+##ENERGY## 1 termite 38230.615 3.697352 7.1984e-03 2.977
+##GOODPUT## 1 termite 5.901
+##ROUTE## 1 termite 3.1332 43.0053 0 0.64643 1.000 6675 7.6736 7.6551
+##DROPID## 2 termite hopTx=407155 hopRx=376600 ackedHops=376465 macDrops=7477 reinjected=7053 macTerminal=424 macLost=7342 queue=0 hopLoss=30555 overlap=-236 unackedRx=135 recovered=30017 recoveredPkts=6474 delivered=10398 termMac=401 termRoute=73 termTtl=4725 termOther=0 termTx=236 termAtNode=0 unseen=0
+# diag termite seed=2 pdr=65.65 firstDeliveryS=9.91 ctrlTx=7168 setupMedS=2.00 setupMaxS=25.03 flowsNoDelivery=0
+##RUN## 2 termite 65.6 329.2 5202.5 8.50 0.69 475.88 85.5 inf 0.3898
+##AIR## 2 termite 704.673 10295.567 7923.571 42.0529
+##ENERGY## 2 termite 38314.938 3.686255 7.1756e-03 2.603
+##GOODPUT## 2 termite 5.933
+##ROUTE## 2 termite 2.0044 25.0251 0 0.63866 1.000 6628 7.3886 7.4077
+##DROPID## 1 qrouting hopTx=92456 hopRx=91761 ackedHops=91756 macDrops=664 reinjected=664 macTerminal=0 macLost=659 queue=0 hopLoss=695 overlap=0 unackedRx=5 recovered=700 recoveredPkts=592 delivered=14761 termMac=0 termRoute=0 termTtl=866 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag qrouting seed=1 pdr=94.46 firstDeliveryS=26.33 ctrlTx=138652 setupMedS=1.03 setupMaxS=2.07 flowsNoDelivery=0
+##RUN## 1 qrouting 94.5 18.0 127.5 12.07 9.39 25.00 2.5 44.5 5.3092
+##AIR## 1 qrouting 216.786 3372.007 2269.076 13.0175
+##ENERGY## 1 qrouting 37327.313 2.528779 4.9380e-03 1.166
+##GOODPUT## 1 qrouting 8.399
+##ROUTE## 1 qrouting 1.0331 2.0708 0 0.16837 1.000 2482 2.5015 2.5006
+##DROPID## 2 qrouting hopTx=103010 hopRx=102223 ackedHops=102221 macDrops=726 reinjected=721 macTerminal=5 macLost=724 queue=0 hopLoss=787 overlap=0 unackedRx=2 recovered=784 recoveredPkts=677 delivered=14811 termMac=5 termRoute=0 termTtl=1017 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag qrouting seed=2 pdr=93.55 firstDeliveryS=2.92 ctrlTx=149052 setupMedS=1.01 setupMaxS=2.04 flowsNoDelivery=0
+##RUN## 2 qrouting 93.5 22.6 125.5 12.11 10.06 31.13 2.5 52.5 5.6881
+##AIR## 2 qrouting 235.441 3786.031 2555.275 14.6150
+##ENERGY## 2 qrouting 37382.988 2.524002 4.9294e-03 0.943
+##GOODPUT## 2 qrouting 8.426
+##ROUTE## 2 qrouting 1.0115 2.0426 0 0.16862 1.000 2494 2.5461 2.5462
+##MATCH## 1 ara 15533 10340 1061.5 1.5
+##MATCH## 1 termite 10340 10340 5361.5 5361.5
+##MATCH## 1 qrouting 14761 10340 127.5 5.5
+##MATCH## 2 ara 15683 10394 1058.5 1.5
+##MATCH## 2 termite 10394 10394 5202.5 5202.5
+##MATCH## 2 qrouting 14811 10394 125.5 5.5
+##COMMON## 1 ara 15533 9874 1050.1 24.0 1072.4 1.956 2.278
+##COMMON## 1 termite 10346 9874 5453.8 346.6 5961.5 7.391 12.362
+##COMMON## 1 qrouting 14761 9874 124.6 18.2 138.7 2.311 2.884
+##COMMON## 2 ara 15683 9739 1048.2 22.6 1063.1 2.120 2.347
+##COMMON## 2 termite 10398 9739 5122.5 318.2 7021.1 7.100 11.132
+##COMMON## 2 qrouting 14811 9739 126.5 22.3 119.7 2.419 2.790
+AntHocNet protocol comparison (mean of 2 run(s))
+  nodes=50 time=900.000s area=1500.000x300.000m maxSpeed=20.000m/s pause=30.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ara             99.2       28.5       1060.0        12.76    1.58       35.68         1.5         4.5       0.892     36954.0      2.3677        2.14      0.9964        76.60
+termite         65.9      340.3       5282.0         8.48    0.68      480.63        91.5         inf       0.385     38272.8      3.6918        7.53      0.9847      1138.85
+qrouting        94.0       20.3        126.5        12.09    9.73       28.07         2.5        48.5       5.499     37355.2      2.5264        2.52      0.9945       142.42
+# paths ara divUsed=1.188 divMax=4.5 entropyBits=0.127 windowS=10.0 hopsMean=2.14 hopsMax=10.5
+# paths termite divUsed=2.295 divMax=22.0 entropyBits=0.749 windowS=10.0 hopsMean=7.53 hopsMax=64.0
+# paths qrouting divUsed=1.411 divMax=11.5 entropyBits=0.215 windowS=10.0 hopsMean=2.52 hopsMax=62.5
+# energy ara initJ=5000.0 resMinJ=4260.5 resMeanJ=4260.9 resSdJ=0.222 firstDeathS=-1.0
+# energy termite initJ=5000.0 resMinJ=4228.3 resMeanJ=4234.5 resSdJ=2.790 firstDeathS=-1.0
+# energy qrouting initJ=5000.0 resMinJ=4251.1 resMeanJ=4252.9 resSdJ=1.054 firstDeathS=-1.0
+# drops ara pdr=99.23 route=0.13 queue=0.00 mac=0.01 chan=0.00 ttl=0.64 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# drops termite pdr=65.91 route=0.47 queue=0.00 mac=2.94 chan=1.83 ttl=28.81 sum=99.97 other=0.00 [route: setup=- reconv=- repair=-]
+# drops qrouting pdr=94.00 route=0.00 queue=0.00 mac=0.02 chan=0.00 ttl=5.98 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# stddev ara pdr=0.24 delay=0.6 delay99=2.1 nrl=0.018 nrl_bytes=0.010
+# stddev termite pdr=0.37 delay=15.7 delay99=112.4 nrl=0.013 nrl_bytes=0.007
+# stddev qrouting pdr=0.65 delay=3.2 delay99=1.4 nrl=0.474 nrl_bytes=0.268
+# reorder ara ratio=0.0007 ratioWorstFlow=0.0033 extentMean=1.70 extentMax=3.50 bufMax=2.50
+# reorder termite ratio=0.0660 ratioWorstFlow=0.1220 extentMean=2.41 extentMax=12.00 bufMax=525.50
+# reorder qrouting ratio=0.0037 ratioWorstFlow=0.0103 extentMean=2.39 extentMax=6.00 bufMax=502.50
+##ARGS## routing-compare --scenario=paper --runs=2 --nNodes=50 --time=900 --areaX=1500 --pause=30 --speed=20 --propagation=tworay --range=300 --areaY=300 --diag --mobility=rwp --transport=udp --protocols=ara,termite,qrouting
+##PROV## commit=5847520f164570aae30d8ddf330872ed175a0f00 ref=claude/next-release-finalization-2t0xkc run_id=40829640351 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=routing-compare

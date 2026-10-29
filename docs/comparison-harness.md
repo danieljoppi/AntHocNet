@@ -18,7 +18,9 @@ definitions are in [metrics.md](benchmarks/metrics.md).
 > harness is its own ns-3 module, `routing-bench`, which links only stock ns-3
 > and names no protocol. Every arm registers itself from its own module, so
 > the harness builds and runs without AntHocNet. `anthocnet-compare` is the
-> same program under its old name, kept at least through v3.x. Shipping it as
+> same program under its old name, kept at least through v3.x. The move
+> reproduced every committed MANET-family cell byte for byte
+> ([control](benchmarks/v2.6.0-harness-control.md)). Shipping it as
 > its own package is planned for v2.7.0 ([Packaging](#packaging-and-what-is-planned)).
 
 ## What it measures
