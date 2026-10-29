@@ -29,9 +29,25 @@ else()
   add_compile_definitions(ORACLE_NS3_SCOPED_TEST_ENUMS)
 endif()
 
+# ADR-0027 (#768): this module's arm(s) of the comparison harness, compiled in
+# only when routing-bench is installed and enabled beside it. The library is
+# named through a variable, not written as a token: ns-3 scans module
+# CMakeLists for library tokens to resolve dependencies, and this module must
+# still build alone.
+set(oracle_bench_sources)
+set(oracle_bench_libs)
+set(oracle_bench_module routing-bench)
+if(EXISTS ${PROJECT_SOURCE_DIR}/contrib/${oracle_bench_module}/CMakeLists.txt
+   AND oracle_bench_module IN_LIST ns3-all-enabled-modules)
+  set(oracle_bench_sources helper/oracle-bench-arms.cc)
+  set(oracle_bench_lib lib${oracle_bench_module})
+  set(oracle_bench_libs ${${oracle_bench_lib}})
+endif()
+
 build_lib(
   LIBNAME oracle
   SOURCE_FILES
+    ${oracle_bench_sources}
     model/oracle-decode-budget.cc
     model/oracle-topology.cc
     model/oracle-routing-protocol.cc
@@ -43,6 +59,7 @@ build_lib(
     model/oracle-routing-protocol.h
     helper/oracle-helper.h
   LIBRARIES_TO_LINK
+    ${oracle_bench_libs}
     ${libcore}
     ${libnetwork}
     ${libinternet}

@@ -1,0 +1,91 @@
+# pc769 campaign scale-50-s2-pc769: 1 run(s): 40834094230 (control/scale-50-s2); ref claude/next-release-finalization-2t0xkc
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=paper nNodes=50 time=300 runs=2 firstRun=1 areaX=1500 areaY=500 speed=20 pause=30 range=300 propagation=range mobility=rwp transport=udp flows=20 cbrBps=512 offTime=0 rateManager=constant2 protocols=anthocnet
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr P2pHelloEvery=1
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ShareKinematics=false
+##CONFIG## attr EnableLinkLifetime=false
+##CONFIG## attr LinkLifetimeRange=250
+##CONFIG## attr LinkLifetimeHorizon=3
+##CONFIG## attr LinkLifetimeFloor=0.05
+##CONFIG## attr EnableQuietMode=true
+##CONFIG## attr QuietTolerance=0.2
+##CONFIG## attr QuietBackoffFactor=2
+##CONFIG## attr QuietMaxBackoff=8
+##CONFIG## attr EnableAdaptiveEvaporation=false
+##CONFIG## attr AdaptiveEvapRefChurn=0.1
+##CONFIG## attr AdaptiveEvapMin=0.25
+##CONFIG## attr AdaptiveEvapMax=4
+##CONFIG## attr AdaptiveEvapTau=10
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+0ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+##DROPID## 1 anthocnet hopTx=8465 hopRx=7797 ackedHops=7797 macDrops=548 reinjected=546 macTerminal=2 macLost=548 queue=0 hopLoss=668 overlap=-120 unackedRx=0
+##REINJ## 1 anthocnet events=546 parsed=546 unparsedIcmp=0 unparsedOther=0 ofDelivered=0 pkts=189 pktsDelivBefore=0 pktsDelivAfterOnly=153 pktsNever=36 pktsDupDeliv=0 dupRx=0 postTx=741 postRx=375 l3DropRoute=27 l3DropTtl=0 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=1 pdr=94.74 firstDeliveryS=31.12 ctrlTx=33150 setupMedS=1.05 setupMaxS=12.09 flowsNoDelivery=0 antTx[hello=15005,reactive=4863,proactive=6761,repair=3375,linkfail=3144] antRx[hello=225442,reactive=4908,proactive=6529,repair=3729,linkfail=51938] linkfailProp=137 linkfailBudgetDrop=26 linkfailOrigSuppressed=91 directedSteers=0 ptable[regAvg=16.44,regMax=27,virAvg=322.08,virMax=601] hold[setup=21/567.9ms/max2069.8ms reconv=99/18.8ms/max140.7ms repair=519/24.8ms/max1026.1ms] holdDrop[setup=20 reconv=39 repair=0] repairDiscard=27ev/30pkt macReinject=546
+##RUN## 1 anthocnet 94.7 15.0 173.5 9.33 8.72 20.77 1.5 37.5 12.7286
+##HOLD## 1 anthocnet 21 567.91 2069.82 99 18.77 140.68 519 24.82 1026.09
+##AIR## 1 anthocnet 64.183 694.603 219.085 6.5191
+##ENERGY## 1 anthocnet 12388.300 3.257507 6.3623e-03 0.456
+##GOODPUT## 1 anthocnet 6.490
+##ROUTE## 1 anthocnet 1.0546 12.0860 0 0.12583 3.000 476 2.1438 2.1438
+##DROPID## 2 anthocnet hopTx=10211 hopRx=9397 ackedHops=9396 macDrops=746 reinjected=739 macTerminal=7 macLost=745 queue=0 hopLoss=814 overlap=-69 unackedRx=1
+##REINJ## 2 anthocnet events=739 parsed=739 unparsedIcmp=0 unparsedOther=0 ofDelivered=3 pkts=252 pktsDelivBefore=1 pktsDelivAfterOnly=202 pktsNever=49 pktsDupDeliv=1 dupRx=1 postTx=1038 postRx=532 l3DropRoute=30 l3DropTtl=0 l3DropOther=0 skips=0 skipsPkts=0 skipsDelivBefore=0 skipsDelivAfterOnly=0 skipsNever=0
+# diag anthocnet seed=2 pdr=95.85 firstDeliveryS=2.63 ctrlTx=38824 setupMedS=1.05 setupMaxS=9.31 flowsNoDelivery=0 antTx[hello=14999,reactive=6136,proactive=9422,repair=4397,linkfail=3870] antRx[hello=241050,reactive=6289,proactive=9159,repair=5022,linkfail=67380] linkfailProp=220 linkfailBudgetDrop=43 linkfailOrigSuppressed=151 directedSteers=0 ptable[regAvg=16.18,regMax=30,virAvg=318.94,virMax=541] hold[setup=17/321.6ms/max2295.7ms reconv=117/27.0ms/max141.4ms repair=709/29.6ms/max1879.4ms] holdDrop[setup=6 reconv=61 repair=2] repairDiscard=28ev/29pkt macReinject=739
+##RUN## 2 anthocnet 95.8 26.1 1002.5 9.86 9.66 38.92 1.5 62.5 13.5941
+##HOLD## 2 anthocnet 17 321.63 2295.66 117 27.00 141.39 709 29.55 1879.36
+##AIR## 2 anthocnet 75.403 832.004 294.162 8.0105
+##ENERGY## 2 anthocnet 12407.649 3.088016 6.0298e-03 0.400
+##GOODPUT## 2 anthocnet 6.859
+##ROUTE## 2 anthocnet 1.0462 9.3107 0 0.15133 3.000 605 2.4579 2.4591
+##MATCH## 1 anthocnet 3803 3803 173.5 173.5
+##MATCH## 2 anthocnet 4018 4018 1002.5 1002.5
+##COMMON## 1 anthocnet 3803 3803 173.8 15.0 na 2.144 na
+##COMMON## 2 anthocnet 4018 4018 1007.3 26.2 na 2.459 na
+AntHocNet protocol comparison (mean of 2 run(s))
+  nodes=50 time=300.000s area=1500.000x500.000m maxSpeed=20.000m/s pause=30.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+anthocnet       95.3       20.6        588.0         9.59    9.19       29.84         1.5        50.0      13.161     12398.0      3.1728        2.30      0.9666       132.79
+# paths anthocnet divUsed=1.277 divMax=4.5 entropyBits=0.211 windowS=10.0 hopsMean=2.30 hopsMax=11.0
+# energy anthocnet initJ=5000.0 resMinJ=4751.3 resMeanJ=4752.0 resSdJ=0.428 firstDeathS=-1.0
+# drops anthocnet pdr=95.30 route=2.28 queue=0.00 mac=0.11 chan=2.32 ttl=0.00 sum=100.00 other=0.00 [route: setup=0.32 reconv=1.24 repair=0.72]
+# stddev anthocnet pdr=0.78 delay=7.9 delay99=586.2 nrl=0.669 nrl_bytes=0.612
+# reorder anthocnet ratio=0.0019 ratioWorstFlow=0.0092 extentMean=1.25 extentMax=2.00 bufMax=42.50
+##ARGS## routing-compare --scenario=paper --runs=2 --nNodes=50 --time=300 --areaX=1500 --pause=30 --speed=20 --propagation=range --range=300 --areaY=500 --diag --mobility=rwp --transport=udp --protocols=anthocnet --ns3::anthocnet::RoutingProtocol::ReactiveRetryInterval=0s
+##PROV## commit=5847520f164570aae30d8ddf330872ed175a0f00 ref=claude/next-release-finalization-2t0xkc run_id=40834094230 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=routing-compare

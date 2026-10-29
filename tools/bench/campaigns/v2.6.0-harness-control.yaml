@@ -1,0 +1,78 @@
+# #769: the byte-identical control for the harness move (ADR-0027 §4). One
+# cheap block (seeds 1-2) of every MANET-family cell committed in the v2.4.0
+# and v2.5.0 generations, re-run through routing-compare at the branch that
+# moves the harness, with the committed plan's own inputs and protocol list
+# (the identity-matched ##COMMON## set depends on which arms share an
+# invocation, so lists are never merged). The rule: every ##RUN##, ##ROUTE##
+# and ##COMMON## row for seeds 1-2 equals the committed one (`source`). Any
+# difference is a bug in the move, not noise.
+#
+#   python3 tools/bench/campaign.py plan tools/bench/campaigns/v2.6.0-harness-control.yaml
+#   python3 tools/bench/harness_control.py tools/bench/campaigns/v2.6.0-harness-control.yaml
+#
+# Cells keep their committed names; the v2.5.0 comparator runs of the family
+# cells carry a -cmp suffix, the v2.5.0 scale stage-2 runs -s2.
+generation: pc769
+ref: claude/next-release-finalization-2t0xkc
+program: routing-compare
+cap: 12
+control: control
+
+arms:
+  control: ""
+
+x-grid: &grid {scenario: paper, version: 3.42-opt, nNodes: 50, time: 900, runs: 2, areaX: 1500, areaY: 300, speed: 20, range: 300, transport: udp, harness: compare}
+x-fanet: &fanet {scenario: fanet, version: 3.42-opt, nNodes: 30, time: 900, runs: 2, areaX: 1000, areaY: 1000, pause: 0, speed: 30, propagation: range, mobility: gaussmarkov, transport: udp, harness: compare}
+x-vanet: &vanet {scenario: vanet, version: 3.42-opt, time: 900, areaX: 800, areaY: 800, pause: 0, speed: 20, range: 300, propagation: urban, mobility: manhattan, transport: udp, harness: compare}
+x-disaster: &disaster {scenario: disaster, version: 3.42-opt, nNodes: 47, time: 900, runs: 2, areaX: 1000, areaY: 500, speed: 20, pause: 30, range: 300, propagation: urban, mobility: trace, transport: udp, harness: compare, extraArgs: "--traceFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/disaster/disaster.ns2 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/disaster/disaster.flows --buildings=120,170,320,330;680,170,880,330"}
+x-scale: &scale {scenario: paper, version: 3.42-opt, time: 300, speed: 20, pause: 30, range: 300, propagation: range, mobility: rwp, transport: udp, harness: compare}
+x-mesh: &mesh "--standard=80211a --rateManager=constant6 --ns3::dot11s::PeerLink::MaxBeaconLoss=20"
+
+x-v240-grid: &v240grid "anthocnet,aodv,olsr,dsdv,aomdv,oracle"
+
+cells:
+  # --- v2.4.0 control (tools/bench/campaigns/v2.4.0*.yaml) -------------------
+  grid-rwp-tworay: {source: grid-rwp-tworay-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: tworay, pause: 30, protocols: *v240grid}}
+  grid-rwp-nakagami: {source: grid-rwp-nakagami-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: nakagami, pause: 30, protocols: *v240grid}}
+  grid-ssrwp-tworay: {source: grid-ssrwp-tworay-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: ssrwp, propagation: tworay, pause: 30, protocols: *v240grid}}
+  grid-ssrwp-nakagami: {source: grid-ssrwp-nakagami-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: ssrwp, propagation: nakagami, pause: 30, protocols: *v240grid}}
+  grid-gaussmarkov-tworay: {source: grid-gaussmarkov-tworay-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: gaussmarkov, propagation: tworay, pause: 0, protocols: *v240grid}}
+  grid-gaussmarkov-nakagami: {source: grid-gaussmarkov-nakagami-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: gaussmarkov, propagation: nakagami, pause: 0, protocols: *v240grid}}
+  static-mesh: {source: static-mesh-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: range, pause: 900, extraArgs: *mesh, protocols: "anthocnet,olsr,hwmp,oracle"}}
+  fanet-main: {source: fanet-main-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *fanet, range: 350, protocols: "anthocnet,aodv,olsr,gpsr3d,oracle"}}
+  fanet-sparse: {source: fanet-sparse-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *fanet, range: 250, protocols: "anthocnet,aodv,olsr,gpsr3d,oracle"}}
+  vanet-main: {source: vanet-main-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *vanet, nNodes: 100, runs: 2, protocols: "anthocnet,aodv,gpsr,gpcr,oracle"}}
+  vanet-sparse: {source: vanet-sparse-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *vanet, nNodes: 40, runs: 2, protocols: "anthocnet,aodv,gpsr,gpcr,oracle"}}
+  disaster-main: {source: disaster-main-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *disaster, protocols: "anthocnet,aodv,olsr,oracle"}}
+  scale-50: {source: scale-50-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *scale, nNodes: 50, areaX: 1500, areaY: 500, runs: 2, protocols: "anthocnet,aodv,olsr,oracle"}}
+  scale-100: {source: scale-100-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *scale, nNodes: 100, areaX: 2121, areaY: 707, runs: 2, protocols: "anthocnet,aodv,olsr,oracle"}}
+  scale-200: {source: scale-200-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *scale, nNodes: 200, areaX: 3000, areaY: 1000, runs: 2, protocols: "anthocnet,aodv,olsr,oracle"}}
+  scale-500: {source: scale-500-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *scale, nNodes: 500, areaX: 4743, areaY: 1581, runs: 2, protocols: "anthocnet,aodv"}}
+  scale-500-olsr: {source: scale-500-olsr-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *scale, nNodes: 500, areaX: 4743, areaY: 1581, runs: 1, protocols: "olsr"}, blocks: [1, 2]}
+  scale-500-oracle: {source: scale-500-oracle-v240.txt, workflow: paper-benchmark.yml, inputs: {<<: *scale, nNodes: 500, areaX: 4743, areaY: 1581, runs: 1, protocols: "oracle"}, blocks: [1, 2]}
+
+  # --- v2.5.0 comparators (tools/bench/campaigns/v2.5.0-comparators.yaml) ----
+  anchor-ara-p0: {source: anchor-ara-p0-v250c.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--scenario=paper --runs=2 --nNodes=50 --time=900 --areaX=1500 --areaY=300 --speed=10 --pause=0 --flows=10 --diag --protocols=ara,aodv"}}
+  anchor-ara-p30: {source: anchor-ara-p30-v250c.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--scenario=paper --runs=2 --nNodes=50 --time=900 --areaX=1500 --areaY=300 --speed=10 --pause=30 --flows=10 --diag --protocols=ara,aodv"}}
+  anchor-ara-p120: {source: anchor-ara-p120-v250c.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--scenario=paper --runs=2 --nNodes=50 --time=900 --areaX=1500 --areaY=300 --speed=10 --pause=120 --flows=10 --diag --protocols=ara,aodv"}}
+  anchor-ara-p600: {source: anchor-ara-p600-v250c.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--scenario=paper --runs=2 --nNodes=50 --time=900 --areaX=1500 --areaY=300 --speed=10 --pause=600 --flows=10 --diag --protocols=ara,aodv"}}
+  anchor-termite-s1: {source: anchor-termite-s1-v250c.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--scenario=paper --runs=2 --nNodes=100 --time=600 --areaX=1250 --areaY=1250 --range=250 --propagation=range --mobility=rwp --pause=0 --speed=1 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/termite/termite-anchor.flows --diag --protocols=termite,aodv"}}
+  anchor-termite-s5: {source: anchor-termite-s5-v250c.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--scenario=paper --runs=2 --nNodes=100 --time=600 --areaX=1250 --areaY=1250 --range=250 --propagation=range --mobility=rwp --pause=0 --speed=5 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/termite/termite-anchor.flows --diag --protocols=termite,aodv"}}
+  anchor-termite-s10: {source: anchor-termite-s10-v250c.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--scenario=paper --runs=2 --nNodes=100 --time=600 --areaX=1250 --areaY=1250 --range=250 --propagation=range --mobility=rwp --pause=0 --speed=10 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/termite/termite-anchor.flows --diag --protocols=termite,aodv"}}
+  anchor-termite-s20: {source: anchor-termite-s20-v250c.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--scenario=paper --runs=2 --nNodes=100 --time=600 --areaX=1250 --areaY=1250 --range=250 --propagation=range --mobility=rwp --pause=0 --speed=20 --flowsFile=$GITHUB_WORKSPACE/ns3/tools/fixtures/termite/termite-anchor.flows --diag --protocols=termite,aodv"}}
+  anchor-qrouting-low: {source: anchor-qrouting-low-v250c.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--runs=2 --nNodes=36 --time=300 --areaX=600 --areaY=600 --range=175 --pause=1000 --flows=10 --cbrBps=2048 --diag --protocols=qrouting,oracle"}}
+  anchor-qrouting-high: {source: anchor-qrouting-high-v250c.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--runs=2 --nNodes=36 --time=300 --areaX=600 --areaY=600 --range=175 --pause=1000 --flows=10 --cbrBps=65536 --diag --protocols=qrouting,oracle"}}
+  grid-rwp-tworay-cmp: {source: grid-rwp-tworay-v250c.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: tworay, pause: 30, protocols: "ara,termite,qrouting"}}
+  grid-rwp-nakagami-cmp: {source: grid-rwp-nakagami-v250c.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: rwp, propagation: nakagami, pause: 30, protocols: "ara,termite,qrouting"}}
+  grid-ssrwp-tworay-cmp: {source: grid-ssrwp-tworay-v250c.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: ssrwp, propagation: tworay, pause: 30, protocols: "ara,termite,qrouting"}}
+  grid-ssrwp-nakagami-cmp: {source: grid-ssrwp-nakagami-v250c.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: ssrwp, propagation: nakagami, pause: 30, protocols: "ara,termite,qrouting"}}
+  grid-gaussmarkov-tworay-cmp: {source: grid-gaussmarkov-tworay-v250c.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: gaussmarkov, propagation: tworay, pause: 0, protocols: "ara,termite,qrouting"}}
+  grid-gaussmarkov-nakagami-cmp: {source: grid-gaussmarkov-nakagami-v250c.txt, workflow: paper-benchmark.yml, inputs: {<<: *grid, mobility: gaussmarkov, propagation: nakagami, pause: 0, protocols: "ara,termite,qrouting"}}
+
+  # --- v2.5.0 scale stage 2 (tools/bench/campaigns/v2.5.0-scale-stage2.yaml) --
+  scale-50-s2: {source: scale-50-v250s2.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--scenario=paper --runs=2 --nNodes=50 --time=300 --areaX=1500 --pause=30 --speed=20 --propagation=range --range=300 --areaY=500 --diag --mobility=rwp --transport=udp --protocols=anthocnet --ns3::anthocnet::RoutingProtocol::ReactiveRetryInterval=0s"}}
+  scale-200-s2: {source: scale-200-v250s2.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--scenario=paper --runs=2 --nNodes=200 --time=300 --areaX=3000 --pause=30 --speed=20 --propagation=range --range=300 --areaY=1000 --diag --mobility=rwp --transport=udp --protocols=anthocnet --ns3::anthocnet::RoutingProtocol::ReactiveRetryInterval=0s"}}
+  scale-500-s2: {source: scale-500-v250s2.txt, workflow: benchmark-cell.yml, inputs: {version: 3.42-opt, args: "--scenario=paper --runs=2 --nNodes=500 --time=300 --areaX=4743 --pause=30 --speed=20 --propagation=range --range=300 --areaY=1581 --diag --mobility=rwp --transport=udp --protocols=anthocnet --ns3::anthocnet::RoutingProtocol::ReactiveRetryInterval=0s"}}
+
+jobs:
+  - {arms: [control], cells: "*"}

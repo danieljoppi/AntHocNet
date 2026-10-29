@@ -21,7 +21,8 @@
 #
 # Ground truths (derived, never listed here):
 #   modules  = LIBNAME entries of the vendored module CMakeLists under ns3/
-#   arms     = the `proto == "<name>"` dispatch in anthocnet-compare.cc
+# The protocol arms need no list since ADR-0027 (#768): they register with
+# routing-bench, and every gate reads them from routing-compare --PrintHelp.
 #
 # Failure-to-find is failure: if a checked file or the pattern locating a
 # list inside it disappears (a refactor moved the list), this gate FAILS
@@ -59,21 +60,6 @@ if ! printf '%s\n' "$modules" | grep -qx 'anthocnet'; then
     exit 1
 fi
 
-# --- ground truth 2: protocol arms the compare harness dispatches on ------
-harness=ns3/anthocnet/examples/anthocnet-compare.cc
-need_file "$harness" || exit 1
-# Plus the arms registered with routing-bench (ADR-0027, #766): a registered
-# arm needs no dispatch branch in the harness, so read its RegisterArm call.
-arms=$({ grep -oE 'proto == "[a-z0-9]+"' "$harness"
-         grep -rhoE 'RegisterArm\("[a-z0-9]+"' ns3 --include='*.cc' || true; } \
-       | sed 's/.*"\(.*\)"/\1/' | sort -u)
-if ! printf '%s\n' "$arms" | grep -qx 'anthocnet'; then
-    echo "FAIL [allowlists]: could not derive the protocol-arm set from $harness"
-    echo "  (no 'proto == \"anthocnet\"' dispatch found). If the dispatch changed shape,"
-    echo "  update the derivation here — do not hardcode a list (#435)."
-    exit 1
-fi
-
 # Stock ns-3 modules the compare harness links beyond the vendored ones and
 # their dependencies: mesh, for the hwmp arm (#708). ns-3 skips an example
 # whose module is not enabled, so a list without it loses the whole harness.
@@ -83,7 +69,6 @@ required="$modules
 mesh"
 
 echo "[allowlists] modules: $(printf '%s\n' "$modules" | tr '\n' ' ')"
-echo "[allowlists] arms:    $(printf '%s\n' "$arms" | tr '\n' ' ')"
 
 # --- check class 1: module allowlists -------------------------------------
 # $1 file, $2 line regex, $3 expected match count, $4 human label.
@@ -179,36 +164,9 @@ if need_file "$df"; then
     fi
 fi
 
-# --- check class 2: protocol-arm awk alternations -------------------------
-# Both metric-row filters keep rows via `$1 ~ /^(a|b|c)$/`; an arm missing
-# there is dropped SILENTLY (from the published block, or from both sides of
-# the determinism diff — #421). Every dispatched arm must be in each.
-check_arm_alternation() {
-    local file=$1 label=$2 alts n alt a
-    need_file "$file" || return 0
-    alts=$(grep -oE '\^\([a-z0-9|]+\)\$' "$file" || true)
-    n=$(count_lines "$alts")
-    if [ "$n" -ne 1 ]; then
-        echo "FAIL [allowlists]: $label — expected exactly 1 '^(a|b|c)\$' arm alternation in $file, found $n."
-        echo "  If the filter moved or changed shape, update check-allowlists.sh (#435)."
-        fail=1
-        return 0
-    fi
-    alt=${alts#^(}
-    alt=${alt%)\$}
-    for a in $arms; do
-        case "|$alt|" in
-            *"|$a|"*) ;;
-            *)
-                echo "FAIL [allowlists]: arm '$a' missing from $label ($file): ($alt)"
-                echo "  A missing arm is dropped silently, not reported (#421)."
-                fail=1
-                ;;
-        esac
-    done
-}
-
-check_arm_alternation tools/checks/check-determinism.sh "check-determinism.sh filter_rows()"
+# --- check class 2: (retired) protocol-arm awk alternations -----------------
+# check-determinism.sh reads its arm filter from the harness's --PrintHelp
+# (#768), so no hand-kept alternation is left to check.
 
 # --- check class 2b: the harnesses' own --protocols help lists ------------
 # Two gates enumerate their arm coverage from a harness's --PrintHelp
@@ -237,13 +195,6 @@ check_help_list() {
     fi
     helplist=$(printf '%s\n' "$lists" | sed 's/.*(\(.*\))/\1/')
     dispatched=$(grep -oE 'proto == "[a-z0-9]+"' "$file" | sed 's/.*"\(.*\)"/\1/' | sort -u)
-    # A harness that calls a routing-bench registration function dispatches
-    # the registered arms too (ADR-0027, #766).
-    if grep -qE 'bench::Register[A-Za-z]*Arms\(\)' "$file"; then
-        dispatched=$({ printf '%s\n' "$dispatched"
-                       grep -rhoE 'RegisterArm\("[a-z0-9]+"' ns3 --include='*.cc' || true; } \
-                     | sed 's/.*"\(.*\)"/\1/' | sort -u)
-    fi
     if [ -z "$dispatched" ]; then
         echo "FAIL [allowlists]: could not derive the dispatched-arm set from $file"
         echo "  (no 'proto == \"...\"' found). Update the derivation here (#435)."
@@ -286,7 +237,9 @@ check_help_list() {
     done
 }
 
-check_help_list ns3/anthocnet/examples/anthocnet-compare.cc ""
+# routing-compare builds its help list from the registry at run time (#768);
+# check-arm-delivery.sh reads it from --PrintHelp, so only isl-grid's
+# hand-kept literal is checked here.
 # isl-grid deliberately does NOT advertise dsdv: stock DSDV is
 # single-interface-only and the harness rejects it up front on any grid where
 # a satellite holds more than one ISL (#420) — the help text says so in prose

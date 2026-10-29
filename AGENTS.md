@@ -19,7 +19,7 @@ v1.2.0–v1.9.0 tags.
 
 ```
 core/    simulator-agnostic C++ (no simulator headers) + unit tests
-ns3/     anthocnet/ (the ns-3 module + harnesses), baselines/<arm>/ (vendored arms), tools/
+ns3/     anthocnet/ (the ns-3 module + satellite harnesses), routing-bench/ (the comparison harness), baselines/<arm>/ (vendored arms), tools/
 web/     browser adapter (core/ as WebAssembly) + the learn site (the Pages front page)
 tools/   shipped scripts: bench/ (stats, parsing, scenario_check), checks/ (CI gates), release/
 docs/    architecture.md, porting-notes.md, adr/, benchmarks/ — full map in docs/README.md
@@ -236,7 +236,7 @@ for f in web/src/{sim,scenarios,trace_main}.cpp; do clang-tidy -p build-tidy/web
 | Inspect protocol internals | NS-3 `Tx`/`Rx`/`RouteChanged` trace sources; core counters via `IRouterObserver` |
 | Run the benchmark campaign loop (dispatch → fetch → parse) | `benchmark-results` skill (SKILL.md documents the whole procedure) |
 | Run a campaign (cells × arms, throttled so PR CI keeps runners) | `tools/bench/campaign.py` + a plan in `tools/bench/campaigns/` (#662): `plan`, `dispatch`, `status`, `collect`, `verdicts` |
-| Run the comparison harness, or add a protocol (arm) to it | [`docs/comparison-harness.md`](docs/comparison-harness.md) — markers, readers, the `adaptive` `RoutingBase` hooks, the wiring checklist, the three gates. Its planned protocol-agnostic form (`routing-bench`, arm registry, hook order, compatibility promise): [ADR-0027](docs/adr/0027-the-comparison-harness-is-protocol-agnostic.md) (epic #764) |
+| Run the comparison harness, or add a protocol (arm) to it | [`docs/comparison-harness.md`](docs/comparison-harness.md) — running `routing-compare` (alias `anthocnet-compare`), markers, readers, the `adaptive` `RoutingBase` hooks, registering an arm, the three gates. The harness is the `routing-bench` module (`ns3/routing-bench/`, its README); each arm module registers through `helper/<module>-bench-arms.cc`. The design (arm contract, hook order, explicit registration, compatibility promise): [ADR-0027](docs/adr/0027-the-comparison-harness-is-protocol-agnostic.md) (epic #764) |
 | Compare benchmark A/B runs (deltas + noise verdict) | `benchmark-results` skill (`tools/bench/bench_parse.py`) |
 | Build, test or screenshot the learn site | `learn-site` skill (parity, smoke, README figures) |
 | Change the site's top bar, places or the docs/API look | `web/shell/` (one source for game, docs and API; `inject.py`), `docs/places/`, the nav in `mkdocs.yml`; checked by `web/test/smoke.mjs` on `web/build-pages.sh` output |

@@ -10,11 +10,8 @@ def build(bld):
     needed = ['aodv', 'olsr', 'dsdv', 'flow-monitor']
     if all(m in bld.env['NS3_ENABLED_MODULES'] or
            ('ns3-' + m) in bld.env['NS3_ENABLED_MODULES'] for m in needed):
-        cmp = bld.create_ns3_program('anthocnet-compare',
-                                     ['anthocnet', 'core', 'network', 'internet',
-                                      'wifi', 'mobility', 'applications',
-                                      'aodv', 'olsr', 'dsdv', 'flow-monitor'])
-        cmp.source = 'anthocnet-compare.cc'
+        # anthocnet-compare moved to the routing-bench module (ADR-0027, #767),
+        # which builds with CMake only.
 
         # ISL-grid scenario (#214): static +Grid torus of point-to-point links.
         isl = bld.create_ns3_program('isl-grid',

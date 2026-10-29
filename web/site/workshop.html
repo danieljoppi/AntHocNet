@@ -39,8 +39,8 @@
       <div class="titlebar" id="benchTitle" data-i18n="wsui.benchTitle">Bring your own protocol: the comparison harness</div>
       <div class="body">
         <p data-i18n-html="wsui.benchIntro">Every Lab number comes from one ns-3 program that runs several routing protocols on the same seeds, so each difference carries a confidence interval. You can run it on your own protocol: an ns-3 routing module, or a per-hop arm on the <code>adaptive</code> base in about 270 lines.</p>
-        <pre class="ws-cmd" tabindex="0" role="region" data-i18n-attr="aria-label:wsui.benchCmd" aria-label="Example command"><code>./ns3 run "anthocnet-compare --scenario=paper --runs=10 --protocols=anthocnet,aodv,olsr --diag"</code></pre>
-        <p data-i18n-html="wsui.benchNext">Coming in v2.6.0: the harness becomes <code>routing-bench</code>, a module that names no protocol. Your arm registers itself; <code>anthocnet-compare</code> keeps working.</p>
+        <pre class="ws-cmd" tabindex="0" role="region" data-i18n-attr="aria-label:wsui.benchCmd" aria-label="Example command"><code>./ns3 run "routing-compare --scenario=paper --runs=10 --protocols=anthocnet,aodv,olsr --diag"</code></pre>
+        <p data-i18n-html="wsui.benchNext">Since v2.6.0 the harness is <code>routing-bench</code>, a module that names no protocol: your module registers its arm in one file and <code>routing-compare</code> finds it. <code>anthocnet-compare</code> still works.</p>
         <p data-i18n-html="wsui.benchLinks"><a href="docs/comparison-harness/">Read the harness guide</a> · <a href="docs/adr/0027-the-comparison-harness-is-protocol-agnostic/">the design (ADR-0027)</a></p>
       </div>
     </section>

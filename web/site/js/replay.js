@@ -1,5 +1,5 @@
 // ns-3 replay (#641): a real ns-3 run, recorded by a harness's --vizTrace
-// (ns3/anthocnet/examples/viz-trace.h), drawn by the game's own renderer.
+// (ns3/anthocnet/helper/anthocnet-viz-trace.h), drawn by the game's own renderer.
 // Nothing here simulates: positions are interpolated between the recorded
 // samples, routes are the strongest next hops ns-3's pheromone tables held at
 // each sample, and the delivery counters are the run's FlowMonitor books.

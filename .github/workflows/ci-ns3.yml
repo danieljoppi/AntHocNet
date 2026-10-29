@@ -485,3 +485,48 @@ jobs:
           ./ns3 build
           ./test.py -s anthocnet
           ./ns3 run anthocnet-example
+
+  # ADR-0027 (#767, v2.6.0 exit criterion): the comparison harness alone, on
+  # stock ns-3 -- routing-bench with no AntHocNet and no comparison module
+  # beside it. It must build, pass its tests, offer exactly the stock arms and
+  # deliver with them, and refuse an arm that is not installed.
+  routing-bench-alone:
+    name: routing-bench alone (stock ns-3 only)
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ns3:3.48
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install routing-bench only
+        run: |
+          d=/opt/ns-3/contrib/routing-bench
+          mkdir -p "$d"
+          cp -r ns3/routing-bench/model ns3/routing-bench/helper ns3/routing-bench/examples \
+                ns3/routing-bench/test ns3/routing-bench/CMakeLists.txt "$d/"
+      - name: Configure, build, test, run the stock arms
+        run: |
+          cd /opt/ns-3
+          ./ns3 configure --enable-tests --enable-examples \
+            --filter-module-examples-and-tests='routing-bench' \
+            --enable-modules='routing-bench;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;mesh'
+          ./ns3 build
+          ./test.py -s routing-bench
+          help=$(./ns3 run "routing-compare --PrintHelp" 2>&1 || true)
+          printf '%s\n' "$help" | grep -q 'Comma-separated list (aodv,dsdv,hwmp,olsr)' \
+            || { echo "FAIL: routing-compare alone should offer exactly the stock arms"; printf '%s\n' "$help" | grep -i protocols; exit 1; }
+          out=$(./ns3 run "routing-compare --scenario=paper --nNodes=20 --time=30 --runs=1" 2>&1)
+          printf '%s\n' "$out" | grep '^##RUN##'
+          for arm in aodv olsr dsdv; do
+            printf '%s\n' "$out" | awk -v a="$arm" '$1=="##RUN##" && $3==a && $4>0 {f=1} END {exit !f}' \
+              || { echo "FAIL: $arm delivered nothing"; exit 1; }
+          done
+          ./ns3 run "routing-compare --scenario=paper --nNodes=15 --time=20 --runs=1 --protocols=hwmp --standard=80211a --rateManager=constant6" 2>&1 \
+            | awk '$1=="##RUN##" && $3=="hwmp" && $4>0 {f=1} END {exit !f}' \
+            || { echo "FAIL: hwmp delivered nothing"; exit 1; }
+          if ./ns3 run "routing-compare --protocols=anthocnet --nNodes=8 --time=5" >/tmp/u.log 2>&1; then
+            echo "FAIL: an arm that is not installed must abort (#448)"; exit 1
+          fi
+          grep -q "unknown protocol 'anthocnet'" /tmp/u.log

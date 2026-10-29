@@ -33,6 +33,21 @@ else()
   add_compile_definitions(ANTHOCNET_NS3_SCOPED_TEST_ENUMS)
 endif()
 
+# ADR-0027 (#768): AntHocNet's arm of the comparison harness, compiled in only
+# when routing-bench is installed and enabled beside it (make install-ns3
+# without BASELINES=0). The library is named through a variable, not written
+# as a token: ns-3 scans module CMakeLists for library tokens to resolve
+# dependencies, and AntHocNet alone (BASELINES=0) must not require it.
+set(anthocnet_bench_sources)
+set(anthocnet_bench_libs)
+set(anthocnet_bench_module routing-bench)
+if(EXISTS ${PROJECT_SOURCE_DIR}/contrib/${anthocnet_bench_module}/CMakeLists.txt
+   AND anthocnet_bench_module IN_LIST ns3-all-enabled-modules)
+  set(anthocnet_bench_sources helper/anthocnet-bench-arms.cc)
+  set(anthocnet_bench_lib lib${anthocnet_bench_module})
+  set(anthocnet_bench_libs ${${anthocnet_bench_lib}})
+endif()
+
 # Examples are defined in examples/CMakeLists.txt, which build_lib descends into
 # automatically. They MUST live there, not here: build_lib_example reads
 # BLIB_LIBNAME, which ns-3 only sets inside build_lib's own scope (it descends
@@ -46,6 +61,7 @@ build_lib(
     model/anthocnet-rqueue.cc
     model/anthocnet-adapters.cc
     helper/anthocnet-helper.cc
+    ${anthocnet_bench_sources}
     core/src/pheromone_table.cpp
     core/src/pheromone_engine.cpp
     core/src/ant_history.cpp
@@ -58,6 +74,7 @@ build_lib(
     model/anthocnet-rqueue.h
     model/anthocnet-adapters.h
     helper/anthocnet-helper.h
+    helper/anthocnet-viz-trace.h
   LIBRARIES_TO_LINK
     ${libcore}
     ${libnetwork}
@@ -67,6 +84,7 @@ build_lib(
     # link-break test below to move a node out of range.
     ${libwifi}
     ${libmobility}
+    ${anthocnet_bench_libs}
   TEST_SOURCES
     test/anthocnet-test-suite.cc
 )

@@ -215,9 +215,10 @@ def _legacy():
 def _plans_translate():
     import glob
     for path in sorted(glob.glob(os.path.join(HERE, "campaigns", "*.yaml"))):
-        for _l, _c, _a, wf, inp in cp.jobs(cp.load_plan(path)):
-            h, a, _v = cp.legacy_command(wf, inp)
-            expect(h in ("anthocnet-compare", "isl-grid", "leo-walker") and a,
+        plan = cp.load_plan(path)
+        for _l, _c, _a, wf, inp in cp.jobs(plan):
+            h, a, _v = cp.legacy_command(wf, inp, plan["program"])
+            expect(h in ("anthocnet-compare", "routing-compare", "isl-grid", "leo-walker") and a,
                    "plans-translate", f"{path}: {h} {a}")
 
 

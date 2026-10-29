@@ -77,7 +77,7 @@
 #include "ns3/oracle-module.h"
 #include "ns3/anthocnet-helper.h"
 #include "ns3/anthocnet-routing-protocol.h"
-#include "viz-trace.h"
+#include "ns3/anthocnet-viz-trace.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -402,7 +402,7 @@ struct Params {
     double vizStep = 1.0;
 };
 
-// #641: the one recorded run of --vizTrace (see viz-trace.h).
+// #641: the one recorded run of --vizTrace (see anthocnet-viz-trace.h).
 static vizt::VizTrace g_viz;
 
 struct Result {

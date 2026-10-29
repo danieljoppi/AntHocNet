@@ -26,9 +26,25 @@ else()
   add_compile_definitions(AOMDV_NS3_SCOPED_TEST_ENUMS)
 endif()
 
+# ADR-0027 (#768): this module's arm(s) of the comparison harness, compiled in
+# only when routing-bench is installed and enabled beside it. The library is
+# named through a variable, not written as a token: ns-3 scans module
+# CMakeLists for library tokens to resolve dependencies, and this module must
+# still build alone.
+set(aomdv_bench_sources)
+set(aomdv_bench_libs)
+set(aomdv_bench_module routing-bench)
+if(EXISTS ${PROJECT_SOURCE_DIR}/contrib/${aomdv_bench_module}/CMakeLists.txt
+   AND aomdv_bench_module IN_LIST ns3-all-enabled-modules)
+  set(aomdv_bench_sources helper/aomdv-bench-arms.cc)
+  set(aomdv_bench_lib lib${aomdv_bench_module})
+  set(aomdv_bench_libs ${${aomdv_bench_lib}})
+endif()
+
 build_lib(
   LIBNAME aomdv
   SOURCE_FILES
+    ${aomdv_bench_sources}
     model/aomdv-id-cache.cc
     model/aomdv-dpd.cc
     model/aomdv-rtable.cc
@@ -47,6 +63,7 @@ build_lib(
     model/aomdv-routing-protocol.h
     helper/aomdv-helper.h
   LIBRARIES_TO_LINK
+    ${aomdv_bench_libs}
     ${libinternet}
     # wifi: the model subscribes to the WifiMac "DroppedMpdu" trace for MAC
     # transmit-failure detection (inherited from the stock ns-3.36 aodv base).

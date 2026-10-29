@@ -1340,7 +1340,7 @@
     "reset": "Recomeçar",
     "benchTitle": "Traga seu próprio protocolo: o harness de comparação",
     "benchIntro": "Todo número do Laboratório vem de um único programa ns-3 que roda vários protocolos de roteamento nas mesmas sementes, então cada diferença vem com um intervalo de confiança. Você pode rodá-lo com o seu protocolo: um módulo de roteamento ns-3, ou um braço por salto sobre a base <code>adaptive</code> em cerca de 270 linhas.",
-    "benchNext": "Na v2.6.0: o harness vira <code>routing-bench</code>, um módulo que não nomeia nenhum protocolo. Seu braço se registra sozinho; <code>anthocnet-compare</code> continua funcionando.",
+    "benchNext": "Desde a v2.6.0 o harness é <code>routing-bench</code>, um módulo que não nomeia nenhum protocolo: seu módulo registra o braço num único arquivo e o <code>routing-compare</code> o encontra. <code>anthocnet-compare</code> continua funcionando.",
     "benchLinks": "<a href=\"docs/comparison-harness/\">Leia o guia do harness</a> · <a href=\"docs/adr/0027-the-comparison-harness-is-protocol-agnostic/\">o projeto (ADR-0027)</a>",
     "benchCmd": "Comando de exemplo"
   },

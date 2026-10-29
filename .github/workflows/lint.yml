@@ -70,6 +70,11 @@ jobs:
         # throttle, the resume and the collected file names are tested with
         # no network, in ~1 s.
         run: python3 tools/bench/test_campaign.py
+      - name: Harness-control self-test (#769)
+        # harness_control.py is the byte-identical gate for a harness change
+        # (ADR-0027 §4): a changed, missing or extra ##RUN##/##ROUTE##/##COMMON##
+        # row must FAIL. Synthetic files, no simulator, ~1 s.
+        run: python3 tools/bench/test_harness_control.py
       - name: Partition-scene self-test (#62)
         # partition_scene.py is the bounded-control gate for the #20/#45 storm
         # class. Synthetic runs with known answers: a plateau passes, a growing

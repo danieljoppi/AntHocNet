@@ -34,9 +34,9 @@ on:
   workflow_dispatch:
     inputs:
       harness:
-        description: 'anthocnet-compare (MANET/mesh/FANET/VANET) | isl-grid | leo-walker (ns-3 >= 3.48)'
+        description: 'routing-compare or its alias anthocnet-compare (MANET/mesh/FANET/VANET) | isl-grid | leo-walker (ns-3 >= 3.48)'
         type: choice
-        options: [anthocnet-compare, isl-grid, leo-walker]
+        options: [anthocnet-compare, routing-compare, isl-grid, leo-walker]
         default: anthocnet-compare
       args:
         description: 'The harness flags, verbatim (e.g. --scenario=paper --runs=20 --protocols=anthocnet,aodv,olsr,dsdv,oracle --diag)'

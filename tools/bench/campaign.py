@@ -42,6 +42,8 @@ Plan format:
 
     generation: v230              # file suffix
     ref: main                     # the ref every job is dispatched at
+    program: routing-compare      # optional: the MANET program a compare
+                                  # cell runs (default anthocnet-compare, #769)
     cap: 12
     control: control              # the arm whose files carry no arm suffix
     arms:
@@ -102,7 +104,13 @@ SAT_DEFAULTS = {"harness": "isl-grid", "version": "3.42", "rows": "4", "cols": "
                 "protocols": "anthocnet,aodv,olsr,oracle", "extraArgs": ""}
 
 
-def legacy_command(wf, inp):
+# The MANET-family program. ADR-0027 kept anthocnet-compare as an alias of
+# routing-compare (same arguments, same output), so committed plans keep
+# their name; a plan sets `program: routing-compare` to run the new one (#769).
+PROGRAM = "anthocnet-compare"
+
+
+def legacy_command(wf, inp, program=PROGRAM):
     """(harness, args, version) for one job, as benchmark-cell.yml inputs.
 
     paper-benchmark.yml and satellite-benchmark.yml built the harness command
@@ -112,7 +120,7 @@ def legacy_command(wf, inp):
     """
     if wf == WORKFLOW:
         args = " ".join(x for x in (inp.get("args", ""), inp.get("extraArgs", "")) if x)
-        return inp.get("harness", "anthocnet-compare"), args, inp.get("version", "3.42-opt")
+        return inp.get("harness", program), args, inp.get("version", "3.42-opt")
     if wf == "paper-benchmark.yml":
         i = dict(PAPER_DEFAULTS, **inp)
         if i["harness"] != "compare":
@@ -129,7 +137,7 @@ def legacy_command(wf, inp):
             args.append(i["extraArgs"])
         args += ["--diag", f"--mobility={i['mobility']}",
                  f"--transport={i['transport']}", f"--protocols={i['protocols']}"]
-        return "anthocnet-compare", " ".join(args), i["version"]
+        return program, " ".join(args), i["version"]
     if wf == "satellite-benchmark.yml":
         i = dict(SAT_DEFAULTS, **inp)
         common = [f"--time={i['time']}", f"--runs={i['runs']}", f"--flows={i['flows']}",
@@ -161,6 +169,7 @@ def load_plan(path):
         if key not in plan:
             sys.exit(f"{path}: plan has no '{key}'")
     plan.setdefault("ref", "main")
+    plan.setdefault("program", PROGRAM)
     plan.setdefault("cap", 12)
     plan.setdefault("control", "control")
     return plan
@@ -232,7 +241,7 @@ def newest_dispatch(wf):
 
 def cmd_plan(plan, _a):
     for label, _c, _arm, wf, inp in jobs(plan):
-        harness, args, version = legacy_command(wf, inp)
+        harness, args, version = legacy_command(wf, inp, plan.get("program", PROGRAM))
         print(f"{label}\tns3:{version}\t{harness} {args}")
     print(f"{len(jobs(plan))} job(s), cap {plan['cap']}, ref {plan['ref']}",
           file=sys.stderr)
@@ -243,7 +252,7 @@ def cmd_dispatch(plan, a):
     done = read_log(a.log)
     todo = [j for j in jobs(plan) if j[0] not in done]
     for label, _c, _arm, wf, inp in todo:
-        harness, args, version = legacy_command(wf, inp)
+        harness, args, version = legacy_command(wf, inp, plan.get("program", PROGRAM))
         while active_runs() >= cap:
             if not a.wait:
                 print(f"cap {cap} reached; {len(read_log(a.log))} of "

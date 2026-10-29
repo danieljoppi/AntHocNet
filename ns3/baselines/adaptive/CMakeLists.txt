@@ -25,9 +25,25 @@ else()
   add_compile_definitions(ADAPTIVE_NS3_SCOPED_TEST_ENUMS)
 endif()
 
+# ADR-0027 (#768): this module's arm(s) of the comparison harness, compiled in
+# only when routing-bench is installed and enabled beside it. The library is
+# named through a variable, not written as a token: ns-3 scans module
+# CMakeLists for library tokens to resolve dependencies, and this module must
+# still build alone.
+set(adaptive_bench_sources)
+set(adaptive_bench_libs)
+set(adaptive_bench_module routing-bench)
+if(EXISTS ${PROJECT_SOURCE_DIR}/contrib/${adaptive_bench_module}/CMakeLists.txt
+   AND adaptive_bench_module IN_LIST ns3-all-enabled-modules)
+  set(adaptive_bench_sources helper/adaptive-bench-arms.cc)
+  set(adaptive_bench_lib lib${adaptive_bench_module})
+  set(adaptive_bench_libs ${${adaptive_bench_lib}})
+endif()
+
 build_lib(
   LIBNAME adaptive
   SOURCE_FILES
+    ${adaptive_bench_sources}
     model/adaptive-routing-base.cc
     model/adaptive-packet.cc
     model/ara-routing-protocol.cc
@@ -43,6 +59,7 @@ build_lib(
     model/qrouting-routing-protocol.h
     helper/adaptive-helper.h
   LIBRARIES_TO_LINK
+    ${adaptive_bench_libs}
     ${libcore}
     ${libnetwork}
     ${libinternet}

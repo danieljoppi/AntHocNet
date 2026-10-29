@@ -1228,7 +1228,7 @@ protocol registers no TraceSource — every one of its shed paths is silent.
 The [#229](https://github.com/danieljoppi/AntHocNet/issues/229) fix closes
 this from the harness alone (the baselines run stock ns-3 code, so nothing in
 `src/dsdv` is patched): a **pending-queue conservation hook** in
-`anthocnet-compare.cc` (`PqTrackTx`/`PqTrackDrop`, dsdv + aodv arms, UDP
+`routing-bench-harness.cc` (`PqTrackTx`/`PqTrackDrop`, dsdv + aodv arms, UDP
 only). Both protocols defer a route-less packet by looping it through the
 loopback interface, so the hook records each data `(flow, seq)` key at the L3
 `Tx` trace on interface 0 and clears it when the key crosses `Tx` on a real

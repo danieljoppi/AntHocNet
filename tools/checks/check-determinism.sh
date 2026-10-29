@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Determinism gate (#129): run the same small anthocnet-compare scenario TWICE
+# Determinism gate (#129): run the same small routing-compare scenario TWICE
 # with identical parameters and fail unless the per-protocol metric rows are
 # byte-identical. Golden rule 3 (AGENTS.md) routes all randomness through IRng
 # and all time through IClock precisely so identical seeds reproduce identical
@@ -15,8 +15,8 @@
 # `compare` (the default) runs the wifi/MANET field; `isl-grid` runs the same
 # identity check on the satellite ISL topology (S5 of #237).
 #
-# The ns-3 tree must already be configured + built with the anthocnet module's
-# examples enabled (both harnesses build as part of the module's examples).
+# The ns-3 tree must already be configured + built with examples enabled
+# (routing-compare is routing-bench's, isl-grid the anthocnet module's).
 set -euo pipefail
 
 NS3DIR=${1:-}
@@ -34,7 +34,8 @@ case "$HARNESS" in
         # 1..runs), so both invocations use identical seeds by construction.
         args="--nNodes=8 --area=150 --flows=2 --time=60 --runs=1"
         protocols="anthocnet,aodv"
-        cmd="anthocnet-compare $args --protocols=$protocols"
+        prog=routing-compare
+        cmd="$prog $args --protocols=$protocols"
         ;;
     isl-grid)
         # S5 of #237 — the same identity anchor on the satellite topology.
@@ -46,7 +47,8 @@ case "$HARNESS" in
         # showing up on a single-interface wifi node.
         args="--rows=4 --cols=4 --torus=true --flows=2 --time=30 --runs=1"
         protocols="anthocnet"
-        cmd="isl-grid $args --protocols=$protocols"
+        prog=isl-grid
+        cmd="$prog $args --protocols=$protocols"
         ;;
     *)
         echo "unknown harness '$HARNESS' (want: compare | isl-grid)" >&2
@@ -59,19 +61,23 @@ esac
 # build chatter, '# diag'/'# stddev' lines, and anything timing-dependent
 # (timestamps, build durations), so the diff compares simulation results, not
 # wall-clock artefacts.
-# #421: keep this arm list in step with the harness's arms (check-allowlists.sh
-# enforces it).
-# An arm missing here is not "not compared" loudly — it is dropped from BOTH
-# sides of the diff, so a non-deterministic oracle/gpsr/aomdv would pass this
-# gate silently. That is how the three post-v1.4.0 arms went unchecked.
-# #435: check-allowlists.sh now asserts this alternation names every arm the
-# compare harness dispatches on, so a missed arm fails CI instead.
+# The arm names come from the harness's own --protocols help (#768: the
+# registry for routing-compare), not a hand-kept list. An arm missing here
+# would not be "not compared" loudly -- it would be dropped from BOTH sides of
+# the diff, so a non-deterministic arm would pass this gate silently (how the
+# three post-v1.4.0 arms once went unchecked, #421/#435).
+cd "$NS3DIR"
+arms=$({ ./ns3 run "$prog --PrintHelp" 2>&1 || true; } \
+    | sed -n 's/.*Comma-separated list (\([a-z0-9,]*\)).*/\1/p' | head -n 1 | tr ',' '|')
+if [ -z "$arms" ]; then
+    echo "FAIL [determinism:$HARNESS]: could not read the arm list from $prog --PrintHelp"
+    exit 1
+fi
 filter_rows() {
-    awk '$1 ~ /^(anthocnet|aodv|olsr|dsdv|oracle|gpsr|aomdv|hwmp|gpcr|gpsr3d|ara|termite|qrouting)$/ && $2 ~ /^[0-9.]+$/'
+    awk -v re="^($arms)\$" '$1 ~ re && $2 ~ /^[0-9.]+$/'
 }
 
 echo "[determinism:$HARNESS] ./ns3 run \"$cmd\"  (twice; gate: identical metric rows)"
-cd "$NS3DIR"
 
 rows1=
 rows2=

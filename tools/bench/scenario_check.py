@@ -100,7 +100,7 @@ HOLD_CEILING_MS = 5000.0
 #     included, at ~1.00 — the sample-starvation floor) and informative.
 #   - The excess never invalidates a cell. divUsed is accumulated in its own
 #     (node, dest, window) map off the WifiMac AckedMpdu trace
-#     (anthocnet-compare.cc CountAckedDataHop / FlushDiversityWindow); PDR,
+#     (routing-bench-harness.cc CountAckedDataHop / FlushDiversityWindow); PDR,
 #     delay, delay99, throughput, NRL and jitter come from FlowMonitor and the
 #     energy columns from the energy model. A churn-inflated divUsed cannot
 #     move a single published number.
@@ -2749,7 +2749,7 @@ def cmd_results(a):
                 # attributed nowhere — the 11.46 pp shortfall at dense-small
                 # (−21.8 pp post-#388, once honest MAC accounting stopped
                 # masking part of the hole).
-                # Since the #229 fix, anthocnet-compare.cc measures those
+                # Since the #229 fix, routing-bench-harness.cc measures those
                 # sheds itself (the PqTrackTx pending-queue conservation hook,
                 # dsdv/aodv arms) and folds them into drop_queue_pct, so a
                 # closing identity with a non-zero dsdv queue column is the
@@ -3015,7 +3015,7 @@ def main():
     # cell's 802.11a radio, which the hwmp arm requires).
     p.add_argument("--standard", choices=("80211b", "80211a"), default="80211b")
     p.add_argument("--rateManager", default="constant2")
-    # kDefaultPathWindowS in ns3/anthocnet/examples/anthocnet-compare.cc (#217).
+    # kDefaultPathWindowS in ns3/routing-bench/model/routing-bench-harness.cc (#217).
     p.add_argument("--pathWindowS", type=float, default=10)
     p.add_argument("--mobility",
                    choices=("rwp", "ssrwp", "gaussmarkov", "manhattan", "trace"),

@@ -69,7 +69,7 @@ METRICS = ["pdr", "delay", "delay99", "thrput", "nrl"]
 # Compact single-line form the workflow can emit: "##BENCH## anthocnet 50.2 ..."
 BENCH = re.compile(r"##BENCH##\s+(.+)$")
 # Per-run row (#128): "##RUN## <run> <proto> <fields...>". Fields are
-# POSITIONAL, in the ##BENCH## order (anthocnet-compare.cc keeps them
+# POSITIONAL, in the ##BENCH## order (routing-bench-harness.cc keeps them
 # field-aligned): pdr delay delay99 thrput nrl jitter off50 off90 nrl_bytes;
 # off50/off90 may print "inf".
 RUN = re.compile(r"##RUN##\s+(\d+)\s+([A-Za-z][\w-]*)\s+(.+?)\s*$")
@@ -83,7 +83,7 @@ STDDEV = re.compile(r"^#\s+stddev\s+([A-Za-z][\w-]*)\s+(.+)$")
 PERF = re.compile(r"##PERF##.*")
 
 # Printed-precision half-ulps for the mapping check tolerance: the ##RUN##
-# rows and the '# stddev' line round differently (anthocnet-compare.cc
+# rows and the '# stddev' line round differently (routing-bench-harness.cc
 # setprecision), so a recomputed sd can differ from the reported one by the
 # rounding alone. run-row: pdr/delay/delay99 .1f, nrl .2f, nrl_bytes .4f;
 # stddev line: pdr .2f, delay/delay99 .1f, nrl/nrl_bytes .3f.

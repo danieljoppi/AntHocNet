@@ -280,7 +280,9 @@ The adapters do only what is intrinsically simulator-specific:
 - own the periodic timers (hello, proactive, maintenance);
 - hold the pending-packet queue.
 
-The comparison harness (`anthocnet-compare`) is not part of the adapter: it
-measures the adapter beside other protocols. How to run it and add a protocol
-is in [comparison-harness.md](comparison-harness.md); its planned
-protocol-agnostic form is [ADR-0027](adr/0027-the-comparison-harness-is-protocol-agnostic.md).
+The comparison harness is not part of the adapter: it measures the adapter
+beside other protocols. Since v2.6.0 it is its own ns-3 module,
+`routing-bench` (`routing-compare`, alias `anthocnet-compare`), and AntHocNet
+reaches it as one arm among others, through `helper/anthocnet-bench-arms.cc`
+([ADR-0027](adr/0027-the-comparison-harness-is-protocol-agnostic.md)). How to
+run it and add a protocol is in [comparison-harness.md](comparison-harness.md).
