@@ -8,6 +8,22 @@ Note: the **software release version** (below) is distinct from the **on-wire
 protocol version** (`kWireVersion`, see [docs/wire-format.md](docs/wire-format.md)),
 which gates packet compatibility independently.
 
+## v2.6.0 (2026-10-29)
+
+### Feat
+
+- **bench**: the harness moves into routing-bench as routing-compare; every arm registers from its own module (#778)
+- **bench**: routing-bench module with the arm registry; the stock arms run through it (#776)
+
+### Fix
+
+- **bench**: re-measure the v2.5.0 comparator cells with the per-packet drop book (#780)
+- **bench**: book adaptive arms' drops per packet, not per event (#777)
+
+### Refactor
+
+- **bench**: split the harness into reviewable files; the export kit and isl-grid use routing-bench (#779)
+
 ## v2.5.0 (2026-10-28)
 
 ### Feat
