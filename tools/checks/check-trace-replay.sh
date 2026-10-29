@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # Scene replay smoke (#639): anthocnet-compare can replay an ns-2 movement
 # trace (--mobility=trace --traceFile) and an explicit flow list
 # (--flowsFile), which is how a game level becomes an ns-3 run (#640).

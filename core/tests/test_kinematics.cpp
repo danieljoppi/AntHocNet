@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: MIT OR GPL-2.0-only
 // Copyright (C) 2026 Daniel Henrique Joppi
 
 // #573, ADR-0025: the IKinematics port and the hello kinematics section. A

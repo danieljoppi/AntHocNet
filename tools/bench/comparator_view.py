@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
 # Copyright (C) 2026 Daniel Henrique Joppi
 """The v2.5.0 comparator readings (#563), as docs/benchmarks/v2.5.0-comparators.md
 pre-registered them.

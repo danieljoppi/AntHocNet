@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # 3-D field smoke (#480): prove --areaZ really places AND moves nodes in a 3-D
 # box, that routing still works there, and that every arm which cannot honour
 # a 3-D field is refused rather than silently flattened.

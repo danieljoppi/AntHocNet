@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # Moving-constellation smoke (#192/#297, ADR-0022): prove leo-walker's shell
 # really is the Walker geometry it claims, that its links really move, hand
 # over and fail, that every routing arm delivers through all of that, and that

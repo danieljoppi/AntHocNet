@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # Disaster-family gate (#580): the scene is wired, its walls are honoured,
 # and every native arm routes through it.
 #

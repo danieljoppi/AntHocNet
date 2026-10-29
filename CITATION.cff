@@ -13,7 +13,11 @@ authors:
     orcid: "https://orcid.org/0009-0009-6436-8174"
 version: 2.6.0
 date-released: "2026-10-29"
-license: GPL-2.0-only
+# Per directory (LICENSING.md, ADR-0028): core/, tools/, ns3/tools/ and
+# docs/tools/ are MIT OR GPL-2.0-only, the rest GPL-2.0-only. CFF takes a list of SPDX ids, not an expression.
+license:
+  - GPL-2.0-only
+  - MIT
 repository-code: "https://github.com/danieljoppi/AntHocNet"
 url: "https://github.com/danieljoppi/AntHocNet"
 doi: "10.5281/zenodo.20981979"

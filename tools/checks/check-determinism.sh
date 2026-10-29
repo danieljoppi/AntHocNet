@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # Determinism gate (#129): run the same small routing-compare scenario TWICE
 # with identical parameters and fail unless the per-protocol metric rows are
 # byte-identical. Golden rule 3 (AGENTS.md) routes all randomness through IRng

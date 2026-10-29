@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # MANET protocol-arm delivery smoke (#429): run *every* arm the wifi compare
 # harness advertises on one small, static, MULTI-HOP field and fail unless each
 # one actually delivers — PDR above a floor, data reaching IP transmit, a

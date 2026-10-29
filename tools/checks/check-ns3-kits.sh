@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # The learn site's "Export to ns-3" kits run (#640). The pages job exports one
 # kit per built-in world with web/tools/export-kit.mjs (the code behind the
 # game's button); this runs each kit's own run.sh in an ns-3 tree with

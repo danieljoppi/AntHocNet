@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: MIT OR GPL-2.0-only
 // Copyright (C) 2026 Daniel Henrique Joppi
 
 // Item 02 — the backward-ant pheromone (Eq.2) blends a real, correctly-scaled

@@ -69,6 +69,7 @@ install: require-ns3dir
 	mkdir -p "$(DEST)/core/include/anthocnet/core" "$(DEST)/core/src"
 	cp $(CORE)/include/anthocnet/core/*.h "$(DEST)/core/include/anthocnet/core/"
 	cp $(CORE)/src/*.cpp "$(DEST)/core/src/"
+	cp $(CORE)/LICENSE "$(DEST)/core/"   # MIT OR GPL-2.0-only (ADR-0028)
 	@if [ "$(BASELINES)" = 0 ]; then \
 	  echo ">> BASELINES=0: skipping the aomdv, gpsr, oracle, adaptive and routing-bench comparison modules."; \
 	  echo "   ns-3 will skip anthocnet-compare, isl-grid and leo-walker (they link them);"; \
@@ -102,6 +103,7 @@ install-baselines: require-ns3dir
 	cp $(CORE)/include/anthocnet/core/shortest_path.h \
 	   "$(ORACLEDEST)/core/include/anthocnet/core/"
 	cp $(CORE)/src/shortest_path.cpp "$(ORACLEDEST)/core/src/"
+	cp $(CORE)/LICENSE "$(ORACLEDEST)/core/"
 	@echo ">> Installing adaptive comparator module into $(ADAPTIVEDEST)"
 	mkdir -p "$(ADAPTIVEDEST)/model" "$(ADAPTIVEDEST)/helper" "$(ADAPTIVEDEST)/test"
 	cp $(BASE)/adaptive/model/*.h  $(BASE)/adaptive/model/*.cc  "$(ADAPTIVEDEST)/model/"

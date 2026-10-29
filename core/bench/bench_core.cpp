@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: MIT OR GPL-2.0-only
 // Copyright (C) 2026 Daniel Henrique Joppi
 //
 // Core speed benchmarks (#620): the cost of the core's hot paths with no

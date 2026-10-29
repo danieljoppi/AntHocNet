@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
 # Assemble the release install bundle (#604): the one definition of what ships.
 # release.yml calls it to build the zip; check-bundle.sh calls it to verify the
 # contents on every PR that could change them, so the two can never drift.
@@ -17,7 +17,7 @@ cd "$(dirname "$0")/../.."
 dest="$OUT/anthocnet-$VER"
 rm -rf "$dest"
 mkdir -p "$dest"
-for f in Makefile README.md LICENSE CHANGELOG.md CITATION.cff VERSION \
+for f in Makefile README.md LICENSE LICENSE-MIT LICENSING.md CHANGELOG.md CITATION.cff VERSION \
          CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md SUPPORT.md CONTEXT.md; do
   [ -e "$f" ] && cp "$f" "$dest/"
 done

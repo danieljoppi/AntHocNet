@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: MIT OR GPL-2.0-only
 // Copyright (C) 2026 Daniel Henrique Joppi
 
 // Item 10/A2 (#55) — congestion-aware per-hop cost. With the MAC metric enabled

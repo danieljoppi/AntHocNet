@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: MIT OR GPL-2.0-only
 // Copyright (C) 2026 Daniel Henrique Joppi
 
 // EXPERIMENT (#180 gate re-derivation / #262 guardrail) — not a regression test.
