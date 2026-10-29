@@ -23,43 +23,17 @@
  */
 
 #include "ns3/ipv4-routing-helper.h"
-#include "ns3/ipv4-routing-protocol.h"
 
 #include <cstdint>
 #include <memory>
 
-// RouteInput callbacks went from by-value to const-reference in ns-3.37.
-#ifdef ROUTING_BENCH_NS3_ROUTEINPUT_BYVALUE
-#define BENCH_RI_CB(T) T
-#else
-#define BENCH_RI_CB(T) const T&
-#endif
-
 namespace ns3 {
 namespace bench {
 
-class SourceRefusalCounter : public Ipv4RoutingProtocol {
-public:
-    static TypeId GetTypeId();
-    void SetTally(std::shared_ptr<uint64_t> tally) { m_tally = tally; }
-
-    Ptr<Ipv4Route> RouteOutput(Ptr<Packet>, const Ipv4Header& header, Ptr<NetDevice>,
-                               Socket::SocketErrno& sockerr) override;
-    bool RouteInput(Ptr<const Packet>, const Ipv4Header&, Ptr<const NetDevice>,
-                    BENCH_RI_CB(UnicastForwardCallback), BENCH_RI_CB(MulticastForwardCallback),
-                    BENCH_RI_CB(LocalDeliverCallback), BENCH_RI_CB(ErrorCallback)) override {
-        return false;
-    }
-    void NotifyInterfaceUp(uint32_t) override {}
-    void NotifyInterfaceDown(uint32_t) override {}
-    void NotifyAddAddress(uint32_t, Ipv4InterfaceAddress) override {}
-    void NotifyRemoveAddress(uint32_t, Ipv4InterfaceAddress) override {}
-    void SetIpv4(Ptr<Ipv4>) override {}
-    void PrintRoutingTable(Ptr<OutputStreamWrapper>, Time::Unit = Time::S) const override {}
-
-private:
-    std::shared_ptr<uint64_t> m_tally;
-};
+// The counter itself (an Ipv4RoutingProtocol that refuses and counts) is
+// defined in the .cc: its RouteInput signature changed across ns-3 releases,
+// and the compile definition that selects it is scoped to this module, while
+// this header is included from others.
 
 /// Creates counters that all add to one tally, read back with Refused().
 class SourceRefusalCounterHelper : public Ipv4RoutingHelper {
