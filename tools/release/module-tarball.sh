@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (C) 2026 Daniel Henrique Joppi
 #
-# Drop-in ns-3 module tarball (#606): the five contrib modules exactly as
+# Drop-in ns-3 module tarball (#606): the six contrib modules exactly as
 # `make install-ns3` lays them out, so a user without a checkout installs with
 #
 #   tar -xzf anthocnet-ns3-modules-<ver>.tar.gz -C /path/to/ns-3/contrib
@@ -32,7 +32,8 @@ AntHocNet $ver — drop-in ns-3 modules
   ./test.py -s anthocnet && ./ns3 run anthocnet-example
 
 Contents: contrib/anthocnet (the module + harnesses) and the comparison
-modules contrib/aomdv, contrib/gpsr, contrib/oracle, contrib/adaptive. Delete those four to
+modules contrib/aomdv, contrib/gpsr, contrib/oracle, contrib/adaptive and the harness
+module contrib/routing-bench. Delete those five to
 build AntHocNet alone; ns-3 then skips the comparison harnesses.
 Tested on ns-3.36 to ns-3.48. Docs: https://danieljoppi.github.io/AntHocNet/docs/
 TXT

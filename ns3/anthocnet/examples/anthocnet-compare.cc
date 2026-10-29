@@ -95,6 +95,7 @@
 #include "ns3/oracle-module.h"
 // #708: IEEE 802.11s (MeshHelper, Dot11sStack, the HWMP path selection).
 #include "ns3/mesh-module.h"
+#include "ns3/routing-bench-module.h"
 #include "ns3/anthocnet-helper.h"
 #include "ns3/anthocnet-routing-protocol.h"
 #include "viz-trace.h"
@@ -349,84 +350,8 @@ void TakeStreams(int64_t& next, int64_t base, int64_t used, const char* what) {
                         << " — blocks would overlap (#352/#431). Raise the stride.");
 }
 
-// #352: DsdvHelper is the one baseline helper with no AssignStreams() wrapper —
-// AodvHelper, OlsrHelper and AntHocNetHelper all have one, DsdvHelper has none
-// anywhere in the 3.36-3.48 CI matrix. dsdv::RoutingProtocol itself does declare
-// AssignStreams(int64_t) in every one of those versions, so reach the installed
-// protocol objects through the nodes and do what the missing wrapper would do.
-// DSDV cannot simply be left unpinned: it is one of the untouched-baseline arms
-// whose numbers must stay byte-identical across generations for a comparison to
-// be attributable at all.
-int64_t AssignDsdvStreams(const NodeContainer& nodes, int64_t stream) {
-    int64_t used = 0;
-    for (auto it = nodes.Begin(); it != nodes.End(); ++it) {
-        Ptr<Ipv4> ipv4 = (*it)->GetObject<Ipv4>();
-        NS_ABORT_MSG_IF(!ipv4, "node has no IPv4 stack; cannot pin dsdv streams");
-        Ptr<dsdv::RoutingProtocol> dsdv =
-            DynamicCast<dsdv::RoutingProtocol>(ipv4->GetRoutingProtocol());
-        NS_ABORT_MSG_IF(!dsdv, "expected dsdv::RoutingProtocol on this node (#352)");
-        used += dsdv->AssignStreams(stream + used);
-    }
-    return used;
-}
-
-// #510: data sends the origin refused for want of a route, OLSR arm only.
-// Stock ns-3 OLSR returns a null route from RouteOutput when the source has no
-// table entry; the UDP send then fails before Ipv4L3Protocol::Send, so
-// FlowMonitor never counts the packet as transmitted, and on ns-3.42 OnOff
-// caches it and retries the same packet at the next tick, generating nothing
-// new. PDR was therefore computed over "the ticks OLSR had a route for" --
-// the defect #464 found for the oracle, which #466 fixed with the oracle's
-// own noRouteOrigin counter. OLSR has no such counter, so SourceRefusalCounter
-// below supplies one: installed at the lowest priority of an Ipv4ListRouting
-// behind OLSR, it is consulted only when OLSR has already refused, and it
-// counts that refusal and refuses too. One count per refused tick, the same
-// unit as the oracle's noRouteOrigin.
-uint64_t g_refusedOrigin = 0;
-
-class SourceRefusalCounter : public Ipv4RoutingProtocol {
-public:
-    static TypeId GetTypeId() {
-        static TypeId tid = TypeId("ns3::AnthocnetCompareSourceRefusalCounter")
-                                .SetParent<Ipv4RoutingProtocol>()
-                                .SetGroupName("Internet")
-                                .AddConstructor<SourceRefusalCounter>();
-        return tid;
-    }
-    Ptr<Ipv4Route> RouteOutput(Ptr<Packet>, const Ipv4Header& header, Ptr<NetDevice>,
-                               Socket::SocketErrno& sockerr) override {
-        // Broadcast control never reaches RouteOutput (the UDP socket sends a
-        // limited broadcast straight out of the interface), so a unicast
-        // refusal here is a data send.
-        const Ipv4Address dst = header.GetDestination();
-        if (!dst.IsBroadcast() && !dst.IsMulticast() && !dst.IsLocalhost()) {
-            ++g_refusedOrigin;
-        }
-        sockerr = Socket::ERROR_NOROUTETOHOST;
-        return nullptr;
-    }
-    bool RouteInput(Ptr<const Packet>, const Ipv4Header&, Ptr<const NetDevice>,
-                    ORACLE_RI_CB(UnicastForwardCallback), ORACLE_RI_CB(MulticastForwardCallback),
-                    ORACLE_RI_CB(LocalDeliverCallback), ORACLE_RI_CB(ErrorCallback)) override {
-        return false;
-    }
-    void NotifyInterfaceUp(uint32_t) override {}
-    void NotifyInterfaceDown(uint32_t) override {}
-    void NotifyAddAddress(uint32_t, Ipv4InterfaceAddress) override {}
-    void NotifyRemoveAddress(uint32_t, Ipv4InterfaceAddress) override {}
-    void SetIpv4(Ptr<Ipv4>) override {}
-    void PrintRoutingTable(Ptr<OutputStreamWrapper>, Time::Unit = Time::S) const override {}
-};
-
-class SourceRefusalCounterHelper : public Ipv4RoutingHelper {
-public:
-    SourceRefusalCounterHelper* Copy() const override {
-        return new SourceRefusalCounterHelper(*this);
-    }
-    Ptr<Ipv4RoutingProtocol> Create(Ptr<Node>) const override {
-        return CreateObject<SourceRefusalCounter>();
-    }
-};
+// #352 (DSDV's missing AssignStreams wrapper) and #510 (OLSR's source
+// refusals) live with their arms in routing-bench now (ADR-0027, #766).
 
 uint64_t g_controlPkts = 0;   // routing-control packets transmitted this run
 uint64_t g_controlBytes = 0;  // #132: routing-control bytes transmitted this run
@@ -1786,7 +1711,6 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     g_controlBytes = 0;
     g_meshPeeringPkts = g_meshBeacons = 0;  // #708
     g_meshArm = proto == "hwmp";            // #708
-    g_refusedOrigin = 0;
     g_antTx.clear();
     g_antRx.clear();
     g_firstDeliveryS = -1.0;
@@ -2235,19 +2159,12 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // each is an ObjectFactory and instantiates nothing.
     InternetStackHelper internet;
     AntHocNetHelper ahnHelper;
-    AodvHelper aodvHelper;
     AomdvHelper aomdvHelper;
-    OlsrHelper olsrHelper;
-    // #510: OLSR behind a list router whose fallback counts the origin's
-    // refused sends (see SourceRefusalCounter).
-    Ipv4ListRoutingHelper olsrList;
-    DsdvHelper dsdvHelper;
     GpsrHelper gpsrHelper;
     // #296: constructed per RunOne, like every other helper here — the oracle
     // helper owns this run's ground-truth graph, so a fresh one per run is what
     // stops run N inheriting run N-1's nodes.
     OracleHelper oracleHelper;
-    Ipv4StaticRoutingHelper hwmpL3Helper;  // #708
     // v2.5.0 (#563): one helper per adaptive arm, per run like the others.
     AdaptiveHelper araHelper("ns3::adaptive::AraRoutingProtocol");
     AdaptiveHelper termiteHelper("ns3::adaptive::TermiteRoutingProtocol");
@@ -2262,21 +2179,23 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // violation). To force a radius, pass the attribute explicitly:
     // --ns3::oracle::Topology::LinkRangeM=<m>. On a channel the oracle cannot
     // derive, it still aborts rather than guess.
-    if (proto == "anthocnet") {
+    // ADR-0027 (#766): an arm in the routing-bench registry (today the stock
+    // ns-3 ones: aodv, olsr, dsdv, hwmp) installs itself; the chain below
+    // holds the arms not yet moved (#767/#768). A fresh arm per run, like the
+    // helpers.
+    bench::RunContext benchRun;
+    benchRun.nodes = nodes;
+    benchRun.seed = seed;
+    Ptr<bench::Arm> benchArm = bench::Registry().Make(proto);
+    if (benchArm) {
+        benchArm->InstallRouting(internet, benchRun);
+    } else if (proto == "anthocnet") {
         internet.SetRoutingHelper(ahnHelper);
-    } else if (proto == "aodv") {
-        internet.SetRoutingHelper(aodvHelper);
     } else if (proto == "aomdv") {
         // #296: vendored multipath baseline. Not in the default protocol list —
         // it joins campaign dispatches explicitly (phase 3); the harness
         // attaches to it exactly what it attaches to the other baselines.
         internet.SetRoutingHelper(aomdvHelper);
-    } else if (proto == "olsr") {
-        olsrList.Add(olsrHelper, 10);
-        olsrList.Add(SourceRefusalCounterHelper(), -10);
-        internet.SetRoutingHelper(olsrList);
-    } else if (proto == "dsdv") {
-        internet.SetRoutingHelper(dsdvHelper);
     } else if (proto == "gpsr") {
         internet.SetRoutingHelper(gpsrHelper);
     } else if (proto == "gpcr") {
@@ -2301,11 +2220,6 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else if (proto == "qrouting") {
         // #588: tabular Q-routing (Boyan & Littman 1994), the learned arm.
         internet.SetRoutingHelper(qroutingHelper);
-    } else if (proto == "hwmp") {
-        // #708: path selection is the mesh's, below IP. IP only needs the
-        // on-link route to the one /16 the mesh point carries, which static
-        // routing installs for the interface; ARP resolves over the mesh.
-        internet.SetRoutingHelper(hwmpL3Helper);
     } else {
         // #448: an unknown arm must abort here, not run on the bare IP stack
         // and emit a plausible-looking 0 % row.
@@ -2341,17 +2255,16 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
                 "internet stack (arp request jitter)");
     // Each of these protocols builds a UniformRandomVariable per node (ant/RREQ
     // jitter, hello jitter) at construction; pin them.
-    if (proto == "anthocnet") {
+    if (benchArm) {
+        // A registered arm pins its own streams (hwmp: a measured zero, its
+        // streams were taken with the mesh devices above).
+        TakeStreams(stream, streamBase, benchArm->AssignStreams(benchRun, stream),
+                    (proto + " routing").c_str());
+    } else if (proto == "anthocnet") {
         TakeStreams(stream, streamBase, ahnHelper.AssignStreams(nodes, stream),
                     "anthocnet routing");
-    } else if (proto == "aodv") {
-        TakeStreams(stream, streamBase, aodvHelper.AssignStreams(nodes, stream), "aodv routing");
     } else if (proto == "aomdv") {
         TakeStreams(stream, streamBase, aomdvHelper.AssignStreams(nodes, stream), "aomdv routing");
-    } else if (proto == "olsr") {
-        TakeStreams(stream, streamBase, olsrHelper.AssignStreams(nodes, stream), "olsr routing");
-    } else if (proto == "dsdv") {
-        TakeStreams(stream, streamBase, AssignDsdvStreams(nodes, stream), "dsdv routing");
     } else if (proto == "gpsr" || proto == "gpcr" || proto == "gpsr3d") {
         TakeStreams(stream, streamBase, gpsrHelper.AssignStreams(nodes, stream),
                     "gpsr/gpcr/gpsr3d routing");
@@ -2369,10 +2282,6 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     } else if (proto == "qrouting") {
         TakeStreams(stream, streamBase, qroutingHelper.AssignStreams(nodes, stream),
                     "qrouting routing");
-    } else if (proto == "hwmp") {
-        // #708: static IP routing draws nothing, and HWMP's streams were taken
-        // with the mesh devices above. A measured zero, as for the oracle.
-        TakeStreams(stream, streamBase, 0, "hwmp routing (pinned with the mesh devices)");
     } else {
         // #448: unreachable once the install chain above aborts, but the two
         // dispatch chains stay structurally parallel by convention — guard both.
@@ -2871,15 +2780,19 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
             dropRoute += noRouteOrigin;
         }
     }
-    // #510: the same correction for OLSR, whose refused sends the fallback
-    // counter recorded. Not added for any other arm: AntHocNet, AODV, AOMDV
-    // and DSDV defer an unroutable send (loopback or pending queue) instead of
+    // #510: the same correction for a registered arm that refuses at the
+    // source (OLSR, through its fallback counter). AntHocNet, AODV, AOMDV and
+    // DSDV defer an unroutable send (loopback or pending queue) instead of
     // refusing it, so FlowMonitor already counts it -- measured, their
     // delivered-bytes share of offered traffic matches their PDR to 0.05 pp
-    // in every committed cell (#510).
-    if (proto == "olsr") {
-        r.txPackets += g_refusedOrigin;
-        dropRoute += g_refusedOrigin;
+    // in every committed cell (#510) -- and their AdjustCounts is a no-op.
+    if (benchArm) {
+        bench::RunCounts counts;
+        counts.txPackets = r.txPackets;
+        counts.dropRoute = dropRoute;
+        benchArm->AdjustCounts(benchRun, counts);
+        r.txPackets = counts.txPackets;
+        dropRoute = counts.dropRoute;
     }
     r.pdr = r.txPackets ? 100.0 * r.rxPackets / r.txPackets : 0.0;
     if (vizThisRun) g_viz.Finish(r.txPackets, r.rxPackets, r.pdr);
@@ -3702,6 +3615,9 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+    // ADR-0027 §3 (#766): arms register by an explicit call, never a static
+    // initialiser. The stock ns-3 arms come from routing-bench.
+    bench::RegisterStockArms();
     // Sentinels (<0 / 0) mean "unset" so a preset or the legacy defaults fill in.
     std::string scenario;
     int32_t nNodes = 0;

@@ -113,7 +113,7 @@ jobs:
           cd /opt/ns-3
           # $NS3_PROFILE_FLAG unquoted on purpose: empty must expand to nothing.
           ./ns3 configure $NS3_PROFILE_FLAG --enable-examples \
-            --enable-modules='anthocnet;aomdv;gpsr;oracle;adaptive;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
+            --enable-modules='anthocnet;aomdv;gpsr;oracle;adaptive;routing-bench;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
           ./ns3 build && ./ns3 show profile
       - name: Run the cell
         # Stop the run 20 min before the job ceiling, so

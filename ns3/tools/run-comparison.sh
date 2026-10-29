@@ -14,7 +14,7 @@
 #
 # The ns-3 tree must have been configured with:
 #   ./ns3 configure --enable-examples \
-#     --enable-modules='anthocnet;aomdv;gpsr;oracle;adaptive;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
+#     --enable-modules='anthocnet;aomdv;gpsr;oracle;adaptive;routing-bench;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
 
 set -euo pipefail
 

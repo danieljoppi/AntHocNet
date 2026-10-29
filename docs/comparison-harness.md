@@ -158,8 +158,11 @@ the smallest complete arm (about 270 lines), and install it with `AdaptiveHelper
 
 ### Wiring an arm in, today
 
-Until the harness has an arm registry (v2.6.0,
-[#766](https://github.com/danieljoppi/AntHocNet/issues/766)), a new arm touches these places.
+The arm registry has started landing (v2.6.0,
+[#766](https://github.com/danieljoppi/AntHocNet/issues/766)): the stock ns-3
+arms (`aodv`, `olsr`, `dsdv`, `hwmp`) now register with the `routing-bench`
+module ([its README](https://github.com/danieljoppi/AntHocNet/blob/main/ns3/routing-bench/README.md)).
+Until the other arms move (#767, #768), a new arm still touches these places.
 CI catches every one you miss:
 
 1. **`ns3/anthocnet/examples/anthocnet-compare.cc`:**

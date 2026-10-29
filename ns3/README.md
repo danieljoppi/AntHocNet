@@ -81,7 +81,7 @@ data packets delivered, counted uniformly at the IP layer):
 # oracle (the #296 shortest-path control), adaptive (the ara, termite and
 # qrouting arms, #563), mesh (the 802.11s hwmp arm, #708) and flow-monitor enabled
 ./ns3 configure --enable-examples \
-  --enable-modules='anthocnet;aomdv;gpsr;oracle;adaptive;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
+  --enable-modules='anthocnet;aomdv;gpsr;oracle;adaptive;routing-bench;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
 ./ns3 build
 
 # the paper's base scenario (50 nodes, 1500x300 m, RWP 20 m/s / 30 s pause,
