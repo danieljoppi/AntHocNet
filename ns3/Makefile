@@ -11,9 +11,9 @@
 
 NS3DIR ?=
 # BASELINES=0 installs only contrib/anthocnet (#605). The comparison harnesses
-# (anthocnet-compare, isl-grid, leo-walker) link the aomdv/gpsr/oracle modules,
+# (anthocnet-compare, isl-grid, leo-walker) link the comparison modules,
 # so ns-3 skips building them; the module, its test suite and anthocnet-example
-# are unaffected. Default 1: install all four, as before.
+# are unaffected. Default 1: install them all, as before.
 BASELINES ?= 1
 HERE   := $(abspath $(CURDIR))
 ROOT   := $(abspath $(CURDIR)/..)
@@ -38,6 +38,10 @@ ORACLEDEST = $(NS3DIR)/contrib/oracle
 # v2.5.0 (#563): the adaptive-routing comparators (ARA, Termite, Q-routing),
 # one self-contained module written from the papers (baselines/adaptive/README.md).
 ADAPTIVEDEST = $(NS3DIR)/contrib/adaptive
+# v2.6.0 (ADR-0027, #766): routing-bench, the protocol-agnostic comparison
+# harness module (arm contract, registry, stock arms). Links only stock ns-3.
+BENCH  := $(HERE)/routing-bench
+BENCHDEST = $(NS3DIR)/contrib/routing-bench
 
 .PHONY: install install-baselines uninstall doctor require-ns3dir
 
@@ -66,7 +70,7 @@ install: require-ns3dir
 	cp $(CORE)/include/anthocnet/core/*.h "$(DEST)/core/include/anthocnet/core/"
 	cp $(CORE)/src/*.cpp "$(DEST)/core/src/"
 	@if [ "$(BASELINES)" = 0 ]; then \
-	  echo ">> BASELINES=0: skipping the aomdv, gpsr, oracle and adaptive comparison modules."; \
+	  echo ">> BASELINES=0: skipping the aomdv, gpsr, oracle, adaptive and routing-bench comparison modules."; \
 	  echo "   ns-3 will skip anthocnet-compare, isl-grid and leo-walker (they link them);"; \
 	  echo "   the module, its test suite and anthocnet-example build as usual."; \
 	else $(MAKE) --no-print-directory install-baselines NS3DIR="$(NS3DIR)"; fi
@@ -104,6 +108,12 @@ install-baselines: require-ns3dir
 	cp $(BASE)/adaptive/helper/*.h $(BASE)/adaptive/helper/*.cc "$(ADAPTIVEDEST)/helper/"
 	cp $(BASE)/adaptive/test/*.cc "$(ADAPTIVEDEST)/test/" 2>/dev/null || true
 	cp $(BASE)/adaptive/CMakeLists.txt "$(ADAPTIVEDEST)/"
+	@echo ">> Installing routing-bench harness module into $(BENCHDEST)"
+	mkdir -p "$(BENCHDEST)/model" "$(BENCHDEST)/helper" "$(BENCHDEST)/test"
+	cp $(BENCH)/model/*.h  $(BENCH)/model/*.cc  "$(BENCHDEST)/model/"
+	cp $(BENCH)/helper/*.h $(BENCH)/helper/*.cc "$(BENCHDEST)/helper/"
+	cp $(BENCH)/test/*.cc "$(BENCHDEST)/test/"
+	cp $(BENCH)/CMakeLists.txt $(BENCH)/README.md "$(BENCHDEST)/"
 
 uninstall: require-ns3dir
 	@echo ">> Removing $(DEST)"
@@ -116,4 +126,6 @@ uninstall: require-ns3dir
 	rm -rf "$(ORACLEDEST)"
 	@echo ">> Removing $(ADAPTIVEDEST)"
 	rm -rf "$(ADAPTIVEDEST)"
+	@echo ">> Removing $(BENCHDEST)"
+	rm -rf "$(BENCHDEST)"
 	@echo ">> Done. Reconfigure/build ns-3 to drop the modules."

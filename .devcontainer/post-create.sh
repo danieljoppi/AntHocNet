@@ -36,7 +36,7 @@ cd "$NS3DIR"
 # CMakeLists lists those libs), so the "run anthocnet-compare" suggestion
 # below would point at a binary that was never built. Consistency is now
 # enforced by tools/checks/check-allowlists.sh.
-mods='anthocnet;aomdv;gpsr;oracle;adaptive;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
+mods='anthocnet;aomdv;gpsr;oracle;adaptive;routing-bench;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
 if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
     ./ns3 configure --enable-tests --enable-examples \
         --filter-module-examples-and-tests=anthocnet \

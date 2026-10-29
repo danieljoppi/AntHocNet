@@ -153,7 +153,7 @@ jobs:
         run: |
           clang-format-18 --version
           git ls-files 'core/*.cpp' 'core/*.h' 'web/src/*.cpp' 'web/include/*.h' \
-            'ns3/anthocnet/*.cc' 'ns3/anthocnet/*.h' \
+            'ns3/anthocnet/*.cc' 'ns3/anthocnet/*.h' 'ns3/routing-bench/*.cc' 'ns3/routing-bench/*.h' \
             | xargs clang-format-18 --dry-run -Werror
 
   clang-tidy:

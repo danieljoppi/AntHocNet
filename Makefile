@@ -35,7 +35,7 @@ bench-core:
 CLANG_FORMAT ?= clang-format-18
 format:
 	git ls-files 'core/*.cpp' 'core/*.h' 'web/src/*.cpp' 'web/include/*.h' \
-	  'ns3/anthocnet/*.cc' 'ns3/anthocnet/*.h' | xargs $(CLANG_FORMAT) -i
+	  'ns3/anthocnet/*.cc' 'ns3/anthocnet/*.h' 'ns3/routing-bench/*.cc' 'ns3/routing-bench/*.h' | xargs $(CLANG_FORMAT) -i
 
 doctor:
 	@$(MAKE) --no-print-directory -C ns3 doctor NS3DIR=$(NS3DIR)

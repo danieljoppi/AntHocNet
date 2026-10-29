@@ -33,10 +33,11 @@ set(AHN_HAVE_BASELINES FALSE)
 if(AHN_HAVE_ORACLE
    AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/aomdv/CMakeLists.txt
    AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/gpsr/CMakeLists.txt
-   AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/adaptive/CMakeLists.txt)
+   AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/adaptive/CMakeLists.txt
+   AND EXISTS ${PROJECT_SOURCE_DIR}/contrib/routing-bench/CMakeLists.txt)
   set(AHN_HAVE_BASELINES TRUE)
 else()
-  message(STATUS "anthocnet: comparison modules (aomdv, gpsr, oracle, adaptive) not all "
+  message(STATUS "anthocnet: comparison modules (aomdv, gpsr, oracle, adaptive, routing-bench) not all "
                  "installed -- skipping anthocnet-compare, isl-grid and "
                  "leo-walker (make install-ns3 without BASELINES=0 adds them)")
 endif()
@@ -72,6 +73,9 @@ build_lib_example(
     # rule: not enabled, example skipped, so every --enable-modules list that
     # builds this harness names mesh.
     ${libmesh}
+    # ADR-0027 (#766): the arm contract, the registry and the stock arms
+    # (contrib/routing-bench, installed by the same `make install-ns3`).
+    ${librouting-bench}
     # #296: the vendored GPSR baseline module (contrib/gpsr, installed by the
     # same `make install-ns3`). Like the stock baselines above, listing it here
     # means the example is skipped when the module is not enabled.

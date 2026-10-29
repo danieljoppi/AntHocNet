@@ -50,7 +50,7 @@ count_lines() { printf '%s' "$1" | grep -c . || true; }
 # --- ground truth 1: vendored module names --------------------------------
 # Each vendored module (anthocnet at ns3/, plus the contrib baselines/controls
 # under ns3/<dir>/) declares itself via `build_lib(LIBNAME <name> ...)`.
-modules=$({ cat ns3/anthocnet/CMakeLists.txt ns3/baselines/*/CMakeLists.txt 2>/dev/null || true; } \
+modules=$({ cat ns3/anthocnet/CMakeLists.txt ns3/baselines/*/CMakeLists.txt ns3/routing-bench/CMakeLists.txt 2>/dev/null || true; } \
     | sed -n 's/^[[:space:]]*LIBNAME[[:space:]]*\([a-z0-9-]*\).*/\1/p' | sort -u)
 if ! printf '%s\n' "$modules" | grep -qx 'anthocnet'; then
     echo "FAIL [allowlists]: could not derive the vendored module set from"
@@ -62,7 +62,11 @@ fi
 # --- ground truth 2: protocol arms the compare harness dispatches on ------
 harness=ns3/anthocnet/examples/anthocnet-compare.cc
 need_file "$harness" || exit 1
-arms=$(grep -oE 'proto == "[a-z0-9]+"' "$harness" | sed 's/.*"\(.*\)"/\1/' | sort -u)
+# Plus the arms registered with routing-bench (ADR-0027, #766): a registered
+# arm needs no dispatch branch in the harness, so read its RegisterArm call.
+arms=$({ grep -oE 'proto == "[a-z0-9]+"' "$harness"
+         grep -rhoE 'RegisterArm\("[a-z0-9]+"' ns3 --include='*.cc' || true; } \
+       | sed 's/.*"\(.*\)"/\1/' | sort -u)
 if ! printf '%s\n' "$arms" | grep -qx 'anthocnet'; then
     echo "FAIL [allowlists]: could not derive the protocol-arm set from $harness"
     echo "  (no 'proto == \"anthocnet\"' dispatch found). If the dispatch changed shape,"
@@ -233,6 +237,13 @@ check_help_list() {
     fi
     helplist=$(printf '%s\n' "$lists" | sed 's/.*(\(.*\))/\1/')
     dispatched=$(grep -oE 'proto == "[a-z0-9]+"' "$file" | sed 's/.*"\(.*\)"/\1/' | sort -u)
+    # A harness that calls a routing-bench registration function dispatches
+    # the registered arms too (ADR-0027, #766).
+    if grep -qE 'bench::Register[A-Za-z]*Arms\(\)' "$file"; then
+        dispatched=$({ printf '%s\n' "$dispatched"
+                       grep -rhoE 'RegisterArm\("[a-z0-9]+"' ns3 --include='*.cc' || true; } \
+                     | sed 's/.*"\(.*\)"/\1/' | sort -u)
+    fi
     if [ -z "$dispatched" ]; then
         echo "FAIL [allowlists]: could not derive the dispatched-arm set from $file"
         echo "  (no 'proto == \"...\"' found). Update the derivation here (#435)."
