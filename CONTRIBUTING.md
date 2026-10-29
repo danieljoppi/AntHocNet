@@ -293,7 +293,7 @@ registered. **Do not invent one.** Steps:
 3. Answer the criteria. The evidence links to reach *passing* are all in-tree:
    `README.md` (description, install), `CONTRIBUTING.md` (contribution process,
    this file), `SECURITY.md` (vulnerability reporting), `LICENSE` (GPL-2.0-only) and
-   `LICENSING.md` (`core/` is `MIT OR GPL-2.0-only`, ADR-0028),
+   `LICENSING.md` (`core/` and the tooling are `MIT OR GPL-2.0-only`, ADR-0028),
    `.github/workflows/ci.yml` (automated build + test on every change),
    `CHANGELOG.md` (release notes), and the release checksums documented above.
 4. Note the numeric **project ID** shown in the project's URL
@@ -331,8 +331,9 @@ behaviour questions, open a GitHub issue with the scenario and observed output
 
 By contributing you agree your work is licensed under the licence of the
 directory it lands in ([LICENSING.md](LICENSING.md), ADR-0028): under
-`MIT OR GPL-2.0-only` for anything in `core/`, and under the repository's
-[LICENSE](LICENSE) (GPL-2.0-only) everywhere else. A change to `core/` that
-cannot be offered under both licences belongs outside `core/`. You also agree
+`MIT OR GPL-2.0-only` for anything in `core/`, `tools/`, `ns3/tools/` or
+`docs/tools/` (the one exception is `docs/tools/mkdocs_hooks.py`), and under
+the repository's [LICENSE](LICENSE) (GPL-2.0-only) everywhere else. A change
+to those paths that cannot be offered under both licences belongs elsewhere. You also agree
 to abide by our
 [Code of Conduct](CODE_OF_CONDUCT.md).

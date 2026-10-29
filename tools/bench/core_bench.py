@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
 """Core speed benchmarks (#620): compare, record and chart `bench_core --csv`.
 
   core_bench.py compare --base B.csv... --head H.csv...   PR check: markdown

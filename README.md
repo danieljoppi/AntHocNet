@@ -6,7 +6,7 @@
 [![Release](https://img.shields.io/github/v/release/danieljoppi/AntHocNet?sort=semver&cacheSeconds=1800)](https://github.com/danieljoppi/AntHocNet/releases)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20981979.svg)](https://doi.org/10.5281/zenodo.20981979) 
 [![Cite](https://img.shields.io/badge/cite-CITATION.cff-blue)](CITATION.cff)
-[![License: GPL-2.0, core MIT OR GPL-2.0](https://img.shields.io/badge/license-GPL--2.0%20%7C%20core%20MIT%20OR%20GPL--2.0-blue)](LICENSING.md)
+[![License: GPL-2.0, core and tools MIT OR GPL-2.0](https://img.shields.io/badge/license-GPL--2.0%20%7C%20core%20%2B%20tools%20MIT%20OR%20GPL--2.0-blue)](LICENSING.md)
 [![C++14](https://img.shields.io/badge/C%2B%2B-14-blue?logo=cplusplus)](CONTRIBUTING.md)
 [![Simulators](https://img.shields.io/badge/runs%20on-ns--3%20%C2%B7%20WebAssembly-informational)](#)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow)](https://www.conventionalcommits.org)
@@ -345,8 +345,10 @@ Security reports: [SECURITY.md](SECURITY.md).
 
 ## License
 
-The algorithm core (`core/`) is dual-licensed **MIT OR GPL-2.0-only**, so you
-can embed it anywhere, including in non-GPL projects. Everything else, the ns-3
-module included, is **GPL-2.0-only**. See [LICENSING.md](LICENSING.md),
-[core/LICENSE](core/LICENSE) and [LICENSE](LICENSE). Releases up to v2.6.0 are
+The algorithm core (`core/`) and the standalone tooling (`tools/`,
+`ns3/tools/`, `docs/tools/`) are dual-licensed **MIT OR GPL-2.0-only**, so you
+can embed the core, or reuse the benchmark statistics and scripts, anywhere,
+including in non-GPL projects. Everything else, the ns-3 modules included, is
+**GPL-2.0-only**. See [LICENSING.md](LICENSING.md), [LICENSE-MIT](LICENSE-MIT)
+and [LICENSE](LICENSE). Releases up to v2.6.0 are
 GPL-2.0-only throughout. Original implementation by Daniel Henrique Joppi.

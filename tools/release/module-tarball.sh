@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
 # Copyright (C) 2026 Daniel Henrique Joppi
 #
 # Drop-in ns-3 module tarball (#606): the six contrib modules exactly as

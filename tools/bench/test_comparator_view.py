@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
 # Copyright (C) 2026 Daniel Henrique Joppi
 """Self-test for comparator_view.py: an anchor reads arm minus reference in
 one file; the Termite trend reads s20 minus s1 from the ##RUN## PDR and the

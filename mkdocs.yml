@@ -7,7 +7,7 @@ site_url: https://danieljoppi.github.io/AntHocNet/docs/
 repo_url: https://github.com/danieljoppi/AntHocNet
 repo_name: danieljoppi/AntHocNet
 edit_uri: edit/main/docs/
-copyright: GPL-2.0-only (core/ MIT OR GPL-2.0-only, see LICENSING.md) — the repository tree is canonical; this site renders it.
+copyright: GPL-2.0-only (core/ and the tooling MIT OR GPL-2.0-only, see LICENSING.md) — the repository tree is canonical; this site renders it.
 
 docs_dir: docs
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
 # Copyright (C) 2026 Daniel Henrique Joppi
 """Cross-check an ns-3 replay trace (#641) against its run and its cell.
 

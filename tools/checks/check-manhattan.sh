@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # Manhattan-grid / urban-channel smoke (#488, the VANET family #301): prove
 # --mobility=manhattan really keeps vehicles on the street grid, that the
 # urban channel's buildings really cut links, that every arm routes there, and

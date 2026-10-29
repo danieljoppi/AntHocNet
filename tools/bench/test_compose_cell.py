@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
 # Copyright (C) 2026 Daniel Henrique Joppi
 """Self-test for compose_cell.py: the composed cell keeps every baseline line,
 carries the arm's lines for the protocol, drops that protocol's set rows,

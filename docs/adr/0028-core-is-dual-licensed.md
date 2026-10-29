@@ -3,7 +3,9 @@
 - **Status:** Accepted (maintainer decision 2026-10-29; decides
   [#782](https://github.com/danieljoppi/AntHocNet/issues/782)). Implemented by
   the PR that closes #782 (checklist under [Implementation](#implementation));
-  takes effect from the first release after v2.6.0.
+  takes effect from the first release after v2.6.0. **Amended** the same day
+  to extend the dual licence to the standalone tooling
+  ([below](#amendment-2026-10-29-the-standalone-tooling)).
 - **Date:** 2026-10-29
 - **Amends:** the single repository licence (`LICENSE`, GPL-2.0-only) for the
   `core/` directory only. Every other directory is unchanged.
@@ -91,6 +93,48 @@ directory stays GPL-2.0-only.**
    its Zenodo version DOI) remains GPL-2.0-only. The dual licence applies from
    the first release that carries this change.
 
+## Amendment (2026-10-29): the standalone tooling
+
+**`tools/`, `ns3/tools/` and `docs/tools/` are also `MIT OR GPL-2.0-only`.
+The one exception is `docs/tools/mkdocs_hooks.py`, which stays GPL-2.0-only.
+The C++ comparison harness, `ns3/routing-bench/`, stays GPL-2.0-only.**
+(Maintainer decision on #782, landed in the same PR as the core change.)
+
+The tooling is in the same position as `core/`:
+
+- **It is standalone.** These are 52 Python and shell programs that read logs,
+  CSVs and plans: benchmark parsing, the paired statistics and noise verdicts
+  (`tools/bench/stats_util.py`, `bench_parse.py`), the campaign runner, the
+  chart and summary scripts, the CI checks and the release scripts. None of
+  them imports ns-3 or its bindings. Their imports are the standard library,
+  each other, and permissive third-party packages (matplotlib, PyYAML).
+- **It is the maintainer's own code.** Every copyright line in those paths is
+  the maintainer's.
+- **It has uses outside this repo.** The noise verdicts and paired comparisons
+  work for anyone benchmarking any protocol on any simulator.
+
+**Why the exceptions:**
+
+- `docs/tools/mkdocs_hooks.py` loads `web/shell/inject.py` (GPL-2.0-only) to
+  render the site chrome. A dual-licensed file that loads GPL-only code has no
+  usable MIT form, so the file stays GPL. It is listed in `GPL_ONLY` in
+  `check-headers.py`.
+- `ns3/routing-bench/` is an ns-3 module. Its provenance is clean
+  (`anthocnet-compare.cc` at v1.2.0 carries no third-party header and does not
+  derive from ns-3's `manet-routing-compare.cc`), so it *could* be relicensed.
+  But it builds only inside a GPL ns-3 tree, so every artifact made from it
+  is GPL-2.0 anyway. The same reasoning kept the `adaptive` module (#754)
+  GPL-only.
+
+**What the amendment adds to Decision item 3 (the one-way rule):** a
+dual-licensed Python file that loads code by path (`sys.path`,
+`spec_from_file_location`, `import_module`) must not name a GPL-only Python
+root (`web/shell`, `.claude/skills`). The rule is narrow on purpose (#229).
+It catches the way this repo actually loads code across directories, not every
+possible indirection; review covers the rest. The data files in those roots
+(campaign plans, anchors, fixtures, `lsan.supp`) carry no header, as before.
+`LICENSE-MIT` at the root covers them, and `LICENSING.md` maps them.
+
 ## Why dual, not MIT alone, and not "leave it"
 
 - **MIT is GPL-compatible**, so an MIT option costs the ns-3 adapter nothing.
@@ -132,14 +176,17 @@ directory stays GPL-2.0-only.**
   the per-directory clause in `CONTRIBUTING.md` covers. A contribution that
   cannot be dual-licensed belongs outside `core/` or is declined.
 - **Tooling learns per-directory licences.** `check-headers.py` still accepts
-  any SPDX expression elsewhere, but under `core/` it requires the exact
-  expression from Decision item 1. `CITATION.cff` lists both SPDX ids, because
+  any SPDX expression elsewhere. Under the dual roots (`core/`, `tools/`,
+  `ns3/tools/`, `docs/tools/`, minus `GPL_ONLY`) it requires the exact
+  expression from Decision item 1, and it now also covers `.sh` files in the
+  tooling roots. `CITATION.cff` lists both SPDX ids, because
   CFF takes a list, not an expression; the per-directory split is in a comment
   there and in `LICENSING.md`. The release bundle gate
-  (`tools/release/check-bundle.sh`) checks that `LICENSE`, `LICENSING.md` and
-  `core/LICENSE` all ship.
-- **The adapters are untouched.** This ADR adds no licence option to
-  `ns3/`, `web/`, `tools/`, `docs/` or `results/`.
+  (`tools/release/check-bundle.sh`) checks that `LICENSE`, `LICENSE-MIT`,
+  `LICENSING.md` and `core/LICENSE` all ship.
+- **The adapters are untouched.** This ADR adds no licence option to the ns-3
+  modules under `ns3/` (`anthocnet`, `routing-bench`, `baselines/*`), `web/`,
+  `docs/` pages, `results/`, `api/` or `paper/`.
 
 ## Implementation
 
@@ -158,6 +205,13 @@ PR:
       `CONTRIBUTING.md` contribution clause updated.
 - [x] `tools/release/check-bundle.sh` asserts the licence texts are in the
       package; `assemble-bundle.sh` ships `LICENSING.md`.
+- [x] Amendment: 52 tooling scripts set to `MIT OR GPL-2.0-only` (38 Python and
+      shell headers rewritten, plus a header added to the 14 `tools/checks/*.sh`
+      and `ns3/tools/run-comparison.sh` scripts that had none). `LICENSE-MIT`
+      added. `check-headers.py` extended: dual roots, `.sh` coverage, the
+      `GPL_ONLY` exception and the Python load rule, each with self-test
+      cases. `LICENSING.md`, README, `CONTRIBUTING.md`, `CITATION.cff`,
+      `mkdocs.yml` and the bundle scripts updated.
 
 ## References
 

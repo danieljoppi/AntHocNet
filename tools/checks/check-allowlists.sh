@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # Allowlist consistency gate (#435): assert that every hand-maintained
 # module / protocol-arm allowlist in the tree agrees with a
 # ground truth DERIVED from the tree, so the next module/arm/marker addition

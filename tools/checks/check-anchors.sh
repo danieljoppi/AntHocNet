@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # Validation-anchor gate (#59): run a known-expected scenario on the *stock*
 # baselines harness (manet-baselines — no AntHocNet code in the binary) and
 # fail if PDR falls below the floor in anchors.yml. This is the enforcement

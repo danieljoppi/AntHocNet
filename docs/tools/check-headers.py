@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
 # Copyright (C) 2026 Daniel Henrique Joppi
 """Reject tracked source files that carry no SPDX licence identifier.
 
@@ -21,19 +21,25 @@ name. Only tracked files under the covered roots and with a covered extension
 are looked at, so build files, docs and the binary fuzz corpus
 are none of its business.
 
-``core/`` is the one exception (ADR-0028). It is dual-licensed
-``MIT OR GPL-2.0-only``, and that MIT option is only real while two things
-hold, so this gate checks both for ``core/`` C++ files:
+The dual-licensed roots are the exception (ADR-0028): ``core/`` and the
+standalone tooling (``tools/``, ``ns3/tools/``, ``docs/tools/``) are
+``MIT OR GPL-2.0-only``. That MIT option is only real while the following
+hold, so this gate checks them:
 
-- the SPDX line is exactly ``MIT OR GPL-2.0-only``. A ``core/`` file that says
-  ``GPL-2.0-only`` would quietly take the MIT option away from whoever copies
-  it out;
-- the file includes nothing from outside ``core/``. Angle includes must be
-  C++ standard-library headers, and quote includes must resolve to a file
-  under ``core/``. A ``core/`` file that pulled in an ns-3, ``web/`` or
+- every covered file there carries exactly ``MIT OR GPL-2.0-only``. A file
+  that says ``GPL-2.0-only`` would quietly take the MIT option away from
+  whoever copies it out. ``GPL_ONLY`` lists the files that stay GPL on
+  purpose;
+- a ``core/`` C++ file includes nothing from outside ``core/``. Angle includes
+  must be C++ standard-library headers, and quote includes must resolve to a
+  file under ``core/``. A ``core/`` file that pulled in an ns-3, ``web/`` or
   vendored-baseline header would bind the whole core to GPL. Golden rule 1
   already forbids simulator headers; this check makes the licence boundary
-  just as explicit.
+  just as explicit;
+- a dual-licensed Python file that loads code by path (``sys.path``,
+  ``spec_from_file_location``, ``import_module``) names no GPL-only Python
+  root (``web/shell``, ``.claude/skills``). Loading one would make the
+  script's working form GPL-only.
 
 Usage:
     python3 docs/tools/check-headers.py            # scan git-tracked sources
@@ -43,6 +49,7 @@ from __future__ import annotations
 
 import argparse
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -51,9 +58,7 @@ SPDX = "SPDX-License-Identifier"
 # halfway down a file where a reader copying the file out would miss it.
 HEAD_LINES = 5
 
-# ADR-0028: the exact expression every core/ C++ file carries.
 CORE = "core/"
-CORE_SPDX = f"{SPDX}: MIT OR GPL-2.0-only"
 # Directories a core/ quote include may resolve against (besides the file's own).
 CORE_INCLUDE_DIRS = ("core/include", "core/tests", "core/bench")
 # The C++ standard library: the only angle includes core/ may use.
@@ -77,11 +82,29 @@ CXX = (".cpp", ".cc", ".h")
 COVERED = (
     ("core/", CXX),
     ("ns3/", CXX),
-    ("ns3/tools/", (".py",)),
-    ("docs/tools/", (".py",)),
-    ("tools/", (".py",)),
+    ("ns3/tools/", (".py", ".sh")),
+    ("docs/tools/", (".py", ".sh")),
+    ("tools/", (".py", ".sh")),
     (".claude/skills/", (".py",)),
 )
+
+# ADR-0028: roots whose covered files must carry DUAL_SPDX.
+DUAL_ROOTS = ("core/", "tools/", "ns3/tools/", "docs/tools/")
+DUAL_SPDX = f"{SPDX}: MIT OR GPL-2.0-only"
+# Files under a dual root that stay GPL-2.0-only, with the reason.
+GPL_ONLY = {
+    # Imports web/shell/inject.py (GPL-only) to render the site chrome.
+    "docs/tools/mkdocs_hooks.py",
+}
+# Python that loads code by path, and the GPL-only Python roots it must not name.
+PY_LOADERS = ("sys.path", "spec_from_file_location", "import_module")
+GPL_PY_ROOTS = re.compile(
+    r"""web["']?\s*[,/]\s*["']?shell|\.claude["']?\s*[,/]\s*["']?skills""")
+
+
+def is_dual(rel: str) -> bool:
+    """True when a repo-relative path must carry the dual licence."""
+    return rel.startswith(DUAL_ROOTS) and rel not in GPL_ONLY
 
 
 def covered(rel: str) -> bool:
@@ -102,19 +125,40 @@ def findings(text: str, display: str) -> list[str]:
     return [msg]
 
 
+def dual_findings(text: str, display: str) -> list[str]:
+    """ADR-0028: a dual-root file carries the exact dual expression."""
+    if any(DUAL_SPDX in line for line in text.split("\n")[:HEAD_LINES]):
+        return []
+    msg = (f"{display}:1: this root is dual-licensed (ADR-0028) — the first "
+           f"{HEAD_LINES} line(s) must carry\n    {DUAL_SPDX}\n"
+           f"  (or list the file in GPL_ONLY with the reason it stays GPL)")
+    return [msg]
+
+
+# This checker names the GPL-only roots (and loader calls, in its self-test) to
+# check for them; it loads nothing from them.
+PY_NAMES_ONLY = {"docs/tools/check-headers.py"}
+
+
+def py_findings(text: str, display: str) -> list[str]:
+    """ADR-0028: dual-licensed Python loads no GPL-only Python by path."""
+    if display in PY_NAMES_ONLY or not any(k in text for k in PY_LOADERS):
+        return []
+    return [f"{display}:{n}: loads code by path and names a GPL-only Python root "
+            f"({m.group(0)}); a dual-licensed script must not import GPL-only "
+            f"code (ADR-0028)"
+            for n, line in enumerate(text.split("\n"), 1)
+            for m in [GPL_PY_ROOTS.search(line)] if m]
+
+
 def core_findings(text: str, display: str, exists=None) -> list[str]:
-    """ADR-0028 rules for a core/ C++ file: exact dual SPDX, closed includes.
+    """ADR-0028: a core/ C++ file includes nothing from outside core/.
 
     ``exists(rel)`` says whether a repo-relative path is a file; it is
     injectable so the self-test needs no tree.
     """
     out = []
     lines = text.split("\n")
-    if not any(CORE_SPDX in line for line in lines[:HEAD_LINES]):
-        out.append(
-            f"{display}:1: core/ is dual-licensed (ADR-0028) — the first {HEAD_LINES} "
-            f"line(s) must carry\n    // {CORE_SPDX}"
-        )
     here = display.rsplit("/", 1)[0] if "/" in display else ""
     for n, line in enumerate(lines, 1):
         s = line.strip()
@@ -164,6 +208,10 @@ def scan(root: pathlib.Path) -> int:
     for rel in files:
         text = (root / rel).read_text(encoding="utf-8")
         problems += findings(text, rel)
+        if is_dual(rel):
+            problems += dual_findings(text, rel)
+            if rel.endswith(".py"):
+                problems += py_findings(text, rel)
         if rel.startswith(CORE):
             problems += core_findings(text, rel, lambda h: (root / _norm(h)).is_file())
     for line in problems:
@@ -251,14 +299,48 @@ def self_test() -> int:
         "quote include that resolves nowhere":
             "// SPDX-License-Identifier: MIT OR GPL-2.0-only\n#include \"missing.h\"\n",
     }
-    got = core_findings(core_ok, "core/tests/test_x.cpp", has)
+    def both(case, display):
+        return dual_findings(case, display) + core_findings(case, display, has)
+
+    got = both(core_ok, "core/tests/test_x.cpp")
     if got:
         failures += 1
         print(f"SELF-TEST FAIL: expected silence for a clean core/ file, got {got}")
     for label, case in core_bad.items():
-        if not core_findings(case, "core/src/x.cpp", has):
+        if not both(case, "core/src/x.cpp"):
             failures += 1
             print(f"SELF-TEST FAIL: expected a core/ finding for {label}")
+    py_ok = [
+        # The tooling's own loaders: siblings under tools/bench.
+        ("# SPDX-License-Identifier: MIT OR GPL-2.0-only\n"
+         'SKILL = os.path.join(HERE, "..", "..", "tools", "bench")\n'
+         "sys.path.insert(0, SKILL)\n"),
+        # Naming a GPL path without loading code is not an import.
+        ("# SPDX-License-Identifier: MIT OR GPL-2.0-only\n"
+         'COVERED = ((".claude/skills/", (".py",)),)\n'),
+    ]
+    py_bad = {
+        "sys.path into web/shell":
+            '_sys.path.insert(0, os.path.join(ROOT, "web", "shell"))\nimport inject\n',
+        "spec load from .claude/skills":
+            'spec = importlib.util.spec_from_file_location("x", ".claude/skills/loader.py")\n',
+    }
+    for case in py_ok:
+        got = dual_findings(case, "tools/x.py") + py_findings(case, "tools/x.py")
+        if got:
+            failures += 1
+            print(f"SELF-TEST FAIL: expected silence for clean dual Python, got {got}")
+    for label, case in py_bad.items():
+        if not py_findings(case, "tools/x.py"):
+            failures += 1
+            print(f"SELF-TEST FAIL: expected a Python finding for {label}")
+    for rel, want in (("tools/bench/stats_util.py", True), ("ns3/tools/run.sh", True),
+                      ("core/src/a.cpp", True), ("docs/tools/mkdocs_hooks.py", False),
+                      ("ns3/anthocnet/model/a.cc", False), ("web/shell/inject.py", False),
+                      (".claude/skills/y.py", False)):
+        if is_dual(rel) != want:
+            failures += 1
+            print(f"SELF-TEST FAIL: is_dual({rel}) should be {want}")
     print("self-test:", "PASS" if not failures else f"{failures} FAILURE(S)")
     return 1 if failures else 0
 

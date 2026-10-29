@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # Partition/merge stress gate (#62): control traffic must stay bounded while
 # the field is split, and the flows across the split must deliver again after
 # each merge.

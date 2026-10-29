@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # Satellite protocol-arm smoke (#420): run *every* arm the ISL suite offers on a
 # small torus and fail unless each one completes and delivers something.
 #

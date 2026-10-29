@@ -7,9 +7,10 @@ License below OR the GNU General Public License version 2 only, at your choice.
 The GPL-2.0 text is the LICENSE file at the root of the AntHocNet repository and
 release bundle (https://github.com/danieljoppi/AntHocNet/blob/main/LICENSE).
 
-The dual licence applies to the core/ directory only, from the first release
-after v2.6.0. Releases up to and including v2.6.0 are GPL-2.0-only. The rest of
-the repository (ns3/, web/, tools/, docs/, ...) is GPL-2.0-only; see
+The dual licence applies from the first release after v2.6.0. Releases up to
+and including v2.6.0 are GPL-2.0-only. Outside core/, only the standalone
+tooling (tools/, ns3/tools/, docs/tools/) shares this dual licence; the rest of
+the repository (ns3/ modules, web/, docs/, ...) is GPL-2.0-only. See
 LICENSING.md and docs/adr/0028-core-is-dual-licensed.md.
 
 -------------------------------------------------------------------------------

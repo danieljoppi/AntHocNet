@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR GPL-2.0-only
+# Copyright (C) 2026 Daniel Henrique Joppi
 # Satellite validation-anchor gate (#237): run known-expected ISL-grid
 # scenarios and fail unless the results match values derived *analytically*
 # rather than from a previous run.
