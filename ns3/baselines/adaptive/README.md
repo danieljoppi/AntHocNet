@@ -5,6 +5,11 @@ one ns-3 module, `contrib/adaptive`, holding three arms of the
 `anthocnet-compare` harness. Each is **written from its paper**. None is a
 port: no maintained ns-3 implementation of any of them exists.
 
+To use the module on its own, or to write another arm on its `RoutingBase`,
+see the user guide [`docs/comparison-harness.md`](../../../docs/comparison-harness.md):
+the base class's hooks and services, how to wire an arm into the harness, and the
+three gates before an arm's numbers count.
+
 | arm | protocol | family | issue |
 |---|---|---|---|
 | `ara` | ARA, Güneş, Sorges, Bouazizi, IWAHN 2002 | swarm (reactive ACO) | [#586](https://github.com/danieljoppi/AntHocNet/issues/586) |

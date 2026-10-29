@@ -236,6 +236,7 @@ for f in web/src/{sim,scenarios,trace_main}.cpp; do clang-tidy -p build-tidy/web
 | Inspect protocol internals | NS-3 `Tx`/`Rx`/`RouteChanged` trace sources; core counters via `IRouterObserver` |
 | Run the benchmark campaign loop (dispatch → fetch → parse) | `benchmark-results` skill (SKILL.md documents the whole procedure) |
 | Run a campaign (cells × arms, throttled so PR CI keeps runners) | `tools/bench/campaign.py` + a plan in `tools/bench/campaigns/` (#662): `plan`, `dispatch`, `status`, `collect`, `verdicts` |
+| Run the comparison harness, or add a protocol (arm) to it | [`docs/comparison-harness.md`](docs/comparison-harness.md) — markers, readers, the `adaptive` `RoutingBase` hooks, the wiring checklist, the three gates |
 | Compare benchmark A/B runs (deltas + noise verdict) | `benchmark-results` skill (`tools/bench/bench_parse.py`) |
 | Build, test or screenshot the learn site | `learn-site` skill (parity, smoke, README figures) |
 | Change the site's top bar, places or the docs/API look | `web/shell/` (one source for game, docs and API; `inject.py`), `docs/places/`, the nav in `mkdocs.yml`; checked by `web/test/smoke.mjs` on `web/build-pages.sh` output |
