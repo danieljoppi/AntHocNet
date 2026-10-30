@@ -1,0 +1,87 @@
+# #800: the BeeAdHoc anchor, pre-registered before dispatch.
+#
+# Source (maintainer decision 2026-10-30): the PG 460 final report, ch. 7, the
+# one we hold (hdl 2003/22405, papers library beeadhoc/). The GECCO 2005 paper
+# (DOI 10.1145/1068009.1068034) is paywalled; re-checking this anchor against
+# it, once it is in hand, is #815.
+#
+# What ch. 7 says (§7.1.4 setup, §7.2.2-7.2.6 results; the numbers are in
+# figures only, so the anchor is held to the trends the text states):
+#   setup  "the same setup as was used in the scalability study of AntHocNet":
+#          100 nodes in 3000 x 1000 m, 900 s, 20 CBR sources sending four
+#          512-byte packets per second, random waypoint at 0-10 m/s, pause
+#          times 1, 30, 100, 500 and 1000 s, five seeds; protocols AODV, DSR,
+#          DSDV ("left out in some cases due to errors") and BeeAdHoc.
+#   §7.2.5 "BeeAdHoc sends the smallest number of control packet[s]", constant
+#          over pause time.                                      <- PRIMARY
+#   §7.2.2 lowest energy per kB delivered; §7.2.3 best delay; §7.2.4 best
+#          throughput; packet delivery ratio (§7.2.6).            <- reported
+#
+# Our cell, and how it differs from the source:
+#   - harness routing-compare, --scenario=paper with every knob set
+#     explicitly: 100 nodes, 3000 x 1000 m, 900 s, 20 flows, RWP speed
+#     U[0, 10] m/s, pause in {1, 30, 100, 500, 1000} s, two-ray (ns-2's
+#     default), range 250 m (ns-2's default radio);
+#   - DEVIATION, packet size: the harness's data packets are 64 bytes; the
+#     source's 4 packets/s are kept (--cbrBps=2048), so offered load is 1/8 of
+#     the source's. The primary trend (control packets) is driven by packet
+#     rate and topology, not payload size;
+#   - DEVIATION, DSR: no DSR arm; AODV and DSDV are the comparators;
+#   - 10 seeds per pause time (the source ran 5);
+#   - BeeAdHoc twice: the arm's defaults, and with no expanding ring
+#     (InitialScoutTtl=10). #806 found the ring's starting TTL, which the
+#     report does not give, decides the arm's delay, so delay claims are read
+#     in both settings.
+#
+# Rule, fixed before dispatch:
+#   PRIMARY (gates the anchor). At each pause time, beeadhoc's NRL (routing
+#   control packets per delivered data packet) is below AODV's and below
+#   DSDV's, paired by seed: the paired 95 % CI of (beeadhoc - other) lies
+#   wholly below zero. The anchor PASSES if this holds against both AODV and
+#   DSDV at >= 4 of the 5 pause times, in the default setting. Otherwise it
+#   MISSES and the arm ships as a written infeasibility verdict (its family
+#   numbers do not count), the v2.5.0 precedent.
+#   SECONDARY (reported with paired CIs, not gated): energy per delivered
+#   packet, mean delay, PDR, throughput; the same comparisons for the
+#   ring-off setting; the in-packet routing bytes (##INPKT##, #808) beside
+#   nrl_bytes.
+# A passing anchor makes the arm eligible for the paired 20-seed family
+# comparison (#800's last item); it does not by itself publish a number.
+#
+# Sizing: 5 cells x 2 blocks x 2 arms = 20 jobs; cap 12.
+#
+#   python3 tools/bench/campaign.py plan tools/bench/campaigns/v2.7.0-beeadhoc-anchor.yaml
+generation: v270a
+ref: main
+cap: 12
+control: control
+program: routing-compare
+
+arms:
+  control: ""
+  ringoff: "--protocols=beeadhoc --ns3::adaptive::BeeAdHocRoutingProtocol::InitialScoutTtl=10"
+
+cells:
+  anchor-bee-p1:
+    workflow: benchmark-cell.yml
+    inputs: {harness: routing-compare, version: 3.42-opt, args: "--scenario=paper --runs=5 --nNodes=100 --time=900 --areaX=3000 --areaY=1000 --flows=20 --cbrBps=2048 --speed=10 --speedMin=0 --pause=1 --propagation=tworay --range=250 --diag --mobility=rwp --transport=udp --protocols=aodv,dsdv,beeadhoc"}
+    blocks: [1, 6]
+  anchor-bee-p30:
+    workflow: benchmark-cell.yml
+    inputs: {harness: routing-compare, version: 3.42-opt, args: "--scenario=paper --runs=5 --nNodes=100 --time=900 --areaX=3000 --areaY=1000 --flows=20 --cbrBps=2048 --speed=10 --speedMin=0 --pause=30 --propagation=tworay --range=250 --diag --mobility=rwp --transport=udp --protocols=aodv,dsdv,beeadhoc"}
+    blocks: [1, 6]
+  anchor-bee-p100:
+    workflow: benchmark-cell.yml
+    inputs: {harness: routing-compare, version: 3.42-opt, args: "--scenario=paper --runs=5 --nNodes=100 --time=900 --areaX=3000 --areaY=1000 --flows=20 --cbrBps=2048 --speed=10 --speedMin=0 --pause=100 --propagation=tworay --range=250 --diag --mobility=rwp --transport=udp --protocols=aodv,dsdv,beeadhoc"}
+    blocks: [1, 6]
+  anchor-bee-p500:
+    workflow: benchmark-cell.yml
+    inputs: {harness: routing-compare, version: 3.42-opt, args: "--scenario=paper --runs=5 --nNodes=100 --time=900 --areaX=3000 --areaY=1000 --flows=20 --cbrBps=2048 --speed=10 --speedMin=0 --pause=500 --propagation=tworay --range=250 --diag --mobility=rwp --transport=udp --protocols=aodv,dsdv,beeadhoc"}
+    blocks: [1, 6]
+  anchor-bee-p1000:
+    workflow: benchmark-cell.yml
+    inputs: {harness: routing-compare, version: 3.42-opt, args: "--scenario=paper --runs=5 --nNodes=100 --time=900 --areaX=3000 --areaY=1000 --flows=20 --cbrBps=2048 --speed=10 --speedMin=0 --pause=1000 --propagation=tworay --range=250 --diag --mobility=rwp --transport=udp --protocols=aodv,dsdv,beeadhoc"}
+    blocks: [1, 6]
+
+jobs:
+  - {arms: [control, ringoff], cells: "*"}
