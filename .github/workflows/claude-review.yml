@@ -1,0 +1,100 @@
+name: Claude review
+
+# AI review of every pull request against AGENTS.md (#811). Most PRs here are
+# written by Claude Code sessions and the project has one maintainer, so a
+# second reader in a fresh session catches what the author session missed,
+# above all the golden rules CI cannot check (adapters add no routing logic,
+# a core test per core change, new mechanisms gated and default-off).
+#
+# Report-only. The review posts inline comments and one summary; it never
+# approves or requests changes, and it is not one of the CI gate's needs
+# (ci.yml). A second, independent reviewer (CodeRabbit) runs as a GitHub App,
+# so it has no file here.
+#
+# Credentials: the repository secret CLAUDE_CODE_OAUTH_TOKEN (from
+# `claude setup-token`, i.e. the maintainer's Claude subscription) or
+# ANTHROPIC_API_KEY. Neither reaches fork or Dependabot PRs, and neither exists
+# until the maintainer adds it; the job then ends green with a notice instead
+# of turning every PR red.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, ready_for_review, reopened]
+
+permissions:
+  contents: read
+
+# A new push supersedes the review in flight; only the latest head matters.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Claude review
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read        # read the tree the review runs on
+      pull-requests: write  # post inline comments and the summary
+      id-token: write       # the action's OIDC exchange for its GitHub token
+    steps:
+      - name: Check for credentials
+        id: creds
+        env:
+          OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$OAUTH" ] || [ -n "$API_KEY" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret (fork or Dependabot PR, or not configured yet, #811): review skipped."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.creds.outputs.run == 'true'
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: anthropics/claude-code-action@6d5ae526d25ce88daa2200be073e1a373167f064 # v1.0.265
+        if: steps.creds.outputs.run == 'true'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          track_progress: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request. Read AGENTS.md first: its golden rules
+            and conventions are the review standard, and CLAUDE.md's working
+            defaults (simplicity, surgical diffs, a reproducing test first).
+
+            Check the diff for, in this order:
+            1. Golden-rule breaks: a simulator header in core/; routing logic
+               in an adapter (ns3/, web/); randomness or time not through
+               IRng/IClock; an AntMessage or wire-format change without a
+               kWireVersion bump and the codec, ns-3 header, round-trip tests
+               and docs/wire-format.md updated together; an unbounded
+               structure; a core logic change without a test in core/tests/;
+               a new mechanism that is not behind a default-off Config switch;
+               non-determinism in web/; anything shipped that needs .claude/.
+            2. Correctness bugs: a concrete input or state that gives a wrong
+               result or a crash. Say what it is.
+            3. Docs that the change leaves wrong: a documented decision, a
+               default in docs/configuration.md, a roadmap row, an ADR.
+
+            Rules for the review:
+            - Comment inline on the line a finding is about; end with one
+              summary comment listing the findings, most severe first, or
+              saying none were found.
+            - Every finding names the rule or the failing case. No style nits
+              that clang-format, ruff or the linters already enforce.
+            - Do not approve and do not request changes: comment only.
+            - Do not push, and do not edit files.
+
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob"

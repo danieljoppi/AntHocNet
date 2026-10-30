@@ -88,7 +88,10 @@ results.
   committed data), `core-bench.yml` (core ns/op: PR vs base as a warning, history
   on main; `make bench-core` locally), `links.yml` (weekly external link check; a
   red week opens a `[docs]` issue), `pages.yml` (game at `/`, docs at `/docs/`, API at `/api/`), `ns3-dev.yml`
-  (nightly build against ns-3-dev; a red night opens a `[ci]` issue). Releases are version-bumped by Commitizen from
+  (nightly build against ns-3-dev; a red night opens a `[ci]` issue), `claude-review.yml`
+  (AI review of every PR against this file's golden rules; comments only, never
+  approves, not a required check, #811; a second AI reviewer, CodeRabbit, runs as
+  a GitHub App). Releases are version-bumped by Commitizen from
   Conventional-Commit history; **PR titles must be Conventional Commits** (CI
   enforces it — see `CONTRIBUTING.md`).
 
