@@ -176,7 +176,7 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   moves) → v2.2.0 re-baseline → gated per-family mechanisms → disaster/SAGIN families →
   swarm and learned comparators → v3.x secure protocols and attacks, with the
   game campaign ([`docs/learn-campaign.md`](docs/learn-campaign.md)) and the
-  infrastructure track (#603) alongside. The research behind it is
+  infrastructure track (#603, closed 2026-10-30 into #328) alongside. The research behind it is
   [`docs/research-landscape-2026.md`](docs/research-landscape-2026.md).
 - **The original 2026 roadmap** ([#298](https://github.com/danieljoppi/AntHocNet/issues/298)):
   a literature gap analysis (recent MANET routing · satellite/LEO · evaluation

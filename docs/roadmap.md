@@ -1,9 +1,10 @@
 # Roadmap
 
-The plan in one page. The authoritative, living version is
-[#298](https://github.com/danieljoppi/AntHocNet/issues/298) — it carries the
-literature gap analysis the epics came from, and issue state is always truer
-than a checked-in diagram. This page exists because the *ordering constraints*
+The plan in one page. The live plan is this page plus the `release:` labels
+below; issue state is always truer than a checked-in diagram. The original 2026
+plan and the literature gap analysis the epics came from are in
+[#298](https://github.com/danieljoppi/AntHocNet/issues/298) (closed 2026-10-30,
+kept as the record). This page exists because the *ordering constraints*
 are the part that is hard to hold in your head, and a graph shows them better
 than prose.
 
@@ -314,7 +315,9 @@ levels, device classes, the game UI with mockups, adapter features, tests.
 
 ## Infrastructure track
 
-Epic [#603](https://github.com/danieljoppi/AntHocNet/issues/603) runs alongside the ladder. The goals are an easy ns-3 install,
+Epic [#603](https://github.com/danieljoppi/AntHocNet/issues/603) ran alongside the ladder; it closed on
+2026-10-30 with its open items (#616, #705) moved under
+[#328](https://github.com/danieljoppi/AntHocNet/issues/328), which now holds the track. The goals are an easy ns-3 install,
 faster CI and clean release packages. None of it changes protocol behaviour,
 so it is never what gates a release's exit criteria, but each item carries the
 `release:` label of the release it should ship with.
