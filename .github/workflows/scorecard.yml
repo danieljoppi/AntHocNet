@@ -66,6 +66,12 @@ jobs:
         with:
           results_file: results.sarif
           results_format: sarif
+          # Read the tree through git, not the `git archive` tarball (the
+          # default, `archive`). `.gitattributes` export-ignores `/.github`
+          # so release archives carry no CI files (#604); in archive mode
+          # Scorecard therefore saw no workflows and scored Token-Permissions,
+          # Dangerous-Workflow and Packaging −1 (#784).
+          file_mode: git
           # Publishes the result to the public OpenSSF API. This is what makes
           # the README badge resolve; without it the badge stays "unknown".
           # It is also why the job needs `id-token: write`.
