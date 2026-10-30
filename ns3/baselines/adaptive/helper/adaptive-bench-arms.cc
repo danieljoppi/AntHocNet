@@ -5,7 +5,8 @@
  * The adaptive comparators as arms of the comparison harness (ADR-0027,
  * #768), compiled in only when routing-bench is installed beside this module:
  * ARA (#586), Termite (#587) and tabular Q-routing (#588), each written from
- * its paper (README.md has the fidelity sheets).
+ * its paper, and BeeAdHoc (#589, v2.7.0), written from the PG 460 report
+ * (README.md has the fidelity sheets).
  */
 
 #include "ns3/adaptive-helper.h"
@@ -59,6 +60,10 @@ Ptr<bench::Arm> MakeQRoutingArm() {
     return Create<AdaptiveArm>("qrouting", "ns3::adaptive::QRoutingProtocol");
 }
 
+Ptr<bench::Arm> MakeBeeAdHocArm() {
+    return Create<AdaptiveArm>("beeadhoc", "ns3::adaptive::BeeAdHocRoutingProtocol");
+}
+
 }  // namespace
 }  // namespace adaptive
 
@@ -70,6 +75,8 @@ void RegisterArms_adaptive() {
                 &adaptive::MakeTermiteArm);
     RegisterArm("qrouting", "tabular Q-routing (Boyan & Littman 1994) (#588)",
                 &adaptive::MakeQRoutingArm);
+    RegisterArm("beeadhoc", "BeeAdHoc (Wedde et al. 2005), bee-inspired source routing (#589)",
+                &adaptive::MakeBeeAdHocArm);
 }
 }  // namespace bench
 }  // namespace ns3

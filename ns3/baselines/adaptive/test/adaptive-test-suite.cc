@@ -4,12 +4,14 @@
 /**
  * Unit tests for the adaptive comparator module (#563): the pheromone table's
  * two decay laws, the proportional draw, Termite's forwarding weight, the
- * Q-routing update and the control header's round trip. Every expected value
- * is hand-computed from the stated formula, never from the code under test.
+ * Q-routing update and the control header's round trip; BeeAdHoc's route
+ * rating, forager store and packet formats (#589). Every expected value is
+ * hand-computed from the stated formula, never from the code under test.
  */
 
 #include "ns3/adaptive-packet.h"
 #include "ns3/adaptive-tables.h"
+#include "ns3/beeadhoc-routing-protocol.h"
 #include "ns3/packet.h"
 #include "ns3/test.h"
 
@@ -168,6 +170,142 @@ private:
     }
 };
 
+class BeeRatingTest : public TestCase {
+public:
+    BeeRatingTest() : TestCase("BeeAdHoc route rating (PG 460 Listing 13.15)") {}
+
+private:
+    void DoRun() override {
+        // ((maxHops - (hops - 1)) * min * avg + 1) / 44, integer, capped at 8.
+        NS_TEST_ASSERT_MSG_EQ(BeeDances(1, {}, 10, 8), 8u, "direct neighbour: maximum");
+        NS_TEST_ASSERT_MSG_EQ(BeeDances(2, {7}, 10, 8), 8u, "(9*49+1)/44 = 10, capped at 8");
+        NS_TEST_ASSERT_MSG_EQ(BeeDances(3, {7, 7}, 10, 8), 8u, "(8*49+1)/44 = 8");
+        NS_TEST_ASSERT_MSG_EQ(BeeDances(5, {7, 7, 7, 7}, 10, 8), 6u, "(6*49+1)/44 = 6");
+        NS_TEST_ASSERT_MSG_EQ(BeeDances(10, std::vector<uint8_t>(9, 7), 10, 8), 1u,
+                              "(1*49+1)/44 = 1");
+        NS_TEST_ASSERT_MSG_EQ(BeeDances(4, {7, 3, 5}, 10, 8), 2u, "min 3, avg 5: 106/44 = 2");
+        NS_TEST_ASSERT_MSG_EQ(BeeDances(4, {7, 0, 7}, 10, 8), 0u, "an empty battery: 1/44 = 0");
+        NS_TEST_ASSERT_MSG_EQ(BeeDances(12, std::vector<uint8_t>(11, 7), 10, 8), 0u,
+                              "longer than MaxHops");
+    }
+};
+
+class ForagerStoreTest : public TestCase {
+public:
+    ForagerStoreTest() : TestCase("BeeAdHoc forager store (PG 460 Listings 13.16, 13.17)") {}
+
+private:
+    typedef ForagerStore<int>::Forager F;
+
+    static F Route(std::vector<int> path) {
+        F f;
+        f.path = path;
+        f.levels.assign(path.size() > 2 ? path.size() - 2 : 0, 7);
+        return f;
+    }
+
+    void DoRun() override {
+        auto first = [](uint32_t) { return 0u; };
+        ForagerStore<int> s;
+        s.Configure(3, 2.0, 2.0, 10, 8);
+        F out;
+
+        NS_TEST_ASSERT_MSG_EQ(s.Put(9, Route({1}), false, 0.0), false, "a route needs two nodes");
+        NS_TEST_ASSERT_MSG_EQ(s.Take(9, 0.0, first, out), false, "nothing stored");
+
+        // A dancing forager is copied; an old one is used up, kept if last.
+        s.Put(9, Route({1, 9}), false, 0.0);
+        NS_TEST_ASSERT_MSG_EQ(s.Take(9, 1.0, first, out), true, "dancing");
+        NS_TEST_ASSERT_MSG_EQ(out.dances, 7u, "one of its 8 dances spent");
+        NS_TEST_ASSERT_MSG_EQ(s.Count(9, false), 1u, "a dance copies the forager");
+        NS_TEST_ASSERT_MSG_EQ(s.Take(9, 2.5, first, out), true, "past the dance time");
+        NS_TEST_ASSERT_MSG_EQ(s.Count(9, false), 0u, "used up");
+        NS_TEST_ASSERT_MSG_EQ(s.Take(9, 2.5, first, out), false, "none left");
+
+        // Past the lifetime: discarded unless it is the last one.
+        s.Put(9, Route({1, 5, 9}), false, 0.0);
+        s.Put(9, Route({1, 6, 9}), false, 0.0);
+        NS_TEST_ASSERT_MSG_EQ(s.Take(9, 3.0, first, out), true, "the last is kept");
+        NS_TEST_ASSERT_MSG_EQ(out.path[1], 6, "the expired first draw was discarded");
+        NS_TEST_ASSERT_MSG_EQ(s.Count(9, false), 0u, "both gone");
+
+        // Own before foreign (§13.7.1).
+        s.Put(9, Route({1, 7, 9}), true, 0.0);
+        s.Put(9, Route({1, 5, 9}), false, 0.0);
+        NS_TEST_ASSERT_MSG_EQ(s.Take(9, 0.5, first, out), true, "a forager");
+        NS_TEST_ASSERT_MSG_EQ(out.path[1], 5, "own first");
+
+        // Bounded arrays, a swarm's cargo, a failed link.
+        s.Put(9, Route({1, 8, 9}), true, 0.0);
+        s.Put(9, Route({1, 4, 9}), true, 0.0);
+        NS_TEST_ASSERT_MSG_EQ(s.Put(9, Route({1, 3, 9}), true, 0.0), false, "array full");
+        NS_TEST_ASSERT_MSG_EQ(s.Count(9, true), 3u, "three foreign");
+        NS_TEST_ASSERT_MSG_EQ(s.TakeForeign(9, 2).size(), 2u, "a swarm takes two");
+        NS_TEST_ASSERT_MSG_EQ(s.Count(9, true), 1u, "one foreign left");
+        NS_TEST_ASSERT_MSG_EQ(s.FirstHops().count(5), 1u, "neighbour 5 known");
+        s.RemoveLink(1, 5);
+        NS_TEST_ASSERT_MSG_EQ(s.Count(9, false), 0u, "the route over 1->5 is gone");
+        NS_TEST_ASSERT_MSG_EQ(s.FirstHops().count(5), 0u, "neighbour 5 forgotten");
+    }
+};
+
+class BeePacketTest : public TestCase {
+public:
+    BeePacketTest() : TestCase("BeeAdHoc source route trailer and control header") {}
+
+private:
+    void DoRun() override {
+        const Ipv4Address a("10.1.0.1");
+        const Ipv4Address b("10.1.0.2");
+        const Ipv4Address c("10.1.0.3");
+
+        BeeRouteTrailer t;
+        t.path = {a, b, c};
+        t.info = 0x123456;
+        t.piggy = {c, b};
+        t.piggyInfo = 7;
+        Ptr<Packet> p = Create<Packet>(10);
+        p->AddTrailer(t);
+        // 3 * 4 + 3 + 2 * 4 + 3 + 2 = 28 bytes after the 10-byte payload.
+        NS_TEST_ASSERT_MSG_EQ(p->GetSize(), 38u, "trailer bytes on the wire");
+        BeeRouteTrailer r;
+        p->RemoveTrailer(r);
+        NS_TEST_ASSERT_MSG_EQ(p->GetSize(), 10u, "payload restored");
+        NS_TEST_ASSERT_MSG_EQ(r.path.size(), 3u, "path length");
+        NS_TEST_ASSERT_MSG_EQ(r.path[1], b, "path order");
+        NS_TEST_ASSERT_MSG_EQ(r.info, 0x123456u, "info");
+        NS_TEST_ASSERT_MSG_EQ(r.piggy.size(), 2u, "piggy length");
+        NS_TEST_ASSERT_MSG_EQ(r.piggy[0], c, "piggy order");
+        NS_TEST_ASSERT_MSG_EQ(r.piggyInfo, 7u, "piggy info");
+
+        BeeControlHeader h;
+        h.type = BeeControlHeader::SWARM;
+        h.ttl = 4;
+        h.id = 0xcafe;
+        h.src = c;
+        h.dst = a;
+        h.path = {c, a};
+        h.levels = {5};
+        h.cargo.push_back({{c, b, a}, {6}});
+        Ptr<Packet> q = Create<Packet>();
+        q->AddHeader(h);
+        // 14 fixed + (1 + 8) path + (1 + 1) levels + 1 count + (1 + 12 + 1 + 1) cargo
+        NS_TEST_ASSERT_MSG_EQ(q->GetSize(), 41u, "control bytes on the wire");
+        BeeControlHeader g;
+        q->RemoveHeader(g);
+        NS_TEST_ASSERT_MSG_EQ(unsigned(g.type), unsigned(BeeControlHeader::SWARM), "type");
+        NS_TEST_ASSERT_MSG_EQ(unsigned(g.ttl), 4u, "ttl");
+        NS_TEST_ASSERT_MSG_EQ(g.id, 0xcafeu, "id");
+        NS_TEST_ASSERT_MSG_EQ(g.src, c, "src");
+        NS_TEST_ASSERT_MSG_EQ(g.dst, a, "dst");
+        NS_TEST_ASSERT_MSG_EQ(g.path.size(), 2u, "path");
+        NS_TEST_ASSERT_MSG_EQ(unsigned(g.levels[0]), 5u, "levels");
+        NS_TEST_ASSERT_MSG_EQ(g.cargo.size(), 1u, "cargo");
+        NS_TEST_ASSERT_MSG_EQ(g.cargo[0].path[1], b, "cargo path");
+        NS_TEST_ASSERT_MSG_EQ(unsigned(g.cargo[0].levels[0]), 6u, "cargo levels");
+    }
+};
+
 class AdaptiveTestSuite : public TestSuite {
 public:
     AdaptiveTestSuite() : TestSuite("adaptive", ADAPTIVE_TEST_TYPE_UNIT) {
@@ -175,6 +313,9 @@ public:
         AddTestCase(new BoundedTableTest, ADAPTIVE_TEST_QUICK);
         AddTestCase(new SelectionTest, ADAPTIVE_TEST_QUICK);
         AddTestCase(new HeaderTest, ADAPTIVE_TEST_QUICK);
+        AddTestCase(new BeeRatingTest, ADAPTIVE_TEST_QUICK);
+        AddTestCase(new ForagerStoreTest, ADAPTIVE_TEST_QUICK);
+        AddTestCase(new BeePacketTest, ADAPTIVE_TEST_QUICK);
     }
 };
 

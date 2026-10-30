@@ -44,7 +44,7 @@ Built-in arms, as of v2.5.0:
 | `gpsr`, `gpcr`, `gpsr3d` | geographic routing and its VANET/FANET modes | `gpsr` (vendored) |
 | `hwmp` | 802.11s mesh path selection | `routing-bench` (stock ns-3 `mesh`) |
 | `oracle` | shortest-path ground truth, an upper bound | `oracle` |
-| `ara`, `termite`, `qrouting` | ant-colony, stigmergic and learned comparators | `adaptive` |
+| `ara`, `termite`, `qrouting`, `beeadhoc` | ant-colony, stigmergic, learned and bee-inspired comparators (`beeadhoc`: v2.7.0, #589) | `adaptive` |
 
 `routing-compare --PrintHelp` lists the arms actually installed: the
 `--protocols` help is built from the registry. With only `routing-bench`
