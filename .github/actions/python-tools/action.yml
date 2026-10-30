@@ -1,11 +1,12 @@
 # Shared setup (#610): Python tools installed under the repository's pins.
-# requirements-dev.txt holds the exact versions (an unpinned tool upgrade broke
-# every PR once: ruff 0.16.0); every workflow installs through it.
+# requirements/<tool>.txt holds each tool and its dependencies at exact
+# versions and sha256 hashes (#787; an unpinned tool upgrade broke every PR
+# once: ruff 0.16.0); every workflow installs through it.
 name: Install pinned Python tools
-description: pip install the named packages, constrained by requirements-dev.txt.
+description: pip install the named tools from requirements/<tool>.txt, hash-checked.
 inputs:
   packages:
-    description: space-separated package names (versions come from requirements-dev.txt)
+    description: space-separated tool names, each with a requirements/<tool>.txt
     required: true
 runs:
   using: composite
@@ -14,5 +15,6 @@ runs:
       env:
         PKGS: ${{ inputs.packages }}
       run: |
-        # shellcheck disable=SC2086  # PKGS is a word list on purpose
-        pip install -c requirements-dev.txt $PKGS
+        args=()
+        for p in $PKGS; do args+=(-r "requirements/$p.txt"); done
+        pip install --require-hashes "${args[@]}"

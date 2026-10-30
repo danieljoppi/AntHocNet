@@ -109,11 +109,14 @@ jobs:
         # work (#626); axe-core finds no serious/critical violations on the hub,
         # every docs page and an API page, day and night, nor on the game, a
         # docs page and the Workshop on a phone (390 px, no sideways scroll).
-        # playwright-core / axe-core pinned; Chromium from Playwright's own CDN.
+        # playwright-core / axe-core pinned by web/test/browser-tools'
+        # package-lock.json, installed with `npm ci` (integrity-checked, #787);
+        # Chromium from Playwright's own CDN.
         run: |
-          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
-          npm init -y >/dev/null
-          npm install --no-audit --no-fund playwright-core@1.56.1 axe-core@4.10.2
+          mkdir -p "$RUNNER_TEMP/pw"
+          cp web/test/browser-tools/package.json web/test/browser-tools/package-lock.json "$RUNNER_TEMP/pw/"
+          cd "$RUNNER_TEMP/pw"
+          npm ci --no-audit --no-fund
           npx --no-install playwright-core install --with-deps chromium
           node "$GITHUB_WORKSPACE/web/test/smoke.mjs" "$GITHUB_WORKSPACE/web/build-site"
 

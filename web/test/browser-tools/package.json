@@ -1,0 +1,10 @@
+{
+  "name": "anthocnet-browser-tools",
+  "private": true,
+  "description": "Pinned browser-test tooling for web/test/smoke.mjs and live-smoke.mjs; CI installs it with `npm ci` against package-lock.json (#787).",
+  "license": "GPL-2.0-only",
+  "dependencies": {
+    "axe-core": "4.10.2",
+    "playwright-core": "1.56.1"
+  }
+}

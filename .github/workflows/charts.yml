@@ -30,7 +30,7 @@ on:
       - 'ns3/tools/make-charts.py'
       - 'tools/bench/bench_parse.py'
       - 'tools/bench/stats_util.py'
-      - 'requirements-dev.txt'
+      - 'requirements/matplotlib.txt'
       - '.github/workflows/charts.yml'
   pull_request:
     paths:
@@ -40,7 +40,7 @@ on:
       - 'ns3/tools/make-charts.py'
       - 'tools/bench/bench_parse.py'
       - 'tools/bench/stats_util.py'
-      - 'requirements-dev.txt'
+      - 'requirements/matplotlib.txt'
       - '.github/workflows/charts.yml'
   workflow_dispatch:
 
@@ -69,7 +69,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install matplotlib
-        # Pinned in requirements-dev.txt: a matplotlib release changes the
+        # Pinned in requirements/: a matplotlib release changes the
         # rendered pixels, so a float here would recommit every PNG.
         uses: ./.github/actions/python-tools
         with:

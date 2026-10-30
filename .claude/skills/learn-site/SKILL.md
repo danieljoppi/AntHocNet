@@ -40,7 +40,8 @@ axe-core are in `~/.cache/ahn-node`. Otherwise:
 git clone --depth 1 --branch 4.0.10 https://github.com/emscripten-core/emsdk.git /tmp/emsdk
 /tmp/emsdk/emsdk install 4.0.10 && /tmp/emsdk/emsdk activate 4.0.10
 source /tmp/emsdk/emsdk_env.sh        # pin = ci.yml; the toolchain is part of the parity claim
-mkdir -p /tmp/pw && cd /tmp/pw && npm install --no-audit --no-fund playwright-core@1.56.1 axe-core@4.10.2
+mkdir -p /tmp/pw && cp web/test/browser-tools/package*.json /tmp/pw/ \
+    && (cd /tmp/pw && npm ci --no-audit --no-fund)   # pin = web/test/browser-tools lockfile (#787)
 ```
 
 Chromium is preinstalled in the cloud container (`/opt/pw-browsers`); the

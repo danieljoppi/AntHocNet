@@ -79,7 +79,7 @@ jobs:
         with:
           packages: mkdocs-material
       - name: Install doxygen
-        # mkdocs-material pinned in requirements-dev.txt (an unpinned docs
+        # mkdocs-material pinned in requirements/ (an unpinned docs
         # toolchain turns an upstream release into a red main-branch run);
         # Doxygen from the runner's apt (1.9.8 on ubuntu-24.04).
         run: |
@@ -175,9 +175,11 @@ jobs:
           CORE: ${{ needs.build.outputs.core }}
           URL: ${{ needs.deploy.outputs.page_url }}
         run: |
-          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
-          npm init -y >/dev/null
-          npm install --no-audit --no-fund playwright-core@1.56.1
+          # Pinned by web/test/browser-tools' lockfile, installed with npm ci (#787).
+          mkdir -p "$RUNNER_TEMP/pw"
+          cp web/test/browser-tools/package.json web/test/browser-tools/package-lock.json "$RUNNER_TEMP/pw/"
+          cd "$RUNNER_TEMP/pw"
+          npm ci --no-audit --no-fund
           npx --no-install playwright-core install --with-deps chromium
           base="${URL:-https://danieljoppi.github.io/AntHocNet/}"
           case "$base" in */) ;; *) base="$base/";; esac
