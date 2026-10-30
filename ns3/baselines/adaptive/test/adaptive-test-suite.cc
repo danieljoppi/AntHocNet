@@ -179,6 +179,8 @@ private:
         // ((maxHops - (hops - 1)) * min * avg + 1) / 44, integer, capped at 8.
         NS_TEST_ASSERT_MSG_EQ(BeeDances(1, {}, 10, 8), 8u, "direct neighbour: maximum");
         NS_TEST_ASSERT_MSG_EQ(BeeDances(2, {7}, 10, 8), 8u, "(9*49+1)/44 = 10, capped at 8");
+        NS_TEST_ASSERT_MSG_EQ(BeeDances(2, {7}, 10, 8, false), 10u, "uncapped, as printed: 10");
+        NS_TEST_ASSERT_MSG_EQ(BeeDances(1, {}, 10, 8, false), 8u, "direct link: 8 either way");
         NS_TEST_ASSERT_MSG_EQ(BeeDances(3, {7, 7}, 10, 8), 8u, "(8*49+1)/44 = 8");
         NS_TEST_ASSERT_MSG_EQ(BeeDances(5, {7, 7, 7, 7}, 10, 8), 6u, "(6*49+1)/44 = 6");
         NS_TEST_ASSERT_MSG_EQ(BeeDances(10, std::vector<uint8_t>(9, 7), 10, 8), 1u,

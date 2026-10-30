@@ -3,6 +3,7 @@
 
 #include "beeadhoc-routing-protocol.h"
 
+#include "ns3/boolean.h"
 #include "ns3/log.h"
 #include "ns3/simulator.h"
 #include "ns3/uinteger.h"
@@ -247,6 +248,19 @@ TypeId BeeAdHocRoutingProtocol::GetTypeId() {
                           UintegerValue(8),
                           MakeUintegerAccessor(&BeeAdHocRoutingProtocol::m_maxDances),
                           MakeUintegerChecker<uint32_t>())
+            .AddAttribute("CapDances",
+                          "Cap the Listing 13.15 rating at MaxDances. The listing does not; "
+                          "the cap is a repository reading (#807), false for the #806 "
+                          "sensitivity.",
+                          BooleanValue(true),
+                          MakeBooleanAccessor(&BeeAdHocRoutingProtocol::m_capDances),
+                          MakeBooleanChecker())
+            .AddAttribute("RemoveForagersOnLinkFailure",
+                          "Drop every forager over a link the MAC reports failed. Not in the "
+                          "report (repository choice); false for the #806 sensitivity.",
+                          BooleanValue(true),
+                          MakeBooleanAccessor(&BeeAdHocRoutingProtocol::m_removeOnLinkFailure),
+                          MakeBooleanChecker())
             .AddAttribute("MaxHops", "Longest route (§12.1.2: the IP option space allows 10 hops).",
                           UintegerValue(10),
                           MakeUintegerAccessor(&BeeAdHocRoutingProtocol::m_maxHops),
@@ -305,6 +319,8 @@ BeeAdHocRoutingProtocol::BeeAdHocRoutingProtocol()
       m_foragerLifetime(Seconds(2)),
       m_danceTime(Seconds(2)),
       m_maxDances(8),
+      m_capDances(true),
+      m_removeOnLinkFailure(true),
       m_maxHops(10),
       m_arraySize(64),
       m_swarmSize(20),
@@ -333,7 +349,7 @@ double BeeAdHocRoutingProtocol::Now() const { return Simulator::Now().GetSeconds
 void BeeAdHocRoutingProtocol::Configure() {
     if (!m_configured) {
         m_store.Configure(m_arraySize, m_foragerLifetime.GetSeconds(), m_danceTime.GetSeconds(),
-                          m_maxHops, m_maxDances);
+                          m_maxHops, m_maxDances, m_capDances);
         m_configured = true;
     }
 }
@@ -692,7 +708,9 @@ void BeeAdHocRoutingProtocol::OnLinkFailure(Ipv4Address neighbor) {
     Configure();
     m_neighbors.erase(neighbor);
     m_failed[neighbor] = Simulator::Now() + m_foragerLifetime;
-    m_store.RemoveLink(MainAddress(), neighbor);
+    if (m_removeOnLinkFailure) {
+        m_store.RemoveLink(MainAddress(), neighbor);
+    }
 }
 
 std::set<Ipv4Address> BeeAdHocRoutingProtocol::KnownNeighbors() const {

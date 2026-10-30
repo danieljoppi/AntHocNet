@@ -189,6 +189,8 @@ private:
     Time m_foragerLifetime;
     Time m_danceTime;
     uint32_t m_maxDances;
+    bool m_capDances;
+    bool m_removeOnLinkFailure;
     uint32_t m_maxHops;
     uint32_t m_arraySize;
     uint32_t m_swarmSize;

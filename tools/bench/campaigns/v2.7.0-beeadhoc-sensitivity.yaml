@@ -1,0 +1,66 @@
+# #806: how much each BeeAdHoc value the PG 460 report does not give moves the
+# arm's numbers. Pre-registered before dispatch. Not tuning: the defaults stay
+# unless the report's own text favours an alternative, and every effect that
+# counts is reported beside the arm's numbers as a threat to validity.
+#
+# Why these (#805's ##HOLD## on the smoke cell): 93-95 % of beeadhoc's mean
+# delay is queue hold at the sources, almost all `reconv` (a source that had
+# routes ran out and scouted again), 220-330 ms each. The first two arms test
+# the two repository choices on that path.
+#
+# Cell: grid-rwp-tworay, the MANET headline cell (v2.5.0 comparators' command
+# line), 50 nodes, 900 s, beeadhoc only, seeds 1-10 (blocks of 5). Every arm is
+# paired by seed with `control` (the defaults).
+#
+# Arms (one change each):
+#   control    defaults
+#   ringoff    InitialScoutTtl=10: the first scout already reaches MaxHops
+#              (no expanding ring)
+#   keepfail   RemoveForagersOnLinkFailure=false: a failed link drops the
+#              packet but keeps the foragers (the report's last-forager rule
+#              alone)
+#   giveup1    MaxRoundsAtMaxTtl=1
+#   giveup4    MaxRoundsAtMaxTtl=4
+#   uncapped   CapDances=false: Listing 13.15 as printed (#807)
+#
+# Not here: the TCP piggyback count (the cell is UDP), the forager array size
+# (64 per destination and kind was never full on the smoke cell) and the scout
+# jitter (a de-synchronisation delay, not a routing choice).
+#
+# Rule, fixed before dispatch, per arm against control (n = 10, paired by seed):
+#   an effect counts when the paired 95 % CI of dPDR (pp) or of d mean delay
+#   (ms) excludes zero. Reported for every arm: dPDR, d delay, d delay99,
+#   d nrl, and the ##HOLD## reconv count and mean.
+# Outcome: each effect size, counted or not, goes into the fidelity sheet
+# (ns3/baselines/adaptive/README.md). A counted effect is named on the
+# comparison page. No default moves on this evidence alone.
+#
+# Sizing: 6 arms x 2 blocks = 12 jobs, one protocol each; cap 12.
+#
+#   python3 tools/bench/campaign.py plan tools/bench/campaigns/v2.7.0-beeadhoc-sensitivity.yaml
+#   bench_parse.py --ab results/cells/grid-rwp-tworay-v270b.txt results/cells/grid-rwp-tworay-v270b-<arm>.txt
+generation: v270b
+ref: main
+cap: 12
+control: control
+program: routing-compare
+
+arms:
+  control: ""
+  ringoff: "--ns3::adaptive::BeeAdHocRoutingProtocol::InitialScoutTtl=10"
+  keepfail: "--ns3::adaptive::BeeAdHocRoutingProtocol::RemoveForagersOnLinkFailure=false"
+  giveup1: "--ns3::adaptive::BeeAdHocRoutingProtocol::MaxRoundsAtMaxTtl=1"
+  giveup4: "--ns3::adaptive::BeeAdHocRoutingProtocol::MaxRoundsAtMaxTtl=4"
+  uncapped: "--ns3::adaptive::BeeAdHocRoutingProtocol::CapDances=false"
+
+cells:
+  grid-rwp-tworay:
+    workflow: benchmark-cell.yml
+    inputs:
+      harness: routing-compare
+      version: 3.42-opt
+      args: "--scenario=paper --runs=5 --nNodes=50 --time=900 --areaX=1500 --pause=30 --speed=20 --propagation=tworay --range=300 --areaY=300 --diag --mobility=rwp --transport=udp --protocols=beeadhoc"
+    blocks: [1, 6]
+
+jobs:
+  - {arms: [control, ringoff, keepfail, giveup1, giveup4, uncapped], cells: "*"}
