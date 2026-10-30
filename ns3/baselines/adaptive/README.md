@@ -163,6 +163,30 @@ Delivery smoke (ns-3.42, `--scenario=paper --nNodes=20 --time=60`):
 UDP, two seeds, PDR 93.4 % (AODV 90.7 %), drop book sum 100.00; TCP, one
 seed, 95.5 % (AODV 94.0 %), sum 100.01.
 
+Sensitivity of the repository choices (#806, pre-registered in
+`tools/bench/campaigns/v2.7.0-beeadhoc-sensitivity.yaml`, generation `v270b`):
+`grid-rwp-tworay`, 50 nodes, 900 s, seeds 1–10, each arm paired by seed with
+the defaults (PDR 95.04 %, mean delay 52.8 ms, NRL 10.64). An effect counts
+when its paired 95 % CI excludes zero (marked \*).
+
+| arm (one change) | dPDR (pp) | d mean delay (ms) | d NRL |
+|---|---|---|---|
+| first scout at TTL 10, no expanding ring (`InitialScoutTtl=10`) | −0.75 [−1.41, −0.09]\* | **−28.5 [−29.9, −27.1]\*** | +4.31 [+3.78, +4.85]\* |
+| give up after one round at full TTL (`MaxRoundsAtMaxTtl=1`) | −0.27 [−0.89, +0.35] | −2.4 [−4.6, −0.1]\* | +0.07 [−0.51, +0.65] |
+| give up after four rounds (`MaxRoundsAtMaxTtl=4`) | +0.13 [−0.44, +0.70] | +2.1 [−0.3, +4.5] | 0.00 [−0.48, +0.48] |
+| keep foragers on a failed link (`RemoveForagersOnLinkFailure=false`) | +0.14 [−0.34, +0.62] | −0.6 [−2.5, +1.2] | −0.21 [−0.60, +0.18] |
+| uncapped rating (`CapDances=false`) | identical: the cap never binds | | |
+
+**The expanding ring's starting TTL decides the arm's delay.** With it, the
+mean delay is 52.8 ms; without it, 24.3 ms (the source's `reconv` hold falls
+from 156 to 49 ms), at +4.3 control packets per delivered packet. For scale,
+on the same cell and seeds AODV's committed rows read 36.1 ms and NRL 33.4,
+so the choice flips BeeAdHoc's delay ranking against AODV. The report
+specifies an expanding ring search (§13.5) but not its starting TTL, so the
+default stays, and any comparison must report both settings with this table.
+The other choices move nothing that matters (giveup1's −2.4 ms is real but
+small).
+
 Anchor: the GECCO 2005 headline (fewer control packets and less energy than
 DSR, AODV and DSDV) is the citation of record, and it is still unread. PG 460
 ch. 7 runs its own comparison with AODV, DSR and DSDV (energy per user data,
