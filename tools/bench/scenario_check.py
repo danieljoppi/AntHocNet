@@ -81,6 +81,9 @@ MAX_PATH_LENGTH = 100
 # 5 s leaves headroom for a raised attribute while still catching an accounting
 # error, which is what this rule is for.
 HOLD_CEILING_MS = 5000.0
+# #805: the adaptive arms (RoutingBase) hold data for up to their MaxQueueTime,
+# 30 s (ns-3 AODV's default), so their ceiling is that plus the same headroom.
+HOLD_CEILING_MS_BY_ARM = {a: 35000.0 for a in ("ara", "termite", "qrouting", "beeadhoc")}
 
 # #230: the baselines all install exactly one route per destination at a time,
 # so their path_div_used is 1.0 by construction. Anything materially above that
@@ -2864,10 +2867,11 @@ def cmd_results(a):
                                "reason(s) report a non-zero mean hold with a "
                                "zero hold count — the fields are mis-mapped")
             hold_max = r.get("hold_max_ms")
-            if hold_max is not None and hold_max > HOLD_CEILING_MS:
+            ceiling = HOLD_CEILING_MS_BY_ARM.get(r["proto"], HOLD_CEILING_MS)
+            if hold_max is not None and hold_max > ceiling:
                 report("FAIL", f"{tag}: max hold {hold_max} ms exceeds "
-                               f"{HOLD_CEILING_MS} ms — a pending-queue hold is "
-                               "bounded by QueueTimeout (#308 phase 2)")
+                               f"{ceiling} ms — a pending-queue hold is "
+                               "bounded by the arm's queue timeout (#308, #805)")
             missing = r.get("hops_common_missing")
             if missing:
                 report("FAIL", f"{tag}: {missing} run(s) report a non-empty "

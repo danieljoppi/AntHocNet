@@ -142,6 +142,24 @@ public:
     /// and re-routed; the harness nets them out of the channel column.
     uint64_t ArpReinjectedPackets() const { return m_arpReinjected; }
 
+    /// Why a data packet waited in the hold queue (#805), the three reasons
+    /// of the harness's ##HOLD## marker.
+    enum HoldReason {
+        HOLD_SETUP = 0,   ///< no route to the destination ever existed here
+        HOLD_RECONV = 1,  ///< a route existed and was lost
+        HOLD_REPAIR = 2,  ///< recovered from a MAC/ARP drop, no usable next hop
+        HOLD_REASONS = 3,
+    };
+
+    /// Hold events released from the queue toward a next hop, per reason.
+    struct HoldStats {
+        uint64_t count = 0;
+        double sumS = 0.0;
+        double maxS = 0.0;
+    };
+
+    const HoldStats& Hold(HoldReason r) const { return m_hold[r]; }
+
     /// Fired for every packet recovered from a MAC drop (IP header, L4
     /// packet), so a harness can count the ones it classifies as data.
     typedef void (*MacReinjectCallback)(const Ipv4Header& header, Ptr<const Packet> packet);
@@ -250,12 +268,14 @@ private:
         UnicastForwardCallback ucb;
         ErrorCallback ecb;
         Time expire;
+        Time queued;
+        HoldReason reason;
     };
 
     Ptr<Ipv4Route> LoopbackRoute(const Ipv4Header& header, Ptr<NetDevice> oif) const;
     Ptr<Ipv4Route> DirectRoute(Ipv4Address dst, Ipv4Address next, Ipv4Address src) const;
     void Enqueue(Ptr<const Packet> p, const Ipv4Header& header, UnicastForwardCallback ucb,
-                 ErrorCallback ecb);
+                 ErrorCallback ecb, bool recovered = false);
     void PurgeQueue();
     void RecvSocket(Ptr<Socket> socket);
     void NotifyTxError(WifiMacDropReason reason, Ptr<const ADAPTIVE_WIFI_MPDU> mpdu);
@@ -277,6 +297,10 @@ private:
     Ipv4Address m_directTo;
     UnicastForwardCallback m_cachedUcb;
     ErrorCallback m_cachedEcb;
+    /// Destinations this node has handed a data packet to a next hop for
+    /// (a later hold for them is a re-convergence, not a setup).
+    std::set<Ipv4Address> m_routed;
+    HoldStats m_hold[HOLD_REASONS];
     uint64_t m_macReinjected;
     uint64_t m_arpReinjected;
     bool m_arpHooked;

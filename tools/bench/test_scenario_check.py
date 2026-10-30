@@ -924,6 +924,19 @@ def _hold_ceiling():
            f"a 5.2 s hold was not flagged\n{out}")
 
 
+@case("#805 an adaptive arm's hold is bounded by its own 30 s queue, not 5 s")
+def _hold_ceiling_adaptive():
+    cell = ("beeadhoc 93.4 86.9 849.5 5.37 3.66\n"
+            "##HOLD## 1 beeadhoc 40 650.00 12000.00 3 900.00 2100.00 5 30.00 80.00\n")
+    levels, out = run_cell(cell)
+    expect(levels == [], "hold-adaptive-quiet",
+           f"a 12 s hold within the adaptive queue timeout must not report, "
+           f"got {levels}\n{out}")
+    _levels, out = run_cell(cell.replace("12000.00", "36000.00"))
+    expect("exceeds 35000.0 ms" in out, "hold-adaptive-ceiling",
+           f"a 36 s adaptive hold was not flagged\n{out}")
+
+
 @case("#308p2 a non-zero mean hold with a zero count FAILs")
 def _hold_mean_no_count():
     # What a mis-ordered field mapping looks like: a mean with nothing behind it.
