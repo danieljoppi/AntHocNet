@@ -43,8 +43,6 @@ on:
 # for the Pages deployment credential. Nothing here writes to the repository.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # One live deployment at a time; a superseded run is *not* cancelled
 # (cancel-in-progress: false) so an in-flight publish always finishes and the
@@ -141,6 +139,11 @@ jobs:
     name: Deploy to Pages
     needs: build
     runs-on: ubuntu-latest
+    # deploy-pages exchanges the OIDC token (id-token: write) for the Pages
+    # deployment credential (pages: write); the build job only reads.
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

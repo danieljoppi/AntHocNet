@@ -44,9 +44,10 @@ on:
       - '.github/workflows/charts.yml'
   workflow_dispatch:
 
-# contents: write only to push the refreshed PNGs back to main.
+# Read-only by default; each job that writes declares its own scopes
+# below (Scorecard Token-Permissions, #785).
 permissions:
-  contents: write
+  contents: read
 
 # Pushes queue rather than cancel: each run renders the tree it checked out,
 # so a cancelled run could leave main's charts one change behind.
@@ -58,6 +59,9 @@ jobs:
   render:
     name: Render charts from committed data
     runs-on: ubuntu-latest
+    # contents: write only to push the refreshed PNGs back to main.
+    permissions:
+      contents: write
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
