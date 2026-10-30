@@ -30,8 +30,8 @@ jobs:
       - name: Install ruff and PyYAML
         # Pinned: an unpinned install broke every PR when ruff 0.16.0 tightened
         # defaults (I001/ISC004/PLW1510/EXE001 on untouched files). The pin
-        # lives in requirements-dev.txt so Dependabot can see it; bump it
-        # there, fixing new findings in the same PR.
+        # lives in requirements/ (hash-pinned, #787) so Dependabot can see it;
+        # bump it there, fixing new findings in the same PR.
         uses: ./.github/actions/python-tools
         with:
           packages: ruff pyyaml

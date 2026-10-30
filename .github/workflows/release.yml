@@ -42,7 +42,7 @@ jobs:
         with:
           python-version: '3.x'
       - name: Install tools
-        # commitizen is pinned in requirements-dev.txt: it computes the semver
+        # commitizen is pinned, with hashes, in requirements/ (#787): it computes the semver
         # bump from commit history and rewrites the version strings, and this
         # workflow is never exercised by PR CI, so a float would first be
         # noticed as a wrong release number.
@@ -55,7 +55,7 @@ jobs:
         # the timeout bounds any other hang here.
         timeout-minutes: 10
         run: |
-          pip install -c requirements-dev.txt commitizen
+          pip install --require-hashes -r requirements/commitizen.txt
           cmake --version
           g++ --version
 

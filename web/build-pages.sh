@@ -2,7 +2,7 @@
 # Assemble the whole Pages site (#626): the game at /, the docs at /docs/, the
 # API reference at /api/, every page under the one top bar (web/shell/), and the
 # old-URL redirects. pages.yml deploys this; CI's web job smoke-tests it.
-# Needs: an activated emsdk, mkdocs-material (requirements-dev.txt), doxygen.
+# Needs: an activated emsdk, mkdocs-material (requirements/mkdocs-material.txt), doxygen.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT=${1:-web/build-pages}

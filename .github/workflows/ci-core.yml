@@ -62,8 +62,8 @@ jobs:
       - name: Install toolchain
         # gcovr is pinned so the reported baseline stays comparable across
         # merges — its per-version gcov parsing shifts the numbers. The pin
-        # lives in requirements-dev.txt so Dependabot can see it; bump it
-        # there, noting the step change in the PR.
+        # lives in requirements/ (hash-pinned, #787) so Dependabot can see it;
+        # bump it there, noting the step change in the PR.
         run: |
           sudo apt-get update && sudo apt-get install -y cmake g++
       - name: Build core with gcov instrumentation

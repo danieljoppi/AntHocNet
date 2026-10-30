@@ -5,8 +5,9 @@
 #     (tags can be repointed); Dependabot bumps the SHA and the trailing
 #     `# vX.Y.Z` comment together.
 #   - docker: the image lives under docker/ (Dockerfile.ns3).
-#   - pip: the Python tool pins now live in requirements-dev.txt, which the
-#     workflows consume as a constraints file (`pip install -c … ruff`).
+#   - pip: the Python tool pins live in requirements/: one `<tool>.in` pin
+#     each, compiled to a hash-pinned `<tool>.txt` that every install uses
+#     with --require-hashes (#787; requirements/README.md).
 #     This reverses the original decision here — that there was no manifest
 #     to watch, so ruff/gcovr stayed manual. "Manual" meant they were not
 #     bumped at all, and commitizen (which computes the release version bump)
@@ -26,6 +27,6 @@ updates:
       interval: monthly
 
   - package-ecosystem: pip
-    directory: /
+    directory: /requirements
     schedule:
       interval: monthly
