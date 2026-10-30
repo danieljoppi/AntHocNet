@@ -187,12 +187,15 @@ default stays, and any comparison must report both settings with this table.
 The other choices move nothing that matters (giveup1's −2.4 ms is real but
 small).
 
-Anchor: the GECCO 2005 headline (fewer control packets and less energy than
-DSR, AODV and DSDV) is the citation of record, and it is still unread. PG 460
-ch. 7 runs its own comparison with AODV, DSR and DSDV (energy per user data,
-delay, throughput, control packets, delivery ratio). That is the candidate to
-pre-register if GECCO 2005 stays out of reach; otherwise the arm ships as an
-infeasibility verdict, as Termite and Q-routing did.
+Anchor (#800, pre-registered in `tools/bench/campaigns/v2.7.0-beeadhoc-anchor.yaml`,
+generation `v270a`): on the source we hold, PG 460 ch. 7, the AntHocNet
+scalability setup (100 nodes, 3000 × 1000 m, 900 s, 20 flows at 4 packets/s,
+RWP 0–10 m/s, pause 1–1000 s), against AODV and DSDV (no DSR arm), 10 seeds,
+in both ring settings. Gate: BeeAdHoc's NRL below both at ≥ 4 of 5 pause times
+(§7.2.5, also GECCO's headline); energy, delay, PDR and throughput reported.
+Deviation: 64-byte data packets instead of 512 (same packet rate). A miss
+ships the arm as an infeasibility verdict. Re-checking against the GECCO 2005
+paper itself, once in hand, is #815.
 
 ## ns-3 version notes
 
