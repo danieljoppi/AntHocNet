@@ -67,7 +67,10 @@ gh attestation verify anthocnet-ns3-modules-X.Y.Z.tar.gz --repo danieljoppi/AntH
 
 The same Sigstore bundle is attached to the release as
 `anthocnet-X.Y.Z.provenance.sigstore.json`, for offline checking or for
-tools other than `gh`, such as `cosign verify-blob-attestation`.
+tools other than `gh`, such as `cosign verify-blob-attestation`. From
+v2.7.0 its signed in-toto envelope is also attached on its own, as
+`anthocnet-X.Y.Z.intoto.jsonl` (one DSSE envelope per line, the SLSA
+convention).
 
 **3. Contents: the SBOM.** `anthocnet-X.Y.Z.spdx.json` is an SPDX software
 bill of materials of the unpacked bundle. It is attested against the zip, so

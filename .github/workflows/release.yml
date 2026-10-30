@@ -167,6 +167,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp "${{ steps.provenance.outputs.bundle-path }}" "dist/anthocnet-${VER}.provenance.sigstore.json"
+          # The same provenance under the name Scorecard's Signed-Releases
+          # recognises as SLSA provenance, `*.intoto.jsonl` (#788): the
+          # bundle's signed DSSE envelope on one line, the format
+          # slsa-github-generator publishes. The .sigstore.json stays, for
+          # `gh attestation verify --bundle` and cosign users.
+          jq -c '.dsseEnvelope' "dist/anthocnet-${VER}.provenance.sigstore.json" > "dist/anthocnet-${VER}.intoto.jsonl"
+          test "$(jq -r '.payloadType' "dist/anthocnet-${VER}.intoto.jsonl")" = "application/vnd.in-toto+json"
+          test "$(wc -l < "dist/anthocnet-${VER}.intoto.jsonl")" -eq 1
           for f in "dist/anthocnet-${VER}.zip" "dist/anthocnet-ns3-modules-${VER}.tar.gz"; do
             gh attestation verify "$f" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
           done
@@ -212,6 +220,7 @@ jobs:
             dist/anthocnet-${{ env.VER }}.spdx.json
             dist/anthocnet-${{ env.VER }}.bakeconf.xml
             dist/anthocnet-${{ env.VER }}.provenance.sigstore.json
+            dist/anthocnet-${{ env.VER }}.intoto.jsonl
           generate_release_notes: true
           body: |
             AntHocNet ${{ env.TAG }}. Release notes: https://danieljoppi.github.io/AntHocNet/docs/releases/${{ env.TAG }}/

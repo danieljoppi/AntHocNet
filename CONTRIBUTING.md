@@ -187,10 +187,10 @@ exists.
 **The badge is blank until the first run publishes.** After merging, run the
 `Scorecard` workflow once by hand (Actions → Scorecard → *Run workflow*).
 
-Two checks this repo will not score full marks on, by design, so nobody chases
-them: `Signed-Releases` (see *Provenance* below) and `Fuzzing` (Scorecard only
-recognises OSS-Fuzz / ClusterFuzzLite integrations, not the in-repo libFuzzer
-job — see *OSS-Fuzz* below).
+Checks this repo will not score full marks on, by design, so nobody chases
+them: `Code-Review` and `Contributors` (a solo project, #789). `Signed-Releases`
+ramps up one release at a time over a five-release window (see *Provenance*
+below).
 
 ### Release integrity: SHA-256 checksums
 
@@ -213,7 +213,11 @@ Since v2.3.0, every release ships with three things. The verification
 commands are in [SECURITY.md](SECURITY.md#verifying-a-release).
 - **Build provenance.** Signed SLSA provenance for the install bundle and
   the module tarball, made by `actions/attest`. Its Sigstore bundle is also
-  attached as `anthocnet-<version>.provenance.sigstore.json`.
+  attached as `anthocnet-<version>.provenance.sigstore.json`. From v2.7.0
+  the bundle's signed in-toto envelope is also attached as
+  `anthocnet-<version>.intoto.jsonl`: the name Scorecard's
+  `Signed-Releases` looks for to count a release as having provenance
+  (#788).
 - **An SBOM.** An SPDX file of the bundle (`anthocnet-<version>.spdx.json`),
   attested against the zip.
 - **Image signatures.** cosign keyless signatures on the GHCR images, plus
