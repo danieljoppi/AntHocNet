@@ -8,14 +8,14 @@ the **primary source** for parameter verification; the 2004 PPSN paper
 confirms formulas and several constants but left the items below open.
 
 **The PDF was supplied on 2026-07-25** and lives in the *private* papers repo at
-`AntHocNet/library/2007-ducatelle-thesis.pdf`. It is not in this repository and
+`AntHocNet/library/anthocnet/2007-ducatelle-thesis.pdf`. It is not in this repository and
 must not be: this repo keeps digests and citations only (papers-repo golden
 rule 4). Search it with the `pdf-extract` skill rather than reading it into
 context — it is ~570k characters:
 
 ```bash
 python3 .claude/skills/pdf-extract/pdfx.py grep \
-  AntHocNet/library/2007-ducatelle-thesis.pdf 'unloaded' -C 3
+  AntHocNet/library/anthocnet/2007-ducatelle-thesis.pdf 'unloaded' -C 3
 ```
 
 Glyph caveat: the thesis renders the constant as `thop` (no underscore) and
