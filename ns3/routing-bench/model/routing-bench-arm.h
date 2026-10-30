@@ -147,6 +147,9 @@ public:
     /// Routing-control packets and bytes counted this run (NRL's numerator).
     virtual uint64_t ControlPackets() const = 0;
     virtual uint64_t ControlBytes() const = 0;
+    /// Data bytes delivered this run (FlowMonitor rxBytes, nrl_bytes'
+    /// denominator); valid from EmitRunNote on (#808).
+    virtual double DeliveredDataBytes() const = 0;
 
     /// #386: track what MAC re-injected data packets then do, and emit
     /// ##REINJ## for this run. Connects the given node's routing protocol's
