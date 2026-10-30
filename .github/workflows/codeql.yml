@@ -7,7 +7,21 @@ name: CodeQL
 # default-off switches that no smoke run reaches. Results go to the Security
 # tab. The ns-3 module is not analysed: it needs a full ns-3 build in the
 # container, and the code it adds over core/ is the thin adapter.
+#
+# Every pull request is analysed, docs-only ones included (#786). Scorecard's
+# SAST check counts merged PRs whose head commit carries a SAST check run, so
+# a path filter here would lower the ratio. The cost is one ~3 min job running
+# in parallel with ci.yml, which takes longer, so a PR's wall-clock time does
+# not change. The push and schedule runs stay: they keep main's results in the
+# Security tab.
+#
+# Report-only: CodeQL is not one of the CI gate's needs (ci.yml). A finding
+# shows as a code-scanning alert on the PR and in the Security tab. Whether
+# alerts should block a merge belongs to the branch ruleset (#789), not to
+# this workflow.
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
     paths:
@@ -22,6 +36,11 @@ on:
 
 permissions:
   contents: read
+
+# A new push to a PR supersedes its running analysis; runs on main finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   analyze:
