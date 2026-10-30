@@ -34,6 +34,7 @@
 #include "adaptive-routing-base.h"
 #include "adaptive-tables.h"
 
+#include "ns3/callback.h"
 #include "ns3/event-id.h"
 #include "ns3/header.h"
 #include "ns3/trailer.h"
@@ -137,6 +138,10 @@ public:
 
     uint64_t SwarmsSent() const { return m_swarmsSent; }
 
+    /// The node's residual battery fraction (0..1), from the harness's energy
+    /// accounting (#801). Unset, or NaN: the node reports a full battery.
+    void SetEnergyProbe(Callback<double> probe) { m_energyProbe = probe; }
+
 protected:
     void DoDispose() override;
 
@@ -198,6 +203,7 @@ private:
     std::deque<std::tuple<Ipv4Address, Ipv4Address, uint32_t>> m_seen;  // (src, dst, id)
     std::map<Ipv4Address, Time> m_neighbors;                            // last heard
     std::map<Ipv4Address, Time> m_failed;                               // link down until
+    Callback<double> m_energyProbe;
     uint32_t m_scoutId;
     uint64_t m_scoutsSent;
     uint64_t m_swarmsSent;
