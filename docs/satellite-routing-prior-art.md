@@ -325,7 +325,7 @@ Stated plainly so nobody mistakes its reach:
    corroborated ACO's presence in the literature, and supplied the ns3-leo
    citation plus a substrate candidate the track had missed.
 
-Land sources in the **private** papers repo under `AntHocNet/library/` and grep
+Land sources in the **private** papers repo under `AntHocNet/library/satellite/` and grep
 them with the `pdf-extract` skill rather than reading them into context. Note
 that this (public) repo keeps digests and citations only — never extracted text.
 
