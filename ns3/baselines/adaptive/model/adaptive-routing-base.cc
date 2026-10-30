@@ -17,6 +17,8 @@
 #include "ns3/uinteger.h"
 #include "ns3/wifi-net-device.h"
 
+#include <algorithm>
+
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE("AdaptiveRoutingBase");
@@ -238,6 +240,7 @@ Ptr<Ipv4Route> RoutingBase::RouteOutput(Ptr<Packet> p, const Ipv4Header& header,
                 p->RemovePacketTag(old);
                 p->AddPacketTag(PrevHopTag(route->GetSource(), Ipv4Address(), next));
             }
+            m_routed.insert(dst);
             OnDataForwarded(p, header, next);
             return route;
         }
@@ -328,6 +331,7 @@ void RoutingBase::ForwardData(Ptr<const Packet> p, const Ipv4Header& header, Ipv
     if (!route || ucb.IsNull()) {
         return;
     }
+    m_routed.insert(header.GetDestination());
     Ptr<Packet> q = p->Copy();
     PrevHopTag oldPrev;
     const bool hadPrev = q->RemovePacketTag(oldPrev);
@@ -349,7 +353,7 @@ void RoutingBase::ForwardData(Ptr<const Packet> p, const Ipv4Header& header, Ipv
 // --- the hold queue ------------------------------------------------------------
 
 void RoutingBase::Enqueue(Ptr<const Packet> p, const Ipv4Header& header, UnicastForwardCallback ucb,
-                          ErrorCallback ecb) {
+                          ErrorCallback ecb, bool recovered) {
     if (m_queue.size() >= m_maxQueueLen) {
         QueueEntry old = m_queue.front();
         m_queue.pop_front();
@@ -363,6 +367,9 @@ void RoutingBase::Enqueue(Ptr<const Packet> p, const Ipv4Header& header, Unicast
     e.ucb = ucb;
     e.ecb = ecb;
     e.expire = Simulator::Now() + m_maxQueueTime;
+    e.queued = Simulator::Now();
+    e.reason = recovered ? HOLD_REPAIR
+                         : (m_routed.count(header.GetDestination()) ? HOLD_RECONV : HOLD_SETUP);
     m_queue.push_back(e);
 }
 
@@ -409,6 +416,12 @@ void RoutingBase::FlushQueue(Ipv4Address dst) {
             m_queue.push_back(e);
             continue;
         }
+        // #805: the hold ends when the packet leaves toward a next hop.
+        HoldStats& h = m_hold[e.reason];
+        const double held = (Simulator::Now() - e.queued).GetSeconds();
+        ++h.count;
+        h.sumS += held;
+        h.maxS = std::max(h.maxS, held);
         OnDataForwarded(e.packet, e.header, next);
         ForwardData(e.packet, e.header, next, e.ucb, false);
     }
@@ -676,7 +689,7 @@ void RoutingBase::Reroute(Ptr<Packet> pkt, const Ipv4Header& ip) {
     if (OnNoRouteInTransit(pkt, ip, upstream, m_cachedUcb, m_cachedEcb)) {
         return;
     }
-    Enqueue(pkt, ip, m_cachedUcb, m_cachedEcb);
+    Enqueue(pkt, ip, m_cachedUcb, m_cachedEcb, true);
     StartDiscovery(dst);
 }
 

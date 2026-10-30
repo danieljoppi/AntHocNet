@@ -15,6 +15,8 @@
 #include "ns3/ipv4.h"
 #include "ns3/routing-bench-arm.h"
 
+#include <algorithm>
+
 namespace ns3 {
 namespace adaptive {
 namespace {
@@ -44,6 +46,25 @@ public:
         // #761: a re-routed packet can be lost on several hops, so its drops
         // are booked per packet (its terminal fate), not per event.
         if (run.transport != "tcp") m.TrackPacketFate();
+    }
+    // #805: how long data waited in RoutingBase's hold queue, by reason, in
+    // ##HOLD##'s setup / reconv / repair columns (AntHocNet's marker).
+    bool CollectHoldTimes(bench::RunContext& run, std::vector<bench::HoldTime>& hold) override {
+        hold.assign(RoutingBase::HOLD_REASONS, bench::HoldTime());
+        bool any = false;
+        for (uint32_t i = 0; i < run.nodes.GetN(); ++i) {
+            Ptr<RoutingBase> rb =
+                DynamicCast<RoutingBase>(run.nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol());
+            if (!rb) continue;
+            any = true;
+            for (int r = 0; r < RoutingBase::HOLD_REASONS; ++r) {
+                const RoutingBase::HoldStats& h = rb->Hold(static_cast<RoutingBase::HoldReason>(r));
+                hold[r].deliveredCount += h.count;
+                hold[r].deliveredSumS += h.sumS;
+                hold[r].deliveredMaxS = std::max(hold[r].deliveredMaxS, h.maxS);
+            }
+        }
+        return any;
     }
 
 private:

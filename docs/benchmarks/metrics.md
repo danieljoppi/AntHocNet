@@ -832,13 +832,27 @@ packet** (0.476 at the paper base), which is *either* ~48 % of packets held
 once *or* fewer packets held repeatedly. These counters cannot tell the two
 apart, and the distinction matters for the protocol story.
 
-*Rows appear for AntHocNet only.* AODV also queues during route discovery
-(`aodv::RequestQueue`) and OLSR/DSDV do not queue at all, but **none of them is
-instrumented**, so no row is printed for them. A row of zeros would assert
-"this protocol never held a packet" when the truth is "nobody looked" — the
-same reason `##AIR##` prints nothing under `--energyJ=0`. Consequently
-`##HOLD##` supports statements about AntHocNet's own delay composition, and
-**not** cross-protocol hold comparisons, until the AODV side is measured.
+*Rows appear for the instrumented arms only:* AntHocNet and, since #805, the
+adaptive arms (`ara`, `termite`, `qrouting`, `beeadhoc`). AODV also queues
+during route discovery (`aodv::RequestQueue`) and OLSR/DSDV do not queue at
+all, but **none of them is instrumented**, so no row is printed for them. A
+row of zeros would assert "this protocol never held a packet" when the truth
+is "nobody looked" — the same reason `##AIR##` prints nothing under
+`--energyJ=0`. Consequently `##HOLD##` supports statements about the
+instrumented arms' own delay composition, and **not** comparisons with AODV,
+OLSR or DSDV.
+
+*The adaptive arms' reasons (#805).* Their hold is `RoutingBase`'s deferred
+route queue (up to 30 s, so `scenario_check` bounds their holds at 35 s, not
+5 s). A packet is classed when it enters the queue: `setup` if this node has
+never handed a data packet for that destination to a next hop, `reconv` if it
+has (the route it had is gone), `repair` if the packet was recovered from a MAC
+or ARP drop and found no next hop. The hold ends when the packet leaves toward
+a next hop; drops from the queue are not counted, like AntHocNet's. A node's
+queue holds both packets it originates and, for the per-hop arms, packets in
+transit, so the counts are hold events, as above. Measured at the BeeAdHoc
+smoke cell (`--scenario=paper --nNodes=20 --time=60`, 2 seeds): holds are 93–95 %
+of `beeadhoc`'s mean delay, almost all `reconv` at its sources.
 
 ### Channel occupancy (`##AIR##`, #308 phase 2 step 3)
 
