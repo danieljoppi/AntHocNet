@@ -350,10 +350,11 @@ inline double QUpdate(double q, double eta, double queueWait, double txTime,
  * hop). A direct neighbour gets the maximum; otherwise
  * ((maxHops - (hops - 1)) * min * avg + 1) / 44 in integer arithmetic, as the
  * listing computes it. The listing does not cap the result; it is capped at
- * maxDances here so a two-hop route never outranks a direct neighbour.
+ * maxDances here (`cap`) so a two-hop route never outranks a direct neighbour.
+ * `cap` false is the listing as printed (the #806 sensitivity).
  */
 inline uint32_t BeeDances(uint32_t hops, const std::vector<uint8_t>& levels, uint32_t maxHops,
-                          uint32_t maxDances) {
+                          uint32_t maxDances, bool cap = true) {
     if (hops < 2) {
         return maxDances;
     }
@@ -368,7 +369,7 @@ inline uint32_t BeeDances(uint32_t hops, const std::vector<uint8_t>& levels, uin
     }
     const uint32_t avg = levels.empty() ? 7u : sum / static_cast<uint32_t>(levels.size());
     const uint32_t v = ((maxHops - (hops - 1)) * mn * avg + 1) / 44;
-    return std::min(v, maxDances);
+    return cap ? std::min(v, maxDances) : v;
 }
 
 /**
@@ -411,7 +412,8 @@ public:
     };
 
     void Configure(uint32_t arraySize, double lifetime, double danceTime, uint32_t maxHops,
-                   uint32_t maxDances) {
+                   uint32_t maxDances, bool capDances = true) {
+        m_capDances = capDances;
         m_arraySize = arraySize;
         m_lifetime = lifetime;
         m_danceTime = danceTime;
@@ -425,8 +427,8 @@ public:
         if (list.size() >= m_arraySize || f.path.size() < 2) {
             return false;
         }
-        f.dances =
-            BeeDances(static_cast<uint32_t>(f.path.size() - 1), f.levels, m_maxHops, m_maxDances);
+        f.dances = BeeDances(static_cast<uint32_t>(f.path.size() - 1), f.levels, m_maxHops,
+                             m_maxDances, m_capDances);
         f.stamp = now;
         list.push_back(std::move(f));
         return true;
@@ -530,6 +532,7 @@ private:
     double m_danceTime = 2.0;
     uint32_t m_maxHops = 10;
     uint32_t m_maxDances = 8;
+    bool m_capDances = true;
 };
 
 }  // namespace adaptive
