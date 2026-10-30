@@ -42,4 +42,7 @@ tool means adding its `.in`, generating its `.txt` and naming it in the job.
   change your release numbering, and no PR CI exercises `release.yml`.
 - **matplotlib:** `charts.yml` commits the PNGs it renders, so a release that
   moves a pixel would recommit every chart on `main`.
+- **cmake:** the ns-3 images (`docker/Dockerfile.ns3`) install it, and its
+  version is part of the toolchain behind every published number. It is
+  compiled for the image's Python, 3.10 (see the header of `cmake.txt`).
 - **pyyaml:** the lint job self-tests `tools/bench/campaign.py` and its siblings, which read their YAML plans with it.
