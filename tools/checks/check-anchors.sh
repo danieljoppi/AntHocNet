@@ -19,6 +19,10 @@
 # The ns-3 tree must already be configured + built with the anthocnet module's
 # examples enabled (manet-baselines builds as part of the module's examples).
 set -euo pipefail
+# Marker fields are read by name through the tested reader, not by awk
+# position (#791; tools/bench/test_bench_parse_query.py).
+BENCH_PARSE="$(cd "$(dirname "$0")/../bench" && pwd)/bench_parse.py"
+field() { python3 "$BENCH_PARSE" --get "$1" --from "$2" --proto "$3" -; }  # reads stdin
 
 NS3DIR=${1:-}
 ANCHOR=${2:-}
@@ -191,8 +195,7 @@ status=0
 for proto in ${protocols//,/ }; do
     # Summary-table row: "<proto>  <PDR%>  <delay> ...". Diag lines never
     # start with a bare protocol name, so this only matches the table.
-    pdr=$(printf '%s\n' "$out" |
-          awk -v p="$proto" '$1 == p && $2 ~ /^[0-9.]+$/ { v = $2 } END { print v }')
+    pdr=$(printf '%s\n' "$out" | field pdr table "$proto")
     if [ -z "$pdr" ]; then
         echo "FAIL [$ANCHOR]: no result row for '$proto' — empty table (#28-style silent failure)"
         status=1
@@ -209,10 +212,7 @@ done
 if [ -n "$hops_min$hops_max" ]; then
     # "# paths oracle ... hopsMean=1.00 ..." — the oracle's shortest-path hop
     # count over its delivered packets, deterministic for a given seed set.
-    hops=$(printf '%s\n' "$out" |
-           awk '$1 == "#" && $2 == "paths" && $3 == "oracle" {
-                    for (i = 4; i <= NF; i++) if ($i ~ /^hopsMean=/) { sub(/^hopsMean=/, "", $i); v = $i } }
-                END { print v }')
+    hops=$(printf '%s\n' "$out" | field hopsMean paths oracle)
     if [ -z "$hops" ]; then
         echo "FAIL [$ANCHOR]: no '# paths oracle' hopsMean line"
         status=1
@@ -229,8 +229,7 @@ fi
 if [ -n "$gap_arm" ]; then
     # Paired PDR gap on the same seeds, from the summary table.
     table_pdr() {
-        printf '%s\n' "$out" |
-            awk -v p="$1" '$1 == p && $2 ~ /^[0-9.]+$/ { v = $2 } END { print v }'
+        printf '%s\n' "$out" | field pdr table "$1"
     }
     ga=$(table_pdr "$gap_arm")
     gb=$(table_pdr "$gap_base")
@@ -243,8 +242,7 @@ if [ -n "$gap_arm" ]; then
             echo "FAIL [$ANCHOR]: reference run did not complete"
             exit 1
         fi
-        gb=$(printf '%s\n' "$bout" |
-             awk -v p="$gap_base" '$1 == p && $2 ~ /^[0-9.]+$/ { v = $2 } END { print v }')
+        gb=$(printf '%s\n' "$bout" | field pdr table "$gap_base")
         gap_base="$gap_base ($gap_base_args)"
     fi
     if [ -z "$ga" ] || [ -z "$gb" ]; then
@@ -262,10 +260,7 @@ if [ -n "$stretch_arm" ]; then
     # An arm's mean hop count over the oracle's, on the same seeds and the same
     # field: 1.00 is a shortest path for every delivered packet.
     mean_hops() {
-        printf '%s\n' "$out" |
-            awk -v p="$1" '$1 == "#" && $2 == "paths" && $3 == p {
-                     for (i = 4; i <= NF; i++) if ($i ~ /^hopsMean=/) { sub(/^hopsMean=/, "", $i); v = $i } }
-                 END { print v }'
+        printf '%s\n' "$out" | field hopsMean paths "$1"
     }
     ah=$(mean_hops "$stretch_arm")
     oh=$(mean_hops oracle)

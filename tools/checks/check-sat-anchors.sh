@@ -19,6 +19,10 @@
 # The ns-3 tree must already be configured + built with the anthocnet module's
 # examples enabled (isl-grid builds as part of the module's examples).
 set -euo pipefail
+# Marker fields are read by name through the tested reader, not by awk
+# position (#791; tools/bench/test_bench_parse_query.py).
+BENCH_PARSE="$(cd "$(dirname "$0")/../bench" && pwd)/bench_parse.py"
+field() { python3 "$BENCH_PARSE" --get "$1" --from "$2" --proto "$3" -; }  # reads stdin
 
 NS3DIR=${1:-}
 ANCHOR=${2:-}
@@ -36,11 +40,9 @@ floor_for() {
         "$ANCHORS_FILE"
 }
 
-# isl-grid --csv row:
-#   protocol,runs,rows,cols,nodes,links,isl_delay_ms,flows,pdr_pct,delay_ms,...
-# so PDR is field 9 and mean delay field 10.
-csv_field() {  # csv_field <proto> <n>
-    awk -F, -v p="$1" -v n="$2" '$1 == p { v = $n } END { print v }'
+# isl-grid --csv rows, read by the header's column name (#791).
+csv_field() {  # csv_field <proto> <pdr|delay>
+    field "$2" csv "$1"
 }
 
 case "$ANCHOR" in
@@ -88,8 +90,8 @@ if ! out=$(./ns3 run "$cmd" 2>&1); then
 fi
 printf '%s\n' "$out"
 
-pdr=$(printf '%s\n' "$out" | csv_field "$proto" 9)
-delay=$(printf '%s\n' "$out" | csv_field "$proto" 10)
+pdr=$(printf '%s\n' "$out" | csv_field "$proto" pdr)
+delay=$(printf '%s\n' "$out" | csv_field "$proto" delay)
 if [ -z "$pdr" ]; then
     echo "FAIL [sat:$ANCHOR]: no CSV row for '$proto' — empty result (#28-style silent failure)"
     exit 1
