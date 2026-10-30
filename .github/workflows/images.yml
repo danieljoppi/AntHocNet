@@ -63,11 +63,10 @@ on:
     branches: [main, master]
     paths: ['docker/**', '.github/workflows/images.yml', 'core/**', 'ns3/**']
 
+# Read-only by default; each job that writes declares its own scopes
+# below (Scorecard Token-Permissions, #785).
 permissions:
   contents: read
-  packages: write
-  id-token: write      # cosign keyless signing + provenance (#614)
-  attestations: write
 
 env:
   # Push on default-branch pushes, or whenever a release pin is requested.
@@ -88,6 +87,11 @@ jobs:
   ns3:
     name: ns-3 images (${{ matrix.version }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write      # cosign keyless signing + provenance (#614)
+      attestations: write
     # Newest ns-3 in the matrix — its build also gets the moving `:latest` tag
     # (latest ns-3 version + latest AntHocNet). Bump when adding a newer version.
     env:

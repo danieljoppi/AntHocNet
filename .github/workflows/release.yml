@@ -19,14 +19,18 @@ on:
         options: [bump, baseline, dryrun]
         default: bump
 
+# Read-only by default; each job that writes declares its own scopes
+# below (Scorecard Token-Permissions, #785).
 permissions:
-  contents: write      # push the bump commit/tag and create the release
-  id-token: write      # keyless Sigstore signing of the attestations (#614)
-  attestations: write  # store build provenance + SBOM attestations (#614)
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write      # push the bump commit/tag and create the release
+      id-token: write      # keyless Sigstore signing of the attestations (#614)
+      attestations: write  # store build provenance + SBOM attestations (#614)
     outputs:
       tag: ${{ steps.compute.outputs.tag }}
     steps:
