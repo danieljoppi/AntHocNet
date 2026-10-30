@@ -8,6 +8,7 @@
 #include "ns3/uinteger.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace ns3 {
 
@@ -339,9 +340,13 @@ void BeeAdHocRoutingProtocol::Configure() {
 
 uint8_t BeeAdHocRoutingProtocol::HopLevel() const {
     // The Linux module reports the remaining battery, mapped to 0..7
-    // (Listing 13.7). The harness's energy model is reporting-only and no node
-    // depletes within a run, so every node reports a full battery.
-    return 7;
+    // (Listing 13.7). The battery is the harness's energy accounting (#801);
+    // without it (no probe, or --energyJ=0) the node reports a full battery.
+    if (m_energyProbe.IsNull()) {
+        return 7;
+    }
+    const double f = m_energyProbe();
+    return std::isnan(f) ? 7 : BeeBatteryLevel(100.0 * f);
 }
 
 void BeeAdHocRoutingProtocol::Heard(Ipv4Address neighbor) {

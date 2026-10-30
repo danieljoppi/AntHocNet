@@ -372,6 +372,21 @@ inline uint32_t BeeDances(uint32_t hops, const std::vector<uint8_t>& levels, uin
 }
 
 /**
+ * BeeAdHoc's 3-bit battery level (PG 460 Listing 13.7, energy_check): the
+ * remaining battery in percent mapped to 0..7. The listing gives the first
+ * two bins (<= 9 -> 0, (9, 14] -> 1) and the last (> 65 -> 7) and elides the
+ * rest; levels 2..6 split (14, 65] into five equal bins here (#801).
+ */
+inline uint8_t BeeBatteryLevel(double percent) {
+    if (percent <= 9.0) return 0;
+    if (percent <= 14.0) return 1;
+    if (percent > 65.0) return 7;
+    const double step = (65.0 - 14.0) / 5.0;
+    const int bin = static_cast<int>(std::ceil((percent - 14.0) / step));  // 1..5
+    return static_cast<uint8_t>(1 + std::min(5, std::max(1, bin)));
+}
+
+/**
  * BeeAdHoc's forager store (PG 460, Listings 13.16, 13.17 and 13.29): per
  * destination, an array of the node's 'own' foragers (routes it discovered or
  * that came back to it) and one of 'foreign' foragers (routes back to a node

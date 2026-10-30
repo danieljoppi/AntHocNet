@@ -187,6 +187,19 @@ private:
         NS_TEST_ASSERT_MSG_EQ(BeeDances(4, {7, 0, 7}, 10, 8), 0u, "an empty battery: 1/44 = 0");
         NS_TEST_ASSERT_MSG_EQ(BeeDances(12, std::vector<uint8_t>(11, 7), 10, 8), 0u,
                               "longer than MaxHops");
+
+        // Listing 13.7 bins: <= 9 -> 0, (9, 14] -> 1, > 65 -> 7; (14, 65] in
+        // five equal bins of 10.2 (#801).
+        NS_TEST_ASSERT_MSG_EQ(unsigned(BeeBatteryLevel(0.0)), 0u, "empty");
+        NS_TEST_ASSERT_MSG_EQ(unsigned(BeeBatteryLevel(9.0)), 0u, "9 % -> 0");
+        NS_TEST_ASSERT_MSG_EQ(unsigned(BeeBatteryLevel(9.5)), 1u, "9.5 % -> 1");
+        NS_TEST_ASSERT_MSG_EQ(unsigned(BeeBatteryLevel(14.0)), 1u, "14 % -> 1");
+        NS_TEST_ASSERT_MSG_EQ(unsigned(BeeBatteryLevel(15.0)), 2u, "15 % -> 2");
+        NS_TEST_ASSERT_MSG_EQ(unsigned(BeeBatteryLevel(24.2)), 2u, "24.2 % -> 2");
+        NS_TEST_ASSERT_MSG_EQ(unsigned(BeeBatteryLevel(40.0)), 4u, "40 % -> 4");
+        NS_TEST_ASSERT_MSG_EQ(unsigned(BeeBatteryLevel(65.0)), 6u, "65 % -> 6");
+        NS_TEST_ASSERT_MSG_EQ(unsigned(BeeBatteryLevel(65.1)), 7u, "65.1 % -> 7");
+        NS_TEST_ASSERT_MSG_EQ(unsigned(BeeBatteryLevel(100.0)), 7u, "full");
     }
 };
 

@@ -962,6 +962,14 @@ Three caveats that decide what may be claimed:
 - **`first_death_s` is bookkeeping.** Energy is integrated but never enforced —
   no node stops transmitting when its budget hits zero, so a "death" marks a
   threshold crossing, not a topology change.
+- **Arms may read it, never act on depletion through the radio.** The residual
+  fraction reaches an arm through `RunContext::residualEnergy`: AntHocNet's
+  energy metric (#145) and BeeAdHoc's per-hop battery level (#801) use it to
+  *choose routes*. Decided for #801: the accounting stays accounting-only, so
+  a lowered `--energyJ` changes only the choices of an energy-aware arm, and
+  every other arm's rows stay byte-identical. Emulating battery death (a
+  depleted radio going silent) would change every arm's topology and is not
+  done.
 
 `energy_per_pkt_j` is the one to quote across protocols, because it divides by
 what each protocol actually delivered; `energy_res_sd_j` is the one to quote

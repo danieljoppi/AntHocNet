@@ -11,6 +11,7 @@
 
 #include "ns3/adaptive-helper.h"
 #include "ns3/adaptive-routing-base.h"
+#include "ns3/beeadhoc-routing-protocol.h"
 #include "ns3/ipv4.h"
 #include "ns3/routing-bench-arm.h"
 
@@ -50,6 +51,27 @@ private:
     AdaptiveHelper m_helper;
 };
 
+// BeeAdHoc rates routes by each hop's battery (Listing 13.7): it reads the
+// harness's energy accounting through a probe, the anthocnet arm's pattern
+// (#145, #801). Off with --energyJ=0.
+class BeeAdHocArm : public AdaptiveArm {
+public:
+    BeeAdHocArm() : AdaptiveArm("beeadhoc", "ns3::adaptive::BeeAdHocRoutingProtocol") {}
+    void AfterStack(bench::RunContext& run) override {
+        if (run.energyJ <= 0.0 || !run.residualEnergy) return;
+        for (uint32_t i = 0; i < run.nodes.GetN(); ++i) {
+            Ptr<BeeAdHocRoutingProtocol> bee = DynamicCast<BeeAdHocRoutingProtocol>(
+                run.nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol());
+            if (bee) bee->SetEnergyProbe(MakeBoundCallback(&EnergyProbe, run.residualEnergy, i));
+        }
+    }
+
+private:
+    static double EnergyProbe(double (*residual)(uint32_t), uint32_t node) {
+        return residual(node);
+    }
+};
+
 Ptr<bench::Arm> MakeAraArm() {
     return Create<AdaptiveArm>("ara", "ns3::adaptive::AraRoutingProtocol");
 }
@@ -60,9 +82,7 @@ Ptr<bench::Arm> MakeQRoutingArm() {
     return Create<AdaptiveArm>("qrouting", "ns3::adaptive::QRoutingProtocol");
 }
 
-Ptr<bench::Arm> MakeBeeAdHocArm() {
-    return Create<AdaptiveArm>("beeadhoc", "ns3::adaptive::BeeAdHocRoutingProtocol");
-}
+Ptr<bench::Arm> MakeBeeAdHocArm() { return Create<BeeAdHocArm>(); }
 
 }  // namespace
 }  // namespace adaptive
