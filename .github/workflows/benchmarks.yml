@@ -25,11 +25,10 @@ on:
     - cron: '17 4 * * *'
   workflow_dispatch:
 
-# Needed to push the regenerated table + charts back to the branch; packages to
-# pull the pre-built ns-3 image.
+# Read-only by default; each job that writes declares its own scopes
+# below (Scorecard Token-Permissions, #785).
 permissions:
-  contents: write
-  packages: read
+  contents: read
 
 # One benchmark at a time; newer pushes supersede older queued runs -- for a
 # *push*, the latest merge is the only state worth publishing, so cancelling is
@@ -98,6 +97,11 @@ jobs:
     needs: changed
     if: needs.changed.outputs.run == 'true'
     runs-on: ubuntu-latest
+    # Needed to push the regenerated table + charts back to the branch; packages to
+    # pull the pre-built ns-3 image.
+    permissions:
+      contents: write
+      packages: read
     # Build against the pre-built plain ns-3 image (same as ci.yml) instead of
     # compiling ns-3 from source, so the job has budget to run the whole
     # taxonomy instead of a single scenario.

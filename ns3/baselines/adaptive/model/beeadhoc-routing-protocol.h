@@ -138,6 +138,11 @@ public:
 
     uint64_t SwarmsSent() const { return m_swarmsSent; }
 
+    /// Route-trailer bytes this node put on the air with data packets, one
+    /// count per transmission (the source's and every forwarding hop's): the
+    /// in-packet routing overhead that nrl_bytes does not see (#808).
+    uint64_t RouteBytesSent() const { return m_routeBytesSent; }
+
     /// The node's residual battery fraction (0..1), from the harness's energy
     /// accounting (#801). Unset, or NaN: the node reports a full battery.
     void SetEnergyProbe(Callback<double> probe) { m_energyProbe = probe; }
@@ -209,6 +214,7 @@ private:
     uint32_t m_scoutId;
     uint64_t m_scoutsSent;
     uint64_t m_swarmsSent;
+    uint64_t m_routeBytesSent;
 };
 
 }  // namespace adaptive

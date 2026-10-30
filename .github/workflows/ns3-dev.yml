@@ -11,9 +11,10 @@ on:
     - cron: '23 3 * * *'
   workflow_dispatch:
 
+# Read-only by default; each job that writes declares its own scopes
+# below (Scorecard Token-Permissions, #785).
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: ns3-dev
@@ -23,6 +24,9 @@ jobs:
   build:
     name: module build + test against ns-3-dev
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     # There is no ns-3-dev image, so this builds ns-3 itself on the runner
     # (its gcc and CMake are newer than the images' and fine for ns-3-dev).
     # ccache keeps the nightly rebuild to what changed upstream since the

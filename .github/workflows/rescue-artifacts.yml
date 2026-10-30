@@ -30,14 +30,18 @@ on:
         description: 'Comma-separated workflow run IDs whose artifacts to gather into one rescue-bundle artifact (campaign collect); commits nothing'
         default: ''
 
+# Read-only by default; each job that writes declares its own scopes
+# below (Scorecard Token-Permissions, #785).
 permissions:
-  contents: write
-  actions: read
+  contents: read
 
 jobs:
   rescue:
     name: rescue campaign result artifacts
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

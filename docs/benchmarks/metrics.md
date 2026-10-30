@@ -854,6 +854,25 @@ transit, so the counts are hold events, as above. Measured at the BeeAdHoc
 smoke cell (`--scenario=paper --nNodes=20 --time=60`, 2 seeds): holds are 93–95 %
 of `beeadhoc`'s mean delay, almost all `reconv` at its sources.
 
+### Routing bytes inside data packets (`##INPKT##`, #808)
+
+```
+##INPKT## <run> <proto> <routeBytes> <controlBytes> <deliveredBytes> <nrlBytesIncl>
+```
+
+`nrl_bytes` counts routing **control** packets. A source-routing arm also pays
+for routing *inside* every data packet: `beeadhoc` carries its whole route in a
+trailer (4 bytes per node plus 8), on every hop. `routeBytes` is those trailer
+bytes, counted once per IP transmission (the source's and every forwarding
+hop's), the same counting point as `controlBytes` (`nrl_bytes`' numerator);
+`deliveredBytes` is FlowMonitor's delivered data bytes (its denominator), so
+`nrlBytesIncl = (controlBytes + routeBytes) / deliveredBytes`. Quote
+`nrlBytesIncl` instead of `nrl_bytes` whenever a source-routing arm is in the
+comparison, or the arm's routing cost is understated. Only arms that put
+routing bytes in data packets print the row (`beeadhoc` today); absence means
+"none", following the #382 rule. The delivered bytes include the trailer up to
+the destination's IP layer, which strips it before the application.
+
 ### Channel occupancy (`##AIR##`, #308 phase 2 step 3)
 
 ```

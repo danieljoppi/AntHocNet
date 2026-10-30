@@ -16,6 +16,7 @@
 #include "ns3/routing-bench-arm.h"
 
 #include <algorithm>
+#include <iomanip>
 
 namespace ns3 {
 namespace adaptive {
@@ -85,6 +86,25 @@ public:
                 run.nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol());
             if (bee) bee->SetEnergyProbe(MakeBoundCallback(&EnergyProbe, run.residualEnergy, i));
         }
+    }
+
+    // #808: the route bytes BeeAdHoc's data packets carry (source routing),
+    // which nrl_bytes (control packets only) does not count. ##INPKT## <run>
+    // <proto> <routeBytes> <controlBytes> <deliveredBytes> <nrlBytesIncl>.
+    void EmitRunNote(bench::RunContext& run, const bench::Measurement& m,
+                     std::ostream& out) override {
+        uint64_t route = 0;
+        for (uint32_t i = 0; i < run.nodes.GetN(); ++i) {
+            Ptr<BeeAdHocRoutingProtocol> bee = DynamicCast<BeeAdHocRoutingProtocol>(
+                run.nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol());
+            if (bee) route += bee->RouteBytesSent();
+        }
+        const double delivered = m.DeliveredDataBytes();
+        const double incl =
+            delivered > 0.0 ? static_cast<double>(m.ControlBytes() + route) / delivered : 0.0;
+        out << "##INPKT## " << run.seed << ' ' << Name() << ' ' << route << ' ' << m.ControlBytes()
+            << ' ' << static_cast<uint64_t>(delivered) << ' ' << std::fixed << std::setprecision(3)
+            << incl << std::defaultfloat << '\n';
     }
 
 private:

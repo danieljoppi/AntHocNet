@@ -25,9 +25,10 @@ on:
       - '.github/workflows/core-bench.yml'
   workflow_dispatch:
 
-# contents: write only to push the history and chart back to main.
+# Read-only by default; each job that writes declares its own scopes
+# below (Scorecard Token-Permissions, #785).
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: core-bench-${{ github.ref }}
@@ -37,6 +38,9 @@ jobs:
   bench:
     name: Core speed benchmarks
     runs-on: ubuntu-latest
+    # contents: write only to push the history and chart back to main.
+    permissions:
+      contents: write
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

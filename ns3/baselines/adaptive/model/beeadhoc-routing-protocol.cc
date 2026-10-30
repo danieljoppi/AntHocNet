@@ -332,7 +332,8 @@ BeeAdHocRoutingProtocol::BeeAdHocRoutingProtocol()
       m_scoutJitter(MilliSeconds(10)),
       m_scoutId(0),
       m_scoutsSent(0),
-      m_swarmsSent(0) {}
+      m_swarmsSent(0),
+      m_routeBytesSent(0) {}
 
 BeeAdHocRoutingProtocol::~BeeAdHocRoutingProtocol() = default;
 
@@ -506,9 +507,15 @@ void BeeAdHocRoutingProtocol::OnDataForwarded(Ptr<const Packet> p, const Ipv4Hea
     // frame padding. The header is the base's own copy (the queue entry, the
     // recovered packet's), about to be used for this transmission.
     BeeRouteTag mark;
-    if (p && p->PeekPacketTag(mark) && IsMyAddress(header.GetSource())) {
+    if (!p || !p->PeekPacketTag(mark)) {
+        return;
+    }
+    if (IsMyAddress(header.GetSource())) {
         const_cast<Ipv4Header&>(header).SetPayloadSize(static_cast<uint16_t>(p->GetSize()));
     }
+    // #808: this transmission carries the route trailer's bytes.
+    BeeRouteTrailer t;
+    m_routeBytesSent += ConstCast<Packet>(p)->PeekTrailer(t);
 }
 
 bool BeeAdHocRoutingProtocol::OnNoRouteInTransit(Ptr<const Packet> p, const Ipv4Header& header,
