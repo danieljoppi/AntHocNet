@@ -64,6 +64,10 @@
 # The ns-3 tree must already be configured + built with routing-bench's
 # examples enabled (routing-compare builds as part of routing-bench's examples).
 set -euo pipefail
+# Marker fields are read by name through the tested reader, not by awk
+# position (#791; tools/bench/test_bench_parse_query.py).
+BENCH_PARSE="$(cd "$(dirname "$0")/../bench" && pwd)/bench_parse.py"
+field() { python3 "$BENCH_PARSE" --get "$1" --from "$2" --proto "$3" -; }  # reads stdin
 
 NS3DIR=${1:-}
 if [ -z "$NS3DIR" ]; then
@@ -172,15 +176,13 @@ for proto in $arms; do
     fi
 
     # ##RUN## <seed> <proto> <pdr> ... — the per-seed row (#128).
-    pdr=$(printf '%s\n' "$out" \
-        | awk -v p="$proto" '$1 == "##RUN##" && $3 == p { v = $4 } END { print v }')
+    pdr=$(printf '%s\n' "$out" | field pdr run "$proto")
     # ##DROPID## <seed> <proto> hopTx=N ... — data packets reaching IP
     # transmit anywhere. ctrlTx alive + hopTx=0 is precisely GPSR's signature.
     hoptx=$(printf '%s\n' "$out" \
         | sed -n "s/^##DROPID## [0-9]* $proto .*hopTx=\([0-9]*\).*/\1/p" | head -n 1)
     # '# paths <proto> ... hopsMean=X' — mean hop count over delivered packets.
-    hops=$(printf '%s\n' "$out" \
-        | sed -n "s/^# paths $proto .*hopsMean=\([0-9.]*\).*/\1/p" | head -n 1)
+    hops=$(printf '%s\n' "$out" | field hopsMean paths "$proto")
     # '# drops <proto> ... sum=S' — pdr + the five causes; ~100 when the books
     # balance (#215).
     dsum=$(printf '%s\n' "$out" \
