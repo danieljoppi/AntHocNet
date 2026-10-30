@@ -78,8 +78,8 @@ data packets delivered, counted uniformly at the IP layer):
 
 ```bash
 # requires aodv, aomdv, olsr, dsdv, gpsr (the vendored #296 baselines),
-# oracle (the #296 shortest-path control), adaptive (the ara, termite and
-# qrouting arms, #563), mesh (the 802.11s hwmp arm, #708) and flow-monitor enabled
+# oracle (the #296 shortest-path control), adaptive (the ara, termite,
+# qrouting and beeadhoc arms, #563), mesh (the 802.11s hwmp arm, #708) and flow-monitor enabled
 ./ns3 configure --enable-examples \
   --enable-modules='anthocnet;aomdv;gpsr;oracle;adaptive;routing-bench;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
 ./ns3 build

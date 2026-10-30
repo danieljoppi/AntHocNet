@@ -15,8 +15,9 @@ three gates before an arm's numbers count.
 | `ara` | ARA, Güneş, Sorges, Bouazizi, IWAHN 2002 | swarm (reactive ACO) | [#586](https://github.com/danieljoppi/AntHocNet/issues/586) |
 | `termite` | Termite, Roth & Wicker, GLOBECOM 2003 / Roth 2005 | stigmergic | [#587](https://github.com/danieljoppi/AntHocNet/issues/587) |
 | `qrouting` | Q-routing, Boyan & Littman, NIPS 6 (1994) | learned (tabular) | [#588](https://github.com/danieljoppi/AntHocNet/issues/588) |
+| `beeadhoc` | BeeAdHoc, Wedde, Farooq et al., GECCO 2005; written from the authors' PG 460 report (2006) | swarm (bee-inspired, source routing) | [#589](https://github.com/danieljoppi/AntHocNet/issues/589) (v2.7.0) |
 
-The three are one module because they share all of their ns-3 plumbing
+The four are one module because they share all of their ns-3 plumbing
 (`model/adaptive-routing-base.{h,cc}`), and none of it is routing policy. Each
 arm is its own class, with its own TypeId, attributes and UDP port. None
 shares code with the AntHocNet adapter or `core/`. The #244 ablation
@@ -29,11 +30,11 @@ Before any arm's numbers count, it must clear three gates (AGENTS.md
 paper's headline trend. The anchors are pre-registered and run separately;
 their verdicts land on each arm's issue and on the v2.5.0 comparator page.
 
-## Shared plumbing (all three arms)
+## Shared plumbing (all four arms)
 
 | What | How | Why |
 |---|---|---|
-| Control traffic | One UDP socket per interface (unicast plus subnet broadcast), TTL 1, ports 5541 / 5542 / 5543 | The harnesses count routing control as UDP not addressed to the data port, the same rule as every other arm |
+| Control traffic | One UDP socket per interface (unicast plus subnet broadcast), TTL 1, ports 5541 / 5542 / 5543 / 5544 | The harnesses count routing control as UDP not addressed to the data port, the same rule as every other arm |
 | No route yet | The packet is bounced through loopback and held with its forwarding callbacks: 64 packets, 30 s (ns-3 AODV's defaults); dropped through the error callback, which FlowMonitor books as a route drop | The AODV pattern, so held-packet loss lands in the same drop column for every arm |
 | Previous hop | The sender stamps a `PrevHopTag` (its address and its upstream) on every data packet | All three papers learn per neighbour from data. A real node reads the sender from the link-layer source address, which ns-3's `RouteInput` does not expose. A tag adds no bytes, like the MAC address it stands in for |
 | Link failure | WifiMac `DroppedMpdu` at the retry limit, resolved to the neighbour's IP through the ARP cache | ARA §3.3 ("missing acknowledgement"), Termite's lost neighbour. Same detector as the AntHocNet adapter's ADR-0008 detector D |
@@ -127,6 +128,48 @@ paths, which congests the central nodes. The anchor runs the repo's static
 mesh against the oracle arm (global shortest path) at low and high offered
 load.
 
+## BeeAdHoc — fidelity sheet
+
+Source: H. F. Wedde, M. Farooq (instructors) et al., *BeeAdHoc: an Efficient,
+Secure and Scalable Routing Framework for Mobile AdHoc Networks*, Project Group
+460 final report, University of Dortmund, 2006 (open:
+[hdl 2003/22405](https://hdl.handle.net/2003/22405)). The report describes
+three versions: the ns-2 simulation (ch. 3), a formal multi-agent model with
+swarms (ch. 4), and a Linux kernel module (ch. 12–13). The arm follows the
+**Linux module**, the only one the report specifies down to its data
+structures, constants (§14.3.2) and listings. The GECCO 2005 paper
+(DOI 10.1145/1068009.1068034) was not available; nothing below rests on it.
+
+| Report | Implementation | Status |
+|---|---|---|
+| §12.1.2 strict source routing: the source writes the whole route into the packet; intermediate nodes follow it | A `BeeRouteTrailer` (route, 24-bit info field, an optional piggybacked forager) on every data packet; the destination strips it before local delivery | as written; **a trailer, not an IP option**: the application header stays first, so the harness classifies flows unchanged. Its bytes (4 per node + 3 + 2) are on the air, so `nrl_bytes` pays for them |
+| §12.1.2 longest route 10 hops (40 bytes of IP options) | `MaxHops` 10 | as written |
+| §12.1.2 / Listing 13.7 each forwarding host shifts the 24-bit info field left 3 bits and writes its 3-bit battery level | Same, at every intermediate hop | as written; **the level is always 7**: the harness's energy model is reporting-only and no node depletes within a run |
+| §12.1.3 INPUT chain: every delivered packet is a forager that can find its way back to its source | The destination stores the reversed route as a 'foreign' forager for the source | as written |
+| Listing 13.15 rating: direct neighbour `MAX_DANCES`, else ((MAXHOPS − (len − 1)) · min · avg + 1) / 44 | Same, integer arithmetic; `len` read as links and the values as the intermediate hops' | **interpretation**: the listing counts the route length without saying in what. **Capped** at `MAX_DANCES` (8); the listing does not cap, which would rate a 2-hop route (10) above a direct link (8) |
+| Listing 13.17 a random forager; still dancing (dances left, younger than `FORAGER_DANCETIME`) → copied, dances − 1; otherwise used up; older than `FORAGER_LIFETIME` → discarded unless the last | Same (`ForagerStore::Take`) | as written; lifetime 2 s, dance time 2 s, max dances 8 (§14.3.2) |
+| §13.7.1 'own' foragers are used first, 'foreign' ones when none are left | Same | as written |
+| §13.7.1 with two-way traffic the foragers ride home on the reply traffic | One foreign forager piggybacked per data packet toward its owner | **one per packet is a repository choice**: the report says only that they are piggybacked |
+| §13.7.2 Listing 13.30: a swarm leaves when foreign foragers > `SWARMSIZE` and own < `SWARMSIZE_OWN` | Same; `SWARMSIZE` (20) foragers in one source-routed packet, unpacked at home with routes reversed | as written (20, 11) |
+| §13.5 scout: broadcast, each node appends itself, a seen list of (source, destination, id), the destination reverses the route and unicasts the scout back (mode 2), the source turns it into a forager | Same; relays jittered by U[0, 10 ms) (§3.4 adds a random delay, no value given) | as written; seen list 30 entries (`SCOUTLISTLENGTH`); jitter **not given** |
+| §13.5 expanding ring search: no scout back within `SCOUTRESENDRATE` → another scout with a new id and a wider TTL | Resend after 500 ms, TTL 2 → 4 → 8 → 10, two rounds at 10, then the held packets are dropped | 500 ms as written (500 jiffies at HZ = 1000); **initial TTL, growth and the give-up are not given** |
+| `IPT_BEEADHOC_ARRAYSIZE`, `MAXAGE` (forager array size, garbage collection) | 64 foragers per destination and kind; no separate age-out (the lifetime rule discards on use) | **not given** |
+| three forager types (energy, delay, throughput) | one (energy) | **deviation**: the Linux module collects only energy (§13.3) |
+| a failed next link | The packet is dropped (booked as a route drop); every forager over that link is removed; the source picks another route for its own packet | **no salvage is described**; the removal is a repository choice |
+| ns-2 dance floor, packers, swarm leader / recruiter (ch. 3–4) | not implemented | the Linux module replaces them with the forager array and the swarm trigger |
+| BeeGuard / security (ch. 8–11) | not implemented | out of scope here; v3.2.0's BeeSec/BeeAIS arms build on this one |
+
+Delivery smoke (ns-3.42, `--scenario=paper --nNodes=20 --time=60`):
+UDP, two seeds, PDR 93.4 % (AODV 90.7 %), drop book sum 100.00; TCP, one
+seed, 95.5 % (AODV 94.0 %), sum 100.01.
+
+Anchor: the GECCO 2005 headline (fewer control packets and less energy than
+DSR, AODV and DSDV) is the citation of record, and it is still unread. PG 460
+ch. 7 runs its own comparison with AODV, DSR and DSDV (energy per user data,
+delay, throughput, control packets, delivery ratio). That is the candidate to
+pre-register if GECCO 2005 stays out of reach; otherwise the arm ships as an
+infeasibility verdict, as Termite and Q-routing did.
+
 ## ns-3 version notes
 
 `CMakeLists.txt` defines `ADAPTIVE_NS3_ROUTEINPUT_BYVALUE` (ns-3 ≤ 3.36:
@@ -135,4 +178,5 @@ load.
 public header falls back to probing `ns3/wifi-mpdu.h` for out-of-module
 includers. The unit tests (`./test.py -s adaptive`) check the table
 arithmetic, the selection rules and the header round trip against
-hand-computed values.
+hand-computed values, and BeeAdHoc's route rating, forager store and packet
+formats the same way.

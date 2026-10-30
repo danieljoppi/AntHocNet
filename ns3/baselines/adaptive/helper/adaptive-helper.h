@@ -22,7 +22,7 @@ namespace ns3 {
 
 class AdaptiveHelper : public Ipv4RoutingHelper {
 public:
-    /// `typeId`: ns3::adaptive::{Ara,Termite,QRouting}RoutingProtocol.
+    /// `typeId`: ns3::adaptive::{Ara,Termite,QRouting,BeeAdHoc}RoutingProtocol.
     explicit AdaptiveHelper(const std::string& typeId);
 
     AdaptiveHelper* Copy() const override;

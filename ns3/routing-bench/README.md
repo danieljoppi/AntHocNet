@@ -25,7 +25,7 @@ it depends on none of them.
 
 The other arms live in their own modules, each in one
 `helper/<module>-bench-arms.cc`: `anthocnet`, `aomdv`, `gpsr` (`gpsr`, `gpcr`,
-`gpsr3d`), `oracle` and `adaptive` (`ara`, `termite`, `qrouting`).
+`gpsr3d`), `oracle` and `adaptive` (`ara`, `termite`, `qrouting`, `beeadhoc`).
 
 ## Registering an arm
 

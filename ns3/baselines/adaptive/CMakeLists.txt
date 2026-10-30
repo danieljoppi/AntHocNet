@@ -49,6 +49,7 @@ build_lib(
     model/ara-routing-protocol.cc
     model/termite-routing-protocol.cc
     model/qrouting-routing-protocol.cc
+    model/beeadhoc-routing-protocol.cc
     helper/adaptive-helper.cc
   HEADER_FILES
     model/adaptive-routing-base.h
@@ -57,6 +58,7 @@ build_lib(
     model/ara-routing-protocol.h
     model/termite-routing-protocol.h
     model/qrouting-routing-protocol.h
+    model/beeadhoc-routing-protocol.h
     helper/adaptive-helper.h
   LIBRARIES_TO_LINK
     ${adaptive_bench_libs}
