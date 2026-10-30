@@ -21,25 +21,32 @@
 #                (#121/#123), which is the *only* reason it exists.
 # `default` deliberately passes NO `-d` flag at all, so the default images are
 # built by byte-identical configure command lines to the ones used before #123.
-ARG UBUNTU=22.04
-
 # --- base: plain ns-3, no AntHocNet ----------------------------------------
 # A clean simulator build with the comparison protocols (AODV/OLSR/DSDV/…) for
 # running baselines without our protocol.
-FROM ubuntu:${UBUNTU} AS base
+#
+# The base image is pinned by digest, not only by tag (#787): a tag can be
+# repointed, and these images build every published number. Dependabot's
+# docker ecosystem bumps the digest. It is the ubuntu:22.04 index the images
+# were already built from (2026-10-30), so pinning it changed nothing.
+FROM ubuntu:22.04@sha256:076e7bf82319619f28dd0aa9c02ab34b055ad37100395b4f49a2ffba04fb5e11 AS base
 
 ARG NS3_VERSION=ns-3.42
 ARG NS3_PROFILE=default
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Recent ns-3 (3.47/3.48) require CMake >= 3.25, newer than Ubuntu 22.04's
-# 3.22; install a current CMake from PyPI instead of apt. gcc-11 stays — it
-# spans the whole supported range (ns-3.36 … ns-3.48), and newer CMake honors
-# each tree's own cmake_minimum_required range, so the older trees still build.
+# 3.22; install CMake from PyPI instead of apt. gcc-11 stays — it spans the
+# whole supported range (ns-3.36 … ns-3.48), and newer CMake honors each
+# tree's own cmake_minimum_required range, so the older trees still build.
+# The version and its sha256 hashes come from requirements/cmake.txt
+# (--require-hashes, #787): 4.4.4, the version `cmake>=3.25` resolved to in
+# the images published before the pin.
+COPY requirements/cmake.txt /tmp/cmake-requirements.txt
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates git make g++ python3 python3-pip ninja-build \
-    && pip3 install --no-cache-dir 'cmake>=3.25' \
-    && rm -rf /var/lib/apt/lists/*
+    && pip3 install --no-cache-dir --require-hashes -r /tmp/cmake-requirements.txt \
+    && rm -rf /var/lib/apt/lists/* /tmp/cmake-requirements.txt
 
 # Examples only, no --enable-tests: the image just needs the libraries and a
 # runnable example. Building the stock modules' test suites drags in cross-module
