@@ -1,0 +1,237 @@
+# v270b campaign grid-rwp-tworay-v270b-giveup4: 2 run(s): 41068457518 (giveup4/grid-rwp-tworay-s1) / 41068476169 (giveup4/grid-rwp-tworay-s6); ref main
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=paper nNodes=50 time=900 runs=5 firstRun=1 areaX=1500 areaY=300 speed=20 pause=30 range=300 propagation=tworay mobility=rwp transport=udp flows=20 cbrBps=512 offTime=0 rateManager=constant2 protocols=beeadhoc
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr P2pHelloEvery=1
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ShareKinematics=false
+##CONFIG## attr EnableLinkLifetime=false
+##CONFIG## attr LinkLifetimeRange=250
+##CONFIG## attr LinkLifetimeHorizon=3
+##CONFIG## attr LinkLifetimeFloor=0.05
+##CONFIG## attr EnableQuietMode=true
+##CONFIG## attr QuietTolerance=0.2
+##CONFIG## attr QuietBackoffFactor=2
+##CONFIG## attr QuietMaxBackoff=8
+##CONFIG## attr EnableAdaptiveEvaporation=false
+##CONFIG## attr AdaptiveEvapRefChurn=0.1
+##CONFIG## attr AdaptiveEvapMin=0.25
+##CONFIG## attr AdaptiveEvapMax=4
+##CONFIG## attr AdaptiveEvapTau=10
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+##DROPID## 1 beeadhoc hopTx=26301 hopRx=25651 ackedHops=25650 macDrops=620 reinjected=551 macTerminal=69 macLost=619 queue=0 hopLoss=650 overlap=0 unackedRx=1 recovered=582 recoveredPkts=546 delivered=14958 termMac=69 termRoute=600 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag beeadhoc seed=1 pdr=95.72 firstDeliveryS=26.81 ctrlTx=156413 setupMedS=1.56 setupMaxS=3.54 flowsNoDelivery=0
+##RUN## 1 beeadhoc 95.7 59.1 1062.5 12.23 10.46 94.40 2.5 528.5 6.5659
+##HOLD## 1 beeadhoc 29 569.65 2531.16 3921 172.60 3050.88 0 0.00 0.00
+##AIR## 1 beeadhoc 184.920 2779.951 1424.252 9.7536
+##ENERGY## 1 beeadhoc 37238.835 2.489560 4.8624e-03 0.628
+##GOODPUT## 1 beeadhoc 8.509
+##ROUTE## 1 beeadhoc 1.5560 3.5373 0 0.17733 4.000 2649 1.6854 1.6854
+##DROPID## 2 beeadhoc hopTx=27236 hopRx=26552 ackedHops=26552 macDrops=632 reinjected=571 macTerminal=61 macLost=632 queue=0 hopLoss=684 overlap=0 unackedRx=0 recovered=623 recoveredPkts=577 delivered=14978 termMac=61 termRoute=794 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag beeadhoc seed=2 pdr=94.60 firstDeliveryS=2.94 ctrlTx=170717 setupMedS=1.56 setupMaxS=4.04 flowsNoDelivery=0
+##RUN## 2 beeadhoc 94.6 55.5 1053.5 12.25 11.40 90.00 1.5 533.5 7.1553
+##HOLD## 2 beeadhoc 33 679.71 3027.57 3926 167.84 3036.05 0 0.00 0.00
+##AIR## 2 beeadhoc 198.324 3054.922 1562.252 10.7011
+##ENERGY## 2 beeadhoc 37281.113 2.489058 4.8614e-03 0.503
+##GOODPUT## 2 beeadhoc 8.521
+##ROUTE## 2 beeadhoc 1.5576 4.0362 0 0.19160 4.000 2866 1.7346 1.7346
+##DROPID## 3 beeadhoc hopTx=27060 hopRx=26416 ackedHops=26416 macDrops=589 reinjected=527 macTerminal=62 macLost=589 queue=0 hopLoss=644 overlap=0 unackedRx=0 recovered=582 recoveredPkts=535 delivered=15863 termMac=62 termRoute=541 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag beeadhoc seed=3 pdr=96.34 firstDeliveryS=3.53 ctrlTx=159738 setupMedS=1.55 setupMaxS=3.05 flowsNoDelivery=0
+##RUN## 3 beeadhoc 96.3 51.9 1054.5 12.97 10.07 83.74 1.5 50.5 6.2955
+##HOLD## 3 beeadhoc 30 560.55 2033.51 4146 149.44 3059.38 0 0.00 0.00
+##AIR## 3 beeadhoc 187.464 2881.058 1463.158 10.0704
+##ENERGY## 3 beeadhoc 37219.699 2.346322 4.5827e-03 0.563
+##GOODPUT## 3 beeadhoc 9.024
+##ROUTE## 3 beeadhoc 1.5549 3.0539 0 0.16828 4.000 2666 1.6407 1.6407
+##DROPID## 4 beeadhoc hopTx=28443 hopRx=27647 ackedHops=27646 macDrops=743 reinjected=678 macTerminal=65 macLost=742 queue=0 hopLoss=796 overlap=0 unackedRx=1 recovered=732 recoveredPkts=682 delivered=15054 termMac=65 termRoute=898 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag beeadhoc seed=4 pdr=93.99 firstDeliveryS=3.18 ctrlTx=171554 setupMedS=1.56 setupMaxS=5.02 flowsNoDelivery=0
+##RUN## 4 beeadhoc 94.0 63.6 1061.5 12.31 11.40 103.85 2.5 540.5 7.2035
+##HOLD## 4 beeadhoc 28 460.08 2021.33 3997 187.52 3004.62 0 0.00 0.00
+##AIR## 4 beeadhoc 201.716 3011.737 1525.556 10.5311
+##ENERGY## 4 beeadhoc 37253.803 2.474678 4.8334e-03 0.396
+##GOODPUT## 4 beeadhoc 8.564
+##ROUTE## 4 beeadhoc 1.5575 5.0174 0 0.19423 4.000 2920 1.7946 1.7946
+##DROPID## 5 beeadhoc hopTx=29392 hopRx=28532 ackedHops=28532 macDrops=793 reinjected=700 macTerminal=93 macLost=793 queue=0 hopLoss=860 overlap=0 unackedRx=0 recovered=767 recoveredPkts=709 delivered=15519 termMac=93 termRoute=789 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag beeadhoc seed=5 pdr=94.62 firstDeliveryS=6.99 ctrlTx=167776 setupMedS=2.03 setupMaxS=4.06 flowsNoDelivery=0
+##RUN## 5 beeadhoc 94.6 59.5 1052.5 12.69 10.81 97.28 2.5 534.5 6.8244
+##HOLD## 5 beeadhoc 36 752.61 3043.64 4098 177.28 3037.73 0 0.00 0.00
+##AIR## 5 beeadhoc 199.711 2956.514 1505.086 10.3585
+##ENERGY## 5 beeadhoc 37262.414 2.401083 4.6896e-03 0.549
+##GOODPUT## 5 beeadhoc 8.829
+##ROUTE## 5 beeadhoc 2.0273 4.0567 0 0.19543 4.000 3029 1.7961 1.7961
+##MATCH## 1 beeadhoc 14958 14958 1062.5 1062.5
+##MATCH## 2 beeadhoc 14978 14978 1053.5 1053.5
+##MATCH## 3 beeadhoc 15863 15863 1054.5 1054.5
+##MATCH## 4 beeadhoc 15054 15054 1061.5 1061.5
+##MATCH## 5 beeadhoc 15519 15519 1052.5 1052.5
+##COMMON## 1 beeadhoc 14958 14958 1062.1 59.1 na 1.685 na
+##COMMON## 2 beeadhoc 14978 14978 1053.6 55.5 na 1.735 na
+##COMMON## 3 beeadhoc 15863 15863 1055.0 51.9 na 1.641 na
+##COMMON## 4 beeadhoc 15054 15054 1061.3 63.6 na 1.795 na
+##COMMON## 5 beeadhoc 15519 15519 1052.9 59.5 na 1.796 na
+AntHocNet protocol comparison (mean of 5 run(s))
+  nodes=50 time=900.000s area=1500.000x300.000m maxSpeed=20.000m/s pause=30.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+beeadhoc        95.1       57.9       1056.9        12.49   10.83       93.85         2.1       437.5       6.809     37251.2      2.4401        1.73      0.9950       265.24
+# paths beeadhoc divUsed=1.405 divMax=6.4 entropyBits=0.266 windowS=10.0 hopsMean=1.73 hopsMax=7.6
+# energy beeadhoc initJ=5000.0 resMinJ=4254.0 resMeanJ=4255.0 resSdJ=0.528 firstDeathS=-1.0
+# drops beeadhoc pdr=95.05 route=4.51 queue=0.00 mac=0.44 chan=0.00 ttl=0.00 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# stddev beeadhoc pdr=0.95 delay=4.4 delay99=4.7 nrl=0.583 nrl_bytes=0.387
+# reorder beeadhoc ratio=0.0014 ratioWorstFlow=0.0084 extentMean=1.78 extentMax=3.40 bufMax=2.60
+##ARGS## routing-compare --scenario=paper --runs=5 --nNodes=50 --time=900 --areaX=1500 --pause=30 --speed=20 --propagation=tworay --range=300 --areaY=300 --diag --mobility=rwp --transport=udp --protocols=beeadhoc --firstRun=1 --ns3::adaptive::BeeAdHocRoutingProtocol::MaxRoundsAtMaxTtl=4
+##PROV## commit=a728cf4cf4d46f1433b806c25b20a50b19c7ff59 ref=main run_id=41068457518 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=routing-compare
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+##CONFIG## scenario=paper nNodes=50 time=900 runs=5 firstRun=6 areaX=1500 areaY=300 speed=20 pause=30 range=300 propagation=tworay mobility=rwp transport=udp flows=20 cbrBps=512 offTime=0 rateManager=constant2 protocols=beeadhoc
+##CONFIG## attr HelloInterval=+1e+09ns
+##CONFIG## attr ProactiveInterval=+1e+10ns
+##CONFIG## attr TimerJitter=0.05
+##CONFIG## attr Alpha=0.7
+##CONFIG## attr BetaAnts=20
+##CONFIG## attr BetaData=20
+##CONFIG## attr Gamma=0.7
+##CONFIG## attr HopCountAlpha=0
+##CONFIG## attr EnableProactive=true
+##CONFIG## attr EnableDiffusion=true
+##CONFIG## attr EnableReactive=true
+##CONFIG## attr EnableRepair=true
+##CONFIG## attr EnableLinkFail=true
+##CONFIG## attr P2pHelloEvery=1
+##CONFIG## attr EnableDirectedReactive=false
+##CONFIG## attr ShareKinematics=false
+##CONFIG## attr EnableLinkLifetime=false
+##CONFIG## attr LinkLifetimeRange=250
+##CONFIG## attr LinkLifetimeHorizon=3
+##CONFIG## attr LinkLifetimeFloor=0.05
+##CONFIG## attr EnableQuietMode=true
+##CONFIG## attr QuietTolerance=0.2
+##CONFIG## attr QuietBackoffFactor=2
+##CONFIG## attr QuietMaxBackoff=8
+##CONFIG## attr EnableAdaptiveEvaporation=false
+##CONFIG## attr AdaptiveEvapRefChurn=0.1
+##CONFIG## attr AdaptiveEvapMin=0.25
+##CONFIG## attr AdaptiveEvapMax=4
+##CONFIG## attr AdaptiveEvapTau=10
+##CONFIG## attr ProactiveBroadcastProb=0.1
+##CONFIG## attr ProactiveVirtualMargin=0
+##CONFIG## attr MaxHelloAdverts=10
+##CONFIG## attr SessionTtl=5
+##CONFIG## attr TxFailureThreshold=3
+##CONFIG## attr EnableMacFailureDetector=true
+##CONFIG## attr MaxReinjectPerPacket=0
+##CONFIG## attr RepairWaitFactor=5
+##CONFIG## attr RepairTimeout=1
+##CONFIG## attr HopTime=0.003
+##CONFIG## attr EnableMultipath=true
+##CONFIG## attr AntAcceptanceFactor=0.9
+##CONFIG## attr AntAcceptanceFactorNewHop=2
+##CONFIG## attr LinkfailNotifyInterval=5
+##CONFIG## attr QueueTimeout=+3e+09ns
+##CONFIG## attr ReconvHoldCap=+2e+08ns
+##CONFIG## attr RepairHoldCap=+0ns
+##CONFIG## attr ReactiveRetryInterval=+2.5e+08ns
+##CONFIG## attr MacServiceAlpha=0.7
+##CONFIG## attr EnableMacMetric=false
+##CONFIG## attr LinkMetric=classic
+##CONFIG## attr SinrCriticalDb=17
+##CONFIG## attr SinrPenaltyCost=3
+##DROPID## 6 beeadhoc hopTx=27612 hopRx=26863 ackedHops=26863 macDrops=691 reinjected=626 macTerminal=65 macLost=691 queue=0 hopLoss=749 overlap=0 unackedRx=0 recovered=684 recoveredPkts=643 delivered=15353 termMac=65 termRoute=736 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag beeadhoc seed=6 pdr=95.04 firstDeliveryS=25.22 ctrlTx=161958 setupMedS=1.55 setupMaxS=7.05 flowsNoDelivery=0
+##RUN## 6 beeadhoc 95.0 55.7 1055.5 12.56 10.55 88.32 1.5 530.5 6.6256
+##HOLD## 6 beeadhoc 29 562.35 3040.04 4027 165.97 3065.94 0 0.00 0.00
+##AIR## 6 beeadhoc 190.472 2870.485 1453.019 10.0311
+##ENERGY## 6 beeadhoc 37240.631 2.425626 4.7376e-03 0.616
+##GOODPUT## 6 beeadhoc 8.734
+##ROUTE## 6 beeadhoc 1.5494 7.0544 0 0.17844 4.000 2736 1.7124 1.7124
+##DROPID## 7 beeadhoc hopTx=27709 hopRx=26962 ackedHops=26961 macDrops=684 reinjected=618 macTerminal=66 macLost=683 queue=0 hopLoss=747 overlap=0 unackedRx=1 recovered=682 recoveredPkts=632 delivered=15503 termMac=66 termRoute=803 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag beeadhoc seed=7 pdr=94.69 firstDeliveryS=22.47 ctrlTx=172126 setupMedS=1.57 setupMaxS=4.03 flowsNoDelivery=0
+##RUN## 7 beeadhoc 94.7 54.8 1054.5 12.68 11.10 88.56 2.5 532.5 6.9567
+##HOLD## 7 beeadhoc 28 389.25 1071.76 4092 164.20 3045.26 0 0.00 0.00
+##AIR## 7 beeadhoc 200.583 3051.222 1562.952 10.6995
+##ENERGY## 7 beeadhoc 37237.941 2.401983 4.6914e-03 0.487
+##GOODPUT## 7 beeadhoc 8.819
+##ROUTE## 7 beeadhoc 1.5711 4.0303 0 0.18394 4.000 2848 1.7051 1.7051
+##DROPID## 8 beeadhoc hopTx=27702 hopRx=26977 ackedHops=26976 macDrops=673 reinjected=608 macTerminal=65 macLost=672 queue=0 hopLoss=725 overlap=0 unackedRx=1 recovered=661 recoveredPkts=618 delivered=15358 termMac=65 termRoute=663 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag beeadhoc seed=8 pdr=95.47 firstDeliveryS=17.25 ctrlTx=157615 setupMedS=1.56 setupMaxS=2.61 flowsNoDelivery=0
+##RUN## 8 beeadhoc 95.5 49.4 1043.5 12.56 10.26 82.21 1.5 79.5 6.4444
+##HOLD## 8 beeadhoc 28 479.58 1581.23 4018 158.07 3061.22 0 0.00 0.00
+##AIR## 8 beeadhoc 186.205 2862.344 1449.506 9.9957
+##ENERGY## 8 beeadhoc 37214.903 2.423161 4.7327e-03 0.559
+##GOODPUT## 8 beeadhoc 8.737
+##ROUTE## 8 beeadhoc 1.5617 2.6099 0 0.18627 4.000 2857 1.7194 1.7194
+##DROPID## 9 beeadhoc hopTx=28583 hopRx=27781 ackedHops=27781 macDrops=736 reinjected=653 macTerminal=83 macLost=736 queue=0 hopLoss=802 overlap=0 unackedRx=0 recovered=719 recoveredPkts=667 delivered=15764 termMac=83 termRoute=741 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag beeadhoc seed=9 pdr=95.03 firstDeliveryS=1.25 ctrlTx=162347 setupMedS=1.55 setupMaxS=5.01 flowsNoDelivery=0
+##RUN## 9 beeadhoc 95.0 50.8 1040.5 12.89 10.30 84.97 1.5 529.5 6.4689
+##HOLD## 9 beeadhoc 26 433.16 1546.53 4112 156.98 3028.73 0 0.00 0.00
+##AIR## 9 beeadhoc 192.062 2933.034 1468.434 10.2078
+##ENERGY## 9 beeadhoc 37227.631 2.361560 4.6124e-03 0.541
+##GOODPUT## 9 beeadhoc 8.968
+##ROUTE## 9 beeadhoc 1.5493 5.0105 0 0.18045 4.000 2841 1.7190 1.7190
+##DROPID## 10 beeadhoc hopTx=24420 hopRx=23817 ackedHops=23817 macDrops=535 reinjected=492 macTerminal=43 macLost=535 queue=0 hopLoss=603 overlap=0 unackedRx=0 recovered=560 recoveredPkts=517 delivered=15086 termMac=43 termRoute=544 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0
+# diag beeadhoc seed=10 pdr=96.25 firstDeliveryS=20.61 ctrlTx=151471 setupMedS=2.03 setupMaxS=6.01 flowsNoDelivery=0
+##RUN## 10 beeadhoc 96.3 48.4 1049.5 12.34 10.04 76.71 1.5 45.5 6.2363
+##HOLD## 10 beeadhoc 28 429.11 2026.86 3899 139.36 3069.90 0 0.00 0.00
+##AIR## 10 beeadhoc 175.659 2722.677 1383.497 9.5152
+##ENERGY## 10 beeadhoc 37205.344 2.466217 4.8168e-03 0.519
+##GOODPUT## 10 beeadhoc 8.582
+##ROUTE## 10 beeadhoc 2.0320 6.0106 0 0.16401 3.000 2471 1.5585 1.5585
+##MATCH## 6 beeadhoc 15353 15353 1055.5 1055.5
+##MATCH## 7 beeadhoc 15503 15503 1054.5 1054.5
+##MATCH## 8 beeadhoc 15358 15358 1043.5 1043.5
+##MATCH## 9 beeadhoc 15764 15764 1040.5 1040.5
+##MATCH## 10 beeadhoc 15086 15086 1049.5 1049.5
+##COMMON## 6 beeadhoc 15353 15353 1056.5 55.7 na 1.712 na
+##COMMON## 7 beeadhoc 15503 15503 1054.6 54.8 na 1.705 na
+##COMMON## 8 beeadhoc 15358 15358 1043.9 49.4 na 1.719 na
+##COMMON## 9 beeadhoc 15764 15764 1040.9 50.8 na 1.719 na
+##COMMON## 10 beeadhoc 15086 15086 1049.4 48.4 na 1.558 na
+AntHocNet protocol comparison (mean of 5 run(s))
+  nodes=50 time=900.000s area=1500.000x300.000m maxSpeed=20.000m/s pause=30.000s flows=20
+
+protocol        PDR%  delay(ms)  delay99(ms) thrput(kbps)     NRL  jitter(ms)  dOff50(ms)  dOff90(ms)    nrlBytes   energy(J)       J/pkt        hops        jain   jitterEq51
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+beeadhoc        95.3       51.8       1048.7        12.60   10.45       84.16         1.7       343.5       6.546     37225.3      2.4157        1.68      0.9957       242.35
+# paths beeadhoc divUsed=1.402 divMax=6.6 entropyBits=0.264 windowS=10.0 hopsMean=1.68 hopsMax=6.6
+# energy beeadhoc initJ=5000.0 resMinJ=4254.4 resMeanJ=4255.5 resSdJ=0.544 firstDeathS=-1.0
+# drops beeadhoc pdr=95.30 route=4.30 queue=0.00 mac=0.40 chan=0.00 ttl=0.00 sum=100.00 other=0.00 [route: setup=- reconv=- repair=-]
+# stddev beeadhoc pdr=0.60 delay=3.3 delay99=6.6 nrl=0.407 nrl_bytes=0.268
+# reorder beeadhoc ratio=0.0011 ratioWorstFlow=0.0063 extentMean=1.97 extentMax=3.60 bufMax=2.40
+##ARGS## routing-compare --scenario=paper --runs=5 --nNodes=50 --time=900 --areaX=1500 --pause=30 --speed=20 --propagation=tworay --range=300 --areaY=300 --diag --mobility=rwp --transport=udp --protocols=beeadhoc --firstRun=6 --ns3::adaptive::BeeAdHocRoutingProtocol::MaxRoundsAtMaxTtl=4
+##PROV## commit=a728cf4cf4d46f1433b806c25b20a50b19c7ff59 ref=main run_id=41068476169 attempt=1 image=ghcr.io/danieljoppi/ns3:3.42-opt profile=release harness=routing-compare
