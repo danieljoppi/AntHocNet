@@ -131,8 +131,9 @@ void TakeStreams(int64_t& next, int64_t base, int64_t used, const char* what) {
 // #352 (DSDV's missing AssignStreams wrapper) and #510 (OLSR's source
 // refusals) live with their arms in routing-bench now (ADR-0027, #766).
 
-uint64_t g_controlPkts = 0;   // routing-control packets transmitted this run
-uint64_t g_controlBytes = 0;  // #132: routing-control bytes transmitted this run
+uint64_t g_controlPkts = 0;     // routing-control packets transmitted this run
+uint64_t g_controlBytes = 0;    // #132: routing-control bytes transmitted this run
+double g_deliveredBytes = 0.0;  // #808: FlowMonitor rxBytes, for EmitRunNote
 
 // Ipv4L3Protocol "Tx" trace: one call per IP packet sent out an interface (each
 // hop). Count the non-data UDP packets as routing control. Bytes are the full
@@ -1394,6 +1395,7 @@ public:
     explicit HarnessMeasurement(const NodeContainer& nodes) : m_nodes(nodes) {}
     uint64_t ControlPackets() const override { return g_controlPkts; }
     uint64_t ControlBytes() const override { return g_controlBytes; }
+    double DeliveredDataBytes() const override { return g_deliveredBytes; }
     // #386: re-injection identity & fate. The l3Drop stage is an isolated
     // connect, cuttable with CountReinjL3Drop if a CI ns-3 version rejects
     // the "Drop" signature.
@@ -1480,6 +1482,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     int64_t stream = streamBase;
     g_controlPkts = 0;
     g_controlBytes = 0;
+    g_deliveredBytes = 0.0;
     g_meshPeeringPkts = g_meshBeacons = 0;  // #708
     // ADR-0027: a fresh arm per run, like every helper (the oracle's owns
     // this run's ground-truth graph, #296). An unknown arm aborts here rather
@@ -2357,6 +2360,7 @@ Result RunOne(const std::string& proto, const Params& P, uint32_t seed) {
     // #132: same IP-layer counting point as nrl, but in bytes; delivered data
     // bytes are the FlowMonitor rxBytes already summed for throughput.
     r.nrlBytes = totalRxBytes > 0.0 ? static_cast<double>(g_controlBytes) / totalRxBytes : 0.0;
+    g_deliveredBytes = totalRxBytes;
     // #708: a per-run note of the arm's (hwmp: the mesh's link maintenance,
     // which NRL does not count, so a reader can see its size beside the path
     // selection).
