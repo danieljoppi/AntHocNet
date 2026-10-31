@@ -134,6 +134,11 @@ public:
 
     static const uint16_t BEEADHOC_PORT = 5544;
 
+    // A packet this node originates is never routed here: the base bounces it
+    // through loopback and it leaves from the hold queue (see the .cc).
+    Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p, const Ipv4Header& header, Ptr<NetDevice> oif,
+                               Socket::SocketErrno& sockerr) override;
+
     uint64_t ScoutsSent() const { return m_scoutsSent; }
 
     uint64_t SwarmsSent() const { return m_swarmsSent; }
@@ -211,6 +216,7 @@ private:
     std::map<Ipv4Address, Time> m_neighbors;                            // last heard
     std::map<Ipv4Address, Time> m_failed;                               // link down until
     Callback<double> m_energyProbe;
+    bool m_inRouteOutput;
     uint32_t m_scoutId;
     uint64_t m_scoutsSent;
     uint64_t m_swarmsSent;

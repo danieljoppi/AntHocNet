@@ -272,6 +272,12 @@ DROPID_REINJ_FIELDS = re.compile(
 # negative if one packet was booked in two classes.
 DROPID_FATE = re.compile(
     r"^\s*##DROPID##\s+(\d+)\s+([a-z][\w-]*)\s+.*\bunseen=(-?\d+)\b")
+# #800: the same tail's `delivered` (distinct (flow, seq) keys at the sinks)
+# against ##MATCH##'s rxSelf (every FlowMonitor delivery). More deliveries
+# than distinct packets means the arm delivers copies, and its PDR counts them.
+DROPID_DELIVERED = re.compile(
+    r"^\s*##DROPID##\s+(\d+)\s+([a-z][\w-]*)\s+.*\bdelivered=(\d+)\b")
+MATCH_RX = re.compile(r"^\s*##MATCH##\s+(\d+)\s+([a-z][\w-]*)\s+(\d+)\s")
 # #386: re-injection identity/fate, one row per (seed, anthocnet) on UDP cells.
 #   ##REINJ## <seed> <proto> events=.. parsed=.. unparsedIcmp=..
 #     unparsedOther=.. ofDelivered=.. pkts=.. pktsDelivBefore=..
@@ -1753,7 +1759,15 @@ def check_drop_identity(path):
     if "##DROPID##" not in text:
         return
     worst = {}
+    distinct = {}
+    rx_self = {}
     for line in text.splitlines():
+        dm = DROPID_DELIVERED.match(line)
+        if dm:
+            distinct[(dm.group(1), dm.group(2))] = int(dm.group(3))
+        mm = MATCH_RX.match(line)
+        if mm:
+            rx_self[(mm.group(1), mm.group(2))] = int(mm.group(3))
         # #761: the per-packet partition must not exceed the offered packets.
         fm = DROPID_FATE.match(line)
         if fm and int(fm.group(3)) < 0:
@@ -1773,6 +1787,16 @@ def check_drop_identity(path):
         # bury every other finding in the run.
         if proto not in worst or overlap > worst[proto][1]:
             worst[proto] = (seed, overlap, unacked)
+    # #800: deliveries beyond the distinct packets are copies; PDR counts them.
+    for key, n in sorted(distinct.items()):
+        rx = rx_self.get(key)
+        if rx is None or rx <= n:
+            continue
+        seed, proto = key
+        level = "FAIL" if rx - n > max(5, n // 100) else "WARN"
+        report(level, f"{os.path.basename(path)}/{proto}: seed {seed} delivered "
+                      f"{rx} packets but only {n} distinct ones — the arm "
+                      "delivers duplicate copies, so its PDR is inflated (#800)")
     base = os.path.basename(path)
     for proto, (seed, overlap, unacked) in sorted(worst.items()):
         report("WARN", f"{base}/{proto}: drop-cause books overlap by {overlap} "

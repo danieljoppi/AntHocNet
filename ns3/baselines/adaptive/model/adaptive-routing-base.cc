@@ -416,12 +416,16 @@ void RoutingBase::FlushQueue(Ipv4Address dst) {
             m_queue.push_back(e);
             continue;
         }
-        // #805: the hold ends when the packet leaves toward a next hop.
-        HoldStats& h = m_hold[e.reason];
+        // #805: the hold ends when the packet leaves toward a next hop. A
+        // packet released in the instant it was queued (beeadhoc's own
+        // packets pass the queue on their way out) was never held.
         const double held = (Simulator::Now() - e.queued).GetSeconds();
-        ++h.count;
-        h.sumS += held;
-        h.maxS = std::max(h.maxS, held);
+        if (held > 0.0) {
+            HoldStats& h = m_hold[e.reason];
+            ++h.count;
+            h.sumS += held;
+            h.maxS = std::max(h.maxS, held);
+        }
         OnDataForwarded(e.packet, e.header, next);
         ForwardData(e.packet, e.header, next, e.ucb, false);
     }

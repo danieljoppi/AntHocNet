@@ -330,6 +330,7 @@ BeeAdHocRoutingProtocol::BeeAdHocRoutingProtocol()
       m_initialScoutTtl(2),
       m_maxRoundsAtMaxTtl(2),
       m_scoutJitter(MilliSeconds(10)),
+      m_inRouteOutput(false),
       m_scoutId(0),
       m_scoutsSent(0),
       m_swarmsSent(0),
@@ -438,6 +439,15 @@ Ipv4Address BeeAdHocRoutingProtocol::SelectNextHop(Ipv4Address dst, Ipv4Address 
     const bool routed = p && p->PeekPacketTag(mark) && ConstCast<Packet>(p)->PeekTrailer(t) > 0 &&
                         t.path.size() >= 2 && t.path.back() == dst;
     if (!routed) {
+        // In RouteOutput the packet is the application's own: a trailer added
+        // to it would change the size the socket reports back, and ns-3's
+        // OnOffApplication then treats the send as failed and sends the same
+        // packet again (duplicate deliveries, #800). Defer it: the base loops
+        // it back, and the route is attached to IP's own copy when it leaves
+        // the hold queue (StartDiscovery flushes at once if a forager exists).
+        if (m_inRouteOutput) {
+            return Ipv4Address();
+        }
         return IsMyAddress(src) ? Originate(dst, p) : Ipv4Address();
     }
     const Ipv4Address next = NextOnPath(t.path);
@@ -558,7 +568,25 @@ void BeeAdHocRoutingProtocol::MaybeSwarm(Ipv4Address source) {
     ++m_swarmsSent;
 }
 
+Ptr<Ipv4Route> BeeAdHocRoutingProtocol::RouteOutput(Ptr<Packet> p, const Ipv4Header& header,
+                                                    Ptr<NetDevice> oif,
+                                                    Socket::SocketErrno& sockerr) {
+    m_inRouteOutput = true;
+    Ptr<Ipv4Route> route = RoutingBase::RouteOutput(p, header, oif, sockerr);
+    m_inRouteOutput = false;
+    return route;
+}
+
 void BeeAdHocRoutingProtocol::StartDiscovery(Ipv4Address dst) {
+    // A packet of ours just came back through loopback: if a forager exists,
+    // it leaves now; otherwise it waits for a scout.
+    Configure();
+    if (m_store.Count(dst, false) + m_store.Count(dst, true) > 0) {
+        FlushQueue(dst);
+        if (!HasQueued(dst)) {
+            return;
+        }
+    }
     if (m_pending.count(dst)) {
         return;  // a scout is already out (§12.1.3)
     }
