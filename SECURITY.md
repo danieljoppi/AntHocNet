@@ -63,6 +63,9 @@ stored in GitHub's attestation store. With the [GitHub CLI](https://cli.github.c
 ```bash
 gh attestation verify anthocnet-X.Y.Z.zip --repo danieljoppi/AntHocNet
 gh attestation verify anthocnet-ns3-modules-X.Y.Z.tar.gz --repo danieljoppi/AntHocNet
+# from v2.7.0, the standalone packages (#770):
+gh attestation verify routing-bench-X.Y.Z.tar.gz --repo danieljoppi/AntHocNet
+gh attestation verify adaptive-X.Y.Z.tar.gz --repo danieljoppi/AntHocNet
 ```
 
 The same Sigstore bundle is attached to the release as
