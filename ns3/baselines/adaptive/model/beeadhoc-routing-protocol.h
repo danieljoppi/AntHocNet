@@ -165,6 +165,8 @@ protected:
     bool OnNoRouteInTransit(Ptr<const Packet> p, const Ipv4Header& header, Ipv4Address prev,
                             UnicastForwardCallback ucb, ErrorCallback ecb) override;
     void StartDiscovery(Ipv4Address dst) override;
+    bool OnLoopedBack(Ptr<const Packet> p, const Ipv4Header& header,
+                      UnicastForwardCallback ucb) override;
     void RecvControl(Ptr<Packet> p, Ipv4Address from, Ipv4Address receiver) override;
     void OnLinkFailure(Ipv4Address neighbor) override;
     std::set<Ipv4Address> KnownNeighbors() const override;

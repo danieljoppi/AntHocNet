@@ -299,6 +299,9 @@ bool RoutingBase::RouteInput(Ptr<const Packet> p, const Ipv4Header& header,
         // for a hop no radio carried; add it back (ns-3 AODV does the same).
         Ipv4Header compensated = header;
         compensated.SetTtl(header.GetTtl() + 1);
+        if (OnLoopedBack(p, compensated, ucb)) {
+            return true;
+        }
         Enqueue(p, compensated, ucb, ecb);
         StartDiscovery(dst);
         return true;
@@ -416,16 +419,12 @@ void RoutingBase::FlushQueue(Ipv4Address dst) {
             m_queue.push_back(e);
             continue;
         }
-        // #805: the hold ends when the packet leaves toward a next hop. A
-        // packet released in the instant it was queued (beeadhoc's own
-        // packets pass the queue on their way out) was never held.
+        // #805: the hold ends when the packet leaves toward a next hop.
+        HoldStats& h = m_hold[e.reason];
         const double held = (Simulator::Now() - e.queued).GetSeconds();
-        if (held > 0.0) {
-            HoldStats& h = m_hold[e.reason];
-            ++h.count;
-            h.sumS += held;
-            h.maxS = std::max(h.maxS, held);
-        }
+        ++h.count;
+        h.sumS += held;
+        h.maxS = std::max(h.maxS, held);
         OnDataForwarded(e.packet, e.header, next);
         ForwardData(e.packet, e.header, next, e.ucb, false);
     }

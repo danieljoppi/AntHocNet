@@ -443,8 +443,7 @@ Ipv4Address BeeAdHocRoutingProtocol::SelectNextHop(Ipv4Address dst, Ipv4Address 
         // to it would change the size the socket reports back, and ns-3's
         // OnOffApplication then treats the send as failed and sends the same
         // packet again (duplicate deliveries, #800). Defer it: the base loops
-        // it back, and the route is attached to IP's own copy when it leaves
-        // the hold queue (StartDiscovery flushes at once if a forager exists).
+        // it back, and OnLoopedBack attaches the route to IP's own copy.
         if (m_inRouteOutput) {
             return Ipv4Address();
         }
@@ -577,16 +576,21 @@ Ptr<Ipv4Route> BeeAdHocRoutingProtocol::RouteOutput(Ptr<Packet> p, const Ipv4Hea
     return route;
 }
 
-void BeeAdHocRoutingProtocol::StartDiscovery(Ipv4Address dst) {
-    // A packet of ours just came back through loopback: if a forager exists,
-    // it leaves now; otherwise it waits for a scout.
-    Configure();
-    if (m_store.Count(dst, false) + m_store.Count(dst, true) > 0) {
-        FlushQueue(dst);
-        if (!HasQueued(dst)) {
-            return;
-        }
+bool BeeAdHocRoutingProtocol::OnLoopedBack(Ptr<const Packet> p, const Ipv4Header& header,
+                                           UnicastForwardCallback ucb) {
+    // A packet of ours, deferred by RouteOutput: this copy is IP's own, so the
+    // route goes on here and it leaves at once, without taking a hold-queue
+    // slot. No forager: the base holds it and StartDiscovery sends a scout.
+    const Ipv4Address next = Originate(header.GetDestination(), p);
+    if (next == Ipv4Address()) {
+        return false;
     }
+    OnDataForwarded(p, header, next);
+    ForwardData(p, header, next, ucb, false);
+    return true;
+}
+
+void BeeAdHocRoutingProtocol::StartDiscovery(Ipv4Address dst) {
     if (m_pending.count(dst)) {
         return;  // a scout is already out (§12.1.3)
     }

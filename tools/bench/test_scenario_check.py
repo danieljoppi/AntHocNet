@@ -1464,6 +1464,11 @@ def _dup_deliveries():
     _levels, out = run_cell(base.format(d=1486, rx=1486))
     expect("duplicate copies" not in out, "dup-quiet",
            f"equal deliveries and distinct packets must stay quiet\n{out}")
+    no_match = "\n".join(l for l in base.format(d=597, rx=1486).splitlines()
+                          if not l.startswith("##MATCH##")) + "\n"
+    _levels, out = run_cell(no_match)
+    expect("cannot be checked" in out, "dup-no-match",
+           f"a seed without ##MATCH## must WARN, not pass silently\n{out}")
 
 
 @case("#761 a negative unseen (a packet booked twice) FAILs")

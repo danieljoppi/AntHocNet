@@ -218,6 +218,16 @@ protected:
         return false;
     }
 
+    /**
+     * A packet this node originates came back through loopback (RouteOutput
+     * had no next hop for it). Return true if the arm sent it on itself;
+     * false (the default) holds it in the queue and starts discovery.
+     */
+    virtual bool OnLoopedBack(Ptr<const Packet> p, const Ipv4Header& header,
+                              UnicastForwardCallback ucb) {
+        return false;
+    }
+
     /// The queue holds data for `dst` and no route exists: look for one.
     virtual void StartDiscovery(Ipv4Address dst) = 0;
 

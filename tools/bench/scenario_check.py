@@ -1790,7 +1790,14 @@ def check_drop_identity(path):
     # #800: deliveries beyond the distinct packets are copies; PDR counts them.
     for key, n in sorted(distinct.items()):
         rx = rx_self.get(key)
-        if rx is None or rx <= n:
+        if rx is None:
+            # The harness omits a seed's ##MATCH## rows when any arm delivered
+            # nothing, so the comparison is impossible, not passed.
+            report("WARN", f"{os.path.basename(path)}/{key[1]}: seed {key[0]} has "
+                           "no ##MATCH## row, so duplicate deliveries cannot be "
+                           "checked (an arm delivered nothing this seed) (#800)")
+            continue
+        if rx <= n:
             continue
         seed, proto = key
         level = "FAIL" if rx - n > max(5, n // 100) else "WARN"
