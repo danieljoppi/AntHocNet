@@ -434,6 +434,7 @@ def control(before_text, after_text, proto):
 # --csv column names the gates ask for by their METRICS name (#791).
 CSV_ALIAS = {"pdr": "pdr_pct", "delay": "delay_ms", "delay99": "delay99_ms",
              "thrput": "throughput_kbps"}
+TABLE_PDR = re.compile(r"^[0-9.]+$")
 # "# paths <proto> divUsed=.. hopsMean=.. ..." (routing-bench-harness.cc)
 PATHS = re.compile(r"^#\s+paths\s+([A-Za-z][\w-]*)\s+(.+)$")
 
@@ -453,14 +454,24 @@ def query(text, proto, field, source):
             toks = m.group(3).split()
             if field == "row":
                 found.append(" ".join([m.group(1)] + toks))
-            elif field in RUN_METRICS and RUN_METRICS.index(field) < len(toks):
-                found = [toks[RUN_METRICS.index(field)]]
+            elif field in RUN_METRICS:
+                i = RUN_METRICS.index(field)
+                found = [toks[i]] if i < len(toks) else []
         return found
     if source == "table":
+        # PDR is the first number after the arm on every harness's table
+        # (manet-baselines prints four numbers, the others five or more), so
+        # it is matched as the awk did: first token the arm, second numeric.
+        # The other metrics need the full five-number ROW.
         for line in text.splitlines():
-            m = ROW.match(line)
-            if m and m.group(1) == proto and field in METRICS:
-                found = [m.group(2 + METRICS.index(field))]
+            if field == "pdr":
+                toks = line.split()
+                if len(toks) > 1 and toks[0] == proto and TABLE_PDR.match(toks[1]):
+                    found = [toks[1]]
+            elif field in METRICS:
+                m = ROW.match(line)
+                if m and m.group(1) == proto:
+                    found = [m.group(2 + METRICS.index(field))]
         return found
     if source == "csv":
         cols = None
@@ -473,8 +484,9 @@ def query(text, proto, field, source):
                 continue
             d = dict(zip(cols, s.split(",")))
             name = CSV_ALIAS.get(field, field)
-            if d.get("protocol") == proto and d.get(name, "") != "":
-                found = [d[name]]
+            if d.get("protocol") == proto:
+                value = d.get(name, "")
+                found = [value] if value != "" else []
         return found
     if source == "paths":
         for line in text.splitlines():
@@ -483,8 +495,8 @@ def query(text, proto, field, source):
                 continue
             for kv in m.group(2).split():
                 k, _, v = kv.partition("=")
-                if k == field and v:
-                    found = [v]
+                if k == field:
+                    found = [v] if v else []
         return found
     raise ValueError(f"unknown source {source!r}")
 

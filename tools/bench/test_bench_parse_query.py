@@ -139,6 +139,38 @@ def test_csv_by_name():
     print("ok: --from csv reads columns by header name, aliases included")
 
 
+# manet-baselines' table prints four numbers per arm (no throughput column):
+# the #829 CI failure. The single-hop anchor reads its PDR.
+BASELINES_TABLE = (
+    "protocol        PDR%  delay(ms)  delay99(ms)     NRL\n"
+    "--------------------------------------------------------\n"
+    "  [diag aodv seed=1] flow 10.1.0.1:49153 -> 10.1.0.2:9 tx=862 rx=862 lost=0\n"
+    "aodv            100.0        0.8          0.5     1.14\n"
+    "dsdv            100.0        0.8          0.5     1.02\n")
+
+
+def test_four_column_table():
+    for p in ("aodv", "dsdv"):
+        want = awk(AWK_TABLE_PDR, BASELINES_TABLE, p=p)
+        got = bp.query(BASELINES_TABLE, p, "pdr", "table")
+        check(got == want == ["100.0"], f"manet-baselines {p}: query {got}, awk {want}")
+    print("ok: --from table reads PDR from manet-baselines' four-number rows")
+
+
+def test_last_empty_clears():
+    # awk's `{ v = $n } END { print v }` takes the LAST matching line even when
+    # its field is empty; a stale earlier value must not leak through.
+    csv = ROUTING_CSV + "aodv,2,50,1500x300,20.0,10,,,,,,\n"
+    check(bp.query(csv, "aodv", "pdr", "csv") == [], "csv: empty last row clears")
+    paths = "# paths x hopsMean=2.0\n# paths x hopsMean=\n"
+    check(bp.query(paths, "x", "hopsMean", "paths") == [], "paths: empty last value clears")
+    check(awk(AWK_PATHS_HOPS, paths, p="x") == [], "awk agrees on paths")
+    run = "##RUN## 1 x 50.0 1 2 3 4\n##RUN## 2 x 49.0\n"
+    check(bp.query(run, "x", "delay99", "run") == [], "run: short last row clears")
+    check(bp.query(run, "x", "pdr", "run") == ["49.0"], "run: present field still read")
+    print("ok: an empty or missing field in the last matching row clears the value")
+
+
 def test_missing_is_empty_exit_0():
     for src, field in (("run", "pdr"), ("table", "pdr"), ("csv", "pdr"), ("paths", "hopsMean")):
         check(bp.query(ROUTING_CSV, "nosuch", field, src) == [], f"{src} missing proto")
@@ -159,5 +191,7 @@ if __name__ == "__main__":
     test_equivalence_on_committed_cells()
     test_run_rows()
     test_csv_by_name()
+    test_four_column_table()
+    test_last_empty_clears()
     test_missing_is_empty_exit_0()
     print("all bench_parse --get tests passed")
