@@ -68,7 +68,9 @@ an adapter change**: develop, push a branch, open a PR, and read the job
 results.
 
 - `ci-ns3.yml` (called by `ci.yml`) builds the **NS-3 module against the prebuilt GHCR images across
-  ns-3.36–3.48** (e2e delivery smoke). Iterate on failures from the job logs —
+  ns-3.36–3.48** (e2e delivery smoke): the org's `ghcr.io/swarm-routing/ns3-dev:<ver>`
+  for 3.41+ (built by [`swarm-routing/ns3-containers`](https://github.com/swarm-routing/ns3-containers)),
+  this repo's own `ns3:3.36` for the oldest leg (see `docker/README.md`). Iterate on failures from the job logs —
   cross-version API drift is the usual cause (e.g. ns-3.36's non-`const`
   `Histogram` accessors, `RouteInput` by-value vs const-ref, scoped TestSuite
   enums). The `AHN_*`/`ANTHOCNET_NS3_*` macros in the NS-3 headers + CMake

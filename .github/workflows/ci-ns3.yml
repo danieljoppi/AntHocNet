@@ -14,16 +14,19 @@ jobs:
   ns3-build:
     name: NS-3 module build + test
     runs-on: ubuntu-latest
-    # Build against the pre-built plain ns-3 image (published to GHCR on merge
-    # to the default branch) rather than compiling ns-3 from scratch: the stock
-    # tree is already built, so CI only compiles the AntHocNet module delta
-    # (minutes instead of ~13 min/version). The image's gcc spans the whole
-    # matrix (it builds 3.36..3.48 cleanly), so no per-version toolchain pin.
-    #
-    # Note: the images only (re)publish on merge to the default branch, so a
-    # newly added ns-3 version must be added to images.yml and merged first.
+    # Build against a pre-built ns-3 image rather than compiling ns-3 from
+    # scratch: the stock tree is already built, so CI only compiles the
+    # AntHocNet module delta. 3.41+ use the org's images,
+    # ghcr.io/swarm-routing/ns3-dev:<ver> (the ten newest ns-3 releases, ns-3's
+    # `default` profile, Ubuntu 24.04 / gcc-13, `mesh` built in; generated and
+    # republished weekly by swarm-routing/ns3-containers). The plain configure
+    # below matches their flags, so no stock object is recompiled (verified:
+    # 0 of 876 on 3.48, swarm-routing/ns3-containers#9). 3.36 is older than
+    # that window and keeps this repo's own image (images.yml, Ubuntu 22.04 /
+    # gcc-11); the campaign workflows (benchmark-cell, benchmarks) also stay on
+    # it, so published numbers keep their toolchain.
     container:
-      image: ghcr.io/${{ github.repository_owner }}/ns3:${{ matrix.version }}
+      image: ${{ matrix.version == '3.36' && format('ghcr.io/{0}/ns3:3.36', github.repository_owner) || format('ghcr.io/swarm-routing/ns3-dev:{0}', matrix.version) }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -371,7 +374,7 @@ jobs:
     # on main (#130).
     continue-on-error: true
     container:
-      image: ghcr.io/${{ github.repository_owner }}/ns3:3.42
+      image: ghcr.io/swarm-routing/ns3-dev:3.42
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -389,8 +392,8 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .ccache
-          key: ccache-ns3-asan-3.42-gcc11-${{ github.sha }}
-          restore-keys: ccache-ns3-asan-3.42-gcc11-
+          key: ccache-ns3-asan-3.42-gcc13-${{ github.sha }}
+          restore-keys: ccache-ns3-asan-3.42-gcc13-
       - name: Install ccache
         run: |
           apt-get update -qq && apt-get install -y -qq --no-install-recommends ccache
@@ -437,7 +440,7 @@ jobs:
         uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: .ccache
-          key: ccache-ns3-asan-3.42-gcc11-${{ github.sha }}
+          key: ccache-ns3-asan-3.42-gcc13-${{ github.sha }}
       - name: Run module test suite under ASan/LSan
         run: cd /opt/ns-3 && ./test.py -s anthocnet && ./test.py -s oracle && ./test.py -s adaptive && ./test.py -s routing-bench
       - name: E2E delivery smoke under ASan/LSan
@@ -460,7 +463,7 @@ jobs:
     name: NS-3 module alone (BASELINES=0)
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/ns3:3.48
+      image: ghcr.io/swarm-routing/ns3-dev:3.48
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -494,7 +497,7 @@ jobs:
     name: routing-bench alone (stock ns-3 only)
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/ns3:3.48
+      image: ghcr.io/swarm-routing/ns3-dev:3.48
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -543,7 +546,7 @@ jobs:
     name: package ${{ matrix.packages }} (ns-${{ matrix.version }})
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/ns3:${{ matrix.version }}
+      image: ${{ matrix.version == '3.36' && format('ghcr.io/{0}/ns3:3.36', github.repository_owner) || format('ghcr.io/swarm-routing/ns3-dev:{0}', matrix.version) }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

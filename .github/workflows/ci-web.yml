@@ -130,7 +130,7 @@ jobs:
     needs: pages
     if: inputs.code == 'true' && needs.pages.result == 'success'
     container:
-      image: ghcr.io/${{ github.repository_owner }}/ns3:${{ matrix.version }}
+      image: ghcr.io/swarm-routing/ns3-dev:${{ matrix.version }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

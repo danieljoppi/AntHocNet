@@ -138,7 +138,8 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   randomized property/invariant tests (`test_properties`).
 - **NS-3 module** builds and tests across **ns-3.36 / 3.41 / 3.42 / 3.47 / 3.48**
   on every push/PR (the `ns3-build` matrix runs inside the prebuilt plain ns-3
-  images), running the module test suite and an **asserted end-to-end delivery
+  images: `ghcr.io/swarm-routing/ns3-dev:<ver>` for 3.41+, this repo's `ns3:3.36`
+  for 3.36), running the module test suite and an **asserted end-to-end delivery
   smoke** — AntHocNet must deliver a non-zero PDR in a small connected scenario.
 - The **codec decode path is fuzzed** (libFuzzer, 60 s, `codec-fuzz` job).
 - Container images for every supported simulator version are published to GHCR
