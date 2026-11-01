@@ -90,6 +90,12 @@ jobs:
         # one file, family cells paired by seed with the v2.4.0 control rows.
         # The sign (arm minus reference) and the best-native pick are tested.
         run: python3 tools/bench/test_comparator_view.py
+      - name: Gate field-query self-test (#791)
+        # The CI gates in tools/checks/ read marker fields through
+        # bench_parse.py --get. On every committed cell the query must return
+        # what the positional awk it replaced printed; CSV columns are read by
+        # header name, and a missing value prints nothing and exits 0.
+        run: python3 tools/bench/test_bench_parse_query.py
       - name: Every published figure has a reproduce entry (#621)
         # results/figures.yml must cover every PNG under docs/benchmarks/, and
         # each entry's data and re-run cells must exist. The byte-identical

@@ -26,6 +26,10 @@
 # The ns-3 tree must already be configured + built with the anthocnet module's
 # examples enabled (isl-grid builds as part of the module's examples).
 set -euo pipefail
+# Marker fields are read by name through the tested reader, not by awk
+# position (#791; tools/bench/test_bench_parse_query.py).
+BENCH_PARSE="$(cd "$(dirname "$0")/../bench" && pwd)/bench_parse.py"
+field() { python3 "$BENCH_PARSE" --get "$1" --from "$2" --proto "$3" -; }  # reads stdin
 
 NS3DIR=${1:-}
 if [ -z "$NS3DIR" ]; then
@@ -67,7 +71,7 @@ for proto in $arms; do
         fail=1
         continue
     fi
-    pdr=$(printf '%s\n' "$out" | awk -F, -v p="$proto" '$1 == p { v = $9 } END { print v }')
+    pdr=$(printf '%s\n' "$out" | field pdr csv "$proto")
     if [ -z "$pdr" ]; then
         printf '%s\n' "$out" | tail -n 25
         echo "FAIL [sat:arms] '$proto' exited 0 but emitted no CSV row (#28-style silent failure)."

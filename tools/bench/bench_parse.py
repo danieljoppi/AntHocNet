@@ -43,6 +43,19 @@ node any unrelated allocation change reorders its sends (#362). Such a row is
 ``ORDER-ONLY`` when every paired 95% CI (PDR, delay99, NRL) straddles zero,
 and FAIL otherwise. Exit 1 on any FAIL.
 
+Field query (#791): ``--get FIELD --from SOURCE --proto P FILE|-`` prints one
+field of one protocol's result, so the CI gates in tools/checks/ read the
+harness's output through this parser instead of positional awk. SOURCE is
+``run`` (a ``##RUN##`` per-seed field by RUN_METRICS name; ``--get row`` prints
+each of the protocol's ``##RUN##`` rows without the protocol, one per line),
+``table`` (the summary-table row, METRICS names), ``csv`` (a ``--csv`` row,
+column by the header's name; pdr/delay/delay99/thrput are accepted for
+pdr_pct/delay_ms/delay99_ms/throughput_kbps) or ``paths`` (a ``key=value`` on
+the ``# paths <proto>`` line). The value prints exactly as the harness wrote
+it. When a protocol appears more than once, the last row wins, as the awk it
+replaces did. A missing value prints nothing and exits 0, so a gate under
+``set -e`` still reaches its own "no result" message.
+
 Column-mapping self-check (#293): ``##RUN##`` fields are positional, so a
 mis-ordered mapping produces a plausible table with delay where jitter should
 be — it cannot crash. Any cell carrying both ``##RUN##`` rows and the
@@ -418,6 +431,76 @@ def control(before_text, after_text, proto):
     return lines, failed
 
 
+# --csv column names the gates ask for by their METRICS name (#791).
+CSV_ALIAS = {"pdr": "pdr_pct", "delay": "delay_ms", "delay99": "delay99_ms",
+             "thrput": "throughput_kbps"}
+TABLE_PDR = re.compile(r"^[0-9.]+$")
+# "# paths <proto> divUsed=.. hopsMean=.. ..." (routing-bench-harness.cc)
+PATHS = re.compile(r"^#\s+paths\s+([A-Za-z][\w-]*)\s+(.+)$")
+
+
+def query(text, proto, field, source):
+    """Return [value, ...] for one protocol's FIELD in one SOURCE (#791).
+
+    Values are the tokens as printed. Every source but ``row`` returns at most
+    one value: the last matching line, as ``awk '... { v = $n } END'`` did.
+    """
+    found = []
+    if source == "run":
+        for line in text.splitlines():
+            m = RUN.search(line)
+            if not m or m.group(2) != proto:
+                continue
+            toks = m.group(3).split()
+            if field == "row":
+                found.append(" ".join([m.group(1)] + toks))
+            elif field in RUN_METRICS:
+                i = RUN_METRICS.index(field)
+                found = [toks[i]] if i < len(toks) else []
+        return found
+    if source == "table":
+        # PDR is the first number after the arm on every harness's table
+        # (manet-baselines prints four numbers, the others five or more), so
+        # it is matched as the awk did: first token the arm, second numeric.
+        # The other metrics need the full five-number ROW.
+        for line in text.splitlines():
+            if field == "pdr":
+                toks = line.split()
+                if len(toks) > 1 and toks[0] == proto and TABLE_PDR.match(toks[1]):
+                    found = [toks[1]]
+            elif field in METRICS:
+                m = ROW.match(line)
+                if m and m.group(1) == proto:
+                    found = [m.group(2 + METRICS.index(field))]
+        return found
+    if source == "csv":
+        cols = None
+        for line in text.splitlines():
+            s = line.strip()
+            if s.startswith("protocol,"):
+                cols = s.split(",")
+                continue
+            if cols is None or "," not in s:
+                continue
+            d = dict(zip(cols, s.split(",")))
+            name = CSV_ALIAS.get(field, field)
+            if d.get("protocol") == proto:
+                value = d.get(name, "")
+                found = [value] if value != "" else []
+        return found
+    if source == "paths":
+        for line in text.splitlines():
+            m = PATHS.match(line.strip())
+            if not m or m.group(1) != proto:
+                continue
+            for kv in m.group(2).split():
+                k, _, v = kv.partition("=")
+                if k == field:
+                    found = [v] if v else []
+        return found
+    raise ValueError(f"unknown source {source!r}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("files", nargs="+")
@@ -428,7 +511,23 @@ def main():
     ap.add_argument("--control", action="store_true",
                     help="BEFORE AFTER: every other protocol's ##RUN## rows "
                          "must be identical (#675)")
+    ap.add_argument("--get", metavar="FIELD",
+                    help="print one field of --proto's result (#791): a "
+                         "##RUN## / table / csv metric, a '# paths' key, or "
+                         "'row' (whole ##RUN## rows)")
+    ap.add_argument("--from", dest="source", default="run",
+                    choices=["run", "table", "csv", "paths"],
+                    help="where --get reads from (default: run)")
     args = ap.parse_args()
+
+    if args.get:
+        if len(args.files) != 1:
+            sys.exit("--get reads exactly one FILE (or - for stdin)")
+        with (sys.stdin if args.files[0] == "-" else open(args.files[0])) as fh:
+            text = fh.read()
+        for v in query(text, args.proto, args.get, args.source):
+            print(v)
+        sys.exit(0)
 
     if args.control:
         if len(args.files) != 2:

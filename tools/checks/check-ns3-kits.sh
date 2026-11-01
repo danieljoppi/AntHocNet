@@ -9,6 +9,10 @@
 #
 # Usage: check-ns3-kits.sh <ns3-dir> <kits-dir> "<world> [<world> ...]"
 set -euo pipefail
+# Marker fields are read by name through the tested reader, not by awk
+# position (#791; tools/bench/test_bench_parse_query.py).
+BENCH_PARSE="$(cd "$(dirname "$0")/../bench" && pwd)/bench_parse.py"
+field() { python3 "$BENCH_PARSE" --get "$1" --from "$2" --proto "$3" -; }  # reads stdin
 NS3DIR=${1:?usage: check-ns3-kits.sh <ns3-dir> <kits-dir> "<worlds>"}
 KITS=${2:?}
 WORLDS=${3:?}
@@ -21,7 +25,7 @@ for w in $WORLDS; do
     echo "FAIL: $w: run.sh failed:"; tail -5 "$kit/stderr.log"; fail=1; continue
   fi
   # The harnesses' table row: "<arm> <PDR%> <delay> ..."
-  pdr=$(printf '%s\n' "$out" | awk '$1=="anthocnet" && $2 ~ /^[0-9.]+$/ {print $2; exit}')
+  pdr=$(printf '%s\n' "$out" | field pdr table anthocnet)
   if awk -v p="${pdr:-0}" 'BEGIN{exit !(p>0)}'; then echo "ok: $w kit — anthocnet PDR ${pdr}% on ns-3"
   else echo "FAIL: $w kit — anthocnet delivered nothing (PDR=${pdr:-none})"; printf '%s\n' "$out" | tail -8; fail=1; fi
 done

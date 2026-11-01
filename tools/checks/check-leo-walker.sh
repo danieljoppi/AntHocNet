@@ -63,6 +63,10 @@
 # Runs on ns-3.48 only: the stock LEO model first ships there, and the
 # example is not built on older trees (ADR-0022).
 set -euo pipefail
+# Marker fields are read by name through the tested reader, not by awk
+# position (#791; tools/bench/test_bench_parse_query.py).
+BENCH_PARSE="$(cd "$(dirname "$0")/../bench" && pwd)/bench_parse.py"
+field() { python3 "$BENCH_PARSE" --get "$1" --from "$2" --proto "$3" -; }  # reads stdin
 
 NS3DIR=${1:?usage: check-leo-walker.sh <ns3-dir>}
 # Resolve the repo before leaving it: CI calls this by a relative path.
@@ -144,7 +148,7 @@ done
 
 # --- 5. every arm delivers ----------------------------------------------------
 for arm in ${ARMS//,/ }; do
-    pdr=$(printf '%s\n' "$out" | awk -v a="$arm" '$1=="##RUN##" && $3==a {print $4}')
+    pdr=$(printf '%s\n' "$out" | field pdr run "$arm")
     say "$arm PDR% = ${pdr:-<none>}"
     awk -v p="${pdr:-0}" 'BEGIN { exit (p+0 > 0) ? 0 : 1 }' \
         || { say "FAIL: $arm delivered nothing on the moving constellation"; fail=1; }
@@ -196,8 +200,8 @@ fi
 # --- 9. the opspf anchor (#707) -----------------------------------------------------
 QUIET_ARGS="--planes=16 --sats=16 --altitude=1150 --inclination=53 --minElevation=25 --time=60 --runs=2"
 q=$(./ns3 run "$(echo leo-walker --csv --protocols=oracle,opspf $QUIET_ARGS)" 2>/dev/null)
-orc=$(printf '%s\n' "$q" | awk '$1=="##RUN##" && $3=="oracle" {$3=""; print}')
-ops=$(printf '%s\n' "$q" | awk '$1=="##RUN##" && $3=="opspf" {$3=""; print}')
+orc=$(printf '%s\n' "$q" | field row run oracle)
+ops=$(printf '%s\n' "$q" | field row run opspf)
 if [ -z "$orc" ] || [ "$orc" != "$ops" ]; then
     say "FAIL: with no unpredicted failure, opspf must route exactly as the hop oracle:"
     say "  oracle: $orc"
@@ -222,13 +226,13 @@ dark=$(printf '%s\n' "$sg" | sed -n 's/^# visibility //p' | tr ' ' '\n' | grep '
 [ "${dark:-1}" -eq 0 ] || { say "FAIL: $dark HAPS see no satellite above --minElevation"; fail=1; }
 for spec in oracle-delay:95 anthocnet:80 opspf:95 gpsr3d:5; do
     arm=${spec%%:*}; min=${spec##*:}
-    p=$(printf '%s\n' "$sg" | awk -v a="$arm" '$1=="##RUN##" && $3==a {print $4}')
+    p=$(printf '%s\n' "$sg" | field pdr run "$arm")
     if awk -v p="${p:-0}" -v m="$min" 'BEGIN{exit !(p>=m)}'; then say "ok: sagin $arm PDR ${p}% >= ${min}%"
     else say "FAIL: sagin $arm PDR ${p:-none}% < ${min}%"; fail=1; fi
 done
 sq=$(./ns3 run "$(echo leo-walker --csv --protocols=oracle,opspf $SAGIN_ARGS)" 2>/dev/null)
-sorc=$(printf '%s\n' "$sq" | awk '$1=="##RUN##" && $3=="oracle" {$3=""; print}')
-sops=$(printf '%s\n' "$sq" | awk '$1=="##RUN##" && $3=="opspf" {$3=""; print}')
+sorc=$(printf '%s\n' "$sq" | field row run oracle)
+sops=$(printf '%s\n' "$sq" | field row run opspf)
 if [ -z "$sorc" ] || [ "$sorc" != "$sops" ]; then
     say "FAIL: with --sagin and no unpredicted failure, opspf must route as the hop oracle:"
     say "  oracle: $sorc"
