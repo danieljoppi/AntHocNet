@@ -198,6 +198,19 @@ Deviation: 64-byte data packets instead of 512 (same packet rate). A miss
 ships the arm as an infeasibility verdict. Re-checking against the GECCO 2005
 paper itself, once in hand, is #815.
 
+**Verdict (2026-11-01): the anchor MISSES, 3 of 5**, so `beeadhoc` ships as
+an infeasibility verdict and its family numbers do not count
+([results](../../../docs/benchmarks/v2.7.0-beeadhoc-anchor.md), cells
+`results/cells/anchor-bee-p*-v270a*.txt`). BeeAdHoc's NRL is flat over pause
+time (9.4–10.5) and below AODV's at every pause time (by 11–19), and below
+DSDV's at 1, 30 and 100 s; from 500 s on DSDV's triggered updates fall away and
+the two are level (−0.39 [−1.18, +0.40], +0.13 [−0.92, +1.18]). Secondaries:
+lowest energy per delivered packet (tied with DSDV at 1000 s) and the highest
+PDR until the network is nearly static, but mean delay 120–280 ms above both.
+With the ring off, delay drops below AODV's at every pause time (6–11 ms
+above DSDV's) and NRL rises by about 4, above DSDV's everywhere: no setting
+gives the report's smallest control load and best delay together.
+
 ## ns-3 version notes
 
 `CMakeLists.txt` defines `ADAPTIVE_NS3_ROUTEINPUT_BYVALUE` (ns-3 ≤ 3.36:
