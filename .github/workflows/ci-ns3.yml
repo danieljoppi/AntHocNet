@@ -131,7 +131,9 @@ jobs:
           key: ccache-ns3-3.36-gcc11-${{ github.sha }}
       - name: Run module test suite (header round-trip + multi-hop delivery)
         if: env.RUN_TESTS == '1'
-        run: cd /opt/ns-3 && ./test.py -s anthocnet && ./test.py -s oracle && ./test.py -s adaptive && ./test.py -s routing-bench
+        run: |
+          if [ "$RUN_TESTS" != 1 ]; then echo "skip: no test filter on this ns-3 (3.36); the delivery smoke below still runs"; exit 0; fi
+          cd /opt/ns-3 && ./test.py -s anthocnet && ./test.py -s oracle && ./test.py -s adaptive && ./test.py -s routing-bench
       - name: Smoke-run the example
         run: cd /opt/ns-3 && ./ns3 run anthocnet-example
       - name: E2E delivery smoke (AntHocNet must deliver in a connected scenario)
@@ -447,18 +449,28 @@ jobs:
           # already-configured tree. Fallback: inject the flags via
           # CXXFLAGS/LDFLAGS, which ns-3's CMake only reads on a *fresh*
           # configure, hence the ./ns3 clean first (the flag change forces a
-          # full rebuild either way). The gate leg has --filter-module-examples-and-tests
-          # (added after 3.36), so tests always run here.
+          # full rebuild either way). --filter-module-examples-and-tests was added
+          # after ns-3.36: without it (an on-demand 3.36 gate) the test suites are
+          # not built and only the sanitized delivery smoke runs, as in ns3-build.
+          # Unquoted on use on purpose: it word-splits into two arguments (no
+          # spaces inside; `;` is not a separator in an expansion).
+          if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
+            tests='--enable-tests --filter-module-examples-and-tests=anthocnet;oracle;adaptive;routing-bench'
+            echo "RUN_TESTS=1" >> "$GITHUB_ENV"
+          else
+            tests=''
+            echo "RUN_TESTS=0" >> "$GITHUB_ENV"
+          fi
           if ./ns3 configure --help 2>/dev/null | grep -q enable-sanitizers; then
-            ./ns3 configure --enable-sanitizers --enable-tests --enable-examples \
-              --filter-module-examples-and-tests='anthocnet;oracle;adaptive;routing-bench' \
+            # shellcheck disable=SC2086
+            ./ns3 configure --enable-sanitizers $tests --enable-examples \
               --enable-modules="$mods"
           else
             ./ns3 clean
+            # shellcheck disable=SC2086
             CXXFLAGS='-fsanitize=address -fno-omit-frame-pointer -g' \
             LDFLAGS='-fsanitize=address' \
-            ./ns3 configure --enable-tests --enable-examples \
-              --filter-module-examples-and-tests='anthocnet;oracle;adaptive;routing-bench' \
+            ./ns3 configure $tests --enable-examples \
               --enable-modules="$mods"
           fi
       - name: Build
@@ -472,7 +484,9 @@ jobs:
           path: .ccache
           key: ccache-ns3-asan-${{ inputs.gate-version }}-gcc13-${{ github.sha }}
       - name: Run module test suite under ASan/LSan
-        run: cd /opt/ns-3 && ./test.py -s anthocnet && ./test.py -s oracle && ./test.py -s adaptive && ./test.py -s routing-bench
+        run: |
+          if [ "$RUN_TESTS" != 1 ]; then echo "skip: no test filter on this ns-3 (3.36); the delivery smoke below still runs"; exit 0; fi
+          cd /opt/ns-3 && ./test.py -s anthocnet && ./test.py -s oracle && ./test.py -s adaptive && ./test.py -s routing-bench
       - name: E2E delivery smoke under ASan/LSan
         # Same loose "routes data" gate as ns3-build, but without ns3-build's
         # `2>/dev/null` so sanitizer reports land in the job log (command
@@ -512,16 +526,16 @@ jobs:
       - name: Configure, build, test, run the example
         run: |
           cd /opt/ns-3
-          mods='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;csma'
+          alone_mods='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;csma'
           # ns-3.36 (on-demand gate version) has no example/test filter: build
           # and run the example only, as ns3-build does on that tree.
           if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
             ./ns3 configure --enable-tests --enable-examples \
-              --filter-module-examples-and-tests='anthocnet' --enable-modules="$mods"
+              --filter-module-examples-and-tests='anthocnet' --enable-modules="$alone_mods"
             ./ns3 build
             ./test.py -s anthocnet
           else
-            ./ns3 configure --enable-examples --enable-modules="$mods"
+            ./ns3 configure --enable-examples --enable-modules="$alone_mods"
             ./ns3 build
           fi
           ./ns3 run anthocnet-example
@@ -549,16 +563,16 @@ jobs:
       - name: Configure, build, test, run the stock arms
         run: |
           cd /opt/ns-3
-          mods='routing-bench;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;mesh'
+          alone_mods='routing-bench;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;mesh'
           # ns-3.36 (on-demand gate version) has no example/test filter: skip
           # the test suite there, as ns3-build does; the arm checks still run.
           if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
             ./ns3 configure --enable-tests --enable-examples \
-              --filter-module-examples-and-tests='routing-bench' --enable-modules="$mods"
+              --filter-module-examples-and-tests='routing-bench' --enable-modules="$alone_mods"
             ./ns3 build
             ./test.py -s routing-bench
           else
-            ./ns3 configure --enable-examples --enable-modules="$mods"
+            ./ns3 configure --enable-examples --enable-modules="$alone_mods"
             ./ns3 build
           fi
           help=$(./ns3 run "routing-compare --PrintHelp" 2>&1 || true)
