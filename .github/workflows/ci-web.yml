@@ -149,7 +149,12 @@ jobs:
       - name: Configure and build the harnesses
         run: |
           cd /opt/ns-3
+          # The filter is required on the ns3-dev images: their tree was
+          # configured with --filter-module-examples-and-tests=core, which the
+          # CMake cache keeps unless a configure sets it again, and then no
+          # AntHocNet example (routing-compare, isl-grid, leo-walker) is built.
           ./ns3 configure --enable-examples \
+            --filter-module-examples-and-tests='anthocnet;oracle;adaptive;routing-bench' \
             --enable-modules='anthocnet;aomdv;gpsr;oracle;adaptive;routing-bench;wifi;mobility;applications;csma;aodv;olsr;dsdv;flow-monitor;point-to-point;mesh'
           ./ns3 build
       - name: Download the kits

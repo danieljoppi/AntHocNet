@@ -50,8 +50,12 @@ jobs:
       fail-fast: false
       matrix:
         # The release ns-3 supports by default; older releases on demand
-        # (ci.yml workflow_dispatch) to check API drift against them.
+        # (ci.yml workflow_dispatch) to check API drift against them. The gate
+        # version always gets a leg (no duplicate when it is already listed),
+        # so the gates never skip silently on a manual run.
         version: ${{ fromJSON(inputs.versions) }}
+        include:
+          - version: ${{ inputs.gate-version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # ccache (#609) for the legs that recompile all of ns-3, not only the
@@ -200,7 +204,13 @@ jobs:
         # (ADR-0022), and leo-walker is not built on older trees; it runs on
         # the gate leg, the release ns-3 supports. ~45 s.
         if: matrix.version == inputs.gate-version
-        run: bash tools/checks/check-leo-walker.sh /opt/ns-3
+        run: |
+          minor=$(sed 's/^3\.\([0-9]*\).*/\1/' /opt/ns-3/VERSION)
+          if [ "$minor" -lt 48 ]; then
+            echo "skip: ns-3 3.$minor has no stock LEO model (needs >= 3.48, ADR-0022)"
+            exit 0
+          fi
+          bash tools/checks/check-leo-walker.sh /opt/ns-3
       - name: Scene replay smoke (#639, --mobility=trace and --flowsFile)
         # The fixture trace + flow list delivers for AntHocNet and AODV, a
         # dumped RWP run replays byte-identically, and malformed files are
@@ -392,7 +402,7 @@ jobs:
     # on main (#130).
     continue-on-error: true
     container:
-      image: ghcr.io/swarm-routing/ns3-dev:${{ inputs.gate-version }}
+      image: ${{ inputs.gate-version == '3.36' && format('ghcr.io/{0}/ns3:3.36', github.repository_owner) || format('ghcr.io/swarm-routing/ns3-dev:{0}', inputs.gate-version) }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -481,7 +491,7 @@ jobs:
     name: NS-3 module alone (BASELINES=0)
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/swarm-routing/ns3-dev:${{ inputs.gate-version }}
+      image: ${{ inputs.gate-version == '3.36' && format('ghcr.io/{0}/ns3:3.36', github.repository_owner) || format('ghcr.io/swarm-routing/ns3-dev:{0}', inputs.gate-version) }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -515,7 +525,7 @@ jobs:
     name: routing-bench alone (stock ns-3 only)
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/swarm-routing/ns3-dev:${{ inputs.gate-version }}
+      image: ${{ inputs.gate-version == '3.36' && format('ghcr.io/{0}/ns3:3.36', github.repository_owner) || format('ghcr.io/swarm-routing/ns3-dev:{0}', inputs.gate-version) }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
