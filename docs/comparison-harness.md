@@ -99,8 +99,15 @@ Never compare numbers by eye. The scripts do the arithmetic and the noise call:
 | `tools/bench/scenario_check.py preflight …` | checks a configuration *before* dispatch: partitioned field, saturated channel, single-hop degeneracy |
 | `tools/bench/scenario_check.py results FILE` | plausibility checks on a result: PDR bounds, the drop book closing, delay99 ≥ mean |
 | `tools/bench/bench_parse.py --ab A B --proto X` | paired per-seed deltas of one arm between two files, with t and bootstrap CIs and a noise verdict |
+| `tools/bench/bench_parse.py --get FIELD --from run\|table\|csv\|paths --proto X -` | one field of one arm's result, read by name: a `##RUN##` metric, a summary-table metric, a `--csv` column by its header name, or a `# paths` key |
 | `tools/bench/comparator_view.py` | arm-versus-arm readings: anchors, and arms paired against committed control cells |
 | `tools/bench/campaign.py plan/dispatch/collect` | a set of cells × arms run on the `benchmark-cell` workflow, throttled, then collected |
+
+The CI gates in `tools/checks/` read marker lines through the same reader,
+with `bench_parse.py --get`, never by awk column position (#791). A marker
+change the reader absorbs therefore cannot make a gate read the wrong number,
+and `tools/bench/test_bench_parse_query.py` checks the reader against the old
+awk expressions on every committed cell.
 
 ## Adding a protocol
 

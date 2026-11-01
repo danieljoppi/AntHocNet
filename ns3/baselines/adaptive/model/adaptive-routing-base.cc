@@ -299,6 +299,9 @@ bool RoutingBase::RouteInput(Ptr<const Packet> p, const Ipv4Header& header,
         // for a hop no radio carried; add it back (ns-3 AODV does the same).
         Ipv4Header compensated = header;
         compensated.SetTtl(header.GetTtl() + 1);
+        if (OnLoopedBack(p, compensated, ucb)) {
+            return true;
+        }
         Enqueue(p, compensated, ucb, ecb);
         StartDiscovery(dst);
         return true;

@@ -19,6 +19,10 @@
 #
 # Runs on one matrix version (3.42), like the other scenario gates.
 set -euo pipefail
+# Marker fields are read by name through the tested reader, not by awk
+# position (#791; tools/bench/test_bench_parse_query.py).
+BENCH_PARSE="$(cd "$(dirname "$0")/../bench" && pwd)/bench_parse.py"
+field() { python3 "$BENCH_PARSE" --get "$1" --from "$2" --proto "$3" -; }  # reads stdin
 
 NS3DIR=${1:?usage: check-trace-replay.sh <ns3-dir> <repo-dir>}
 REPO=${2:?usage: check-trace-replay.sh <ns3-dir> <repo-dir>}
@@ -33,7 +37,7 @@ run() { ./ns3 run "anthocnet-compare $*" 2>/dev/null; }
 out=$(run --csv --protocols=anthocnet,aodv --time=60 --range=150 \
   --mobility=trace --traceFile="$FIX/chain-10.ns_movements" --flowsFile="$FIX/chain-10.flows")
 for arm in anthocnet aodv; do
-  pdr=$(printf '%s\n' "$out" | awk -F, -v a="$arm" '$1==a{print $7}')
+  pdr=$(printf '%s\n' "$out" | field pdr csv "$arm")
   if awk -v p="${pdr:-0}" 'BEGIN{exit !(p>0)}'; then say "ok: fixture replay — $arm PDR ${pdr}%"
   else say "FAIL: fixture replay — $arm delivered nothing (PDR=${pdr:-none})"; fail=1; fi
 done
@@ -45,7 +49,7 @@ ARGS="--csv --protocols=anthocnet,aodv --nNodes=20 --time=120 --area=600 --flows
 run $ARGS --dumpTrace="$TMP/gen.ns_movements" --dumpFlows="$TMP/gen.flows" > "$TMP/gen.out"
 run $ARGS --mobility=trace --traceFile="$TMP/gen.ns_movements" --flowsFile="$TMP/gen.flows" > "$TMP/rep.out"
 if diff <(grep -v '^##CONFIG##' "$TMP/gen.out") <(grep -v '^##CONFIG##' "$TMP/rep.out") > "$TMP/diff"; then
-  pdr=$(awk -F, '$1=="anthocnet"{print $7}' "$TMP/gen.out")
+  pdr=$(field pdr csv anthocnet < "$TMP/gen.out")
   say "ok: a dumped RWP run replays byte-identically ($(wc -l < "$TMP/gen.out") lines, anthocnet PDR ${pdr}%)"
 else
   say "FAIL: the replay differs from the generated run:"; head -20 "$TMP/diff"; fail=1

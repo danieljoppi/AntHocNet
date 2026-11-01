@@ -24,6 +24,10 @@
 # Thresholds: ns3/tools/anchors.yml. Runs on one matrix version (3.42), like
 # the other scenario gates.
 set -euo pipefail
+# Marker fields are read by name through the tested reader, not by awk
+# position (#791; tools/bench/test_bench_parse_query.py).
+BENCH_PARSE="$(cd "$(dirname "$0")/../bench" && pwd)/bench_parse.py"
+field() { python3 "$BENCH_PARSE" --get "$1" --from "$2" --proto "$3" -; }  # reads stdin
 
 NS3DIR=${1:?usage: check-disaster.sh <ns3-dir> <repo-dir>}
 REPO=${2:?usage: check-disaster.sh <ns3-dir> <repo-dir>}
@@ -42,7 +46,7 @@ run() {
   ./ns3 run "anthocnet-compare --scenario=disaster --traceFile=$TMP/disaster.ns2 \
     --flowsFile=$TMP/disaster.flows --buildings=$B --time=300 --runs=2 --csv $*" 2>/dev/null
 }
-pdr() { printf '%s\n' "$1" | awk -F, -v a="$2" '$1==a{print $7}'; }
+pdr() { printf '%s\n' "$1" | field pdr csv "$2"; }
 walls=$(run --protocols=oracle,anthocnet,aodv,olsr)
 open=$(run --protocols=oracle --ns3::UrbanObstacleShadowingLossModel::DbPerCut=0 \
   --ns3::UrbanObstacleShadowingLossModel::DbPerMeter=0)
