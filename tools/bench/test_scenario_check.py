@@ -1451,6 +1451,26 @@ def _dropid_fate_clean_quiet():
            f"a coherent per-packet partition was flagged\n{out}")
 
 
+@case("#800 more deliveries than distinct packets (duplicate copies) FAILs")
+def _dup_deliveries():
+    base = ("beeadhoc 87.7 74.4 1078.5 18.23 1.70\n"
+            "##DROPID## 1 beeadhoc hopTx=4379 hopRx=4270 delivered={d} termMac=19 "
+            "termRoute=48 termTtl=0 termOther=0 termTx=0 termAtNode=0 unseen=0\n"
+            "##MATCH## 1 beeadhoc {rx} 1486 1078.5 24.5\n")
+    # The #800 local reproduction: 1486 deliveries of 597 distinct packets.
+    _levels, out = run_cell(base.format(d=597, rx=1486))
+    expect("duplicate copies" in out and "FAIL" in out, "dup-fail",
+           f"1486 deliveries of 597 packets were not flagged\n{out}")
+    _levels, out = run_cell(base.format(d=1486, rx=1486))
+    expect("duplicate copies" not in out, "dup-quiet",
+           f"equal deliveries and distinct packets must stay quiet\n{out}")
+    no_match = "\n".join(l for l in base.format(d=597, rx=1486).splitlines()
+                          if not l.startswith("##MATCH##")) + "\n"
+    _levels, out = run_cell(no_match)
+    expect("cannot be checked" in out, "dup-no-match",
+           f"a seed without ##MATCH## must WARN, not pass silently\n{out}")
+
+
 @case("#761 a negative unseen (a packet booked twice) FAILs")
 def _dropid_fate_double_fails():
     row = ("##DROPID## 1 ara hopTx=3378 hopRx=3246 ackedHops=3171 macDrops=85 "
