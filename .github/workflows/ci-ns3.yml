@@ -1,10 +1,29 @@
 name: CI / ns-3
 
-# The ns-3 module across the supported versions, under ASan, and alone (BASELINES=0).
-# Called by ci.yml (#610: ci.yml split by area behind the one CI gate, #607);
-# not triggered on its own. Same jobs, same checks as before the split.
+# The ns-3 module on the ns-3 release ns-3 supports, under ASan, and alone
+# (BASELINES=0). Called by ci.yml (#610: ci.yml split by area behind the one CI
+# gate, #607); not triggered on its own.
+#
+# ns-3 maintains its latest release only (no maintenance branches, no
+# backports), so automatic CI (push, PR) runs on that release alone:
+# ghcr.io/swarm-routing/ns3-dev:latest, published and moved to each new ns-3
+# release by swarm-routing/ns3-containers (org CONTRIBUTING invariant 7). The
+# gates, the satellite smoke and the release-tarball install run on the
+# `gate-version` leg. Older ns-3 releases run only on demand: ci.yml's manual
+# workflow_dispatch passes `versions` (e.g. ["3.36","3.42"]); their images are
+# frozen history (3.36: this repo's own ns3:3.36). Published numbers do not run
+# here: the campaign workflows keep this repo's own pinned images.
 on:
   workflow_call:
+    inputs:
+      versions:
+        description: 'JSON list of ns-3 versions for the build/test legs; "latest" = the release ns-3 supports'
+        type: string
+        default: '["latest"]'
+      gate-version:
+        description: 'The leg that also runs the gates, the satellite smoke, the tarball install, ASan and the alone jobs'
+        type: string
+        default: 'latest'
 
 permissions:
   contents: read
@@ -16,15 +35,12 @@ jobs:
     runs-on: ubuntu-latest
     # Build against a pre-built ns-3 image rather than compiling ns-3 from
     # scratch: the stock tree is already built, so CI only compiles the
-    # AntHocNet module delta. 3.41+ use the org's images,
-    # ghcr.io/swarm-routing/ns3-dev:<ver> (the ten newest ns-3 releases, ns-3's
-    # `default` profile, Ubuntu 24.04 / gcc-13, `mesh` built in; generated and
-    # republished weekly by swarm-routing/ns3-containers). The plain configure
-    # below matches their flags, so no stock object is recompiled (verified:
-    # 0 of 876 on 3.48, swarm-routing/ns3-containers#9). 3.36 is older than
-    # that window and keeps this repo's own image (images.yml, Ubuntu 22.04 /
-    # gcc-11); the campaign workflows (benchmark-cell, benchmarks) also stay on
-    # it, so published numbers keep their toolchain.
+    # AntHocNet module delta. Images: ghcr.io/swarm-routing/ns3-dev:<ver>
+    # (ns-3's `default` profile, Ubuntu 24.04 / gcc-13, `mesh` built in); the
+    # plain configure below matches their flags, so no stock object is
+    # recompiled (verified on 3.48 and 3.49: 0 stock objects,
+    # swarm-routing/ns3-containers#9). 3.36, on demand only, keeps this repo's
+    # own image (images.yml, Ubuntu 22.04 / gcc-11).
     container:
       image: ${{ matrix.version == '3.36' && format('ghcr.io/{0}/ns3:3.36', github.repository_owner) || format('ghcr.io/swarm-routing/ns3-dev:{0}', matrix.version) }}
       credentials:
@@ -33,10 +49,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.36 = CMake-build baseline (widely used in published research);
-        # 3.41/3.42 = prior pins; 3.47/3.48 = current releases. Spread catches
-        # API drift across the whole supported range.
-        version: ['3.36', '3.41', '3.42', '3.47', '3.48']
+        # The release ns-3 supports by default; older releases on demand
+        # (ci.yml workflow_dispatch) to check API drift against them.
+        version: ${{ fromJSON(inputs.versions) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # ccache (#609) for the legs that recompile all of ns-3, not only the
@@ -62,12 +77,12 @@ jobs:
           printf 'CCACHE_DIR=%s\nCCACHE_MAXSIZE=1G\n' "$CCACHE_DIR" >> "$GITHUB_ENV"
           ccache -z
       - name: Install AntHocNet module
-        # The 3.48 leg installs from the drop-in release tarball (#606) instead
+        # The gate leg installs from the drop-in release tarball (#606) instead
         # of the Makefile, so every PR proves the asset a user downloads builds
         # and passes the same tests; the other legs keep `make install-ns3`.
         uses: ./.github/actions/ns3-install
         with:
-          from-tarball: ${{ matrix.version == '3.48' }}
+          from-tarball: ${{ matrix.version == inputs.gate-version }}
       - name: make doctor (#605)
         # The pre-install checker must recognise every supported tree and the
         # installed modules; its ##DOCTOR## line is what the learn site parses.
@@ -75,7 +90,9 @@ jobs:
           out=$(make -s doctor NS3DIR=/opt/ns-3)
           echo "$out"
           line=$(printf '%s\n' "$out" | grep '^##DOCTOR## ')
-          case "$line" in *" ns3=${{ matrix.version }} "*) ;; *) echo "FAIL: doctor misread the version"; exit 1;; esac
+          want='${{ matrix.version }}'
+          [ "$want" = latest ] && want="$NS3_VERSION"   # set by the ns3-dev images
+          case "$line" in *" ns3=$want "*) ;; *) echo "FAIL: doctor misread the version (want $want)"; exit 1;; esac
           case "$line" in *" module=installed "*) ;; *) echo "FAIL: doctor did not see the module"; exit 1;; esac
           case "$line" in *"baselines=aomdv:ok,gpsr:ok,oracle:ok,adaptive:ok,routing-bench:ok "*) ;; *) echo "FAIL: doctor did not see the baselines"; exit 1;; esac
       - name: Configure (scope examples/tests to AntHocNet)
@@ -148,7 +165,7 @@ jobs:
         # nakagami, ssrwp, gpsr), as is a negative --areaZ.
         # The mid-run sample exists because the first draft passed a t=0-only
         # check while the mobility bounds clamped every node back to z = 0.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-3d-field.sh /opt/ns-3
       - name: Manhattan / urban smoke (#488, the VANET family)
         # --mobility=manhattan must keep every vehicle on the street grid
@@ -157,7 +174,7 @@ jobs:
         # (mode decode-los-approx) and keep fewer edges than plain tworay; a
         # same-seed rerun is byte-identical; and the four unhonourable
         # combinations are refused.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-manhattan.sh /opt/ns-3
       - name: Tuning-bench ns-3 lines run in anthocnet-compare (#638)
         # The learn site's bench copies --ns3::anthocnet::RoutingProtocol::<Attr>
@@ -166,7 +183,7 @@ jobs:
         # accepted by the module's TypeId: an unknown attribute or a malformed
         # value aborts the run. web/test/bench.test.mjs holds the page to the
         # same line.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: |
           python3 web/tools/config_fields.py check
           args=$(python3 web/tools/config_fields.py ns3-args)
@@ -179,29 +196,30 @@ jobs:
         # the ISL failure overlay and a mass failure must all fire, every
         # arm (delay oracle, AntHocNet, AODV) must deliver through them, and
         # a same-seed rerun must be byte-identical and order-independent.
-        # 3.48 only: the stock LEO model first ships there (ADR-0022), and
-        # leo-walker is not built on older trees. ~45 s.
-        if: matrix.version == '3.48'
+        # Needs ns-3 >= 3.48: the stock LEO model first ships there
+        # (ADR-0022), and leo-walker is not built on older trees; it runs on
+        # the gate leg, the release ns-3 supports. ~45 s.
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-leo-walker.sh /opt/ns-3
       - name: Scene replay smoke (#639, --mobility=trace and --flowsFile)
         # The fixture trace + flow list delivers for AntHocNet and AODV, a
         # dumped RWP run replays byte-identically, and malformed files are
         # refused before the run. How a game level reaches ns-3 (#640).
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-trace-replay.sh /opt/ns-3 "$GITHUB_WORKSPACE"
       - name: Partition/merge stress gate (#62, --seriesEvery)
         # Two teams, a bridge that withdraws and returns: AntHocNet's control
         # must plateau while the field is split (the #20/#45 storm class
         # grows) and every crossing flow must deliver within 60 s of each
         # merge. One 900 s seed.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-partition.sh /opt/ns-3 "$GITHUB_WORKSPACE"
       - name: Disaster-family gate (#580, --scenario=disaster --buildings)
         # The committed scene matches its generator; the walled fire
         # compartments cost the oracle >= 8 pp against the same scene with
         # their loss zeroed (else --buildings is not reaching the channel);
         # AntHocNet, AODV and OLSR each route. 300 s, 2 seeds.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-disaster.sh /opt/ns-3 "$GITHUB_WORKSPACE"
       - name: Validation-anchor gate (single-hop PDR floor, #59)
         # Blocking anchor from docs/benchmarks/methodology.md "Validation
@@ -212,7 +230,7 @@ jobs:
         # one matrix version to keep CI cheap (this reuses the job's build);
         # the heavier Broch-field anchor runs per-merge in benchmarks.yml.
         # Thresholds: ns3/tools/anchors.yml.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-anchors.sh /opt/ns-3 single-hop
       - name: FANET anchors (#482, --scenario=fanet)
         # The FANET family's analytic anchors, gated before any FANET number is
@@ -226,7 +244,7 @@ jobs:
         #                        exceed 1.2, which a field flattened to 2-D
         #                        (exactly 1.00) cannot.
         # Thresholds: ns3/tools/anchors.yml.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: |
           bash tools/checks/check-anchors.sh /opt/ns-3 fanet-single-hop-3d
           bash tools/checks/check-anchors.sh /opt/ns-3 fanet-vertical-3d
@@ -241,7 +259,7 @@ jobs:
         #                     a corner, so oracle hopsMean must exceed 1.2,
         #                     which a channel ignoring the building cannot.
         # Thresholds: ns3/tools/anchors.yml.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: |
           bash tools/checks/check-anchors.sh /opt/ns-3 vanet-single-hop
           bash tools/checks/check-anchors.sh /opt/ns-3 vanet-building
@@ -249,14 +267,14 @@ jobs:
         # GPCR's own paper trend (Lochert et al. 2005): around a blocked
         # corner it must beat GPSR on the same seeds by >= 2 pp (measured
         # +4.9 on this leg). Thresholds: ns3/tools/anchors.yml.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-anchors.sh /opt/ns-3 vanet-gpcr-vs-gpsr
       - name: FANET gpsr3d anchor (#710, --protocols=gpsr3d)
         # The 3-D geographic arm's own paper trend (Bujari et al., IEEE TMC
         # 2018): on a static 3-D field, CFace(3) recovery must deliver >= 5 pp
         # more than greedy alone on the same seeds (measured +12.4 on this
         # leg). Thresholds: ns3/tools/anchors.yml.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-anchors.sh /opt/ns-3 fanet-gpsr3d-recovery
       - name: Static-mesh HWMP anchor (#708, --protocols=hwmp)
         # The static mesh's 802.11s comparator, gated before any HWMP number is
@@ -265,7 +283,7 @@ jobs:
         # must sit in [1.00, 1.10] x the oracle's shortest path on the same
         # seeds (below 1.00 the arm ran on a different topology), with PDR
         # >= 95. Thresholds: ns3/tools/anchors.yml.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-anchors.sh /opt/ns-3 mesh-hwmp-shortest
       - name: Determinism gate (same seed twice must be byte-identical, #129)
         # Golden rule 3 (AGENTS.md): all randomness via IRng, all time via
@@ -277,7 +295,7 @@ jobs:
         # fails here instead of silently invalidating every benchmark. Same
         # single-matrix-version placement as the anchor gate above to keep CI
         # cheap (reuses this job's build).
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-determinism.sh /opt/ns-3
       - name: Seed-independence gate (a run must depend on its seed alone, #352)
         # Stronger than the determinism gate above: identical invocations were
@@ -294,7 +312,7 @@ jobs:
         # ns-3's AODV still keys its socket maps on heap addresses (#362).
         # 4 seeds x 30 simulated seconds on small fields, so it costs seconds; same
         # single-matrix-version placement as the gates above.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: python3 tools/checks/check-seed-independence.py /opt/ns-3 --seeds 4 --time 30
       - name: Arm delivery smoke (#429, every MANET arm must route multi-hop)
         # The MANET equivalent of the satellite arm smoke below, and the gate
@@ -314,7 +332,7 @@ jobs:
         # numbers, and the gate fails if one of them unexpectedly delivers, so
         # the list cannot outlive the defects. ~2-3 min; same
         # single-matrix-version placement as the gates above.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-arm-delivery.sh /opt/ns-3
 
       - name: Satellite validation anchors (#237, ISL topology)
@@ -331,7 +349,7 @@ jobs:
         # Same single-matrix-version placement as the gates above (ADR-0015
         # also fixes satellite CI to one ns-3 version). Thresholds:
         # ns3/tools/anchors.yml.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: |
           bash tools/checks/check-sat-anchors.sh /opt/ns-3 single-isl
           bash tools/checks/check-sat-anchors.sh /opt/ns-3 hop-delay
@@ -351,7 +369,7 @@ jobs:
         # and delivers something. Also asserts dsdv is *refused* up front rather
         # than crashing mid-run. Seconds in total; same single-matrix-version
         # placement as the gates above.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-sat-arms.sh /opt/ns-3
       - name: Determinism gate on the ISL topology (#237 S5)
         # Run separately from the wifi determinism gate rather than assuming it
@@ -359,7 +377,7 @@ jobs:
         # the post-#203 multi-interface next-hop resolution whose peer map is
         # built from received hellos — an ordering a container-iteration bug
         # could perturb without ever showing on a single-interface wifi node.
-        if: matrix.version == '3.42'
+        if: matrix.version == inputs.gate-version
         run: bash tools/checks/check-determinism.sh /opt/ns-3 isl-grid
   ns3-asan:
     name: NS-3 module under ASan + LSan
@@ -367,14 +385,14 @@ jobs:
     # Sanitize the adapter surface (pending-packet queue, timer cancel paths,
     # header <-> AntMessage conversion): rebuild the AntHocNet module and its
     # ns-3 dependencies with AddressSanitizer + LeakSanitizer, then re-run the
-    # same module test suite and e2e delivery smoke as ns3-build. Single matrix
-    # version (3.42, the anchor-gate pin) to bound cost. Non-blocking while the
+    # same module test suite and e2e delivery smoke as ns3-build. One version
+    # (the gate leg, the release ns-3 supports) to bound cost. Non-blocking while the
     # LSan suppression file (tools/checks/lsan.supp) is calibrated against
     # upstream ns-3 static/global allocations — promote to blocking once green
     # on main (#130).
     continue-on-error: true
     container:
-      image: ghcr.io/swarm-routing/ns3-dev:3.42
+      image: ghcr.io/swarm-routing/ns3-dev:${{ inputs.gate-version }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -392,8 +410,8 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .ccache
-          key: ccache-ns3-asan-3.42-gcc13-${{ github.sha }}
-          restore-keys: ccache-ns3-asan-3.42-gcc13-
+          key: ccache-ns3-asan-${{ inputs.gate-version }}-gcc13-${{ github.sha }}
+          restore-keys: ccache-ns3-asan-${{ inputs.gate-version }}-gcc13-
       - name: Install ccache
         run: |
           apt-get update -qq && apt-get install -y -qq --no-install-recommends ccache
@@ -417,7 +435,7 @@ jobs:
           # already-configured tree. Fallback: inject the flags via
           # CXXFLAGS/LDFLAGS, which ns-3's CMake only reads on a *fresh*
           # configure, hence the ./ns3 clean first (the flag change forces a
-          # full rebuild either way). 3.42 has --filter-module-examples-and-tests
+          # full rebuild either way). The gate leg has --filter-module-examples-and-tests
           # (added after 3.36), so tests always run here.
           if ./ns3 configure --help 2>/dev/null | grep -q enable-sanitizers; then
             ./ns3 configure --enable-sanitizers --enable-tests --enable-examples \
@@ -440,7 +458,7 @@ jobs:
         uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: .ccache
-          key: ccache-ns3-asan-3.42-gcc13-${{ github.sha }}
+          key: ccache-ns3-asan-${{ inputs.gate-version }}-gcc13-${{ github.sha }}
       - name: Run module test suite under ASan/LSan
         run: cd /opt/ns-3 && ./test.py -s anthocnet && ./test.py -s oracle && ./test.py -s adaptive && ./test.py -s routing-bench
       - name: E2E delivery smoke under ASan/LSan
@@ -463,7 +481,7 @@ jobs:
     name: NS-3 module alone (BASELINES=0)
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/swarm-routing/ns3-dev:3.48
+      image: ghcr.io/swarm-routing/ns3-dev:${{ inputs.gate-version }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -497,7 +515,7 @@ jobs:
     name: routing-bench alone (stock ns-3 only)
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/swarm-routing/ns3-dev:3.48
+      image: ghcr.io/swarm-routing/ns3-dev:${{ inputs.gate-version }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -540,8 +558,8 @@ jobs:
   # unpacked into a clean stock ns-3 tree: it must build, pass its tests and,
   # with the harness installed, every advertised arm must deliver multi-hop.
   # The harness alone and the harness with the adaptive arms run on every
-  # supported release; adaptive alone (it registers no arm without the
-  # harness) on the newest.
+  # version of the run; adaptive alone (it registers no arm without the
+  # harness) on the gate leg.
   packages:
     name: package ${{ matrix.packages }} (ns-${{ matrix.version }})
     runs-on: ubuntu-latest
@@ -553,10 +571,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['3.36', '3.41', '3.42', '3.47', '3.48']
+        version: ${{ fromJSON(inputs.versions) }}
         packages: ['routing-bench', 'routing-bench,adaptive']
         include:
-          - version: '3.48'
+          - version: ${{ inputs.gate-version }}
             packages: 'adaptive'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

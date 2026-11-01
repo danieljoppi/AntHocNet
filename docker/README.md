@@ -12,13 +12,14 @@ vendors ns-3.
 | `anthocnet-ns3` | `3.36`, `3.41`, `3.42`, `3.47`, `3.48` | The same ns-3 **plus** the additive AntHocNet module (configured, built, `anthocnet-example` smoke-run). |
 
 > **CI builds against the org's images.** Since 2026-11 the per-PR ns-3 jobs
-> (`ci-ns3.yml`, `ci-web.yml`) run in `ghcr.io/swarm-routing/ns3-dev:<ver>` for
-> 3.41+ — the ten newest ns-3 releases, ns-3's `default` profile, Ubuntu 24.04 /
-> gcc-13, published by [`swarm-routing/ns3-containers`](https://github.com/swarm-routing/ns3-containers).
-> The images below keep being published from here: CI's 3.36 leg, the campaign
-> workflows (`benchmark-cell`, `benchmarks`, so a published number keeps the
-> toolchain it was measured on) and users who want AntHocNet pre-built
-> (`anthocnet-ns3`) still use them.
+> (`ci-ns3.yml`, `ci-web.yml`) run in `ghcr.io/swarm-routing/ns3-dev:latest`:
+> the ns-3 release ns-3 supports (its latest; ns-3's `default` profile, Ubuntu
+> 24.04 / gcc-13), published by [`swarm-routing/ns3-containers`](https://github.com/swarm-routing/ns3-containers).
+> Older releases run on demand (ci.yml's manual run). The images below keep
+> being published from here: the on-demand 3.36 leg, the campaign workflows
+> (`benchmark-cell`, `benchmarks`, so a published number keeps the toolchain
+> it was measured on) and users who want AntHocNet pre-built (`anthocnet-ns3`)
+> still use them.
 
 > **NS-2 images are no longer built** (the adapter was removed in v2.0.0, #307).
 > Everything already published stays pullable — `ns2` and `anthocnet-ns2` at

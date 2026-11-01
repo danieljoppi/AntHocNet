@@ -60,8 +60,9 @@
 #    and the family's native arms deliver through the air layer, and OPSPF
 #    still equals the hop oracle without unpredicted failures.
 #
-# Runs on ns-3.48 only: the stock LEO model first ships there, and the
-# example is not built on older trees (ADR-0022).
+# Needs ns-3 >= 3.48: the stock LEO model first ships there, and the example
+# is not built on older trees (ADR-0022). CI runs it on the gate leg, the
+# release ns-3 supports.
 set -euo pipefail
 # Marker fields are read by name through the tested reader, not by awk
 # position (#791; tools/bench/test_bench_parse_query.py).

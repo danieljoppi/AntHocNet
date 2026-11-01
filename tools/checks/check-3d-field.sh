@@ -33,7 +33,7 @@
 #    negative --areaZ. Each must exit non-zero with its own message, not
 #    produce a plausible run of the wrong geometry.
 #
-# Runs on one matrix version (3.42), like the other scenario gates.
+# Runs on the gate leg (the ns-3 release ns-3 supports), like the other scenario gates.
 set -euo pipefail
 # Marker fields are read by name through the tested reader, not by awk
 # position (#791; tools/bench/test_bench_parse_query.py).

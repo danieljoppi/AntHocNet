@@ -122,8 +122,9 @@ jobs:
 
   # The learn site's "Export to ns-3" kits (#640), as the pages job exported
   # them, run in the ns-3 image: every world's kit must deliver. Wi-Fi worlds
-  # replay through routing-compare (#639) on 3.42; the satellite kit is
-  # leo-walker's moving shell, which needs 3.48.
+  # replay through routing-compare (#639) and the satellite kit is
+  # leo-walker's moving shell (ns-3 >= 3.48); all of them run on the release
+  # ns-3 supports (ns3-dev:latest, org CONTRIBUTING invariant 7).
   ns3-kits:
     name: ns-3 export kits run and deliver (#640)
     runs-on: ubuntu-latest
@@ -138,10 +139,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - version: '3.42'
-            worlds: 'line manet town mesh fanet vanet'
-          - version: '3.48'
-            worlds: 'satellite'
+          - version: 'latest'
+            worlds: 'line manet town mesh fanet vanet satellite'
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
