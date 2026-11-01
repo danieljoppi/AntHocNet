@@ -540,7 +540,7 @@ jobs:
   # supported release; adaptive alone (it registers no arm without the
   # harness) on the newest.
   packages:
-    name: package ${{ matrix.packages }} (ns-3.${{ matrix.version }})
+    name: package ${{ matrix.packages }} (ns-${{ matrix.version }})
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.repository_owner }}/ns3:${{ matrix.version }}

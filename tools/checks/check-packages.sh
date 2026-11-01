@@ -75,7 +75,11 @@ fi
 
 case ",$PKGS," in
     *,routing-bench,*) ;;
-    *) [ "$fail" -eq 0 ] && say "PASS (no harness installed: build and tests only)"; exit "$fail" ;;
+    *) if [ "$fail" -eq 0 ]; then
+           if [ "$run_tests" -eq 1 ]; then say "PASS (no harness installed: build and tests only)"
+           else say "PASS (no harness installed: build only, test suites skipped)"; fi
+       fi
+       exit "$fail" ;;
 esac
 
 help=$(./ns3 run "routing-compare --PrintHelp" 2>&1 || true)
