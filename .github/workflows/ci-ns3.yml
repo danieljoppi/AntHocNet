@@ -94,8 +94,10 @@ jobs:
           out=$(make -s doctor NS3DIR=/opt/ns-3)
           echo "$out"
           line=$(printf '%s\n' "$out" | grep '^##DOCTOR## ')
-          want='${{ matrix.version }}'
-          [ "$want" = latest ] && want="$NS3_VERSION"   # set by the ns3-dev images
+          # The ns3-dev images set NS3_VERSION to the installed release (also
+          # for `latest` and for a minor tag that resolves to a patch, e.g.
+          # 3.46 -> 3.46.1); this repo's ns3:3.36 image does not.
+          want="${NS3_VERSION:-${{ matrix.version }}}"
           case "$line" in *" ns3=$want "*) ;; *) echo "FAIL: doctor misread the version (want $want)"; exit 1;; esac
           case "$line" in *" module=installed "*) ;; *) echo "FAIL: doctor did not see the module"; exit 1;; esac
           case "$line" in *"baselines=aomdv:ok,gpsr:ok,oracle:ok,adaptive:ok,routing-bench:ok "*) ;; *) echo "FAIL: doctor did not see the baselines"; exit 1;; esac
@@ -510,11 +512,18 @@ jobs:
       - name: Configure, build, test, run the example
         run: |
           cd /opt/ns-3
-          ./ns3 configure --enable-tests --enable-examples \
-            --filter-module-examples-and-tests='anthocnet' \
-            --enable-modules='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;csma'
-          ./ns3 build
-          ./test.py -s anthocnet
+          mods='anthocnet;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;point-to-point;csma'
+          # ns-3.36 (on-demand gate version) has no example/test filter: build
+          # and run the example only, as ns3-build does on that tree.
+          if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
+            ./ns3 configure --enable-tests --enable-examples \
+              --filter-module-examples-and-tests='anthocnet' --enable-modules="$mods"
+            ./ns3 build
+            ./test.py -s anthocnet
+          else
+            ./ns3 configure --enable-examples --enable-modules="$mods"
+            ./ns3 build
+          fi
           ./ns3 run anthocnet-example
 
   # ADR-0027 (#767, v2.6.0 exit criterion): the comparison harness alone, on
@@ -540,11 +549,18 @@ jobs:
       - name: Configure, build, test, run the stock arms
         run: |
           cd /opt/ns-3
-          ./ns3 configure --enable-tests --enable-examples \
-            --filter-module-examples-and-tests='routing-bench' \
-            --enable-modules='routing-bench;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;mesh'
-          ./ns3 build
-          ./test.py -s routing-bench
+          mods='routing-bench;wifi;mobility;applications;aodv;olsr;dsdv;flow-monitor;mesh'
+          # ns-3.36 (on-demand gate version) has no example/test filter: skip
+          # the test suite there, as ns3-build does; the arm checks still run.
+          if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
+            ./ns3 configure --enable-tests --enable-examples \
+              --filter-module-examples-and-tests='routing-bench' --enable-modules="$mods"
+            ./ns3 build
+            ./test.py -s routing-bench
+          else
+            ./ns3 configure --enable-examples --enable-modules="$mods"
+            ./ns3 build
+          fi
           help=$(./ns3 run "routing-compare --PrintHelp" 2>&1 || true)
           printf '%s\n' "$help" | grep -q 'Comma-separated list (aodv,dsdv,hwmp,olsr)' \
             || { echo "FAIL: routing-compare alone should offer exactly the stock arms"; printf '%s\n' "$help" | grep -i protocols; exit 1; }
