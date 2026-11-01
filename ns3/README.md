@@ -37,7 +37,7 @@ cd /path/to/ns-3-dev
 ./ns3 build
 ```
 
-`make doctor` checks that the tree is ns-3.36–3.48 with CMake, a C++17
+`make doctor` checks that the tree is ns-3.36–3.49 with CMake, a C++17
 compiler, Python and a writable `contrib/`, and reports what is installed. It
 ends with one machine-readable `##DOCTOR##` line (versioned, fields only ever
 added). `BASELINES=0` skips the `aomdv`, `gpsr`, `oracle` and `adaptive`

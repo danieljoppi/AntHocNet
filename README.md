@@ -148,7 +148,8 @@ Any ns-3 from 3.36 works. This builds AntHocNet alone, without the
 comparison modules. The recipe is built end to end weekly
 ([bake.yml](.github/workflows/bake.yml)).
 
-Uninstall: `make uninstall-ns3 NS3DIR=...`. Supported: ns-3.36 to ns-3.48.
+Uninstall: `make uninstall-ns3 NS3DIR=...`. Tested: every PR on the ns-3
+release ns-3 supports (3.49 today); ns-3.36 to 3.48 on demand.
 Details in [ns3/README.md](ns3/README.md).
 
 The NS-3 module also ships `anthocnet-compare`, which benchmarks AntHocNet

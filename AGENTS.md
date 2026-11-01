@@ -67,8 +67,15 @@ Because you cannot build a simulator here, the **CI matrix is how you validate
 an adapter change**: develop, push a branch, open a PR, and read the job
 results.
 
-- `ci-ns3.yml` (called by `ci.yml`) builds the **NS-3 module against the prebuilt GHCR images across
-  ns-3.36–3.48** (e2e delivery smoke). Iterate on failures from the job logs —
+- `ci-ns3.yml` (called by `ci.yml`) builds the **NS-3 module against the prebuilt GHCR image of the
+  ns-3 release ns-3 supports** (e2e delivery smoke, and every gate):
+  `ghcr.io/swarm-routing/ns3-dev:latest`, built by
+  [`swarm-routing/ns3-containers`](https://github.com/swarm-routing/ns3-containers) and moved to each new
+  ns-3 release (ns-3 maintains only its latest; org CONTRIBUTING invariant 7). Older releases
+  (3.36–3.48) run **on demand**: `ci.yml` `workflow_dispatch` with `ns3-versions` (e.g.
+  `["3.36","3.42"]`) and optionally `ns3-gate-version`; 3.36 uses this repo's own `ns3:3.36`
+  image (see `docker/README.md`). Published numbers never use `latest`: the campaign workflows
+  keep this repo's own pinned images. Iterate on failures from the job logs —
   cross-version API drift is the usual cause (e.g. ns-3.36's non-`const`
   `Histogram` accessors, `RouteInput` by-value vs const-ref, scoped TestSuite
   enums). The `AHN_*`/`ANTHOCNET_NS3_*` macros in the NS-3 headers + CMake

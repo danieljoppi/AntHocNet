@@ -8,6 +8,15 @@ on:
     branches: [main, master]
   pull_request:
   workflow_dispatch:
+    inputs:
+      ns3-versions:
+        description: 'On demand: JSON list of older ns-3 releases to build and test, e.g. ["3.36","3.42"] (empty = the release ns-3 supports)'
+        required: false
+        default: ''
+      ns3-gate-version:
+        description: 'On demand: the ns-3 version that also runs the gates (empty = latest)'
+        required: false
+        default: ''
 
 # A force-push to a PR branch obsoletes the in-flight run — cancel it instead
 # of paying for the full matrix twice. Main-branch runs are never cancelled
@@ -98,6 +107,12 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     uses: ./.github/workflows/ci-ns3.yml
+    # Automatic runs: the ns-3 release ns-3 supports (ns3-dev:latest). Older
+    # releases only through the manual inputs above (org CONTRIBUTING
+    # invariant 7).
+    with:
+      versions: ${{ inputs.ns3-versions || '["latest"]' }}
+      gate-version: ${{ inputs.ns3-gate-version || 'latest' }}
 
 
   # The one check to require in branch protection (#607): passes when every
