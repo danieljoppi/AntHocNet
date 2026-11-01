@@ -55,12 +55,14 @@ cd "$NS3DIR"
 # which ns-3.36 lacks. There, as in ci-ns3.yml's module job, only the
 # examples are built (every stock module's tests drift by release), so the
 # test suites are skipped and the delivery smoke below is the check.
+# --disable-tests also clears a tests-on setting left in the CMake cache by an
+# earlier configure of the same tree.
 if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
     ./ns3 configure --enable-tests --enable-examples \
         --filter-module-examples-and-tests="${PKGS//,/;}" --enable-modules="$mods" >/dev/null
     run_tests=1
 else
-    ./ns3 configure --enable-examples --enable-modules="$mods" >/dev/null
+    ./ns3 configure --disable-tests --enable-examples --enable-modules="$mods" >/dev/null
     run_tests=0
     say "no --filter-module-examples-and-tests on this ns-3: test suites skipped"
 fi
