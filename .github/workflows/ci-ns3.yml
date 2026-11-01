@@ -530,3 +530,32 @@ jobs:
             echo "FAIL: an arm that is not installed must abort (#448)"; exit 1
           fi
           grep -q "unknown protocol 'anthocnet'" /tmp/u.log
+
+  # #770 (v2.7.0 exit criterion): the standalone release packages
+  # (routing-bench-<ver>.tar.gz, adaptive-<ver>.tar.gz), built by
+  # tools/release/module-tarball.sh exactly as release.yml builds them, each
+  # unpacked into a clean stock ns-3 tree: it must build, pass its tests and,
+  # with the harness installed, every advertised arm must deliver multi-hop.
+  # The harness alone and the harness with the adaptive arms run on every
+  # supported release; adaptive alone (it registers no arm without the
+  # harness) on the newest.
+  packages:
+    name: package ${{ matrix.packages }} (ns-${{ matrix.version }})
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/ns3:${{ matrix.version }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['3.36', '3.41', '3.42', '3.47', '3.48']
+        packages: ['routing-bench', 'routing-bench,adaptive']
+        include:
+          - version: '3.48'
+            packages: 'adaptive'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the package(s) from their release tarballs and check them
+        run: bash tools/checks/check-packages.sh /opt/ns-3 "${{ matrix.packages }}"

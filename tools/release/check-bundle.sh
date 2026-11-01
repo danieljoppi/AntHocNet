@@ -33,6 +33,19 @@ for f in tools/bench/stats_util.py tools/bench/bench_parse.py tools/bench/scenar
   [ -e "$f" ] || bad "bundle is missing $f"
 done
 cd - >/dev/null
+# The standalone packages (#770): each holds exactly its own contrib directory,
+# with its README, the licence and an install note. check-packages.sh builds
+# them on ns-3 in CI; this is the fast static half.
+mod=$(tools/release/module-tarball.sh 0.0.0-check "$tmp/mod" | tail -n 1) || bad "module-tarball.sh failed"
+for p in routing-bench adaptive; do
+  list=$(tar -tzf "$tmp/mod/$p-0.0.0-check.tar.gz")
+  top=$(printf '%s\n' "$list" | cut -d/ -f2 | sort -u | tr -d '\n')
+  [ "$top" = "$p" ] || bad "$p package holds ($top), not only $p/"
+  for f in CMakeLists.txt README.md LICENSE INSTALL.txt; do
+    printf '%s\n' "$list" | grep -qx "\./$p/$f" || bad "$p package is missing $f"
+  done
+done
+[ -s "$mod" ] || bad "module tarball not written"
 # The index tree with the working tree's .gitattributes: in CI that is HEAD;
 # locally it includes staged changes.
 arch=$(git archive --worktree-attributes --format=tar "$(git write-tree)" | tar -t)

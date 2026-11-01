@@ -120,6 +120,12 @@ jobs:
           ( cd dist && sha256sum "anthocnet-ns3-modules-${VER}.tar.gz" > "anthocnet-ns3-modules-${VER}.tar.gz.sha256" )
           cat "dist/anthocnet-ns3-modules-${VER}.tar.gz.sha256"
           echo "MOD_SHA256=$(cut -d' ' -f1 < "dist/anthocnet-ns3-modules-${VER}.tar.gz.sha256")" >> "$GITHUB_ENV"
+          # The same run writes the standalone harness and adaptive-arms
+          # packages (#770); checksum them the same way.
+          for p in routing-bench adaptive; do
+            ( cd dist && sha256sum "$p-${VER}.tar.gz" > "$p-${VER}.tar.gz.sha256" )
+            cat "dist/$p-${VER}.tar.gz.sha256"
+          done
 
       - name: Bake recipe for this release (#613)
         # ns-3's own installer: the module tarball above as an ns-contrib
@@ -153,6 +159,8 @@ jobs:
           subject-path: |
             dist/anthocnet-${{ env.VER }}.zip
             dist/anthocnet-ns3-modules-${{ env.VER }}.tar.gz
+            dist/routing-bench-${{ env.VER }}.tar.gz
+            dist/adaptive-${{ env.VER }}.tar.gz
 
       - name: Attest the SBOM (#614)
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
@@ -175,7 +183,8 @@ jobs:
           jq -c '.dsseEnvelope' "dist/anthocnet-${VER}.provenance.sigstore.json" > "dist/anthocnet-${VER}.intoto.jsonl"
           test "$(jq -r '.payloadType' "dist/anthocnet-${VER}.intoto.jsonl")" = "application/vnd.in-toto+json"
           test "$(wc -l < "dist/anthocnet-${VER}.intoto.jsonl")" -eq 1
-          for f in "dist/anthocnet-${VER}.zip" "dist/anthocnet-ns3-modules-${VER}.tar.gz"; do
+          for f in "dist/anthocnet-${VER}.zip" "dist/anthocnet-ns3-modules-${VER}.tar.gz" \
+                   "dist/routing-bench-${VER}.tar.gz" "dist/adaptive-${VER}.tar.gz"; do
             gh attestation verify "$f" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
           done
           spdx=$(jq -r '.spdxVersion | sub("^SPDX-"; "")' "dist/anthocnet-${VER}.spdx.json")   # e.g. 2.3
@@ -217,6 +226,10 @@ jobs:
             dist/anthocnet-${{ env.VER }}.zip.sha256
             dist/anthocnet-ns3-modules-${{ env.VER }}.tar.gz
             dist/anthocnet-ns3-modules-${{ env.VER }}.tar.gz.sha256
+            dist/routing-bench-${{ env.VER }}.tar.gz
+            dist/routing-bench-${{ env.VER }}.tar.gz.sha256
+            dist/adaptive-${{ env.VER }}.tar.gz
+            dist/adaptive-${{ env.VER }}.tar.gz.sha256
             dist/anthocnet-${{ env.VER }}.spdx.json
             dist/anthocnet-${{ env.VER }}.bakeconf.xml
             dist/anthocnet-${{ env.VER }}.provenance.sigstore.json
@@ -238,6 +251,11 @@ jobs:
             **With bake** (ns-3's installer): copy `anthocnet-${{ env.VER }}.bakeconf.xml`
             into your bake checkout's `contrib/`, then
             `./bake.py configure -e ns-3.42 -e anthocnet && ./bake.py download && ./bake.py build`.
+
+            **Without AntHocNet** (#770): `routing-bench-${{ env.VER }}.tar.gz` is the
+            comparison harness with the stock ns-3 arms, and `adaptive-${{ env.VER }}.tar.gz`
+            adds the ARA, Termite, Q-routing and BeeAdHoc arms. Unpack either or both into
+            `ns-3/contrib`. Both are covered by the same provenance attestation.
 
             Pre-built simulator images are on GHCR (see `docker/README.md`),
             including release-pinned tags `anthocnet-ns3:<sim-version>-${{ env.TAG }}`.

@@ -244,6 +244,30 @@ FANET and VANET presets (the oracle's family cadence), TCP, Nakagami with
 energy, `--seriesEvery` and `--qdiag`, and the replay file. The committed-cell
 control is #769.
 
+## Amendment (2026-10-31, #770): packaged on its own
+
+The harness and the adaptive arms ship as their own release assets,
+`routing-bench-<ver>.tar.gz` and `adaptive-<ver>.tar.gz`, beside
+`anthocnet-ns3-modules-<ver>.tar.gz`. `tools/release/module-tarball.sh` cuts
+all three from one `make install-ns3` run, so the layouts cannot drift. Each
+unpacks into `contrib/` with its README, the licence and an install note, and
+the release's provenance attestation covers both.
+
+**Versioning:** the packages carry the AntHocNet release version. One version
+line keeps "which harness produced this cell" answerable from the release tag
+alone. The packages get their own version line only if an outside user needs
+to pin the harness independently of AntHocNet; then the marker contract
+version (`##HARNESS## version=`, #771) is what that user pins, not the
+package version.
+
+CI (`ci-ns3.yml`, job `packages`) builds each package from its tarball on a
+clean stock ns-3 tree, with `tools/checks/check-packages.sh`:
+- the harness alone, and the harness with the adaptive arms, on ns-3.36 to 3.48;
+- adaptive alone on the newest release.
+
+The harness must offer exactly the expected arms, and every arm must deliver
+over more than one hop.
+
 ## Consequences
 
 - **An arm becomes a module plus one function.** The wiring checklist in
