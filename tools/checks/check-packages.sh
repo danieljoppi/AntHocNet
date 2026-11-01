@@ -51,12 +51,25 @@ for p in ${PKGS//,/ }; do
 done
 
 cd "$NS3DIR"
-./ns3 configure --enable-tests --enable-examples \
-    --filter-module-examples-and-tests="${PKGS//,/;}" --enable-modules="$mods" >/dev/null
+# Tests are scoped to the packages with --filter-module-examples-and-tests,
+# which ns-3.36 lacks. There, as in ci-ns3.yml's module job, only the
+# examples are built (every stock module's tests drift by release), so the
+# test suites are skipped and the delivery smoke below is the check.
+if ./ns3 configure --help 2>/dev/null | grep -q filter-module-examples-and-tests; then
+    ./ns3 configure --enable-tests --enable-examples \
+        --filter-module-examples-and-tests="${PKGS//,/;}" --enable-modules="$mods" >/dev/null
+    run_tests=1
+else
+    ./ns3 configure --enable-examples --enable-modules="$mods" >/dev/null
+    run_tests=0
+    say "no --filter-module-examples-and-tests on this ns-3: test suites skipped"
+fi
 ./ns3 build >/dev/null
-for p in ${PKGS//,/ }; do
-    ./test.py -s "$p" || { say "FAIL: test suite '$p'"; fail=1; }
-done
+if [ "$run_tests" -eq 1 ]; then
+    for p in ${PKGS//,/ }; do
+        ./test.py -s "$p" || { say "FAIL: test suite '$p'"; fail=1; }
+    done
+fi
 
 case ",$PKGS," in
     *,routing-bench,*) ;;

@@ -58,14 +58,20 @@ sha256sum -c anthocnet-X.Y.Z.zip.sha256
 **2. Origin: signed build provenance.** The install bundle and the drop-in
 ns-3 module tarball carry SLSA build provenance. It is signed keylessly
 (Sigstore) with the identity of `release.yml` in this repository, and it is
-stored in GitHub's attestation store. With the [GitHub CLI](https://cli.github.com/):
+stored in GitHub's attestation store. With the [GitHub CLI](https://cli.github.com/)
+(`--signer-workflow` accepts only an attestation signed by `release.yml`, not
+one from another workflow of this repository, such as `images.yml`):
 
 ```bash
-gh attestation verify anthocnet-X.Y.Z.zip --repo danieljoppi/AntHocNet
-gh attestation verify anthocnet-ns3-modules-X.Y.Z.tar.gz --repo danieljoppi/AntHocNet
+gh attestation verify anthocnet-X.Y.Z.zip --repo danieljoppi/AntHocNet \
+  --signer-workflow danieljoppi/AntHocNet/.github/workflows/release.yml
+gh attestation verify anthocnet-ns3-modules-X.Y.Z.tar.gz --repo danieljoppi/AntHocNet \
+  --signer-workflow danieljoppi/AntHocNet/.github/workflows/release.yml
 # from v2.7.0, the standalone packages (#770):
-gh attestation verify routing-bench-X.Y.Z.tar.gz --repo danieljoppi/AntHocNet
-gh attestation verify adaptive-X.Y.Z.tar.gz --repo danieljoppi/AntHocNet
+gh attestation verify routing-bench-X.Y.Z.tar.gz --repo danieljoppi/AntHocNet \
+  --signer-workflow danieljoppi/AntHocNet/.github/workflows/release.yml
+gh attestation verify adaptive-X.Y.Z.tar.gz --repo danieljoppi/AntHocNet \
+  --signer-workflow danieljoppi/AntHocNet/.github/workflows/release.yml
 ```
 
 The same Sigstore bundle is attached to the release as
@@ -81,6 +87,7 @@ you can check that the SBOM belongs to the file you downloaded:
 
 ```bash
 gh attestation verify anthocnet-X.Y.Z.zip --repo danieljoppi/AntHocNet \
+  --signer-workflow danieljoppi/AntHocNet/.github/workflows/release.yml \
   --predicate-type https://spdx.dev/Document/v2.3
 ```
 
