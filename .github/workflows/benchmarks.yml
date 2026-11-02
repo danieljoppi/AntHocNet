@@ -106,7 +106,7 @@ jobs:
     # compiling ns-3 from source, so the job has budget to run the whole
     # taxonomy instead of a single scenario.
     container:
-      image: ghcr.io/${{ github.repository_owner }}/ns3:3.42
+      image: ghcr.io/danieljoppi/ns3:3.42
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

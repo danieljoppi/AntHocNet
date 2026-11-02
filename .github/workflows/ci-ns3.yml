@@ -47,7 +47,7 @@ jobs:
     # swarm-routing/ns3-containers#9). 3.36, on demand only, keeps this repo's
     # own image (images.yml, Ubuntu 22.04 / gcc-11).
     container:
-      image: ${{ matrix.version == '3.36' && format('ghcr.io/{0}/ns3:3.36', github.repository_owner) || format('ghcr.io/swarm-routing/ns3-dev:{0}', matrix.version) }}
+      image: ${{ matrix.version == '3.36' && 'ghcr.io/danieljoppi/ns3:3.36' || format('ghcr.io/swarm-routing/ns3-dev:{0}', matrix.version) }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -411,7 +411,7 @@ jobs:
     # on main (#130).
     continue-on-error: true
     container:
-      image: ${{ inputs.gate-version == '3.36' && format('ghcr.io/{0}/ns3:3.36', github.repository_owner) || format('ghcr.io/swarm-routing/ns3-dev:{0}', inputs.gate-version) }}
+      image: ${{ inputs.gate-version == '3.36' && 'ghcr.io/danieljoppi/ns3:3.36' || format('ghcr.io/swarm-routing/ns3-dev:{0}', inputs.gate-version) }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -512,7 +512,7 @@ jobs:
     name: NS-3 module alone (BASELINES=0)
     runs-on: ubuntu-latest
     container:
-      image: ${{ inputs.gate-version == '3.36' && format('ghcr.io/{0}/ns3:3.36', github.repository_owner) || format('ghcr.io/swarm-routing/ns3-dev:{0}', inputs.gate-version) }}
+      image: ${{ inputs.gate-version == '3.36' && 'ghcr.io/danieljoppi/ns3:3.36' || format('ghcr.io/swarm-routing/ns3-dev:{0}', inputs.gate-version) }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -553,7 +553,7 @@ jobs:
     name: routing-bench alone (stock ns-3 only)
     runs-on: ubuntu-latest
     container:
-      image: ${{ inputs.gate-version == '3.36' && format('ghcr.io/{0}/ns3:3.36', github.repository_owner) || format('ghcr.io/swarm-routing/ns3-dev:{0}', inputs.gate-version) }}
+      image: ${{ inputs.gate-version == '3.36' && 'ghcr.io/danieljoppi/ns3:3.36' || format('ghcr.io/swarm-routing/ns3-dev:{0}', inputs.gate-version) }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -609,7 +609,7 @@ jobs:
     name: package ${{ matrix.packages }} (ns-${{ matrix.version }})
     runs-on: ubuntu-latest
     container:
-      image: ${{ matrix.version == '3.36' && format('ghcr.io/{0}/ns3:3.36', github.repository_owner) || format('ghcr.io/swarm-routing/ns3-dev:{0}', matrix.version) }}
+      image: ${{ matrix.version == '3.36' && 'ghcr.io/danieljoppi/ns3:3.36' || format('ghcr.io/swarm-routing/ns3-dev:{0}', matrix.version) }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

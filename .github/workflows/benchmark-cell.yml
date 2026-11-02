@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360   # the hosted-runner ceiling (#121)
     container:
-      image: ghcr.io/${{ github.repository_owner }}/ns3:${{ inputs.version }}
+      image: ghcr.io/danieljoppi/ns3:${{ inputs.version }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -149,7 +149,7 @@ jobs:
           HARNESS: ${{ inputs.harness }}
           ARGS: ${{ inputs.args }}
         run: |
-          prov="##PROV## commit=$GITHUB_SHA ref=$GITHUB_REF_NAME run_id=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT image=ghcr.io/${{ github.repository_owner }}/ns3:${{ inputs.version }} profile=$NS3_PROFILE harness=$HARNESS"
+          prov="##PROV## commit=$GITHUB_SHA ref=$GITHUB_REF_NAME run_id=$GITHUB_RUN_ID attempt=$GITHUB_RUN_ATTEMPT image=ghcr.io/danieljoppi/ns3:${{ inputs.version }} profile=$NS3_PROFILE harness=$HARNESS"
           echo "AHN_PROV=$prov" >> "$GITHUB_ENV"
           if [ -f "$GITHUB_WORKSPACE/results.txt" ]; then
             echo "##ARGS## $HARNESS $ARGS" >> "$GITHUB_WORKSPACE/results.txt"
