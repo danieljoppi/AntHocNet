@@ -15,7 +15,9 @@ vendors ns-3.
 > (`ci-ns3.yml`, `ci-web.yml`) run in `ghcr.io/swarm-routing/ns3-dev:latest`:
 > the ns-3 release ns-3 supports (its latest; ns-3's `default` profile, Ubuntu
 > 24.04 / gcc-13), published by [`swarm-routing/ns3-containers`](https://github.com/swarm-routing/ns3-containers).
-> Older releases run on demand (ci.yml's manual run). The images below keep
+> Older releases run on demand (ci.yml's manual run). Until ns-3 fixes the
+> 3.49 AODV livelock (#843), the gates, the package checks and the kits run in
+> `ns3-dev:3.48` instead. The images below keep
 > being published from here: the on-demand 3.36 leg, the campaign workflows
 > (`benchmark-cell`, `benchmarks`, so a published number keeps the toolchain
 > it was measured on) and users who want AntHocNet pre-built (`anthocnet-ns3`)

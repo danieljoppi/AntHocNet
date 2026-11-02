@@ -138,7 +138,8 @@ These were latent in the original NS-2 module and are fixed in `core/`:
   randomized property/invariant tests (`test_properties`).
 - **NS-3 module** builds and tests on **the ns-3 release ns-3 supports** (its
   latest, 3.49 as of 2026-11) on every push/PR, inside the prebuilt
-  `ghcr.io/swarm-routing/ns3-dev:latest` image; older releases (3.36–3.48, the
+  `ghcr.io/swarm-routing/ns3-dev:latest` image (the gates, package checks and
+  kits on `ns3-dev:3.48` until the ns-3.49 AODV livelock is fixed, #843); older releases (3.36–3.48, the
   matrix until 2026-11) run on demand through ci.yml's manual
   `workflow_dispatch`, running the module test suite and an **asserted end-to-end delivery
   smoke** — AntHocNet must deliver a non-zero PDR in a small connected scenario.

@@ -74,7 +74,12 @@ results.
   ns-3 release (ns-3 maintains only its latest; org CONTRIBUTING invariant 7). Older releases
   (3.36–3.48) run **on demand**: `ci.yml` `workflow_dispatch` with `ns3-versions` (e.g.
   `["3.36","3.42"]`) and optionally `ns3-gate-version`; 3.36 uses this repo's own `ns3:3.36`
-  image (see `docker/README.md`). Published numbers never use `latest`: the campaign workflows
+  image (see `docker/README.md`). **Temporary exception (#843, option A):** ns-3.49's stock AODV
+  and the vendored AOMDV livelock, and nearly every gate, the package checks and the kits run
+  an AODV-family arm, so those run on `ns3-dev:3.48` (the `gate-version` leg) until a fixed
+  ns-3 release reaches `latest`; the `latest` leg keeps the build, unit tests and the
+  AntHocNet-only smokes. Revert the pin (`ci.yml`, `ci-ns3.yml`, `ci-web.yml` comments name
+  it) when #843 closes. Published numbers never use `latest`: the campaign workflows
   keep this repo's own pinned images. Iterate on failures from the job logs —
   cross-version API drift is the usual cause (e.g. ns-3.36's non-`const`
   `Histogram` accessors, `RouteInput` by-value vs const-ref, scoped TestSuite

@@ -13,6 +13,11 @@ name: CI / ns-3
 # workflow_dispatch passes `versions` (e.g. ["3.36","3.42"]); their images are
 # frozen history (3.36: this repo's own ns3:3.36). Published numbers do not run
 # here: the campaign workflows keep this repo's own pinned images.
+#
+# TEMPORARY EXCEPTION (#843, swarm-routing/ns3-containers#35, option A): on
+# ns-3.49 stock AODV and the vendored AOMDV livelock, and the gates, packages
+# and kits run them. Until a fixed release reaches `latest`, ci.yml passes
+# gate-version 3.48 and the packages job skips the 3.49 (`latest`) legs.
 on:
   workflow_call:
     inputs:
@@ -23,7 +28,7 @@ on:
       gate-version:
         description: 'The leg that also runs the gates, the satellite smoke, the tarball install, ASan and the alone jobs'
         type: string
-        default: 'latest'
+        default: '3.48'  # 'latest' once ns-3.49's AODV livelock is fixed upstream (#843)
 
 permissions:
   contents: read
@@ -613,7 +618,17 @@ jobs:
       matrix:
         version: ${{ fromJSON(inputs.versions) }}
         packages: ['routing-bench', 'routing-bench,adaptive']
+        # Every package check runs the stock aodv arm, which hangs on ns-3.49
+        # (#843): skip those legs; the gate leg (3.48) still checks every
+        # package. Remove these excludes with the gate-version pin.
+        exclude:
+          - version: 'latest'
+          - version: '3.49'
         include:
+          - version: ${{ inputs.gate-version }}
+            packages: 'routing-bench'
+          - version: ${{ inputs.gate-version }}
+            packages: 'routing-bench,adaptive'
           - version: ${{ inputs.gate-version }}
             packages: 'adaptive'
     steps:
