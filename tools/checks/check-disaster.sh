@@ -21,8 +21,8 @@
 # 3. The committed scene (ns3/tools/fixtures/disaster/, which the benchmark
 #    workflow replays) is what the generator writes, byte for byte.
 #
-# Thresholds: ns3/tools/anchors.yml. Runs on one matrix version (3.42), like
-# the other scenario gates.
+# Thresholds: ns3/tools/anchors.yml. Runs on the gate leg (the ns-3 release
+# ns-3 supports), like the other scenario gates.
 set -euo pipefail
 # Marker fields are read by name through the tested reader, not by awk
 # position (#791; tools/bench/test_bench_parse_query.py).

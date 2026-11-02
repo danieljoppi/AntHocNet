@@ -34,7 +34,8 @@ cd /path/to/ns-3-dev && ./ns3 configure --enable-examples --enable-tests && ./ns
 
 `make test` must stay green, and any new behaviour needs a test. CI runs the
 core tests (incl. ASan/UBSan), the codec fuzzer, the native-vs-WASM parity
-gate, and the NS-3 build/test matrix across ns-3.36–3.48.
+gate, and the NS-3 build/test on the ns-3 release ns-3 supports (older
+releases, back to ns-3.36, on demand through the CI workflow's manual run).
 
 ## Code style
 

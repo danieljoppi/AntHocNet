@@ -8,6 +8,15 @@ on:
     branches: [main, master]
   pull_request:
   workflow_dispatch:
+    inputs:
+      ns3-versions:
+        description: 'On demand: JSON list of older ns-3 releases to build and test, e.g. ["3.36","3.42"] (empty = the release ns-3 supports)'
+        required: false
+        default: ''
+      ns3-gate-version:
+        description: 'On demand: the ns-3 version that also runs the gates (empty = 3.48 while ns-3.49 AODV is broken, #843)'
+        required: false
+        default: ''
 
 # A force-push to a PR branch obsoletes the in-flight run — cancel it instead
 # of paying for the full matrix twice. Main-branch runs are never cancelled
@@ -98,6 +107,19 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     uses: ./.github/workflows/ci-ns3.yml
+    # Automatic runs: the ns-3 release ns-3 supports (ns3-dev:latest). Older
+    # releases only through the manual inputs above (org CONTRIBUTING
+    # invariant 7).
+    # TEMPORARY EXCEPTION (#843, swarm-routing/ns3-containers#35, option A):
+    # ns-3.49's stock AODV, and the vendored AOMDV, livelock in a zero-time ICMP
+    # storm. Nearly every gate, the package checks and the kits run an
+    # AODV-family arm, so the gate leg runs on ns3-dev:3.48 until the first
+    # ns-3 release with the fix reaches `latest`; then set this back to
+    # 'latest'. The `latest` leg still builds, runs the unit tests, the example
+    # and the AntHocNet-only smokes on 3.49. No gate floor changes.
+    with:
+      versions: ${{ inputs.ns3-versions || '["latest"]' }}
+      gate-version: ${{ inputs.ns3-gate-version || '3.48' }}
 
 
   # The one check to require in branch protection (#607): passes when every

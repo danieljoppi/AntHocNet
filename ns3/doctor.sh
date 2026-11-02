@@ -25,9 +25,12 @@ ok() { say ok "$1"; }
 warn() { say warn "$1"; warns=$((warns + 1)); }
 fail() { say FAIL "$1"; fails=$((fails + 1)); }
 
-# Supported range: the CI matrix (ci-ns3.yml ns3-build) — keep the two in step.
+# Tested range: automatic CI runs the ns-3 release ns-3 supports (its latest,
+# 3.49 as of 2026-11); 3.36 to the one before it ran before 2026-11 and can be
+# re-checked on demand (ci.yml workflow_dispatch `ns3-versions`). Raise
+# MAX_MINOR when CI moves to a new ns-3 release.
 MIN_MINOR=36
-MAX_MINOR=48
+MAX_MINOR=49
 
 ns3=unknown cmake=missing cxx=missing python=missing contrib=missing
 module=missing baselines=none built=no

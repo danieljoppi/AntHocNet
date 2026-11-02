@@ -17,7 +17,7 @@
 # flow is silent 60 s after a merge (it rejoins in 12-39 s), or when a
 # crossing flow delivers while split (the scene, not the protocol, broke).
 #
-# Runs on one matrix version (3.42), like the other scenario gates.
+# Runs on the gate leg (the ns-3 release ns-3 supports), like the other scenario gates.
 set -euo pipefail
 
 NS3DIR=${1:?usage: check-partition.sh <ns3-dir> <repo-dir>}
