@@ -43,7 +43,7 @@ concurrency:
 jobs:
   analysis:
     name: Scorecard analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       security-events: write   # upload the SARIF to the code-scanning dashboard
       id-token: write          # OIDC token -> publish_results (badge + public API)

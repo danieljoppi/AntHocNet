@@ -58,7 +58,7 @@ concurrency:
 jobs:
   render:
     name: Render charts from committed data
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # contents: write only to push the refreshed PNGs back to main.
     permissions:
       contents: write

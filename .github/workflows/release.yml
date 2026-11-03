@@ -26,7 +26,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write      # push the bump commit/tag and create the release
       id-token: write      # keyless Sigstore signing of the attestations (#614)

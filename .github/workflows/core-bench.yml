@@ -37,7 +37,7 @@ concurrency:
 jobs:
   bench:
     name: Core speed benchmarks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # contents: write only to push the history and chart back to main.
     permissions:
       contents: write

@@ -68,7 +68,7 @@ permissions:
 jobs:
   run:
     name: ${{ inputs.harness }} ${{ inputs.cell }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 360   # the hosted-runner ceiling (#121)
     container:
       image: ghcr.io/danieljoppi/ns3:${{ inputs.version }}
@@ -203,7 +203,7 @@ jobs:
     name: Open a PR with the cell
     needs: run
     if: ${{ inputs.open_pr }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       pull-requests: write

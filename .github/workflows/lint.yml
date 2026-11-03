@@ -21,7 +21,7 @@ permissions:
 jobs:
   python:
     name: Python tools (ruff)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -152,7 +152,7 @@ jobs:
 
   clang-format:
     name: C++ formatting (clang-format)
-    runs-on: ubuntu-24.04  # clang-format-18 ships here; ubuntu-latest (26.04) has none
+    runs-on: ubuntu-24.04
     # #35: the project's own C++ -- core/, the browser adapter and the ns-3
     # module -- is formatted by .clang-format (clang-format-18, the version on
     # ubuntu-24.04 runners). ns3/baselines/ is excluded by .clang-format-ignore:
@@ -169,7 +169,7 @@ jobs:
 
   clang-tidy:
     name: C++ static checks (clang-tidy, warn-only)
-    runs-on: ubuntu-24.04  # clang-tidy-18 is in 24.04 apt; ubuntu-latest moved to 26.04
+    runs-on: ubuntu-24.04
     # #619: the checks in .clang-tidy over core/src and the browser adapter's
     # native sources (web/src; bindings.cpp needs emscripten headers, so it is
     # left to the WASM build). Runs only when a PR or push changes C++ under
