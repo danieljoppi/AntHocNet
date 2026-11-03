@@ -13,7 +13,7 @@ permissions:
 jobs:
   core:
     name: core library + unit tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install toolchain
@@ -22,7 +22,7 @@ jobs:
         run: make test
   core-sanitizers:
     name: core under ASan + UBSan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install toolchain
@@ -35,7 +35,7 @@ jobs:
           cd core/build-san && ctest --output-on-failure
   core-coverage:
     name: core test coverage (gcov, report-only)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Which parts of core/ do the 18 ctest targets actually execute? The repo's
     # expensive failures (D2 evaporation, the #19 detector-D storm, the 8-bit
     # sequence wrap) were all behaviour in paths nothing exercised, so make that
@@ -98,9 +98,9 @@ jobs:
       # recomputes it with this job's build, filters and gcovr pin.
   codec-fuzz:
     name: codec fuzz (libFuzzer, 60s)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The codec is the only parser of untrusted network bytes (item 12), so fuzz
-    # its decode path against a small seed corpus. ubuntu-latest's clang ships
+    # its decode path against a small seed corpus. ubuntu-24.04's clang ships
     # the libFuzzer/ASan runtimes; a crash/UB/over-read fails the job.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

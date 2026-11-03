@@ -38,7 +38,7 @@ permissions:
 jobs:
   rescue:
     name: rescue campaign result artifacts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       actions: read

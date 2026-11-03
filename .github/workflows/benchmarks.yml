@@ -61,7 +61,7 @@ jobs:
   # untouched, and it runs whenever the stamped commit lags a code change --
   # exactly the staleness the backstop is for.
   changed:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       run: ${{ steps.diff.outputs.run }}
     steps:
@@ -96,7 +96,7 @@ jobs:
   benchmark:
     needs: changed
     if: needs.changed.outputs.run == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Needed to push the regenerated table + charts back to the branch; packages to
     # pull the pre-built ns-3 image.
     permissions:

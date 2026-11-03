@@ -39,7 +39,7 @@ jobs:
   # passed or was skipped, so skipped jobs never block a merge.
   changes:
     name: what changed (docs-only PRs skip the heavy jobs)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       code: ${{ steps.diff.outputs.code }}
       site: ${{ steps.diff.outputs.site }}
@@ -73,7 +73,7 @@ jobs:
 
   allowlists:
     name: module/arm/marker allowlist consistency
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # #435: the module lists (ci-ns3.yml's mods=, benchmark-cell.yml's
     # --enable-modules, Dockerfile.ns3) and the protocol-arm awk alternation
     # (check-determinism.sh filter_rows) are hand-maintained copies that fail
@@ -127,7 +127,7 @@ jobs:
   # cancellation.
   ci-gate:
     name: CI gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: always()
     needs: [changes, allowlists, core, web, ns3]
     steps:

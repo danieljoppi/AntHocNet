@@ -54,7 +54,7 @@ concurrency:
 jobs:
   build:
     name: Build site
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # After a refresh workflow, deploy only if it succeeded (a failed
     # benchmark run commits nothing, so there is nothing new to publish).
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
@@ -138,7 +138,7 @@ jobs:
   deploy:
     name: Deploy to Pages
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # deploy-pages exchanges the OIDC token (id-token: write) for the Pages
     # deployment credential (pages: write); the build job only reads.
     permissions:
@@ -163,7 +163,7 @@ jobs:
   live-smoke:
     name: Smoke the live site
     needs: [build, deploy]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read

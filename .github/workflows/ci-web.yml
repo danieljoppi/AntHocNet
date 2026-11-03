@@ -23,7 +23,7 @@ jobs:
   web-parity:
     name: browser adapter — native vs WASM parity (#544)
     if: inputs.code == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # ADR-0021: the learn site runs core/ as WebAssembly. This job builds the
     # browser adapter natively and with Emscripten, runs every built-in
@@ -50,7 +50,7 @@ jobs:
   pages:
     name: Pages site — build, crawl, browser smoke + axe (#626)
     if: inputs.site == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -129,7 +129,7 @@ jobs:
   # hang there, so they run on 3.48 until a fixed release reaches `latest`.
   ns3-kits:
     name: ns-3 export kits run and deliver (#640)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: pages
     if: inputs.code == 'true' && needs.pages.result == 'success'
     container:

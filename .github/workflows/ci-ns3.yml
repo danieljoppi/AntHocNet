@@ -37,7 +37,7 @@ permissions:
 jobs:
   ns3-build:
     name: NS-3 module build + test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Build against a pre-built ns-3 image rather than compiling ns-3 from
     # scratch: the stock tree is already built, so CI only compiles the
     # AntHocNet module delta. Images: ghcr.io/swarm-routing/ns3-dev:<ver>
@@ -400,7 +400,7 @@ jobs:
         run: bash tools/checks/check-determinism.sh /opt/ns-3 isl-grid
   ns3-asan:
     name: NS-3 module under ASan + LSan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Sanitize the adapter surface (pending-packet queue, timer cancel paths,
     # header <-> AntMessage conversion): rebuild the AntHocNet module and its
     # ns-3 dependencies with AddressSanitizer + LeakSanitizer, then re-run the
@@ -510,7 +510,7 @@ jobs:
   # build and pass; the comparison harnesses are skipped by ns-3 itself.
   ns3-core-only:
     name: NS-3 module alone (BASELINES=0)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ${{ inputs.gate-version == '3.36' && 'ghcr.io/danieljoppi/ns3:3.36' || format('ghcr.io/swarm-routing/ns3-dev:{0}', inputs.gate-version) }}
       credentials:
@@ -551,7 +551,7 @@ jobs:
   # deliver with them, and refuse an arm that is not installed.
   routing-bench-alone:
     name: routing-bench alone (stock ns-3 only)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ${{ inputs.gate-version == '3.36' && 'ghcr.io/danieljoppi/ns3:3.36' || format('ghcr.io/swarm-routing/ns3-dev:{0}', inputs.gate-version) }}
       credentials:
@@ -607,7 +607,7 @@ jobs:
   # harness) on the gate leg.
   packages:
     name: package ${{ matrix.packages }} (ns-${{ matrix.version }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: ${{ matrix.version == '3.36' && 'ghcr.io/danieljoppi/ns3:3.36' || format('ghcr.io/swarm-routing/ns3-dev:{0}', matrix.version) }}
       credentials:
