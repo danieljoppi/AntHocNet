@@ -13,6 +13,7 @@
 [![Top language](https://img.shields.io/github/languages/top/danieljoppi/AntHocNet)](#)
 [![Docs](https://img.shields.io/badge/docs-site-blue)](https://danieljoppi.github.io/AntHocNet/docs/)
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/danieljoppi/AntHocNet?quickstart=1)
+[![Sponsor](https://img.shields.io/github/sponsors/danieljoppi?label=sponsor&logo=githubsponsors&color=ea4aaa)](https://github.com/sponsors/danieljoppi)
 
 **▶ [Learn it by playing](https://danieljoppi.github.io/AntHocNet/)** — a city-builder for networks and ants
 that runs this repository's routing core, compiled to WebAssembly, in your
@@ -343,6 +344,10 @@ are tracked as GitHub issues with a label taxonomy
 protocol behaviour are expected to carry an A/B benchmark verdict
 ([docs/configuration.md §5](docs/configuration.md#5-how-to-calibrate-a-parameter)).
 Security reports: [SECURITY.md](SECURITY.md).
+
+To fund the work (simulator images, CI and benchmark campaigns, new
+protocols), [sponsor @danieljoppi](https://github.com/sponsors/danieljoppi);
+citing the [DOI](#releases--citing) helps just as much.
 
 ## License
 
