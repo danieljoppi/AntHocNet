@@ -1,0 +1,4 @@
+# Sponsor button. Shown on a repository once Settings -> General -> Features
+# -> Sponsorships is ticked. In swarm-routing/.github this file is the org
+# default: every org repository without its own FUNDING.yml uses it.
+github: [danieljoppi]
